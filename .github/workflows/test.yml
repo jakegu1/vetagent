@@ -5,6 +5,8 @@ on:
     branches: ["**"]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"   # 每周一 03:17 UTC 跑一次基准
 
 jobs:
   test:
@@ -38,3 +40,28 @@ jobs:
           python-version: "3.12"
       - name: Verify upstream API contracts
         run: python tests/test_upstream_contract.py
+
+  # 准确率基准。不挂在每次 push 上：它打大量真实上游请求、耗时以十分钟计。
+  # 手动触发或每周跑一次；结果提交进仓库，变化本身就是信号。
+  benchmark:
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Rebuild labelled dataset
+        run: python bench/build_dataset.py --limit 150
+      - name: Run benchmark
+        # 独立性断言不通过时会退出非零，这里不允许忽略：
+        # 一份循环论证的基准比没有基准更有害。
+        run: python bench/run_benchmark.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            bench/results.md
+            bench/results.json
+            bench/dataset.json

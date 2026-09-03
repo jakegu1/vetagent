@@ -31,3 +31,5 @@ wrangler.toml.local
 # 测试产物
 .pytest_cache/
 tests/fixtures/__pycache__/
+bench/cache/
+bench/build.log
