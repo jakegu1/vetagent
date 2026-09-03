@@ -109,6 +109,15 @@ export CLOUDFLARE_ACCOUNT_ID=3976e6f6f8237d5aa08543efa0e78887
 - 本地 dev 时 dexscreener 可能因代理不稳拿不到数据（**生产边缘直连没问题**，用生产验证）。
 - 观测调用量：`npx wrangler tail vetagent --format json`
 
+### 🖥️ 如果在你本地电脑开发（Jake 的机器）
+1. `git clone https://github.com/jakegu1/vetagent.git && cd vetagent`
+2. 装 `uv`（>=0.12.3）：`pip install uv` 或 `curl -LsSf https://astral.sh/uv/install.sh | sh`
+3. `uv sync`（装 workers-py + workers-runtime-sdk）
+4. **Cloudflare 凭证**：向 Jake 要 `CLOUDFLARE_API_TOKEN`（只在本地设环境变量，**绝不写进 git**）。账号 Cloudflare 控制台 → My Profile → API Tokens 创建（权限 `Workers: Edit` + `Account: Read`，最小化）。或直接 `npx wrangler login`（OAuth，最安全）。
+5. `npx wrangler dev` 本地测；`npx wrangler deploy` 上线。
+
+> 有 `wrangler login` 的 OAuth 方式（最安全，不用传 token）和 API Token 方式（跨网络稳定）。远程服务器场景用 API Token 更稳，本地开发推荐 OAuth。
+
 ## 7. 找 Jake / 简一 要资源时
 
 需要就明确说，Jake 会协调：
