@@ -1,5 +1,5 @@
 {
- "n_evaluated": 199,
+ "n_evaluated": 205,
  "independence": {
   "engine_endpoints": [
    "api.dexscreener.com/latest/dex/tokens/{id}",
@@ -10,113 +10,122 @@
  },
  "overall": {
   "verdict_distribution": {
-   "unknown": 49,
-   "low": 85,
-   "high": 39,
-   "medium": 26
+   "unknown": 43,
+   "low": 102,
+   "high": 32,
+   "medium": 28
   },
-  "unknown_rate": 0.24623115577889448,
-  "data_gap_rate": 0.2964824120603015
+  "unknown_rate": 0.2097560975609756,
+  "data_gap_rate": 0.25365853658536586
  },
  "outcome": {
   "bad_label": "dead",
   "good_label": "alive",
   "full": {
    "bad": {
-    "n": 0,
-    "high": null,
-    "high_or_medium": null,
-    "low": null,
-    "unknown": null,
-    "mean_score": null
+    "n": 1,
+    "high": 0.0,
+    "high_or_medium": 1.0,
+    "low": 0.0,
+    "unknown": 0.0,
+    "mean_score": 24.0
    },
    "good": {
-    "n": 74,
-    "high": 0.12162162162162163,
-    "high_or_medium": 0.21621621621621623,
-    "low": 0.6351351351351351,
-    "unknown": 0.14864864864864866,
-    "mean_score": 19.27027027027027
+    "n": 97,
+    "high": 0.1134020618556701,
+    "high_or_medium": 0.1958762886597938,
+    "low": 0.6597938144329897,
+    "unknown": 0.14432989690721648,
+    "mean_score": 17.422680412371133
    }
   },
   "contract_only": {
    "bad": {
-    "n": 0,
-    "high": null,
-    "high_or_medium": null,
-    "low": null,
-    "unknown": null,
-    "mean_score": null
+    "n": 1,
+    "high": 0.0,
+    "high_or_medium": 0.0,
+    "low": 1.0,
+    "unknown": 0.0,
+    "mean_score": 0.0
    },
    "good": {
-    "n": 74,
-    "high": 0.12162162162162163,
-    "high_or_medium": 0.2702702702702703,
-    "low": 0.7297297297297297,
+    "n": 97,
+    "high": 0.09278350515463918,
+    "high_or_medium": 0.25773195876288657,
+    "low": 0.7422680412371134,
     "unknown": 0.0,
-    "mean_score": 17.83783783783784
+    "mean_score": 15.77319587628866
    }
   },
-  "driving_categories_on_bad": {}
+  "driving_categories_on_bad": {
+   "liquidity": 1
+  }
  },
  "goplus": {
   "bad_label": "unsafe",
   "good_label": "safe",
   "full": {
    "bad": {
-    "n": 37,
-    "high": 0.21621621621621623,
-    "high_or_medium": 0.35135135135135137,
-    "low": 0.2702702702702703,
-    "unknown": 0.3783783783783784,
-    "mean_score": 38.4054054054054
+    "n": 1,
+    "high": 1.0,
+    "high_or_medium": 1.0,
+    "low": 0.0,
+    "unknown": 0.0,
+    "mean_score": 100.0
    },
    "good": {
-    "n": 125,
-    "high": 0.224,
-    "high_or_medium": 0.336,
-    "low": 0.448,
-    "unknown": 0.216,
-    "mean_score": 32.488
+    "n": 140,
+    "high": 0.16428571428571428,
+    "high_or_medium": 0.2785714285714286,
+    "low": 0.5,
+    "unknown": 0.22142857142857142,
+    "mean_score": 26.307142857142857
    }
   },
   "contract_only": {
    "bad": {
-    "n": 37,
-    "high": 0.16216216216216217,
-    "high_or_medium": 0.6486486486486487,
-    "low": 0.35135135135135137,
+    "n": 1,
+    "high": 1.0,
+    "high_or_medium": 1.0,
+    "low": 0.0,
     "unknown": 0.0,
-    "mean_score": 31.945945945945947
+    "mean_score": 100.0
    },
    "good": {
-    "n": 125,
-    "high": 0.176,
-    "high_or_medium": 0.44,
-    "low": 0.56,
+    "n": 140,
+    "high": 0.12857142857142856,
+    "high_or_medium": 0.38571428571428573,
+    "low": 0.6142857142857143,
     "unknown": 0.0,
-    "mean_score": 28.16
+    "mean_score": 22.714285714285715
    }
   },
   "driving_categories_on_bad": {
-   "sellability": 13,
-   "honeypot": 4,
-   "liquidity": 4,
-   "freshness": 3,
-   "upstream_risk": 2,
-   "sell_tax": 1
+   "honeypot": 1
   }
  },
  "centralized": {
-  "n": 30,
+  "n": 52,
   "verdict_distribution": {
-   "low": 17,
-   "medium": 6,
-   "unknown": 5,
-   "high": 2
+   "unknown": 9,
+   "low": 27,
+   "high": 6,
+   "medium": 10
   },
-  "high_rate": 0.06666666666666667,
+  "high_rate": 0.11538461538461539,
   "examples": [
+   {
+    "symbol": "CP",
+    "chain": "base",
+    "verdict": "unknown",
+    "driver": "sellability"
+   },
+   {
+    "symbol": "VIRTUAL",
+    "chain": "base",
+    "verdict": "low",
+    "driver": null
+   },
    {
     "symbol": "BIO",
     "chain": "base",
@@ -130,10 +139,28 @@
     "driver": null
    },
    {
+    "symbol": "align",
+    "chain": "base",
+    "verdict": "high",
+    "driver": "honeypot"
+   },
+   {
     "symbol": "umia",
     "chain": "base",
     "verdict": "medium",
     "driver": "freshness"
+   },
+   {
+    "symbol": "SOSO",
+    "chain": "base",
+    "verdict": "low",
+    "driver": null
+   },
+   {
+    "symbol": "AAVE",
+    "chain": "base",
+    "verdict": "low",
+    "driver": null
    },
    {
     "symbol": "AVNT",
@@ -146,140 +173,10 @@
     "chain": "base",
     "verdict": "unknown",
     "driver": "sellability"
-   },
-   {
-    "symbol": "DEXTF",
-    "chain": "base",
-    "verdict": "unknown",
-    "driver": "sellability"
-   },
-   {
-    "symbol": "rETH",
-    "chain": "base",
-    "verdict": "low",
-    "driver": null
-   },
-   {
-    "symbol": "Cake",
-    "chain": "bsc",
-    "verdict": "low",
-    "driver": null
-   },
-   {
-    "symbol": "ETH",
-    "chain": "bsc",
-    "verdict": "low",
-    "driver": null
-   },
-   {
-    "symbol": "USDT",
-    "chain": "bsc",
-    "verdict": "low",
-    "driver": null
    }
   ]
  },
  "disagreements": [
-  {
-   "kind": "漏报",
-   "label": "goplus=unsafe",
-   "address": "0x0b3e328455c4059eeb9e3f84b5543f74e24e7e1b",
-   "symbol": "VIRTUAL",
-   "chain": "base",
-   "verdict": "low",
-   "verdict_ablated": "low",
-   "driver": null
-  },
-  {
-   "kind": "漏报",
-   "label": "goplus=unsafe",
-   "address": "0x63706e401c06ac8513145b7687a14804d17f814b",
-   "symbol": "AAVE",
-   "chain": "base",
-   "verdict": "low",
-   "verdict_ablated": "low",
-   "driver": null
-  },
-  {
-   "kind": "漏报",
-   "label": "goplus=unsafe",
-   "address": "0xfde4c96c8593536e31f229ea8f37b2ada2699bb2",
-   "symbol": "USDT",
-   "chain": "base",
-   "verdict": "low",
-   "verdict_ablated": "low",
-   "driver": null
-  },
-  {
-   "kind": "漏报",
-   "label": "goplus=unsafe",
-   "address": "0x8d65744527f55d0b2338350912d5c99a81ddf0e2",
-   "symbol": "Pro",
-   "chain": "bsc",
-   "verdict": "low",
-   "verdict_ablated": "low",
-   "driver": null
-  },
-  {
-   "kind": "漏报",
-   "label": "goplus=unsafe",
-   "address": "0x0bc529c00c6401aef6d220be8c6ea1667f6ad93e",
-   "symbol": "YFI",
-   "chain": "ethereum",
-   "verdict": "low",
-   "verdict_ablated": "low",
-   "driver": null
-  },
-  {
-   "kind": "漏报",
-   "label": "goplus=unsafe",
-   "address": "0x45804880de22913dafe09f4980848ece6ecbaf78",
-   "symbol": "PAXG",
-   "chain": "ethereum",
-   "verdict": "low",
-   "verdict_ablated": "low",
-   "driver": null
-  },
-  {
-   "kind": "漏报",
-   "label": "goplus=unsafe",
-   "address": "0x4d1c297d39c5c1277964d0e3f8aa901493664530",
-   "symbol": "PUFFER",
-   "chain": "ethereum",
-   "verdict": "low",
-   "verdict_ablated": "low",
-   "driver": null
-  },
-  {
-   "kind": "漏报",
-   "label": "goplus=unsafe",
-   "address": "0x744d70fdbe2ba4cf95131626614a1763df805b9e",
-   "symbol": "SNT",
-   "chain": "ethereum",
-   "verdict": "low",
-   "verdict_ablated": "low",
-   "driver": null
-  },
-  {
-   "kind": "漏报",
-   "label": "goplus=unsafe",
-   "address": "0xcdf7028ceab81fa0c6971208e83fa7872994bee5",
-   "symbol": "T",
-   "chain": "ethereum",
-   "verdict": "low",
-   "verdict_ablated": "low",
-   "driver": null
-  },
-  {
-   "kind": "漏报",
-   "label": "goplus=unsafe",
-   "address": "0xcfcecfe2bd2fed07a9145222e8a7ad9cf1ccd22a",
-   "symbol": "ADS",
-   "chain": "ethereum",
-   "verdict": "low",
-   "verdict_ablated": "low",
-   "driver": null
-  },
   {
    "kind": "误报",
    "label": "goplus=safe",
@@ -308,6 +205,26 @@
    "chain": "base",
    "verdict": "high",
    "verdict_ablated": "high",
+   "driver": "sellability"
+  },
+  {
+   "kind": "误报",
+   "label": "outcome=alive",
+   "address": "0x55365c9e68e70122020184f4441b498e8bf06ac6",
+   "symbol": "QWLA",
+   "chain": "base",
+   "verdict": "high",
+   "verdict_ablated": "high",
+   "driver": "honeypot"
+  },
+  {
+   "kind": "误报",
+   "label": "goplus=safe",
+   "address": "0x9818b6c09f5ecc843060927e8587c427c7c93583",
+   "symbol": "RIZE",
+   "chain": "base",
+   "verdict": "high",
+   "verdict_ablated": "medium",
    "driver": "sellability"
   },
   {
@@ -352,6 +269,16 @@
   },
   {
    "kind": "误报",
+   "label": "goplus=safe",
+   "address": "0xdcf5130274753c8050ab061b1a1dcbf583f5bfd0",
+   "symbol": "VCNT",
+   "chain": "base",
+   "verdict": "high",
+   "verdict_ablated": "high",
+   "driver": "sellability"
+  },
+  {
+   "kind": "误报",
    "label": "outcome=alive",
    "address": "0x000ae314e2a2172a039b26378814c252734f556a",
    "symbol": "ASTER",
@@ -365,26 +292,6 @@
    "label": "goplus=safe",
    "address": "0x000ae314e2a2172a039b26378814c252734f556a",
    "symbol": "ASTER",
-   "chain": "bsc",
-   "verdict": "high",
-   "verdict_ablated": "high",
-   "driver": "honeypot"
-  },
-  {
-   "kind": "误报",
-   "label": "goplus=safe",
-   "address": "0x0a8d6c86e1bce73fe4d0bd531e1a567306836ea5",
-   "symbol": "COAI",
-   "chain": "bsc",
-   "verdict": "high",
-   "verdict_ablated": "high",
-   "driver": "honeypot"
-  },
-  {
-   "kind": "误报",
-   "label": "outcome=alive",
-   "address": "0x0f0df6cb17ee5e883eddfef9153fc6036bdb4e37",
-   "symbol": "BAS",
    "chain": "bsc",
    "verdict": "high",
    "verdict_ablated": "high",
@@ -402,17 +309,7 @@
   },
   {
    "kind": "误报",
-   "label": "goplus=safe",
-   "address": "0x30117e4bc17d7b044194b76a38365c53b72f7d49",
-   "symbol": "GWEI",
-   "chain": "bsc",
-   "verdict": "high",
-   "verdict_ablated": "medium",
-   "driver": "sellability"
-  },
-  {
-   "kind": "误报",
-   "label": "goplus=safe",
+   "label": "outcome=alive",
    "address": "0x3e5d4f8aee0d9b3082d5f6da5d6e225d17ba9ea0",
    "symbol": "UAI",
    "chain": "bsc",
@@ -423,28 +320,8 @@
   {
    "kind": "误报",
    "label": "goplus=safe",
-   "address": "0x405fbc9004d857903bfd6b3357792d71a50726b0",
-   "symbol": "XPL",
-   "chain": "bsc",
-   "verdict": "high",
-   "verdict_ablated": "high",
-   "driver": "honeypot"
-  },
-  {
-   "kind": "误报",
-   "label": "goplus=safe",
-   "address": "0x40b8129b786d766267a7a118cf8c07e31cdb6fde",
-   "symbol": "UB",
-   "chain": "bsc",
-   "verdict": "high",
-   "verdict_ablated": "high",
-   "driver": "honeypot"
-  },
-  {
-   "kind": "误报",
-   "label": "goplus=safe",
-   "address": "0x475cbf5919608e0c6af00e7bf87fab83bf3ef6e2",
-   "symbol": "ROBO",
+   "address": "0x3e5d4f8aee0d9b3082d5f6da5d6e225d17ba9ea0",
+   "symbol": "UAI",
    "chain": "bsc",
    "verdict": "high",
    "verdict_ablated": "medium",
@@ -493,16 +370,6 @@
   {
    "kind": "误报",
    "label": "goplus=safe",
-   "address": "0x5dbde81fce337ff4bcaaee4ca3466c00aecae274",
-   "symbol": "AGT",
-   "chain": "bsc",
-   "verdict": "high",
-   "verdict_ablated": "high",
-   "driver": "honeypot"
-  },
-  {
-   "kind": "误报",
-   "label": "goplus=safe",
    "address": "0x5ffd0eadc186af9512542d0d5e5eafc65d5afc5b",
    "symbol": "HEMI",
    "chain": "bsc",
@@ -523,38 +390,8 @@
   {
    "kind": "误报",
    "label": "goplus=safe",
-   "address": "0x87d00066cf131ff54b72b134a217d5401e5392b6",
-   "symbol": "PUFFER",
-   "chain": "bsc",
-   "verdict": "high",
-   "verdict_ablated": "high",
-   "driver": "honeypot"
-  },
-  {
-   "kind": "误报",
-   "label": "goplus=safe",
    "address": "0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d",
    "symbol": "USD1",
-   "chain": "bsc",
-   "verdict": "high",
-   "verdict_ablated": "high",
-   "driver": "honeypot"
-  },
-  {
-   "kind": "误报",
-   "label": "goplus=safe",
-   "address": "0x8e1e6bf7e13c400269987b65ab2b5724b016caef",
-   "symbol": "MITO",
-   "chain": "bsc",
-   "verdict": "high",
-   "verdict_ablated": "high",
-   "driver": "honeypot"
-  },
-  {
-   "kind": "误报",
-   "label": "outcome=alive",
-   "address": "0x8fce7206e3043dd360f115afa956ee31b90b787c",
-   "symbol": "STAR",
    "chain": "bsc",
    "verdict": "high",
    "verdict_ablated": "high",
@@ -623,6 +460,16 @@
   {
    "kind": "误报",
    "label": "goplus=safe",
+   "address": "0xfed13d0c40790220fbde712987079eda1ed75c51",
+   "symbol": "BTR",
+   "chain": "bsc",
+   "verdict": "high",
+   "verdict_ablated": "high",
+   "driver": "honeypot"
+  },
+  {
+   "kind": "误报",
+   "label": "goplus=safe",
    "address": "0x14d6c649292c5c9790c5196d1a9ea039307947a1",
    "symbol": "GULD",
    "chain": "ethereum",
@@ -639,6 +486,26 @@
    "verdict": "high",
    "verdict_ablated": "high",
    "driver": "honeypot"
+  },
+  {
+   "kind": "误报",
+   "label": "outcome=alive",
+   "address": "0x72e4f9f808c49a2a61de9c5896298920dc4eeea9",
+   "symbol": "BITCOIN",
+   "chain": "ethereum",
+   "verdict": "high",
+   "verdict_ablated": "high",
+   "driver": "honeypot"
+  },
+  {
+   "kind": "误报",
+   "label": "outcome=alive",
+   "address": "0xa250cc729bb3323e7933022a67b52200fe354767",
+   "symbol": "fwWETH",
+   "chain": "ethereum",
+   "verdict": "high",
+   "verdict_ablated": "medium",
+   "driver": "sellability"
   },
   {
    "kind": "误报",
@@ -673,10 +540,28 @@
    "has_data_gap": true
   },
   {
+   "address": "0x001aad84c21a5cd4d696c56d44866e9703c43f77",
+   "symbol": "CP",
+   "chain": "base",
+   "outcome_label": null,
+   "goplus_label": "centralized",
+   "verdict": "unknown",
+   "score": 30,
+   "confidence": "low",
+   "verdict_ablated": "medium",
+   "score_ablated": 30,
+   "driver": "sellability",
+   "categories": [
+    "liquidity",
+    "sellability"
+   ],
+   "has_data_gap": true
+  },
+  {
    "address": "0x00f3c42833c3170159af4e92dbb451fb3f708917",
    "symbol": "ICP",
    "chain": "base",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "goplus_label": "safe",
    "verdict": "low",
    "score": 0,
@@ -697,7 +582,7 @@
    "symbol": "SETZ",
    "chain": "base",
    "outcome_label": null,
-   "goplus_label": "unsafe",
+   "goplus_label": "safe",
    "verdict": "unknown",
    "score": 40,
    "confidence": "low",
@@ -712,11 +597,31 @@
    "has_data_gap": true
   },
   {
+   "address": "0x09b8903abf2ea0721e34427353988c2f43c6d64f",
+   "symbol": "LIQ",
+   "chain": "base",
+   "outcome_label": null,
+   "goplus_label": "safe",
+   "verdict": "low",
+   "score": 0,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
+   "categories": [
+    "freshness",
+    "honeypot",
+    "liquidity",
+    "upstream_risk"
+   ],
+   "has_data_gap": false
+  },
+  {
    "address": "0x0b3e328455c4059eeb9e3f84b5543f74e24e7e1b",
    "symbol": "VIRTUAL",
    "chain": "base",
    "outcome_label": "alive",
-   "goplus_label": "unsafe",
+   "goplus_label": "centralized",
    "verdict": "low",
    "score": 0,
    "confidence": "high",
@@ -793,7 +698,7 @@
    "address": "0x15d0e0c55a3e7ee67152ad7e89acf164253ff68d",
    "symbol": "HYPE",
    "chain": "base",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "goplus_label": "safe",
    "verdict": "low",
    "score": 0,
@@ -803,6 +708,25 @@
    "driver": null,
    "categories": [
     "cross_chain",
+    "honeypot",
+    "liquidity",
+    "upstream_risk"
+   ],
+   "has_data_gap": false
+  },
+  {
+   "address": "0x16ee7ecac70d1028e7712751e2ee6ba808a7dd92",
+   "symbol": "FUN",
+   "chain": "base",
+   "outcome_label": null,
+   "goplus_label": "safe",
+   "verdict": "low",
+   "score": 0,
+   "confidence": "medium",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
+   "categories": [
     "honeypot",
     "liquidity",
     "upstream_risk"
@@ -1043,11 +967,30 @@
    "has_data_gap": true
   },
   {
+   "address": "0x526728dbc96689597f85ae4cd716d4f7fccbae9d",
+   "symbol": "msUSD",
+   "chain": "base",
+   "outcome_label": null,
+   "goplus_label": "safe",
+   "verdict": "low",
+   "score": 0,
+   "confidence": "medium",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
+   "categories": [
+    "honeypot",
+    "liquidity",
+    "upstream_risk"
+   ],
+   "has_data_gap": false
+  },
+  {
    "address": "0x53f39e5c53ee40bbc3da97c3b47bd2968d110a8d",
    "symbol": "align",
    "chain": "base",
    "outcome_label": null,
-   "goplus_label": "unsafe",
+   "goplus_label": "centralized",
    "verdict": "high",
    "score": 100,
    "confidence": "medium",
@@ -1056,6 +999,26 @@
    "driver": "honeypot",
    "categories": [
     "honeypot",
+    "liquidity"
+   ],
+   "has_data_gap": false
+  },
+  {
+   "address": "0x55365c9e68e70122020184f4441b498e8bf06ac6",
+   "symbol": "QWLA",
+   "chain": "base",
+   "outcome_label": "alive",
+   "goplus_label": null,
+   "verdict": "high",
+   "score": 100,
+   "confidence": "high",
+   "verdict_ablated": "high",
+   "score_ablated": 100,
+   "driver": "honeypot",
+   "categories": [
+    "freshness",
+    "honeypot",
+    "lifecycle",
     "liquidity"
    ],
    "has_data_gap": false
@@ -1144,7 +1107,7 @@
    "symbol": "wtCOIN",
    "chain": "base",
    "outcome_label": null,
-   "goplus_label": "unsafe",
+   "goplus_label": "safe",
    "verdict": "medium",
    "score": 15,
    "confidence": "high",
@@ -1179,11 +1142,31 @@
    "has_data_gap": false
   },
   {
+   "address": "0x624e2e7fdc8903165f64891672267ab0fcb98831",
+   "symbol": "SOSO",
+   "chain": "base",
+   "outcome_label": null,
+   "goplus_label": "centralized",
+   "verdict": "low",
+   "score": 0,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
+   "categories": [
+    "freshness",
+    "honeypot",
+    "liquidity",
+    "upstream_risk"
+   ],
+   "has_data_gap": false
+  },
+  {
    "address": "0x63706e401c06ac8513145b7687a14804d17f814b",
    "symbol": "AAVE",
    "chain": "base",
    "outcome_label": "alive",
-   "goplus_label": "unsafe",
+   "goplus_label": "centralized",
    "verdict": "low",
    "score": 0,
    "confidence": "medium",
@@ -1198,10 +1181,30 @@
    "has_data_gap": false
   },
   {
+   "address": "0x6921c09f2b5cee21a929591a070d4b0354dbee8d",
+   "symbol": "LATI",
+   "chain": "base",
+   "outcome_label": "alive",
+   "goplus_label": null,
+   "verdict": "low",
+   "score": 0,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
+   "categories": [
+    "freshness",
+    "honeypot",
+    "liquidity",
+    "upstream_risk"
+   ],
+   "has_data_gap": false
+  },
+  {
    "address": "0x696f9436b67233384889472cd7cd58a6fb5df4f1",
    "symbol": "AVNT",
    "chain": "base",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "goplus_label": "centralized",
    "verdict": "low",
    "score": 0,
@@ -1237,11 +1240,67 @@
    "has_data_gap": false
   },
   {
+   "address": "0x6bd83abc39391af1e24826e90237c4bd3468b5d2",
+   "symbol": "SLC",
+   "chain": "base",
+   "outcome_label": "alive",
+   "goplus_label": "safe",
+   "verdict": "low",
+   "score": 0,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
+   "categories": [
+    "freshness",
+    "honeypot",
+    "liquidity",
+    "upstream_risk"
+   ],
+   "has_data_gap": false
+  },
+  {
    "address": "0x7297968ffb753dd12e4f6b1f18d9865c76707fc2",
    "symbol": "ZEST",
    "chain": "base",
    "outcome_label": null,
    "goplus_label": "centralized",
+   "verdict": "unknown",
+   "score": 30,
+   "confidence": "low",
+   "verdict_ablated": "medium",
+   "score_ablated": 30,
+   "driver": "sellability",
+   "categories": [
+    "liquidity",
+    "sellability"
+   ],
+   "has_data_gap": true
+  },
+  {
+   "address": "0x78e8cf657742e10eac8f64007615aa741fc76414",
+   "symbol": "USDL",
+   "chain": "base",
+   "outcome_label": null,
+   "goplus_label": "centralized",
+   "verdict": "unknown",
+   "score": 30,
+   "confidence": "low",
+   "verdict_ablated": "medium",
+   "score_ablated": 30,
+   "driver": "sellability",
+   "categories": [
+    "liquidity",
+    "sellability"
+   ],
+   "has_data_gap": true
+  },
+  {
+   "address": "0x7ba6f01772924a82d9626c126347a28299e98c98",
+   "symbol": "msETH",
+   "chain": "base",
+   "outcome_label": null,
+   "goplus_label": "safe",
    "verdict": "unknown",
    "score": 30,
    "confidence": "low",
@@ -1278,7 +1337,7 @@
    "address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
    "symbol": "USDC",
    "chain": "base",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "goplus_label": "safe",
    "verdict": "unknown",
    "score": 30,
@@ -1314,11 +1373,30 @@
    "has_data_gap": false
   },
   {
+   "address": "0x88fb150bdc53a65fe94dea0c9ba0a6daf8c6e196",
+   "symbol": "LINK",
+   "chain": "base",
+   "outcome_label": "alive",
+   "goplus_label": null,
+   "verdict": "low",
+   "score": 0,
+   "confidence": "medium",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
+   "categories": [
+    "honeypot",
+    "liquidity",
+    "upstream_risk"
+   ],
+   "has_data_gap": false
+  },
+  {
    "address": "0x9126236476efba9ad8ab77855c60eb5bf37586eb",
    "symbol": "CHECK",
    "chain": "base",
-   "outcome_label": null,
-   "goplus_label": "unsafe",
+   "outcome_label": "dead",
+   "goplus_label": "safe",
    "verdict": "medium",
    "score": 24,
    "confidence": "medium",
@@ -1336,7 +1414,7 @@
    "address": "0x940181a94a35a4569e4529a3cdfb74e38fd98631",
    "symbol": "AERO",
    "chain": "base",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "goplus_label": "safe",
    "verdict": "low",
    "score": 0,
@@ -1377,7 +1455,7 @@
    "symbol": "RIZE",
    "chain": "base",
    "outcome_label": null,
-   "goplus_label": "unsafe",
+   "goplus_label": "safe",
    "verdict": "high",
    "score": 70,
    "confidence": "low",
@@ -1436,6 +1514,26 @@
    "chain": "base",
    "outcome_label": null,
    "goplus_label": "safe",
+   "verdict": "low",
+   "score": 0,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
+   "categories": [
+    "freshness",
+    "honeypot",
+    "liquidity",
+    "upstream_risk"
+   ],
+   "has_data_gap": false
+  },
+  {
+   "address": "0xacfe6019ed1a7dc6f7b508c02d1b04ec88cc21bf",
+   "symbol": "VVV",
+   "chain": "base",
+   "outcome_label": "alive",
+   "goplus_label": null,
    "verdict": "low",
    "score": 0,
    "confidence": "high",
@@ -1548,25 +1646,6 @@
    "has_data_gap": false
   },
   {
-   "address": "0xb9a1e52f3ed678b01ff5e256fde43f26f9c01ba3",
-   "symbol": "HOME",
-   "chain": "base",
-   "outcome_label": null,
-   "goplus_label": "unsafe",
-   "verdict": "unknown",
-   "score": 40,
-   "confidence": "low",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
-   "driver": "freshness",
-   "categories": [
-    "freshness",
-    "liquidity",
-    "sellability"
-   ],
-   "has_data_gap": true
-  },
-  {
    "address": "0xbaa5cc21fd487b8fcc2f632f3f4e8d37262a0842",
    "symbol": "MORPHO",
    "chain": "base",
@@ -1584,6 +1663,25 @@
     "upstream_risk"
    ],
    "has_data_gap": false
+  },
+  {
+   "address": "0xbbd27c575fb0e113219d610cc787b02eeff71d42",
+   "symbol": "halo",
+   "chain": "base",
+   "outcome_label": null,
+   "goplus_label": "safe",
+   "verdict": "unknown",
+   "score": 30,
+   "confidence": "low",
+   "verdict_ablated": "medium",
+   "score_ablated": 30,
+   "driver": "sellability",
+   "categories": [
+    "freshness",
+    "liquidity",
+    "sellability"
+   ],
+   "has_data_gap": true
   },
   {
    "address": "0xbf927b841994731c573bdf09ceb0c6b0aa887cdd",
@@ -1649,7 +1747,7 @@
    "address": "0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca",
    "symbol": "USDbC",
    "chain": "base",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "goplus_label": "safe",
    "verdict": "unknown",
    "score": 40,
@@ -1670,7 +1768,7 @@
    "symbol": "VCNT",
    "chain": "base",
    "outcome_label": "alive",
-   "goplus_label": "unsafe",
+   "goplus_label": "safe",
    "verdict": "high",
    "score": 70,
    "confidence": "low",
@@ -1748,7 +1846,7 @@
    "address": "0xf43eb8de897fbc7f2502483b2bef7bb9ea179229",
    "symbol": "ZEN",
    "chain": "base",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "goplus_label": "safe",
    "verdict": "low",
    "score": 0,
@@ -1788,7 +1886,7 @@
    "symbol": "USDT",
    "chain": "base",
    "outcome_label": "alive",
-   "goplus_label": "unsafe",
+   "goplus_label": "centralized",
    "verdict": "low",
    "score": 0,
    "confidence": "high",
@@ -1847,7 +1945,7 @@
    "symbol": "NVDAB",
    "chain": "bsc",
    "outcome_label": null,
-   "goplus_label": "unsafe",
+   "goplus_label": "safe",
    "verdict": "unknown",
    "score": 30,
    "confidence": "low",
@@ -1860,83 +1958,6 @@
     "sellability"
    ],
    "has_data_gap": true
-  },
-  {
-   "address": "0x0a8d6c86e1bce73fe4d0bd531e1a567306836ea5",
-   "symbol": "COAI",
-   "chain": "bsc",
-   "outcome_label": null,
-   "goplus_label": "safe",
-   "verdict": "high",
-   "score": 100,
-   "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "honeypot",
-   "categories": [
-    "freshness",
-    "honeypot",
-    "liquidity"
-   ],
-   "has_data_gap": false
-  },
-  {
-   "address": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
-   "symbol": "Cake",
-   "chain": "bsc",
-   "outcome_label": "alive",
-   "goplus_label": "centralized",
-   "verdict": "low",
-   "score": 0,
-   "confidence": "medium",
-   "verdict_ablated": "low",
-   "score_ablated": 0,
-   "driver": null,
-   "categories": [
-    "honeypot",
-    "liquidity",
-    "upstream_risk"
-   ],
-   "has_data_gap": false
-  },
-  {
-   "address": "0x0e63b9c287e32a05e6b9ab8ee8df88a2760225a9",
-   "symbol": "PIEVERSE",
-   "chain": "bsc",
-   "outcome_label": null,
-   "goplus_label": "unsafe",
-   "verdict": "high",
-   "score": 70,
-   "confidence": "low",
-   "verdict_ablated": "medium",
-   "score_ablated": 60,
-   "driver": "sellability",
-   "categories": [
-    "cross_chain",
-    "freshness",
-    "liquidity",
-    "sellability"
-   ],
-   "has_data_gap": true
-  },
-  {
-   "address": "0x0f0df6cb17ee5e883eddfef9153fc6036bdb4e37",
-   "symbol": "BAS",
-   "chain": "bsc",
-   "outcome_label": "alive",
-   "goplus_label": "unsafe",
-   "verdict": "high",
-   "score": 100,
-   "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "honeypot",
-   "categories": [
-    "freshness",
-    "honeypot",
-    "liquidity"
-   ],
-   "has_data_gap": false
   },
   {
    "address": "0x10d4183389e99233db3cc981c43443ebd28ebd5e",
@@ -1958,30 +1979,11 @@
    "has_data_gap": true
   },
   {
-   "address": "0x11116f6fc6145fe83e1e11f363210f90e2761111",
-   "symbol": "TAIYI",
-   "chain": "bsc",
-   "outcome_label": null,
-   "goplus_label": "safe",
-   "verdict": "unknown",
-   "score": 40,
-   "confidence": "low",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
-   "driver": "sellability",
-   "categories": [
-    "freshness",
-    "liquidity",
-    "sellability"
-   ],
-   "has_data_gap": true
-  },
-  {
    "address": "0x205812cdbed920aff76c6580abd681a46d11efc7",
    "symbol": "QQQB",
    "chain": "bsc",
    "outcome_label": null,
-   "goplus_label": "unsafe",
+   "goplus_label": "safe",
    "verdict": "unknown",
    "score": 30,
    "confidence": "low",
@@ -2016,30 +2018,11 @@
    "has_data_gap": false
   },
   {
-   "address": "0x21caef8a43163eea865baee23b9c2e327696a3bf",
-   "symbol": "XAUt",
-   "chain": "bsc",
-   "outcome_label": "alive",
-   "goplus_label": null,
-   "verdict": "unknown",
-   "score": 60,
-   "confidence": "low",
-   "verdict_ablated": "medium",
-   "score_ablated": 60,
-   "driver": "sellability",
-   "categories": [
-    "freshness",
-    "liquidity",
-    "sellability"
-   ],
-   "has_data_gap": true
-  },
-  {
    "address": "0x277add739c6e0477616948357af9e79fe1ec9b80",
    "symbol": "AEON",
    "chain": "bsc",
    "outcome_label": null,
-   "goplus_label": "unsafe",
+   "goplus_label": "centralized",
    "verdict": "unknown",
    "score": 58,
    "confidence": "low",
@@ -2093,29 +2076,10 @@
    "has_data_gap": false
   },
   {
-   "address": "0x30117e4bc17d7b044194b76a38365c53b72f7d49",
-   "symbol": "GWEI",
-   "chain": "bsc",
-   "outcome_label": null,
-   "goplus_label": "safe",
-   "verdict": "high",
-   "score": 70,
-   "confidence": "low",
-   "verdict_ablated": "medium",
-   "score_ablated": 60,
-   "driver": "sellability",
-   "categories": [
-    "freshness",
-    "liquidity",
-    "sellability"
-   ],
-   "has_data_gap": true
-  },
-  {
    "address": "0x3e5d4f8aee0d9b3082d5f6da5d6e225d17ba9ea0",
    "symbol": "UAI",
    "chain": "bsc",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "goplus_label": "safe",
    "verdict": "high",
    "score": 70,
@@ -2131,81 +2095,24 @@
    "has_data_gap": true
   },
   {
-   "address": "0x405fbc9004d857903bfd6b3357792d71a50726b0",
-   "symbol": "XPL",
+   "address": "0x444045b0ee1ee319a660a5e3d604ca0ffa35acaa",
+   "symbol": "BTW",
    "chain": "bsc",
-   "outcome_label": null,
-   "goplus_label": "safe",
-   "verdict": "high",
-   "score": 100,
-   "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "honeypot",
+   "outcome_label": "alive",
+   "goplus_label": null,
+   "verdict": "medium",
+   "score": 24,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": "liquidity",
    "categories": [
     "freshness",
     "honeypot",
-    "liquidity"
+    "liquidity",
+    "upstream_risk"
    ],
    "has_data_gap": false
-  },
-  {
-   "address": "0x40b8129b786d766267a7a118cf8c07e31cdb6fde",
-   "symbol": "UB",
-   "chain": "bsc",
-   "outcome_label": null,
-   "goplus_label": "safe",
-   "verdict": "high",
-   "score": 100,
-   "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "honeypot",
-   "categories": [
-    "freshness",
-    "honeypot",
-    "liquidity"
-   ],
-   "has_data_gap": false
-  },
-  {
-   "address": "0x46ceefda28dd7207059ed19b0acdc026955bb15c",
-   "symbol": "GMEB",
-   "chain": "bsc",
-   "outcome_label": null,
-   "goplus_label": "unsafe",
-   "verdict": "unknown",
-   "score": 40,
-   "confidence": "low",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
-   "driver": "sellability",
-   "categories": [
-    "freshness",
-    "liquidity",
-    "sellability"
-   ],
-   "has_data_gap": true
-  },
-  {
-   "address": "0x475cbf5919608e0c6af00e7bf87fab83bf3ef6e2",
-   "symbol": "ROBO",
-   "chain": "bsc",
-   "outcome_label": null,
-   "goplus_label": "safe",
-   "verdict": "high",
-   "score": 80,
-   "confidence": "low",
-   "verdict_ablated": "medium",
-   "score_ablated": 60,
-   "driver": "sellability",
-   "categories": [
-    "freshness",
-    "lifecycle",
-    "liquidity",
-    "sellability"
-   ],
-   "has_data_gap": true
   },
   {
    "address": "0x4b3d30992f003c8167699735f5ab2831b2a087d3",
@@ -2218,25 +2125,6 @@
    "confidence": "low",
    "verdict_ablated": "medium",
    "score_ablated": 60,
-   "driver": "sellability",
-   "categories": [
-    "freshness",
-    "liquidity",
-    "sellability"
-   ],
-   "has_data_gap": true
-  },
-  {
-   "address": "0x4ef9d3062c7f6eba4aae4990c5036598c6eff4ec",
-   "symbol": "babab",
-   "chain": "bsc",
-   "outcome_label": null,
-   "goplus_label": "unsafe",
-   "verdict": "unknown",
-   "score": 30,
-   "confidence": "low",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
    "driver": "sellability",
    "categories": [
     "freshness",
@@ -2269,7 +2157,7 @@
    "symbol": "OLY",
    "chain": "bsc",
    "outcome_label": null,
-   "goplus_label": "unsafe",
+   "goplus_label": "centralized",
    "verdict": "medium",
    "score": 34,
    "confidence": "high",
@@ -2289,7 +2177,7 @@
    "address": "0x55d398326f99059ff775485246999027b3197955",
    "symbol": "USDT",
    "chain": "bsc",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "goplus_label": "centralized",
    "verdict": "low",
    "score": 0,
@@ -2345,25 +2233,6 @@
    "has_data_gap": false
   },
   {
-   "address": "0x5dbde81fce337ff4bcaaee4ca3466c00aecae274",
-   "symbol": "AGT",
-   "chain": "bsc",
-   "outcome_label": null,
-   "goplus_label": "safe",
-   "verdict": "high",
-   "score": 100,
-   "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "honeypot",
-   "categories": [
-    "freshness",
-    "honeypot",
-    "liquidity"
-   ],
-   "has_data_gap": false
-  },
-  {
    "address": "0x5ffd0eadc186af9512542d0d5e5eafc65d5afc5b",
    "symbol": "HEMI",
    "chain": "bsc",
@@ -2402,26 +2271,6 @@
    "has_data_gap": true
   },
   {
-   "address": "0x6907a5986c4950bdaf2f81828ec0737ce787519f",
-   "symbol": "ZAMA",
-   "chain": "bsc",
-   "outcome_label": null,
-   "goplus_label": "safe",
-   "verdict": "medium",
-   "score": 48,
-   "confidence": "high",
-   "verdict_ablated": "low",
-   "score_ablated": 0,
-   "driver": "liquidity",
-   "categories": [
-    "freshness",
-    "honeypot",
-    "liquidity",
-    "upstream_risk"
-   ],
-   "has_data_gap": false
-  },
-  {
    "address": "0x70f2eadf1ca1969ff42b0c78e9da519e8937cbaf",
    "symbol": "EDGE",
    "chain": "bsc",
@@ -2445,7 +2294,7 @@
    "address": "0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c",
    "symbol": "BTCB",
    "chain": "bsc",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "goplus_label": "centralized",
    "verdict": "low",
    "score": 0,
@@ -2462,31 +2311,11 @@
    "has_data_gap": false
   },
   {
-   "address": "0x7138b48df7d98d7e3cc221bfe7192d0a178182d8",
-   "symbol": "spyb",
-   "chain": "bsc",
-   "outcome_label": null,
-   "goplus_label": "unsafe",
-   "verdict": "unknown",
-   "score": 50,
-   "confidence": "low",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
-   "driver": "sellability",
-   "categories": [
-    "freshness",
-    "lifecycle",
-    "liquidity",
-    "sellability"
-   ],
-   "has_data_gap": true
-  },
-  {
    "address": "0x7cc151c2ee1016d7b586fb818759b6ae07719999",
    "symbol": "SAC",
    "chain": "bsc",
    "outcome_label": null,
-   "goplus_label": "unsafe",
+   "goplus_label": "centralized",
    "verdict": "medium",
    "score": 44,
    "confidence": "high",
@@ -2520,25 +2349,6 @@
     "honeypot",
     "liquidity",
     "upstream_risk"
-   ],
-   "has_data_gap": false
-  },
-  {
-   "address": "0x87d00066cf131ff54b72b134a217d5401e5392b6",
-   "symbol": "PUFFER",
-   "chain": "bsc",
-   "outcome_label": null,
-   "goplus_label": "safe",
-   "verdict": "high",
-   "score": 100,
-   "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "honeypot",
-   "categories": [
-    "freshness",
-    "honeypot",
-    "liquidity"
    ],
    "has_data_gap": false
   },
@@ -2588,7 +2398,7 @@
    "symbol": "Pro",
    "chain": "bsc",
    "outcome_label": null,
-   "goplus_label": "unsafe",
+   "goplus_label": "centralized",
    "verdict": "low",
    "score": 0,
    "confidence": "high",
@@ -2600,44 +2410,6 @@
     "honeypot",
     "liquidity",
     "upstream_risk"
-   ],
-   "has_data_gap": false
-  },
-  {
-   "address": "0x8e1e6bf7e13c400269987b65ab2b5724b016caef",
-   "symbol": "MITO",
-   "chain": "bsc",
-   "outcome_label": null,
-   "goplus_label": "safe",
-   "verdict": "high",
-   "score": 100,
-   "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "honeypot",
-   "categories": [
-    "freshness",
-    "honeypot",
-    "liquidity"
-   ],
-   "has_data_gap": false
-  },
-  {
-   "address": "0x8fce7206e3043dd360f115afa956ee31b90b787c",
-   "symbol": "STAR",
-   "chain": "bsc",
-   "outcome_label": "alive",
-   "goplus_label": "centralized",
-   "verdict": "high",
-   "score": 100,
-   "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "honeypot",
-   "categories": [
-    "freshness",
-    "honeypot",
-    "liquidity"
    ],
    "has_data_gap": false
   },
@@ -2816,25 +2588,6 @@
    "has_data_gap": false
   },
   {
-   "address": "0xbe9d156892e55e7154bcd3cb0fea677f9d3103e1",
-   "symbol": "SPCXB",
-   "chain": "bsc",
-   "outcome_label": null,
-   "goplus_label": "unsafe",
-   "verdict": "unknown",
-   "score": 30,
-   "confidence": "low",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
-   "driver": "sellability",
-   "categories": [
-    "freshness",
-    "liquidity",
-    "sellability"
-   ],
-   "has_data_gap": true
-  },
-  {
    "address": "0xbeea1d618e533a387d941f58a7d4c9b7bd377777",
    "symbol": "牛来",
    "chain": "bsc",
@@ -2857,7 +2610,7 @@
    "address": "0xc8fb80fcc03f699c70ff0cc08c09106288888888",
    "symbol": "CTM",
    "chain": "bsc",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "goplus_label": "safe",
    "verdict": "unknown",
    "score": 30,
@@ -2913,124 +2666,6 @@
    "has_data_gap": false
   },
   {
-   "address": "0xd20fb09a49a8e75fef536a2dbc68222900287bac",
-   "symbol": "PRL",
-   "chain": "bsc",
-   "outcome_label": null,
-   "goplus_label": "safe",
-   "verdict": "medium",
-   "score": 48,
-   "confidence": "high",
-   "verdict_ablated": "low",
-   "score_ablated": 0,
-   "driver": "liquidity",
-   "categories": [
-    "freshness",
-    "honeypot",
-    "liquidity",
-    "upstream_risk"
-   ],
-   "has_data_gap": false
-  },
-  {
-   "address": "0xd97d097a89113fa59b76c572e5b2eb647e8eefaf",
-   "symbol": "soxlb",
-   "chain": "bsc",
-   "outcome_label": null,
-   "goplus_label": "unsafe",
-   "verdict": "unknown",
-   "score": 40,
-   "confidence": "low",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
-   "driver": "sellability",
-   "categories": [
-    "freshness",
-    "liquidity",
-    "sellability"
-   ],
-   "has_data_gap": true
-  },
-  {
-   "address": "0xe0a281deff5c9d8d67af09d39340e134ac81b82e",
-   "symbol": "wkeyDAO2",
-   "chain": "bsc",
-   "outcome_label": null,
-   "goplus_label": "unsafe",
-   "verdict": "high",
-   "score": 74,
-   "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 74,
-   "driver": "sell_tax",
-   "categories": [
-    "contract",
-    "freshness",
-    "liquidity",
-    "sell_tax",
-    "upstream_risk"
-   ],
-   "has_data_gap": false
-  },
-  {
-   "address": "0xe92f7fe3eaf61df28b7b75f3faab199333c42302",
-   "symbol": "MAME",
-   "chain": "bsc",
-   "outcome_label": null,
-   "goplus_label": "safe",
-   "verdict": "unknown",
-   "score": 30,
-   "confidence": "low",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
-   "driver": "sellability",
-   "categories": [
-    "freshness",
-    "liquidity",
-    "sellability"
-   ],
-   "has_data_gap": true
-  },
-  {
-   "address": "0xeec6574eabba52bac3f0277f2cd5ac7e67197886",
-   "symbol": "KII",
-   "chain": "bsc",
-   "outcome_label": null,
-   "goplus_label": "unsafe",
-   "verdict": "unknown",
-   "score": 68,
-   "confidence": "low",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
-   "driver": "liquidity",
-   "categories": [
-    "cross_chain",
-    "freshness",
-    "liquidity",
-    "sellability"
-   ],
-   "has_data_gap": true
-  },
-  {
-   "address": "0xf2ec508422174ee564de98187db9359d318afb6b",
-   "symbol": "DJTB",
-   "chain": "bsc",
-   "outcome_label": null,
-   "goplus_label": "unsafe",
-   "verdict": "unknown",
-   "score": 40,
-   "confidence": "low",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
-   "driver": "sellability",
-   "categories": [
-    "freshness",
-    "liquidity",
-    "sellability"
-   ],
-   "has_data_gap": true
-  },
-  {
    "address": "0xf40592daacb3e5abf358789f5688c0b4f64d7777",
    "symbol": "FLORK",
    "chain": "bsc",
@@ -3073,7 +2708,7 @@
    "symbol": "BTR",
    "chain": "bsc",
    "outcome_label": null,
-   "goplus_label": "unsafe",
+   "goplus_label": "safe",
    "verdict": "high",
    "score": 100,
    "confidence": "medium",
@@ -3133,7 +2768,7 @@
    "symbol": "YFI",
    "chain": "ethereum",
    "outcome_label": null,
-   "goplus_label": "unsafe",
+   "goplus_label": "centralized",
    "verdict": "low",
    "score": 0,
    "confidence": "high",
@@ -3214,7 +2849,7 @@
    "symbol": "fwARB",
    "chain": "ethereum",
    "outcome_label": "alive",
-   "goplus_label": "unsafe",
+   "goplus_label": "centralized",
    "verdict": "unknown",
    "score": 40,
    "confidence": "low",
@@ -3251,7 +2886,7 @@
    "address": "0x1abaea1f7c830bd89acc67ec4af516284b1bc33c",
    "symbol": "EUROC",
    "chain": "ethereum",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "goplus_label": "safe",
    "verdict": "low",
    "score": 0,
@@ -3434,7 +3069,7 @@
    "symbol": "UXLINK",
    "chain": "ethereum",
    "outcome_label": null,
-   "goplus_label": "unsafe",
+   "goplus_label": "safe",
    "verdict": "medium",
    "score": 24,
    "confidence": "high",
@@ -3448,6 +3083,25 @@
     "upstream_risk"
    ],
    "has_data_gap": false
+  },
+  {
+   "address": "0x3c41c80b966b92d345dc8fc91e5508bc7248da6e",
+   "symbol": "CST",
+   "chain": "ethereum",
+   "outcome_label": null,
+   "goplus_label": "centralized",
+   "verdict": "high",
+   "score": 80,
+   "confidence": "low",
+   "verdict_ablated": "medium",
+   "score_ablated": 60,
+   "driver": "sellability",
+   "categories": [
+    "freshness",
+    "liquidity",
+    "sellability"
+   ],
+   "has_data_gap": true
   },
   {
    "address": "0x3e76dd57e649a263a532cc9bcc58b32a065fb2a4",
@@ -3511,11 +3165,31 @@
    "has_data_gap": false
   },
   {
+   "address": "0x44b28991b167582f18ba0259e0173176ca125505",
+   "symbol": "uPEG",
+   "chain": "ethereum",
+   "outcome_label": null,
+   "goplus_label": "safe",
+   "verdict": "low",
+   "score": 0,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
+   "categories": [
+    "freshness",
+    "honeypot",
+    "liquidity",
+    "upstream_risk"
+   ],
+   "has_data_gap": false
+  },
+  {
    "address": "0x45804880de22913dafe09f4980848ece6ecbaf78",
    "symbol": "PAXG",
    "chain": "ethereum",
-   "outcome_label": null,
-   "goplus_label": "unsafe",
+   "outcome_label": "alive",
+   "goplus_label": "safe",
    "verdict": "low",
    "score": 0,
    "confidence": "high",
@@ -3556,7 +3230,7 @@
    "symbol": "PUFFER",
    "chain": "ethereum",
    "outcome_label": "alive",
-   "goplus_label": "unsafe",
+   "goplus_label": "safe",
    "verdict": "low",
    "score": 0,
    "confidence": "high",
@@ -3589,6 +3263,26 @@
     "honeypot",
     "liquidity",
     "upstream_risk"
+   ],
+   "has_data_gap": false
+  },
+  {
+   "address": "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b",
+   "symbol": "CVX",
+   "chain": "ethereum",
+   "outcome_label": null,
+   "goplus_label": "centralized",
+   "verdict": "high",
+   "score": 100,
+   "confidence": "high",
+   "verdict_ablated": "high",
+   "score_ablated": 100,
+   "driver": "honeypot",
+   "categories": [
+    "cross_chain",
+    "freshness",
+    "honeypot",
+    "liquidity"
    ],
    "has_data_gap": false
   },
@@ -3634,6 +3328,46 @@
    "has_data_gap": false
   },
   {
+   "address": "0x52a8845df664d76c69d2eea607cd793565af42b8",
+   "symbol": "APEX",
+   "chain": "ethereum",
+   "outcome_label": null,
+   "goplus_label": "safe",
+   "verdict": "low",
+   "score": 0,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
+   "categories": [
+    "freshness",
+    "honeypot",
+    "liquidity",
+    "upstream_risk"
+   ],
+   "has_data_gap": false
+  },
+  {
+   "address": "0x56072c95faa701256059aa122697b133aded9279",
+   "symbol": "SKY",
+   "chain": "ethereum",
+   "outcome_label": "alive",
+   "goplus_label": "safe",
+   "verdict": "low",
+   "score": 0,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
+   "categories": [
+    "freshness",
+    "honeypot",
+    "liquidity",
+    "upstream_risk"
+   ],
+   "has_data_gap": false
+  },
+  {
    "address": "0x57e114b691db790c35207b2e685d4a43181e6061",
    "symbol": "ENA",
    "chain": "ethereum",
@@ -3649,6 +3383,46 @@
     "freshness",
     "honeypot",
     "lifecycle",
+    "liquidity",
+    "upstream_risk"
+   ],
+   "has_data_gap": false
+  },
+  {
+   "address": "0x58d97b57bb95320f9a05dc918aef65434969c2b2",
+   "symbol": "MORPHO",
+   "chain": "ethereum",
+   "outcome_label": null,
+   "goplus_label": "safe",
+   "verdict": "low",
+   "score": 0,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
+   "categories": [
+    "freshness",
+    "honeypot",
+    "liquidity",
+    "upstream_risk"
+   ],
+   "has_data_gap": false
+  },
+  {
+   "address": "0x594daad7d77592a2b97b725a7ad59d7e188b5bfa",
+   "symbol": "APU",
+   "chain": "ethereum",
+   "outcome_label": "alive",
+   "goplus_label": "safe",
+   "verdict": "low",
+   "score": 0,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
+   "categories": [
+    "freshness",
+    "honeypot",
     "liquidity",
     "upstream_risk"
    ],
@@ -3757,6 +3531,26 @@
    "has_data_gap": false
   },
   {
+   "address": "0x68bbed6a47194eff1cf514b50ea91895597fc91e",
+   "symbol": "ANDY",
+   "chain": "ethereum",
+   "outcome_label": null,
+   "goplus_label": "centralized",
+   "verdict": "low",
+   "score": 0,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
+   "categories": [
+    "freshness",
+    "honeypot",
+    "liquidity",
+    "upstream_risk"
+   ],
+   "has_data_gap": false
+  },
+  {
    "address": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
    "symbol": "PEPE",
    "chain": "ethereum",
@@ -3839,22 +3633,22 @@
    "has_data_gap": false
   },
   {
-   "address": "0x744d70fdbe2ba4cf95131626614a1763df805b9e",
-   "symbol": "SNT",
+   "address": "0x72e4f9f808c49a2a61de9c5896298920dc4eeea9",
+   "symbol": "BITCOIN",
    "chain": "ethereum",
-   "outcome_label": null,
-   "goplus_label": "unsafe",
-   "verdict": "low",
-   "score": 0,
+   "outcome_label": "alive",
+   "goplus_label": "centralized",
+   "verdict": "high",
+   "score": 100,
    "confidence": "high",
-   "verdict_ablated": "low",
-   "score_ablated": 0,
-   "driver": null,
+   "verdict_ablated": "high",
+   "score_ablated": 100,
+   "driver": "honeypot",
    "categories": [
+    "cross_chain",
     "freshness",
     "honeypot",
-    "liquidity",
-    "upstream_risk"
+    "liquidity"
    ],
    "has_data_gap": false
   },
@@ -3898,6 +3692,47 @@
    "has_data_gap": true
   },
   {
+   "address": "0x7adbfd873084db714a57ed648ee69aa4627cb998",
+   "symbol": "ALBRH",
+   "chain": "ethereum",
+   "outcome_label": null,
+   "goplus_label": "centralized",
+   "verdict": "medium",
+   "score": 15,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": "freshness",
+   "categories": [
+    "freshness",
+    "honeypot",
+    "liquidity",
+    "upstream_risk"
+   ],
+   "has_data_gap": false
+  },
+  {
+   "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+   "symbol": "wstETH",
+   "chain": "ethereum",
+   "outcome_label": null,
+   "goplus_label": "safe",
+   "verdict": "low",
+   "score": 0,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
+   "categories": [
+    "cross_chain",
+    "freshness",
+    "honeypot",
+    "liquidity",
+    "upstream_risk"
+   ],
+   "has_data_gap": false
+  },
+  {
    "address": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9",
    "symbol": "AAVE",
    "chain": "ethereum",
@@ -3911,6 +3746,28 @@
    "driver": "lifecycle",
    "categories": [
     "cross_chain",
+    "honeypot",
+    "lifecycle",
+    "liquidity",
+    "upstream_risk"
+   ],
+   "has_data_gap": false
+  },
+  {
+   "address": "0x808507121b80c02388fad14726482e061b8da827",
+   "symbol": "PENDLE",
+   "chain": "ethereum",
+   "outcome_label": null,
+   "goplus_label": "centralized",
+   "verdict": "medium",
+   "score": 12,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": "lifecycle",
+   "categories": [
+    "cross_chain",
+    "freshness",
     "honeypot",
     "lifecycle",
     "liquidity",
@@ -4038,6 +3895,46 @@
    "has_data_gap": false
   },
   {
+   "address": "0x9d65ff81a3c488d585bbfb0bfe3c7707c7917f54",
+   "symbol": "SSV",
+   "chain": "ethereum",
+   "outcome_label": null,
+   "goplus_label": "centralized",
+   "verdict": "low",
+   "score": 0,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
+   "categories": [
+    "freshness",
+    "honeypot",
+    "liquidity",
+    "upstream_risk"
+   ],
+   "has_data_gap": false
+  },
+  {
+   "address": "0x9dc44ae5be187eca9e2a67e33f27a4c91cea1223",
+   "symbol": "POWER",
+   "chain": "ethereum",
+   "outcome_label": "alive",
+   "goplus_label": null,
+   "verdict": "unknown",
+   "score": 60,
+   "confidence": "low",
+   "verdict_ablated": "medium",
+   "score_ablated": 60,
+   "driver": "sellability",
+   "categories": [
+    "cross_chain",
+    "freshness",
+    "liquidity",
+    "sellability"
+   ],
+   "has_data_gap": true
+  },
+  {
    "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
    "symbol": "USDC",
    "chain": "ethereum",
@@ -4090,6 +3987,45 @@
    "score_ablated": 0,
    "driver": null,
    "categories": [
+    "freshness",
+    "honeypot",
+    "liquidity",
+    "upstream_risk"
+   ],
+   "has_data_gap": false
+  },
+  {
+   "address": "0xa250cc729bb3323e7933022a67b52200fe354767",
+   "symbol": "fwWETH",
+   "chain": "ethereum",
+   "outcome_label": "alive",
+   "goplus_label": "centralized",
+   "verdict": "high",
+   "score": 70,
+   "confidence": "low",
+   "verdict_ablated": "medium",
+   "score_ablated": 60,
+   "driver": "sellability",
+   "categories": [
+    "no_liquidity",
+    "sellability"
+   ],
+   "has_data_gap": true
+  },
+  {
+   "address": "0xa2cd3d43c775978a96bdbf12d733d5a1ed94fb18",
+   "symbol": "XCN",
+   "chain": "ethereum",
+   "outcome_label": "alive",
+   "goplus_label": "safe",
+   "verdict": "low",
+   "score": 0,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
+   "categories": [
+    "cross_chain",
     "freshness",
     "honeypot",
     "liquidity",
@@ -4327,7 +4263,7 @@
    "symbol": "T",
    "chain": "ethereum",
    "outcome_label": "alive",
-   "goplus_label": "unsafe",
+   "goplus_label": "centralized",
    "verdict": "low",
    "score": 0,
    "confidence": "high",
@@ -4347,7 +4283,7 @@
    "symbol": "ADS",
    "chain": "ethereum",
    "outcome_label": "alive",
-   "goplus_label": "unsafe",
+   "goplus_label": "centralized",
    "verdict": "low",
    "score": 0,
    "confidence": "high",
@@ -4382,6 +4318,27 @@
    "has_data_gap": true
   },
   {
+   "address": "0xd533a949740bb3306d119cc777fa900ba034cd52",
+   "symbol": "CRV",
+   "chain": "ethereum",
+   "outcome_label": "alive",
+   "goplus_label": "safe",
+   "verdict": "low",
+   "score": 0,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
+   "categories": [
+    "cross_chain",
+    "freshness",
+    "honeypot",
+    "liquidity",
+    "upstream_risk"
+   ],
+   "has_data_gap": false
+  },
+  {
    "address": "0xdac17f958d2ee523a2206206994597c13d831ec7",
    "symbol": "USDT",
    "chain": "ethereum",
@@ -4406,7 +4363,7 @@
    "address": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
    "symbol": "USDS",
    "chain": "ethereum",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "goplus_label": "safe",
    "verdict": "low",
    "score": 0,
@@ -4447,7 +4404,7 @@
    "symbol": "FOLD",
    "chain": "ethereum",
    "outcome_label": null,
-   "goplus_label": "unsafe",
+   "goplus_label": "safe",
    "verdict": "unknown",
    "score": 60,
    "confidence": "low",
@@ -4499,6 +4456,26 @@
     "sellability"
    ],
    "has_data_gap": true
+  },
+  {
+   "address": "0xec67005c4e498ec7f55e092bd1d35cbc47c91892",
+   "symbol": "MLN",
+   "chain": "ethereum",
+   "outcome_label": null,
+   "goplus_label": "centralized",
+   "verdict": "low",
+   "score": 0,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
+   "categories": [
+    "freshness",
+    "honeypot",
+    "liquidity",
+    "upstream_risk"
+   ],
+   "has_data_gap": false
   },
   {
    "address": "0xf280b16ef293d8e534e370794ef26bf312694126",
@@ -4553,6 +4530,26 @@
    "verdict_ablated": "low",
    "score_ablated": 0,
    "driver": null,
+   "categories": [
+    "freshness",
+    "honeypot",
+    "liquidity",
+    "upstream_risk"
+   ],
+   "has_data_gap": false
+  },
+  {
+   "address": "0xfe0c30065b384f05761f15d0cc899d4f9f9cc0eb",
+   "symbol": "ETHFI",
+   "chain": "ethereum",
+   "outcome_label": null,
+   "goplus_label": "safe",
+   "verdict": "medium",
+   "score": 15,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": "freshness",
    "categories": [
     "freshness",
     "honeypot",

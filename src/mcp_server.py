@@ -44,12 +44,13 @@ _ASSESS_OUTPUT_SCHEMA = {
         "risk_level": {
             "type": "string",
             "enum": ["low", "medium", "high", "unknown"],
-            "description": "unknown 表示关键数据缺失，不是'低风险'——不可据此建仓。",
+            "description": ("'unknown' means a critical check could not be completed. "
+                            "It is NOT a low-risk result and must not justify a trade."),
         },
-        "risk_score": {"type": "integer", "description": "0-100，越高越危险"},
+        "risk_score": {"type": "integer", "description": "0-100; higher is more dangerous"},
         "confidence": {
             "type": "string", "enum": ["low", "medium", "high"],
-            "description": "衡量的是数据完整度，不是风险高低。",
+            "description": "How complete the input data was — not how safe the token is.",
         },
         "signals": {"type": "array", "items": _SIGNAL_SCHEMA},
         "recommendation": {"type": "string"},
@@ -61,26 +62,36 @@ _ASSESS_OUTPUT_SCHEMA = {
 TOOLS = [
     {
         "name": "assess_token_risk",
+        "title": "Assess Token Risk",
         "description": (
-            "买入或持有某个代币前的安全检查。返回 low/medium/high/unknown 四档结论、"
-            "0-100 风险分、逐条命中的风险信号，以及给 agent 的可执行建议。\n"
-            "覆盖：可卖出性仿真(honeypot/交易税)、流动性深度、交易对年龄、"
-            "跨链存在性、合约是否开源、活跃度。\n"
-            "重要：risk_level='unknown' 表示关键数据拿不到，**不等于低风险**，"
-            "此时不应据此做交易决策；confidence 衡量的是数据完整度而非风险高低。\n"
-            "本工具只覆盖链上可观测风险，不构成投资建议，也不检测团队跑路、"
-            "社工诈骗或链下风险。"
+            "Safety check to run BEFORE buying, holding, or recommending a token. "
+            "Returns an actionable verdict (low / medium / high / unknown), a 0-100 risk "
+            "score, and the individual signals behind it.\n"
+            "Covers: sell simulation (honeypot detection, buy/sell/transfer taxes), "
+            "liquidity depth, trading-pair age, cross-chain presence, whether the contract "
+            "is open source, and on Solana the mint/freeze authority and holder "
+            "concentration — plus the aggregate verdicts of upstream security scanners.\n"
+            "IMPORTANT: risk_level 'unknown' means a critical check could not be completed. "
+            "It is NOT a low-risk result and must not be used to justify a trade; "
+            "evidence.data_gaps lists exactly what was missing. 'confidence' measures how "
+            "complete the input data was, not how safe the token is.\n"
+            "Reports observable on-chain risk only. Not financial advice, does not size "
+            "positions, and cannot see off-chain risk such as team behaviour, social "
+            "engineering, or a rug executed through governance. Treat 'low' as 'no fatal "
+            "signal found in the checks that ran', never as 'safe to buy'."
         ),
         "inputSchema": {
             "type": "object",
             "properties": {
                 "address": {"type": "string",
-                            "description": "ERC-20 (0x+40位十六进制) 或 Solana (base58) 合约地址"},
+                            "description": "Token contract address: ERC-20 (0x + 40 hex) or Solana (base58)"},
                 "chain_hint": {"type": "string",
-                               "description": "可选主链提示，如 ethereum/bsc/base/polygon/solana。"
-                                              "强烈建议传入：不传时同名分叉链上的错价池可能干扰选池。"},
+                               "description": "Optional chain name (ethereum / bsc / base / polygon / "
+                                              "arbitrum / solana). Strongly recommended: Ethereum forks "
+                                              "such as PulseChain inherit contract addresses, so the same "
+                                              "address exists on several chains at wildly different prices."},
                 "verbose": {"type": "boolean", "default": False,
-                            "description": "true 返回完整上游证据；默认精简以节省 token"},
+                            "description": "Return full upstream evidence. Off by default to save tokens."},
             },
             "required": ["address"],
         },
@@ -90,16 +101,20 @@ TOOLS = [
     },
     {
         "name": "get_token_liquidity",
+        "title": "Get Token Liquidity",
         "description": (
-            "某代币主交易对的流动性快照：价格、24h 成交量、池子数与跨链分布。"
-            "status='ok' 才有数据；'unavailable' 表示上游请求失败（不代表没有流动性），"
-            "'not_found' 表示确实没检索到交易对。"
+            "Liquidity snapshot for a token's primary trading pair: price, 24h volume, "
+            "pair count and the chains it trades on.\n"
+            "Check 'status' before using the numbers: 'ok' means real data, 'unavailable' "
+            "means the upstream request failed (which does NOT mean the token has no "
+            "liquidity), and 'not_found' means no trading pair was found."
         ),
         "inputSchema": {
             "type": "object",
             "properties": {
-                "address": {"type": "string", "description": "代币合约地址"},
-                "chain_hint": {"type": "string", "description": "可选，主链提示"},
+                "address": {"type": "string", "description": "Token contract address"},
+                "chain_hint": {"type": "string",
+                               "description": "Optional chain name; disambiguates forks that share addresses"},
             },
             "required": ["address"],
         },
@@ -121,16 +136,18 @@ TOOLS = [
     },
     {
         "name": "find_new_hot_pools",
+        "title": "Find New Hot Pools",
         "description": (
-            "扫描某条链上最新创建或最热门的交易池，返回名称/价格/流动性/24h量/池龄。"
-            "新池风险天然极高，返回结果**不代表任何安全性背书**，"
-            "对感兴趣的标的请再调用 assess_token_risk。"
+            "Scan a chain for the newest and most active trading pools, returning name, "
+            "price, liquidity, 24h volume and pool age.\n"
+            "Discovery only. New pools carry inherently high risk and appearing here is NOT "
+            "a safety endorsement — call assess_token_risk on anything you intend to act on."
         ),
         "inputSchema": {
             "type": "object",
             "properties": {
                 "chain": {"type": "string", "default": "solana",
-                          "description": "链名，如 solana/ethereum/base/bsc"},
+                          "description": "Chain name, e.g. solana / ethereum / base / bsc"},
                 "limit": {"type": "integer", "default": 10, "minimum": 1, "maximum": 50},
             },
         },
@@ -175,8 +192,9 @@ async def handle_mcp_request(body):
             "capabilities": {"tools": {"listChanged": False}},
             "serverInfo": {"name": "vetagent", "version": "0.2.0"},
             "instructions": (
-                "在买入/持有某代币前调用 assess_token_risk。"
-                "risk_level='unknown' 表示数据不足，不等于安全。"
+                "Call assess_token_risk before an agent buys, holds, or recommends a "
+                "token. risk_level 'unknown' means a critical check could not run — it is "
+                "not a low-risk result and must not be used to justify a trade."
             ),
         })
 

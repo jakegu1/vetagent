@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "vetagent": {
+      "type": "http",
+      "url": "https://vetagent.dev/mcp"
+    }
+  }
+}

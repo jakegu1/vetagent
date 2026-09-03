@@ -15,6 +15,60 @@ import risk
 
 _LANDING_PATH = os.path.join(os.path.dirname(__file__), "landing.html")
 
+# 隐私政策。内联而不是单独文件，因为它必须永远可达——
+# 目录审核会直接抓这个 URL，404 是即时驳回项。
+_PRIVACY_HTML = """<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VetAgent - Privacy</title>
+<style>
+ body{max-width:44rem;margin:0 auto;padding:3rem 1.25rem;line-height:1.7;
+   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+   background:#0d1117;color:#c9d1d9}
+ h1{color:#e6edf3;font-size:1.9rem;margin:0 0 .4rem}
+ h2{color:#e6edf3;font-size:1.05rem;margin:2rem 0 .5rem}
+ a{color:#58a6ff} code{background:#161b22;padding:.1rem .35rem;border-radius:4px}
+ .sub{color:#8b949e;margin:0 0 2rem}
+</style>
+<h1>Privacy</h1>
+<p class="sub">VetAgent &middot; last updated 2026-09-04</p>
+
+<h2>What we collect</h2>
+<p><strong>No accounts, no cookies, no tracking.</strong> VetAgent is a stateless
+service. It has no user database and no analytics scripts.</p>
+<p>When you call the API or the MCP endpoint, the request carries a token contract
+address and an optional chain name. That address is used to query public data
+sources and is <strong>not stored</strong> after the response is returned.</p>
+
+<h2>What reaches third parties</h2>
+<p>To answer a request we query these public APIs, sending only the token address:</p>
+<ul>
+  <li>DexScreener &mdash; trading pairs, price, liquidity</li>
+  <li>GeckoTerminal &mdash; liquidity fallback, new and trending pools</li>
+  <li>honeypot.is &mdash; EVM buy/sell simulation</li>
+  <li>RugCheck &mdash; Solana contract risk</li>
+</ul>
+<p>These are third-party services with their own privacy policies. We never send
+them wallet addresses, identities, or anything about who is asking.</p>
+
+<h2>Logs</h2>
+<p>Cloudflare, which serves this Worker, keeps standard edge request metadata
+(IP, timestamp, path) for operational and abuse-prevention purposes under its own
+policy. We do not export, retain, sell, or analyse it, and we do not join it to
+anything else.</p>
+
+<h2>Not financial advice</h2>
+<p>VetAgent reports observable on-chain risk. It is not investment advice, does not
+size positions, and cannot detect off-chain risk. A <code>low</code> verdict means
+"no fatal signal found in the checks that ran" &mdash; never "safe to buy". A verdict
+of <code>unknown</code> means a critical check could not be completed and must not be
+read as low risk.</p>
+
+<h2>Contact</h2>
+<p>Open an issue at
+<a href="https://github.com/jakegu1/vetagent">github.com/jakegu1/vetagent</a>.</p>
+"""
+
 _JSON = "application/json"
 _CORS = {
     "access-control-allow-origin": "*",
@@ -59,6 +113,9 @@ class Default(WorkerEntrypoint):
         if path == "/health":
             return _json_response({"status": "ok", "service": "vetagent",
                                    "version": "0.2.0", "mcp_tools": len(mcp_server.TOOLS)})
+
+        if path == "/privacy":
+            return Response(_PRIVACY_HTML, headers={"content-type": "text/html"}, status=200)
 
         try:
             if path.startswith("/assess/"):

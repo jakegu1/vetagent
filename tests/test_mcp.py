@@ -121,8 +121,22 @@ def test_tools_list_shape():
     check("liquidity 支持 chain_hint",
           "chain_hint" in [t for t in tools if t["name"] == "get_token_liquidity"][0]
           ["inputSchema"]["properties"], "")
+    # 工具描述是 LLM 唯一的使用说明。若不写明 unknown≠安全，
+    # 调用方模型会把它当成 low 处理——这是最危险的误读。
     check("描述里说明 unknown 不等于安全",
-          "unknown" in assess["description"] and "不等于低风险" in assess["description"], "")
+          "unknown" in assess["description"]
+          and "NOT a low-risk result" in assess["description"], "")
+    # 分发前置：工具面向国际 agent 生态，描述必须是英文。
+    # 只查 CJK，不查全部非 ASCII——破折号、引号这类排版字符是合法的。
+    def _has_cjk(text):
+        return any("一" <= c <= "鿿" for c in text)
+    for t in tools:
+        check("%s 描述无中文" % t["name"], not _has_cjk(t["description"]), "")
+        for pname, prop in t["inputSchema"].get("properties", {}).items():
+            check("%s.%s 描述无中文" % (t["name"], pname),
+                  not _has_cjk(prop.get("description", "")), "")
+    for t in tools:
+        check("%s 有 title" % t["name"], bool(t.get("title")), str(t.get("title")))
 
 
 def test_tools_call_returns_structured_content():

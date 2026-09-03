@@ -2,7 +2,7 @@
 
 > 本文件由 `python bench/run_benchmark.py` 生成，不要手改。
 
-样本量 **199**。这是 v1，样本偏小，请把它当作「有没有明显失效」的体检，而不是精确的统计结论。
+样本量 **205**。这是 v1，样本偏小，请把它当作「有没有明显失效」的体检，而不是精确的统计结论。
 
 
 ## 方法
@@ -50,9 +50,9 @@
 
 | 指标 | 值 |
 |---|---|
-| 判定分布 | high=39, low=85, medium=26, unknown=49 |
-| unknown 率 | 24.6% |
-| 存在数据缺口的比例 | 29.6% |
+| 判定分布 | high=32, low=102, medium=28, unknown=43 |
+| unknown 率 | 21.0% |
+| 存在数据缺口的比例 | 25.4% |
 
 > unknown 率必须和召回率一起看。一个对所有东西都答 unknown 的工具召回率完美，但毫无用处。
 
@@ -65,8 +65,8 @@
 
 | | n | 判 high | 判 high 或 medium | 判 low | 判 unknown | 平均分 |
 |---|---|---|---|---|---|---|
-| **已死** | 0 | — | — | — | — | — |
-| **存活** | 74 | 12.2% | 21.6% | 63.5% | 14.9% | 19.3 |
+| **已死** | 1 | 0.0% | 100.0% | 0.0% | 0.0% | 24.0 |
+| **存活** | 97 | 11.3% | 19.6% | 66.0% | 14.4% | 17.4 |
 
 ### 仅合约安全类信号（消融）
 
@@ -75,8 +75,14 @@
 
 | | n | 判 high | 判 high 或 medium | 判 low | 判 unknown | 平均分 |
 |---|---|---|---|---|---|---|
-| **已死** | 0 | — | — | — | — | — |
-| **存活** | 74 | 12.2% | 27.0% | 73.0% | 0.0% | 17.8 |
+| **已死** | 1 | 0.0% | 0.0% | 100.0% | 0.0% | 0.0 |
+| **存活** | 97 | 9.3% | 25.8% | 74.2% | 0.0% | 15.8 |
+
+**已死样本上，是哪类信号做出的判定：** `liquidity` 1
+
+
+> 若这里高度集中在 `upstream_risk`，说明引擎主要在转述 honeypot.is，自身增量有限。
+
 
 ## GoPlus 留出预言机（危险 vs 安全）
 
@@ -86,8 +92,8 @@
 
 | | n | 判 high | 判 high 或 medium | 判 low | 判 unknown | 平均分 |
 |---|---|---|---|---|---|---|
-| **危险** | 37 | 21.6% | 35.1% | 27.0% | 37.8% | 38.4 |
-| **安全** | 125 | 22.4% | 33.6% | 44.8% | 21.6% | 32.5 |
+| **危险** | 1 | 100.0% | 100.0% | 0.0% | 0.0% | 100.0 |
+| **安全** | 140 | 16.4% | 27.9% | 50.0% | 22.1% | 26.3 |
 
 ### 仅合约安全类信号（消融）
 
@@ -96,10 +102,10 @@
 
 | | n | 判 high | 判 high 或 medium | 判 low | 判 unknown | 平均分 |
 |---|---|---|---|---|---|---|
-| **危险** | 37 | 16.2% | 64.9% | 35.1% | 0.0% | 31.9 |
-| **安全** | 125 | 17.6% | 44.0% | 56.0% | 0.0% | 28.2 |
+| **危险** | 1 | 100.0% | 100.0% | 0.0% | 0.0% | 100.0 |
+| **安全** | 140 | 12.9% | 38.6% | 61.4% | 0.0% | 22.7 |
 
-**危险样本上，是哪类信号做出的判定：** `sellability` 13、`honeypot` 4、`liquidity` 4、`freshness` 3、`upstream_risk` 2、`sell_tax` 1
+**危险样本上，是哪类信号做出的判定：** `honeypot` 1
 
 
 > 若这里高度集中在 `upstream_risk`，说明引擎主要在转述 honeypot.is，自身增量有限。
@@ -115,9 +121,9 @@
 
 | 样本数 | 判 high 比例 | 判定分布 |
 |---|---|---|
-| 30 | 6.7% | high=2, low=17, medium=6, unknown=5 |
+| 52 | 11.5% | high=6, low=27, medium=10, unknown=9 |
 
-样例：BIO(low)、MOCA(low)、umia(medium)、AVNT(low)、ZEST(unknown)、DEXTF(unknown)、rETH(low)、Cake(low)、ETH(low)、USDT(low)
+样例：CP(unknown)、VIRTUAL(low)、BIO(low)、MOCA(low)、align(high)、umia(medium)、SOSO(low)、AAVE(low)、AVNT(low)、ZEST(unknown)
 
 
 ## 分歧样本（需人工复核）
@@ -127,28 +133,28 @@
 
 | 类型 | 代币 | 链 | 标注 | 引擎判定 | 消融后 | 驱动信号 |
 |---|---|---|---|---|---|---|
-| 漏报 | `VIRTUAL` | base | goplus=unsafe | low | low | — |
-| 漏报 | `AAVE` | base | goplus=unsafe | low | low | — |
-| 漏报 | `USDT` | base | goplus=unsafe | low | low | — |
-| 漏报 | `Pro` | bsc | goplus=unsafe | low | low | — |
-| 漏报 | `YFI` | ethereum | goplus=unsafe | low | low | — |
-| 漏报 | `PAXG` | ethereum | goplus=unsafe | low | low | — |
-| 漏报 | `PUFFER` | ethereum | goplus=unsafe | low | low | — |
-| 漏报 | `SNT` | ethereum | goplus=unsafe | low | low | — |
-| 漏报 | `T` | ethereum | goplus=unsafe | low | low | — |
-| 漏报 | `ADS` | ethereum | goplus=unsafe | low | low | — |
 | 误报 | `O` | base | goplus=safe | high | high | honeypot |
 | 误报 | `RECALL` | base | outcome=alive | high | high | sellability |
 | 误报 | `RECALL` | base | goplus=safe | high | high | sellability |
+| 误报 | `QWLA` | base | outcome=alive | high | high | honeypot |
+| 误报 | `RIZE` | base | goplus=safe | high | medium | sellability |
 | 误报 | `GOOGLc` | base | goplus=safe | high | high | honeypot |
 | 误报 | `Basecat` | base | goplus=safe | high | high | honeypot |
 | 误报 | `NVDAc` | base | goplus=safe | high | high | honeypot |
 | 误报 | `VCNT` | base | outcome=alive | high | high | sellability |
+| 误报 | `VCNT` | base | goplus=safe | high | high | sellability |
 | 误报 | `ASTER` | bsc | outcome=alive | high | high | honeypot |
 | 误报 | `ASTER` | bsc | goplus=safe | high | high | honeypot |
-| 误报 | `COAI` | bsc | goplus=safe | high | high | honeypot |
+| 误报 | `AKE` | bsc | outcome=alive | high | high | honeypot |
+| 误报 | `UAI` | bsc | outcome=alive | high | medium | sellability |
+| 误报 | `UAI` | bsc | goplus=safe | high | medium | sellability |
+| 误报 | `COLLECT` | bsc | goplus=safe | high | medium | sellability |
+| 误报 | `quq` | bsc | goplus=safe | high | high | honeypot |
+| 误报 | `mubarak` | bsc | outcome=alive | high | high | honeypot |
+| 误报 | `mubarak` | bsc | goplus=safe | high | high | honeypot |
+| 误报 | `HEMI` | bsc | goplus=safe | high | high | honeypot |
 
-（另有 27 条，见 `results.json`）
+（另有 14 条，见 `results.json`）
 
 
 ## 这份基准测不到什么

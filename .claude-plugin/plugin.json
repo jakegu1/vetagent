@@ -1,0 +1,21 @@
+{
+  "name": "vetagent",
+  "version": "0.2.0",
+  "description": "Pre-trade safety check for AI agents. Assess a token for honeypots, extraction taxes, thin liquidity, and rug risk before buying, holding, or recommending it. Read-only analysis; publishes its own measured accuracy.",
+  "author": {
+    "name": "Jake Gu",
+    "url": "https://github.com/jakegu1"
+  },
+  "homepage": "https://vetagent.dev",
+  "repository": "https://github.com/jakegu1/vetagent",
+  "license": "MIT",
+  "keywords": [
+    "crypto",
+    "token-risk",
+    "honeypot-detection",
+    "rug-check",
+    "security",
+    "defi",
+    "agent-safety"
+  ]
+}
