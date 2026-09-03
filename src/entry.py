@@ -45,7 +45,10 @@ class Default(WorkerEntrypoint):
 
         if path.startswith("/assess/"):
             address = path.split("/assess/")[1]
-            r = await risk.assess(address)
+            import urllib.parse as up
+            qs = dict(up.parse_qsl(parsed.query))
+            chain_hint = qs.get("chain_hint") or qs.get("chain")
+            r = await risk.assess(address, chain_hint)
             return self._json_response(r)
 
         if path.startswith("/liquidity/"):

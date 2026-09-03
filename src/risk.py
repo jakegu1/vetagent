@@ -64,18 +64,26 @@ def _severity(level):
 
 
 def _finalize(address, signals, evidence):
+    """汇总评分。fail-closed：无数据 → unknown，绝无默认乐观值。"""
+    if not signals:
+        # 一条信号都没有 = 完全无数据 → 必须 unknown，不能给任何仓位建议
+        return {"address": address, "risk_level": "unknown", "risk_score": 0,
+                "signals": [], "recommendation": "数据不足，无法判定风险。请核实地址与数据源。",
+                "confidence": "low", "evidence": evidence}
     score = min(100, sum(_severity(s["severity"]) for s in signals))
     has_positive = any(s["severity"] in ("ok", "info") for s in signals)
-    if not signals and not has_positive:
-        level = "unknown"
-    elif score >= 55:
+    has_warn_or_worse = any(s["severity"] in ("warn", "critical", "fatal") for s in signals)
+    if score >= 55:
         level = "high"
     elif score >= 25:
         level = "medium"
+    elif has_warn_or_worse:
+        level = "medium"  # 只有 warn 无 critical 但确实有风险信号
     elif has_positive:
         level = "low"
     else:
         level = "unknown"
+    # 组合规则
     risk_factors = {s["category"] for s in signals if s["severity"] in ("critical", "fatal")}
     warn_factors = {s["category"] for s in signals if s["severity"] == "warn"}
     combo = []
@@ -95,11 +103,14 @@ def _finalize(address, signals, evidence):
     info_ok = sum(1 for s in signals if s["severity"] in ("ok", "info"))
     definite = sum(1 for s in signals if s["severity"] in ("warn", "critical", "fatal"))
     total = len(signals)
-    confidence = "low" if total == 0 else ("high" if definite and total >= 3 and info_ok >= 1 else ("medium" if total >= 2 else "low"))
+    # confidence：信号越全越可靠；关键数据缺失时降级
+    has_liquidity = any(s["category"] == "liquidity" for s in signals)
+    confidence = "low" if total < 2 else ("high" if definite and total >= 3 and info_ok >= 1 and has_liquidity else "medium")
     evidence["confidence"] = confidence
     rec = ("高风险：不建议在没有深入审核的情况下大额买入。先核实合约/持有/审计。" if level == "high" else (
-        "中等风险：可小额试探，但务必控制仓位、设置止损。关注流动性退出与新池老化。" if level == "medium" else (
-        "低风险：流动性充足且无 honeypot/高税信号，可正常评估。" if level == "low" else "信息不足以判定，建议二次核实合约与流动性。")))
+        "中等风险：谨慎为上，需进一步核实流动性、持币分布与合约权限后才考虑建仓。" if level == "medium" else (
+        "低风险：流动性充足且无 honeypot/高税/失活信号，可正常评估。" if level == "low" else
+        "数据不足，无法判定风险，建议二次核实地址与数据源。")))
     return {"address": address, "risk_level": level, "risk_score": score,
             "signals": signals, "recommendation": rec, "confidence": confidence, "evidence": evidence}
 
@@ -107,8 +118,41 @@ def _finalize(address, signals, evidence):
 # --- 三个工具 ---
 
 
+def _pick_best(pairs, chain_hint=None, target=None):
+    """稳健选池：优先目标链，再匹配 base/quote 含目标地址，选流动性最大且价格合理。
+
+    修复 P0-1：旧逻辑只按流动性最大选，会把稳定币跨链假池/pulsechain 错价池当主池。
+    """
+    target_l = (target or "").lower()
+    def _valid(p):
+        return _fdv_or_zero(p) > 0 and _num(p.get("priceUsd")) > 1e-9
+    def _is_target(p):
+        bt = ((p.get("baseToken") or {}).get("address") or "").lower()
+        qt = ((p.get("quoteToken") or {}).get("address") or "").lower()
+        if target_l:
+            return bt == target_l or qt == target_l
+        return True
+    # 先按 chain_hint 过滤（如果有）
+    chain_pool = [p for p in pairs if (p.get("chainId") or "").lower() == (chain_hint or "").lower()] if chain_hint else pairs
+    candidates = [p for p in chain_pool if _valid(p)]
+    # 优先目标的池
+    target_pools = [p for p in candidates if _is_target(p)]
+    pool = target_pools or candidates or pairs
+    if not pool:
+        return None
+    return max(pool, key=lambda p: _fdv_or_zero(p))
+
+
 async def assess(address, chain_hint=None):
-    """核心：代币风险画像。"""
+    """核心：代币风险画像。fail-closed，地址校验前置。
+
+    P0-2 修复：地址格式不合法直接抛错，绝不返回乐观建议。
+    """
+    # --- 输入校验前置 (P0-2) ---
+    import re
+    address = (address or "").strip().split("?")[0]
+    if not address or not re.match(r"^0x[a-fA-F0-9]{40}$", address) and not _looks_solana(address):
+        raise ValueError(f"无效的代币地址: {address!r}（EVM 需 0x+40hex，Solana 需 base58 32-44 位）")
     signals = []
     evidence = {}
     liquidity_source = "dexscreener"
@@ -120,19 +164,26 @@ async def assess(address, chain_hint=None):
         gt = await _fetch_json(f"https://api.geckoterminal.com/api/v2/networks/eth/tokens/{address}/pools")
         gt_pools = gt.get("data", [])
         if gt_pools:
-            # 转成统一结构
-            best_gt = max(gt_pools, key=lambda p: float((p.get("attributes", {}).get("reserve_in_usd") or 0) or 0) if (p.get("attributes", {}).get("reserve_in_usd") or 0) else 0)
-            ga = best_gt.get("attributes", {})
-            pairs = [{
-                "dexId": "geckoterminal",
-                "chainId": "eth",
-                "liquidity": {"usd": float(ga.get("reserve_in_usd") or 0)},
-                "priceUsd": ga.get("base_token_price_usd"),
-                "pairCreatedAt": ga.get("pool_created_at"),
-                "volume": {"h24": float(ga.get("volume_usd", {}).get("h24") or 0)},
-            }]
+            # 转成统一结构（chainId 用 ethereum，与 chain_hint/DexScreener 一致）
+            def _gt_to_pair(p):
+                ga = p.get("attributes", {})
+                return {
+                    "dexId": "geckoterminal",
+                    "chainId": "ethereum",  # 修正: GeckoTerminal 用 'eth'，统一为 'ethereum'
+                    "liquidity": {"usd": float(ga.get("reserve_in_usd") or 0)},
+                    "priceUsd": ga.get("base_token_price_usd"),
+                    "pairCreatedAt": ga.get("pool_created_at"),
+                    "volume": {"h24": float(ga.get("volume_usd", {}).get("h24") or 0)},
+                    "baseToken": {"address": address},  # 让 _pick_best 能匹配目标地址
+                    "quoteToken": {"address": ""},
+                }
+            pairs = [_gt_to_pair(p) for p in gt_pools]
     if pairs:
-        best = max(pairs, key=lambda p: _fdv_or_zero(p))
+        # P0-1 修复：用稳健选池逻辑（目标链优先 + 匹配目标地址 + 流动性最大且价格合理）
+        best = _pick_best(pairs, chain_hint=chain_hint, target=address)
+        if best is None:
+            signals.append(_sig("warn", "未找到有效流动性池", "无价格合理的流动性池，可能为新币或数据缺失", "no_liquidity"))
+            return _finalize(address, signals, evidence)
         liq = _fdv_or_zero(best)
         evidence["best_pair"] = {"dex": best.get("dexId"), "chain": best.get("chainId"),
                                  "liquidity_usd": liq, "pair_created_at": best.get("pairCreatedAt"),
@@ -194,26 +245,26 @@ async def assess(address, chain_hint=None):
             pass
 
     # --- 生命周期信号（代币"还有没有生命"，区别于合约风险）---
-    # 关键洞察：合约干净≠代币有生命。MATIC 案例——老牌币、61万持币，但主池仅$23.6万、
-    # 24h成交$2万，是被弃用/迁移后的"僵尸流动性"。纯链上数据能推演出这个"失活"信号。
+    # P0-3 修复：只有在有真实流动性数据时才判断活跃度；无数据时不判"活跃"，避免自相矛盾。
     bp = evidence.get("best_pair") or {}
     liq = _num(bp.get("liquidity_usd"))
     vol = _num((evidence.get("volume_h24")))
-    # 换手率 = 24h成交 / 流动性（衡量流动性活不活跃）
-    turnover = (vol / liq) if liq and liq > 0 else 0
-    evidence["turnover_24h"] = round(turnover, 4)
-    age = evidence.get("pair_age_days")
-    if liq and liq >= 50000 and turnover < 0.10:
-        # 有相当流动性但换手极低 → 流动性充裕却冷清 → 可能被弃用/失活
-        signals.append(_sig("warn", "流动性冷清(疑似失活)",
-                            f"流动性 ${liq:,.0f} 但24h成交仅 ${vol:,.0f}（换手率 {turnover:.1%}），"
-                            f"代币可能已迁移/被弃用，流动性成为僵尸池", "lifecycle"))
-    elif liq and liq < 50000 and turnover < 0.05 and age and age > 180:
-        # 老池子 + 低流动性 + 极低换手 → 也在失活
-        signals.append(_sig("info", "流动性偏冷", 
-                            f"24h换手率 {turnover:.1%}，老池({age}天)流动性偏弱，注意活跃度", "lifecycle"))
-    else:
-        signals.append(_sig("ok", "代币有生命", f"换手率 {turnover:.1%}，流动性活跃", "lifecycle"))
+    has_liq_data = bool(bp) and liq > 0
+    if has_liq_data:
+        turnover = (vol / liq) if liq and liq > 0 else 0
+        evidence["turnover_24h"] = round(turnover, 4)
+        age = evidence.get("pair_age_days")
+        if turnover < 0.05 and age and age > 180:
+            signals.append(_sig("warn", "流动性冷清(疑似失活)",
+                                f"流动性 ${liq:,.0f} 但24h成交仅 ${vol:,.0f}（换手率 {turnover:.1%}），"
+                                f"老池({age}天)代币可能已迁移/被弃用，流动性偏冷清", "lifecycle"))
+        elif turnover < 0.10:
+            signals.append(_sig("warn", "流动性冷清(疑似失活)",
+                                f"流动性 ${liq:,.0f} 但24h成交仅 ${vol:,.0f}（换手率 {turnover:.1%}），"
+                                f"代币可能已迁移/被弃用，流动性成为僵尸池", "lifecycle"))
+        else:
+            signals.append(_sig("ok", "代币有生命", f"换手率 {turnover:.1%}，流动性活跃", "lifecycle"))
+    # 无流动性数据 → 不添加任何 lifecycle 信号（避免"未找到流动性"+"流动性活跃"自相矛盾）
     return _finalize(address, signals, evidence)
 
 
