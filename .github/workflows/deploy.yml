@@ -1,0 +1,100 @@
+name: deploy
+
+# 部署不应该依赖任何一台笔记本。
+#
+# 起因：2026-09-04 第一次部署修复时，本地 Windows 上 pywrangler 直接跑不起来
+# （它要建 emscripten 的 pyodide venv，Windows 不支持），最后是绕道 WSL 才发出去的。
+# 一个只有特定机器、特定操作系统才能执行的部署流程，等于把上线能力绑在一个人身上。
+#
+# 这个 workflow 把部署搬到 Linux runner 上：master 合并即发布，谁都能触发，
+# 出问题看日志，不用猜"他本地环境是什么样"。
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "src/**"
+      - "pyproject.toml"
+      - "wrangler.jsonc"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # 先跑测试。风控工具没测试就上线，等于把"静默失效"重新装回去。
+      - name: Regression tests
+        run: |
+          python tests/test_risk.py
+          python tests/test_mcp.py
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Sync dependencies
+        run: ~/.local/bin/uv sync
+
+      # 必须用 pywrangler 而不是裸 wrangler：后者不会 vendor workers-py，
+      # 部署后 Worker 启动时会 ModuleNotFoundError: No module named 'workers'。
+      - name: Deploy to Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: ~/.local/bin/uv run pywrangler deploy
+
+      # 部署成功 ≠ 修复生效。用线上真实调用验证关键路径，
+      # 失败就让这次部署红掉——这正是当初 honeypot 静默失效时缺的那一环。
+      - name: Smoke test production
+        run: |
+          set -e
+          echo "--- /health ---"
+          curl -sS --max-time 30 https://vetagent.dev/health | tee /tmp/health.json
+          grep -q '"status": "ok"' /tmp/health.json
+
+          echo ""
+          echo "--- JSON-RPC errors must be top-level ---"
+          curl -sS --max-time 30 -X POST https://vetagent.dev/mcp \
+            -H 'Content-Type: application/json' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"resources/list"}' | tee /tmp/err.json
+          python -c "import json;d=json.load(open('/tmp/err.json'));assert 'error' in d and 'result' not in d, d"
+
+          echo ""
+          echo "--- GET /mcp must be 405, not 200 ---"
+          test "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 https://vetagent.dev/mcp)" = "405"
+
+          echo ""
+          echo "--- CORS preflight must not 400 ---"
+          test "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -X OPTIONS \
+            https://vetagent.dev/mcp -H 'Origin: https://example.com')" = "204"
+
+          echo ""
+          echo "--- a failed sell simulation must NOT come back as a pass ---"
+          curl -sS --max-time 90 -X POST https://vetagent.dev/mcp \
+            -H 'Content-Type: application/json' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"assess_token_risk","arguments":{"address":"0x50614cc8e44f7814549c223aa31db9296e58057c","chain_hint":"ethereum"}}}' \
+            > /tmp/hp.json
+          python - <<'PYCHECK'
+          import json
+          d = json.load(open('/tmp/hp.json'))
+          r = json.loads(d['result']['content'][0]['text'])
+          sigs = {s['category']: s['severity'] for s in r['signals']}
+          assert r['risk_level'] != 'low', f"a token that cannot be bought was rated low: {r}"
+          assert sigs.get('honeypot') != 'ok', f"failed simulation reported as a pass: {sigs}"
+          print("sellability guard OK:", r['risk_level'], sigs)
+          PYCHECK

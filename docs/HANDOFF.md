@@ -78,6 +78,9 @@ wrangler.jsonc   — Cloudflare 配置 (routes: vetagent.dev custom_domain)
 | 7 | git push 走代理会卡(HTTP408)，直连更稳 | `git -c http.proxy= -c https.proxy= push` |
 | 8 | GeckoTerminal 用 `eth`，chain_hint/DexScreener 用 `ethereum` | 链名统一映射（兜底分支已修）|
 | 9 | 相对导入会失败 | 用绝对 `import risk` 而非 `from . import` |
+| 10 | **Windows 上 pywrangler 跑不起来** —— 它要建 emscripten 的 pyodide venv，Windows 不支持 | 用 CI 部署（`.github/workflows/deploy.yml`）；应急可走 WSL：`XDG_CONFIG_HOME=/mnt/c/Users/<你>/AppData/Roaming/xdg.config uv run pywrangler deploy` 复用 Windows 已有的 OAuth 会话 |
+| 11 | 裸 `wrangler deploy` 能构建成功但**部署后 Worker 启动即崩** —— `ModuleNotFoundError: No module named 'workers'`，因为它不 vendor workers-py | 一律用 `uv run pywrangler deploy`。dry-run 通过**不代表**能跑，它不校验运行时导入 |
+| 12 | `git pull origin master` 在别的分支上会把 master 合进当前分支，本地 master 仍是旧的 | 部署前先 `git rev-parse --short master origin/master` 对一下，别对着旧代码发布 |
 
 ## 5. 未完成 / 下一个优先级
 

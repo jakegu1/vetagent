@@ -33,3 +33,4 @@ wrangler.toml.local
 tests/fixtures/__pycache__/
 bench/cache/
 bench/build.log
+bench/run.log
