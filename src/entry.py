@@ -12,6 +12,10 @@ from workers import WorkerEntrypoint, Response
 import risk
 import mcp_server
 
+# 静态资源路径（pywrangler 会打包 src/ 下文件）
+import os
+_LANDING_PATH = os.path.join(os.path.dirname(__file__), "landing.html")
+
 
 class Default(WorkerEntrypoint):
     """Worker 入口。注意：Cloudflare 要求入口类名必须是 Default。"""
@@ -25,10 +29,15 @@ class Default(WorkerEntrypoint):
             return await self._handle_mcp(request)
 
         if path in ("/", ""):
-            return Response(
-                "VetAgent - token risk intelligence for AI agents.\n"
-                "Use /assess/{address}, /liquidity/{address}, /new-pools, or MCP at /mcp",
-                headers={"content-type": "text/plain"}, status=200)
+            try:
+                with open(_LANDING_PATH, "r", encoding="utf-8") as f:
+                    html = f.read()
+                return Response(html, headers={"content-type": "text/html"}, status=200)
+            except Exception:
+                return Response(
+                    "VetAgent - token risk intelligence for AI agents.\n"
+                    "Use /assess/{address}, /liquidity/{address}, /new-pools, or MCP at /mcp",
+                    headers={"content-type": "text/plain"}, status=200)
 
         if path == "/health":
             return Response(json.dumps({"status": "ok", "service": "vetagent", "mcp_tools": 3}),

@@ -111,14 +111,33 @@ async def assess(address, chain_hint=None):
     """核心：代币风险画像。"""
     signals = []
     evidence = {}
+    liquidity_source = "dexscreener"
     ds = await _fetch_json(f"https://api.dexscreener.com/latest/dex/tokens/{address}")
     pairs = ds.get("pairs", [])
+    if not pairs:
+        # 兜底：DexScreener 失败/限流时用 GeckoTerminal（同一 token 的池子）
+        liquidity_source = "geckoterminal"
+        gt = await _fetch_json(f"https://api.geckoterminal.com/api/v2/networks/eth/tokens/{address}/pools")
+        gt_pools = gt.get("data", [])
+        if gt_pools:
+            # 转成统一结构
+            best_gt = max(gt_pools, key=lambda p: float((p.get("attributes", {}).get("reserve_in_usd") or 0) or 0) if (p.get("attributes", {}).get("reserve_in_usd") or 0) else 0)
+            ga = best_gt.get("attributes", {})
+            pairs = [{
+                "dexId": "geckoterminal",
+                "chainId": "eth",
+                "liquidity": {"usd": float(ga.get("reserve_in_usd") or 0)},
+                "priceUsd": ga.get("base_token_price_usd"),
+                "pairCreatedAt": ga.get("pool_created_at"),
+                "volume": {"h24": float(ga.get("volume_usd", {}).get("h24") or 0)},
+            }]
     if pairs:
         best = max(pairs, key=lambda p: _fdv_or_zero(p))
         liq = _fdv_or_zero(best)
         evidence["best_pair"] = {"dex": best.get("dexId"), "chain": best.get("chainId"),
                                  "liquidity_usd": liq, "pair_created_at": best.get("pairCreatedAt"),
                                  "price_usd": best.get("priceUsd")}
+        evidence["liquidity_source"] = liquidity_source
         if liq < 5000:
             signals.append(_sig("critical", "流动性极低", f"主交易对流动性仅 ${liq:,.0f}，rug/滑点风险极高", "liquidity"))
         elif liq < 50000:
