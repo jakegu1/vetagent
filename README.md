@@ -139,6 +139,21 @@ GoPlus is **not** used by the engine — it is reserved as the benchmark's held-
 oracle. Adding it to the engine requires giving the benchmark a new independent
 labeller first, or the accuracy numbers stop meaning anything.
 
+## Where things are written down
+
+Four documents, one job each. If something is in two of them, one of them is wrong.
+
+| Document | Answers |
+|---|---|
+| `README.md` (this file) | What is this, how do I call it |
+| [`docs/DECISIONS.md`](docs/DECISIONS.md) | Why is it built this way, and **what enforces each rule** |
+| [`docs/HANDOFF.md`](docs/HANDOFF.md) | Where things stand, what breaks, what to do next |
+| [`docs/STRATEGY.md`](docs/STRATEGY.md) | Who pays, what the moat is, when to shut it down |
+
+Why a change was made lives in the commit message, which is immutable and attached
+to the diff. Why a line of code looks odd lives in a comment next to that line.
+Neither gets copied into a document, because a copy rots without anyone noticing.
+
 ## Scope
 
 VetAgent reports **observable on-chain risk**. It is not financial advice, it does not

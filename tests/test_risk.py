@@ -183,6 +183,32 @@ def test_pair_age_works_on_integer_timestamps():
           str(sig_categories(r)))
 
 
+def test_benchmark_oracle_stays_out_of_the_engine():
+    """DECISIONS B2：GoPlus 是基准的留出预言机，引擎一旦读它，基准立刻失效。
+
+    这条此前只是文档里的一句约定。约定会被善意地违反——
+    「加个 GoPlus 就能补上 EVM 持币集中度」是一个非常合理的想法，
+    而做这件事的人多半不会先去读基准的方法论。
+    所以把它变成会让构建变红的东西。
+
+    真要接入 GoPlus 时，正确顺序是：先给基准换一个新的独立标注源，
+    再改引擎，最后删掉这个测试并在 DECISIONS.md 记录为什么。
+    """
+    print("\n[DECISIONS B2] 留出预言机不得进入引擎")
+    src_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src")
+    forbidden = ("gopluslabs", "goplus")
+    offenders = []
+    for fn in sorted(os.listdir(src_dir)):
+        if not fn.endswith(".py"):
+            continue
+        with open(os.path.join(src_dir, fn), encoding="utf-8") as f:
+            body = f.read().lower()
+        for token in forbidden:
+            if token in body:
+                offenders.append("%s 含 %r" % (fn, token))
+    check("src/ 中不得出现 GoPlus", not offenders, "；".join(offenders))
+
+
 def test_upstream_failure_yields_unknown():
     """铁律：关键维度抓不到数据 → unknown，绝不 low。"""
     print("\n[铁律] 上游失败必须 unknown")
