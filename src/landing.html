@@ -101,15 +101,16 @@
     <p>核心：聚合多链流动性/合约安全/新鲜度，返回结构化风险画像 + 给 agent 的建议。</p>
     <pre><code>{
   "address": "0x7D1A...",
-  "risk_level": "low",
-  "risk_score": 0,
+  "risk_level": "medium",
+  "risk_score": 36,
   "signals": [
-    {"severity": "ok", "name": "流动性充足"},
-    {"severity": "ok", "name": "多链流通"},
-    {"severity": "ok", "name": "非 Honeypot"}
+    {"severity": "ok",   "name": "流动性充足",   "category": "liquidity"},
+    {"severity": "ok",   "name": "可正常买卖",   "category": "honeypot"},
+    {"severity": "ok",   "name": "成熟交易对",   "category": "freshness"},
+    {"severity": "warn", "name": "合约闭源",     "category": "contract"}
   ],
-  "recommendation": "低风险：流动性充足且无 honeypot/高税信号，可正常评估。",
-  "confidence": "medium"
+  "recommendation": "中等风险：需人工核实流动性、持币分布与合约权限后再决定。",
+  "confidence": "high"
 }</code></pre>
   </div>
 
@@ -146,12 +147,12 @@ GET /new-pools?chain=solana&amp;limit=10</code></pre>
 
 <div>
   <a class="cta" href="https://vetagent.dev/mcp">立即接入 MCP</a>
-  <a class="cta" style="background:#21262d;color:#e6edf3;border:1px solid var(--border);" href="https://github.com/jakegu1/crypto-agent-risk">GitHub 源码</a>
+  <a class="cta" style="background:#21262d;color:#e6edf3;border:1px solid var(--border);" href="https://github.com/jakegu1/vetagent">GitHub 源码</a>
 </div>
 
 <footer>
   VetAgent · 开源 · MIT License · 情报辅助，不构成投资建议<br>
-  <a href="https://github.com/jakegu1/crypto-agent-risk" style="color:var(--accent);">github.com/jakegu1/crypto-agent-risk</a>
+  <a href="https://github.com/jakegu1/vetagent" style="color:var(--accent);">github.com/jakegu1/vetagent</a>
 </footer>
 
 </div>

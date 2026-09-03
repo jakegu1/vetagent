@@ -55,7 +55,22 @@ Any MCP client (Cursor, opencode, custom agent) works the same way.
 }
 ```
 
-**Routing guidance for an agent:** If `risk_level` is `high`, the agent should **warn the user and avoid** large unvetted buys. If `medium`, proceed cautiously with tight position sizing. If `low`, normal evaluation. `confidence` tells you how many independent signals were available.
+**Routing guidance for an agent:**
+
+| `risk_level` | What it means | What the agent should do |
+|---|---|---|
+| `high` | A fatal or high-severity signal fired | Warn the user and do not proceed without human review |
+| `medium` | Real risk signals present, none fatal | Surface the specific `signals` to the user and let them decide |
+| `low` | No fatal signal found across the checks that ran | Proceed with normal evaluation |
+| `unknown` | **A critical dimension could not be checked** | Treat as *not assessed*. This is **not** a low-risk result — do not use it to justify a trade |
+
+`confidence` measures **how complete the input data was**, not how safe the token is.
+`evidence.data_gaps` lists exactly which checks could not run and why.
+
+> VetAgent reports observable on-chain risk. It does not size positions, does not
+> give financial advice, and cannot detect off-chain risk (team behaviour, social
+> engineering, or a rug executed through governance). Never present its output as
+> a recommendation to buy.
 
 ---
 
@@ -82,7 +97,7 @@ The engine uses **source resilience**: if DexScreener is unavailable, GeckoTermi
 ---
 
 ## 🎯 Example Agent Prompts
-- *"Assess token 0x7D1A... for risk. If medium or above, hold off on position entry."*
+- *"Assess token 0x7D1A... for risk and show me every signal that fired."*
 - *"Scan the 5 newest Solana pools and flag any with rug risk."*
 - *"Check liquidity depth of 0xC02... to estimate slippage risk."*
 

@@ -1,0 +1,40 @@
+name: tests
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Syntax check
+        run: |
+          python -m compileall -q src tests
+
+      - name: Regression tests (offline, real upstream snapshots)
+        run: python tests/test_risk.py
+
+      - name: MCP protocol tests
+        run: python tests/test_mcp.py
+
+  # 上游契约监控：真实调用外部 API，验证我们依赖的字段还在。
+  # 与单元测试分开，因为它会因为第三方故障而红——那本身就是需要知道的信号。
+  upstream-contract:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify upstream API contracts
+        run: python tests/test_upstream_contract.py
