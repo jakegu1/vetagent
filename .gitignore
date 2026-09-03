@@ -19,3 +19,17 @@ uv.lock
 *.token
 *.credential
 access.jsonl
+
+# Cloudflare / 本地凭证 —— HANDOFF 记录 Cloudflare API Token 存在这些位置
+.dev.vars
+.dev.vars.*
+.git-credentials
+wrangler.toml.local
+*.pem
+*.key
+
+# 测试产物
+.pytest_cache/
+tests/fixtures/__pycache__/
+bench/cache/
+bench/build.log

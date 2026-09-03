@@ -79,21 +79,71 @@ wrangler.jsonc   — Cloudflare 配置 (routes: vetagent.dev custom_domain)
 | 8 | GeckoTerminal 用 `eth`，chain_hint/DexScreener 用 `ethereum` | 链名统一映射（兜底分支已修）|
 | 9 | 相对导入会失败 | 用绝对 `import risk` 而非 `from . import` |
 
-## 5. 未完成 / 下一个优先级（按我定的）
+## 5. 未完成 / 下一个优先级
 
-**☑ 已完成**：P0 修复（选池/输入校验fail-closed/消除自相矛盾/无信号→unknown）、数据源容错(GeckoTerminal兜底)、生命周期信号、MCP端点、落地页、双repo同步。
+### ⚠️ 关于上一轮"已完成"的更正（2026-09-03）
 
-**🔴 最高优先（我定的，别被"加功能"带偏）**：
+上一版本这里写着「☑ 已完成：P0 修复（选池/输入校验/fail-closed/无信号→unknown）」。
+**这个记录不准确**，实测后发现：
 
-1. **准确率基准（Claude 实测建议 + 我完全认同）** —— 拿 200 个已知 rug + 200 个正常代币跑一遍，公布**召回率和误报率**。这是风控产品建立信任的唯一方式，也是最好的推广素材。**当前没人做，第一个做就是护城河。**
-2. **多链 GeckoTerminal 兜底**（未完全解决）—— 现在兜底写死 `eth`，MATIC 这种 polygon 主链代币兜底失效。需按链选 GT 网络。
+| 声称已修 | 实际情况 |
+|---|---|
+| 选池修复 | 只打在 `assess()` 上，`liquidity()` 完全没改——线上把 USDC 报成 $0.00097 |
+| 输入校验 | 同上，`liquidity()` 无任何校验 |
+| 无信号→unknown | `unknown` 分支实际不可达，全数据源失败时返回 medium |
+| Honeypot 检测 | **从来没工作过**：读的是 `simulationResult.isHoneypot`，而上游把它放在 `honeypotResult` 里；该键不存在 → None → False → 恒定输出「ok / 非 Honeypot」 |
 
-**🟡 次优先（协议/规范，Claude 建议，值得做）**：
-- MCP 用 `structuredContent`（别把 JSON 塞 text 里让客户端二次 parse）
-- 精简 `evidence`（默认只回结论+3-5个证据，`verbose` 才全量）—— 降 70% 调用成本
-- 浮点截断到 6 位有效数字
-- 加 30-60s TTL 缓存（热门币冷启动 100ms）
-- `chain_hint` 已生效，确认无回归
+根因不是粗心，是**没有测试**。当"Verified"只意味着手动跑了两三个地址，
+漏掉一条代码路径是必然而不是偶然。
+
+**因此本轮引入的第一条纪律：**
+
+> 任何 commit 声称修好了什么，必须有一个对应的测试用例，
+> 且该用例在修复前是红的。`tests/` 下每个用例都对应一个真实发生过的线上缺陷。
+
+```bash
+python tests/test_risk.py              # 71 项，离线，基于真实上游快照
+python tests/test_mcp.py               # 41 项，MCP 协议一致性
+python tests/test_upstream_contract.py # 41 项，真实联网，验证依赖的 JSON 路径还在
+```
+
+第三个尤其重要：**当初的 honeypot bug 只有契约测试能抓到**——
+它的本质是"读了一个上游不存在的键"，任何 mock 测试都发现不了。
+CI 已配置（`.github/workflows/test.yml`），前两个套件红了就不许合。
+
+**☑ 本轮实际完成**：honeypot 键路径修复 + 上游 summary.risk/flags/contractCode 接入、
+仿真失败 fail-closed、`liquidity()` 补齐校验与选池、分叉链选池防护、交易对年龄修复、
+评分模型改为"最坏信号主导"、Solana 路径重写（score_normalised + 权限 + 持币集中度）、
+MCP 协议一致性（顶层 error / batch / 405 / CORS / 版本协商 / structuredContent / annotations）、
+153 项测试 + CI、文档去除仓位建议。
+
+**🔴 最高优先：准确率基准**
+
+拿一批已知 rug + 已知正常代币跑一遍，公布**召回率和误报率**。
+
+理由不变（风控产品建立信任的唯一方式、当前没人做），但现在多了一条更硬的：
+**我们刚证明了自己有能力在"看起来正常"的情况下让一整个检测维度静默失效半年。**
+没有基准，下一次这种事仍然只能靠偶然发现。基准就是这个产品的回归测试。
+
+落地方式建议（按可行性排序）：
+1. 正样本：honeypot.is 判 `very_high` + RugCheck `rugged=true` 的历史代币
+2. 负样本：CoinGecko 市值前 500 且有 DEX 池的代币
+3. 指标：召回率（漏报致命风险的比例）、误报率（把正常币判 high 的比例）、
+   以及 **unknown 率**——这个数字诚实与否，直接决定产品可不可信
+4. 结果写进 README 并随每次发布更新
+
+**🟡 已知缺口（按 rug 预防价值/工程量排序）**
+
+| 缺口 | 说明 |
+|---|---|
+| EVM 侧持币集中度 | Solana 侧已经有了（RugCheck topHolders），EVM 侧缺。需要 GoPlus `token_security`（免费、免 key），同时能一并拿到 mint/blacklist/可改税权限、LP 锁仓 |
+| LP 锁仓/销毁 | 撤池是 EVM 侧最主要的 rug 形态，目前完全没覆盖 |
+| 同名代币冲突检测 | agent 场景最常见的损失不是买到 honeypot，是**买到假的那个**。数据源已有（DexScreener 搜索），未做 |
+| 缓存 | 每次调用打 2-4 个上游，无缓存。热门币加 30-60s TTL 可显著降延迟与被限流风险 |
+| 限流/滥用防护 | 公开无鉴权端点，无任何速率限制 |
+| 可观测性 | 无日志、无指标，线上出问题只能靠人工复现 |
+
+**🔵 需要 Jake 拍板的事**（见第 7 节）：见下方"待决事项"。
 
 ## 6. 如何部署（服务器上）
 
@@ -130,3 +180,35 @@ export CLOUDFLARE_ACCOUNT_ID=3976e6f6f8237d5aa08543efa0e78887
 - `docs/server.json` — MCP registry 格式
 - `docs/AGENT-INTEGRATION.md` — 给 agent 的接入文档
 - `reference/projects.md`（在 Hermes 侧，非 repo）— 项目状态速查
+
+---
+
+## 9. 待决事项（需要 Jake 拍板）
+
+1. **是否 push + 部署本轮修复。** 分支 `fix/p0-honeypot-liquidity`，本地已提交，
+   153 项测试全绿。线上当前跑的仍是 honeypot 检测失效的版本。
+
+2. **公开仓库里的基础设施标识。** 第 2 节表格里的 Cloudflare Account ID
+   (`3976e6f6...`) 和 Zone ID (`371490a6...`) 提交在**公开仓库**里。
+   这两个不是密钥、单独拿到无法操作账号，但它们是攻击者做定向社工/钓鱼时的有效信息。
+   建议移到私有笔记，repo 里只留一句"向 Jake 索取"。已确认 git 历史中**没有**
+   提交过任何 token/凭证文件。
+
+3. **落地页语言。** 目前纯中文。这个工具本身没有语言属性，
+   中文页面直接切掉了绝大部分潜在用户。建议做英文版（或双语）。
+
+4. **分发。** 官方 MCP registry 尚未注册（`docs/server.json` 已就绪但没提交上去）。
+   awesome-mcp-servers、Smithery、mcp.so、PulseMCP、Glama 均未收录。
+   这几件都是一次性投入、长期获客。
+
+## 10. 给下一个接手者的三条
+
+1. **先跑测试再改代码。** `python tests/test_risk.py` 应当 71/71。
+   如果它红了，说明有人改坏了某条曾经真实发生过的缺陷路径。
+
+2. **上游契约测试红了，不一定是你的错。** 它连真实 API，第三方改字段就会红。
+   红了先看是不是上游变了，然后同步改 `risk.py`——这正是它存在的意义。
+
+3. **fail-closed 是这个产品唯一不能妥协的东西。** 任何时候你要写
+   "拿不到数据就默认 X"，停下来。正确答案永远是 `unknown` + 记进 `data_gaps`。
+   一个诚实说"我不知道"的风控工具有价值；一个猜错的没有。
