@@ -1,0 +1,51 @@
+name: snapshot
+
+# 每日新池快照。DECISIONS P4。
+#
+# 为什么必须自动跑：这份数据的全部价值在于**连续**。
+# 上游只提供当前状态，不提供历史查询——今天没采，这一天就永久不存在，
+# 任何预算都补不回来。靠人记得每天跑一次，等于设计上就会断更。
+#
+# 采的是原始可观测量（价格、储备、成交笔数、买卖方地址数），不是我们当下的评分。
+# 评分规则会变，原始量不会；将来想用新规则重算历史，必须有原始量才行。
+
+on:
+  schedule:
+    - cron: "23 2 * * *"   # 每天 02:23 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: snapshot
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Collect
+        run: python bench/snapshot.py --chains eth,base,bsc,solana
+
+      - name: Commit
+        run: |
+          git config user.name "vetagent-snapshot[bot]"
+          git config user.email "noreply@vetagent.dev"
+          git add bench/snapshots/
+          if git diff --staged --quiet; then
+            # 没有新数据是异常，不是正常。上游全挂了才会这样，应该看见。
+            echo "::warning::no snapshot rows collected — every upstream may be down"
+            exit 0
+          fi
+          days=$(ls bench/snapshots/pools-*.ndjson 2>/dev/null | wc -l)
+          rows=$(cat bench/snapshots/pools-*.ndjson | wc -l)
+          git commit -m "Snapshot $(date -u +%F): ${days} days, ${rows} rows total"
+          git push
