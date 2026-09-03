@@ -136,7 +136,9 @@ async def assess(address, chain_hint=None):
         liq = _fdv_or_zero(best)
         evidence["best_pair"] = {"dex": best.get("dexId"), "chain": best.get("chainId"),
                                  "liquidity_usd": liq, "pair_created_at": best.get("pairCreatedAt"),
-                                 "price_usd": best.get("priceUsd")}
+                                 "price_usd": best.get("priceUsd"),
+                                 "volume_24h": _num((best.get("volume") or {}).get("h24"))}
+        evidence["volume_h24"] = _num((best.get("volume") or {}).get("h24"))
         evidence["liquidity_source"] = liquidity_source
         if liq < 5000:
             signals.append(_sig("critical", "流动性极低", f"主交易对流动性仅 ${liq:,.0f}，rug/滑点风险极高", "liquidity"))
@@ -190,6 +192,28 @@ async def assess(address, chain_hint=None):
                 signals.append(_sig("ok", "成熟交易对", f"交易对已存在 {age} 天", "freshness"))
         except Exception:
             pass
+
+    # --- 生命周期信号（代币"还有没有生命"，区别于合约风险）---
+    # 关键洞察：合约干净≠代币有生命。MATIC 案例——老牌币、61万持币，但主池仅$23.6万、
+    # 24h成交$2万，是被弃用/迁移后的"僵尸流动性"。纯链上数据能推演出这个"失活"信号。
+    bp = evidence.get("best_pair") or {}
+    liq = _num(bp.get("liquidity_usd"))
+    vol = _num((evidence.get("volume_h24")))
+    # 换手率 = 24h成交 / 流动性（衡量流动性活不活跃）
+    turnover = (vol / liq) if liq and liq > 0 else 0
+    evidence["turnover_24h"] = round(turnover, 4)
+    age = evidence.get("pair_age_days")
+    if liq and liq >= 50000 and turnover < 0.10:
+        # 有相当流动性但换手极低 → 流动性充裕却冷清 → 可能被弃用/失活
+        signals.append(_sig("warn", "流动性冷清(疑似失活)",
+                            f"流动性 ${liq:,.0f} 但24h成交仅 ${vol:,.0f}（换手率 {turnover:.1%}），"
+                            f"代币可能已迁移/被弃用，流动性成为僵尸池", "lifecycle"))
+    elif liq and liq < 50000 and turnover < 0.05 and age and age > 180:
+        # 老池子 + 低流动性 + 极低换手 → 也在失活
+        signals.append(_sig("info", "流动性偏冷", 
+                            f"24h换手率 {turnover:.1%}，老池({age}天)流动性偏弱，注意活跃度", "lifecycle"))
+    else:
+        signals.append(_sig("ok", "代币有生命", f"换手率 {turnover:.1%}，流动性活跃", "lifecycle"))
     return _finalize(address, signals, evidence)
 
 
