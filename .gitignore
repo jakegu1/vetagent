@@ -1,6 +1,21 @@
+# Python runtime
 .venv/
 .venv-workers/
-node_modules/
-.wrangler/
 __pycache__/
 *.pyc
+
+# Node / Cloudflare
+node_modules/
+.wrangler/
+
+# Build artifacts (should NOT be in repo)
+python_modules/
+pylock.toml
+uv.lock
+
+# Secrets — NEVER commit
+.env
+.env.*
+*.token
+*.credential
+access.jsonl
