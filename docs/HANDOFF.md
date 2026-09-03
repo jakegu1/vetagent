@@ -215,3 +215,40 @@ export CLOUDFLARE_ACCOUNT_ID=3976e6f6f8237d5aa08543efa0e78887
 3. **fail-closed 是这个产品唯一不能妥协的东西。** 任何时候你要写
    "拿不到数据就默认 X"，停下来。正确答案永远是 `unknown` + 记进 `data_gaps`。
    一个诚实说"我不知道"的风控工具有价值；一个猜错的没有。
+
+---
+
+## 11. 分发：已完成 / 待你操作
+
+### ✅ 已完成（2026-09-04）
+
+| 渠道 | 状态 | 备注 |
+|---|---|---|
+| **官方 MCP Registry** | 已上线 `dev.vetagent/vetagent` v0.2.0 | 用**域名验证**而非 GitHub 账号，命名空间挂在产品域名上，不挂在个人账号上 |
+| **PulseMCP** | 自动 | 它从官方 registry 抓取，无需单独提交 |
+
+**重新发布的方法**（版本号变更时）：
+
+```bash
+# 私钥在 C:\Users\86277\.vetagent-secrets\key.pem —— 仓库外，绝不提交
+PRIV="$(openssl pkey -in ~/.vetagent-secrets/key.pem -noout -text | grep -A3 'priv:' | tail -n +2 | tr -d ' :\n')"
+mcp-publisher login http --domain vetagent.dev --private-key "$PRIV"
+cd docs && mcp-publisher publish
+```
+
+公钥由 Worker 在 `/.well-known/mcp-registry-auth` 提供（见 `src/entry.py`）。
+**私钥丢了就换不了命名空间下的版本**，建议同时存进密码管理器，
+以及作为 GitHub Secret（`MCP_REGISTRY_KEY`）供 CI 自动发布。
+
+### ⬜ 需要 Jake 本人操作（都要注册账号，我无法代劳）
+
+| 渠道 | 入口 | 需要什么 |
+|---|---|---|
+| **Claude 插件目录** | https://platform.claude.com/plugins/submit | 注册 Console（免费，注册即为 Owner），填仓库地址 `github.com/jakegu1/vetagent`。仓库侧前置已全部就绪：`.claude-plugin/plugin.json`、`.mcp.json`、LICENSE、公开仓库 |
+| **Glama** | https://glama.ai/mcp/servers | GitHub OAuth，需对本仓库有写权限 |
+| **Smithery** | https://smithery.ai/new | Smithery 账号 + API key（拿到 key 后可以命令行发布） |
+| **mcp.so** | https://mcp.so/submit?type=remote-server | 站内邮箱密码账号（注意：**该站关闭了密码重置**，务必存进密码管理器） |
+| **awesome-mcp-servers** | https://github.com/punkpeye/awesome-mcp-servers | GitHub PR。⚠️ 该仓库的机器人要求先有 **Glama 收录**才给过检查，所以顺序是先 Glama 再提 PR |
+
+> 提交文案统一口径：**只读分析工具，不执行交易、不提供投资建议**。
+> 这不只是合规措辞——它就是产品的真实边界，也是 §5 禁止返佣那条的同一个理由。

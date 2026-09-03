@@ -15,6 +15,10 @@ import risk
 
 _LANDING_PATH = os.path.join(os.path.dirname(__file__), "landing.html")
 
+# MCP Registry 域名验证的**公钥**记录。公开可读是设计的一部分。
+# 对应私钥不在这个仓库里，也不该在任何仓库里。
+_REGISTRY_AUTH = "v=MCPv1; k=ed25519; p=748fDl4SJZZt9TWfmYNDC3Xy1OIbfSjhf72vo8j8ZgI=\n"
+
 # 隐私政策。内联而不是单独文件，因为它必须永远可达——
 # 目录审核会直接抓这个 URL，404 是即时驳回项。
 _PRIVACY_HTML = """<!doctype html>
@@ -116,6 +120,14 @@ class Default(WorkerEntrypoint):
 
         if path == "/privacy":
             return Response(_PRIVACY_HTML, headers={"content-type": "text/html"}, status=200)
+
+        # 官方 MCP Registry 的域名归属验证。走域名而不是 GitHub 账号，
+        # 这样命名空间是 dev.vetagent/* 而不是 io.github.<某个人>/*——
+        # 产品的身份挂在产品的域名上，不挂在某个人的账号上。
+        # 这里只放公钥；私钥在仓库外，永不提交。
+        if path == "/.well-known/mcp-registry-auth":
+            return Response(_REGISTRY_AUTH,
+                            headers={"content-type": "text/plain"}, status=200)
 
         try:
             if path.startswith("/assess/"):
