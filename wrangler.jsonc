@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "vetagent",
+  "main": "src/entry.py",
+  "compatibility_date": "2026-08-22",
+  "compatibility_flags": ["python_workers"],
+  "workers_dev": true,
+  "routes": [
+    { "pattern": "vetagent.dev", "custom_domain": true }
+  ],
+  "vars": {
+    "ENV": "production"
+  }
+}
