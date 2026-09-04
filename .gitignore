@@ -20,7 +20,7 @@ uv.lock
 *.credential
 access.jsonl
 
-# Cloudflare / 本地凭证 —— HANDOFF 记录 Cloudflare API Token 存在这些位置
+# Local credentials. HANDOFF.md records where the Cloudflare API token lives.
 .dev.vars
 .dev.vars.*
 .git-credentials
@@ -28,10 +28,17 @@ wrangler.toml.local
 *.pem
 *.key
 
-# 测试产物
+# Test and benchmark artifacts
 .pytest_cache/
 tests/fixtures/__pycache__/
 bench/cache/
 bench/build.log
 bench/run.log
 bench/access_log.json
+
+# Backfilled pool history. Deliberately NOT committed, unlike bench/snapshots.
+# The distinction is whether the data can be recovered later: a snapshot records what a
+# pool looked like on a day that is now gone, so a day not recorded never existed. A
+# backfill is derived from chain history, which does not move -- anyone can regenerate
+# it byte for byte with `python bench/backfill.py --date <the same date>`.
+bench/backfill/

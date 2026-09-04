@@ -25,6 +25,13 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 
 TEXT_EXT = (".py", ".md", ".yml", ".yaml", ".html", ".txt", ".json", ".jsonc", ".toml")
 
+# Files we own that carry no extension, so the suffix check above skips them. This list
+# exists because it had to: .gitignore sat here with Chinese comments in it for weeks
+# while this test reported PASS on every run. A check that silently declines to look at
+# a file is worse than no check, because it buys confidence it has not earned.
+TEXT_NAMES = {".gitignore", ".gitattributes", ".dockerignore", ".editorconfig",
+              "Dockerfile", "Makefile", "LICENSE", "CODEOWNERS", "Procfile"}
+
 # Directories holding data we received rather than wrote.
 EXEMPT_DIRS = {
     os.path.normpath("bench/fixtures"),
@@ -62,7 +69,7 @@ def walk():
         if rel_dir in EXEMPT_DIRS:
             continue
         for fn in filenames:
-            if not fn.endswith(TEXT_EXT):
+            if not fn.endswith(TEXT_EXT) and fn not in TEXT_NAMES:
                 continue
             rel = os.path.normpath(os.path.join(rel_dir, fn))
             if rel in EXEMPT_FILES:
