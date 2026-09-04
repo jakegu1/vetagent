@@ -59,7 +59,7 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 
 | Metric | Value |
 |---|---|
-| Verdict distribution | high=43, low=125, medium=35, unknown=62 |
+| Verdict distribution | high=14, low=125, medium=64, unknown=62 |
 | unknown rate | 23.4% |
 | Share with a data gap | 27.9% |
 
@@ -75,7 +75,7 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **dead** | 1 | 0.0% | 100.0% | 0.0% | 0.0% | 24.0 |
-| **alive** | 143 | 14.0% | 23.1% | 62.2% | 14.7% | 20.4 |
+| **alive** | 143 | 5.6% | 23.1% | 62.2% | 14.7% | 14.6 |
 
 ### Contract-safety signals only (ablated)
 
@@ -85,7 +85,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **dead** | 1 | 0.0% | 0.0% | 100.0% | 0.0% | 0.0 |
-| **alive** | 143 | 10.5% | 28.7% | 71.3% | 0.0% | 18.3 |
+| **alive** | 143 | 2.1% | 28.7% | 71.3% | 0.0% | 12.4 |
 
 **Which signal category made the call on dead samples:** `liquidity` 1
 
@@ -102,7 +102,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 9 | 22.2% | 22.2% | 0.0% | 77.8% | 46.7 |
-| **safe** | 170 | 17.6% | 29.4% | 47.1% | 23.5% | 28.8 |
+| **safe** | 170 | 5.3% | 29.4% | 47.1% | 23.5% | 20.4 |
 
 ### Contract-safety signals only (ablated)
 
@@ -112,7 +112,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 9 | 22.2% | 55.6% | 44.4% | 0.0% | 32.7 |
-| **safe** | 170 | 14.1% | 41.2% | 58.8% | 0.0% | 24.4 |
+| **safe** | 170 | 1.8% | 41.2% | 58.8% | 0.0% | 15.9 |
 
 **Which signal category made the call on unsafe samples:** `no_liquidity` 5, `sellability` 2, `honeypot` 2
 
@@ -130,9 +130,9 @@ This bucket answers one question: **does the engine paint them all as high risk.
 
 | n | high rate | Verdict distribution |
 |---|---|---|
-| 66 | 13.6% | high=9, low=34, medium=13, unknown=10 |
+| 66 | 4.5% | high=3, low=34, medium=19, unknown=10 |
 
-Examples: CP(low), VIRTUAL(low), BIO(low), MOCA(low), align(high), umia(medium), SOSO(low), AAVE(low), AVNT(low), ZEST(unknown)
+Examples: CP(low), VIRTUAL(low), BIO(low), MOCA(low), align(medium), umia(medium), SOSO(low), AAVE(low), AVNT(low), ZEST(unknown)
 
 
 ## Disagreements (need manual review)
@@ -142,29 +142,23 @@ Samples where the label and the engine disagree. Read the **false negatives** (l
 
 | Type | Token | Chain | Label | Engine verdict | Ablated | Driving signal |
 |---|---|---|---|---|---|---|
-| false positive | `O` | base | goplus=safe | high | high | honeypot |
 | false positive | `RECALL` | base | outcome=alive | high | high | sellability |
 | false positive | `RECALL` | base | goplus=safe | high | high | sellability |
-| false positive | `QWLA` | base | outcome=alive | high | high | honeypot |
 | false positive | `RIZE` | base | goplus=safe | high | medium | sellability |
-| false positive | `NOCK` | base | outcome=alive | high | high | honeypot |
-| false positive | `NOCK` | base | goplus=safe | high | high | honeypot |
-| false positive | `GOOGLc` | base | goplus=safe | high | high | honeypot |
-| false positive | `Basecat` | base | goplus=safe | high | high | honeypot |
-| false positive | `NVDAc` | base | goplus=safe | high | high | honeypot |
-| false positive | `Surplus` | base | goplus=safe | high | high | honeypot |
 | false positive | `VCNT` | base | outcome=alive | high | high | sellability |
 | false positive | `VCNT` | base | goplus=safe | high | high | sellability |
-| false positive | `ASTER` | bsc | outcome=alive | high | high | honeypot |
-| false positive | `ASTER` | bsc | goplus=safe | high | high | honeypot |
-| false positive | `COAI` | bsc | goplus=safe | high | high | honeypot |
 | false positive | `PIEVERSE` | bsc | outcome=alive | high | medium | sellability |
-| false positive | `AKE` | bsc | outcome=alive | high | high | honeypot |
 | false positive | `UAI` | bsc | outcome=alive | high | medium | sellability |
 | false positive | `UAI` | bsc | goplus=safe | high | medium | sellability |
-
-(30 more in `results.json`)
-
+| false positive | `ROBO` | bsc | goplus=safe | high | medium | sellability |
+| false positive | `COLLECT` | bsc | outcome=alive | high | medium | sellability |
+| false positive | `COLLECT` | bsc | goplus=safe | high | medium | sellability |
+| false positive | `EDGE` | bsc | outcome=alive | high | medium | sellability |
+| false positive | `EDGE` | bsc | goplus=safe | high | medium | sellability |
+| false positive | `KITE` | bsc | outcome=alive | high | high | honeypot |
+| false positive | `KITE` | bsc | goplus=safe | high | high | honeypot |
+| false positive | `CAP` | bsc | goplus=safe | high | medium | sellability |
+| false positive | `fwWETH` | ethereum | outcome=alive | high | medium | sellability |
 
 ## What this benchmark does not measure
 

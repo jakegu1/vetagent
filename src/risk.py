@@ -436,10 +436,14 @@ def _gt_to_pair(p, address, network):
 def _liquidity_signals(best, pairs, signals, evidence):
     liq = _pair_liquidity(best)
     vol = _num((best.get("volume") or {}).get("h24"))
+    # Buy/sell counts come free in the same response and are the only direct evidence we
+    # have about whether people can actually get out. _honeypot_signals reads them back.
+    txns = ((best.get("txns") or {}).get("h24") or {})
     evidence["best_pair"] = {
         "dex": best.get("dexId"), "chain": best.get("chainId"),
         "liquidity_usd": _sig_round(liq), "price_usd": _sig_round(best.get("priceUsd")),
         "volume_24h_usd": _sig_round(vol), "pair_created_at": best.get("pairCreatedAt"),
+        "buys_24h": txns.get("buys"), "sells_24h": txns.get("sells"),
     }
     if liq < 5000:
         signals.append(_sig("critical", "Very low liquidity",
@@ -521,7 +525,41 @@ def _honeypot_signals(hp, signals, evidence, data_gaps):
     }
 
     if is_hp is True:
-        signals.append(_sig("fatal", "Honeypot", "Simulation confirms it: you can buy, you cannot sell.", "honeypot"))
+        # Before relaying a honeypot verdict, check it against what the chain shows.
+        #
+        # A honeypot means sells fail. Measured: honeypot.is returned isHoneypot=true,
+        # simulationSuccess=true and sellTax=0 for tokens with tens of thousands of
+        # completed sells in 24h — AKE had 59,031. Thirteen of twenty false positives in
+        # the benchmark traced to relaying that flag unexamined.
+        #
+        # This is the first place the engine actually adjudicates rather than restating
+        # an upstream, and it is the product's whole premise: four sources that disagree,
+        # collapsed into one verdict. A simulator saying "you cannot sell" loses to a
+        # chain showing that thousands of people just did. The verdict is downgraded
+        # rather than dropped: something is wrong with this token, we just know it is not
+        # that nobody can exit.
+        bp = evidence.get("best_pair") or {}
+        sells, buys = _num(bp.get("sells_24h")), _num(bp.get("buys_24h"))
+        # The pool also has to still be there. One token in the benchmark showed 458
+        # completed sells against $0 of remaining liquidity: people got out, and then
+        # the pool was drained behind them. Past sells say nothing about whether you
+        # can exit now, and this override is a claim about now.
+        pool_alive = _num(bp.get("liquidity_usd")) >= 5000
+        sells_work = pool_alive and sells >= 20 and sells >= 0.15 * (buys + 1)
+        if sells_work:
+            signals.append(_sig(
+                "warn", "Upstream calls this a honeypot, the chain disagrees",
+                "honeypot.is reports a honeypot, but %s sells completed against %s buys "
+                "in the last 24h. Sells are demonstrably going through, so this is more "
+                "likely a simulator false positive than a trap — treat the token as "
+                "unclear rather than fatal."
+                % (format(sells, ",.0f"), format(buys, ",.0f")), "honeypot"))
+            evidence["honeypot"]["contradicted_by_chain"] = {
+                "sells_24h": bp.get("sells_24h"), "buys_24h": bp.get("buys_24h")}
+        else:
+            signals.append(_sig("fatal", "Honeypot",
+                                "Simulation confirms it: you can buy, you cannot sell.",
+                                "honeypot"))
     elif sim_ok is False or is_hp is None:
         err = hp.get("simulationError") or "unknown reason"
         data_gaps.append({"dimension": "sellability", "source": "honeypot.is",

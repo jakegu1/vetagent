@@ -318,6 +318,79 @@ def test_no_trace_is_high_but_our_outage_is_unknown():
           str([s["name"] for s in r2["signals"]]))
 
 
+def test_chain_activity_overrules_a_honeypot_verdict():
+    """A simulator saying "you cannot sell" loses to a chain showing thousands just did.
+
+    Measured: honeypot.is returned isHoneypot=true, simulationSuccess=true and sellTax=0
+    for tokens with tens of thousands of completed sells in 24h. AKE had 59,031. Thirteen
+    of twenty benchmark false positives traced to relaying that flag unexamined.
+
+    The override is deliberately narrow. Real honeypots do let a whitelisted address or
+    two out, so a couple of sells prove nothing; the test is volume plus a sell/buy ratio
+    that a working trap cannot produce. And the verdict is downgraded, not dropped —
+    something is wrong with a token its upstream flags, we just know it is not that
+    nobody can exit.
+    """
+    print("\n[adjudication] chain activity vs a honeypot flag")
+
+    hp_flagged = _load("hp_matic.json")
+    hp_flagged["honeypotResult"] = {"isHoneypot": True}
+    hp_flagged["simulationSuccess"] = True
+
+    def pairs_with(buys, sells):
+        d = json.loads(json.dumps(_load("ds_matic.json")))
+        for p in d["pairs"]:
+            p["txns"] = {"h24": {"buys": buys, "sells": sells}}
+        return d
+
+    # Thousands of completed sells: the flag is contradicted, not obeyed.
+    install_stub([("dexscreener", pairs_with(4134, 4228)), ("honeypot.is", hp_flagged)])
+    r = run(risk.assess(MATIC, chain_hint="ethereum"))
+    hp_sigs = [x for x in r["signals"] if x["category"] == "honeypot"]
+    check("active selling downgrades the fatal verdict",
+          hp_sigs and hp_sigs[0]["severity"] != "fatal",
+          str([(x["severity"], x["name"]) for x in hp_sigs]))
+    check("not rated high on that basis alone", r["risk_level"] != "high",
+          "%s %s" % (r["risk_level"], sig_categories(r)))
+    check("the contradiction is recorded as evidence",
+          bool((r["evidence"].get("honeypot") or {}).get("contradicted_by_chain")),
+          str(r["evidence"].get("honeypot", {}).keys()))
+
+    # Buys but almost no sells: that is the shape of a real trap. Flag stands.
+    install_stub([("dexscreener", pairs_with(900, 3)), ("honeypot.is", hp_flagged)])
+    r2 = run(risk.assess(MATIC, chain_hint="ethereum"))
+    hp2 = [x for x in r2["signals"] if x["category"] == "honeypot"]
+    check("buys without sells keeps the fatal verdict",
+          hp2 and hp2[0]["severity"] == "fatal",
+          str([(x["severity"], x["name"]) for x in hp2]))
+    check("and that still reads high", r2["risk_level"] == "high", r2["risk_level"])
+
+    # Sells happened, but the pool has since been drained. One benchmark token showed
+    # 458 completed sells against $0 of liquidity: people got out and the pool was
+    # emptied behind them. Past sells say nothing about exiting now.
+    def drained(buys, sells):
+        d = json.loads(json.dumps(_load("ds_matic.json")))
+        for p in d["pairs"]:
+            p["txns"] = {"h24": {"buys": buys, "sells": sells}}
+            p["liquidity"] = {"usd": 0}
+        return d
+
+    install_stub([("dexscreener", drained(809, 458)), ("honeypot.is", hp_flagged)])
+    r4 = run(risk.assess(MATIC, chain_hint="ethereum"))
+    hp4 = [x for x in r4["signals"] if x["category"] == "honeypot"]
+    check("a drained pool cannot vouch for past sells",
+          hp4 and hp4[0]["severity"] == "fatal",
+          str([(x["severity"], x["name"]) for x in hp4]))
+
+    # No transaction data at all: nothing to contradict with, so the flag stands.
+    install_stub([("dexscreener", pairs_with(None, None)), ("honeypot.is", hp_flagged)])
+    r3 = run(risk.assess(MATIC, chain_hint="ethereum"))
+    hp3 = [x for x in r3["signals"] if x["category"] == "honeypot"]
+    check("missing txn data does not excuse the token",
+          hp3 and hp3[0]["severity"] == "fatal",
+          str([(x["severity"], x["name"]) for x in hp3]))
+
+
 def test_clean_token_stays_low():
     """Guard the other way: more signals must not let the score push a healthy token high."""
     print("\n[scoring] healthy token stays low")
