@@ -197,6 +197,7 @@ _CATEGORY_WEIGHT = {
     "contract": 0.6,        # closed source / proxy contract
     "freshness": 0.5,
     "lifecycle": 0.4,
+    "impersonation": 0.9,   # right ticker, wrong contract
     "concentration": 0.7,   # holder concentration
     "cross_chain": 0.2,     # one chain is not itself a risk, so keep this near zero
 }
@@ -334,10 +335,23 @@ def _pick_best(pairs, chain_hint=None, target=None):
         # Liquidity is mandatory; price is sanity-checked only when it **is present**
         # (GeckoTerminal's base_token_price_usd is often null, and a valid pool must
         # not be discarded over that).
+        #
+        # The floor is zero, not a small number. It used to be 1e-12, which quietly
+        # excluded a whole class of token rather than a class of error: supply and price
+        # are reciprocal, so a coin minted in quadrillions trades at 1e-22 while holding
+        # real liquidity. hPERPS sat at $293 across 5 buys and a sell, priced 5.5e-24,
+        # and was discarded as unpriceable -- so the engine returned "unknown" for a
+        # token it could see in full detail.
+        #
+        # The floor was not protecting anything either. It was added against the
+        # pulsechain mispricing, where USDC resolved to $0.00097 -- nine orders of
+        # magnitude above 1e-12, so the floor never touched that case. What actually
+        # fixed it was ranking by how canonical the chain is, further down. A price
+        # above zero is a price; only zero says nothing.
         if _pair_liquidity(p) <= 0:
             return False
         price = p.get("priceUsd")
-        return True if price in (None, "") else _num(price) > 1e-12
+        return True if price in (None, "") else _num(price) > 0
 
     def _is_target(p):
         bt = ((p.get("baseToken") or {}).get("address") or "").lower()
@@ -486,6 +500,86 @@ def _liquidity_signals(best, pairs, signals, evidence):
             signals.append(_sig("warn", "Very little trading",
                                 "Turnover is only %.1f%%. Exiting at size may be difficult." % (turnover * 100),
                                 "lifecycle"))
+
+
+async def _impersonation_signals(address, pairs, signals, evidence):
+    """Is this the token people mean when they say this ticker?
+
+    The loss an agent is most likely to take is not an exotic exploit. It is buying the
+    wrong contract with the right name: a fresh token deployed as "PEPE" alongside the
+    one everybody means. Nothing in a contract scan catches that, because the impostor's
+    contract is often perfectly ordinary -- it is honest code for a dishonest identity.
+
+    The test is comparative, not absolute. A ticker being shared proves nothing; USDC is
+    a legitimate token on a dozen chains. What matters is being dwarfed: if something
+    else answering to this ticker holds orders of magnitude more liquidity, then this is
+    not the one people mean, and an agent that resolved a name to this address resolved
+    it wrong.
+
+    Deliberately not flagged: the same address on another chain, which is the same token
+    bridged, and any token that is itself the largest under its ticker.
+    """
+    symbol = ""
+    for p in pairs:
+        base = p.get("baseToken") or {}
+        if (base.get("address") or "").lower() == address.lower():
+            symbol = (base.get("symbol") or "").strip()
+            break
+    if not symbol or len(symbol) < 2:
+        return
+
+    mine = max((_pair_liquidity(p) for p in pairs
+                if ((p.get("baseToken") or {}).get("address") or "").lower()
+                == address.lower()), default=0.0)
+
+    found = await _fetch_json(
+        "https://api.dexscreener.com/latest/dex/search?q=%s" % symbol.replace(" ", "%20"))
+    if found is None:
+        return  # no claim either way; absence of the check is not evidence of safety
+
+    # Deepest pool per rival contract, keyed by address so one token with many pools
+    # counts once.
+    rivals = {}
+    for p in (found.get("pairs") or []):
+        base = p.get("baseToken") or {}
+        addr = (base.get("address") or "").lower()
+        if not addr or addr == address.lower():
+            continue
+        if (base.get("symbol") or "").strip().lower() != symbol.lower():
+            continue
+        rivals[addr] = max(rivals.get(addr, 0.0), _pair_liquidity(p))
+
+    if not rivals:
+        return
+
+    top_addr, top_liq = max(rivals.items(), key=lambda kv: kv[1])
+    evidence["same_symbol"] = {
+        "symbol": symbol,
+        "other_contracts": len(rivals),
+        "largest_rival_liquidity_usd": _sig_round(top_liq),
+        "this_token_liquidity_usd": _sig_round(mine),
+    }
+
+    ratio = top_liq / mine if mine > 0 else float("inf")
+    if ratio >= 1000:
+        signals.append(_sig(
+            "critical", "Almost certainly not the token you meant",
+            "Another contract with the ticker %s holds $%s against this one's $%s. "
+            "At that gap this is not the token the name refers to." %
+            (symbol, format(top_liq, ",.0f"), format(mine, ",.0f")), "impersonation"))
+    elif ratio >= 50:
+        signals.append(_sig(
+            "warn", "A much larger token shares this ticker",
+            "%d other contracts use the ticker %s, and the largest holds $%s against "
+            "this one's $%s. Confirm the address is the one you intended." %
+            (len(rivals), symbol, format(top_liq, ",.0f"), format(mine, ",.0f")),
+            "impersonation"))
+    elif len(rivals) >= 3:
+        signals.append(_sig(
+            "info", "Ticker is shared with other contracts",
+            "%d other contracts use the ticker %s. This one is not dwarfed by them, but "
+            "the name alone does not identify a token." % (len(rivals), symbol),
+            "impersonation"))
 
 
 def _honeypot_signals(hp, signals, evidence, data_gaps):
@@ -757,6 +851,8 @@ async def _load_pairs(address, chain_hint):
 _SLIM_EVIDENCE_KEYS = (
     "best_pair", "chains", "pair_age_days", "turnover_24h", "honeypot",
     "rugcheck", "liquidity_source", "confidence", "data_gaps", "served_stale",
+    "pools_all_empty",
+    "same_symbol",
 )
 
 
@@ -782,12 +878,35 @@ async def assess(address, chain_hint=None, verbose=False):
         evidence["liquidity_source"] = source
         best = _pick_best(pairs, chain_hint=chain_hint, target=address)
         if best is None:
-            data_gaps.append({"dimension": "liquidity", "source": source,
-                              "reason": "no pair with a sane price"})
-            signals.append(_sig("warn", "No usable pool",
-                                "Pairs exist but none had a sane price.", "no_liquidity"))
+            # Two different things reach here, and only one of them is ignorance.
+            #
+            # If every pool that exists holds nothing, we are not missing data -- we have
+            # complete data, and it says the exit is closed. Recording that as a gap made
+            # the engine answer "unknown" for the drained tokens, which is the one state
+            # it should be loudest about: 8 of the 10 confirmed-unsafe tokens in the
+            # benchmark came back unknown, and this was why. Fail-closed means an
+            # unobserved dimension cannot buy reassurance. It never meant an observed
+            # absence should be filed as a question.
+            #
+            # This is a sellability finding, not a depth one. Depth is how much slippage
+            # you take; zero across every venue is whether you get out at all.
+            deepest = max((_pair_liquidity(p) for p in pairs), default=0.0)
+            if deepest <= 0:
+                evidence["pools_all_empty"] = len(pairs)
+                signals.append(_sig(
+                    "critical", "No liquidity left in any pool",
+                    "%d pool%s exist for this token and every one of them is empty. "
+                    "There is nothing to sell into at any price."
+                    % (len(pairs), "" if len(pairs) == 1 else "s"), "sellability"))
+            else:
+                data_gaps.append({"dimension": "liquidity", "source": source,
+                                  "reason": "no pair with a sane price"})
+                signals.append(_sig("warn", "No usable pool",
+                                    "Pairs exist but none had a sane price.",
+                                    "no_liquidity"))
         else:
             _liquidity_signals(best, pairs, signals, evidence)
+            await _impersonation_signals(address, pairs, signals, evidence)
 
     if _looks_evm(address):
         _honeypot_signals(

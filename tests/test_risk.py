@@ -391,6 +391,173 @@ def test_chain_activity_overrules_a_honeypot_verdict():
           str([(x["severity"], x["name"]) for x in hp3]))
 
 
+def test_impersonation_is_comparative_not_absolute():
+    """Being dwarfed under a shared ticker is the signal; sharing one is not.
+
+    The loss an agent is most likely to take is buying the wrong contract with the right
+    name. No contract scan catches it: the impostor's code is often perfectly ordinary,
+    because what is dishonest is the identity, not the bytecode.
+
+    Verified live before this test was written. DexScreener lists 29 contracts under the
+    ticker PEPE. The real one holds $27.1M and comes back low, carrying only an info note
+    that the ticker is shared. A namesake holding $3,394 -- 7,982x less -- comes back high
+    on "almost certainly not the token you meant". Both readings have to hold, or the
+    check is either useless or unusable.
+    """
+    print("\n[impersonation] dwarfed under a shared ticker")
+
+    def market(mine_liq, rival_liq, rivals=1):
+        """A DexScreener response where our token and N namesakes share a ticker."""
+        me = {"chainId": "ethereum", "dexId": "uniswap",
+              "baseToken": {"address": WETH, "symbol": "TKN"},
+              "quoteToken": {"address": "0xq"}, "priceUsd": "1.0",
+              "liquidity": {"usd": mine_liq}, "volume": {"h24": mine_liq},
+              "txns": {"h24": {"buys": 100, "sells": 100}},
+              "pairCreatedAt": 1589841515000}
+        others = [{"chainId": "ethereum", "dexId": "uniswap",
+                   "baseToken": {"address": "0x%040d" % (i + 1), "symbol": "TKN"},
+                   "quoteToken": {"address": "0xq"}, "priceUsd": "1.0",
+                   "liquidity": {"usd": rival_liq}, "volume": {"h24": rival_liq},
+                   "pairCreatedAt": 1589841515000}
+                  for i in range(rivals)]
+        return {"pairs": [me] + others}
+
+    def run_with(mine, rival, rivals=1):
+        # The token lookup and the ticker search are different DexScreener paths, so the
+        # stub has to answer them separately or the search sees our own pair back.
+        install_stub([("dex/tokens", market(mine, rival, 0)),
+                      ("dex/search", market(mine, rival, rivals)),
+                      ("honeypot.is", _load("hp_matic.json"))])
+        return run(risk.assess(WETH, chain_hint="ethereum"))
+
+    # Dwarfed by 8000x: this is not the token the name refers to.
+    r = run_with(3_394, 27_144_100)
+    imp = [x for x in r["signals"] if x["category"] == "impersonation"]
+    check("a token dwarfed 8000x is called out", imp and imp[0]["severity"] == "critical",
+          str([(x["severity"], x["name"]) for x in imp]))
+    # Never low, but not forced to high either. Impersonation is a question of identity,
+    # not of danger: a token that is liquid, clean, and merely shares a ticker with
+    # something bigger is not itself hazardous — what went wrong is that a name resolved
+    # to the wrong address. Rating that high would conflate "dangerous token" with "wrong
+    # token". Medium is the product's "put this in front of the user", which is exactly
+    # right here, and the token's other properties decide whether it climbs from there.
+    # The live $3,394 namesake does reach high, on low liquidity, not on this signal.
+    check("never low", r["risk_level"] != "low", r["risk_level"])
+    check("and at least medium", r["risk_level"] in ("medium", "high"), r["risk_level"])
+
+    # The largest holder of the ticker is not an impostor, however many namesakes exist.
+    r2 = run_with(27_144_100, 4_098_720, rivals=5)
+    imp2 = [x for x in r2["signals"] if x["category"] == "impersonation"]
+    check("the biggest token under a ticker is never critical",
+          not imp2 or imp2[0]["severity"] in ("ok", "info"),
+          str([(x["severity"], x["name"]) for x in imp2]))
+    check("and stays low", r2["risk_level"] == "low",
+          "%s %s" % (r2["risk_level"], sig_categories(r2)))
+
+    # A modest gap is not impersonation. Small tokens are allowed to exist.
+    r3 = run_with(400_000, 1_000_000)
+    imp3 = [x for x in r3["signals"] if x["category"] == "impersonation"]
+    check("a 2.5x gap raises nothing",
+          not imp3 or imp3[0]["severity"] in ("ok", "info"),
+          str([(x["severity"], x["name"]) for x in imp3]))
+
+    # Search unreachable: no claim either way. Not finding the check is not evidence.
+    install_stub([("dex/tokens", market(3_394, 27_144_100, 0)),
+                  ("dex/search", None),
+                  ("honeypot.is", _load("hp_matic.json"))])
+    r4 = run(risk.assess(WETH, chain_hint="ethereum"))
+    check("an unreachable search invents nothing",
+          not [x for x in r4["signals"] if x["category"] == "impersonation"],
+          str([x["name"] for x in r4["signals"]]))
+
+
+def _num_or_zero(v):
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _liq_of(result):
+    """Liquidity the engine settled on, for assertions about pool selection."""
+    return _num_or_zero((result.get("evidence", {}).get("best_pair") or {})
+                        .get("liquidity_usd"))
+
+
+def test_a_tiny_price_is_still_a_price():
+    """A coin minted in quadrillions is not an unpriceable coin.
+
+    Supply and price are reciprocal, so a token with a quadrillion units and real money
+    behind it trades at something like 1e-22. A price floor of 1e-12 does not exclude a
+    class of error, it excludes a class of token -- and it excluded them at the worst
+    possible moment, because high-supply micro-caps are where the scams live.
+
+    Measured on the benchmark set: 8 of the 10 confirmed-unsafe tokens came back
+    "unknown". hPERPS held $293 across five buys and a sell, priced at 5.5e-24, and the
+    engine declined to judge a token whose every detail it could see.
+    """
+    print("\n[pricing] a very small price is not a missing price")
+
+    def token_at(price, liq):
+        return {"pairs": [{
+            "chainId": "ethereum", "dexId": "uniswap",
+            "baseToken": {"address": WETH, "symbol": "TINY"},
+            "quoteToken": {"address": "0xq"}, "priceUsd": price,
+            "liquidity": {"usd": liq}, "volume": {"h24": 500.0},
+            "txns": {"h24": {"buys": 5, "sells": 1}},
+            "pairCreatedAt": 1589841515000}]}
+
+    install_stub([("dex/tokens", token_at("0.000000000000000000000005458", 293.65)),
+                  ("honeypot.is", _load("hp_matic.json"))])
+    r = run(risk.assess(WETH, chain_hint="ethereum"))
+    check("a token priced 5.5e-24 is assessed, not refused",
+          r["risk_level"] != "unknown", r["risk_level"])
+    check("and its liquidity is the number actually reported",
+          abs(_liq_of(r) - 293.65) < 0.01, str(_liq_of(r)))
+
+    # Zero is still not a price. That is the case a floor was ever for.
+    install_stub([("dex/tokens", token_at("0", 293.65)),
+                  ("honeypot.is", _load("hp_matic.json"))])
+    r0 = run(risk.assess(WETH, chain_hint="ethereum"))
+    check("a price of exactly zero is still not usable",
+          _liq_of(r0) == 0.0, str(_liq_of(r0)))
+
+
+def test_every_pool_empty_is_a_finding_not_a_gap():
+    """Complete information saying the exit is closed is not missing information.
+
+    Fail-closed exists so an *unobserved* dimension cannot buy reassurance. It was never
+    meant to file an *observed* absence as a question. A token whose every pool holds
+    nothing is the loudest thing this tool can find: there is no price at which you get
+    out, which is the honeypot outcome reached from the other direction.
+    """
+    print("\n[liquidity] pools that exist and hold nothing")
+
+    def empty_pools(n):
+        return {"pairs": [{
+            "chainId": "ethereum", "dexId": "uniswap",
+            "baseToken": {"address": WETH, "symbol": "DRAINED"},
+            "quoteToken": {"address": "0xq"}, "priceUsd": "0.0001",
+            "liquidity": {"usd": 0}, "volume": {"h24": 0},
+            "txns": {"h24": {"buys": 0, "sells": 0}},
+            "pairCreatedAt": 1589841515000} for _ in range(n)]}
+
+    install_stub([("dex/tokens", empty_pools(3)), ("honeypot.is", _load("hp_matic.json"))])
+    r = run(risk.assess(WETH, chain_hint="ethereum"))
+    sell = [x for x in r["signals"] if x["category"] == "sellability"]
+    check("drained pools raise a critical sellability signal",
+          any(x["severity"] == "critical" for x in sell),
+          str([(x["severity"], x["name"]) for x in r["signals"]]))
+    check("it says how many pools were checked",
+          r.get("evidence", {}).get("pools_all_empty") == 3,
+          str(r.get("evidence", {}).get("pools_all_empty")))
+    check("and it is not also filed as a liquidity data gap",
+          not [g for g in (r.get("evidence", {}).get("data_gaps") or [])
+               if g.get("dimension") == "liquidity"],
+          str(r.get("evidence", {}).get("data_gaps")))
+    check("the verdict is not low", r["risk_level"] != "low", r["risk_level"])
+
+
 def test_clean_token_stays_low():
     """Guard the other way: more signals must not let the score push a healthy token high."""
     print("\n[scoring] healthy token stays low")

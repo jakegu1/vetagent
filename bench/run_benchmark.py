@@ -364,6 +364,29 @@ def write_markdown(rep):
         if len(dis) > 20:
             A("\n(%d more in `results.json`)\n" % (len(dis) - 20))
 
+        # Impersonation is the one dimension the GoPlus labeller cannot see, so a
+        # disagreement there means something different from the others -- and saying so
+        # is only honest if the number stays in the headline rate regardless. It does.
+        blind = [d for d in dis if d["kind"] == "false positive"
+                 and d["label"].startswith("goplus") and d["driver"] == "impersonation"]
+        if blind:
+            A("\n### Counted as false positives, but outside the labeller's reach\n")
+            A("%d of the false positives above were driven by `impersonation`. GoPlus "
+              "reads bytecode and ownership; impersonation is a fact about identity, and "
+              "an impostor's bytecode is usually perfectly ordinary. So GoPlus returns "
+              "`safe` for a token it has no instrument to judge, and the disagreement is "
+              "structural rather than evidence either way.\n" % len(blind))
+            A("\nThey stay in the headline rate anyway. A tool that subtracts its "
+              "disagreements whenever it can explain them is grading its own homework, "
+              "and an explanation is only worth something if it costs something. What "
+              "this section buys is auditability: they are named, so a reader can check "
+              "them one at a time instead of taking the framing on trust.\n")
+            A("\n| Token | Chain | Verdict | Address |")
+            A("|---|---|---|---|")
+            for d in blind:
+                A("| `%s` | %s | %s | `%s` |" % (d["symbol"] or "?", d["chain"],
+                                                 d["verdict"], d["address"]))
+
     A("\n## What this benchmark does not measure\n")
     A("1. **Whether it warns you in time.** The engine scores the current state, and "
       "the `dead` label is retrospective. A pool that already died has liquidity ≈ 0 "
