@@ -183,6 +183,47 @@ def test_pair_age_works_on_integer_timestamps():
           str(sig_categories(r)))
 
 
+def test_engine_output_is_english():
+    """回归：引擎的**输出**曾经是中文。
+
+    工具描述翻译过了，但真正被 agent 转述给终端用户的是 signals 和 recommendation。
+    英文页面上显示中文结论只是难看；agent 把中文信号念给英文用户才是坏掉。
+
+    只查 CJK，不查全部非 ASCII——破折号、引号是合法排版字符，
+    一个会因为标点变红的测试迟早会被人关掉。
+    """
+    print("\n[i18n] 引擎输出必须是英文")
+
+    def cjk(text):
+        return [c for c in str(text) if "一" <= c <= "鿿"]
+
+    install_stub([
+        ("dexscreener", _load("ds_matic.json")),
+        ("honeypot.is", _load("hp_retail_veryhigh.json")),
+    ])
+    r = run(risk.assess(RETAIL, chain_hint="ethereum"))
+    bad = []
+    for s in r["signals"]:
+        if cjk(s["name"]) or cjk(s["message"]):
+            bad.append(s["name"])
+    check("signals 无中文", not bad, str(bad))
+    check("recommendation 无中文", not cjk(r["recommendation"]), r["recommendation"][:40])
+
+    # 失败路径的文案同样会被转述出去，一并检查
+    install_stub([], default=None)
+    r2 = run(risk.assess(WETH, chain_hint="ethereum"))
+    gaps = (r2["evidence"].get("data_gaps") or [])
+    check("data_gaps 无中文",
+          not any(cjk(g.get("reason", "")) for g in gaps), str(gaps)[:60])
+    check("失败路径 recommendation 无中文",
+          not cjk(r2["recommendation"]), r2["recommendation"][:40])
+
+    try:
+        risk.validate_address("0xdeadbeef")
+    except ValueError as e:
+        check("错误信息无中文", not cjk(str(e)), str(e)[:50])
+
+
 def test_benchmark_oracle_stays_out_of_the_engine():
     """DECISIONS B2：GoPlus 是基准的留出预言机，引擎一旦读它，基准立刻失效。
 
@@ -217,9 +258,14 @@ def test_upstream_failure_yields_unknown():
     r = run(risk.assess(WETH, chain_hint="ethereum"))
     check("全失败必须 unknown", r["risk_level"] == "unknown", r["risk_level"])
     check("confidence 必须 low", r["confidence"] == "low", r["confidence"])
-    check("建议里不得含仓位指导",
-          "试探" not in r["recommendation"] and "建仓" not in r["recommendation"].split("，")[0],
-          r["recommendation"])
+    # 这条曾经检查中文词（"试探"/"建仓"）。输出翻成英文后那些词自然不存在，
+    # 测试就变成了空过——**因为被检查的东西消失了而通过**，是最没用的一类测试。
+    # 现在检查英文里的仓位/投资措辞。
+    rec = r["recommendation"].lower()
+    banned = ("position size", "buy a small", "small position", "invest",
+              "we recommend buying", "safe to buy")
+    hit = [w for w in banned if w in rec]
+    check("建议里不得含仓位/投资指导", not hit, "命中: %s | %s" % (hit, r["recommendation"]))
 
     # 只有 honeypot 失败：可卖出性未知，也不允许 low
     install_stub([("dexscreener", _load("ds_weth.json")), ("honeypot.is", None)])

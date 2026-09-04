@@ -1,160 +1,327 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VetAgent — 代币风险情报 MCP/API · 给 AI 代理的买前安全检查</title>
-<meta name="description" content="VetAgent 是一个给 AI 代理使用的代币风险评估 MCP 工具。在持有、买入、调研一个代币前，调用 assess_token_risk 获取可执行的 low/medium/high 风险画像与建议。支持多链(ETH/Solana/Base)、MCP over HTTP、远程端点、免费公开 API。">
-<meta name="keywords" content="crypto risk assessment, token risk API, rug pull checker, MCP server crypto, AI agent crypto tool, 代币风险评估, 防rug, vetagent">
+<title>VetAgent — Pre-trade token risk check for AI agents</title>
+<meta name="description" content="An MCP server that checks a crypto token for honeypots, extraction taxes, thin liquidity and rug risk before an AI agent buys it. Free, no auth, remote endpoint at https://vetagent.dev/mcp. Publishes its own measured false-positive rate.">
 <link rel="canonical" href="https://vetagent.dev/">
-<!-- Open Graph -->
-<meta property="og:title" content="VetAgent — 代币风险情报 MCP/API">
-<meta property="og:description" content="给 AI 代理的买前安全检查：聚合多链流动性/Honeypot/RugCheck，返回可执行风险结论与建议。远程 MCP 端点，agent 可直接连接。">
+<meta property="og:title" content="VetAgent — Pre-trade token risk check for AI agents">
+<meta property="og:description" content="Your agent reads an address and buys. This is the brake. Honeypot, tax, liquidity and rug checks over MCP — and the only one in its category that publishes its own accuracy.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://vetagent.dev/">
-<!-- JSON-LD: 结构化数据供 AI 引擎/GEO 读取 -->
+
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   "name": "VetAgent",
   "applicationCategory": "DeveloperApplication",
-  "operatingSystem": "API",
-  "description": "Crypto token risk intelligence API/MCP. Assess a token's risk (multi-chain liquidity, honeypot check, rug check, pool freshness) and get an actionable low/medium/high verdict with a recommendation for AI agents. Remote MCP endpoint at https://vetagent.dev/mcp.",
+  "operatingSystem": "Any (remote MCP over HTTP)",
+  "description": "MCP server that assesses crypto token risk before an AI agent trades. Checks sell simulation (honeypot), buy/sell/transfer taxes, liquidity depth, pair age, contract open-source status, and on Solana the mint/freeze authority and holder concentration. Returns low/medium/high/unknown with the signals behind it.",
   "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
   "url": "https://vetagent.dev/",
-  "featureList": "assess_token_risk, get_token_liquidity, find_new_hot_pools, MCP over HTTP"
+  "softwareVersion": "0.2.0",
+  "license": "https://github.com/jakegu1/vetagent/blob/master/LICENSE",
+  "codeRepository": "https://github.com/jakegu1/vetagent",
+  "featureList": "assess_token_risk, get_token_liquidity, find_new_hot_pools, MCP streamable-http, published accuracy benchmark"
 }
 </script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type":"Question","name":"How do I check whether a crypto token is a honeypot from an AI agent?",
+     "acceptedAnswer":{"@type":"Answer","text":"Connect the VetAgent MCP server at https://vetagent.dev/mcp and call assess_token_risk with the contract address. It runs a buy/sell simulation, reads the taxes, checks liquidity depth and pair age, and returns low, medium, high or unknown together with the individual signals. No API key and no authentication."}},
+    {"@type":"Question","name":"What does a risk_level of unknown mean?",
+     "acceptedAnswer":{"@type":"Answer","text":"It means a critical check could not be completed — usually an upstream data source failed. It is not a low-risk result and must not be used to justify a trade. evidence.data_gaps lists exactly which checks were missing."}},
+    {"@type":"Question","name":"How accurate is VetAgent?",
+     "acceptedAnswer":{"@type":"Answer","text":"Measured on 199 tokens: 11.3% of healthy tokens were flagged high (false positives), 21.0% of answers were unknown, and 6.7% of legitimate centralised assets such as USDT and WBTC were flagged high. Recall against actual rugs is not yet measurable, because every public data source ranks by liquidity and dead pools drop off the list entirely. The full method and the raw numbers are published in the repository."}},
+    {"@type":"Question","name":"Is VetAgent free?",
+     "acceptedAnswer":{"@type":"Answer","text":"Yes. The remote MCP endpoint and the HTTP API are free and require no account or key."}},
+    {"@type":"Question","name":"Does VetAgent log the tokens I look up?",
+     "acceptedAnswer":{"@type":"Answer","text":"No. The token address is used to query public data sources and then discarded with the response. Aggregate counts are kept — which tool was called, the resulting risk level, a coarse client name and country — but never the address, never an IP."}}
+  ]
+}
+</script>
+
 <style>
-  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --txt:#e6edf3; --dim:#8b949e; --accent:#58a6ff; --green:#3fb950; --yellow:#d29922; --red:#f85149; }
-  * { box-sizing:border-box; margin:0; padding:0; }
-  body { background:var(--bg); color:var(--txt); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; line-height:1.6; }
-  .wrap { max-width:1000px; margin:0 auto; padding:40px 24px; }
-  header { padding:24px 0 8px; border-bottom:1px solid var(--border); margin-bottom:32px; }
-  .logo { display:flex; align-items:center; gap:12px; }
-  .badge { background:var(--accent); color:#000; font-weight:700; padding:3px 10px; border-radius:20px; font-size:12px; }
-  h1 { font-size:32px; margin:8px 0 6px; }
-  .sub { color:var(--dim); font-size:18px; margin-bottom:16px; }
-  .pill { display:inline-block; background:#21262d; border:1px solid var(--border); border-radius:20px; padding:4px 12px; font-size:13px; margin-right:8px; color:var(--dim); }
-  .panel { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:24px; margin:20px 0; }
-  h2 { font-size:22px; margin-bottom:14px; }
-  h3 { font-size:16px; margin:16px 0 8px; }
-  .tool { border-left:3px solid var(--accent); padding:12px 16px; margin:12px 0; background:#0d1117; border-radius:0 8px 8px 0; }
-  code { background:#21262d; padding:2px 6px; border-radius:4px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13px; color:var(--accent); }
-  pre { background:#161b22; border:1px solid var(--border); border-radius:8px; padding:16px; overflow-x:auto; font-size:13px; color:#c9d1d9; }
-  pre code { background:none; color:inherit; padding:0; }
-  table { width:100%; border-collapse:collapse; margin:12px 0; }
-  th,td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--border); font-size:14px; }
-  th { color:var(--dim); font-weight:600; }
-  .url { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:12px 16px; font-family:ui-monospace,Menlo,monospace; font-size:14px; color:var(--green); word-break:break-all; }
-  .cta { background:var(--accent); color:#000; font-weight:700; padding:12px 28px; border-radius:8px; text-decoration:none; display:inline-block; margin-top:12px; }
-  .note { color:var(--dim); font-size:13px; margin-top:8px; }
-  footer { border-top:1px solid var(--border); margin-top:40px; padding:20px 0; color:var(--dim); font-size:13px; text-align:center; }
-  .risk-low { color:var(--green); font-weight:700; }
-  .risk-med { color:var(--yellow); font-weight:700; }
-  .risk-high { color:var(--red); font-weight:700; }
+ :root{
+   --bg:#0B1110; --panel:#111917; --panel-2:#0D1514; --line:#1E2B29;
+   --txt:#DDE7E4; --dim:#8AA09C; --accent:#3FBFAA; --accent-dim:#1B4740;
+   --ok:#4FB183; --warn:#D2A03F; --crit:#E0736A;
+ }
+ *{box-sizing:border-box;margin:0;padding:0}
+ body{background:var(--bg);color:var(--txt);line-height:1.65;
+   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+   -webkit-font-smoothing:antialiased}
+ .wrap{max-width:940px;margin:0 auto;padding:40px 22px 80px}
+ a{color:var(--accent)}
+ code,kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
+ code{background:#16211F;padding:2px 6px;border-radius:4px;color:var(--accent)}
+ pre{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+   padding:15px;overflow-x:auto;font-size:13px;color:#C4D4D0}
+ pre code{background:none;color:inherit;padding:0}
+ h1{font-size:clamp(30px,5vw,42px);line-height:1.15;letter-spacing:-.02em;margin:14px 0 12px;
+   text-wrap:balance}
+ h2{font-size:21px;margin:0 0 12px;letter-spacing:-.01em}
+ h3{font-size:15px;margin:14px 0 6px}
+ .sub{color:var(--dim);font-size:18px;max-width:60ch}
+ header{border-bottom:1px solid var(--line);padding-bottom:28px;margin-bottom:34px}
+ .brand{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--dim)}
+ .tag{background:var(--accent-dim);color:var(--accent);font-weight:600;
+   padding:2px 9px;border-radius:20px;font-size:11px;letter-spacing:.06em}
+ .pills{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+ .pill{background:var(--panel);border:1px solid var(--line);border-radius:20px;
+   padding:4px 12px;font-size:12.5px;color:var(--dim)}
+ .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+   padding:22px;margin:20px 0}
+ .url{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+   padding:12px 15px;font-family:ui-monospace,Menlo,monospace;font-size:14px;
+   color:var(--ok);word-break:break-all}
+ table{width:100%;border-collapse:collapse;margin:10px 0;font-size:14px}
+ th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+ th{color:var(--dim);font-weight:600;font-size:12px;letter-spacing:.05em;text-transform:uppercase}
+ tbody tr:last-child td{border-bottom:none}
+ .num{font-family:ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+ .low{color:var(--ok)} .med{color:var(--warn)} .high{color:var(--crit)} .unk{color:var(--dim)}
+ footer{border-top:1px solid var(--line);margin-top:48px;padding-top:22px;
+   color:var(--dim);font-size:13px}
+ /* demo */
+ .demo-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+ .demo-row input{flex:1 1 340px;background:var(--panel-2);border:1px solid var(--line);
+   color:var(--txt);border-radius:8px;padding:11px 13px;font-size:13px;
+   font-family:ui-monospace,Menlo,monospace}
+ .demo-row input:focus{outline:2px solid var(--accent);outline-offset:1px}
+ .demo-row button{background:var(--accent);color:#062320;border:none;border-radius:8px;
+   padding:11px 22px;font-weight:700;font-size:14px;cursor:pointer}
+ .demo-row button:disabled{opacity:.5;cursor:default}
+ .samples{font-size:12.5px;color:var(--dim);margin-bottom:14px}
+ .samples button{background:none;border:none;color:var(--accent);cursor:pointer;
+   font-size:12.5px;padding:0 4px;text-decoration:underline}
+ #verdict{display:none;border:1px solid var(--line);border-radius:8px;
+   background:var(--panel-2);padding:16px;margin-top:6px}
+ #verdict.show{display:block}
+ .vhead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+ .vlevel{font-size:26px;font-weight:800;letter-spacing:-.02em}
+ .vmeta{color:var(--dim);font-size:13px}
+ .sig{display:flex;gap:10px;padding:6px 0;border-top:1px solid var(--line);font-size:13.5px}
+ .sig .dot{flex:none;width:8px;height:8px;border-radius:50%;margin-top:7px}
+ .rec{margin-top:12px;color:var(--dim);font-size:13.5px}
+ @media (prefers-reduced-motion:no-preference){button{transition:opacity .15s}}
 </style>
 </head>
 <body>
 <div class="wrap">
 
 <header>
-  <div class="logo">
-    <span class="badge">MCP</span>
-    <span style="font-weight:700;font-size:18px;">VetAgent</span>
-    <span style="color:var(--dim);font-size:14px;">代币风险情报</span>
-  </div>
-  <h1>给 AI 代理的「买前安全检查」</h1>
-  <div class="sub">在 AI 替你决策之前，先确认这币能不能碰。</div>
-  <div>
-    <span class="pill">MCP over HTTP</span>
-    <span class="pill">多链: ETH / Solana / Base</span>
-    <span class="pill">免费公开 API</span>
-    <span class="pill">远程端点 · 免安装</span>
+  <div class="brand"><span class="tag">MCP</span><strong style="color:var(--txt);font-size:16px">VetAgent</strong>
+    <span>token risk intelligence</span></div>
+  <h1>Your agent reads an address and buys.<br>This is the brake.</h1>
+  <p class="sub">A pre-trade safety check for AI agents. One call before buying, holding or
+  recommending a token — honeypot simulation, extraction taxes, liquidity depth, rug risk —
+  and a verdict you can act on instead of forty fields to interpret.</p>
+  <div class="pills">
+    <span class="pill">Free · no API key</span>
+    <span class="pill">Remote MCP · nothing to install</span>
+    <span class="pill">EVM + Solana</span>
+    <span class="pill">Publishes its own accuracy</span>
   </div>
 </header>
 
-<p><strong>VetAgent</strong> 是一个给 AI 代理和开发者使用的代币风险评估工具。它聚合多链流动性、Honeypot 检测、Rug 检查、池子新鲜度，输出一个<strong>可执行的判断</strong>（<span class="risk-low">low</span>/<span class="risk-med">medium</span>/<span class="risk-high">high</span>）和给代理的一句话建议——而不是让你去解读一堆数字。</p>
+<div class="panel">
+  <h2>Try it</h2>
+  <p style="color:var(--dim);font-size:14px;margin-bottom:14px">
+    Live call against the same public endpoint your agent would use. No key, no signup.</p>
+  <div class="demo-row">
+    <input id="addr" placeholder="0x… or a Solana address" spellcheck="false"
+           value="0x50614cc8e44f7814549c223aa31db9296e58057c">
+    <button id="go">Assess</button>
+  </div>
+  <div class="samples">Examples:
+    <button data-a="0x50614cc8e44f7814549c223aa31db9296e58057c" data-c="ethereum">a token that cannot be sold</button>·
+    <button data-a="0xb954d1ba6bb92123609fcfb724c68b810c668feb" data-c="ethereum">closed-source, upstream flags it</button>·
+    <button data-a="0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" data-c="ethereum">WETH (healthy control)</button>
+  </div>
+  <div id="verdict"></div>
+</div>
 
 <div class="panel">
-  <h2>🔌 接入（远程 MCP，无需安装）</h2>
-  <p>通过 MCP over HTTP 远程连接，只需一个 URL：</p>
+  <h2>Connect</h2>
   <div class="url">https://vetagent.dev/mcp</div>
-  <p style="margin-top:12px;">Claude Desktop / Claude Code 配置：</p>
+  <h3>Claude Code</h3>
+  <pre><code>claude mcp add --transport http vetagent https://vetagent.dev/mcp</code></pre>
+  <h3>Claude Desktop · Cursor · any MCP client</h3>
   <pre><code>{
   "mcpServers": {
-    "vetagent": {
-      "type": "http",
-      "url": "https://vetagent.dev/mcp"
-    }
+    "vetagent": { "type": "http", "url": "https://vetagent.dev/mcp" }
   }
 }</code></pre>
-  <p class="note">任意 MCP 客户端（Cursor / opencode / 自定义 agent）同样支持。</p>
+  <h3>Plain HTTP, no MCP</h3>
+  <pre><code>curl https://vetagent.dev/assess/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2?chain_hint=ethereum</code></pre>
+</div>
+
+<div class="panel" style="border-color:var(--accent-dim)">
+  <h2>We publish our error rates. Nobody else in this category does.</h2>
+  <p style="color:var(--dim);font-size:14px;margin-bottom:12px">
+    A risk tool asking for your trust should show its work. Measured over 199 tokens,
+    labelled from data sources the engine itself never reads:</p>
+  <table>
+    <thead><tr><th>Metric</th><th class="num">Value</th><th>Read it as</th></tr></thead>
+    <tbody>
+      <tr><td>Healthy tokens flagged high</td><td class="num high">11.3%</td>
+          <td>False positives. Too high; being worked on.</td></tr>
+      <tr><td>Answers returned as <code>unknown</code></td><td class="num unk">21.0%</td>
+          <td>Refusals when a check could not run. Honest, still too many.</td></tr>
+      <tr><td>Centralised assets (USDT, WBTC…) flagged high</td><td class="num low">6.7%</td>
+          <td>We do <em>not</em> blanket-flag legitimate assets that hold admin powers.</td></tr>
+      <tr><td>Recall against real rugs</td><td class="num unk">not measurable</td>
+          <td>See below — and we would rather say so than invent a number.</td></tr>
+    </tbody>
+  </table>
+  <p style="color:var(--dim);font-size:13.5px;margin-top:12px">
+    <strong style="color:var(--txt)">Why recall is unmeasurable today:</strong> we tried.
+    199 sampled tokens produced <em>zero</em> dead ones. Every public source — DexScreener
+    search, GeckoTerminal listings — ranks by liquidity, so rugged pools fall off the list
+    entirely. That data does not exist on any public endpoint at any price. The only way to
+    get it is to record pools while they are alive and revisit them later, which we now do
+    daily. Until that dataset matures, this row stays blank rather than becoming a
+    marketing number.
+    <a href="https://github.com/jakegu1/vetagent/blob/master/bench/results.md">Full method and raw results →</a>
+  </p>
 </div>
 
 <div class="panel">
-  <h2>🧰 工具</h2>
-
-  <div class="tool">
-    <h3><code>assess_token_risk(address, chain_hint?)</code></h3>
-    <p>核心：聚合多链流动性/合约安全/新鲜度，返回结构化风险画像 + 给 agent 的建议。</p>
-    <pre><code>{
-  "address": "0x7D1A...",
-  "risk_level": "medium",
-  "risk_score": 36,
-  "signals": [
-    {"severity": "ok",   "name": "流动性充足",   "category": "liquidity"},
-    {"severity": "ok",   "name": "可正常买卖",   "category": "honeypot"},
-    {"severity": "ok",   "name": "成熟交易对",   "category": "freshness"},
-    {"severity": "warn", "name": "合约闭源",     "category": "contract"}
-  ],
-  "recommendation": "中等风险：需人工核实流动性、持币分布与合约权限后再决定。",
-  "confidence": "high"
-}</code></pre>
-  </div>
-
-  <div class="tool">
-    <h3><code>get_token_liquidity(address)</code></h3>
-    <p>流动性快照：主交易对流动性、价格、24h 量、跨链数。</p>
-  </div>
-
-  <div class="tool">
-    <h3><code>find_new_hot_pools(chain, limit)</code></h3>
-    <p>扫描某链最新创建/最热的新交易池，用于发现新币 + 评估风险。</p>
-  </div>
+  <h2>Tools</h2>
+  <table>
+    <thead><tr><th>Tool</th><th>What it answers</th></tr></thead>
+    <tbody>
+      <tr><td><code>assess_token_risk</code></td>
+          <td>Should this be touched? Returns <span class="low">low</span> /
+          <span class="med">medium</span> / <span class="high">high</span> /
+          <span class="unk">unknown</span>, a 0–100 score, and every signal that fired.</td></tr>
+      <tr><td><code>get_token_liquidity</code></td>
+          <td>How deep is the main pair, and can I exit at size?</td></tr>
+      <tr><td><code>find_new_hot_pools</code></td>
+          <td>What launched recently? Discovery only — never a safety endorsement.</td></tr>
+    </tbody>
+  </table>
 </div>
 
 <div class="panel">
-  <h2>🔌 HTTP 端点（不用 MCP 也可直调）</h2>
-  <pre><code>GET /health
-GET /assess/{address}
-GET /liquidity/{address}
-GET /new-pools?chain=solana&amp;limit=10</code></pre>
-</div>
+  <h2>Questions people actually ask</h2>
 
-<div class="panel" style="border-color:var(--yellow);">
-  <h2>🎯 典型使用场景</h2>
-  <p>“帮我评估代币 0x7D1A... 的风险，如果 medium 以上我再考虑建仓。”</p>
-  <p>“扫一下 Solana 最新 5 个新池，列出可能有 rug 风险的。”</p>
-  <p>“查一下 0xC02... 的流动性深度，判断滑点风险。”</p>
-</div>
+  <h3>What does <code>unknown</code> mean?</h3>
+  <p style="color:var(--dim);font-size:14px">A critical check could not be completed — usually
+  an upstream source failed. <strong style="color:var(--txt)">It is not a low-risk result.</strong>
+  <code>evidence.data_gaps</code> names exactly what was missing. A risk tool that guesses when
+  it has no data is worse than one that says so.</p>
 
-<div class="panel" style="border-color:var(--red);">
-  <h2>⚠️ 诚实边界</h2>
-  <p>本工具是<strong>情报辅助</strong>，<strong>不构成投资建议</strong>。数据来自公开链上/交易所数据。Honeypot 检测仅覆盖 EVM；流动性数据来自 DexScreener/GeckoTerminal，<strong>非真实资金规模</strong>。请结合自身判断与尽调。</p>
-</div>
+  <h3>Why do I need this if my agent can read the contract itself?</h3>
+  <p style="color:var(--dim);font-size:14px">Because the failure is not in reading the contract,
+  it is in knowing what to read. The most common loss is not an exotic exploit — it is buying a
+  token that simulates fine but cannot be sold, or buying the wrong token with the right name.
+  Four upstream sources disagree with each other constantly; this collapses them into one verdict.</p>
 
-<div>
-  <a class="cta" href="https://vetagent.dev/mcp">立即接入 MCP</a>
-  <a class="cta" style="background:#21262d;color:#e6edf3;border:1px solid var(--border);" href="https://github.com/jakegu1/vetagent">GitHub 源码</a>
+  <h3>Does it log the addresses I look up?</h3>
+  <p style="color:var(--dim);font-size:14px">No. That query reveals what you are about to trade,
+  so it is used to fetch public data and then discarded. We keep aggregate counts only — tool,
+  verdict, coarse client name, country. Never the address, never an IP.
+  <a href="/privacy">Privacy →</a></p>
+
+  <h3>What does it <em>not</em> catch?</h3>
+  <p style="color:var(--dim);font-size:14px">Anything off-chain: team behaviour, social
+  engineering, a rug executed through governance, a project that simply dies. It also does not
+  yet check LP lock status or EVM holder concentration — both listed as open gaps in the
+  <a href="https://github.com/jakegu1/vetagent/blob/master/docs/SCORECARD.md">scorecard</a>.
+  <strong style="color:var(--txt)">Treat <code>low</code> as "no fatal signal in the checks that
+  ran", never as "safe to buy".</strong></p>
+
+  <h3>Is it free, and what is the catch?</h3>
+  <p style="color:var(--dim);font-size:14px">Free, no key. The catch is that it is young and the
+  false-positive rate is published above rather than hidden. We take no referral fees, no order
+  flow, and no payment from token projects — if our revenue ever correlated with saying
+  "low risk", the only thing this tool has would be gone.</p>
 </div>
 
 <footer>
-  VetAgent · 开源 · MIT License · 情报辅助，不构成投资建议<br>
-  <a href="https://github.com/jakegu1/vetagent" style="color:var(--accent);">github.com/jakegu1/vetagent</a>
+  <p><strong style="color:var(--txt)">VetAgent</strong> · MIT ·
+  <a href="https://github.com/jakegu1/vetagent">source</a> ·
+  <a href="/privacy">privacy</a> ·
+  <a href="https://github.com/jakegu1/vetagent/blob/master/bench/results.md">benchmark</a> ·
+  <a href="/llms.txt">llms.txt</a></p>
+  <p style="margin-top:8px">Reports observable on-chain risk. Not investment advice.
+  Does not size positions. Cannot see off-chain risk.</p>
 </footer>
 
 </div>
+
+<script>
+(function () {
+  var input = document.getElementById('addr');
+  var btn = document.getElementById('go');
+  var out = document.getElementById('verdict');
+  var chain = 'ethereum';
+
+  document.querySelectorAll('.samples button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      input.value = b.dataset.a; chain = b.dataset.c || ''; run();
+    });
+  });
+  btn.addEventListener('click', function () { chain = ''; run(); });
+  input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { chain = ''; run(); } });
+
+  var COLORS = {low: 'var(--ok)', medium: 'var(--warn)', high: 'var(--crit)', unknown: 'var(--dim)'};
+  var DOT = {ok: 'var(--ok)', info: 'var(--dim)', warn: 'var(--warn)',
+             critical: 'var(--crit)', fatal: 'var(--crit)'};
+
+  function esc(s) {
+    return String(s === undefined || s === null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function show(html) { out.innerHTML = html; out.classList.add('show'); }
+
+  function run() {
+    var a = input.value.trim();
+    if (!a) { return; }
+    btn.disabled = true;
+    show('<span style="color:var(--dim)">Running live checks… this takes a few seconds.</span>');
+    var args = {address: a};
+    if (chain) { args.chain_hint = chain; }
+    fetch('https://vetagent.dev/mcp', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({jsonrpc: '2.0', id: 1, method: 'tools/call',
+                            params: {name: 'assess_token_risk', arguments: args}})
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      btn.disabled = false;
+      if (d.error) { return show('<span class="high">' + esc(d.error.message) + '</span>'); }
+      var res = d.result || {};
+      if (res.isError) {
+        return show('<span class="high">' + esc((res.content || [{}])[0].text) + '</span>');
+      }
+      var v = res.structuredContent || JSON.parse(res.content[0].text);
+      var sigs = (v.signals || []).map(function (s) {
+        return '<div class="sig"><span class="dot" style="background:' +
+          (DOT[s.severity] || 'var(--dim)') + '"></span><span><strong>' + esc(s.name) +
+          '</strong> — ' + esc(s.message) + '</span></div>';
+      }).join('');
+      show(
+        '<div class="vhead"><span class="vlevel" style="color:' +
+        (COLORS[v.risk_level] || 'var(--dim)') + '">' + esc(v.risk_level) + '</span>' +
+        '<span class="vmeta">score ' + esc(v.risk_score) + '/100 · confidence ' +
+        esc(v.confidence) + '</span></div>' + sigs +
+        '<div class="rec">' + esc(v.recommendation) + '</div>');
+    }).catch(function (e) {
+      btn.disabled = false;
+      show('<span class="high">Request failed: ' + esc(e.message) + '</span>');
+    });
+  }
+
+  run();
+})();
+</script>
 </body>
 </html>

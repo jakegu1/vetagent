@@ -19,6 +19,87 @@ _LANDING_PATH = os.path.join(os.path.dirname(__file__), "landing.html")
 # 对应私钥不在这个仓库里，也不该在任何仓库里。
 _REGISTRY_AUTH = "v=MCPv1; k=ed25519; p=748fDl4SJZZt9TWfmYNDC3Xy1OIbfSjhf72vo8j8ZgI=\n"
 
+_LLMS_TXT = """# VetAgent
+
+> A pre-trade safety check for AI agents. Before an agent buys, holds or
+> recommends a crypto token, it calls VetAgent and gets an actionable verdict
+> instead of forty raw fields.
+
+MCP endpoint: https://vetagent.dev/mcp  (streamable-http, no auth, no API key)
+HTTP API:     https://vetagent.dev/assess/{address}?chain_hint={chain}
+Source:       https://github.com/jakegu1/vetagent  (MIT)
+Registry:     dev.vetagent/vetagent on registry.modelcontextprotocol.io
+
+## What it does
+
+assess_token_risk(address, chain_hint?, verbose?)
+  Returns risk_level (low | medium | high | unknown), a 0-100 risk_score,
+  a confidence level, and every signal that fired with its evidence.
+  Checks: sell simulation (honeypot detection), buy/sell/transfer taxes,
+  liquidity depth, trading-pair age, cross-chain presence, whether the
+  contract is open source, upstream scanner verdicts, and on Solana the
+  mint/freeze authority plus top-10 holder concentration.
+
+get_token_liquidity(address, chain_hint?)
+  Price, 24h volume, pair count and chains for the primary trading pair.
+  Check `status` first: ok | not_found | unavailable.
+
+find_new_hot_pools(chain?, limit?)
+  Newest and most active pools on a chain. Discovery only, never an
+  endorsement.
+
+## The four verdicts
+
+low      No fatal signal in the checks that ran. NOT the same as "safe to buy".
+medium   Real risk signals present, none fatal. Surface them to the user.
+high     A fatal or high-severity signal fired. Do not proceed unreviewed.
+unknown  A critical check could NOT be completed. This is NOT a low-risk
+         result and must not be used to justify a trade. evidence.data_gaps
+         lists exactly what was missing.
+
+`confidence` measures how complete the input data was — not how safe the
+token is.
+
+## Measured accuracy (n=199, published)
+
+False positives (healthy tokens flagged high) ....... 11.3%
+Answers returned as unknown ......................... 21.0%
+Legitimate centralised assets flagged high .......... 6.7%
+Recall against actual rugs .......................... not measurable
+
+Recall is unmeasurable today for a structural reason worth stating: 199
+sampled tokens yielded zero dead ones, because every public data source
+(DexScreener search, GeckoTerminal listings) ranks by liquidity, so rugged
+pools drop off the list entirely. That data does not exist on any public
+endpoint at any price. The only way to obtain it is to record pools while
+alive and revisit them later, which VetAgent now does daily. Until that
+dataset matures the figure stays blank rather than becoming a marketing
+number.
+
+Labels come from sources the engine itself never reads, and the benchmark
+exits non-zero if the two endpoint sets ever intersect.
+Full method: https://github.com/jakegu1/vetagent/blob/master/bench/results.md
+
+## Limits
+
+Covers observable on-chain risk only. Not investment advice. Does not size
+positions. Cannot detect off-chain risk: team behaviour, social engineering,
+or a rug executed through governance. Does not yet check LP lock status or
+EVM holder concentration; open gaps are listed in docs/SCORECARD.md.
+
+## Privacy
+
+Token addresses you look up are not logged. They are used to query public
+sources and discarded with the response. Aggregate counts only: which tool,
+which verdict, a coarse client name, a country code. No IPs, no addresses.
+
+## Business model
+
+Free tier, paid tiers for volume and SLA. Takes no referral fees, no order
+flow, and no payment from token projects — revenue that correlated with
+saying "low risk" would destroy the only asset the tool has.
+"""
+
 # 隐私政策。内联而不是单独文件，因为它必须永远可达——
 # 目录审核会直接抓这个 URL，404 是即时驳回项。
 _PRIVACY_HTML = """<!doctype html>
@@ -168,6 +249,14 @@ class Default(WorkerEntrypoint):
 
         if path == "/privacy":
             return Response(_PRIVACY_HTML, headers={"content-type": "text/html"}, status=200)
+
+        # 给 LLM 读的站点摘要。我们的用户不 Google——他们问模型
+        # 「怎么在 agent 里做代币安全检查」。被引用比被搜索到重要，
+        # 而模型引用的是**可核对的具体数字**，不是形容词。
+        # 所以这里连难看的数字（误报率、测不出的召回率）也一起给。
+        if path == "/llms.txt":
+            return Response(_LLMS_TXT, headers={"content-type": "text/plain; charset=utf-8"},
+                            status=200)
 
         # 官方 MCP Registry 的域名归属验证。走域名而不是 GitHub 账号，
         # 这样命名空间是 dev.vetagent/* 而不是 io.github.<某个人>/*——

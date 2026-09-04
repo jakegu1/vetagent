@@ -107,7 +107,7 @@ def validate_address(address):
     address = (address or "").strip().split("?")[0]
     if not address or (not _looks_evm(address) and not _looks_solana(address)):
         raise ValueError(
-            "无效的代币地址: %r（EVM 需 0x+40 位十六进制，Solana 需 base58 32-44 位）" % address)
+            "Invalid token address: %r (EVM needs 0x + 40 hex chars, Solana needs base58 32-44 chars)" % address)
     return address
 
 
@@ -168,7 +168,7 @@ def _finalize(address, signals, evidence, data_gaps):
 
     if not signals:
         result.update(risk_level="unknown", risk_score=0, confidence="low",
-                      recommendation="数据不足，无法判定风险。请核实地址与数据源后重试，不要据此建仓。")
+                      recommendation="Not enough data to judge. Verify the address and retry; do not act on this result.")
         return result
 
     score = _score(signals)
@@ -204,10 +204,10 @@ def _finalize(address, signals, evidence, data_gaps):
     result.update(
         risk_level=level, risk_score=score, confidence=confidence,
         recommendation={
-            "high": "高风险：不建议买入。已命中致命或高危信号，见 signals 中的具体原因。",
-            "medium": "中等风险：需人工核实流动性、持币分布与合约权限后再决定，不要仅凭本结果建仓。",
-            "low": "低风险：未发现致命信号。本工具只覆盖链上可观测风险，不构成投资建议。",
-            "unknown": "数据不足，无法判定风险。关键维度缺失，请勿据此做交易决策。",
+            "high": "High risk. A fatal or high-severity signal fired - see signals for the specific reason. Do not proceed without review.",
+            "medium": "Medium risk. Real signals fired but none are fatal. Review liquidity, holder distribution and contract permissions before deciding.",
+            "low": "Low risk - meaning no fatal signal appeared in the checks that ran. This is not the same as safe to buy, and covers on-chain risk only.",
+            "unknown": "Not assessed. A critical check could not be completed, so this is NOT a low-risk result and must not justify a trade. See evidence.data_gaps.",
         }[level])
     return result
 
@@ -339,45 +339,45 @@ def _liquidity_signals(best, pairs, signals, evidence):
         "volume_24h_usd": _sig_round(vol), "pair_created_at": best.get("pairCreatedAt"),
     }
     if liq < 5000:
-        signals.append(_sig("critical", "流动性极低",
-                            "主交易对流动性仅 $%s，rug/滑点风险极高" % format(liq, ",.0f"),
+        signals.append(_sig("critical", "Very low liquidity",
+                            "Main pair holds only $%s. High rug and slippage risk." % format(liq, ",.0f"),
                             "liquidity"))
     elif liq < 50000:
-        signals.append(_sig("warn", "流动性偏弱",
-                            "主交易对流动性 $%s" % format(liq, ",.0f"), "liquidity"))
+        signals.append(_sig("warn", "Thin liquidity",
+                            "Main pair holds $%s." % format(liq, ",.0f"), "liquidity"))
     else:
-        signals.append(_sig("ok", "流动性充足",
-                            "主交易对流动性 $%s" % format(liq, ",.0f"), "liquidity"))
+        signals.append(_sig("ok", "Liquidity is adequate",
+                            "Main pair holds $%s." % format(liq, ",.0f"), "liquidity"))
 
     chains = sorted({p.get("chainId") for p in pairs if p.get("chainId")})
     evidence["chains"] = chains
     if len(chains) > 1:
-        signals.append(_sig("ok", "多链流通", "见于 %d 条链" % len(chains), "cross_chain"))
+        signals.append(_sig("ok", "Trades on multiple chains", "Found on %d chains." % len(chains), "cross_chain"))
 
     age = _age_days(best.get("pairCreatedAt"))
     if age is not None:
         evidence["pair_age_days"] = age
         if age < 3:
-            signals.append(_sig("critical", "极新交易对",
-                                "主交易对仅 %d 天，rug/跑路高发期" % age, "freshness"))
+            signals.append(_sig("critical", "Very new pair",
+                                "Main pair is only %d days old, the highest-risk window for a rug." % age, "freshness"))
         elif age < 30:
-            signals.append(_sig("warn", "较新交易对", "主交易对 %d 天" % age, "freshness"))
+            signals.append(_sig("warn", "Recently created pair", "Main pair is %d days old." % age, "freshness"))
         else:
-            signals.append(_sig("ok", "成熟交易对", "交易对已存在 %d 天" % age, "freshness"))
+            signals.append(_sig("ok", "Established pair", "Main pair has existed for %d days." % age, "freshness"))
 
     # 生命周期：区分"合约安全"与"代币还有没有人交易"
     if liq > 0:
         turnover = vol / liq
         evidence["turnover_24h"] = _sig_round(turnover, 4)
         if turnover < 0.02 and (age or 0) > 180:
-            signals.append(_sig("warn", "疑似失活",
-                                "流动性 $%s 但 24h 成交仅 $%s（换手率 %.1f%%），"
-                                "老池代币可能已迁移或被弃用"
+            signals.append(_sig("warn", "Looks abandoned",
+                                "$%s of liquidity but only $%s traded in 24h (%.1f%% turnover). "
+                                "An old pool this quiet usually means the token migrated or was abandoned."
                                 % (format(liq, ",.0f"), format(vol, ",.0f"), turnover * 100),
                                 "lifecycle"))
         elif turnover < 0.02:
-            signals.append(_sig("warn", "交易冷清",
-                                "换手率仅 %.1f%%，退出深度可能不足" % (turnover * 100),
+            signals.append(_sig("warn", "Very little trading",
+                                "Turnover is only %.1f%%. Exiting at size may be difficult." % (turnover * 100),
                                 "lifecycle"))
 
 
@@ -390,9 +390,9 @@ def _honeypot_signals(hp, signals, evidence, data_gaps):
     """
     if hp is None:
         data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
-                          "reason": "上游请求失败"})
-        signals.append(_sig("warn", "可卖出性无法验证",
-                            "honeypot.is 请求失败，未能验证该代币能否正常卖出", "sellability"))
+                          "reason": "upstream request failed"})
+        signals.append(_sig("warn", "Sellability unverified",
+                            "The sell-simulation service did not respond, so we could not confirm this token can be sold.", "sellability"))
         return
 
     summary = hp.get("summary") or {}
@@ -417,27 +417,27 @@ def _honeypot_signals(hp, signals, evidence, data_gaps):
     }
 
     if is_hp is True:
-        signals.append(_sig("fatal", "Honeypot", "仿真确认：可以买入但无法卖出", "honeypot"))
+        signals.append(_sig("fatal", "Honeypot", "Simulation confirms it: you can buy, you cannot sell.", "honeypot"))
     elif sim_ok is False or is_hp is None:
         err = hp.get("simulationError") or "未知原因"
         data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
-                          "reason": "仿真失败: %s" % err})
-        signals.append(_sig("critical", "可卖出性无法验证",
-                            "买卖仿真失败（%s），无法确认该代币能否卖出" % err, "sellability"))
+                          "reason": "simulation failed: %s" % err})
+        signals.append(_sig("critical", "Sellability unverified",
+                            "Buy/sell simulation failed (%s), so we cannot confirm this token can be sold." % err, "sellability"))
     else:
         sell_tax, buy_tax = _num(sim.get("sellTax")), _num(sim.get("buyTax"))
         transfer_tax = _num(sim.get("transferTax"))
         worst_tax = max(sell_tax, buy_tax, transfer_tax)
         if worst_tax > 20:
-            signals.append(_sig("critical", "极高交易税",
-                                "买 %.1f%% / 卖 %.1f%% / 转账 %.1f%%"
+            signals.append(_sig("critical", "Extreme transaction tax",
+                                "buy %.1f%% / sell %.1f%% / transfer %.1f%%"
                                 % (buy_tax, sell_tax, transfer_tax), "sell_tax"))
         elif worst_tax > 5:
-            signals.append(_sig("warn", "偏高交易税",
-                                "买 %.1f%% / 卖 %.1f%%" % (buy_tax, sell_tax), "sell_tax"))
+            signals.append(_sig("warn", "Elevated transaction tax",
+                                "buy %.1f%% / sell %.1f%%" % (buy_tax, sell_tax), "sell_tax"))
         else:
-            signals.append(_sig("ok", "可正常买卖",
-                                "仿真通过，买 %.1f%% / 卖 %.1f%%" % (buy_tax, sell_tax),
+            signals.append(_sig("ok", "Buys and sells normally",
+                                "Simulation passed. Buy %.1f%% / sell %.1f%% tax." % (buy_tax, sell_tax),
                                 "honeypot"))
 
     # 上游聚合判定（此前被完全丢弃）
@@ -445,21 +445,21 @@ def _honeypot_signals(hp, signals, evidence, data_gaps):
     flag_txt = "；".join(flags) if flags else "无"
     level_txt = summary.get("riskLevel")
     if up == "very_high":
-        signals.append(_sig("critical", "honeypot.is 判定极高风险",
-                            "riskLevel=%s，标记: %s" % (level_txt, flag_txt), "upstream_risk"))
+        signals.append(_sig("critical", "Upstream scanner rates this very high risk",
+                            "honeypot.is riskLevel=%s, flags: %s" % (level_txt, flag_txt), "upstream_risk"))
     elif up == "high":
-        signals.append(_sig("warn", "honeypot.is 判定高风险",
-                            "riskLevel=%s，标记: %s" % (level_txt, flag_txt), "upstream_risk"))
+        signals.append(_sig("warn", "Upstream scanner rates this high risk",
+                            "honeypot.is riskLevel=%s, flags: %s" % (level_txt, flag_txt), "upstream_risk"))
     elif up == "medium":
-        signals.append(_sig("warn", "honeypot.is 判定中风险",
-                            "riskLevel=%s，标记: %s" % (level_txt, flag_txt), "upstream_risk"))
+        signals.append(_sig("warn", "Upstream scanner rates this medium risk",
+                            "honeypot.is riskLevel=%s, flags: %s" % (level_txt, flag_txt), "upstream_risk"))
     elif up == "low":
-        signals.append(_sig("ok", "honeypot.is 判定低风险",
-                            "riskLevel=%s" % level_txt, "upstream_risk"))
+        signals.append(_sig("ok", "Upstream scanner rates this low risk",
+                            "honeypot.is riskLevel=%s" % level_txt, "upstream_risk"))
 
     if (hp.get("contractCode") or {}).get("openSource") is False:
-        signals.append(_sig("warn", "合约闭源",
-                            "源码未开源，可能存在隐藏逻辑（增发/黑名单/改税）", "contract"))
+        signals.append(_sig("warn", "Contract is closed source",
+                            "Source is not published, so hidden logic (minting, blacklists, adjustable tax) cannot be ruled out.", "contract"))
 
 
 def _rugcheck_signals(rc, signals, evidence, data_gaps):
@@ -473,17 +473,17 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
     """
     if rc is None:
         data_gaps.append({"dimension": "sellability", "source": "rugcheck",
-                          "reason": "上游请求失败"})
-        signals.append(_sig("warn", "合约安全无法验证",
-                            "RugCheck 请求失败，未能验证该代币的 rug 风险", "sellability"))
+                          "reason": "upstream request failed"})
+        signals.append(_sig("warn", "Contract safety unverified",
+                            "RugCheck did not respond, so rug risk could not be assessed.", "sellability"))
         return
 
     # 空响应 vs 「有报告且评分为 0」必须区分开
     if not rc.get("mint") and not rc.get("token") and rc.get("score") is None:
         data_gaps.append({"dimension": "sellability", "source": "rugcheck",
-                          "reason": "未返回风险报告"})
-        signals.append(_sig("warn", "RugCheck 无数据",
-                            "RugCheck 未返回该代币的风险报告，无法验证", "sellability"))
+                          "reason": "no risk report returned"})
+        signals.append(_sig("warn", "No RugCheck report",
+                            "RugCheck returned no risk report for this token.", "sellability"))
         return
 
     risks = [r for r in (rc.get("risks") or []) if isinstance(r, dict)]
@@ -504,20 +504,20 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
     }
 
     if rc.get("rugged") is True:
-        signals.append(_sig("fatal", "已被标记为 rug",
-                            "RugCheck 判定该代币已经 rug", "rugcheck"))
+        signals.append(_sig("fatal", "Already rugged",
+                            "RugCheck has flagged this token as rugged.", "rugcheck"))
 
     # freezeAuthority 存在 = 官方可冻结你的余额 = Solana 版 honeypot
     if rc.get("freezeAuthority"):
-        signals.append(_sig("critical", "存在冻结权限",
-                            "freezeAuthority 未销毁，持有者余额可被冻结（等同无法卖出）",
+        signals.append(_sig("critical", "Freeze authority still active",
+                            "freezeAuthority was never revoked. Holder balances can be frozen, which is equivalent to being unable to sell.",
                             "honeypot"))
     if rc.get("mintAuthority"):
-        signals.append(_sig("critical", "存在增发权限",
-                            "mintAuthority 未销毁，可无限增发稀释持有者", "contract"))
+        signals.append(_sig("critical", "Mint authority still active",
+                            "mintAuthority was never revoked. Supply can be inflated without limit.", "contract"))
     if not rc.get("freezeAuthority") and not rc.get("mintAuthority"):
-        signals.append(_sig("ok", "权限已销毁",
-                            "mint/freeze 权限均已放弃", "honeypot"))
+        signals.append(_sig("ok", "Authorities revoked",
+                            "Both mint and freeze authority have been given up.", "honeypot"))
 
     # risks[] 里的每一项已经计入 score_normalised，不能再各发一条信号——
     # 那是重复计分，会把 BONK 这种归一化分只有 7 的正经代币误伤成 medium。
@@ -526,31 +526,31 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
     names = [r.get("name") for r in risks if r.get("name")]
     detail = ("；".join(names[:4])) if names else "无风险项"
     if normalised >= 50:
-        signals.append(_sig("critical", "RugCheck 高风险",
-                            "归一化风险分 %.0f/100（%s）" % (normalised, detail), "rugcheck"))
+        signals.append(_sig("critical", "RugCheck rates this high risk",
+                            "Normalised risk score %.0f/100 (%s)." % (normalised, detail), "rugcheck"))
     elif normalised >= 20:
-        signals.append(_sig("warn", "RugCheck 中风险",
-                            "归一化风险分 %.0f/100（%s）" % (normalised, detail), "rugcheck"))
+        signals.append(_sig("warn", "RugCheck rates this medium risk",
+                            "Normalised risk score %.0f/100 (%s)." % (normalised, detail), "rugcheck"))
     else:
-        signals.append(_sig("ok", "RugCheck 通过",
-                            "归一化风险分 %.0f/100（%s）" % (normalised, detail), "rugcheck"))
+        signals.append(_sig("ok", "RugCheck passed",
+                            "Normalised risk score %.0f/100 (%s)." % (normalised, detail), "rugcheck"))
 
     danger = [r.get("name") for r in risks if (r.get("level") or "").lower() == "danger"]
     if danger:
-        signals.append(_sig("critical", "RugCheck 危险项",
-                            "；".join(n for n in danger if n), "rugcheck"))
+        signals.append(_sig("critical", "RugCheck danger flags",
+                            "; ".join(n for n in danger if n), "rugcheck"))
 
     # 持币集中度：单一 rug 预测力最强的信号，数据同一响应里就有
     if top_holders:
         if top10 >= 70:
-            signals.append(_sig("critical", "持币高度集中",
-                                "前 10 地址持有 %.1f%%，少数地址即可砸盘" % top10, "concentration"))
+            signals.append(_sig("critical", "Holdings are highly concentrated",
+                                "Top 10 addresses hold %.1f%%. A handful of wallets could crash the price." % top10, "concentration"))
         elif top10 >= 50:
-            signals.append(_sig("warn", "持币偏集中",
-                                "前 10 地址持有 %.1f%%" % top10, "concentration"))
+            signals.append(_sig("warn", "Holdings are concentrated",
+                                "Top 10 addresses hold %.1f%%." % top10, "concentration"))
         else:
-            signals.append(_sig("ok", "持币分散",
-                                "前 10 地址持有 %.1f%%" % top10, "concentration"))
+            signals.append(_sig("ok", "Holdings are well distributed",
+                                "Top 10 addresses hold %.1f%%." % top10, "concentration"))
 
 
 # ---------------------------------------------------------------- 三个工具
@@ -598,23 +598,23 @@ async def assess(address, chain_hint=None, verbose=False):
     pairs, source = await _load_pairs(address, chain_hint)
     if pairs is None:
         data_gaps.append({"dimension": "liquidity", "source": "dexscreener+geckoterminal",
-                          "reason": "上游请求失败"})
-        signals.append(_sig("warn", "流动性数据不可用",
-                            "两个行情数据源均请求失败，无法评估流动性", "no_liquidity"))
+                          "reason": "upstream request failed"})
+        signals.append(_sig("warn", "Liquidity data unavailable",
+                            "Both market data sources failed, so liquidity could not be assessed.", "no_liquidity"))
     elif not pairs:
         data_gaps.append({"dimension": "liquidity", "source": source,
-                          "reason": "未检索到交易对"})
-        signals.append(_sig("warn", "未找到交易对",
-                            "行情数据源未检索到该地址的交易对，可能是极新代币或地址有误",
+                          "reason": "no trading pair found"})
+        signals.append(_sig("warn", "No trading pair found",
+                            "No pair was found for this address. It may be brand new, or the address may be wrong.",
                             "no_liquidity"))
     else:
         evidence["liquidity_source"] = source
         best = _pick_best(pairs, chain_hint=chain_hint, target=address)
         if best is None:
             data_gaps.append({"dimension": "liquidity", "source": source,
-                              "reason": "无价格合理的交易对"})
-            signals.append(_sig("warn", "无有效流动性池",
-                                "检索到交易对但无价格合理的池子", "no_liquidity"))
+                              "reason": "no pair with a sane price"})
+            signals.append(_sig("warn", "No usable pool",
+                                "Pairs exist but none had a sane price.", "no_liquidity"))
         else:
             _liquidity_signals(best, pairs, signals, evidence)
 
@@ -641,14 +641,14 @@ async def liquidity(address, chain_hint=None):
     pairs, source = await _load_pairs(address, chain_hint)
     if pairs is None:
         return {"address": address, "status": "unavailable",
-                "note": "行情数据源请求失败，无法获取流动性（这不代表该代币没有流动性）"}
+                "note": "Market data request failed. This does NOT mean the token has no liquidity."}
     if not pairs:
         return {"address": address, "status": "not_found", "liquidity_usd": 0,
-                "pairs_total": 0, "note": "行情数据源未检索到该地址的交易对"}
+                "pairs_total": 0, "note": "No trading pair found for this address."}
     best = _pick_best(pairs, chain_hint=chain_hint, target=address)
     if best is None:
         return {"address": address, "status": "not_found", "liquidity_usd": 0,
-                "pairs_total": len(pairs), "note": "无价格合理的交易对"}
+                "pairs_total": len(pairs), "note": "Pairs exist but none had a sane price."}
     return {
         "address": address, "status": "ok", "source": source,
         "best_pair_chain": best.get("chainId"), "best_pair_dex": best.get("dexId"),
@@ -665,11 +665,11 @@ async def new_pools(chain="solana", limit=10):
     chain = (chain or "solana").strip().lower()
     net = _GT_NETWORK.get(chain, chain)
     if not re.match(r"^[a-z0-9_\-]{1,32}$", net):
-        raise ValueError("无效的链名: %r" % chain)
+        raise ValueError("Invalid chain name: %r" % chain)
     try:
         limit = int(limit)
     except (TypeError, ValueError):
-        raise ValueError("无效的 limit: %r" % limit)
+        raise ValueError("Invalid limit: %r" % limit)
     limit = max(1, min(50, limit))
 
     merged = {}
@@ -694,6 +694,6 @@ async def new_pools(chain="solana", limit=10):
             }
     if not reachable:
         # fail-closed：抓不到 ≠ 没有新池，不能返回空数组让调用方以为「扫过了，没东西」
-        raise RuntimeError("GeckoTerminal 请求失败，无法扫描 %s 的新池" % chain)
+        raise RuntimeError("GeckoTerminal request failed; could not scan new pools on %s" % chain)
     return {"chain": chain, "network": net, "count": len(merged),
             "pools": list(merged.values())[:limit]}

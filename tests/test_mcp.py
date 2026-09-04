@@ -161,7 +161,7 @@ def test_invalid_input_is_tool_error():
     r = call({"jsonrpc": "2.0", "id": 4, "method": "tools/call",
               "params": {"name": "assess_token_risk", "arguments": {"address": "0xdeadbeef"}}})
     check("isError 为 true", r["result"].get("isError") is True, str(r["result"]))
-    check("错误文本可读", "无效的代币地址" in r["result"]["content"][0]["text"],
+    check("错误文本可读", "Invalid token address" in r["result"]["content"][0]["text"],
           r["result"]["content"][0]["text"])
 
     r2 = call({"jsonrpc": "2.0", "id": 5, "method": "tools/call",
