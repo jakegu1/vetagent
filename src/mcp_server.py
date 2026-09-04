@@ -1,26 +1,27 @@
-"""mcp_server.py — 极简 MCP streamable-http handler。
+"""mcp_server.py — a minimal MCP streamable-http handler.
 
-选择手写而非引入官方 mcp SDK 的原因：
-- Cloudflare Python Workers (Pyodide) 对重型 SDK(pydantic/uvicorn/httpx)兼容性风险高
-- 我们只暴露 3 个工具，手写 JSON-RPC 路由更小、更快、更稳
-- streamable-http 本质是一个 POST 端点按 JSON-RPC 2.0 响应
+Hand-rolled rather than built on the official mcp SDK because:
+- Cloudflare Python Workers (Pyodide) is a compatibility gamble with heavy SDKs
+  (pydantic/uvicorn/httpx)
+- we expose exactly 3 tools, so routing JSON-RPC by hand is smaller, faster and steadier
+- streamable-http is really just one POST endpoint answering in JSON-RPC 2.0
 
-lifecycle：
-- initialize                 -> 协议版本 + capabilities + serverInfo
-- notifications/initialized  -> 通知，无 id，不响应
-- tools/list                 -> 工具列表(name/description/inputSchema/outputSchema)
-- tools/call                 -> 执行工具，返回 content + structuredContent
-- 其他                       -> JSON-RPC 顶层 error（不是塞进 result 里）
+Lifecycle:
+- initialize                 -> protocol version + capabilities + serverInfo
+- notifications/initialized  -> a notification: no id, no response
+- tools/list                 -> tool list (name/description/inputSchema/outputSchema)
+- tools/call                 -> run the tool, return content + structuredContent
+- anything else              -> a top-level JSON-RPC error (not stuffed into result)
 """
 
 import json
 
-import risk  # 复用纯 Python 风险引擎（risk.py）
+import risk  # reuse the pure-Python risk engine (risk.py)
 
 PROTOCOL_VERSION = "2025-06-18"
 SUPPORTED_PROTOCOLS = ("2025-06-18", "2025-03-26", "2024-11-05")
 
-# JSON-RPC 标准错误码
+# Standard JSON-RPC error codes
 PARSE_ERROR = -32700
 INVALID_REQUEST = -32600
 METHOD_NOT_FOUND = -32601
@@ -166,10 +167,11 @@ def _ok(req_id, result):
 
 
 async def handle_mcp_request(body):
-    """处理一条 MCP JSON-RPC 消息。
+    """Handle a single MCP JSON-RPC message.
 
-    返回完整的 JSON-RPC 响应 dict；返回 None 表示这是通知（不应有响应体）。
-    错误一律放在**顶层 error**，而不是塞进 result 里。
+    Returns the full JSON-RPC response dict; None means this was a notification and
+    must not get a response body.
+    Errors always go in the **top-level error**, never stuffed into result.
     """
     if not isinstance(body, dict):
         return _error(None, INVALID_REQUEST, "Request must be a JSON object")
@@ -178,7 +180,8 @@ async def handle_mcp_request(body):
     req_id = body.get("id")
     params = body.get("params") or {}
 
-    # 通知：没有 id 键。注意 id=0 是合法请求 id，不能用真值判断。
+    # A notification has no "id" key. id=0 is a legal request id, so test for the
+    # key itself, not for truthiness.
     if "id" not in body:
         return None
     if not method:
@@ -228,15 +231,15 @@ async def _call_tool(req_id, params):
         else:
             return _error(req_id, INVALID_PARAMS, "Unknown tool: %s" % name)
     except ValueError as e:
-        # 输入不合法：作为工具错误返回，让调用方的模型能看到并自我纠正
+        # Bad input: return it as a tool error so the calling model sees it and self-corrects
         return _ok(req_id, {"isError": True,
                             "content": [{"type": "text", "text": str(e)}]})
     except Exception as e:  # noqa: BLE001
         return _ok(req_id, {"isError": True,
                             "content": [{"type": "text",
-                                         "text": "工具执行失败: %s" % e}]})
+                                         "text": "Tool execution failed: %s" % e}]})
 
     payload = {"content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False)}]}
-    # structuredContent 必须是对象；数组结果包一层
+    # structuredContent must be an object, so wrap array results in one
     payload["structuredContent"] = result if isinstance(result, dict) else {"items": result}
     return _ok(req_id, payload)

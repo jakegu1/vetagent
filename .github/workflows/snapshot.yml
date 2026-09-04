@@ -1,17 +1,18 @@
 name: snapshot
 
-# 每日新池快照。DECISIONS P4。
+# Daily new-pool snapshot. DECISIONS P4.
 #
-# 为什么必须自动跑：这份数据的全部价值在于**连续**。
-# 上游只提供当前状态，不提供历史查询——今天没采，这一天就永久不存在，
-# 任何预算都补不回来。靠人记得每天跑一次，等于设计上就会断更。
+# Why this must run automatically: the whole value of this data is **continuity**.
+# Upstream serves only current state, no historical queries — a day we miss never existed,
+# and no budget buys it back. Relying on a human to remember builds the gap into the design.
 #
-# 采的是原始可观测量（价格、储备、成交笔数、买卖方地址数），不是我们当下的评分。
-# 评分规则会变，原始量不会；将来想用新规则重算历史，必须有原始量才行。
+# We capture raw observables — price, reserves, trade count, buyer/seller address counts —
+# not today's scores. Scoring rules change; the raw numbers don't, and recomputing history
+# under new rules only works if the raw numbers are there.
 
 on:
   schedule:
-    - cron: "23 2 * * *"   # 每天 02:23 UTC
+    - cron: "23 2 * * *"   # 02:23 UTC daily
   workflow_dispatch:
 
 permissions:
@@ -41,7 +42,7 @@ jobs:
           git config user.email "noreply@vetagent.dev"
           git add bench/snapshots/
           if git diff --staged --quiet; then
-            # 没有新数据是异常，不是正常。上游全挂了才会这样，应该看见。
+            # Zero rows means every upstream is down. That deserves a warning, not silence.
             echo "::warning::no snapshot rows collected — every upstream may be down"
             exit 0
           fi

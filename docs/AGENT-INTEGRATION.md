@@ -43,14 +43,15 @@ Any MCP client (Cursor, opencode, custom agent) works the same way.
 ```json
 {
   "address": "0x7D1A...",
-  "risk_level": "low",
-  "risk_score": 0,
+  "risk_level": "medium",
+  "risk_score": 36,
   "signals": [
-    {"severity": "ok", "name": "流动性充足", "category": "liquidity"},
-    {"severity": "ok", "name": "多链流通", "category": "cross_chain"},
-    {"severity": "ok", "name": "非 Honeypot", "category": "honeypot"}
+    {"severity": "ok",   "name": "Liquidity is adequate", "category": "liquidity"},
+    {"severity": "ok",   "name": "Buys and sells normally", "category": "honeypot"},
+    {"severity": "ok",   "name": "Established pair", "category": "freshness"},
+    {"severity": "warn", "name": "Contract is closed source", "category": "contract"}
   ],
-  "recommendation": "低风险：流动性充足且无 honeypot/高税信号，可正常评估。",
+  "recommendation": "Medium risk. Real signals fired but none are fatal. Review liquidity, holder distribution and contract permissions before deciding.",
   "confidence": "medium"
 }
 ```

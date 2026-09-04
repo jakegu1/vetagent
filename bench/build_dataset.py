@@ -1,14 +1,16 @@
-"""build_dataset.py — 采样候选代币并用独立标注器打标。
+"""build_dataset.py — sample candidate tokens and label them with independent labelers.
 
-用法：
-    python bench/build_dataset.py --limit 40          # 试跑
-    python bench/build_dataset.py --limit 300         # 正式构建
+Usage:
+    python bench/build_dataset.py --limit 40          # smoke run
+    python bench/build_dataset.py --limit 300         # real build
 
-采样刻意分两路，避免只测到「一眼就知道好」的样本：
-  头部  GeckoTerminal 各链 pools 分页 —— 偏健康
-  长尾  DexScreener 关键词搜索       —— 偏垃圾/已死
+Sampling deliberately runs down two paths, so the set is not just tokens that are
+obviously fine at a glance:
+  head  GeckoTerminal per-chain pool pages  -- skews healthy
+  tail  DexScreener keyword search          -- skews junk / dead
 
-标注在 labels.py 里，只用引擎不读的端点。产出 bench/dataset.json。
+The labelers live in labels.py and only hit endpoints the engine never reads.
+Writes bench/dataset.json.
 """
 
 import argparse
@@ -18,16 +20,19 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from fetcher import fetch_json  # noqa: E402
+from fetcher import fetch_json, persist_access_log  # noqa: E402
 from labels import GOPLUS_CHAIN_ID, GT_NETWORK, goplus_label, outcome_label  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATASET = os.path.join(HERE, "dataset.json")
 
-# 长尾采样关键词：memecoin 命名高度同质，用这些词能捞到大量低质标的。
-# 词表刻意做大——试跑时 50 个候选只标出 1 个 dead，样本量完全不够。
-# 注意：这里**不按当前流动性筛选**。按「现在流动性很低」去捞已死代币会
-# 更高效，但那等于按引擎的判据来选样本，完整信号那一栏的召回率会变得毫无意义。
+# Tail sampling keywords: memecoin naming is highly homogeneous, so these words drag in
+# plenty of low-quality tokens.
+# The list is deliberately large -- a smoke run of 50 candidates turned up exactly 1 dead,
+# nowhere near enough samples.
+# This **does not filter on current liquidity**. Fishing for dead tokens by "liquidity is
+# low right now" would be more efficient, but that picks the samples by the engine's own
+# criterion, which makes recall in the full-signal column meaningless.
 TAIL_TERMS = [
     "inu", "pepe", "moon", "elon", "safe", "baby", "doge", "shib", "ai",
     "trump", "cat", "gold", "meta", "floki", "rocket", "chad", "wojak",
@@ -40,7 +45,7 @@ HEAD_CHAINS = ["ethereum", "base", "bsc"]
 
 
 def _norm_pair(p):
-    """DexScreener pair -> 统一候选结构。"""
+    """DexScreener pair -> the common candidate shape."""
     base = p.get("baseToken") or {}
     return {
         "address": base.get("address"),
@@ -52,21 +57,21 @@ def _norm_pair(p):
 
 
 def collect_candidates(limit):
-    """采样候选。返回去重后的列表，顺序确定（可复现）。"""
+    """Sample candidates. Returns a deduped list in a fixed order (reproducible)."""
     out, seen = [], set()
 
     def add(c):
         if not c.get("address") or not c.get("pool") or not c.get("chain"):
             return
         if c["chain"] not in GT_NETWORK or c["chain"] not in GOPLUS_CHAIN_ID:
-            return  # 只做 EVM：GoPlus 标注器不覆盖 Solana
+            return  # EVM only: the GoPlus labeler does not cover Solana
         key = (c["chain"], c["address"].lower())
         if key in seen:
             return
         seen.add(key)
         out.append(c)
 
-    # 头部：各链按分页取
+    # Head: page through each chain
     for chain in HEAD_CHAINS:
         net = GT_NETWORK[chain]
         for page in range(1, 11):
@@ -82,7 +87,7 @@ def collect_candidates(limit):
                 add({"address": addr, "symbol": (a.get("name") or "").split("/")[0].strip(),
                      "chain": chain, "pool": a.get("address"), "source": "gt_pools"})
 
-    # 长尾：关键词搜索。全部词表都跑完，长尾才是 dead 样本的主要来源。
+    # Tail: keyword search. Run every term -- the tail is where the dead samples come from.
     for term in TAIL_TERMS:
         d = fetch_json("https://api.dexscreener.com/latest/dex/search?q=%s" % term,
                        role="label")
@@ -93,7 +98,7 @@ def collect_candidates(limit):
 
 
 def label_one(c):
-    """给一个候选打两套标签。返回 dict 或 None（两套都没标上）。"""
+    """Apply both label sets to one candidate. Returns a dict, or None if neither stuck."""
     net = GT_NETWORK[c["chain"]]
     ohlcv = fetch_json(
         "https://api.geckoterminal.com/api/v2/networks/%s/pools/%s/ohlcv/day?limit=180"
@@ -118,16 +123,17 @@ def label_one(c):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=250,
-                    help="实际打标的候选数上限（标注成功的会更少）")
+                    help="cap on candidates actually labeled (fewer will come back labeled)")
     args = ap.parse_args()
 
-    print("采样候选中 ...")
+    print("Sampling candidates ...")
     cands = collect_candidates(args.limit)
     cands = cands[: args.limit]
-    print("候选 %d 个，开始打标（首次会慢，之后走缓存）" % len(cands))
+    print("%d candidates, labeling now (slow the first time, cached after)" % len(cands))
 
-    # 限流是按 host 各自计的，所以让不同 host 的请求并行——
-    # 串行时每个候选要 ~5s（GT 2.1s + GoPlus 2.1s 排队），并行后收敛到单 host 的节流上限。
+    # Rate limits are counted per host, so let requests to different hosts run in parallel --
+    # serially each candidate costs ~5s (2.1s queued on GT + 2.1s on GoPlus); in parallel it
+    # converges on the throttle ceiling of a single host.
     from concurrent.futures import ThreadPoolExecutor, as_completed
     rows, done = [], 0
     with ThreadPoolExecutor(max_workers=6) as pool:
@@ -138,26 +144,26 @@ def main():
             try:
                 r = fut.result()
             except Exception as e:  # noqa: BLE001
-                print("  %s 打标异常: %s" % (c.get("symbol"), e))
+                print("  %s failed to label: %s" % (c.get("symbol"), e))
                 r = None
             if r:
                 rows.append(r)
             if done % 20 == 0 or done == len(cands):
-                print("  [%d/%d] 已标注 %d" % (done, len(cands), len(rows)), flush=True)
+                print("  [%d/%d] labeled %d" % (done, len(cands), len(rows)), flush=True)
 
     from collections import Counter
     oc = Counter(r["outcome_label"] for r in rows if r["outcome_label"])
     gc = Counter(r["goplus_label"] for r in rows if r["goplus_label"])
-    print("\n标注结果：")
+    print("\nLabeling results:")
     print("  outcome:", dict(oc))
     print("  goplus :", dict(gc))
 
-    rows.sort(key=lambda r: (r["chain"], r["address"].lower()))  # 确定顺序
+    rows.sort(key=lambda r: (r["chain"], r["address"].lower()))  # fixed order
     with open(DATASET, "w", encoding="utf-8") as f:
         json.dump({"tokens": rows,
                    "counts": {"outcome": dict(oc), "goplus": dict(gc)}},
                   f, ensure_ascii=False, indent=1)
-    print("\n已写入 %s（%d 条）" % (DATASET, len(rows)))
+    print("\nWrote %s (%d rows)" % (DATASET, len(rows)))
 
 
 if __name__ == "__main__":

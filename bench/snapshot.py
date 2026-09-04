@@ -1,22 +1,24 @@
-"""snapshot.py — 每日快照采集器。护城河的第一块砖。
+"""snapshot.py — daily snapshot collector. First brick in the moat.
 
-为什么这件事必须**今天**开始，而不是等产品成熟：
+Why this has to start **today** instead of waiting for the product to mature:
 
-上游 API（DexScreener / GeckoTerminal）只提供**当前状态**，不提供历史状态查询。
-「这个池子在被抽干前 7 天长什么样」这个问题，只能靠实时采集来回答——
-今天没采，这一天的数据就永久不存在了，任何预算都补不回来。
+The upstream APIs (DexScreener / GeckoTerminal) only serve **current state** — there is no
+historical query. "What did this pool look like in the 7 days before it got drained" can
+only be answered by collecting in real time. A day we don't collect is a day that no longer
+exists, and no amount of budget buys it back.
 
-半年后这份数据能回答一个现在谁都答不了的问题：
-**rug 之前有没有可观测的前兆。** 那是 VetAgent 从「转述别人的判断」
-变成「有自己的判断」的唯一路径，也是竞争对手今天决定要做、
-也必须再等半年才能追上的东西。
+In six months this data answers a question nobody can answer today:
+**do rugs have observable warning signs beforehand.** That is the only path from VetAgent
+relaying someone else's judgment to having a judgment of its own, and it is the thing a
+competitor who decides to build it today still has to wait six months to catch up on.
 
-用法：
-    python bench/snapshot.py                  # 采一次，追加到 snapshots/
+Usage:
+    python bench/snapshot.py                  # collect once, append to snapshots/
     python bench/snapshot.py --chains eth,base,bsc,solana
 
-建议每天跑一次（cron / GitHub Actions / Cloudflare cron 均可）。
-输出是 NDJSON，一行一个池子，按日期分文件，方便日后直接灌进任何存储。
+Run it once a day (cron / GitHub Actions / Cloudflare cron all work).
+Output is NDJSON, one pool per line, one file per date, so it can be loaded straight into
+any store later.
 """
 
 import argparse
@@ -34,8 +36,9 @@ OUT_DIR = os.path.join(HERE, "snapshots")
 
 DEFAULT_CHAINS = ["eth", "base", "bsc", "solana"]
 
-# 每个池子记录的字段。刻意记「原始可观测量」而不是我们当下的评分——
-# 评分规则会变，原始量不会。将来想用新规则重算历史，必须有原始量才行。
+# Fields recorded per pool. Deliberately the raw observables rather than today's scores —
+# scoring rules change, raw numbers don't. Rescoring history under new rules later is only
+# possible if the raw numbers are there.
 def _row(chain, kind, p, seen_at):
     a = p.get("attributes") or {}
     rel = p.get("relationships") or {}
@@ -75,9 +78,9 @@ def collect(chains):
         for kind, path in (("new", "new_pools"), ("trending", "trending_pools")):
             data = fetch_json(
                 "https://api.geckoterminal.com/api/v2/networks/%s/%s" % (chain, path),
-                role="label", use_cache=False)   # 快照必须取实时值，不能走缓存
+                role="label", use_cache=False)   # a snapshot must be live, never cached
             if data is None:
-                print("  %-8s %-9s 抓取失败" % (chain, kind))
+                print("  %-8s %-9s fetch failed" % (chain, kind))
                 continue
             pools = data.get("data") or []
             n = 0
@@ -88,7 +91,7 @@ def collect(chains):
                 seen_ids.add((chain, pid, kind))
                 rows.append(_row(chain, kind, p, seen_at))
                 n += 1
-            print("  %-8s %-9s %d 个池" % (chain, kind, n))
+            print("  %-8s %-9s %d pools" % (chain, kind, n))
     return rows, seen_at
 
 
@@ -99,10 +102,10 @@ def main():
     chains = [c.strip() for c in args.chains.split(",") if c.strip()]
 
     os.makedirs(OUT_DIR, exist_ok=True)
-    print("采集中：%s" % ", ".join(chains))
+    print("Collecting: %s" % ", ".join(chains))
     rows, seen_at = collect(chains)
     if not rows:
-        print("没有采到任何数据——上游可能全挂了。这次不写文件。")
+        print("Nothing collected — upstream is probably all down. Not writing a file.")
         return 1
 
     day = seen_at[:10]
@@ -113,8 +116,8 @@ def main():
 
     total_days = len({fn[6:16] for fn in os.listdir(OUT_DIR)
                       if fn.startswith("pools-") and fn.endswith(".ndjson")})
-    print("\n本次 %d 行 -> %s" % (len(rows), os.path.basename(path)))
-    print("快照库已积累 **%d 天**（这是护城河的唯一直接度量）" % total_days)
+    print("\n%d rows this run -> %s" % (len(rows), os.path.basename(path)))
+    print("Snapshot archive: **%d days** deep — the moat's only direct measure" % total_days)
     return 0
 
 

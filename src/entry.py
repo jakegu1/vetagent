@@ -1,7 +1,8 @@
-"""entry.py — VetAgent Worker 入口（HTTP 路由）。
+"""entry.py — VetAgent Worker entrypoint (HTTP routing).
 
-core 逻辑在 risk.py（风险评估）+ mcp_server.py（MCP 端点），这里只做路由分发。
-入口类必须叫 Default（Cloudflare 要求）。request.url 是字符串，用 urlparse 解析。
+The core logic lives in risk.py (risk assessment) and mcp_server.py (MCP endpoint);
+this file only dispatches routes. The entrypoint class has to be named Default —
+Cloudflare requires it. request.url is a string, so parse it with urlparse.
 """
 
 import json
@@ -15,8 +16,9 @@ import risk
 
 _LANDING_PATH = os.path.join(os.path.dirname(__file__), "landing.html")
 
-# MCP Registry 域名验证的**公钥**记录。公开可读是设计的一部分。
-# 对应私钥不在这个仓库里，也不该在任何仓库里。
+# The **public key** record for MCP Registry domain verification. Being publicly
+# readable is part of the design. The matching private key is not in this repo, and
+# should not be in any repo.
 _REGISTRY_AUTH = "v=MCPv1; k=ed25519; p=748fDl4SJZZt9TWfmYNDC3Xy1OIbfSjhf72vo8j8ZgI=\n"
 
 _LLMS_TXT = """# VetAgent
@@ -100,8 +102,9 @@ flow, and no payment from token projects — revenue that correlated with
 saying "low risk" would destroy the only asset the tool has.
 """
 
-# 隐私政策。内联而不是单独文件，因为它必须永远可达——
-# 目录审核会直接抓这个 URL，404 是即时驳回项。
+# Privacy policy, inlined instead of a separate file because it has to be reachable
+# forever — directory reviews fetch this URL directly, and a 404 is an instant
+# rejection.
 _PRIVACY_HTML = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -171,14 +174,18 @@ _CORS = {
 
 
 def _record(env, blobs, doubles):
-    """写一条用量数据点。
+    """Write one usage data point.
 
-    三条约束，按重要性排：
-    1. **绝不记录被查询的代币地址。** 那是用户的查询意图，能反推出他打算买什么。
-       隐私政策承诺了不留存，代码就必须守住——这类承诺一旦破一次就再也不值钱。
-    2. **绝不记录 IP 或完整 UA。** 国家 + MCP 客户端名足以回答
-       「有没有外部调用方」，而这正是决策门要判的东西。
-    3. **绝不因为观测失败而影响主路径。** 风控接口的可用性优先于统计。
+    Three constraints, most important first:
+    1. **Never log the token address being queried.** That is the user's intent,
+       and it reveals what they are about to buy. The privacy policy promises we
+       don't retain it, so the code has to hold that line — a promise like this is
+       worthless the moment it is broken once.
+    2. **Never log IPs or full user agents.** Country plus MCP client name is
+       enough to answer "is anyone outside actually calling this", which is the
+       question the decision gate turns on.
+    3. **Never let a failure here touch the main path.** The risk endpoint staying
+       up beats collecting statistics.
     """
     try:
         ds = getattr(env, "ANALYTICS", None)
@@ -193,13 +200,13 @@ def _record(env, blobs, doubles):
 
 
 def _client_name(request):
-    """取 MCP 客户端名。这是判断「是不是外部调用方」最干净的信号——
-    它由客户端自己声明，不含任何个人数据。"""
+    """Get the MCP client name. It is the cleanest signal for whether the caller is
+    external — the client declares it itself, and it carries no personal data."""
     try:
         ua = request.headers.get("user-agent") or ""
     except Exception:  # noqa: BLE001
         ua = ""
-    # 只保留粗粒度的客户端标识，丢掉版本号和其余部分
+    # Keep a coarse client identifier only; drop the version and everything after it
     ua = ua.split("/")[0].strip().lower()[:32]
     return ua or "unknown"
 
@@ -220,7 +227,7 @@ def _json_response(obj, status=200, extra_headers=None):
 
 
 class Default(WorkerEntrypoint):
-    """Worker 入口。注意：Cloudflare 要求入口类名必须是 Default。"""
+    """Worker entrypoint. Cloudflare requires the entrypoint class to be named Default."""
 
     async def fetch(self, request):
         parsed = urlparse(request.url)
@@ -250,18 +257,21 @@ class Default(WorkerEntrypoint):
         if path == "/privacy":
             return Response(_PRIVACY_HTML, headers={"content-type": "text/html"}, status=200)
 
-        # 给 LLM 读的站点摘要。我们的用户不 Google——他们问模型
-        # 「怎么在 agent 里做代币安全检查」。被引用比被搜索到重要，
-        # 而模型引用的是**可核对的具体数字**，不是形容词。
-        # 所以这里连难看的数字（误报率、测不出的召回率）也一起给。
+        # Site summary written for LLMs. Our users don't Google — they ask a model
+        # "how do I do a token safety check inside an agent". Being cited beats being
+        # searchable, and models cite **concrete numbers you can check**, not
+        # adjectives. So the unflattering ones go in here too: the false-positive
+        # rate, and the recall we can't measure.
         if path == "/llms.txt":
             return Response(_LLMS_TXT, headers={"content-type": "text/plain; charset=utf-8"},
                             status=200)
 
-        # 官方 MCP Registry 的域名归属验证。走域名而不是 GitHub 账号，
-        # 这样命名空间是 dev.vetagent/* 而不是 io.github.<某个人>/*——
-        # 产品的身份挂在产品的域名上，不挂在某个人的账号上。
-        # 这里只放公钥；私钥在仓库外，永不提交。
+        # Domain-ownership verification for the official MCP Registry. Verifying by
+        # domain rather than a GitHub account keeps the namespace at dev.vetagent/*
+        # instead of io.github.<someone>/* — the product's identity hangs on the
+        # product's domain, not on one person's account.
+        # Public key only; the private key lives outside the repo and is never
+        # committed.
         if path == "/.well-known/mcp-registry-auth":
             return Response(_REGISTRY_AUTH,
                             headers={"content-type": "text/plain"}, status=200)
@@ -289,13 +299,14 @@ class Default(WorkerEntrypoint):
         return _json_response({"error": "not_found", "detail": "Not Found"}, status=404)
 
     async def _handle_mcp(self, request):
-        """MCP streamable-http：POST 一条 JSON-RPC 消息，返回一条响应。"""
+        """MCP streamable-http: POST one JSON-RPC message, get one response back."""
         if request.method == "GET":
-            # streamable-http 的 GET 用于打开 SSE 流。我们不提供服务端推送，
-            # 按规范返回 405 让客户端知道不必等待，而不是回一段人类可读文本。
+            # In streamable-http, GET opens an SSE stream. We don't push from the
+            # server, so return 405 as the spec says, which tells the client not to
+            # wait — better than replying with a chunk of human-readable prose.
             return _json_response(
                 {"error": "sse_not_supported",
-                 "detail": "VetAgent 是无状态 MCP server，请用 POST 发送 JSON-RPC 请求。"},
+                 "detail": "VetAgent is a stateless MCP server; POST your JSON-RPC request."},
                 status=405, extra_headers={"allow": "POST, OPTIONS"})
 
         if request.method != "POST":
@@ -312,7 +323,7 @@ class Default(WorkerEntrypoint):
 
         headers = {"mcp-protocol-version": mcp_server.PROTOCOL_VERSION}
 
-        # 批量请求：JSON-RPC 允许数组
+        # Batch request — JSON-RPC allows an array
         if isinstance(body, list):
             if not body:
                 return _json_response(
@@ -330,8 +341,8 @@ class Default(WorkerEntrypoint):
 
         result = await mcp_server.handle_mcp_request(body)
 
-        # 记一条用量。只记「调了哪个工具、结论是什么、来自哪种客户端」，
-        # 不记地址、不记 IP。
+        # Record one usage point: which tool was called, what the verdict was, and
+        # what kind of client it came from. No addresses, no IPs.
         try:
             method = body.get("method") or "?"
             tool, verdict = "", ""
@@ -344,7 +355,7 @@ class Default(WorkerEntrypoint):
             pass
 
         if result is None:
-            return Response("", headers=_CORS, status=202)  # 通知无响应体
+            return Response("", headers=_CORS, status=202)  # notification: no response body
         return _json_response(result, extra_headers=headers)
 
     def _record_call(self, request, method, tool, verdict, result):

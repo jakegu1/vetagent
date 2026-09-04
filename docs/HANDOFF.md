@@ -1,311 +1,311 @@
-# 🤝 VetAgent — 交接文档 (HANDOFF.md)
+# 🤝 VetAgent — Handoff (HANDOFF.md)
 
-> 这是给接手的 AI 编码 agent（Claude Code）的产品+技术交接书。
-> 产品负责人：简一（jianyi，Jia 的 AI 首席负责人）—— 你负责**开发实现**，我负责**总体规划、方向、质量把关**。我们协同，不是上下级。
-> 目标：让你**零上下文损失**接上手，知道你该做什么、有哪些坑、有哪些原则、遇到问题找谁要资源。
-
----
-
-> **先读 [`DECISIONS.md`](DECISIONS.md)**——那里是「为什么这么做」以及每条规则由什么在守着。
-> 本文件只回答「现在什么状态、有哪些坑、接下来做什么」，不重复决策理由。
-
-## 0. 先说清角色分工（最重要的认知）
-
-- **我是产品/项目负责人**（简一）：定方向、排优先级、把关质量、把关护城河、当你有更好的想法时支持决策。
-- **你是开发 agent**（Claude Code）：负责**编码、部署、修复、测试**。你可以**质疑和优化**我的方向——我明确欢迎。
-- **老板是 Jake**：最终拍板 + 提供资源（域名、Cloudflare、GitHub、服务器）。
-
-**我们定的协作原则（请务必遵守）：**
-1. **回归于悲观，不盲目乐观**——不要因为"实现了"就以为"成了"。用真实调用/测试验证。风控产品，**误报和漏报都是致命的**，宁可保守。
-2. **主动思考更好的方法**——如果发现我有漏洞、有更聪明的方案、有隐藏成本，**直接说**，不要闷头执行一个次优方案。
-3. **向 Jake/我寻求支持时，把资源选项说清楚**——域名、Cloudflare 额度、GitHub、服务器这些资源由 Jake 协调。你需要什么就明确说，不要自己憋着或擅自购买。
-4. **fail-closed 是铁律**——风控工具拿不到数据时必须返回 `unknown`，**绝不**给乐观的中间值或仓位建议。
-5. **区分事实 vs 判断**——实测数据是执行约束；你的推断降级为风险提示，不要用来否决方向。
-6. **质量 > 数量**——做一个锋利单点，不 shotgun。
+> Product + technical handoff for the AI coding agent taking over (Claude Code).
+> Product owner: Jianyi (Jia's chief AI lead) — you own **implementation**, I own **overall planning, direction, and quality**. We work together; this is not a chain of command.
+> Goal: pick this up with **zero context loss** — what to work on, which traps are known, which principles hold, and who to ask for resources.
 
 ---
 
-## 1. 产品是什么（一句话）
+> **Read [`DECISIONS.md`](DECISIONS.md) first** — that is where "why it is this way" lives, and what enforces each rule.
+> This file only answers "what state is it in, what will bite you, what's next". It does not repeat the reasoning.
 
-**VetAgent — 给 AI 代理的"买前安全检查"工具。** 在 agent 买入/持有/研究某个代币前，调它拿到一个**可执行的判断**（`low`/`medium`/`high`/`unknown`）+ 给 agent 的建议，而不是让 agent 去解读一堆数字。
+## 0. Roles first (the most important thing to get straight)
 
-不是让你自己炒币的工具，是**卖铲子**——帮想用 AI 做加密决策的人/团队先别踩坑。**赚钱靠信任和分发，不是靠行情。**
+- **I am the product/project owner** (Jianyi): direction, priorities, quality, the moat, and backing your call when you have a better idea.
+- **You are the dev agent** (Claude Code): **coding, deploying, fixing, testing**. You can **push back and improve** on my direction — I actively want that.
+- **Jake is the boss**: final call plus resources (domain, Cloudflare, GitHub, servers).
 
-## 2. 生产环境（线上事实）
+**Working principles we agreed on (please follow them):**
+1. **Assume it is broken until proven otherwise.** "Implemented" is not "working". Verify with real calls and tests. This is a risk product, and **false positives and false negatives are both fatal** — stay conservative.
+2. **Propose better approaches.** If you spot a hole in my plan, a smarter design, or a hidden cost, **say so** instead of quietly executing a worse plan.
+3. **When asking Jake or me for support, spell out the options.** Domain, Cloudflare quota, GitHub, servers are all coordinated by Jake. Say what you need; don't sit on it and don't buy anything on your own.
+4. **fail-closed is absolute.** When a risk tool cannot get data it returns `unknown` — **never** an optimistic middle value or a position-sizing suggestion.
+5. **Separate fact from judgment.** Measured data is a hard constraint; your inferences are risk flags, not a veto on direction.
+6. **Quality > quantity.** One sharp thing, not a shotgun.
 
-| 项 | 值 |
+---
+
+## 1. What the product is (one sentence)
+
+**VetAgent — a "pre-purchase safety check" for AI agents.** Before an agent buys, holds, or researches a token, it calls this and gets an **actionable verdict** (`low`/`medium`/`high`/`unknown`) plus a recommendation written for agents, instead of being handed a pile of numbers to interpret.
+
+This is not a tool for trading yourself, it **sells shovels** — keeping people and teams who want AI-driven crypto decisions out of the obvious holes. **The money comes from trust and distribution, not from the market.**
+
+## 2. Production (what is actually live)
+
+| Item | Value |
 |---|---|
-| 生产 URL | **https://vetagent.dev**（Cloudflare Worker，免ICP+自动HTTPS+全球CDN）|
-| 备用 URL | https://vetagent.jake-gu95.workers.dev |
-| MCP 端点 | **https://vetagent.dev/mcp**（streamable-http，已实测官方 FastMCP client 可连）|
-| 落地页 | https://vetagent.dev/（VetAgent 品牌，SEO/GEO，JSON-LD）|
-| 源码 repo | **github.com/jakegu1/vetagent**（Worker 版，主开发线）|
-| 文档 repo | github.com/jakegu1/crypto-agent-risk（国内服务器版 + 运营文档）|
-| Cloudflare 域名 | veteagent.dev（zone id 371490a6e5d239a023df9667bfe811b7）|
+| Production URL | **https://vetagent.dev** (Cloudflare Worker: no ICP filing, automatic HTTPS, global CDN)|
+| Fallback URL | https://vetagent.jake-gu95.workers.dev |
+| MCP endpoint | **https://vetagent.dev/mcp** (streamable-http, verified against the official FastMCP client)|
+| Landing page | https://vetagent.dev/ (VetAgent branding, SEO/GEO, JSON-LD)|
+| Source repo | **github.com/jakegu1/vetagent** (Worker version, main line of development)|
+| Docs repo | github.com/jakegu1/crypto-agent-risk (China-server version + ops docs)|
+| Cloudflare domain | veteagent.dev (zone id 371490a6e5d239a023df9667bfe811b7)|
 | Account ID | 3976e6f6f8237d5aa08543efa0e78887 |
 
-> ⚠️ **凭证安全**：Cloudflare API Token 在 `.git-credentials` / 由 Jake 提供，**绝不能提交进 GitHub**。部署时用环境变量 `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`（见第6节）。
+> ⚠️ **Credential safety**: the Cloudflare API token lives in `.git-credentials` or comes from Jake, and **must never be committed to GitHub**. Deploy with the env vars `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` (see §6).
 
-## 3. 技术栈 & 架构
+## 3. Stack & architecture
 
-**路径：`~/projects/vetagent-worker/`（服务器上）**
+**Path: `~/projects/vetagent-worker/` (on the server)**
 
 ```
 src/
-  entry.py       — Worker 入口(必须叫 Default 类) + HTTP 路由
-  risk.py        — 风控引擎(纯Python, 无重依赖) : assess / liquidity / new_pools
-  mcp_server.py  — 手写 streamable-http MCP 端点 (JSON-RPC)
-  landing.html   — 落地页
+  entry.py       — Worker entrypoint (class must be named Default) + HTTP routing
+  risk.py        — risk engine (pure Python, no heavy deps): assess / liquidity / new_pools
+  mcp_server.py  — hand-rolled streamable-http MCP endpoint (JSON-RPC)
+  landing.html   — landing page
 docs/
-  server.json    — MCP registry 官方 manifest
-  AGENT-INTEGRATION.md — 喂给 agent 的接入指南
-pyproject.toml   — uv 项目, deps=[], dev=[workers-py, workers-runtime-sdk]
-wrangler.jsonc   — Cloudflare 配置 (routes: vetagent.dev custom_domain)
+  server.json    — official MCP registry manifest
+  AGENT-INTEGRATION.md — integration guide written for agents
+pyproject.toml   — uv project, deps=[], dev=[workers-py, workers-runtime-sdk]
+wrangler.jsonc   — Cloudflare config (routes: vetagent.dev custom_domain)
 ```
 
-**关键技术决策（不要随便推翻）：**
-- **纯 Python + Workers 内置 `fetch()`**，不用 httpx——因为 Pyodide 对 httpx 依赖有兼容风险，`fetch()` 是官方推荐。
-- **手写 MCP 端点**，不用官方 `mcp` 包——因为官方包依赖 `pydantic` 的 C 扩展，在 Cloudflare Python Workers **装不上**（实测）。手写 JSON-RPC 反而兼容官方 client。
-- **模块化**：entry(路由) / risk(引擎) / mcp_server(协议)——单一代码源，避免重复。
+**Key technical decisions (do not casually reverse these):**
+- **Pure Python + the Workers built-in `fetch()`**, not httpx — Pyodide has compatibility risk with httpx's dependencies, and `fetch()` is what Cloudflare recommends.
+- **Hand-rolled MCP endpoint**, not the official `mcp` package — that package needs `pydantic`'s C extension, which **will not install** on Cloudflare Python Workers (tested). The hand-rolled JSON-RPC turns out to be compatible with the official client anyway.
+- **Modular**: entry (routing) / risk (engine) / mcp_server (protocol) — one source of truth, no duplication.
 
-## 4. 已有的坑（务必记住，别再踩）
+## 4. Traps already hit (remember these, don't step in them again)
 
-| # | 坑 | 解法 |
+| # | Trap | Fix |
 |---|---|---|
-| 1 | Worker 入口类**必须叫 `Default`**，否则报 "no fetch handler" | 类名固定 `class Default(WorkerEntrypoint)` |
-| 2 | `request.url` 是**字符串**，不是对象 | 用 `from urllib.parse import urlparse` |
-| 3 | 需要 `uv >= 0.12.3` | 已升级到 0.12.9；`uv self update` |
-| 4 | 用 `pywrangler` 而非裸 `wrangler`（自动打包依赖）| `.venv/bin/pywrangler dev/deploy` |
-| 5 | 冷启动首请求可能超时 | `_fetch_json` 已加指数退避重试（2次）|
-| 6 | `mcp` 官方包在 Pyodide 装不上 | 手写 MCP 端点 |
-| 7 | git push 走代理会卡(HTTP408)，直连更稳 | `git -c http.proxy= -c https.proxy= push` |
-| 8 | GeckoTerminal 用 `eth`，chain_hint/DexScreener 用 `ethereum` | 链名统一映射（兜底分支已修）|
-| 9 | 相对导入会失败 | 用绝对 `import risk` 而非 `from . import` |
-| 10 | **Windows 上 pywrangler 跑不起来** —— 它要建 emscripten 的 pyodide venv，Windows 不支持 | 用 CI 部署（`.github/workflows/deploy.yml`）；应急可走 WSL：`XDG_CONFIG_HOME=/mnt/c/Users/<你>/AppData/Roaming/xdg.config uv run pywrangler deploy` 复用 Windows 已有的 OAuth 会话 |
-| 11 | 裸 `wrangler deploy` 能构建成功但**部署后 Worker 启动即崩** —— `ModuleNotFoundError: No module named 'workers'`，因为它不 vendor workers-py | 一律用 `uv run pywrangler deploy`。dry-run 通过**不代表**能跑，它不校验运行时导入 |
-| 12 | `git pull origin master` 在别的分支上会把 master 合进当前分支，本地 master 仍是旧的 | 部署前先 `git rev-parse --short master origin/master` 对一下，别对着旧代码发布 |
+| 1 | The Worker entry class **must be named `Default`**, otherwise you get "no fetch handler" | fixed class name `class Default(WorkerEntrypoint)` |
+| 2 | `request.url` is a **string**, not an object | use `from urllib.parse import urlparse` |
+| 3 | Needs `uv >= 0.12.3` | already on 0.12.9; `uv self update` |
+| 4 | Use `pywrangler`, not bare `wrangler` (it bundles the deps)| `.venv/bin/pywrangler dev/deploy` |
+| 5 | The first request after a cold start can time out | `_fetch_json` already retries with exponential backoff (2 attempts)|
+| 6 | The official `mcp` package will not install on Pyodide | hand-rolled MCP endpoint |
+| 7 | git push through the proxy hangs (HTTP408); direct is more reliable | `git -c http.proxy= -c https.proxy= push` |
+| 8 | GeckoTerminal uses `eth`, chain_hint/DexScreener use `ethereum` | one chain-name mapping (fallback branch fixed)|
+| 9 | Relative imports fail | use absolute `import risk`, not `from . import` |
+| 10 | **pywrangler does not run on Windows** — it wants to build an emscripten pyodide venv, which Windows does not support | deploy from CI (`.github/workflows/deploy.yml`); in a pinch use WSL: `XDG_CONFIG_HOME=/mnt/c/Users/<you>/AppData/Roaming/xdg.config uv run pywrangler deploy` to reuse the OAuth session Windows already has |
+| 11 | Bare `wrangler deploy` builds fine but the **deployed Worker crashes on startup** — `ModuleNotFoundError: No module named 'workers'`, because it does not vendor workers-py | always `uv run pywrangler deploy`. A passing dry-run **does not mean** it runs; it never checks runtime imports |
+| 12 | `git pull origin master` while on another branch merges master into the current branch, leaving local master stale | before deploying, compare with `git rev-parse --short master origin/master` — don't ship against old code |
 
-## 5. 未完成 / 下一个优先级
+## 5. Unfinished / next priorities
 
-### ⚠️ 关于上一轮"已完成"的更正（2026-09-03）
+### ⚠️ Correction to last round's "done" list (2026-09-03)
 
-上一版本这里写着「☑ 已完成：P0 修复（选池/输入校验/fail-closed/无信号→unknown）」。
-**这个记录不准确**，实测后发现：
+The previous version said "☑ Done: P0 fixes (pool selection / input validation / fail-closed / no signal → unknown)".
+**That record was wrong.** Testing found:
 
-| 声称已修 | 实际情况 |
+| Claimed fixed | Reality |
 |---|---|
-| 选池修复 | 只打在 `assess()` 上，`liquidity()` 完全没改——线上把 USDC 报成 $0.00097 |
-| 输入校验 | 同上，`liquidity()` 无任何校验 |
-| 无信号→unknown | `unknown` 分支实际不可达，全数据源失败时返回 medium |
-| Honeypot 检测 | **从来没工作过**：读的是 `simulationResult.isHoneypot`，而上游把它放在 `honeypotResult` 里；该键不存在 → None → False → 恒定输出「ok / 非 Honeypot」 |
+| Pool selection | Only applied to `assess()`; `liquidity()` was untouched — production reported USDC at $0.00097 |
+| Input validation | Same story: `liquidity()` validated nothing |
+| No signal → unknown | The `unknown` branch was unreachable; with every data source down it returned medium |
+| Honeypot detection | **Never worked**: it read `simulationResult.isHoneypot`, but upstream puts it under `honeypotResult`. Missing key → None → False → a constant "ok / not a honeypot" |
 
-根因不是粗心，是**没有测试**。当"Verified"只意味着手动跑了两三个地址，
-漏掉一条代码路径是必然而不是偶然。
+The root cause was not carelessness, it was **no tests**. When "Verified" only means someone
+manually ran two or three addresses, missing a code path is inevitable, not bad luck.
 
-**因此本轮引入的第一条纪律：**
+**Hence the first discipline introduced this round:**
 
-> 任何 commit 声称修好了什么，必须有一个对应的测试用例，
-> 且该用例在修复前是红的。`tests/` 下每个用例都对应一个真实发生过的线上缺陷。
+> Any commit claiming to have fixed something must come with a matching test case,
+> and that case must be red before the fix. Every case under `tests/` maps to a defect that really happened in production.
 
 ```bash
-python tests/test_risk.py              # 71 项，离线，基于真实上游快照
-python tests/test_mcp.py               # 41 项，MCP 协议一致性
-python tests/test_upstream_contract.py # 41 项，真实联网，验证依赖的 JSON 路径还在
+python tests/test_risk.py              # 71 cases, offline, real upstream snapshots
+python tests/test_mcp.py               # 41 cases, MCP protocol conformance
+python tests/test_upstream_contract.py # 41 cases, live network, checks upstream JSON paths
 ```
 
-第三个尤其重要：**当初的 honeypot bug 只有契约测试能抓到**——
-它的本质是"读了一个上游不存在的键"，任何 mock 测试都发现不了。
-CI 已配置（`.github/workflows/test.yml`），前两个套件红了就不许合。
+The third one matters most: **only a contract test could have caught the honeypot bug** —
+it was reading a key upstream does not have, and no mock test can find that.
+CI is set up (`.github/workflows/test.yml`); if either of the first two suites is red, no merge.
 
-**☑ 本轮实际完成**：honeypot 键路径修复 + 上游 summary.risk/flags/contractCode 接入、
-仿真失败 fail-closed、`liquidity()` 补齐校验与选池、分叉链选池防护、交易对年龄修复、
-评分模型改为"最坏信号主导"、Solana 路径重写（score_normalised + 权限 + 持币集中度）、
-MCP 协议一致性（顶层 error / batch / 405 / CORS / 版本协商 / structuredContent / annotations）、
-153 项测试 + CI、文档去除仓位建议。
+**☑ Actually shipped this round**: honeypot key-path fix + wiring in upstream summary.risk/flags/contractCode,
+fail-closed when simulation fails, validation and pool selection added to `liquidity()`, forked-chain pool-selection
+guard, pair-age fix, scoring model changed to "worst signal dominates", Solana path rewritten (score_normalised +
+authorities + holder concentration), MCP protocol conformance (top-level error / batch / 405 / CORS / version
+negotiation / structuredContent / annotations), 153 tests + CI, position-sizing advice removed from the docs.
 
-**🔴 最高优先：准确率基准**
+**🔴 Top priority: accuracy benchmark**
 
-拿一批已知 rug + 已知正常代币跑一遍，公布**召回率和误报率**。
+Run a batch of known rugs and known-good tokens through it and publish **recall and false-positive rate**.
 
-理由不变（风控产品建立信任的唯一方式、当前没人做），但现在多了一条更硬的：
-**我们刚证明了自己有能力在"看起来正常"的情况下让一整个检测维度静默失效半年。**
-没有基准，下一次这种事仍然只能靠偶然发现。基准就是这个产品的回归测试。
+The reasons have not changed (it is the only way a risk product earns trust, and nobody else does it), but there is a harder one now:
+**we just proved we can let an entire detection dimension fail silently for six months while everything looked fine.**
+Without a benchmark, the next one is again found by accident. The benchmark is this product's regression test.
 
-落地方式建议（按可行性排序）：
-1. 正样本：honeypot.is 判 `very_high` + RugCheck `rugged=true` 的历史代币
-2. 负样本：CoinGecko 市值前 500 且有 DEX 池的代币
-3. 指标：召回率（漏报致命风险的比例）、误报率（把正常币判 high 的比例）、
-   以及 **unknown 率**——这个数字诚实与否，直接决定产品可不可信
-4. 结果写进 README 并随每次发布更新
+Suggested approach (ordered by feasibility):
+1. Positives: historical tokens that honeypot.is rated `very_high` and RugCheck marked `rugged=true`
+2. Negatives: top-500 CoinGecko tokens by market cap that have a DEX pool
+3. Metrics: recall (share of fatal risks missed), false-positive rate (share of normal tokens called high),
+   and the **unknown rate** — whether that number is honest decides directly whether the product can be trusted
+4. Write the results into the README and update them with every release
 
-**🟡 已知缺口（按 rug 预防价值/工程量排序）**
+**🟡 Known gaps (ordered by rug-prevention value / effort)**
 
-| 缺口 | 说明 |
+| Gap | Notes |
 |---|---|
-| EVM 侧持币集中度 | Solana 侧已经有了（RugCheck topHolders），EVM 侧缺。需要 GoPlus `token_security`（免费、免 key），同时能一并拿到 mint/blacklist/可改税权限、LP 锁仓 |
-| LP 锁仓/销毁 | 撤池是 EVM 侧最主要的 rug 形态，目前完全没覆盖 |
-| 同名代币冲突检测 | agent 场景最常见的损失不是买到 honeypot，是**买到假的那个**。数据源已有（DexScreener 搜索），未做 |
-| 缓存 | 每次调用打 2-4 个上游，无缓存。热门币加 30-60s TTL 可显著降延迟与被限流风险 |
-| 限流/滥用防护 | 公开无鉴权端点，无任何速率限制 |
-| 可观测性 | 无日志、无指标，线上出问题只能靠人工复现 |
+| Holder concentration on EVM | Solana already has it (RugCheck topHolders), EVM does not. Needs GoPlus `token_security` (free, no key), which also returns mint/blacklist/mutable-tax permissions and LP locks in the same call |
+| LP locked/burned | Pulling liquidity is the main rug shape on EVM, and it is currently not covered at all |
+| Same-name token collisions | The most common loss in agent scenarios is not buying a honeypot, it is **buying the impostor**. The data source is already there (DexScreener search); not built |
+| Caching | Every call hits 2-4 upstreams with no cache. A 30-60s TTL on popular tokens would noticeably cut latency and rate-limit exposure |
+| Rate limiting / abuse protection | Public unauthenticated endpoint, no rate limit of any kind |
+| Observability | No logs, no metrics; a production problem can only be chased by manual repro |
 
-**🔵 需要 Jake 拍板的事**（见第 7 节）：见下方"待决事项"。
+**🔵 Things Jake has to decide** (see §7): see "Open decisions" below.
 
-## 6. 如何部署（服务器上）
+## 6. How to deploy (on the server)
 
 ```bash
 cd ~/projects/vetagent-worker
-# 同步依赖
-.venv/bin/pywrangler dev --port 8787            # 本地测试
-# 部署（凭证用环境变量, 不写进 git）
-export CLOUDFLARE_API_TOKEN=<Jake提供>
+# sync deps
+.venv/bin/pywrangler dev --port 8787            # local test
+# deploy (credentials via env vars, never written into git)
+export CLOUDFLARE_API_TOKEN=<from Jake>
 export CLOUDFLARE_ACCOUNT_ID=3976e6f6f8237d5aa08543efa0e78887
 .venv/bin/pywrangler deploy
 ```
-- 本地 dev 时 dexscreener 可能因代理不稳拿不到数据（**生产边缘直连没问题**，用生产验证）。
-- 观测调用量：`npx wrangler tail vetagent --format json`
+- In local dev, dexscreener may return nothing because the proxy is flaky (**the production edge connects fine**, so verify against production).
+- Watch call volume: `npx wrangler tail vetagent --format json`
 
-### 🖥️ 如果在你本地电脑开发（Jake 的机器）
+### 🖥️ Developing on your own machine (Jake's box)
 1. `git clone https://github.com/jakegu1/vetagent.git && cd vetagent`
-2. 装 `uv`（>=0.12.3）：`pip install uv` 或 `curl -LsSf https://astral.sh/uv/install.sh | sh`
-3. `uv sync`（装 workers-py + workers-runtime-sdk）
-4. **Cloudflare 凭证**：向 Jake 要 `CLOUDFLARE_API_TOKEN`（只在本地设环境变量，**绝不写进 git**）。账号 Cloudflare 控制台 → My Profile → API Tokens 创建（权限 `Workers: Edit` + `Account: Read`，最小化）。或直接 `npx wrangler login`（OAuth，最安全）。
-5. `npx wrangler dev` 本地测；`npx wrangler deploy` 上线。
+2. Install `uv` (>=0.12.3): `pip install uv` or `curl -LsSf https://astral.sh/uv/install.sh | sh`
+3. `uv sync` (installs workers-py + workers-runtime-sdk)
+4. **Cloudflare credentials**: ask Jake for `CLOUDFLARE_API_TOKEN` (set it as a local env var only, **never write it into git**). Create one in the Cloudflare dashboard → My Profile → API Tokens (scope it to `Workers: Edit` + `Account: Read`, nothing more). Or just `npx wrangler login` (OAuth, safest).
+5. `npx wrangler dev` to test locally; `npx wrangler deploy` to ship.
 
-> 有 `wrangler login` 的 OAuth 方式（最安全，不用传 token）和 API Token 方式（跨网络稳定）。远程服务器场景用 API Token 更稳，本地开发推荐 OAuth。
+> Two options: `wrangler login` OAuth (safest, no token to hand around) and an API token (stable across networks). On a remote server the API token is more reliable; for local development prefer OAuth.
 
-## 7. 找 Jake / 简一 要资源时
+## 7. Asking Jake / Jianyi for resources
 
-需要就明确说，Jake 会协调：
-- **Cloudflare**（$5/月 Workers，目前远未用满）
-- **域名**（vetagent.dev 已买，Zone ID 上表）
-- **GitHub**（jakegu1 账号）
-- **服务器**（124.222.120.49，已有国内版 crypto-agent-risk）
+Say what you need and Jake will sort it out:
+- **Cloudflare** ($5/month Workers, nowhere near the cap)
+- **Domain** (vetagent.dev is bought, zone ID in the table above)
+- **GitHub** (jakegu1 account)
+- **Server** (124.222.120.49, already running the China-hosted crypto-agent-risk)
 
-## 8. 关键参考文件
-- `docs/server.json` — MCP registry 格式
-- `docs/AGENT-INTEGRATION.md` — 给 agent 的接入文档
-- `reference/projects.md`（在 Hermes 侧，非 repo）— 项目状态速查
-
----
-
-## 9. 待决事项（需要 Jake 拍板）
-
-1. **是否 push + 部署本轮修复。** 分支 `fix/p0-honeypot-liquidity`，本地已提交，
-   153 项测试全绿。线上当前跑的仍是 honeypot 检测失效的版本。
-
-2. **公开仓库里的基础设施标识。** 第 2 节表格里的 Cloudflare Account ID
-   (`3976e6f6...`) 和 Zone ID (`371490a6...`) 提交在**公开仓库**里。
-   这两个不是密钥、单独拿到无法操作账号，但它们是攻击者做定向社工/钓鱼时的有效信息。
-   建议移到私有笔记，repo 里只留一句"向 Jake 索取"。已确认 git 历史中**没有**
-   提交过任何 token/凭证文件。
-
-3. **落地页语言。** 目前纯中文。这个工具本身没有语言属性，
-   中文页面直接切掉了绝大部分潜在用户。建议做英文版（或双语）。
-
-4. **分发。** 官方 MCP registry 尚未注册（`docs/server.json` 已就绪但没提交上去）。
-   awesome-mcp-servers、Smithery、mcp.so、PulseMCP、Glama 均未收录。
-   这几件都是一次性投入、长期获客。
-
-## 10. 给下一个接手者的三条
-
-1. **先跑测试再改代码。** `python tests/test_risk.py` 应当 71/71。
-   如果它红了，说明有人改坏了某条曾经真实发生过的缺陷路径。
-
-2. **上游契约测试红了，不一定是你的错。** 它连真实 API，第三方改字段就会红。
-   红了先看是不是上游变了，然后同步改 `risk.py`——这正是它存在的意义。
-
-3. **fail-closed 是这个产品唯一不能妥协的东西。** 任何时候你要写
-   "拿不到数据就默认 X"，停下来。正确答案永远是 `unknown` + 记进 `data_gaps`。
-   一个诚实说"我不知道"的风控工具有价值；一个猜错的没有。
+## 8. Key reference files
+- `docs/server.json` — MCP registry format
+- `docs/AGENT-INTEGRATION.md` — integration docs for agents
+- `reference/projects.md` (on the Hermes side, not in this repo) — project status at a glance
 
 ---
 
-## 11. 分发：已完成 / 待你操作
+## 9. Open decisions (Jake's call)
 
-### ✅ 已完成（2026-09-04）
+1. **Whether to push and deploy this round's fixes.** Branch `fix/p0-honeypot-liquidity`, committed locally,
+   153 tests green. Production is still running the build where honeypot detection does nothing.
 
-| 渠道 | 状态 | 备注 |
+2. **Infrastructure identifiers in a public repo.** The Cloudflare Account ID
+   (`3976e6f6...`) and Zone ID (`371490a6...`) in the §2 table are committed to a **public repo**.
+   Neither is a secret and neither alone lets anyone act on the account, but they are useful material for targeted social engineering or phishing.
+   Suggest moving them to a private note and leaving a single "ask Jake" line in the repo. Confirmed: git history contains **no**
+   token or credential file.
+
+3. **Landing page language.** Chinese only right now. The tool itself has no language attachment,
+   and a Chinese page cuts out the overwhelming majority of potential users. Suggest an English version (or both).
+
+4. **Distribution.** Not yet registered in the official MCP registry (`docs/server.json` is ready but was never submitted).
+   Not listed on awesome-mcp-servers, Smithery, mcp.so, PulseMCP, or Glama.
+   All of these are one-time work with long-lived acquisition.
+
+## 10. Three things for whoever picks this up next
+
+1. **Run the tests before you touch code.** `python tests/test_risk.py` should be 71/71.
+   If it is red, someone broke a path that once produced a real defect.
+
+2. **A red upstream contract test is not necessarily your fault.** It hits live APIs, so a third party renaming a field turns it red.
+   Check whether upstream changed first, then update `risk.py` to match — that is exactly why it exists.
+
+3. **fail-closed is the one thing in this product that cannot be traded away.** Any time you are about to write
+   "default to X when the data isn't there", stop. The right answer is always `unknown` plus an entry in `data_gaps`.
+   A risk tool that honestly says "I don't know" is worth something; one that guesses wrong is not.
+
+---
+
+## 11. Distribution: done / waiting on you
+
+### ✅ Done (2026-09-04)
+
+| Channel | Status | Notes |
 |---|---|---|
-| **官方 MCP Registry** | 已上线 `dev.vetagent/vetagent` v0.2.0 | 用**域名验证**而非 GitHub 账号，命名空间挂在产品域名上，不挂在个人账号上 |
-| **PulseMCP** | 自动 | 它从官方 registry 抓取，无需单独提交 |
+| **Official MCP Registry** | live as `dev.vetagent/vetagent` v0.2.0 | Uses **domain verification** rather than a GitHub account, so the namespace hangs off the product domain, not a personal account |
+| **PulseMCP** | automatic | It pulls from the official registry, nothing to submit separately |
 
-**重新发布的方法**（版本号变更时）：
+**How to republish** (when the version changes):
 
 ```bash
-# 私钥在 C:\Users\86277\.vetagent-secrets\key.pem —— 仓库外，绝不提交
+# Private key is at C:\Users\86277\.vetagent-secrets\key.pem — outside the repo, never commit it
 PRIV="$(openssl pkey -in ~/.vetagent-secrets/key.pem -noout -text | grep -A3 'priv:' | tail -n +2 | tr -d ' :\n')"
 mcp-publisher login http --domain vetagent.dev --private-key "$PRIV"
 cd docs && mcp-publisher publish
 ```
 
-公钥由 Worker 在 `/.well-known/mcp-registry-auth` 提供（见 `src/entry.py`）。
-**私钥丢了就换不了命名空间下的版本**，建议同时存进密码管理器，
-以及作为 GitHub Secret（`MCP_REGISTRY_KEY`）供 CI 自动发布。
+The Worker serves the public key at `/.well-known/mcp-registry-auth` (see `src/entry.py`).
+**Lose the private key and you can never publish another version under that namespace** — keep a copy in the password manager,
+and as a GitHub Secret (`MCP_REGISTRY_KEY`) so CI can publish automatically.
 
-### ⬜ 需要 Jake 本人操作（都要注册账号，我无法代劳）
+### ⬜ Needs Jake in person (all require signing up, which I cannot do for him)
 
-| 渠道 | 入口 | 需要什么 |
+| Channel | Entry point | What it needs |
 |---|---|---|
-| **Claude 插件目录** | https://platform.claude.com/plugins/submit | 注册 Console（免费，注册即为 Owner），填仓库地址 `github.com/jakegu1/vetagent`。仓库侧前置已全部就绪：`.claude-plugin/plugin.json`、`.mcp.json`、LICENSE、公开仓库 |
-| **Glama** | https://glama.ai/mcp/servers | GitHub OAuth，需对本仓库有写权限 |
-| **Smithery** | https://smithery.ai/new | Smithery 账号 + API key（拿到 key 后可以命令行发布） |
-| **mcp.so** | https://mcp.so/submit?type=remote-server | 站内邮箱密码账号（注意：**该站关闭了密码重置**，务必存进密码管理器） |
-| **awesome-mcp-servers** | https://github.com/punkpeye/awesome-mcp-servers | GitHub PR。⚠️ 该仓库的机器人要求先有 **Glama 收录**才给过检查，所以顺序是先 Glama 再提 PR |
+| **Claude plugin directory** | https://platform.claude.com/plugins/submit | A Console account (free, whoever signs up is Owner), then the repo URL `github.com/jakegu1/vetagent`. Everything on the repo side is ready: `.claude-plugin/plugin.json`, `.mcp.json`, LICENSE, public repo |
+| **Glama** | https://glama.ai/mcp/servers | GitHub OAuth, needs write access to this repo |
+| **Smithery** | https://smithery.ai/new | Smithery account + API key (once the key is in hand, publishing is a command away) |
+| **mcp.so** | https://mcp.so/submit?type=remote-server | Site email/password account (note: **that site has password reset turned off**, so put it in the password manager) |
+| **awesome-mcp-servers** | https://github.com/punkpeye/awesome-mcp-servers | GitHub PR. ⚠️ Their bot will not pass the check until you are **listed on Glama**, so do Glama first, then open the PR |
 
-### 全部候选渠道（穷举 + 按「agent 真的会在这里被发现吗」排序）
+### Every candidate channel (exhaustive, ordered by "will an agent actually find us here")
 
-排序依据不是渠道大小，是**我们的用户会不会经由它找到工具**。
-一个有百万访问但用户全是人类浏览器的目录，对 agent 场景价值接近零。
+The ordering is not by channel size, it is by **whether our users would reach the tool through it**.
+A directory with a million visits whose users are all humans in a browser is worth close to zero in an agent scenario.
 
-**第一梯队 —— agent 真的从这里发现工具**
+**Tier 1 — agents really do discover tools here**
 
-| 渠道 | 谁做 | 状态 | 备注 |
+| Channel | Who | Status | Notes |
 |---|---|---|---|
-| 官方 MCP Registry | 我 | ✅ 已上 | 事实标准，下游多个目录从这里同步 |
-| PulseMCP | — | ✅ 自动 | 从官方 registry 抓取 |
-| Claude 插件目录 | **Jake** | ⬜ | 注册 Console 即可，仓库侧前置全就绪 |
-| Cline MCP Marketplace | 我（GitHub PR） | ⬜ | Cline 用户量大且是 agent 场景 |
-| Cursor Directory | **Jake** | ⬜ | 需账号 |
-| Continue Hub | **Jake** | ⬜ | 需账号 |
+| Official MCP Registry | me | ✅ live | The de facto standard; several downstream directories sync from it |
+| PulseMCP | — | ✅ automatic | Pulls from the official registry |
+| Claude plugin directory | **Jake** | ⬜ | A Console account is all it takes, repo side is fully ready |
+| Cline MCP Marketplace | me (GitHub PR) | ⬜ | Large Cline user base, and it is an agent scenario |
+| Cursor Directory | **Jake** | ⬜ | Needs an account |
+| Continue Hub | **Jake** | ⬜ | Needs an account |
 
-**第二梯队 —— 人类开发者从这里挑工具**
+**Tier 2 — human developers pick tools here**
 
-| 渠道 | 谁做 | 状态 | 备注 |
+| Channel | Who | Status | Notes |
 |---|---|---|---|
-| Glama | **Jake** | ⬜ | GitHub OAuth。**必须先做**：awesome 列表的机器人要它 |
-| awesome-mcp-servers (punkpeye) | 我（PR） | ⬜ | 依赖 Glama |
-| Smithery | **Jake** | ⬜ | 拿到 API key 后我可以命令行发布 |
-| mcp.so | **Jake** | ⬜ | 站内账号，**密码重置已关闭**，务必存密码管理器 |
-| mcpservers.org (wong2) | **Jake** | ⬜ | 只要邮箱，无需账号 |
-| MCP Market / OpenTools / mcp-get | **Jake** | ⬜ | 长尾，收益递减，有空再说 |
+| Glama | **Jake** | ⬜ | GitHub OAuth. **Must come first**: the awesome list's bot requires it |
+| awesome-mcp-servers (punkpeye) | me (PR) | ⬜ | Blocked on Glama |
+| Smithery | **Jake** | ⬜ | Once the API key is in hand I can publish from the command line |
+| mcp.so | **Jake** | ⬜ | Site account, **password reset is turned off**, so store it in the password manager |
+| mcpservers.org (wong2) | **Jake** | ⬜ | Email only, no account needed |
+| MCP Market / OpenTools / mcp-get | **Jake** | ⬜ | Long tail, diminishing returns, whenever there is time |
 
-**第三梯队 —— 框架生态（面向自建 agent 的开发者）**
+**Tier 3 — framework ecosystems (aimed at developers building their own agents)**
 
-LangChain / LlamaIndex / CrewAI / Vercel AI SDK 的工具registry。
-都是 PR 或文档收录，我可以做，但**先等有人用了再投入**——
-现在做等于给零用户的产品写零人读的集成文档。
+The tool registries for LangChain / LlamaIndex / CrewAI / Vercel AI SDK.
+All of them are a PR or a doc listing and I can do them, but **wait until someone is actually using this** —
+doing it now means writing integration docs nobody reads for a product with zero users.
 
-**第四梯队 —— 内容与社区（实验 C）**
+**Tier 4 — content and community (experiment C)**
 
-Show HN、r/ethdev、r/mcp、r/LocalLLaMA、X 加密开发者圈、Dev.to 长文。
-主题固定一个：**「我们公布了自己的误报率，这个品类没有第二家这么做」**。
-不发功能列表——功能列表没人转，反直觉的数字有人转。
+Show HN, r/ethdev, r/mcp, r/LocalLLaMA, the crypto dev crowd on X, a long Dev.to post.
+One fixed angle: **"we published our own false-positive rate, and nobody else in this category does"**.
+No feature lists — nobody shares a feature list, people share a counterintuitive number.
 
-### 三条不在常规清单里、但可能更值钱的路
+### Three routes that are not on the standard list but may be worth more
 
-1. **给别人的开源交易 agent 提 PR，把安全检查接进去。**
-   目录是"等人来找"，这是"直接进入代码"。GitHub 上有大量开源交易机器人，
-   给其中几个提一个「买入前调用 vetagent」的 PR——被合并一次，
-   胜过在十个目录里躺着。**我可以做，成本是每个 PR 半小时。**
+1. **Open PRs against other people's open-source trading agents to wire the safety check in.**
+   A directory waits to be found; this walks straight into the code. GitHub is full of open-source trading bots,
+   and a "call vetagent before buying" PR against a few of them — one merge
+   beats sitting in ten directories. **I can do this; the cost is half an hour per PR.**
 
-2. **把基准方法论开源成一份公开标准。**
-   别人采纳，我们就是参考实现。用极低成本换权威，不需要市场份额。
-   这条的杠杆比任何目录都高，因为它改变的是**我们在这个品类里的位置**，不是曝光量。
+2. **Open-source the benchmark methodology as a public standard.**
+   If others adopt it, we are the reference implementation. Authority bought at almost no cost, no market share required.
+   The leverage here beats any directory, because what it changes is **our position in this category**, not our exposure.
 
-3. **GEO 而不是 SEO。** 已做（`/llms.txt`、FAQPage 结构化数据、可引用的具体数字）。
-   我们的用户不 Google，他们问模型。模型引用**可核对的数字**，不引用形容词——
-   所以那张写着「误报率 11.3%、召回率测不出来」的表，是整个站上最有说服力的东西。
+3. **GEO, not SEO.** Already done (`/llms.txt`, FAQPage structured data, quotable concrete numbers).
+   Our users do not Google, they ask a model. Models cite **numbers you can check**, not adjectives —
+   which makes the table reading "false-positive rate 11.3%, recall not measurable" the most persuasive thing on the site.
 
-> 提交文案统一口径：**只读分析工具，不执行交易、不提供投资建议**。
-> 这不只是合规措辞——它就是产品的真实边界，也是 §5 禁止返佣那条的同一个理由。
+> One line for every submission: **read-only analysis tool, executes no trades, gives no investment advice**.
+> That is not just compliance wording — it is the product's actual boundary, and the same reason §5 bans referral kickbacks.

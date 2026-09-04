@@ -1,10 +1,11 @@
-"""fetcher.py — 带磁盘缓存的 HTTP 取数器，并记录每个 URL 是谁取的。
+"""fetcher.py — HTTP fetcher with a disk cache that records who fetched each URL.
 
-两个职责：
-1. 缓存 —— 基准要可复现、可重跑，也不能把上游免费额度打爆。
-2. **来源记账** —— 记录「引擎」和「标注器」各自访问了哪些端点。
-   基准的有效性完全建立在这两组端点不相交上，这里把它变成可断言的事实，
-   而不是一句写在文档里、迟早会过期的承诺。
+Two jobs:
+1. Caching — the benchmark has to be reproducible and re-runnable, and it must not
+   burn through upstream free tiers.
+2. **Provenance accounting** — record which endpoints the "engine" and the "labeler"
+   each hit. The benchmark is only valid if those two sets are disjoint, so make that
+   an assertable fact rather than a promise in a doc that will go stale.
 """
 
 import hashlib
@@ -18,16 +19,16 @@ import urllib.request
 CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
 UA = "vetagent-benchmark/1.0 (+https://github.com/jakegu1/vetagent)"
 
-# 谁访问了什么。role 取值 "engine" / "label"。
+# Who hit what. role is "engine" or "label".
 _ACCESS_LOG = {"engine": set(), "label": set()}
 _LOCK = threading.Lock()
 
-# 每个 host 的最小请求间隔（秒），按各家免费额度保守取值
+# Minimum gap between requests per host (seconds), set conservatively from each free tier
 _RATE = {
-    "api.geckoterminal.com": 2.1,   # 免费约 30 req/min
-    "api.gopluslabs.io": 2.1,       # 免费约 30 req/min
+    "api.geckoterminal.com": 2.1,   # free tier is ~30 req/min
+    "api.gopluslabs.io": 2.1,       # free tier is ~30 req/min
     "api.honeypot.is": 0.4,
-    "api.dexscreener.com": 0.25,    # 约 300 req/min
+    "api.dexscreener.com": 0.25,    # ~300 req/min
     "api.rugcheck.xyz": 0.5,
 }
 _last_hit = {}
@@ -35,9 +36,10 @@ _rate_lock = threading.Lock()
 
 
 def endpoint_of(url):
-    """把 URL 归一成「端点」标识：host + 去掉可变部分的路径。
+    """Normalize a URL into an "endpoint" id: host plus path with variable parts removed.
 
-    用于来源记账——我们关心的是「读了哪个接口」，不是「读了哪个代币」。
+    Used for provenance accounting: what we care about is which API was read, not
+    which token.
     """
     from urllib.parse import urlparse
     u = urlparse(url)
@@ -45,7 +47,7 @@ def endpoint_of(url):
     for seg in u.path.strip("/").split("/"):
         if not seg:
             continue
-        # 地址/哈希/纯数字这类可变段替换成占位符
+        # Address, hash, and all-digit segments are the variable ones — use a placeholder
         if seg.startswith("0x") or len(seg) > 25 or seg.isdigit():
             parts.append("{id}")
         else:
@@ -66,10 +68,10 @@ def _throttle(url):
 
 
 def fetch_json(url, role, retries=2, timeout=25, use_cache=True):
-    """取 JSON。role 必须是 "engine" 或 "label"，用于来源记账。
+    """Fetch JSON. role must be "engine" or "label", for provenance accounting.
 
-    返回 dict/list 表示成功，None 表示抓取失败——
-    与 risk._fetch_json 的契约一致，这样引擎跑基准时行为不变。
+    Returns a dict/list on success, None on a failed fetch — the same contract as
+    risk._fetch_json, so the engine behaves identically when it runs the benchmark.
     """
     assert role in ("engine", "label"), role
     with _LOCK:
@@ -103,13 +105,13 @@ def fetch_json(url, role, retries=2, timeout=25, use_cache=True):
                 time.sleep(3.0 * (attempt + 1))
                 continue
             if 400 <= e.code < 500 and e.code != 429:
-                break  # 4xx 重试无意义
+                break  # retrying a 4xx gets you nothing
         except Exception:
             pass
         if attempt < retries:
             time.sleep(0.8 * (2 ** attempt))
 
-    # 只缓存成功结果：失败缓存下来会把一次网络抖动变成永久的「无数据」
+    # Only cache successes: a cached failure turns one network blip into permanent "no data"
     if data is not None:
         try:
             with open(path, "w", encoding="utf-8") as f:
@@ -119,8 +121,50 @@ def fetch_json(url, role, retries=2, timeout=25, use_cache=True):
     return data
 
 
+ACCESS_LOG_PATH = os.path.join(CACHE_DIR, "..", "access_log.json")
+
+
+def persist_access_log():
+    """Write this process's endpoint log to disk.
+
+    The labeling runs in build_dataset.py and the engine runs in run_benchmark.py --
+    two separate processes. The in-memory log is per-process, so the benchmark saw an
+    empty label set and its disjointness assertion passed vacuously: engine n {} is
+    always {}. A check that cannot fail is not a check. Persisting the label side is
+    what makes the assertion real.
+    """
+    with _LOCK:
+        blob = {k: sorted(v) for k, v in _ACCESS_LOG.items()}
+    try:
+        os.makedirs(os.path.dirname(os.path.abspath(ACCESS_LOG_PATH)), exist_ok=True)
+        existing = {}
+        if os.path.exists(ACCESS_LOG_PATH):
+            with open(ACCESS_LOG_PATH, encoding="utf-8") as f:
+                existing = json.load(f)
+        for role, eps in blob.items():
+            merged = set(existing.get(role) or []) | set(eps)
+            existing[role] = sorted(merged)
+        with open(ACCESS_LOG_PATH, "w", encoding="utf-8") as f:
+            json.dump(existing, f, ensure_ascii=False, indent=1)
+    except (OSError, ValueError):
+        pass
+
+
+def load_persisted_access_log():
+    """Merge the on-disk log into this process's view. Returns True if anything loaded."""
+    try:
+        with open(ACCESS_LOG_PATH, encoding="utf-8") as f:
+            blob = json.load(f)
+    except (OSError, ValueError):
+        return False
+    with _LOCK:
+        for role in ("engine", "label"):
+            _ACCESS_LOG[role].update(blob.get(role) or [])
+    return True
+
+
 def access_report():
-    """返回 (engine_endpoints, label_endpoints, overlap)。"""
+    """Return (engine_endpoints, label_endpoints, overlap)."""
     with _LOCK:
         e = set(_ACCESS_LOG["engine"])
         l = set(_ACCESS_LOG["label"])

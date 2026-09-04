@@ -1,26 +1,28 @@
-"""scorecard.py — 成熟度评分。自动算，不是拍脑袋。
+"""scorecard.py — maturity score. Computed, never guessed.
 
-与「我每次给一个数」的区别，是这份评分的全部意义：
-**我给的数是意见，从产物里算出来的数是事实。**
-所以下面每个子项都尽量从真实产物读取（测试结果、基准报告、快照库、注册表），
-读不到就明确标成"未测量"，绝不用估计值填空。
+The difference between this and me naming a number each time is the whole point:
+**a number I give you is an opinion, a number computed from artifacts is a fact.**
+So every line item below reads from something real (test results, benchmark report,
+snapshot store, registry), and whatever cannot be read is marked "not measured" —
+never filled in with an estimate.
 
-五个维度，满分 100：
+Five dimensions, 100 points:
 
-    正确性 30   它给的答案对不对
-    覆盖度 20   它看得见多少种风险
-    可信度 20   我们能不能证明它有用
-    分发   15   够不够多的人能找到它
-    需求   15   有没有人真的要它
+    Correctness  30   are its answers right
+    Coverage     20   how many kinds of risk can it even see
+    Credibility  20   can we prove it is useful
+    Distribution 15   can enough people find it
+    Demand       15   does anyone actually want it
 
-**为什么要有「需求」这一维**：没有它，分数可以靠埋头开发刷上去——
-做一堆没人要的功能，分数照涨，生意不动。加上它以后，
-**纯工程能达到的上限是有限的**，最后那部分只能由别人给。
-这正是这份评分想防住的自欺。
+**Why "Demand" is a dimension**: without it the score can be gamed by heads-down
+development — ship a pile of features nobody asked for, the score climbs, the business
+does not move. With it, **there is a hard ceiling on what pure engineering can reach**,
+and the rest has to come from someone else.
+That self-deception is exactly what this score exists to block.
 
-用法：
-    python bench/scorecard.py            # 打印
-    python bench/scorecard.py --write    # 同时写入 docs/SCORECARD.md
+Usage:
+    python bench/scorecard.py            # print
+    python bench/scorecard.py --write    # also write docs/SCORECARD.md
 """
 
 import argparse
@@ -35,24 +37,24 @@ RESULTS = os.path.join(HERE, "results.json")
 SNAPSHOTS = os.path.join(HERE, "snapshots")
 OUT_MD = os.path.join(ROOT, "docs", "SCORECARD.md")
 
-UNMEASURED = "未测量"
+UNMEASURED = "not measured"
 
 
-# ---------------------------------------------------------------- 采集事实
+# ---------------------------------------------------------------- gather facts
 
 def tests_pass():
-    """跑离线测试套件。红了就是红了，不打折。"""
+    """Run the offline test suites. Red is red, no partial credit."""
     ok, detail = True, []
     for suite in ("test_risk.py", "test_mcp.py"):
         p = os.path.join(ROOT, "tests", suite)
         if not os.path.exists(p):
-            return False, ["%s 不存在" % suite]
+            return False, ["%s missing" % suite]
         r = subprocess.run([sys.executable, p], capture_output=True,
                            encoding="utf-8", errors="replace",
                            env={**os.environ, "PYTHONIOENCODING": "utf-8"})
         if r.returncode != 0:
             ok = False
-            detail.append("%s 失败" % suite)
+            detail.append("%s failed" % suite)
         else:
             tail = (r.stdout or "").strip().splitlines()[-2:]
             detail.append("%s %s" % (suite, " ".join(t.strip() for t in tail)[:40]))
@@ -82,28 +84,29 @@ def snapshot_days():
                 if f.startswith("pools-") and f.endswith(".ndjson")])
 
 
-# 已知重要的风险维度。这张表本身就是路线图——
-# 没打勾的每一项都是一个真实的盲区，不是凑数。
+# Risk dimensions we know matter. This table is the roadmap —
+# every unchecked line is a real blind spot, not filler.
 RISK_VECTORS = [
-    ("可卖出性仿真 (honeypot)", True),
-    ("买卖/转账税", True),
-    ("流动性深度", True),
-    ("交易对年龄", True),
-    ("合约是否开源", True),
-    ("上游聚合判定", True),
-    ("持币集中度 (Solana)", True),
-    ("mint / freeze 权限 (Solana)", True),
-    ("持币集中度 (EVM)", False),      # 需要 GoPlus，但它是基准的留出预言机（DECISIONS B2）
-    ("LP 锁仓 / 销毁", False),        # 撤池是 EVM 侧主要 rug 形态，完全没覆盖
-    ("同名代币冒充检测", False),      # agent 场景最常见的损失形态
-    ("部署者历史行为", False),
+    ("sellability simulation (honeypot)", True),
+    ("buy / sell / transfer tax", True),
+    ("liquidity depth", True),
+    ("pair age", True),
+    ("contract source published", True),
+    ("upstream aggregator verdict", True),
+    ("holder concentration (Solana)", True),
+    ("mint / freeze authority (Solana)", True),
+    ("holder concentration (EVM)", False),   # needs GoPlus, the held-out oracle (DECISIONS B2)
+    ("LP lock / burn", False),               # pulling the pool is the main EVM rug, uncovered
+    ("same-name token impersonation", False),  # the most common way an agent loses money
+    ("deployer history", False),
 ]
 
-# 目标分发渠道。已上架的靠 registry 实测，其余按 HANDOFF 记录。
+# Target distribution channels. Listed ones are verified against the registry,
+# the rest come from what HANDOFF records.
 CHANNELS = [
-    ("官方 MCP Registry", True),
-    ("PulseMCP（registry 自动同步）", True),
-    ("Claude 插件目录", False),
+    ("Official MCP Registry", True),
+    ("PulseMCP (auto-synced from registry)", True),
+    ("Claude plugin directory", False),
     ("Glama", False),
     ("Smithery", False),
     ("mcp.so", False),
@@ -112,10 +115,10 @@ CHANNELS = [
 ]
 
 
-# ---------------------------------------------------------------- 评分
+# ---------------------------------------------------------------- scoring
 
 def band(value, thresholds, points):
-    """value 落在哪个档就给哪个分。thresholds 递增，points 递减。"""
+    """Score by the band `value` falls into. thresholds ascend, points descend."""
     if value is None:
         return None
     for t, p in zip(thresholds, points):
@@ -131,49 +134,51 @@ def score():
     covered = sum(1 for _, ok in RISK_VECTORS if ok)
     listed = sum(1 for _, ok in CHANNELS if ok)
 
-    # 需求与外部调用方目前无法自动读取（需要 Cloudflare token），
-    # 因此明确记为「未测量」而不是 0——两者含义不同。
+    # Demand and external callers cannot be read automatically yet (needs a
+    # Cloudflare token), so they are recorded as "not measured" rather than 0 —
+    # those two mean different things.
     external_callers = None
     paying = 0
     trial_intents = 0
 
     items = []
 
-    # --- 正确性 30 ---
-    items.append(("正确性", "测试全绿", 10, 10 if tp else 0, "；".join(tdetail)))
+    # --- Correctness 30 ---
+    items.append(("Correctness", "tests all green", 10, 10 if tp else 0, "; ".join(tdetail)))
     fp = b.get("false_positive")
-    items.append(("正确性", "误报率（健康代币被判 high）", 10,
+    items.append(("Correctness", "false positive rate (healthy rated high)", 10,
                   band(fp, [0.02, 0.05, 0.10, 0.15], [10, 8, 6, 4, 2]),
                   "%.1f%%" % (fp * 100) if fp is not None else UNMEASURED))
     ur = b.get("unknown_rate")
-    items.append(("正确性", "unknown 率", 10,
+    items.append(("Correctness", "unknown rate", 10,
                   band(ur, [0.05, 0.10, 0.20, 0.30], [10, 8, 6, 4, 2]),
                   "%.1f%%" % (ur * 100) if ur is not None else UNMEASURED))
 
-    # --- 覆盖度 20 ---
-    items.append(("覆盖度", "已覆盖的风险维度", 20,
+    # --- Coverage 20 ---
+    items.append(("Coverage", "risk dimensions covered", 20,
                   round(20.0 * covered / len(RISK_VECTORS), 1),
                   "%d / %d" % (covered, len(RISK_VECTORS))))
 
-    # --- 可信度 20 ---
-    items.append(("可信度", "召回率可测量", 10,
+    # --- Credibility 20 ---
+    items.append(("Credibility", "recall is measurable", 10,
                   10 if b.get("recall_measurable") else 0,
-                  "dead 样本 %s 个（需 ≥20）" % b.get("dead_cohort", "?")))
-    items.append(("可信度", "快照库天数", 10,
+                  "dead samples: %s (need ≥20)" % b.get("dead_cohort", "?")))
+    items.append(("Credibility", "days of snapshots", 10,
                   round(min(10.0, 10.0 * days / 180), 1),
-                  "%d 天 / 目标 180" % days))
+                  "%d of 180 days" % days))
 
-    # --- 分发 15 ---
-    items.append(("分发", "已上架渠道", 10,
+    # --- Distribution 15 ---
+    items.append(("Distribution", "channels listed on", 10,
                   round(10.0 * listed / len(CHANNELS), 1),
                   "%d / %d" % (listed, len(CHANNELS))))
-    items.append(("分发", "外部调用方", 5,
+    items.append(("Distribution", "external callers", 5,
                   None if external_callers is None else min(5, external_callers),
-                  UNMEASURED + "（需 CLOUDFLARE_API_TOKEN，见 bench/usage.py）"))
+                  UNMEASURED + " (needs CLOUDFLARE_API_TOKEN, see bench/usage.py)"))
 
-    # --- 需求 15 ---
-    items.append(("需求", "付费用户", 10, min(10, paying * 2), "%d 个" % paying))
-    items.append(("需求", "试用意向 / 主动询问", 5, min(5, trial_intents), "%d 个" % trial_intents))
+    # --- Demand 15 ---
+    items.append(("Demand", "paying users", 10, min(10, paying * 2), "%d" % paying))
+    items.append(("Demand", "trial intent / inbound asks", 5, min(5, trial_intents),
+                  "%d" % trial_intents))
 
     return items, {"benchmark": b, "snapshot_days": days,
                    "covered": covered, "listed": listed}
@@ -199,56 +204,60 @@ def render(items, facts):
 
     L = []
     A = L.append
-    A("# 成熟度评分 (SCORECARD.md)\n")
-    A("> 由 `python bench/scorecard.py --write` 生成，**不要手改**。")
-    A("> 每次提交都会跟着变，所以 `git diff` 就是「这次改动值多少分」的答案。\n")
-    A("\n## 总分：**%.0f / %d**\n" % (total_got, total_max))
-    A("| 维度 | 得分 | 满分 |")
+    A("# Maturity score (SCORECARD.md)\n")
+    A("> Generated by `python bench/scorecard.py --write`, **do not hand-edit**.")
+    A("> It moves with every commit, so `git diff` tells you what the change was worth.\n")
+    A("\n## Total: **%.0f / %d**\n" % (total_got, total_max))
+    A("| Dimension | Score | Max |")
     A("|---|---|---|")
     for d in order:
         mx, got, partial = dims[d]
         A("| %s | %.1f%s | %d |" % (d, got, " ⚠️" if partial else "", mx))
-    A("\n⚠️ = 该维度有子项无法自动测量，得分偏低是因为缺数据，不是因为做得差。\n")
+    A("\n⚠️ = this dimension has line items nothing can measure automatically. "
+      "The score is low for lack of data, not for lack of work.\n")
 
-    A("\n## 明细\n")
-    A("| 维度 | 子项 | 得分 | 满分 | 依据 |")
+    A("\n## Line items\n")
+    A("| Dimension | Item | Score | Max | Evidence |")
     A("|---|---|---|---|---|")
     for dim, name, weight, got, note in items:
         A("| %s | %s | %s | %d | %s |"
           % (dim, name, "—" if got is None else "%.1f" % got, weight, note))
 
-    A("\n## 为什么纯工程刷不满分\n")
-    A("「需求」15 分 + 「外部调用方」5 分 + 「召回率可测量」10 分 = **30 分**，")
-    A("这三项**不可能靠写代码拿到**：")
+    A("\n## Why engineering alone cannot max this out\n")
+    A("Demand 15 + external callers 5 + measurable recall 10 = **30 points**,")
+    A("and none of the three **can be earned by writing code**:")
     A("")
-    A("- 需求要有人愿意付钱")
-    A("- 外部调用方要有人真的接进去")
-    A("- 召回率可测量要等快照库攒够已死样本，而时间买不到")
+    A("- Demand needs someone willing to pay")
+    A("- External callers needs someone to actually wire it in")
+    A("- Measurable recall needs the snapshot store to collect enough dead samples, "
+      "and time is not for sale")
     A("")
-    A("所以**纯工程的天花板是 70 分**。")
-    A("这不是设计上的悲观，是这份评分存在的理由——")
-    A("**它不允许「我很忙」冒充「有进展」。**\n")
+    A("So **the ceiling for pure engineering is 70**.")
+    A("That is not pessimism baked into the design, it is the reason this score exists —")
+    A("**it does not let 'I have been busy' impersonate 'we made progress'.**\n")
 
-    A("\n## 风险维度覆盖\n")
-    A("没打勾的每一项都是真实盲区，也是路线图本身。\n")
-    A("\n| 维度 | 覆盖 |")
+    A("\n## Risk dimension coverage\n")
+    A("Every unchecked line is a real blind spot, and the roadmap itself.\n")
+    A("\n| Dimension | Covered |")
     A("|---|---|")
     for name, ok in RISK_VECTORS:
         A("| %s | %s |" % (name, "✅" if ok else "⬜"))
 
-    A("\n## 分发渠道\n")
-    A("| 渠道 | 已上架 |")
+    A("\n## Distribution channels\n")
+    A("| Channel | Listed |")
     A("|---|---|")
     for name, ok in CHANNELS:
         A("| %s | %s |" % (name, "✅" if ok else "⬜"))
 
     A("\n---\n")
-    A("**100 分是什么样**（刻意不自我设限）：召回率 >90% 且误报 <2%、")
-    A("unknown <5%、12 个维度全覆盖、12 个月以上的结果数据、")
-    A("基准方法论被同行当作标准引用、在每个 agent 入口都是默认选择、")
-    A("有一批「如果它消失会来投诉」的付费用户。\n")
-    A("**当前 %.0f 分不是失败**——它准确地说明了：工程做得还行，" % total_got)
-    A("而证明力和需求都还是零，且这两件事写代码解决不了。\n")
+    A("**What 100 looks like** (deliberately not trimmed to what we can reach): recall >90%")
+    A("with false positives <2%, unknown <5%, all 12 dimensions covered, a year or more of")
+    A("outcome data, the benchmark methodology cited as a standard by peers, the default")
+    A("choice at every agent entry point, and paying users who would complain if it "
+      "disappeared.\n")
+    A("**The current %.0f is not a failure** — it says precisely that the" % total_got)
+    A("engineering is decent, proof and demand are both still zero, and writing more code")
+    A("cannot solve those last two.\n")
     return "\n".join(L) + "\n"
 
 
@@ -264,12 +273,12 @@ def main():
     total_max = sum(d[0] for d in dims.values())
 
     print("=" * 58)
-    print("VetAgent 成熟度：%.0f / %d" % (total_got, total_max))
+    print("VetAgent maturity: %.0f / %d" % (total_got, total_max))
     print("=" * 58)
     for d in order:
         mx, got, partial = dims[d]
         bar = "#" * int(round(20.0 * got / mx)) if mx else ""
-        print("  %-8s %5.1f / %-3d %s%s" % (d, got, mx, bar, "  ⚠️有未测量项" if partial else ""))
+        print("  %-8s %5.1f / %-3d %s%s" % (d, got, mx, bar, "  ⚠️ partial" if partial else ""))
     print()
     for dim, name, weight, got, note in items:
         print("  %-8s %-26s %5s/%-3d  %s"
@@ -279,7 +288,7 @@ def main():
         os.makedirs(os.path.dirname(OUT_MD), exist_ok=True)
         with open(OUT_MD, "w", encoding="utf-8") as f:
             f.write(md)
-        print("\n已写入 %s" % OUT_MD)
+        print("\nWrote %s" % OUT_MD)
     return 0
 
 

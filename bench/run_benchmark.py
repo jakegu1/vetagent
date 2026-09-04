@@ -1,23 +1,29 @@
-"""run_benchmark.py — 用独立标注集评测本地引擎，产出可复现的准确率报告。
+"""run_benchmark.py — score the local engine against an independent labelled set and
+emit a reproducible accuracy report.
 
-用法：
+Usage:
     python bench/run_benchmark.py
 
-做四件事：
+Four things happen here:
 
-1. **跑引擎**。直接调 src/risk.py 里的 assess()，把它的 _fetch_json 换成带缓存的
-   取数器（role="engine"）。测的是仓库里的代码，不是线上部署，所以能进 CI。
+1. **Run the engine.** Calls assess() from src/risk.py directly, with its _fetch_json
+   swapped for a caching fetcher (role="engine"). What gets measured is the code in the
+   repo, not the deployed service, so this can run in CI.
 
-2. **独立性断言**。引擎访问过的端点集合与标注器的必须不相交。相交就直接判定
-   基准失效并退出非零——这条是整份报告可信度的地基，不能只写在文档里。
+2. **Assert independence.** The set of endpoints the engine touched and the set the
+   labeller touched must not intersect. Any overlap fails the benchmark and exits
+   non-zero — this is the foundation of the whole report's credibility, and it can't
+   just live in the docs.
 
-3. **消融分析**。已经死掉的池子现在流动性≈0，引擎靠「流动性极低」这一条就能判 high，
-   接近同义反复。所以除了完整成绩，另外报一份**只保留合约安全类信号**的成绩
-   （剔除流动性/活跃度/新鲜度/跨链）。两个数字的差距，就是这个工具在
-   「显而易见的事情」之外真正提供的信息量。
+3. **Ablation.** A pool that already died has liquidity ≈ 0 now, so the engine can call
+   it high off the "liquidity is minimal" signal alone — close to a tautology. So
+   alongside the full score we report a second one that **keeps only contract-safety
+   signals** (dropping liquidity/activity/freshness/cross-chain). The gap between the
+   two numbers is what this tool actually tells you beyond the obvious.
 
-4. **信号归因**。统计每个正确判定是被哪一类信号驱动的。如果 100% 来自
-   upstream_risk，那说明引擎只是在转述 honeypot.is，自身没有增量。
+4. **Signal attribution.** Count which category of signal drove each correct verdict.
+   If 100% come from upstream_risk, the engine is only paraphrasing honeypot.is and
+   adds nothing of its own.
 """
 
 import json
@@ -30,13 +36,13 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "..", "src"))
 
 import risk  # noqa: E402
-from fetcher import access_report, fetch_json  # noqa: E402
+from fetcher import access_report, fetch_json, load_persisted_access_log  # noqa: E402
 
 DATASET = os.path.join(HERE, "dataset.json")
 RESULTS_JSON = os.path.join(HERE, "results.json")
 RESULTS_MD = os.path.join(HERE, "results.md")
 
-# 合约安全类信号：与「当前流动性还剩多少」无关的那些
+# Contract-safety signals: the ones independent of how much liquidity is left right now
 CONTRACT_CATEGORIES = {
     "honeypot", "sellability", "sell_tax", "upstream_risk",
     "rugcheck", "contract", "concentration",
@@ -44,14 +50,14 @@ CONTRACT_CATEGORIES = {
 
 
 def install_engine_fetcher():
-    """把引擎的取数换成带缓存、带来源记账的版本。"""
+    """Swap the engine's fetcher for one that caches and books which endpoints it hit."""
     async def _fetch(url, retries=2, timeout=8):
         return fetch_json(url, role="engine", retries=1)
     risk._fetch_json = _fetch
 
 
 def ablate(address, signals):
-    """只留合约安全类信号，重新走一遍定级，看引擎还剩多少判断力。"""
+    """Re-grade with contract-safety signals only, to see how much judgement is left."""
     kept = [s for s in signals if s["category"] in CONTRACT_CATEGORIES]
     if not kept:
         return "unknown", 0
@@ -60,7 +66,7 @@ def ablate(address, signals):
 
 
 def driving_category(signals):
-    """找出决定了这次判定的那条信号所属的类别。"""
+    """Category of the one signal that decided this verdict."""
     if not signals:
         return None
     ranked = sorted(
@@ -73,10 +79,11 @@ def driving_category(signals):
 
 
 def evaluate(rows, label_key, bad_value, good_value):
-    """对一套标签算指标。
+    """Compute metrics for one set of labels.
 
-    strict  = 只把 high 算作「拦下了」
-    lenient = high 或 medium 都算「提示了风险」（产品语义上 medium 要求人工复核）
+    strict  = only high counts as "caught it"
+    lenient = high or medium both count as "flagged risk" (in product terms, medium
+              means a human has to look)
     """
     bad = [r for r in rows if r.get(label_key) == bad_value]
     good = [r for r in rows if r.get(label_key) == good_value]
@@ -107,10 +114,11 @@ def evaluate(rows, label_key, bad_value, good_value):
 
 
 def centralized_view(rows):
-    """「有特权函数但无对抗特征」这一档——USDT / WBTC / LDO 属于此类。
+    """The "privileged functions, no adversarial traits" bucket — USDT / WBTC / LDO.
 
-    这一档**不计好坏**，只用来看引擎会不会把中心化资产无差别打成高危。
-    大量判 high 说明阈值太钝，会在真实使用中制造刺耳的误报。
+    This bucket is **not scored right or wrong**; it only shows whether the engine
+    paints every centralized asset as high risk. A lot of high verdicts means the
+    thresholds are too blunt and will produce grating false positives in real use.
     """
     sub = [r for r in rows if r.get("goplus_label") == "centralized"]
     if not sub:
@@ -127,23 +135,23 @@ def centralized_view(rows):
 
 
 def collect_disagreements(rows):
-    """标注与引擎不一致的样本。漏报排在前面——它们才是真正的缺陷线索。"""
+    """Samples where label and engine disagree. False negatives first — the real leads."""
     out = []
     for r in rows:
         for key, bad, good in (("outcome_label", "dead", "alive"),
                                ("goplus_label", "unsafe", "safe")):
             lab = r.get(key)
             if lab == bad and r["verdict"] == "low":
-                kind = "漏报"
+                kind = "false negative"
             elif lab == good and r["verdict"] == "high":
-                kind = "误报"
+                kind = "false positive"
             else:
                 continue
             out.append({"kind": kind, "label": "%s=%s" % (key.split("_")[0], lab),
                         "address": r["address"], "symbol": r.get("symbol"),
                         "chain": r["chain"], "verdict": r["verdict"],
                         "verdict_ablated": r["verdict_ablated"], "driver": r.get("driver")})
-    out.sort(key=lambda d: 0 if d["kind"] == "漏报" else 1)
+    out.sort(key=lambda d: 0 if d["kind"] == "false negative" else 1)
     return out
 
 
@@ -157,25 +165,25 @@ def _num(v):
 
 def main():
     if not os.path.exists(DATASET):
-        print("找不到 %s，请先跑 python bench/build_dataset.py" % DATASET)
+        print("%s not found — run python bench/build_dataset.py first" % DATASET)
         return 1
     with open(DATASET, encoding="utf-8") as f:
         data = json.load(f)
     tokens = data.get("tokens") or []
     if not tokens:
-        print("数据集为空")
+        print("Dataset is empty")
         return 1
 
     install_engine_fetcher()
     import asyncio
 
     rows = []
-    print("评测 %d 个标的 ..." % len(tokens))
+    print("Evaluating %d tokens ..." % len(tokens))
     for i, t in enumerate(tokens, 1):
         try:
             res = asyncio.run(risk.assess(t["address"], t["chain"]))
         except Exception as e:  # noqa: BLE001
-            print("  %s 评测异常: %s" % (t.get("symbol"), e))
+            print("  %s failed to evaluate: %s" % (t.get("symbol"), e))
             continue
         sigs = res.get("signals") or []
         ab_level, ab_score = ablate(t["address"], sigs)
@@ -192,12 +200,22 @@ def main():
         if i % 20 == 0 or i == len(tokens):
             print("  [%d/%d]" % (i, len(tokens)))
 
-    # ---- 独立性断言：整份报告的地基 ----
+    # ---- Independence assertion: the foundation of the whole report ----
+    # Pull in what the labeling process recorded. Without this the label set is empty
+    # in this process, engine n {} is always {}, and the disjointness assertion below
+    # can never fail -- which is exactly what it did until it was caught.
+    had_labels = load_persisted_access_log()
     engine_eps, label_eps, overlap = access_report()
+    if not had_labels or not label_eps:
+        print("\nBenchmark void: no labeling endpoints on record, so the independence")
+        print("assertion would pass vacuously. Run python bench/build_dataset.py first")
+        print("(it writes bench/access_log.json) and re-run this.")
+        return 3
     if overlap:
-        print("\n基准失效：引擎与标注器访问了相同端点 —— 这会让结果变成循环论证")
+        print("\nBenchmark invalid: engine and labeller hit the same endpoint —"
+              " that makes the result circular")
         for e in overlap:
-            print("   重叠端点:", e)
+            print("   overlapping endpoint:", e)
         return 2
 
     report = {
@@ -219,79 +237,85 @@ def main():
         json.dump(report, f, ensure_ascii=False, indent=1)
 
     write_markdown(report)
-    print("\n已写入 %s 和 %s" % (RESULTS_JSON, RESULTS_MD))
+    print("\nWrote %s and %s" % (RESULTS_JSON, RESULTS_MD))
 
     o = report["outcome"]["full"]["bad"]
-    print("\n速览：")
-    print("  已死代币被判 high 的比例      : %s (n=%d)" % (_pct(o["high"]), o["n"]))
-    print("  剔除流动性信号后仍判 high     : %s"
+    print("\nAt a glance:")
+    print("  dead tokens rated high           : %s (n=%d)" % (_pct(o["high"]), o["n"]))
+    print("  still high on contract signals   : %s"
           % _pct(report["outcome"]["contract_only"]["bad"]["high"]))
-    print("  正常代币被误判 high 的比例    : %s (n=%d)"
+    print("  live tokens wrongly rated high   : %s (n=%d)"
           % (_pct(report["outcome"]["full"]["good"]["high"]),
              report["outcome"]["full"]["good"]["n"]))
-    print("  unknown 率                    : %s" % _pct(report["overall"]["unknown_rate"]))
+    print("  unknown rate                     : %s" % _pct(report["overall"]["unknown_rate"]))
     return 0
 
 
 def write_markdown(rep):
     L = []
     A = L.append
-    A("# VetAgent 准确率基准\n")
-    A("> 本文件由 `python bench/run_benchmark.py` 生成，不要手改。\n")
-    A("样本量 **%d**。这是 v1，样本偏小，请把它当作"
-      "「有没有明显失效」的体检，而不是精确的统计结论。\n" % rep["n_evaluated"])
+    A("# VetAgent Accuracy Benchmark\n")
+    A("> Generated by `python bench/run_benchmark.py`. Do not edit by hand.\n")
+    A("Sample size **%d**. This is v1 and the sample is small — read it as a check for "
+      "obvious breakage, not as a precise statistical result.\n" % rep["n_evaluated"])
 
-    A("\n## 方法\n")
-    A("标注**不使用引擎读取的任何端点**，否则测的是「引擎能不能转述上游」。\n")
-    A("\n| | 标注依据 | 引擎是否读取 |")
+    A("\n## Method\n")
+    A("Labels use **none of the endpoints the engine reads** — otherwise this would "
+      "measure whether the engine can paraphrase its upstream.\n")
+    A("\n| | Label source | Read by the engine? |")
     A("|---|---|---|")
-    A("| `outcome` | GeckoTerminal 日线 OHLCV 历史（价格 + 成交量） | 否，引擎只看当前快照 |")
-    A("| `goplus` | GoPlus token_security | 否，刻意保留作标注器 |")
-    A("\n**运行时断言**：引擎访问端点 ∩ 标注器访问端点 = ∅，"
-      "不满足时基准直接判定失效并退出非零。本次运行结果：**通过**。\n")
-    A("\n<details><summary>本次实际访问的端点</summary>\n")
-    A("\n引擎：\n")
+    A("| `outcome` | GeckoTerminal daily OHLCV history (price + volume) "
+      "| No, the engine only sees the current snapshot |")
+    A("| `goplus` | GoPlus token_security | No, deliberately held back as a labeller |")
+    A("\n**Runtime assertion**: engine endpoints ∩ labeller endpoints = ∅. If that "
+      "fails, the benchmark declares itself invalid and exits non-zero. "
+      "This run: **passed**.\n")
+    A("\n<details><summary>Endpoints actually hit on this run</summary>\n")
+    A("\nEngine:\n")
     for e in rep["independence"]["engine_endpoints"]:
         A("- `%s`" % e)
-    A("\n标注器：\n")
+    A("\nLabeller:\n")
     for e in rep["independence"]["label_endpoints"]:
         A("- `%s`" % e)
     A("\n</details>\n")
 
-    A("\n### 标签定义\n")
-    A("- **dead**：曾有真实成交（峰值 7 日量 ≥ $50k），后价格自峰值回撤 ≥ 90% "
-      "**且**近 7 日量塌到峰值 5% 以下。只跌不算死，只是没量也不算死。\n")
-    A("- **alive**：≥ 90 天历史，回撤 ≤ 70%，近 7 日量 ≥ 峰值的 10% 且 ≥ $50k。\n")
-    A("- **unsafe**：GoPlus 命中 honeypot / 可暂停 / 黑名单 / 税率可改 / "
-      "可收回所有权 / owner 可改余额 / 可增发且 owner 未放弃 / 买卖税 >10%。\n")
-    A("- **safe**：以上全不命中，且开源、持有者 ≥ 100。\n")
-    A("\n中间地带一律不标注——宁可样本少，不要标签脏。\n")
+    A("\n### Label definitions\n")
+    A("- **dead**: traded for real at some point (peak 7d volume ≥ $50k), then price "
+      "fell ≥ 90% off its peak **and** 7d volume collapsed below 5% of peak. A price "
+      "drop alone isn't death, and neither is volume drying up alone.\n")
+    A("- **alive**: ≥ 90 days of history, drawdown ≤ 70%, 7d volume ≥ 10% of peak "
+      "and ≥ $50k.\n")
+    A("- **unsafe**: GoPlus flags honeypot / pausable / blacklist / mutable tax / "
+      "reclaimable ownership / owner can rewrite balances / mintable with ownership "
+      "not renounced / buy or sell tax >10%.\n")
+    A("- **safe**: none of the above, plus open source and ≥ 100 holders.\n")
+    A("\nAnything in between goes unlabelled — a smaller sample beats dirty labels.\n")
 
     ov = rep["overall"]
-    A("\n## 总体\n")
-    A("| 指标 | 值 |")
+    A("\n## Overall\n")
+    A("| Metric | Value |")
     A("|---|---|")
-    A("| 判定分布 | %s |" % ", ".join("%s=%d" % kv for kv in sorted(ov["verdict_distribution"].items())))
-    A("| unknown 率 | %s |" % _pct(ov["unknown_rate"]))
-    A("| 存在数据缺口的比例 | %s |" % _pct(ov["data_gap_rate"]))
-    A("\n> unknown 率必须和召回率一起看。一个对所有东西都答 unknown 的工具"
-      "召回率完美，但毫无用处。\n")
+    A("| Verdict distribution | %s |" % ", ".join("%s=%d" % kv for kv in sorted(ov["verdict_distribution"].items())))
+    A("| unknown rate | %s |" % _pct(ov["unknown_rate"]))
+    A("| Share with a data gap | %s |" % _pct(ov["data_gap_rate"]))
+    A("\n> Read the unknown rate next to recall. A tool that answers unknown for "
+      "everything has perfect recall and is useless.\n")
 
     for key, title, bad_name, good_name in (
-            ("outcome", "结果论标注（已死 vs 存活）", "已死", "存活"),
-            ("goplus", "GoPlus 留出预言机（危险 vs 安全）", "危险", "安全")):
+            ("outcome", "Outcome labels (dead vs alive)", "dead", "alive"),
+            ("goplus", "GoPlus held-out oracle (unsafe vs safe)", "unsafe", "safe")):
         r = rep[key]
         A("\n## %s\n" % title)
         for view, vtitle, note in (
-                ("full", "完整信号", ""),
-                ("contract_only", "仅合约安全类信号（消融）",
-                 "剔除流动性/活跃度/新鲜度/跨链后重算。"
-                 "这一栏才是引擎在「显而易见的事情」之外的真实判断力。")):
+                ("full", "Full signals", ""),
+                ("contract_only", "Contract-safety signals only (ablated)",
+                 "Recomputed after dropping liquidity/activity/freshness/cross-chain. "
+                 "This column is the engine's real judgement beyond the obvious.")):
             b, g = r[view]["bad"], r[view]["good"]
             A("\n### %s\n" % vtitle)
             if note:
                 A("%s\n" % note)
-            A("\n| | n | 判 high | 判 high 或 medium | 判 low | 判 unknown | 平均分 |")
+            A("\n| | n | high | high or medium | low | unknown | mean score |")
             A("|---|---|---|---|---|---|---|")
             A("| **%s** | %d | %s | %s | %s | %s | %s |" % (
                 bad_name, b["n"], _pct(b["high"]), _pct(b["high_or_medium"]),
@@ -301,53 +325,60 @@ def write_markdown(rep):
                 _pct(g["low"]), _pct(g["unknown"]), _num(g["mean_score"])))
         drv = r.get("driving_categories_on_bad") or {}
         if drv:
-            A("\n**%s样本上，是哪类信号做出的判定：** %s\n"
-              % (bad_name, "、".join("`%s` %d" % kv for kv in drv.items())))
-            A("\n> 若这里高度集中在 `upstream_risk`，说明引擎主要在转述 honeypot.is，"
-              "自身增量有限。\n")
+            A("\n**Which signal category made the call on %s samples:** %s\n"
+              % (bad_name, ", ".join("`%s` %d" % kv for kv in drv.items())))
+            A("\n> If this concentrates in `upstream_risk`, the engine is mostly "
+              "paraphrasing honeypot.is and adds little of its own.\n")
 
     cen = rep.get("centralized") or {}
     if cen.get("n"):
-        A("\n## 中心化资产对照组（不计好坏）\n")
-        A("有特权函数（可暂停/黑名单/可增发）但**无对抗特征**的代币，"
-          "USDT、WBTC、LDO 都属于此类。这些特权是中心化资产的设计，不是 rug。\n")
-        A("\n这一档只用来回答一个问题：**引擎会不会把它们无差别打成高危。**"
-          "大量判 high 说明阈值太钝，会在真实使用里制造刺耳的误报。\n")
-        A("\n| 样本数 | 判 high 比例 | 判定分布 |")
+        A("\n## Centralized-asset control group (not scored)\n")
+        A("Tokens with privileged functions (pausable/blacklist/mintable) but "
+          "**no adversarial traits** — USDT, WBTC and LDO all land here. Those "
+          "privileges are how a centralized asset is designed, not a rug.\n")
+        A("\nThis bucket answers one question: **does the engine paint them all as "
+          "high risk.** A lot of high verdicts means the thresholds are too blunt and "
+          "will produce grating false positives in real use.\n")
+        A("\n| n | high rate | Verdict distribution |")
         A("|---|---|---|")
         A("| %d | %s | %s |" % (
             cen["n"], _pct(cen["high_rate"]),
             ", ".join("%s=%d" % kv for kv in sorted(cen["verdict_distribution"].items()))))
         if cen.get("examples"):
-            A("\n样例：%s\n" % "、".join(
+            A("\nExamples: %s\n" % ", ".join(
                 "%s(%s)" % (e["symbol"] or "?", e["verdict"]) for e in cen["examples"]))
 
     dis = rep.get("disagreements") or []
     if dis:
-        A("\n## 分歧样本（需人工复核）\n")
-        A("标注和引擎判断不一致的样本。**漏报**（标注说危险、引擎说 low）优先看，"
-          "每一条都可能是一个真实缺陷；**误报**（标注说安全、引擎说 high）"
-          "同样要看，误报会直接摧毁用户信任。\n")
-        A("\n| 类型 | 代币 | 链 | 标注 | 引擎判定 | 消融后 | 驱动信号 |")
+        A("\n## Disagreements (need manual review)\n")
+        A("Samples where the label and the engine disagree. Read the **false negatives** "
+          "(label says dangerous, engine says low) first — each one may be a real "
+          "defect. The **false positives** (label says safe, engine says high) matter "
+          "too; they destroy user trust outright.\n")
+        A("\n| Type | Token | Chain | Label | Engine verdict | Ablated | Driving signal |")
         A("|---|---|---|---|---|---|---|")
         for d in dis[:20]:
             A("| %s | `%s` | %s | %s | %s | %s | %s |" % (
                 d["kind"], (d["symbol"] or d["address"][:10]), d["chain"],
                 d["label"], d["verdict"], d["verdict_ablated"], d["driver"] or "—"))
         if len(dis) > 20:
-            A("\n（另有 %d 条，见 `results.json`）\n" % (len(dis) - 20))
+            A("\n(%d more in `results.json`)\n" % (len(dis) - 20))
 
-    A("\n## 这份基准测不到什么\n")
-    A("1. **测不到「事前预警」。** 引擎评估的是当前状态，而 `dead` 标签是事后的。"
-      "一个已经死掉的池子现在流动性≈0，判 high 接近同义反复——消融那一栏就是为此存在的。"
-      "要真正回答「买之前它会不会警告我」，需要按时间点回放历史状态，"
-      "而上游安全 API 不提供历史查询。\n")
-    A("2. **`dead` ≠ 诈骗。** 正经项目也会死。这个标签回答的是"
-      "「现在还能不能安全退出」。\n")
-    A("3. **GoPlus 与 honeypot.is 可能相关。** 两者都做买卖仿真，"
-      "所以 `goplus` 一栏的成绩会偏高。`outcome` 一栏没有这个问题。\n")
-    A("4. **样本偏差。** 头部样本来自各链池子排行（偏健康），"
-      "长尾样本来自关键词搜索（偏垃圾），不是真实调用分布的无偏抽样。\n")
+    A("\n## What this benchmark does not measure\n")
+    A("1. **Whether it warns you in time.** The engine scores the current state, and "
+      "the `dead` label is retrospective. A pool that already died has liquidity ≈ 0 "
+      "now, so calling it high is close to a tautology — that is what the ablation "
+      "column is for. Answering 'would it have warned me before I bought' needs "
+      "historical state replayed point-in-time, and the upstream security APIs don't "
+      "serve history.\n")
+    A("2. **`dead` ≠ scam.** Legitimate projects die too. This label answers whether "
+      "you can still get out safely today.\n")
+    A("3. **GoPlus and honeypot.is may be correlated.** Both simulate buys and sells, "
+      "so the `goplus` column flatters the engine. The `outcome` column doesn't have "
+      "that problem.\n")
+    A("4. **Sample bias.** Head samples come from per-chain pool rankings (skewed "
+      "healthy), tail samples from keyword search (skewed junk). Neither is an "
+      "unbiased draw from real query traffic.\n")
 
     with open(RESULTS_MD, "w", encoding="utf-8") as f:
         f.write("\n".join(L) + "\n")

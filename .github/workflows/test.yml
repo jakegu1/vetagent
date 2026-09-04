@@ -6,7 +6,7 @@ on:
   pull_request:
   workflow_dispatch:
   schedule:
-    - cron: "17 3 * * 1"   # 每周一 03:17 UTC 跑一次基准
+    - cron: "17 3 * * 1"   # benchmark once a week, Monday 03:17 UTC
 
 jobs:
   test:
@@ -28,8 +28,8 @@ jobs:
       - name: MCP protocol tests
         run: python tests/test_mcp.py
 
-  # 上游契约监控：真实调用外部 API，验证我们依赖的字段还在。
-  # 与单元测试分开，因为它会因为第三方故障而红——那本身就是需要知道的信号。
+  # Upstream contract monitor: real API calls that check the fields we depend on still exist.
+  # Separate from the unit tests: a third-party outage turns it red, which is the signal.
   upstream-contract:
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -41,8 +41,8 @@ jobs:
       - name: Verify upstream API contracts
         run: python tests/test_upstream_contract.py
 
-  # 准确率基准。不挂在每次 push 上：它打大量真实上游请求、耗时以十分钟计。
-  # 手动触发或每周跑一次；结果提交进仓库，变化本身就是信号。
+  # Accuracy benchmark. Not on every push: heavy real upstream traffic, tens of minutes.
+  # Manual trigger or weekly; results are committed to the repo, so the diff is the signal.
   benchmark:
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     runs-on: ubuntu-latest
@@ -55,8 +55,8 @@ jobs:
       - name: Rebuild labelled dataset
         run: python bench/build_dataset.py --limit 150
       - name: Run benchmark
-        # 独立性断言不通过时会退出非零，这里不允许忽略：
-        # 一份循环论证的基准比没有基准更有害。
+        # The independence assertions exit non-zero on failure, and must not be ignored:
+        # a benchmark that argues in a circle does more harm than no benchmark at all.
         run: python bench/run_benchmark.py
       - uses: actions/upload-artifact@v4
         with:

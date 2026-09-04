@@ -1,310 +1,372 @@
-# VetAgent 运营纲领 (STRATEGY.md)
+# VetAgent Operating Plan (STRATEGY.md)
 
-> 版本 v1 · 2026-09-04 · 负责人：Claude（最高负责人，由 Jake 任命）
-> 这份文件是我们对照执行的底稿。每个决策门到期必须回来更新，不允许悄悄漂移。
-> 它记录的是**判断**和**赌注**，不是愿望。判断错了要写进"已推翻的假设"。
-
----
-
-## 0. 给不懂加密货币的人：这到底是什么
-
-一句话：**在 AI 帮你买一个币之前，先替你检查这个币是不是骗局。**
-
-三个必要背景：
-
-1. **任何人都能在 10 分钟内发行一个新币**，不需要许可、不需要审计。每天有几千个新币诞生，
-   其中绝大多数是垃圾，相当一部分是精心设计的骗局。
-2. **最常见的骗局叫 honeypot（蜜罐）**：合约代码让你能买、但不能卖。你看着账面上有钱，
-   点卖出时交易失败。等你发现，钱已经拿不回来了。
-3. **AI agent 正在开始自己动手交易**。人还会犹豫、会去搜一下、会问朋友；
-   agent 不会——它读到一个地址就直接调用买入。**这中间缺一道刹车。**
-
-VetAgent 就是那道刹车。agent 在动手前调它一次，拿到 `low/medium/high/unknown` 四档判断
-和具体原因。
-
-**为什么现在做**：agent 自动交易是最近才真实发生的事。在此之前，风险检查是给人看的网页；
-现在需要的是给机器调用的接口，而且要能被 AI 直接发现和使用（这就是 MCP 协议的作用）。
+> Version v1 · 2026-09-04 · Owner: Claude (accountable owner, appointed by Jake)
+> This file is the plan we execute against. Every decision gate must be revisited and
+> written up when it comes due. No silent drift.
+> It records **judgements** and **bets**, not wishes. A judgement that turns out wrong
+> gets written into "Overturned assumptions".
+> This file is public on purpose. The same transparency that makes us publish our error
+> rates applies to how we run the business.
 
 ---
 
-## 1. 我们卖的到底是什么
+## 0. For people who don't follow crypto: what this actually is
 
-不是"数据"。上游数据（DexScreener / honeypot.is / GoPlus / RugCheck）大多免费公开。
+In one line: **before an AI buys a token for you, check whether the token is a scam.**
 
-我们卖三样东西，按重要性排：
+Three things you need to know:
 
-| 卖点 | 客户真正在买什么 |
+1. **Anyone can launch a new token in 10 minutes**, with no permission and no audit.
+   Thousands appear every day. Most are worthless, and a sizeable share are carefully
+   built scams.
+2. **The most common scam is the honeypot**: the contract lets you buy but not sell.
+   Your balance looks fine on screen; the sell transaction fails. By the time you
+   notice, the money is already unrecoverable.
+3. **AI agents are starting to trade on their own.** A person hesitates, searches,
+   asks a friend. An agent doesn't — it reads an address and calls buy.
+   **There is no brake in that path.**
+
+VetAgent is that brake. The agent calls it once before acting and gets a
+`low/medium/high/unknown` verdict plus the specific reasons behind it.
+
+**Why now**: agents trading on their own only became real recently. Before that, risk
+checks were web pages for humans to read. What's needed now is an interface machines
+call, and one an AI can discover and use directly (that is what the MCP protocol is for).
+
+---
+
+## 1. What we are actually selling
+
+Not data. The upstream sources (DexScreener / honeypot.is / GoPlus / RugCheck) are
+mostly free and public.
+
+We sell three things, in order of importance:
+
+| What we sell | What the customer is actually buying |
 |---|---|
-| **判断** | 不是"这里有 40 个字段"，是"该不该碰，为什么"。把四个来源的矛盾信息收敛成一个可执行结论 |
-| **可靠** | 上游会挂、会改字段、会限流。客户买的是"我不用管这些" |
-| **可信** | 我们公布自己的召回率和误报率。**这个品类里目前没有第二家这么做** |
+| **Judgement** | Not "here are 40 fields" but "should you touch this, and why". Four sources that contradict each other, collapsed into one actionable verdict |
+| **Reliability** | Upstreams go down, rename fields, rate-limit. The customer is buying "I never have to deal with that" |
+| **Credibility** | We publish our own recall and false-positive rates. **Nobody else in this category does** |
 
-> 说明一件我曾经想错的事：我一度认为"底层数据免费公开 → 没有护城河"。
-> 这条筛子会杀掉 BuiltWith（看网页源码就免费）、ScreenshotOne（Puppeteer 免费开源）、
-> Ahrefs（Google Search Console 免费且数据更权威）——它们都是活得很好的生意。
-> **人们付钱买的是"不用自己做"，不是"数据独家"。** 这条已从否决理由降级为定位指引。
+> Something I got wrong, on the record: I used to think "the underlying data is free and
+> public, so there is no moat". That filter kills BuiltWith (read the page source, it's
+> free), ScreenshotOne (Puppeteer is free and open source) and Ahrefs (Google Search
+> Console is free and more authoritative) — all of them healthy businesses.
+> **People pay not to have to do it themselves, not for exclusive data.** This has been
+> demoted from a reason to kill the project to a positioning guide.
 
 ---
 
-## 2. 谁用它
+## 2. Who uses it
 
-"AI agent"不是用户。用户是**部署 agent 的人**。四类，按付费意愿排序：
+The "AI agent" is not the user. The user is **the person deploying the agent**.
+Four types, ordered by willingness to pay:
 
-| # | 用户 | 痛点 | 付费意愿 |
+| # | User | Pain | Willingness to pay |
 |---|---|---|---|
-| 1 | **Telegram / Discord 交易机器人运营方** | 用户被 rug 了会骂他们、要求退款、退群。他们承担声誉和赔付 | **高**。有收入、有责任、有直接损失 |
-| 2 | **钱包 / DEX 前端** | 需要一层安全提示，但不想自建和维护 | **高**，但采购周期长 |
-| 3 | **自建交易 agent 的开发者/小团队** | 不想自己写风控，也不想自己维护四个上游 | 中 |
-| 4 | **用 Claude/ChatGPT 查币的个人** | 想在买之前问一句 | 低。这是**分发和口碑**，不是收入 |
+| 1 | **Telegram / Discord trading-bot operators** | When their users get rugged, those users flame them, demand refunds, and leave. They carry the reputation damage and the payouts | **High**. They have revenue, liability, and direct losses |
+| 2 | **Wallets / DEX front-ends** | Need a safety layer, don't want to build and maintain one | **High**, but long procurement cycles |
+| 3 | **Developers and small teams building their own trading agents** | Don't want to write risk logic, and don't want to babysit four upstreams | Medium |
+| 4 | **Individuals checking a token through Claude/ChatGPT** | Want to ask before they buy | Low. This is **distribution and word of mouth**, not revenue |
 
-**主攻 1 和 3。** 第 4 类免费开放，它是流量和信任的来源，不是收入来源。
+**Go after 1 and 3.** Type 4 stays free: it is where traffic and trust come from,
+not revenue.
 
-第 1 类值得展开：这类机器人有几千个（Maestro、Banana Gun、Unibot 是头部，长尾极长），
-它们互相竞争，而"我们帮你挡掉骗局"是一个能写进宣传里的差异点。
-**对一个人运营的产品，20 个这样的客户就是一门生意。**
-
----
-
-## 3. 现在的真实状态（起点，不粉饰）
-
-- ✅ 引擎能跑，MCP 端点在线，落地页在线
-- ✅ 153 项测试 + CI + 上游契约测试（这条是关键：honeypot 检测曾**静默失效**，
-     读了一个上游不存在的字段，对所有代币恒定输出"安全"。没有契约测试就发现不了）
-- ✅ 准确率基准 v1 已建成，标注源与引擎端点**运行时断言不相交**
-- ⬜ 用户数：**0**
-- ⬜ 收入：**$0**
-- ⬜ 未在任何 registry / 目录注册
-- ⬜ 纯中文落地页
-- ⬜ 未开始采集历史快照 ← **最紧急，见 §4.1**
-
-成本底线：Cloudflare Workers $5/月 + 域名 ~$12/年 ≈ **$6/月**。
-盈亏平衡 = **1 个 $19/月的客户**。
+Type 1 is worth spelling out. There are thousands of these bots (Maestro, Banana Gun
+and Unibot at the head, with a very long tail), they compete with each other, and
+"we block scams for you" is a differentiator they can put in their own marketing.
+**For a one-person product, 20 customers like that is a business.**
 
 ---
 
-## 4. 护城河：四层，按持久度排
+## 3. Where we actually are (the starting line, unvarnished)
 
-### 4.1 纵向结果数据（最强，会复利，**时间敏感**）
+- ✅ Engine runs, MCP endpoint live, landing page live
+- ✅ 153 tests + CI + upstream contract tests (this one is the key: honeypot detection
+     once **failed silently** — it read a field the upstream doesn't have and returned
+     "safe" for every token. Without contract tests you never catch that)
+- ✅ Accuracy benchmark v1 built; labelling sources and engine endpoints are
+     **asserted disjoint at runtime**
+- ⬜ Users: **0**
+- ⬜ Revenue: **$0**
+- ⬜ Not registered in any registry or directory
+- ⬜ Landing page is Chinese-only
+- ⬜ Historical snapshot collection not started ← **most urgent, see §4.1**
 
-每天快照所有新池的状态，并持续记录它们后来怎么样了。
-
-半年后我们手上会有一份**别人买不到、也补不回来的数据**：
-"一个池子在 rug 前 7 天长什么样"。这份数据买不到，因为它必须**实时采集**——
-上游 API 只给当前快照，不给你回溯历史状态。
-
-这一条把 VetAgent 从"转述别人的判断"变成"有自己的判断"。它也是唯一一条
-**竞争对手今天决定要做、也必须等半年才能追上**的东西。
-
-> **每拖一天，就永久损失一天的数据。** 这是本纲领里唯一一件"今天不做就再也补不上"的事。
-> 成本：一个 cron + R2 存储，约半天工，月成本 <$1。
-
-#### 这一条不是推测，是被实测逼出来的结论
-
-建基准 v1 时我想直接测「已经 rug 的代币，引擎能不能拦下」。**结果一个 dead 样本都采不到。**
-199 个标的里 `dead = 0`。
-
-原因不是采样写得差，是**所有公开数据源都只列还活着的池子**：
-DexScreener 的搜索、GeckoTerminal 的池子列表，排序依据都是流动性/成交量，
-死掉的池子直接从列表里消失了。这是教科书式的幸存者偏差，
-**用钱和算力都解决不了——那份数据在公开接口上根本不存在。**
-
-所以：
-
-- 「rug 之前有没有可观测前兆」这个问题，**今天全世界都没有现成数据能回答**
-- 唯一的获取方式是：**在池子还活着的时候记录它，过一段时间回访结局**
-- 这需要时间，而时间**买不到、不能加速、不能补录**
-
-这同时说明两件事：我们的准确率基准在「拦截 rug」这个维度上**暂时无法测量**（见 §9 指标，
-诚实标注为不可测），以及——**快照库不是锦上添花，它是这个产品唯一不可复制的东西。**
-任何竞争对手今天决定要做，也必须再等 6 个月才能拿到同样的东西。
-
-### 4.2 公开的准确率（中等，但是现在唯一能立刻兑现的差异点）
-
-这个品类里没有任何一家公布自己的召回率和误报率。我们公布，并且把方法论
-（独立标注 + 消融 + 运行时不相交断言）也公开。
-
-对 B2B 客户，这是他们向老板证明选型合理的**唯一可引用材料**。
-可被复制——但第一个做的人拿走"这个标准是他们定的"这份权威。
-
-### 4.3 分发位置（弱，但见效最快）
-
-在每个 agent 能发现工具的地方出现：官方 MCP registry、awesome-mcp-servers、
-Smithery、mcp.so、PulseMCP、Glama、Claude 连接器目录。
-一次性投入，长期获客。会被更会营销的人挤掉，所以不能只靠这个。
-
-### 4.4 无聊的可靠性（最被低估）
-
-上游改字段、限流、宕机，我们吸收掉。这正是 BuiltWith / ScreenshotOne 这类生意
-真正的护城河——不是技术难，是**别人不愿意长期管**。
-我们的契约测试 + 每周基准就是这条护城河的实现方式。
+Cost floor: Cloudflare Workers $5/month + domain ~$12/year ≈ **$6/month**.
+Break-even = **1 customer at $19/month**.
 
 ---
 
-## 5. 盈利路径与收入曲线
+## 4. The moat: four layers, ordered by durability
 
-### 定价（v1 提案）
+### 4.1 Longitudinal outcome data (strongest, compounds, **time-sensitive**)
 
-| 档位 | 价格 | 面向 | 内容 |
+Snapshot the state of every new pool daily, and keep recording what happened to it.
+
+Six months from now we will hold **data nobody can buy and nobody can backfill**:
+what a pool looks like in the 7 days before it rugs. It can't be bought because it has
+to be **collected live** — upstream APIs give you the current snapshot only, never the
+historical state.
+
+This is what moves VetAgent from restating other people's judgement to having its own.
+It is also the only thing here where **a competitor who decides to build it today still
+has to wait six months to catch up**.
+
+> **Every day we delay is a day of data lost permanently.** It is the only item in this
+> plan that can never be made up later.
+> Cost: one cron job plus R2 storage, about half a day's work, under $1/month.
+
+#### This isn't speculation — measurement forced the conclusion
+
+Building benchmark v1, I wanted to measure directly whether the engine catches tokens
+that have already rugged. **I could not collect a single dead sample.** Across 199
+tokens, `dead = 0`.
+
+The sampling wasn't badly written. **Every public data source lists only pools that are
+still alive**: DexScreener search and GeckoTerminal's pool listings both rank by
+liquidity and volume, so dead pools simply fall off the list. This is textbook
+survivorship bias, and **no amount of money or compute fixes it — that data does not
+exist on any public interface.**
+
+So:
+
+- "Are there observable warning signs before a rug" is a question that
+  **no off-the-shelf data anywhere can answer today**
+- The only way to get it: **record the pool while it is still alive, then come back
+  later for the outcome**
+- That takes time, and time **cannot be bought, accelerated, or backfilled**
+
+Two things follow. Our accuracy benchmark is **currently unmeasurable** on the
+"catches rugs" dimension (see §9 metrics, where it is honestly marked as not
+measurable). And — **the snapshot archive isn't a nice-to-have; it is the only part of
+this product that cannot be copied.** Any competitor deciding to build it today still
+waits 6 months for the same thing.
+
+### 4.2 Published accuracy (medium strength, but the only differentiator we can cash today)
+
+Nobody in this category publishes their own recall and false-positive rates. We publish
+both, and the methodology with them (independent labelling + ablation + runtime
+disjointness assertion).
+
+For a B2B customer this is the **only citable material** they have to justify the choice
+to their boss. It can be copied — but whoever goes first keeps the authority of having
+set the standard.
+
+### 4.3 Distribution placement (weak, but pays off fastest)
+
+Be present everywhere an agent can discover tools: the official MCP registry,
+awesome-mcp-servers, Smithery, mcp.so, PulseMCP, Glama, the Claude connector directory.
+One-time effort, long-term acquisition. Someone better at marketing will crowd us out,
+so this can't be the only thing we lean on.
+
+### 4.4 Boring reliability (most underrated)
+
+Upstreams rename fields, rate-limit, and go down; we absorb it. This is the real moat
+for businesses like BuiltWith and ScreenshotOne — not that it's technically hard, but
+that **nobody else wants to keep managing it for years**. Our contract tests plus the
+weekly benchmark are how this moat actually gets built.
+
+---
+
+## 5. Path to revenue and the revenue curve
+
+### Pricing (v1 proposal)
+
+| Tier | Price | For | What's included |
 |---|---|---|---|
-| Free | $0 | 第 4 类用户、试用 | MCP 端点，限流，无 SLA |
-| Dev | $19/月 | 第 3 类 | 提高限额、API key、邮件支持 |
-| Bot | $99/月 | 第 1 类 | 高限额、webhook 批量、状态页、故障 24h 响应 |
-| Embedded | $499/月起 | 第 2 类 | 白标、SLA、专属限额、合同 |
+| Free | $0 | Type 4 users, trials | MCP endpoint, rate-limited, no SLA |
+| Dev | $19/month | Type 3 | Higher limits, API key, email support |
+| Bot | $99/month | Type 1 | High limits, webhook batching, status page, 24h incident response |
+| Embedded | From $499/month | Type 2 | White label, SLA, dedicated limits, contract |
 
-### 收入曲线：用"需要什么成立"，不用"我猜多少"
+### Revenue curve: what has to be true, not what I guess
 
-| 阶段 | MRR | 需要成立的事 |
+| Stage | MRR | What has to be true |
 |---|---|---|
-| 破局 | $19–99 | **1 个**付费用户。证明"有人愿意为这个付钱" |
-| 站稳 | ~$1,000 | 20 个 Bot 档，或 10 个 Bot + 1 个 Embedded |
-| 一门生意 | ~$3,000 | 上面的 3 倍，或 5 个 Embedded |
+| First break | $19–99 | **1** paying customer. Proof that somebody will pay for this |
+| Standing up | ~$1,000 | 20 on Bot, or 10 Bot + 1 Embedded |
+| A real business | ~$3,000 | 3x the above, or 5 Embedded |
 
-**20 个客户可不可能？** 这个品类有几千个交易机器人在互相竞争。
-20 是一个很小的数字。这不是"能不能"的问题，是"我们有没有去问过 20 个人"的问题。
+**Is 20 customers realistic?** There are thousands of trading bots competing in this
+category. 20 is a small number. This isn't a question of whether it's possible, it's a
+question of whether we've actually asked 20 people.
 
-**时间尺度**：第一个付费用户是 4–12 周的事，不是 4 天。前 3 个月大概率 $0——
-那 3 个月是在建分发、建信任、攒数据。这是正常的，不是失败信号。
-失败信号写在 §8 的决策门里。
+**Timescale**: the first paying customer is a 4–12 week thing, not a 4 day thing. The
+first 3 months will most likely be $0 — those 3 months go into building distribution,
+building trust, and accumulating data. That is normal, not a failure signal. The failure
+signals are written into the decision gates in §8.
 
-### 明确禁止
+### Explicitly forbidden
 
-**不接返佣、不接订单流分成、不接项目方付费评级。**
+**No referral fees, no order-flow revenue share, no paid ratings from token projects.**
 
-理由不是清高：我们唯一的资产是"说这个币危险的时候没有人怀疑我们的动机"。
-只要收入和"判 low"产生任何相关性，这份资产瞬间归零，而且不可恢复。
+This isn't about being high-minded. Our only asset is that nobody questions our motive
+when we call a token dangerous. The moment revenue correlates in any way with calling
+something low, that asset is worth zero, and it never comes back.
 
-如果哪天想做，必须先做完整的利益隔离并公开披露。默认答案是不做。
+If we ever want to do it, full separation of interests and public disclosure come first.
+The default answer is no.
 
 ---
 
-## 6. 这是被动收入型工具吗
+## 6. Is this a passive-income tool
 
-**不是。而且把它当成被动收入是危险的。**
+**No. And treating it as one is dangerous.**
 
-原因不是"维护量大"，是这个品类的特性：
+Not because there's a lot of maintenance, but because of what this category is:
 
-> **一个无人维护的风控工具，比没有工具更糟。**
-> 它会继续自信地输出答案，而答案已经错了，用户还在照着做。
+> **An unmaintained risk tool is worse than no tool at all.**
+> It keeps confidently emitting answers, the answers are already wrong, and users are
+> still acting on them.
 
-我们已经亲历过一次：honeypot 检测因为读错一个字段，对**所有**代币恒定返回"安全"，
-而所有人都以为它在工作。
+We have already lived through this once: honeypot detection read the wrong field and
+returned "safe" for **every** token, while everyone assumed it was working.
 
-但——维护量本身是**小且可自动化的**，这是配置问题不是墙：
+But the maintenance load itself is **small and automatable** — a configuration problem,
+not a wall:
 
-| 频率 | 事项 | 自动化状态 |
+| Frequency | Task | Automation status |
 |---|---|---|
-| 每次 push | 153 项测试 | ✅ CI 已配 |
-| 每天 | 新池快照采集 | ⬜ 待建（§4.1） |
-| 每周 | 上游契约测试 + 准确率基准 | ✅ 已配，红了发通知 |
-| 红灯时 | 人工介入 | 平时 0，出事约半天 |
+| Every push | 153 tests | ✅ CI configured |
+| Daily | New-pool snapshot collection | ⬜ To build (§4.1) |
+| Weekly | Upstream contract tests + accuracy benchmark | ✅ Configured, notifies on red |
+| On red | Human intervention | 0 normally, about half a day when something breaks |
 
-**稳态人力：每月 1–2 小时；上游变更时 3–5 小时。**
-
----
-
-## 7. 路线图：一串便宜的实验，每个都有决策规则
-
-原则：**能测就别调研。** 判断闸门不是"这能不能成"（答不出来），
-而是"多少钱、多少天，能让现实给出答案"。
-
-### 实验 A — 让它可被发现（本周，~2 天，$0）
-1. push + 部署当前修复（线上仍跑着 honeypot 失效的版本）
-2. 提交官方 MCP registry；提 PR 到 awesome-mcp-servers
-3. 上 Smithery / mcp.so / PulseMCP / Glama
-4. 英文 README 与落地页
-
-**读什么信号**：14 天内的调用量与独立调用方数量。
-**决策规则**：>0 个非我方调用方 → 继续。=0 → 说明不是产品问题是曝光问题，转做实验 C。
-
-### 实验 B — 开始攒数据（本周，~0.5 天，<$1/月）← 最紧急
-每天快照各链新池 + 定期回访它们的结局，写入 R2。
-**没有决策规则，这条无条件做。** 它是唯一"今天不做就永久损失"的事。
-
-### 实验 C — 把准确率变成话题（下周，~1 天，$0）
-基准结果发到 r/ethdev、Hacker News、X、MCP 社区。
-标题就是差异点：**"我们公布了自己的漏报率——这个品类里没人公布"**。
-
-**读什么信号**：讨论量、来自帖子的调用量、有没有人问"能不能给我们用"。
-**决策规则**：有人主动问商用 → 直接进实验 D。
-
-### 实验 D — 问 20 个真人要钱（第 3–4 周，~2 天，$0）
-直接联系 20 个 Telegram/Discord 交易机器人运营方。不发问卷，发一句话：
-*"你们的用户被 rug 之后会怎么样？我们有个买前检查，接口在这，$99/月，要不要试。"*
-
-**读什么信号**：回复率、"多少钱"这个问题出现的次数、试用数。
-**决策规则**：≥3 个愿意试用 → 做付费通道。0 个回复 → 定位错了，回到 §2 重挑客户。
-
-### 实验 E — 放一个能付钱的按钮（第 4 周，~1 天，$0）
-即使还没人要，也把定价页和 Stripe 链接放上去。**没人点也是信号**，
-而"想付钱但找不到入口"是最愚蠢的失败方式。
-
-### 之后（按实验结果决定，不预先承诺）
-- EVM 侧持币集中度 + LP 锁仓（GoPlus 接入——但接入前必须先给基准换独立标注源）
-- 同名代币冲突检测（"你查的这个 PEPE 在 47 个同名币里流动性排第 12"）
-- 结果数据支撑的预测信号（依赖实验 B 攒够 3–6 个月）
+**Steady state: 1–2 hours a month; 3–5 hours when an upstream changes.**
 
 ---
 
-## 8. 决策门：什么时候加码、维持、关停
+## 7. Roadmap: a series of cheap experiments, each with a decision rule
 
-每个门到期必须回到这份文档写结论，不允许无声跳过。
+Principle: **if you can test it, don't research it.** The gate isn't "can this work"
+(unanswerable), it's "how much money and how many days until reality answers".
 
-| 日期 | 门 | 判据 | 动作 |
+### Experiment A — make it discoverable (this week, ~2 days, $0)
+1. Push and deploy the current fixes (production is still running the version with
+   broken honeypot detection)
+2. Submit to the official MCP registry; open a PR against awesome-mcp-servers
+3. List on Smithery / mcp.so / PulseMCP / Glama
+4. English README and landing page
+
+**Signal to read**: call volume and number of distinct callers within 14 days.
+**Decision rule**: >0 callers that aren't us → continue. =0 → that's an exposure
+problem, not a product problem; switch to Experiment C.
+
+### Experiment B — start accumulating data (this week, ~0.5 days, <$1/month) ← most urgent
+Snapshot new pools on each chain daily, revisit them periodically for the outcome,
+write to R2. **No decision rule; this one is unconditional.** It's the only thing where
+skipping today loses something permanently.
+
+### Experiment C — turn accuracy into a talking point (next week, ~1 day, $0)
+Post the benchmark results to r/ethdev, Hacker News, X, and the MCP community.
+The headline is the differentiator: **"we published our own miss rate — nobody in this
+category does"**.
+
+**Signal to read**: discussion volume, calls originating from the posts, whether anyone
+asks "can we use this".
+**Decision rule**: anyone asks about commercial use unprompted → go straight to
+Experiment D.
+
+### Experiment D — ask 20 real people for money (weeks 3–4, ~2 days, $0)
+Contact 20 Telegram/Discord trading-bot operators directly. No survey — one line:
+*"What happens to you when your users get rugged? We have a pre-trade check, here's the
+endpoint, $99/month, want to try it?"*
+
+**Signal to read**: reply rate, how often "how much" comes up, number of trials.
+**Decision rule**: ≥3 willing to trial → build the payment path. 0 replies → the
+positioning is wrong; back to §2 and pick a different customer.
+
+### Experiment E — put up a button people can pay through (week 4, ~1 day, $0)
+Put up the pricing page and the Stripe link even if nobody has asked yet.
+**Nobody clicking is also a signal**, and "wanted to pay, couldn't find where" is the
+stupidest way to fail.
+
+### After that (decided by results, not committed in advance)
+- Holder concentration and LP locks on EVM (wire in GoPlus — but the benchmark needs a
+  different independent labelling source before that lands)
+- Same-name token collision detection ("the PEPE you asked about ranks 12th by
+  liquidity among 47 tokens with that name")
+- Predictive signals backed by outcome data (depends on Experiment B accumulating 3–6
+  months)
+
+---
+
+## 8. Decision gates, and the standard we hold ourselves to
+
+Every gate has to come back to this document with a written conclusion when it falls due.
+Skipping one silently isn't allowed.
+
+| Date | Gate | Test | Action |
 |---|---|---|---|
-| 2026-09-18 | 有没有人用 | 14 天内 ≥1 个外部调用方 | 是→继续；否→只做实验 C，别加功能 |
-| 2026-10-16 | 有没有人想付钱 | 实验 D 中 ≥3 个试用意向 | 是→做付费；否→重挑客户群，再跑一轮 D |
-| 2026-12-04 | 值不值得继续投入 | MRR >$0 或 日调用 >500 | 是→按 §7 续；否→转"低维护模式" |
-| 2027-03-04 | 数据资产是否成立 | 快照库 ≥6 个月且能训出比现有规则更好的信号 | 是→这就是主产品；否→保留工具，放弃数据叙事 |
+| 2026-09-18 | Is anyone using it | ≥1 external caller within 14 days | Yes → continue; no → run only Experiment C, add no features |
+| 2026-10-16 | Does anyone want to pay | ≥3 trial commitments in Experiment D | Yes → build payments; no → pick a different customer segment and run D again |
+| 2026-12-04 | Is further investment worth it | MRR >$0 or >500 calls/day | Yes → continue per §7; no → move to low-maintenance mode |
+| 2027-03-04 | Does the data asset hold up | Snapshot archive ≥6 months and trains a signal better than the current rules | Yes → that becomes the main product; no → keep the tool, drop the data narrative |
 
-**关停条件（重要）**：如果我们决定不再维护，**必须主动下线，不能让它继续在线**。
-一个还在回答、但已经没人管的风控工具是负债。下线是负责任的动作，不是失败。
+**The maintenance commitment.** We will never leave a risk tool running unmaintained.
+A risk tool whose upstreams have drifted doesn't go quiet — it keeps answering, exactly
+as confidently as before, and it is wrong precisely when someone is trusting it. That is
+worse than having no tool at all. So the commitment runs in both directions:
+**as long as VetAgent is online it is maintained, and if we ever stop maintaining it we
+take it offline ourselves rather than let it rot.** The gates above decide how much we
+invest. They never decide whether something still answering is still safe to trust —
+that answer is fixed.
 
 ---
 
-## 9. 指标看板（每周看，只看这五个）
+## 9. Metrics board (reviewed weekly, these five only)
 
-1. **独立调用方数**（不是调用次数——10 万次来自我自己毫无意义）
-2. **基准：漏报率、误报率、unknown 率**（三个一起看）
-3. **上游契约测试状态**（红 = 有一个检测维度可能已经静默失效）
+1. **Distinct callers** (not call count — 100,000 calls from myself means nothing)
+2. **Benchmark: miss rate, false-positive rate, unknown rate** (all three together)
+3. **Upstream contract test status** (red = one detection dimension may already have
+   failed silently)
 4. **MRR**
-5. **快照库天数**（护城河的唯一直接度量）
+5. **Days of snapshot archive** (the only direct measure of the moat)
 
 ---
 
-## 10. 我的规划与现有计划的差异
+## 10. How my plan differs from the existing one
 
-现有 HANDOFF 里的计划是一份**产品质量计划**，不是**生意计划**。差异有七处：
+The plan in the existing HANDOFF is a **product quality plan**, not a **business plan**.
+Seven differences:
 
-| # | 现有计划 | 我的调整 | 为什么 |
+| # | Existing plan | My change | Why |
 |---|---|---|---|
-| 1 | 没有数据采集 | **立刻开始每日快照** | 唯一时间敏感、会复利、且今天不做就永久损失的事 |
-| 2 | 隐含面向个人 agent 用户 | 主攻**交易机器人运营方** | 有收入、有赔付责任、有直接损失的人才会付钱 |
-| 3 | 未考虑变现方式的副作用 | **明令禁止返佣/订单流** | 收入一旦与"判 low"相关，唯一的资产归零 |
-| 4 | 基准 = 质量门禁 | 基准 = **销售资产 + 行业标准** | 它是 B2B 客户唯一能引用的选型依据 |
-| 5 | 追多链广度 | **深度优先**，链数收窄 | 两条链做深，胜过八条链都半吊子 |
-| 6 | 没有退出条件 | **四道决策门 + 关停条件** | 无人维护的风控工具是负债，必须能体面下线 |
-| 7 | 先做好再收费 | **第 4 周就放付费按钮** | 没人点是信号；想付钱找不到入口是最蠢的失败 |
+| 1 | No data collection | **Start daily snapshots immediately** | The only thing that is time-sensitive, compounds, and is lost permanently if we skip today |
+| 2 | Implicitly aimed at individual agent users | Target **trading-bot operators** | People with revenue, payout liability, and direct losses are the ones who pay |
+| 3 | No account of what monetisation does to the product | **Referral fees and order flow explicitly banned** | Once revenue correlates with calling something low, the only asset we have is worth zero |
+| 4 | Benchmark = a quality gate | Benchmark = **a sales asset and an industry standard** | It is the only thing a B2B customer can cite to justify the choice |
+| 5 | Chasing breadth across chains | **Depth first**, fewer chains | Two chains done properly beats eight done halfway |
+| 6 | No exit conditions | **Four decision gates plus a maintenance commitment** | An unmaintained risk tool is a liability; we take it down ourselves rather than let it rot |
+| 7 | Get it good, then charge | **Payment button up in week 4** | Nobody clicking is a signal; wanting to pay and not finding where is the stupidest failure |
 
 ---
 
-## 11. 更聪明的做法（三个可选视角，不是承诺）
+## 11. Smarter angles (three optional lenses, not commitments)
 
-1. **产品不是分数，是记忆。** 谁都能算"现在的风险分"，没人有"这个池子被抽干前 30 天长什么样"。
-   把核心资产从"评分"移到"历史"，MCP 工具变成免费前端，它的存在是为了合法地采集数据。
-2. **卖失败时刻，不卖功能。** 没人早上醒来想要一个"代币风险 API"。
-   人们是在自己的机器人买到蜜罐、用户在群里骂街之后才需要我们。文案要打那一刻。
-3. **做标准，而不只是做供应商。** 把基准方法论开源成一份公开标准。
-   别人采纳，我们就是参考实现——用极低成本换权威，不需要市场份额。
+1. **The product is memory, not a score.** Anyone can compute a current risk score;
+   nobody has "what this pool looked like in the 30 days before it was drained."
+   Move the core asset from scoring to history, and the MCP tool becomes a free front
+   end whose reason to exist is legitimately collecting that data.
+2. **Sell the moment of failure, not features.** Nobody wakes up wanting a token risk
+   API. People need us after their bot buys a honeypot and their users are cursing them
+   in the group chat. The copy has to hit that moment.
+3. **Be the standard, not just a vendor.** Open-source the benchmark methodology as a
+   public standard. If others adopt it, we are the reference implementation — authority
+   bought very cheaply, no market share required.
 
 ---
 
-## 12. 已推翻的假设
+## 12. Overturned assumptions
 
-**已迁移到 [`DECISIONS.md`](DECISIONS.md)**，不在这里保留第二份。
-同一件事写在两处，迟早会有一处过期，而且没人知道哪处是对的。
+**Moved to [`DECISIONS.md`](DECISIONS.md)**; no second copy is kept here.
+Write the same thing in two places and one of them eventually goes stale, with nobody
+able to tell which one is right.
 
-这里只留一条**属于生意判断、不属于工程决策**的：
+Only one stays here, because it's **a business judgement rather than an engineering
+decision**:
 
-| 日期 | 假设 | 怎么被推翻的 |
+| Date | Assumption | How it was overturned |
 |---|---|---|
-| 2026-09-04 | "底层数据免费公开 → 没有护城河" | 这条筛子会杀掉 BuiltWith（看源码就免费）、ScreenshotOne（Puppeteer 开源）、Ahrefs（GSC 免费且更权威）——它们都是活得很好的生意。**人们付钱买的是"不用自己做"，不是"数据独家"。** 该条已从否决理由降级为定位指引 |
+| 2026-09-04 | "The underlying data is free and public, so there is no moat" | That filter kills BuiltWith (free from the page source), ScreenshotOne (Puppeteer is open source) and Ahrefs (GSC is free and more authoritative) — all of them healthy businesses. **People pay not to have to do it themselves, not for exclusive data.** Demoted from a reason to kill the project to a positioning guide |

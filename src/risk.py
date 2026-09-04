@@ -1,10 +1,10 @@
-"""risk.py — VetAgent 核心风险引擎（纯 Python，可在 Pyodide/Worker 跑）。
+"""risk.py — VetAgent's core risk engine (pure Python, runs under Pyodide/Workers).
 
-被 entry.py（HTTP 路由）和 mcp_server.py（MCP 端点）共同引用，单一代码源。
+Shared by entry.py (HTTP routing) and mcp_server.py (MCP endpoint); one source of truth.
 
-设计铁律 —— fail-closed：
-  拿不到数据 → 返回 unknown 或明确的"无法验证"信号，
-  绝不返回乐观的中间值，绝不在无数据时给出仓位建议。
+The rule the whole design bends to — fail closed:
+  no data -> return unknown, or an explicit "could not verify" signal.
+  Never an optimistic middle value, never a position suggestion with nothing to go on.
 """
 
 import asyncio
@@ -12,17 +12,17 @@ import json
 import re
 from datetime import datetime, timezone
 
-try:  # Worker 运行时
+try:  # Workers runtime
     from workers import fetch as cf_fetch
-except ImportError:  # 本地测试 / 非 Worker 运行时（tests 会 monkeypatch _fetch_json）
+except ImportError:  # local tests / non-Worker runtime (tests monkeypatch _fetch_json)
     cf_fetch = None
 
 
-# ---------------------------------------------------------------- 基础工具
+# ---------------------------------------------------------------- helpers
 
 _EVM_RE = re.compile(r"^0x[a-fA-F0-9]{40}$")
 
-# DexScreener/chain_hint 的链名 -> GeckoTerminal 的 network id
+# Chain names from DexScreener/chain_hint -> GeckoTerminal network ids
 _GT_NETWORK = {
     "ethereum": "eth", "eth": "eth",
     "bsc": "bsc", "binance": "bsc",
@@ -33,14 +33,15 @@ _GT_NETWORK = {
     "avalanche": "avax", "avax": "avax",
     "solana": "solana",
 }
-# 反向：GeckoTerminal network id -> 统一链名
+# Reverse: GeckoTerminal network id -> our canonical chain name
 _GT_TO_CHAIN = {"eth": "ethereum", "polygon_pos": "polygon", "avax": "avalanche"}
 
-# 链的"规范性"排序，越小越可信。
-# 关键安全属性：pulsechain 这类以太坊分叉链会**继承同一个合约地址**，
-# 于是 USDC 的地址在分叉链上也有池子，而且报价完全错误（$0.00097）。
-# 实测 DexScreener 对 USDC 返回的 30 个池子里有 29 个在 pulsechain——
-# 按数量投票（中位价）必然被分叉链带偏，只能按链的规范性优先。
+# How canonical a chain is; lower is more trustworthy.
+# This is a safety property, not a preference: Ethereum forks like pulsechain
+# **inherit the same contract address**, so USDC's address has pools there too,
+# quoted at a completely wrong $0.00097. Of the 30 pools DexScreener returns for
+# USDC, 29 are on pulsechain — voting by count (a median price) is guaranteed to
+# be dragged to the fork, so rank by how canonical the chain is instead.
 _CHAIN_RANK = {
     "ethereum": 0, "solana": 0,
     "bsc": 1, "base": 1, "arbitrum": 1, "polygon": 1, "optimism": 1, "avalanche": 1,
@@ -58,7 +59,7 @@ def _num(x):
 
 
 def _sig_round(x, digits=6):
-    """截断到 N 位有效数字。上游会返回 66 位小数，纯浪费 token。"""
+    """Truncate to N significant digits. Upstream sends 66 decimals, pure token waste."""
     v = _num(x)
     if v == 0:
         return 0.0
@@ -68,13 +69,70 @@ def _sig_round(x, digits=6):
         return v
 
 
-async def _fetch_json(url, retries=2, timeout=8):
-    """抓取并解析 JSON。
+# How long a cached upstream response counts as fresh, and how long it may still be
+# served after a fetch fails. Measured problem: roughly a third of production calls came
+# back "unavailable" while all three upstreams answered HTTP 200 in under a second from
+# outside. The likely cause is per-IP rate limiting at the upstream, and Cloudflare
+# Workers share egress addresses across every customer on the platform — so we get
+# throttled by traffic that is not ours, and no amount of retrying fixes it.
+#
+# Caching is the actual fix: it collapses repeated lookups of the same token into one
+# upstream call. Serving a stale copy when the fetch fails does not violate fail-closed:
+# fail-closed forbids *guessing*, and a four-minute-old price is a measurement, not a
+# guess. What it does require is saying so, which is why staleness lands in evidence.
+_FRESH_SECONDS = 60
+_STALE_OK_SECONDS = 900
 
-    返回 dict 表示成功；返回 None 表示**抓取失败**（网络错误/非200/空响应/解析失败）。
-    调用方必须区分 None（拿不到数据）和 {}/空列表（拿到了但确实没内容）——
-    这是 fail-closed 的前提。
+_STALE_HITS = []  # (url, age_seconds) recorded during one request, drained by assess()
+
+
+async def _cache_get(url):
+    """Return (data, age_seconds) from the edge cache, or (None, None)."""
+    try:
+        from js import Date, Request, caches
+        cache = caches.default
+        hit = await cache.match(Request.new(url))
+        if not hit:
+            return None, None
+        body = await hit.text()
+        blob = json.loads(body)
+        age = (Date.now() / 1000.0) - float(blob.get("_at") or 0)
+        return blob.get("_data"), age
+    except Exception:  # noqa: BLE001
+        return None, None
+
+
+async def _cache_put(url, data):
+    try:
+        from js import Date, Request, Response as JsResponse, caches
+        from pyodide.ffi import to_js
+        from js import Object
+        payload = json.dumps({"_at": Date.now() / 1000.0, "_data": data})
+        headers = to_js({"content-type": "application/json",
+                         "cache-control": "max-age=%d" % _STALE_OK_SECONDS},
+                        dict_converter=Object.fromEntries)
+        init = to_js({"headers": headers}, dict_converter=Object.fromEntries)
+        await caches.default.put(Request.new(url), JsResponse.new(payload, init))
+    except Exception:  # noqa: BLE001
+        pass
+
+
+async def _fetch_json(url, retries=2, timeout=8):
+    """Fetch and parse JSON.
+
+    A dict means success. None means the **fetch failed** (network error, non-200,
+    empty body, unparseable). Callers must tell None (no data) apart from {} or an
+    empty list (data arrived, there genuinely is nothing) — fail-closed rests on it.
+
+    Cache behaviour: a copy newer than _FRESH_SECONDS is returned without touching the
+    upstream at all. If every attempt fails, a copy up to _STALE_OK_SECONDS old is
+    served instead of None, and its age is recorded in _STALE_HITS so the caller can
+    disclose it. Returning real data four minutes old beats refusing to answer.
     """
+    cached, age = await _cache_get(url)
+    if cached is not None and age is not None and age <= _FRESH_SECONDS:
+        return cached
+
     for attempt in range(retries + 1):
         try:
             resp = await asyncio.wait_for(
@@ -82,11 +140,17 @@ async def _fetch_json(url, retries=2, timeout=8):
             if resp.status == 200:
                 body = await asyncio.wait_for(resp.text(), timeout=timeout)
                 if body:
-                    return json.loads(body)
-        except Exception:  # 超时/网络/解析失败一律视为抓取失败
+                    data = json.loads(body)
+                    await _cache_put(url, data)
+                    return data
+        except Exception:  # timeout, network, parse error: all count as a failed fetch
             pass
         if attempt < retries:
             await asyncio.sleep(0.3 * (2 ** attempt))
+
+    if cached is not None and age is not None and age <= _STALE_OK_SECONDS:
+        _STALE_HITS.append((url, int(age)))
+        return cached
     return None
 
 
@@ -103,7 +167,7 @@ def _looks_solana(address):
 
 
 def validate_address(address):
-    """地址校验前置。不合法直接抛 ValueError，绝不返回乐观建议。"""
+    """Validate first. An invalid address raises ValueError, never a hopeful verdict."""
     address = (address or "").strip().split("?")[0]
     if not address or (not _looks_evm(address) and not _looks_solana(address)):
         raise ValueError(
@@ -115,37 +179,39 @@ def _sig(severity, name, message, category):
     return {"severity": severity, "name": name, "message": message, "category": category}
 
 
-# ---------------------------------------------------------------- 评分模型
+# ---------------------------------------------------------------- scoring model
 
-# 单条信号的基础分
+# Base score for a single signal
 _SEVERITY_BASE = {"ok": 0, "info": 5, "warn": 30, "critical": 60, "fatal": 100}
 
-# 类别权重：按"踩中后的实际损失"排序。
-# 卖不出去 = 本金归零；流动性枯竭 = 大幅折价；单链 = 几乎不构成独立风险。
+# Category weights, ranked by what hitting one actually costs you: can't sell = your
+# principal goes to zero, liquidity gone = a steep haircut, one chain = barely a risk.
 _CATEGORY_WEIGHT = {
-    "honeypot": 1.0,        # 买了卖不掉
-    "sellability": 1.0,     # 可卖出性无法验证
+    "honeypot": 1.0,        # you can buy it, you can't sell it
+    "sellability": 1.0,     # can't verify it is sellable
     "sell_tax": 0.9,
-    "upstream_risk": 0.8,   # honeypot.is / RugCheck 的聚合判定
+    "upstream_risk": 0.8,   # honeypot.is / RugCheck aggregate verdict
     "rugcheck": 0.8,
     "liquidity": 0.8,
     "no_liquidity": 0.8,
-    "contract": 0.6,        # 闭源 / 代理合约
+    "contract": 0.6,        # closed source / proxy contract
     "freshness": 0.5,
     "lifecycle": 0.4,
-    "concentration": 0.7,   # 持币集中度
-    "cross_chain": 0.2,     # 单链本身不是风险，权重压到很低
+    "concentration": 0.7,   # holder concentration
+    "cross_chain": 0.2,     # one chain is not itself a risk, so keep this near zero
 }
 
-# 缺失即致命的维度：拿不到就必须 unknown，不能靠其它信号凑出 low
+# Dimensions whose absence is disqualifying: miss one and the answer must be unknown.
+# Other signals must never add up to "low" in its place.
 _CRITICAL_DIMENSIONS = ("liquidity", "sellability")
 
 
 def _score(signals):
-    """最坏信号主导 + 佐证加成，而不是朴素求和。
+    """Worst signal dominates, corroboration adds a little. Not a naive sum.
 
-    朴素求和的问题：信号越多分越高，加几个新维度就会把正常币推成 high。
-    这里改成 max(加权单项) + 每多一个独立的 warn+ 类别 +10（最多 +30）。
+    A naive sum means more signals scores higher, so adding a couple of dimensions
+    pushes ordinary tokens into high. Instead: max(weighted signal), plus 10 for each
+    additional independent warn-or-worse category, capped at 30.
     """
     if not signals:
         return 0
@@ -161,7 +227,9 @@ def _score(signals):
 
 
 def _finalize(address, signals, evidence, data_gaps):
-    """汇总。fail-closed：关键维度缺数据 → unknown，绝无默认乐观值。"""
+    """Roll everything up. Fail closed: a missing critical dimension means unknown,
+    never an optimistic default.
+    """
     result = {"address": address, "signals": signals, "evidence": evidence}
     if data_gaps:
         evidence["data_gaps"] = data_gaps
@@ -183,7 +251,8 @@ def _finalize(address, signals, evidence, data_gaps):
     else:
         level = "low"
 
-    # fail-closed 覆盖：关键维度拿不到数据时，不允许给出 low/medium 的安全感。
+    # Fail-closed override: with a critical dimension missing, nobody gets the
+    # reassurance of a low/medium rating.
     missing_critical = [g for g in data_gaps if g.get("dimension") in _CRITICAL_DIMENSIONS]
     if missing_critical and level in ("low", "medium"):
         level = "unknown"
@@ -192,7 +261,7 @@ def _finalize(address, signals, evidence, data_gaps):
     has_liquidity = any(s["category"] in ("liquidity", "no_liquidity") for s in signals)
     has_sellability = any(s["category"] in ("honeypot", "sellability", "rugcheck")
                           for s in signals)
-    # confidence 衡量的是**数据完整度**，不是风险高低
+    # confidence measures **how complete the data is**, not how risky the token is
     if data_gaps or total < 2:
         confidence = "low"
     elif has_liquidity and has_sellability and total >= 4:
@@ -212,7 +281,7 @@ def _finalize(address, signals, evidence, data_gaps):
     return result
 
 
-# ---------------------------------------------------------------- 选池
+# ---------------------------------------------------------------- pool selection
 
 def _pair_liquidity(pair):
     liq = pair.get("liquidity") or {}
@@ -223,16 +292,18 @@ def _pair_liquidity(pair):
 
 
 def _pick_best(pairs, chain_hint=None, target=None):
-    """稳健选池：目标链优先 → 必须含目标地址 → 价格合理 → 流动性最大。
+    """Pick a pool defensively: target chain first -> must contain the target address
+    -> sane price -> deepest liquidity.
 
-    只按流动性最大选会选中跨链分叉上的错价池
-    （USDC 会被选到 pulsechain 的池子，报价 $0.00097）。
+    Picking on liquidity alone lands on a mispriced pool on a fork chain
+    (USDC resolves to a pulsechain pool quoting $0.00097).
     """
     target_l = (target or "").lower()
 
     def _valid(p):
-        # 流动性是硬要求；价格只在**存在**时才做合理性检查
-        # （GeckoTerminal 的 base_token_price_usd 常为 null，不能因此丢弃有效池）。
+        # Liquidity is mandatory; price is sanity-checked only when it **is present**
+        # (GeckoTerminal's base_token_price_usd is often null, and a valid pool must
+        # not be discarded over that).
         if _pair_liquidity(p) <= 0:
             return False
         price = p.get("priceUsd")
@@ -253,9 +324,10 @@ def _pick_best(pairs, chain_hint=None, target=None):
     if not pool:
         return None
 
-    # 无 chain_hint 时：先按链的规范性收敛，再在同档内比流动性。
-    # 这样 pulsechain 上继承地址的错价池不会盖过以太坊主网的真池，
-    # 哪怕它在数量和名义流动性上都占优。
+    # With no chain_hint: narrow by how canonical the chain is first, then compare
+    # liquidity within that tier. A mispriced pool on an inherited pulsechain address
+    # then can't beat the real mainnet pool, even when it wins on both pool count and
+    # nominal liquidity.
     if not hint:
         best_rank = min(_CHAIN_RANK.get((p.get("chainId") or "").lower(), _UNKNOWN_CHAIN_RANK)
                         for p in pool)
@@ -266,10 +338,11 @@ def _pick_best(pairs, chain_hint=None, target=None):
 
 
 def _pair_created_ms(value):
-    """DexScreener 给的是**毫秒整数**，GeckoTerminal 给的是 ISO 字符串。
+    """DexScreener sends an **integer in milliseconds**, GeckoTerminal an ISO string.
 
-    旧代码只处理 ISO，对 int 调用 .replace() 抛 AttributeError 后被
-    `except Exception: pass` 吞掉 —— 主数据源上交易对年龄信号从未生效过。
+    The old code handled only ISO; calling .replace() on an int raised AttributeError,
+    which an `except Exception: pass` swallowed — the pair-age signal never once fired
+    on our primary data source.
     """
     if value in (None, "", 0):
         return None
@@ -277,7 +350,7 @@ def _pair_created_ms(value):
         return None
     if isinstance(value, (int, float)):
         v = float(value)
-        return v if v > 1e11 else v * 1000  # 秒 -> 毫秒
+        return v if v > 1e11 else v * 1000  # seconds -> milliseconds
     if isinstance(value, str):
         s = value.strip()
         if s.isdigit():
@@ -303,8 +376,8 @@ def _age_days(created_value, now=None):
 
 
 def _gt_base_price(a):
-    """GeckoTerminal 的 base_token_price_usd 经常是 null，但价格是可推导的：
-    base_token_price_quote_token × quote_token_price_usd。
+    """GeckoTerminal's base_token_price_usd is often null, but the price is derivable:
+    base_token_price_quote_token × quote_token_price_usd.
     """
     price = a.get("base_token_price_usd")
     if price not in (None, "", "0"):
@@ -328,7 +401,7 @@ def _gt_to_pair(p, address, network):
     }
 
 
-# ---------------------------------------------------------------- 信号构建
+# ---------------------------------------------------------------- building signals
 
 def _liquidity_signals(best, pairs, signals, evidence):
     liq = _pair_liquidity(best)
@@ -365,7 +438,7 @@ def _liquidity_signals(best, pairs, signals, evidence):
         else:
             signals.append(_sig("ok", "Established pair", "Main pair has existed for %d days." % age, "freshness"))
 
-    # 生命周期：区分"合约安全"与"代币还有没有人交易"
+    # Lifecycle: "is the contract safe" and "does anyone still trade this" differ
     if liq > 0:
         turnover = vol / liq
         evidence["turnover_24h"] = _sig_round(turnover, 4)
@@ -382,11 +455,12 @@ def _liquidity_signals(best, pairs, signals, evidence):
 
 
 def _honeypot_signals(hp, signals, evidence, data_gaps):
-    """honeypot.is 解读。
+    """Read honeypot.is.
 
-    旧代码从 simulationResult 里读 isHoneypot —— 那个键在上游根本不存在
-    （真值在 honeypotResult.isHoneypot），导致 honeypot 维度恒为 "ok"。
-    同时 summary.risk / flags / contractCode 这些已抓到的字段全被丢弃。
+    The old code read isHoneypot out of simulationResult — a key upstream does not
+    have (the real one is honeypotResult.isHoneypot), so the honeypot dimension was
+    permanently "ok". It also discarded summary.risk, flags and contractCode, all of
+    which were already in the response we had fetched.
     """
     if hp is None:
         data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
@@ -419,7 +493,7 @@ def _honeypot_signals(hp, signals, evidence, data_gaps):
     if is_hp is True:
         signals.append(_sig("fatal", "Honeypot", "Simulation confirms it: you can buy, you cannot sell.", "honeypot"))
     elif sim_ok is False or is_hp is None:
-        err = hp.get("simulationError") or "未知原因"
+        err = hp.get("simulationError") or "unknown reason"
         data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
                           "reason": "simulation failed: %s" % err})
         signals.append(_sig("critical", "Sellability unverified",
@@ -440,9 +514,9 @@ def _honeypot_signals(hp, signals, evidence, data_gaps):
                                 "Simulation passed. Buy %.1f%% / sell %.1f%% tax." % (buy_tax, sell_tax),
                                 "honeypot"))
 
-    # 上游聚合判定（此前被完全丢弃）
+    # Upstream aggregate verdict (previously thrown away entirely)
     up = (summary.get("risk") or "").lower()
-    flag_txt = "；".join(flags) if flags else "无"
+    flag_txt = "; ".join(flags) if flags else "none"
     level_txt = summary.get("riskLevel")
     if up == "very_high":
         signals.append(_sig("critical", "Upstream scanner rates this very high risk",
@@ -463,13 +537,14 @@ def _honeypot_signals(hp, signals, evidence, data_gaps):
 
 
 def _rugcheck_signals(rc, signals, evidence, data_gaps):
-    """RugCheck 解读（Solana）。
+    """Read RugCheck (Solana).
 
-    旧代码只读了一个 raw `score`，还拿它跟 5000/10000 比——量纲完全不对：
-    BONK 的 raw score 是 101，任何正常代币都会无条件通过。
-    真正该用的是 score_normalised(0-100)，而 rugged / mintAuthority /
-    freezeAuthority / risks[] / topHolders 这些字段同一个响应里就有，全被丢了。
-    其中 freezeAuthority 是 Solana 版的 honeypot——持有者可被冻结，等同卖不出去。
+    The old code read only the raw `score` and compared it against 5000/10000 — the
+    units are simply wrong: BONK's raw score is 101, so every normal token passed
+    unconditionally. The field to use is score_normalised (0-100), and rugged,
+    mintAuthority, freezeAuthority, risks[] and topHolders all sit in that same
+    response and were all dropped. freezeAuthority is the Solana honeypot: holders
+    can be frozen, which amounts to not being able to sell.
     """
     if rc is None:
         data_gaps.append({"dimension": "sellability", "source": "rugcheck",
@@ -478,7 +553,7 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
                             "RugCheck did not respond, so rug risk could not be assessed.", "sellability"))
         return
 
-    # 空响应 vs 「有报告且评分为 0」必须区分开
+    # An empty response and "a report exists and it scores 0" must not collapse together
     if not rc.get("mint") and not rc.get("token") and rc.get("score") is None:
         data_gaps.append({"dimension": "sellability", "source": "rugcheck",
                           "reason": "no risk report returned"})
@@ -507,24 +582,50 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
         signals.append(_sig("fatal", "Already rugged",
                             "RugCheck has flagged this token as rugged.", "rugcheck"))
 
-    # freezeAuthority 存在 = 官方可冻结你的余额 = Solana 版 honeypot
-    if rc.get("freezeAuthority"):
-        signals.append(_sig("critical", "Freeze authority still active",
-                            "freezeAuthority was never revoked. Holder balances can be frozen, which is equivalent to being unable to sell.",
-                            "honeypot"))
-    if rc.get("mintAuthority"):
-        signals.append(_sig("critical", "Mint authority still active",
-                            "mintAuthority was never revoked. Supply can be inflated without limit.", "contract"))
-    if not rc.get("freezeAuthority") and not rc.get("mintAuthority"):
+    # Retained mint and freeze authority.
+    #
+    # This is the same mistake the benchmark labeler made twice and had corrected there,
+    # and it was never carried across to the engine: privileged functions are not by
+    # themselves evidence of a scam. Circle's USDC on Solana holds both authorities by
+    # design — freeze is how a regulated issuer complies with sanctions, mint is how it
+    # issues against reserves — and the engine rated it high risk at score 80 on exactly
+    # those two signals while RugCheck itself scored it 1/100.
+    #
+    # An anonymous token keeping these authorities is a real danger. A widely held,
+    # reputable one keeping them is how it is built. RugCheck's own normalised score
+    # already prices in the difference, so the authorities are graded against how
+    # established the token is rather than in isolation.
+    established = (_num(rc.get("totalHolders")) >= 100_000
+                   or bool(rc.get("verification"))
+                   or normalised <= 5)
+    freeze, mint = rc.get("freezeAuthority"), rc.get("mintAuthority")
+    if freeze or mint:
+        held = " and ".join(n for n, v in (("freeze", freeze), ("mint", mint)) if v)
+        if established:
+            signals.append(_sig(
+                "info", "Issuer retains admin authority",
+                "The issuer still holds %s authority. Common for regulated or "
+                "custodial assets (Circle's USDC holds both); treat as centralisation "
+                "risk, not evidence of a scam." % held, "contract"))
+        else:
+            signals.append(_sig(
+                "critical", "Anonymous issuer retains admin authority",
+                "%s authority was never revoked on a token with no established holder "
+                "base. Freeze authority can lock your balance, which is equivalent to "
+                "being unable to sell; mint authority can dilute you without limit."
+                % held.capitalize(), "honeypot" if freeze else "contract"))
+    else:
         signals.append(_sig("ok", "Authorities revoked",
                             "Both mint and freeze authority have been given up.", "honeypot"))
 
-    # risks[] 里的每一项已经计入 score_normalised，不能再各发一条信号——
-    # 那是重复计分，会把 BONK 这种归一化分只有 7 的正经代币误伤成 medium。
-    # 处理方式：warn 级只作为主信号的说明文字；danger 级才单独升一条，
-    # 因为聚合分有可能低估"冻结权限未销毁"这类一票否决项。
+    # Every entry in risks[] already feeds score_normalised, so emitting one signal per
+    # entry double-counts and convicts a legitimate token by association — BONK, whose
+    # normalised score is 7, ends up medium. So: warn-level entries only become
+    # explanatory text on the main signal, and only danger-level entries get promoted to
+    # their own signal, because the aggregate score can underrate a veto item like an
+    # unrevoked freeze authority.
     names = [r.get("name") for r in risks if r.get("name")]
-    detail = ("；".join(names[:4])) if names else "无风险项"
+    detail = ("; ".join(names[:4])) if names else "no risk items"
     if normalised >= 50:
         signals.append(_sig("critical", "RugCheck rates this high risk",
                             "Normalised risk score %.0f/100 (%s)." % (normalised, detail), "rugcheck"))
@@ -540,7 +641,8 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
         signals.append(_sig("critical", "RugCheck danger flags",
                             "; ".join(n for n in danger if n), "rugcheck"))
 
-    # 持币集中度：单一 rug 预测力最强的信号，数据同一响应里就有
+    # Holder concentration: the strongest single predictor of a rug, and the data is
+    # already sitting in this same response
     if top_holders:
         if top10 >= 70:
             signals.append(_sig("critical", "Holdings are highly concentrated",
@@ -553,16 +655,16 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
                                 "Top 10 addresses hold %.1f%%." % top10, "concentration"))
 
 
-# ---------------------------------------------------------------- 三个工具
+# ---------------------------------------------------------------- the three tools
 
 async def _load_pairs(address, chain_hint):
-    """取交易对。返回 (pairs, source)；pairs 为 None 表示两个数据源都失败。"""
+    """Load pairs. Returns (pairs, source); pairs is None when both sources failed."""
     ds = await _fetch_json("https://api.dexscreener.com/latest/dex/tokens/%s" % address)
     if ds is not None:
         pairs = ds.get("pairs") or []
         if pairs:
             return pairs, "dexscreener"
-    # 兜底：GeckoTerminal。按 chain_hint 选网络，不再写死 eth。
+    # Fallback: GeckoTerminal. Network comes from chain_hint; eth is no longer hardcoded.
     networks = []
     if chain_hint:
         n = _GT_NETWORK.get(chain_hint.strip().lower())
@@ -579,20 +681,21 @@ async def _load_pairs(address, chain_hint):
         if pools:
             return [_gt_to_pair(p, address, net) for p in pools], "geckoterminal"
     if ds is None:
-        return None, None  # 抓取失败，不是"确实没有池子"
+        return None, None  # fetch failed, not "there really are no pools"
     return [], "dexscreener"
 
 
-# 精简模式下保留的 evidence 字段
+# evidence fields kept in slim mode
 _SLIM_EVIDENCE_KEYS = (
     "best_pair", "chains", "pair_age_days", "turnover_24h", "honeypot",
-    "rugcheck", "liquidity_source", "confidence", "data_gaps",
+    "rugcheck", "liquidity_source", "confidence", "data_gaps", "served_stale",
 )
 
 
 async def assess(address, chain_hint=None, verbose=False):
-    """核心：代币风险画像。fail-closed，地址校验前置。"""
+    """The core call: a token's risk profile. Fail closed, address validated up front."""
     address = validate_address(address)
+    del _STALE_HITS[:]          # per-request; drained into evidence at the end
     signals, evidence, data_gaps = [], {}, []
 
     pairs, source = await _load_pairs(address, chain_hint)
@@ -627,16 +730,27 @@ async def assess(address, chain_hint=None, verbose=False):
             await _fetch_json("https://api.rugcheck.xyz/v1/tokens/%s/report" % address),
             signals, evidence, data_gaps)
 
+    # If any upstream was down and we answered from cache, say so. Serving stale data
+    # is defensible; serving it silently is not.
+    if _STALE_HITS:
+        evidence["served_stale"] = [
+            {"source": u.split("/")[2], "age_seconds": a} for u, a in _STALE_HITS]
+        signals.append(_sig(
+            "info", "Answered partly from cache",
+            "An upstream was unreachable, so up to %d seconds old data was used."
+            % max(a for _, a in _STALE_HITS), "freshness"))
+
     result = _finalize(address, signals, evidence, data_gaps)
     if not verbose:
-        # 默认精简：agent 用不上 reserves/txHash/taxDistribution 这类原始字段
+        # Slim by default: an agent has no use for raw fields like reserves, txHash
+        # or taxDistribution.
         result["evidence"] = {k: v for k, v in result["evidence"].items()
                               if k in _SLIM_EVIDENCE_KEYS}
     return result
 
 
 async def liquidity(address, chain_hint=None):
-    """流动性快照。与 assess 共用同一套校验与选池逻辑。"""
+    """Liquidity snapshot. Same validation and pool-picking logic as assess."""
     address = validate_address(address)
     pairs, source = await _load_pairs(address, chain_hint)
     if pairs is None:
@@ -661,7 +775,7 @@ async def liquidity(address, chain_hint=None):
 
 
 async def new_pools(chain="solana", limit=10):
-    """扫描某链新池/热门池。"""
+    """Scan a chain for new and trending pools."""
     chain = (chain or "solana").strip().lower()
     net = _GT_NETWORK.get(chain, chain)
     if not re.match(r"^[a-z0-9_\-]{1,32}$", net):
@@ -678,7 +792,7 @@ async def new_pools(chain="solana", limit=10):
         data = await _fetch_json(
             "https://api.geckoterminal.com/api/v2/networks/%s/%s" % (net, path))
         if data is None:
-            continue  # 该端点抓取失败
+            continue  # this endpoint failed
         reachable = True
         for p in (data.get("data") or []):
             pid = p.get("id")
@@ -693,7 +807,8 @@ async def new_pools(chain="solana", limit=10):
                 "pool_age_days": _age_days(a.get("pool_created_at")),
             }
     if not reachable:
-        # fail-closed：抓不到 ≠ 没有新池，不能返回空数组让调用方以为「扫过了，没东西」
+        # Fail closed: a failed fetch is not the same as no new pools. Returning an
+        # empty array would tell the caller "we scanned, there was nothing there".
         raise RuntimeError("GeckoTerminal request failed; could not scan new pools on %s" % chain)
     return {"chain": chain, "network": net, "count": len(merged),
             "pools": list(merged.values())[:limit]}
