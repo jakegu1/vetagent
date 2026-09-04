@@ -253,5 +253,59 @@ cd docs && mcp-publisher publish
 | **mcp.so** | https://mcp.so/submit?type=remote-server | 站内邮箱密码账号（注意：**该站关闭了密码重置**，务必存进密码管理器） |
 | **awesome-mcp-servers** | https://github.com/punkpeye/awesome-mcp-servers | GitHub PR。⚠️ 该仓库的机器人要求先有 **Glama 收录**才给过检查，所以顺序是先 Glama 再提 PR |
 
+### 全部候选渠道（穷举 + 按「agent 真的会在这里被发现吗」排序）
+
+排序依据不是渠道大小，是**我们的用户会不会经由它找到工具**。
+一个有百万访问但用户全是人类浏览器的目录，对 agent 场景价值接近零。
+
+**第一梯队 —— agent 真的从这里发现工具**
+
+| 渠道 | 谁做 | 状态 | 备注 |
+|---|---|---|---|
+| 官方 MCP Registry | 我 | ✅ 已上 | 事实标准，下游多个目录从这里同步 |
+| PulseMCP | — | ✅ 自动 | 从官方 registry 抓取 |
+| Claude 插件目录 | **Jake** | ⬜ | 注册 Console 即可，仓库侧前置全就绪 |
+| Cline MCP Marketplace | 我（GitHub PR） | ⬜ | Cline 用户量大且是 agent 场景 |
+| Cursor Directory | **Jake** | ⬜ | 需账号 |
+| Continue Hub | **Jake** | ⬜ | 需账号 |
+
+**第二梯队 —— 人类开发者从这里挑工具**
+
+| 渠道 | 谁做 | 状态 | 备注 |
+|---|---|---|---|
+| Glama | **Jake** | ⬜ | GitHub OAuth。**必须先做**：awesome 列表的机器人要它 |
+| awesome-mcp-servers (punkpeye) | 我（PR） | ⬜ | 依赖 Glama |
+| Smithery | **Jake** | ⬜ | 拿到 API key 后我可以命令行发布 |
+| mcp.so | **Jake** | ⬜ | 站内账号，**密码重置已关闭**，务必存密码管理器 |
+| mcpservers.org (wong2) | **Jake** | ⬜ | 只要邮箱，无需账号 |
+| MCP Market / OpenTools / mcp-get | **Jake** | ⬜ | 长尾，收益递减，有空再说 |
+
+**第三梯队 —— 框架生态（面向自建 agent 的开发者）**
+
+LangChain / LlamaIndex / CrewAI / Vercel AI SDK 的工具registry。
+都是 PR 或文档收录，我可以做，但**先等有人用了再投入**——
+现在做等于给零用户的产品写零人读的集成文档。
+
+**第四梯队 —— 内容与社区（实验 C）**
+
+Show HN、r/ethdev、r/mcp、r/LocalLLaMA、X 加密开发者圈、Dev.to 长文。
+主题固定一个：**「我们公布了自己的误报率，这个品类没有第二家这么做」**。
+不发功能列表——功能列表没人转，反直觉的数字有人转。
+
+### 三条不在常规清单里、但可能更值钱的路
+
+1. **给别人的开源交易 agent 提 PR，把安全检查接进去。**
+   目录是"等人来找"，这是"直接进入代码"。GitHub 上有大量开源交易机器人，
+   给其中几个提一个「买入前调用 vetagent」的 PR——被合并一次，
+   胜过在十个目录里躺着。**我可以做，成本是每个 PR 半小时。**
+
+2. **把基准方法论开源成一份公开标准。**
+   别人采纳，我们就是参考实现。用极低成本换权威，不需要市场份额。
+   这条的杠杆比任何目录都高，因为它改变的是**我们在这个品类里的位置**，不是曝光量。
+
+3. **GEO 而不是 SEO。** 已做（`/llms.txt`、FAQPage 结构化数据、可引用的具体数字）。
+   我们的用户不 Google，他们问模型。模型引用**可核对的数字**，不引用形容词——
+   所以那张写着「误报率 11.3%、召回率测不出来」的表，是整个站上最有说服力的东西。
+
 > 提交文案统一口径：**只读分析工具，不执行交易、不提供投资建议**。
 > 这不只是合规措辞——它就是产品的真实边界，也是 §5 禁止返佣那条的同一个理由。
