@@ -71,6 +71,8 @@ current progress and open work (→ HANDOFF.md), business judgement (→ STRATEG
 | P1 | **No referral fees, no order-flow revenue share, no paid ratings from projects** | The only asset is that nobody questions our motive when we call a token dangerous. The moment revenue correlates with calling something low, that asset is worth zero and never recovers | None | Active |
 | P2 | Target trading-bot operators, not retail users | People with revenue and liability for losses are the ones who pay | None | Active |
 | P3 | If we stop maintaining this, we **take it offline ourselves** | An unmaintained risk tool keeps confidently emitting wrong answers; that is a liability, not an asset | None | Active |
+| P5 | A discovery that suggests a different product gets **parked**, not adopted, until the gate it would preempt resolves | On 2026-09-04 one afternoon of research undermined distribution, SEO and the differentiator, then proposed repositioning — 14 days before the gate asking whether anyone uses this had come due. Measured facts constrain *how* to finish; they are not a licence to start something else | `test_gates_get_reviewed` + `docs/OPPORTUNITIES.md` | Active |
+| P6 | Fixing defects is never a pivot | A tool returning wrong answers is not a signal to go do something else. It is the work | None | Active |
 | P4 | Snapshot new pools every day | Public sources only list live pools (199 sampled, 0 dead); this data can't be bought and can't be backfilled | CI (`snapshot.yml`, daily schedule) | Active |
 
 ---
