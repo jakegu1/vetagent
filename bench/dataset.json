@@ -18,7 +18,7 @@
    },
    "goplus_label": null,
    "goplus_reasons": [
-    "GoPlus 无数据"
+    "no GoPlus data"
    ],
    "goplus_raw": {}
   },
@@ -30,12 +30,12 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "reason": "fewer than 30 days of history",
+    "days": 3
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可增发且 owner 未放弃"
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -107,7 +107,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 3
    },
    "goplus_label": "safe",
@@ -132,8 +132,13 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 150,
+    "peak_close": 5.43373792170805e-05,
+    "last_close": 1.52667605817077e-05,
+    "drawdown": 0.719,
+    "peak_volume_7d": 10857575.02,
+    "recent_volume_7d": 386964.25,
+    "volume_collapse": 0.9644
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -176,7 +181,7 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "owner 可改余额"
+    "owner can change balances"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -429,7 +434,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 4
    },
    "goplus_label": "safe",
@@ -491,14 +496,19 @@
    "chain": "base",
    "pool": "0x222ccbe78890a4d9ef8d22d7fc1b968be0f2c653",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 0.0604437294955573,
+    "last_close": 0.0276718429978164,
+    "drawdown": 0.5422,
+    "peak_volume_7d": 9104329.1,
+    "recent_volume_7d": 1174807.84,
+    "volume_collapse": 0.871
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可增发且 owner 未放弃"
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -652,7 +662,7 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可增发且 owner 未放弃"
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -724,7 +734,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 2
    },
    "goplus_label": "safe",
@@ -790,6 +800,28 @@
    }
   },
   {
+   "address": "0x3ec2156d4c0a9cbdab4a016633b7bcf6a8d68ea2",
+   "symbol": "DRB",
+   "chain": "base",
+   "pool": "0x385b47e56b73eb6549378f78f7c7cbc42c56c9e0",
+   "sampled_from": "gt_pools",
+   "outcome_label": "alive",
+   "outcome_facts": {
+    "days": 180,
+    "peak_close": 0.000211026273704086,
+    "last_close": 0.000158032118212593,
+    "drawdown": 0.2511,
+    "peak_volume_7d": 995108.97,
+    "recent_volume_7d": 638338.83,
+    "volume_collapse": 0.3585
+   },
+   "goplus_label": null,
+   "goplus_reasons": [
+    "no GoPlus data"
+   ],
+   "goplus_raw": {}
+  },
+  {
    "address": "0x4200000000000000000000000000000000000006",
    "symbol": "WETH",
    "chain": "base",
@@ -830,10 +862,15 @@
    "chain": "base",
    "pool": "0x7501bc8bb51616f79bfa524e464fb7b41f0b10fb",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 1.00241952324049,
+    "last_close": 0.466807623383564,
+    "drawdown": 0.5343,
+    "peak_volume_7d": 64363320.41,
+    "recent_volume_7d": 8125033.8,
+    "volume_collapse": 0.8738
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -856,12 +893,12 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "reason": "fewer than 30 days of history",
+    "days": 16
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "owner 可改余额"
+    "owner can change balances"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -903,7 +940,7 @@
    },
    "goplus_label": null,
    "goplus_reasons": [
-    "GoPlus 无数据"
+    "no GoPlus data"
    ],
    "goplus_raw": {}
   },
@@ -915,12 +952,12 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 2
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "owner 可改余额"
+    "owner can change balances"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -951,8 +988,8 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "reason": "fewer than 30 days of history",
+    "days": 19
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -984,7 +1021,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 11
    },
    "goplus_label": "safe",
@@ -1047,10 +1084,15 @@
    "chain": "base",
    "pool": "0x4618dfcbc52d9fbcd45ec4a65fc61b5da57ad205",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 231.218997373805,
+    "last_close": 191.431950411395,
+    "drawdown": 0.1721,
+    "peak_volume_7d": 4960919.08,
+    "recent_volume_7d": 2265446.68,
+    "volume_collapse": 0.5433
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -1073,7 +1115,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 0
    },
    "goplus_label": "safe",
@@ -1096,14 +1138,19 @@
    "chain": "base",
    "pool": "0x29183f918920a2aef0115a9c7374945589968aea",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 0.433746564991919,
+    "last_close": 0.314028443686604,
+    "drawdown": 0.276,
+    "peak_volume_7d": 15579513.85,
+    "recent_volume_7d": 7627300.78,
+    "volume_collapse": 0.5104
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "owner 可改余额"
+    "owner can change balances"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -1143,7 +1190,7 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "owner 可改余额"
+    "owner can change balances"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -1185,7 +1232,7 @@
    },
    "goplus_label": null,
    "goplus_reasons": [
-    "证据不足（开源=1 持有者=227）"
+    "not enough evidence (open source=1 holders=227)"
    ],
    "goplus_raw": {
     "honeypot_with_same_creator": "0",
@@ -1216,8 +1263,8 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "有黑名单",
-    "owner 可改余额"
+    "has a blacklist",
+    "owner can change balances"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -1260,7 +1307,7 @@
    },
    "goplus_label": null,
    "goplus_reasons": [
-    "GoPlus 无数据"
+    "no GoPlus data"
    ],
    "goplus_raw": {}
   },
@@ -1309,14 +1356,19 @@
    "chain": "base",
    "pool": "0x3693022bd390e147d8dd89a05403c80ff21dd64b",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 94,
+    "peak_close": 0.296348948386449,
+    "last_close": 0.147862463620439,
+    "drawdown": 0.5011,
+    "peak_volume_7d": 4169665.07,
+    "recent_volume_7d": 2160128.22,
+    "volume_collapse": 0.4819
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可增发且 owner 未放弃"
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -1345,15 +1397,20 @@
    "chain": "base",
    "pool": "0x98637c29abc801001c63fb0e3b94f27a65b610ac",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 1.08854438585853,
+    "last_close": 1.00928643010356,
+    "drawdown": 0.0728,
+    "peak_volume_7d": 1237187.36,
+    "recent_volume_7d": 362581.23,
+    "volume_collapse": 0.7069
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "owner 可改余额",
-    "可增发且 owner 未放弃"
+    "owner can change balances",
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -1382,10 +1439,15 @@
    "chain": "base",
    "pool": "0x74f72788f4814d7ff3c49b44684aa98eee140c0e",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 2410.40119377487,
+    "last_close": 1169.78807417316,
+    "drawdown": 0.5147,
+    "peak_volume_7d": 67584023.01,
+    "recent_volume_7d": 8917095.26,
+    "volume_collapse": 0.8681
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -1481,8 +1543,13 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 124,
+    "peak_close": 0.157211867877005,
+    "last_close": 0.0358607494573147,
+    "drawdown": 0.7719,
+    "peak_volume_7d": 69414409.21,
+    "recent_volume_7d": 12665387.3,
+    "volume_collapse": 0.8175
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -1524,7 +1591,7 @@
    },
    "goplus_label": null,
    "goplus_reasons": [
-    "GoPlus 无数据"
+    "no GoPlus data"
    ],
    "goplus_raw": {}
   },
@@ -1615,10 +1682,15 @@
    "chain": "base",
    "pool": "0xe2b8c33ae97658cead06afd47c7f3857e5851871",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 96,
+    "peak_close": 141.18402179131,
+    "last_close": 134.844286806273,
+    "drawdown": 0.0449,
+    "peak_volume_7d": 18066168.8,
+    "recent_volume_7d": 5476319.57,
+    "volume_collapse": 0.6969
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -1651,8 +1723,13 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 0.0177141952955592,
+    "last_close": 0.00400287280051746,
+    "drawdown": 0.774,
+    "peak_volume_7d": 2865385.35,
+    "recent_volume_7d": 223808.87,
+    "volume_collapse": 0.9219
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -1684,7 +1761,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 0
    },
    "goplus_label": "safe",
@@ -1756,10 +1833,15 @@
    "chain": "base",
    "pool": "0x0a04e1c94584a6f91228da6c0dba6bf0fbe5c9fa20ec6df57490494994489333",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 0.148295897016222,
+    "last_close": 0.128270927062383,
+    "drawdown": 0.135,
+    "peak_volume_7d": 1479820.51,
+    "recent_volume_7d": 811601.79,
+    "volume_collapse": 0.4516
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -1801,7 +1883,7 @@
    },
    "goplus_label": null,
    "goplus_reasons": [
-    "GoPlus 无数据"
+    "no GoPlus data"
    ],
    "goplus_raw": {}
   },
@@ -1813,7 +1895,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 19
    },
    "goplus_label": "safe",
@@ -1836,7 +1918,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 0
    },
    "goplus_label": "safe",
@@ -1859,8 +1941,8 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "reason": "fewer than 30 days of history",
+    "days": 19
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -1892,7 +1974,7 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可增发且 owner 未放弃"
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -1923,13 +2005,18 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 2936.43546200571,
+    "last_close": 2922.24831390674,
+    "drawdown": 0.0048,
+    "peak_volume_7d": 2298913.64,
+    "recent_volume_7d": 60375.76,
+    "volume_collapse": 0.9737
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "owner 可改余额",
-    "可增发且 owner 未放弃"
+    "owner can change balances",
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -1958,10 +2045,15 @@
    "chain": "base",
    "pool": "0xb5f0b4ae66c14f7efaa9aa1468e8fc536a3e288c",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 2.90379565158747,
+    "last_close": 2.46868718011708,
+    "drawdown": 0.1498,
+    "peak_volume_7d": 22498055.29,
+    "recent_volume_7d": 11429616.53,
+    "volume_collapse": 0.492
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -1986,7 +2078,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 29
    },
    "goplus_label": "safe",
@@ -2020,7 +2112,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 0
    },
    "goplus_label": "safe",
@@ -2042,10 +2134,15 @@
    "chain": "base",
    "pool": "0xb90fe999be6869af0afc557dccfbe169ea3403d6",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 142,
+    "peak_close": 1.52025124209959,
+    "last_close": 1.44470083372984,
+    "drawdown": 0.0497,
+    "peak_volume_7d": 48606583.71,
+    "recent_volume_7d": 9397939.71,
+    "volume_collapse": 0.8067
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -2069,7 +2166,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 0
    },
    "goplus_label": "safe",
@@ -2153,7 +2250,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 4
    },
    "goplus_label": "safe",
@@ -2347,8 +2444,8 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "owner 可改余额",
-    "可增发且 owner 未放弃"
+    "owner can change balances",
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -2373,6 +2470,28 @@
    }
   },
   {
+   "address": "0x0000000000000000000000000000000000000000",
+   "symbol": "BNB",
+   "chain": "bsc",
+   "pool": "0xd37aa0f0d66ad670279f6b89325c88bdff17d0265144762fb01f54fca9779944",
+   "sampled_from": "gt_pools",
+   "outcome_label": "alive",
+   "outcome_facts": {
+    "days": 180,
+    "peak_close": 725.06,
+    "last_close": 723.77,
+    "drawdown": 0.0018,
+    "peak_volume_7d": 59569948.36,
+    "recent_volume_7d": 52341607.68,
+    "volume_collapse": 0.1213
+   },
+   "goplus_label": null,
+   "goplus_reasons": [
+    "no GoPlus data"
+   ],
+   "goplus_raw": {}
+  },
+  {
    "address": "0x000008d2175f9aeaddb2430c26f8a6f73c5a0000",
    "symbol": "UP",
    "chain": "bsc",
@@ -2380,7 +2499,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 0
    },
    "goplus_label": "safe",
@@ -2450,8 +2569,13 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 38,
+    "peak_close": 230.625111600872,
+    "last_close": 229.626559884466,
+    "drawdown": 0.0043,
+    "peak_volume_7d": 49655494.92,
+    "recent_volume_7d": 22156139.37,
+    "volume_collapse": 0.5538
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -2474,7 +2598,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 11
    },
    "goplus_label": "safe",
@@ -2547,7 +2671,7 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可增发且 owner 未放弃"
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -2579,12 +2703,17 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 40,
+    "peak_close": 0.114393741546137,
+    "last_close": 0.0541943672203612,
+    "drawdown": 0.5262,
+    "peak_volume_7d": 309661932.92,
+    "recent_volume_7d": 53568711.27,
+    "volume_collapse": 0.827
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可暂停转账"
+    "transfers pausable"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -2612,10 +2741,15 @@
    "chain": "bsc",
    "pool": "0xff84bf0ab4772bfa399b42b2633617a08506dfd8ba6fb3b7a782b3c021c0bba1",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 0.604065774383732,
+    "last_close": 0.221096938030155,
+    "drawdown": 0.634,
+    "peak_volume_7d": 125764498.19,
+    "recent_volume_7d": 11059185.16,
+    "volume_collapse": 0.9121
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -2648,7 +2782,7 @@
    },
    "goplus_label": null,
    "goplus_reasons": [
-    "GoPlus 无数据"
+    "no GoPlus data"
    ],
    "goplus_raw": {}
   },
@@ -2708,7 +2842,7 @@
    },
    "goplus_label": null,
    "goplus_reasons": [
-    "GoPlus 无数据"
+    "no GoPlus data"
    ],
    "goplus_raw": {}
   },
@@ -2718,10 +2852,15 @@
    "chain": "bsc",
    "pool": "0xef470f9ae8512d2762e4f1cd91ae58caea17143afa61b8d56e9b20c8f87688c4",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 0.0890948501262144,
+    "last_close": 0.07930442261095,
+    "drawdown": 0.1099,
+    "peak_volume_7d": 134464360.32,
+    "recent_volume_7d": 51219546.95,
+    "volume_collapse": 0.6191
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -2754,7 +2893,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 0
    },
    "goplus_label": "safe",
@@ -2798,7 +2937,7 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "税率可改"
+    "tax changeable"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -2838,7 +2977,7 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可增发且 owner 未放弃"
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -2947,10 +3086,15 @@
    "chain": "bsc",
    "pool": "0x1b54cd932b6b751803c996cbef36280b53795f81",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 0.016440699806639,
+    "last_close": 0.0161539997873809,
+    "drawdown": 0.0174,
+    "peak_volume_7d": 59949724.88,
+    "recent_volume_7d": 50261918.41,
+    "volume_collapse": 0.1616
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -2983,12 +3127,12 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "reason": "fewer than 30 days of history",
+    "days": 10
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可增发且 owner 未放弃"
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -3017,10 +3161,15 @@
    "chain": "bsc",
    "pool": "0x0c2e58fab72adad8a58db68e592b8f6922f8dafaaf0d2b394605241a7ab777ae",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 158,
+    "peak_close": 1.50508490081426,
+    "last_close": 0.607671860731467,
+    "drawdown": 0.5963,
+    "peak_volume_7d": 129008235.08,
+    "recent_volume_7d": 43229855.0,
+    "volume_collapse": 0.6649
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -3063,7 +3212,7 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可增发且 owner 未放弃"
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -3107,7 +3256,7 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "税率可改"
+    "tax changeable"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -3147,7 +3296,7 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可增发且 owner 未放弃"
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -3242,13 +3391,13 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 0
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "税率可改",
-    "owner 可改余额"
+    "tax changeable",
+    "owner can change balances"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -3320,7 +3469,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 0
    },
    "goplus_label": "safe",
@@ -3353,7 +3502,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 2
    },
    "goplus_label": "safe",
@@ -3457,7 +3606,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 0
    },
    "goplus_label": "safe",
@@ -3501,7 +3650,7 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可增发且 owner 未放弃"
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -3609,7 +3758,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 20
    },
    "goplus_label": "safe",
@@ -3692,7 +3841,7 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可增发且 owner 未放弃"
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -3754,7 +3903,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 5
    },
    "goplus_label": "safe",
@@ -3788,8 +3937,8 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "reason": "fewer than 30 days of history",
+    "days": 2
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -3861,7 +4010,7 @@
    },
    "goplus_label": null,
    "goplus_reasons": [
-    "GoPlus 无数据"
+    "no GoPlus data"
    ],
    "goplus_raw": {}
   },
@@ -3912,12 +4061,17 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 2853.7307568099,
+    "last_close": 2299.24677949744,
+    "drawdown": 0.1943,
+    "peak_volume_7d": 24256.68,
+    "recent_volume_7d": 2321.04,
+    "volume_collapse": 0.9043
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可增发且 owner 未放弃"
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -3983,12 +4137,12 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 8
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "有黑名单"
+    "has a blacklist"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -4021,8 +4175,13 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 47,
+    "peak_close": 0.0223223352114201,
+    "last_close": 0.0220232363592653,
+    "drawdown": 0.0134,
+    "peak_volume_7d": 2729247.51,
+    "recent_volume_7d": 2248457.15,
+    "volume_collapse": 0.1762
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -4047,6 +4206,28 @@
    }
   },
   {
+   "address": "0x152649ea73beab28c5b49b26eb48f7ead6d4c898",
+   "symbol": "Cake",
+   "chain": "ethereum",
+   "pool": "0x517f451b0a9e1b87dc0ae98a05ee033c3310f046",
+   "sampled_from": "gt_pools",
+   "outcome_label": "alive",
+   "outcome_facts": {
+    "days": 180,
+    "peak_close": 2.01381164646655,
+    "last_close": 2.01381164646655,
+    "drawdown": 0.0,
+    "peak_volume_7d": 428253.18,
+    "recent_volume_7d": 428253.18,
+    "volume_collapse": 0.0
+   },
+   "goplus_label": null,
+   "goplus_reasons": [
+    "no GoPlus data"
+   ],
+   "goplus_raw": {}
+  },
+  {
    "address": "0x180bf8e4d33a797ebb31c88b33f9892495f568b6",
    "symbol": "fwARB",
    "chain": "ethereum",
@@ -4064,7 +4245,7 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "owner 可改余额"
+    "owner can change balances"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -4256,8 +4437,8 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可暂停转账",
-    "可增发且 owner 未放弃"
+    "transfers pausable",
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -4292,12 +4473,12 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 3
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "税率可改"
+    "tax changeable"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -4514,6 +4695,28 @@
    }
   },
   {
+   "address": "0x3b991130eae3cca364406d718da22fa1c3e7c256",
+   "symbol": "SHRUB",
+   "chain": "ethereum",
+   "pool": "0x6a63be37a5501dc0f88ed3fa21d3cf9a64eb618e",
+   "sampled_from": "gt_pools",
+   "outcome_label": "alive",
+   "outcome_facts": {
+    "days": 180,
+    "peak_close": 0.00344383977776459,
+    "last_close": 0.00203363596418946,
+    "drawdown": 0.4095,
+    "peak_volume_7d": 8034606.45,
+    "recent_volume_7d": 8004460.86,
+    "volume_collapse": 0.0038
+   },
+   "goplus_label": null,
+   "goplus_reasons": [
+    "no GoPlus data"
+   ],
+   "goplus_raw": {}
+  },
+  {
    "address": "0x3c41c80b966b92d345dc8fc91e5508bc7248da6e",
    "symbol": "CST",
    "chain": "ethereum",
@@ -4521,13 +4724,13 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 0
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "税率可改",
-    "可增发且 owner 未放弃"
+    "tax changeable",
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -4568,7 +4771,7 @@
    },
    "goplus_label": null,
    "goplus_reasons": [
-    "GoPlus 无数据"
+    "no GoPlus data"
    ],
    "goplus_raw": {}
   },
@@ -4578,14 +4781,19 @@
    "chain": "ethereum",
    "pool": "0x747ba49077e00554e47f76dd716006ec3aa6786db984141eac9c8f6c843b624a",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 0.00608087155443373,
+    "last_close": 0.00608087155443373,
+    "drawdown": 0.0,
+    "peak_volume_7d": 1034136.89,
+    "recent_volume_7d": 209695.96,
+    "volume_collapse": 0.7972
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "owner 可改余额"
+    "owner can change balances"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -4618,8 +4826,8 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "reason": "fewer than 30 days of history",
+    "days": 14
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -4651,7 +4859,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 0
    },
    "goplus_label": "safe",
@@ -4793,10 +5001,15 @@
    "chain": "ethereum",
    "pool": "0x9ecc2b9b4171c12e89ea93ed63eb2b0b18048c51be2846e94be3d7c478354441",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 0.181067757306037,
+    "last_close": 0.139128400490723,
+    "drawdown": 0.2316,
+    "peak_volume_7d": 2955045.37,
+    "recent_volume_7d": 430884.24,
+    "volume_collapse": 0.8542
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -4829,14 +5042,19 @@
    "chain": "ethereum",
    "pool": "0xb576491f1e6e5e62f1d8f26062ee822b40b0e0d4",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 2.45770146409708,
+    "last_close": 2.30944042037339,
+    "drawdown": 0.0603,
+    "peak_volume_7d": 3639111.82,
+    "recent_volume_7d": 2427962.34,
+    "volume_collapse": 0.3328
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可增发且 owner 未放弃"
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -4922,8 +5140,8 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可暂停转账",
-    "有黑名单"
+    "transfers pausable",
+    "has a blacklist"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -4951,10 +5169,15 @@
    "chain": "ethereum",
    "pool": "0xc74f05c1e7b86fa42ab07ab4a1361286b9a90087",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 0.35496334677034,
+    "last_close": 0.266100021293188,
+    "drawdown": 0.2503,
+    "peak_volume_7d": 624142.37,
+    "recent_volume_7d": 163405.78,
+    "volume_collapse": 0.7382
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -5026,14 +5249,19 @@
    "chain": "ethereum",
    "pool": "0xc3db44adc1fcdfd5671f555236eae49f4a8eea18",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 0.169607280749889,
+    "last_close": 0.165657294019962,
+    "drawdown": 0.0233,
+    "peak_volume_7d": 8698357.79,
+    "recent_volume_7d": 5919703.48,
+    "volume_collapse": 0.3194
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可增发且 owner 未放弃"
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -5065,10 +5293,15 @@
    "chain": "ethereum",
    "pool": "0xc8219b876753a85025156b22176c2edea17aac53",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 2.91484376689986,
+    "last_close": 2.48429987631703,
+    "drawdown": 0.1477,
+    "peak_volume_7d": 627429.1,
+    "recent_volume_7d": 350929.91,
+    "volume_collapse": 0.4407
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -5140,8 +5373,8 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可暂停转账",
-    "owner 可改余额"
+    "transfers pausable",
+    "owner can change balances"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -5176,7 +5409,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 2
    },
    "goplus_label": "unsafe",
@@ -5261,7 +5494,7 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "owner 可改余额"
+    "owner can change balances"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -5294,8 +5527,13 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 5143.4039112795,
+    "last_close": 4465.55106040113,
+    "drawdown": 0.1318,
+    "peak_volume_7d": 85790724.18,
+    "recent_volume_7d": 4289474.84,
+    "volume_collapse": 0.95
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -5318,12 +5556,12 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 0
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "税率可改"
+    "tax changeable"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -5364,8 +5602,8 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可暂停转账",
-    "有黑名单"
+    "transfers pausable",
+    "has a blacklist"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -5478,10 +5716,15 @@
    "chain": "ethereum",
    "pool": "0xe63e32b2ae40601662f760d6bf5d771057324fbd97784fe1d3717069f7b75d45",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 1.01131105794921,
+    "last_close": 0.998877516577561,
+    "drawdown": 0.0123,
+    "peak_volume_7d": 654965256.32,
+    "recent_volume_7d": 218282650.19,
+    "volume_collapse": 0.6667
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -5516,7 +5759,7 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "有黑名单"
+    "has a blacklist"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -5624,12 +5867,12 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 24
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可暂停转账"
+    "transfers pausable"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -5660,8 +5903,13 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 3123.06066005636,
+    "last_close": 3115.03227843089,
+    "drawdown": 0.0026,
+    "peak_volume_7d": 231694819.7,
+    "recent_volume_7d": 9880397.75,
+    "volume_collapse": 0.9574
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -5724,14 +5972,19 @@
    "chain": "ethereum",
    "pool": "0x57af956d3e2cca3b86f3d8c6772c03ddca3eaacb",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 2.15565921454014,
+    "last_close": 1.97846344022724,
+    "drawdown": 0.0822,
+    "peak_volume_7d": 4258467.24,
+    "recent_volume_7d": 656902.41,
+    "volume_collapse": 0.8457
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可增发且 owner 未放弃"
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -5830,14 +6083,19 @@
    "chain": "ethereum",
    "pool": "0xcaa3a16f8440f85303afaab1992f2b97d12469b1",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 1.31378699674669e-07,
+    "last_close": 6.46970702976532e-08,
+    "drawdown": 0.5076,
+    "peak_volume_7d": 18514924.44,
+    "recent_volume_7d": 1103305.28,
+    "volume_collapse": 0.9404
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可暂停转账"
+    "transfers pausable"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -5959,7 +6217,7 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "税率可改"
+    "tax changeable"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -5983,19 +6241,64 @@
    }
   },
   {
+   "address": "0x974733a3f37208647577bb925d8ee854c7337e29",
+   "symbol": "WFC",
+   "chain": "ethereum",
+   "pool": "0x6f9beaac7d042a50008db301833abbe92e4f3a8f",
+   "sampled_from": "gt_pools",
+   "outcome_label": "alive",
+   "outcome_facts": {
+    "days": 128,
+    "peak_close": 0.00316360789257252,
+    "last_close": 0.00306349318575435,
+    "drawdown": 0.0316,
+    "peak_volume_7d": 331426.29,
+    "recent_volume_7d": 158811.74,
+    "volume_collapse": 0.5208
+   },
+   "goplus_label": null,
+   "goplus_reasons": [
+    "not enough evidence (open source=1 holders=171)"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "171",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
    "address": "0x9d65ff81a3c488d585bbfb0bfe3c7707c7917f54",
    "symbol": "SSV",
    "chain": "ethereum",
    "pool": "0x0a55882f4e1117adc54afbbac4a39079ad52fb89",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 3.19668683185358,
+    "last_close": 3.02173234835767,
+    "drawdown": 0.0547,
+    "peak_volume_7d": 469878.52,
+    "recent_volume_7d": 179071.87,
+    "volume_collapse": 0.6189
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可增发且 owner 未放弃"
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -6038,7 +6341,7 @@
    },
    "goplus_label": null,
    "goplus_reasons": [
-    "证据不足（开源=1 持有者=1）"
+    "not enough evidence (open source=1 holders=1)"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -6192,7 +6495,7 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "owner 可改余额"
+    "owner can change balances"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -6212,6 +6515,49 @@
     "holder_count": "227",
     "reputable": false,
     "cex_listed": []
+   }
+  },
+  {
+   "address": "0xa27ec0006e59f245217ff08cd52a7e8b169e62d2",
+   "symbol": "AZTEC",
+   "chain": "ethereum",
+   "pool": "0xce2899b16743cfd5a954d8122d5e07f410305b1aebee39fd73d9f3b9ebf10c2f",
+   "sampled_from": "gt_pools",
+   "outcome_label": "alive",
+   "outcome_facts": {
+    "days": 180,
+    "peak_close": 0.0264910768243117,
+    "last_close": 0.0139342779487274,
+    "drawdown": 0.474,
+    "peak_volume_7d": 23504128.5,
+    "recent_volume_7d": 2280822.13,
+    "volume_collapse": 0.903
+   },
+   "goplus_label": null,
+   "goplus_reasons": [
+    "not enough evidence (open source=1 holders=2)"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "2",
+    "owner_address": "0x02fadf157d551aa6d761b2a2237d03af68e41ca6",
+    "reputable": true,
+    "cex_listed": [
+     "Coinbase"
+    ]
    }
   },
   {
@@ -6387,7 +6733,7 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可增发且 owner 未放弃"
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -6416,10 +6762,15 @@
    "chain": "ethereum",
    "pool": "0x59354356ec5d56306791873f567d61ebf11dfbd5",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 0.144916809202969,
+    "last_close": 0.137226498714743,
+    "drawdown": 0.0531,
+    "peak_volume_7d": 316862.28,
+    "recent_volume_7d": 316862.28,
+    "volume_collapse": 0.0
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -6495,7 +6846,7 @@
    },
    "goplus_label": null,
    "goplus_reasons": [
-    "GoPlus 无数据"
+    "no GoPlus data"
    ],
    "goplus_raw": {}
   },
@@ -6544,10 +6895,15 @@
    "chain": "ethereum",
    "pool": "0x3c385b0ce5b48958ffab12ffd8da14d433d7b885",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 1.03569074653486,
+    "last_close": 0.999480256092424,
+    "drawdown": 0.035,
+    "peak_volume_7d": 2043493.37,
+    "recent_volume_7d": 655307.82,
+    "volume_collapse": 0.6793
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -6662,7 +7018,7 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可增发且 owner 未放弃"
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -6706,7 +7062,7 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可暂停转账"
+    "transfers pausable"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -6736,7 +7092,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 18
    },
    "goplus_label": "safe",
@@ -6821,11 +7177,11 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可暂停转账",
-    "有黑名单",
-    "税率可改",
-    "owner 可改余额",
-    "可增发且 owner 未放弃"
+    "transfers pausable",
+    "has a blacklist",
+    "tax changeable",
+    "owner can change balances",
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -6902,7 +7258,7 @@
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "有黑名单"
+    "has a blacklist"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -6935,7 +7291,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 16
    },
    "goplus_label": "safe",
@@ -6967,10 +7323,15 @@
    "chain": "ethereum",
    "pool": "0x397fb17f2f23d2618574ab0cff0320b424d9ab0b31d036096b2ee9c02e649e22",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 176,
+    "peak_close": 1.00557712506359,
+    "last_close": 1.00080875172424,
+    "drawdown": 0.0047,
+    "peak_volume_7d": 12838262.86,
+    "recent_volume_7d": 12637634.01,
+    "volume_collapse": 0.0156
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -6993,7 +7354,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 23
    },
    "goplus_label": "safe",
@@ -7015,14 +7376,19 @@
    "chain": "ethereum",
    "pool": "0x15ab0333985fd1e289adf4fbbe19261454776642",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 3.87458802049268,
+    "last_close": 1.3914971469623,
+    "drawdown": 0.6409,
+    "peak_volume_7d": 592403.64,
+    "recent_volume_7d": 233701.22,
+    "volume_collapse": 0.6055
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "可增发且 owner 未放弃"
+    "mintable and owner has not renounced"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
@@ -7131,10 +7497,15 @@
    "chain": "ethereum",
    "pool": "0xc85589c893c9a4cc7ea0b193095712aca1b8441c",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 3.62160835053719e-10,
+    "last_close": 3.07656373330713e-10,
+    "drawdown": 0.1505,
+    "peak_volume_7d": 157153.39,
+    "recent_volume_7d": 127407.8,
+    "volume_collapse": 0.1893
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -7167,8 +7538,13 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
-    "days": 0
+    "days": 180,
+    "peak_close": 0.614930820227563,
+    "last_close": 0.573772343514449,
+    "drawdown": 0.0669,
+    "peak_volume_7d": 3474633.29,
+    "recent_volume_7d": 165809.86,
+    "volume_collapse": 0.9523
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -7203,7 +7579,7 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "历史不足 30 天",
+    "reason": "fewer than 30 days of history",
     "days": 18
    },
    "goplus_label": "safe",
@@ -7232,7 +7608,7 @@
  ],
  "counts": {
   "outcome": {
-   "alive": 97,
+   "alive": 133,
    "dead": 1
   },
   "goplus": {

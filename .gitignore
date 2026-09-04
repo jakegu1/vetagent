@@ -34,3 +34,4 @@ tests/fixtures/__pycache__/
 bench/cache/
 bench/build.log
 bench/run.log
+bench/access_log.json

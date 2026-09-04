@@ -163,6 +163,12 @@ def main():
         json.dump({"tokens": rows,
                    "counts": {"outcome": dict(oc), "goplus": dict(gc)}},
                   f, ensure_ascii=False, indent=1)
+
+    # Hand the labeling side's endpoint list to run_benchmark.py, which runs in a
+    # separate process. Without this its label set is empty, engine n {} is always {},
+    # and the disjointness assertion passes without ever testing anything.
+    persist_access_log()
+
     print("\nWrote %s (%d rows)" % (DATASET, len(rows)))
 
 
