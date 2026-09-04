@@ -10,5 +10,11 @@
   ],
   "vars": {
     "ENV": "production"
-  }
+  },
+  // 用量观测。刻意**不记录被查询的代币地址**——那是用户的查询意图，
+  // 能反推出他打算买什么。隐私政策承诺了不留存，这里就必须守住。
+  // 代价是我们不知道热门标的；换来的是「我们不记录你查了什么」这句话是真的。
+  "analytics_engine_datasets": [
+    { "binding": "ANALYTICS", "dataset": "vetagent_calls" }
+  ]
 }

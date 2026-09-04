@@ -38,11 +38,18 @@ _PRIVACY_HTML = """<!doctype html>
 <p class="sub">VetAgent &middot; last updated 2026-09-04</p>
 
 <h2>What we collect</h2>
-<p><strong>No accounts, no cookies, no tracking.</strong> VetAgent is a stateless
-service. It has no user database and no analytics scripts.</p>
-<p>When you call the API or the MCP endpoint, the request carries a token contract
-address and an optional chain name. That address is used to query public data
-sources and is <strong>not stored</strong> after the response is returned.</p>
+<p><strong>No accounts, no cookies, no browser tracking.</strong> VetAgent has no
+user database and serves no third-party scripts.</p>
+<p><strong>We do not log the token addresses you look up.</strong> That query is the
+most sensitive thing you send us &mdash; it can reveal what you are about to trade
+&mdash; so it is used to fetch public data and then discarded with the response. This
+is a deliberate trade: it means we cannot tell you which tokens are popular, and we
+consider that the correct side of the trade for a tool whose only asset is trust.</p>
+<p>We do keep aggregate usage counts, so we can tell whether anyone is using the
+service. Each call records: which method and tool was invoked, the resulting risk
+level, whether it errored, a coarse client name taken from the user agent, and the
+country code Cloudflare attaches at the edge. <strong>No IP addresses, no full user
+agents, no token addresses, nothing that identifies a person or a request.</strong></p>
 
 <h2>What reaches third parties</h2>
 <p>To answer a request we query these public APIs, sending only the token address:</p>
@@ -80,6 +87,47 @@ _CORS = {
     "access-control-allow-headers": "content-type, accept, mcp-protocol-version, mcp-session-id",
     "access-control-max-age": "86400",
 }
+
+
+def _record(env, blobs, doubles):
+    """写一条用量数据点。
+
+    三条约束，按重要性排：
+    1. **绝不记录被查询的代币地址。** 那是用户的查询意图，能反推出他打算买什么。
+       隐私政策承诺了不留存，代码就必须守住——这类承诺一旦破一次就再也不值钱。
+    2. **绝不记录 IP 或完整 UA。** 国家 + MCP 客户端名足以回答
+       「有没有外部调用方」，而这正是决策门要判的东西。
+    3. **绝不因为观测失败而影响主路径。** 风控接口的可用性优先于统计。
+    """
+    try:
+        ds = getattr(env, "ANALYTICS", None)
+        if ds is None:
+            return
+        from js import Object
+        from pyodide.ffi import to_js
+        ds.writeDataPoint(to_js({"blobs": blobs, "doubles": doubles, "indexes": blobs[:1]},
+                                dict_converter=Object.fromEntries))
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _client_name(request):
+    """取 MCP 客户端名。这是判断「是不是外部调用方」最干净的信号——
+    它由客户端自己声明，不含任何个人数据。"""
+    try:
+        ua = request.headers.get("user-agent") or ""
+    except Exception:  # noqa: BLE001
+        ua = ""
+    # 只保留粗粒度的客户端标识，丢掉版本号和其余部分
+    ua = ua.split("/")[0].strip().lower()[:32]
+    return ua or "unknown"
+
+
+def _country(request):
+    try:
+        return (getattr(request, "cf", None) or {}).get("country") or "??"
+    except Exception:  # noqa: BLE001
+        return "??"
 
 
 def _json_response(obj, status=200, extra_headers=None):
@@ -192,6 +240,27 @@ class Default(WorkerEntrypoint):
             return _json_response(responses, extra_headers=headers)
 
         result = await mcp_server.handle_mcp_request(body)
+
+        # 记一条用量。只记「调了哪个工具、结论是什么、来自哪种客户端」，
+        # 不记地址、不记 IP。
+        try:
+            method = body.get("method") or "?"
+            tool, verdict = "", ""
+            if method == "tools/call":
+                tool = (body.get("params") or {}).get("name") or "?"
+                sc = ((result or {}).get("result") or {}).get("structuredContent") or {}
+                verdict = sc.get("risk_level") or sc.get("status") or ""
+            self._record_call(request, method, tool, verdict, result)
+        except Exception:  # noqa: BLE001
+            pass
+
         if result is None:
             return Response("", headers=_CORS, status=202)  # 通知无响应体
         return _json_response(result, extra_headers=headers)
+
+    def _record_call(self, request, method, tool, verdict, result):
+        is_error = bool((result or {}).get("error")
+                        or ((result or {}).get("result") or {}).get("isError"))
+        _record(self.env,
+                [method, tool, verdict, _client_name(request), _country(request)],
+                [1.0, 1.0 if is_error else 0.0])
