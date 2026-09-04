@@ -28,6 +28,16 @@ jobs:
       - name: MCP protocol tests
         run: python tests/test_mcp.py
 
+      # The repo has one language. Without a check, Chinese creeps back one comment at
+      # a time and a would-be contributor bounces off a file they cannot read.
+      - name: English-only check
+        run: python tests/test_english_only.py
+
+      # Parked ideas must be decided on schedule. Deferring without a forced review is
+      # a nicer word for dropping something.
+      - name: Parked opportunities are not overdue
+        run: python tests/test_gates_get_reviewed.py
+
   # Upstream contract monitor: real API calls that check the fields we depend on still exist.
   # Separate from the unit tests: a third-party outage turns it red, which is the signal.
   upstream-contract:

@@ -13,11 +13,11 @@ Remote MCP endpoint: **`https://vetagent.dev/mcp`** · Landing page: **https://v
   "risk_score": 36,
   "confidence": "high",
   "signals": [
-    {"severity": "ok",   "name": "流动性充足", "category": "liquidity"},
-    {"severity": "ok",   "name": "可正常买卖", "category": "honeypot"},
-    {"severity": "warn", "name": "合约闭源",   "category": "contract"}
+    {"severity": "ok",   "name": "Liquidity is adequate",     "category": "liquidity"},
+    {"severity": "ok",   "name": "Buys and sells normally",   "category": "honeypot"},
+    {"severity": "warn", "name": "Contract is closed source", "category": "contract"}
   ],
-  "recommendation": "中等风险：需人工核实流动性、持币分布与合约权限后再决定。"
+  "recommendation": "Medium risk. Real signals fired but none are fatal. Review liquidity, holder distribution and contract permissions before deciding."
 }
 ```
 
