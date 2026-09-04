@@ -12,7 +12,11 @@ name: snapshot
 
 on:
   schedule:
-    - cron: "23 2 * * *"   # 02:23 UTC daily
+    # Four passes a day, not one. Depth cannot be accelerated -- a day not recorded never
+    # existed -- but width can, and the dead cohort the benchmark needs grows with pools
+    # recorded x days elapsed. A pool that launches and dies between two daily passes is
+    # never seen at all, and those are exactly the samples worth having.
+    - cron: "23 2,8,14,20 * * *"
   workflow_dispatch:
 
 permissions:
@@ -34,7 +38,7 @@ jobs:
           python-version: "3.12"
 
       - name: Collect
-        run: python bench/snapshot.py --chains eth,base,bsc,solana
+        run: python bench/snapshot.py --pages 5
 
       - name: Commit
         run: |
