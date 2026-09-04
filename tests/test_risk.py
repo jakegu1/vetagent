@@ -286,6 +286,38 @@ def test_upstream_failure_yields_unknown():
     check("data_gaps must be recorded", bool(r2["evidence"].get("data_gaps")), "")
 
 
+def test_no_trace_is_high_but_our_outage_is_unknown():
+    """Two situations empty every critical dimension, and they mean opposite things.
+
+    If our upstreams failed, the token may be perfectly fine and we simply cannot see;
+    rating it high would smear legitimate tokens for our own outage. If the token has no
+    trace anywhere -- no pool prices it, nothing can be simulated -- that is not a
+    question mark, because every legitimate token clears at least one of those.
+
+    This distinction was missed on the first attempt: the escalation counted how many
+    critical dimensions were empty and ignored why, which turned an outage on our side
+    into a high-risk verdict about someone else's token. The existing fail-closed test
+    caught it.
+    """
+    print("\n[fail-closed] no trace vs our outage")
+
+    # Our side is down: every fetch returns None.
+    install_stub([], default=None)
+    r = run(risk.assess(WETH, chain_hint="ethereum"))
+    check("our outage stays unknown", r["risk_level"] == "unknown", r["risk_level"])
+
+    # The token has no trace: sources answer, they just have nothing on it.
+    install_stub([("dexscreener", {"pairs": []}),
+                  ("geckoterminal", {"data": []}),
+                  ("honeypot.is", {"summary": {}, "simulationSuccess": False,
+                                   "simulationError": "no pair to simulate against"})])
+    r2 = run(risk.assess(WETH, chain_hint="ethereum"))
+    check("no verifiable trace is high", r2["risk_level"] == "high",
+          "%s %s" % (r2["risk_level"], sig_categories(r2)))
+    check("and says why", any("can be verified" in s["name"] for s in r2["signals"]),
+          str([s["name"] for s in r2["signals"]]))
+
+
 def test_clean_token_stays_low():
     """Guard the other way: more signals must not let the score push a healthy token high."""
     print("\n[scoring] healthy token stays low")

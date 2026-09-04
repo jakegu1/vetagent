@@ -23,6 +23,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fetcher import fetch_json, persist_access_log  # noqa: E402
 from labels import GOPLUS_CHAIN_ID, GT_NETWORK, goplus_label, outcome_label  # noqa: E402
 
+# GeckoTerminal network id -> our canonical chain name (snapshots store the GT id)
+_GT_TO_CHAIN = {v: k for k, v in GT_NETWORK.items()}
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATASET = os.path.join(HERE, "dataset.json")
 
@@ -71,6 +74,21 @@ def collect_candidates(limit):
         seen.add(key)
         out.append(c)
 
+    # Recently-launched, from the daily snapshot archive. **Collected first on purpose**:
+    # main() truncates to --limit, and head+tail alone overfill it, so anything appended
+    # after them is cut entirely.
+    #
+    # This is the fix for the sampling problem that made recall unmeasurable. Live
+    # listings yielded 1 bad token in 209, because they rank by liquidity and scams never
+    # climb them. Brand-new pools raise that density about 40x (20% vs 0.5% in a spot
+    # check), but a token minted an hour ago is too new for the labelling oracle -- 26 of
+    # 36 came back with no GoPlus data at all.
+    #
+    # A pool that was new *yesterday* sits in the gap: old enough that GoPlus knows it,
+    # young enough that a scam has not been delisted. That is exactly what the snapshot
+    # archive holds, so it starts paying off on day two rather than in six months.
+    _from_snapshots(add, seen)
+
     # Head: page through each chain
     for chain in HEAD_CHAINS:
         net = GT_NETWORK[chain]
@@ -95,6 +113,33 @@ def collect_candidates(limit):
             add(_norm_pair(p))
 
     return out
+
+
+def _from_snapshots(add, seen):
+    """Add tokens recorded by bench/snapshot.py on previous days."""
+    snap_dir = os.path.join(HERE, "snapshots")
+    if not os.path.isdir(snap_dir):
+        return
+    before = len(seen)
+    for fn in sorted(os.listdir(snap_dir)):
+        if not (fn.startswith("pools-") and fn.endswith(".ndjson")):
+            continue
+        with open(os.path.join(snap_dir, fn), encoding="utf-8") as f:
+            for line in f:
+                try:
+                    r = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                bt = r.get("base_token") or ""
+                addr = bt.split("_", 1)[1] if "_" in bt else ""
+                if not addr.startswith("0x"):
+                    continue  # EVM only; the GoPlus labeler does not cover Solana
+                add({"address": addr,
+                     "symbol": (r.get("name") or "").split("/")[0].strip(),
+                     "chain": _GT_TO_CHAIN.get(r.get("chain"), r.get("chain")),
+                     "pool": r.get("pool_address"),
+                     "source": "snapshot_%s" % fn[6:16]})
+    print("  snapshot archive contributed %d candidates" % (len(seen) - before))
 
 
 def label_one(c):

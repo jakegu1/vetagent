@@ -253,9 +253,39 @@ def _finalize(address, signals, evidence, data_gaps):
 
     # Fail-closed override: with a critical dimension missing, nobody gets the
     # reassurance of a low/medium rating.
-    missing_critical = [g for g in data_gaps if g.get("dimension") in _CRITICAL_DIMENSIONS]
+    missing = {g.get("dimension") for g in data_gaps}
+    missing_critical = missing & set(_CRITICAL_DIMENSIONS)
     if missing_critical and level in ("low", "medium"):
         level = "unknown"
+
+    # Losing *every* critical dimension is sometimes an answer rather than an unknown —
+    # but only when the gaps are about the token, not about us.
+    #
+    # Two very different situations both leave every critical dimension empty:
+    #   our upstreams failed        -> the token may be perfectly fine and we cannot see
+    #   the token has no trace      -> no pool exists anywhere, nothing can be simulated
+    # Rating the first one "high" would smear legitimate tokens for our own outage, so
+    # the two are told apart by why the gap exists, not by how many there are.
+    #
+    # Measured on 9 confirmed honeypots: none were ever rated low, which is the property
+    # that matters, but 7 of 9 came back "unknown" rather than "high", and 5 of those
+    # only because no liquidity data existed. The tool was declining to answer, not
+    # detecting anything. A token that no market data source can price and no simulator
+    # can trade is not a question mark: every legitimate token clears at least one of
+    # those two. Saying so is strictly more conservative than "unknown", and more useful
+    # — the absence of any verifiable trace *is* the finding.
+    ours = ("upstream request failed",)
+    token_side = [g for g in data_gaps
+                  if g.get("dimension") in _CRITICAL_DIMENSIONS
+                  and not str(g.get("reason", "")).startswith(ours)]
+    if {g.get("dimension") for g in token_side} >= set(_CRITICAL_DIMENSIONS):
+        level = "high"
+        score = max(score, 70)
+        signals.append(_sig(
+            "critical", "Nothing about this token can be verified",
+            "No market data source could price it and its sellability could not be "
+            "simulated. Every legitimate token clears at least one of those.",
+            "no_liquidity"))
 
     total = len(signals)
     has_liquidity = any(s["category"] in ("liquidity", "no_liquidity") for s in signals)
