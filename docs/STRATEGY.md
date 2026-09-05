@@ -12,7 +12,9 @@
 
 ## 0. For people who don't follow crypto: what this actually is
 
-In one line: **before an AI buys a token for you, check whether the token is a scam.**
+In one line: **before an AI buys a token for you, check whether you could get back out.**
+
+> That wording is deliberate and it used to read "check whether the token is a scam". An external audit pointed out we cannot deliver the second one and should not imply it: a contract can hold the power to switch on a tax, pause transfers, blacklist an address or pull its liquidity, and keep every one of those dormant while our checks run. What we do establish is that the exit was open when we looked, which is the failure that actually empties wallets today and is worth saying accurately rather than grandly.
 
 Three things you need to know:
 

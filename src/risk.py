@@ -349,7 +349,16 @@ def _finalize(address, signals, evidence, data_gaps):
         recommendation={
             "high": "High risk. A fatal or high-severity signal fired - see signals for the specific reason. Do not proceed without review.",
             "medium": "Medium risk. Real signals fired but none are fatal. Review liquidity, holder distribution and contract permissions before deciding.",
-            "low": "Low risk - meaning no fatal signal appeared in the checks that ran. This is not the same as safe to buy, and covers on-chain risk only.",
+            # Names the gap rather than gesturing at it. An external audit built the
+            # token that beats every check here: switchable tax, pausable transfers,
+            # a blacklist and unlocked LP, sitting on $50k of liquidity for a month
+            # without being switched on. Nothing in the current checks fires,
+            # because those are contract powers rather than present behaviour, and
+            # the field that would reveal them belongs to the benchmark oracle we
+            # deliberately hold out (B2 in DECISIONS.md). So `low` means the exit
+            # was open when we looked -- not that nobody can close it tomorrow, and
+            # a caller is entitled to be told which of those we checked.
+            "low": "Low risk: sellable and liquid when checked, no fatal signal. Narrower than 'not a scam': dormant owner powers (switchable tax, pausable transfers, blacklist, removable liquidity) are not covered. The exit is open now; that is not the same as it cannot be closed.",
             "unknown": "Not assessed. A critical check could not be completed, so this is NOT a low-risk result and must not justify a trade. See evidence.data_gaps.",
         }[level])
     return result
