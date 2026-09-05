@@ -279,7 +279,14 @@ def _finalize(address, signals, evidence, data_gaps):
     token_side = [g for g in data_gaps
                   if g.get("dimension") in _CRITICAL_DIMENSIONS
                   and not str(g.get("reason", "")).startswith(ours)]
-    if {g.get("dimension") for g in token_side} >= set(_CRITICAL_DIMENSIONS):
+    token_side_dims = {g.get("dimension") for g in token_side}
+    # Pools that were costed and found empty is *stronger* evidence than a gap, not
+    # weaker. Recording it as a signal instead of a gap removed the liquidity dimension
+    # from this test and quietly downgraded the archetypal drained rug from high to
+    # unknown -- the exact token this escalation was written for.
+    if evidence.get("pools_all_empty"):
+        token_side_dims.add("liquidity")
+    if token_side_dims >= set(_CRITICAL_DIMENSIONS):
         level = "high"
         score = max(score, 70)
         signals.append(_sig(
@@ -315,11 +322,33 @@ def _finalize(address, signals, evidence, data_gaps):
 # ---------------------------------------------------------------- pool selection
 
 def _pair_liquidity(pair):
+    """Depth in USD, with an unreported depth counted as zero.
+
+    Fine for ranking pools, where a pool of unknown depth should not win. NOT fine for
+    concluding anything about the token -- use _reported_liquidity for that.
+    """
+    v = _reported_liquidity(pair)
+    return 0.0 if v is None else v
+
+
+def _reported_liquidity(pair):
+    """Depth in USD, or None when no source actually stated one.
+
+    The distinction this draws is the whole difference between an observation and a
+    guess. DexScreener returns "liquidity": null for pairs it has not costed -- 303 of
+    the 3,909 pairs in this project's own benchmark cache, and for six tokens *every*
+    pair is like that. Collapsing that to 0.0 was invisible while the number was only
+    used to rank pools, because an unranked pool and an empty pool both deserve to lose.
+
+    It stopped being invisible when a caller asked "is every pool empty" and used the
+    answer to tell a user the exit was closed. One of those six tokens had 174 buys and
+    104 sells that same day.
+    """
     liq = pair.get("liquidity") or {}
-    v = liq.get("usd", 0)
-    if not v:
-        v = pair.get("reserveInUsd") or 0
-    return _num(v)
+    for v in (liq.get("usd"), pair.get("reserveInUsd")):
+        if v is not None and v != "":
+            return _num(v)
+    return None
 
 
 def _pick_best(pairs, chain_hint=None, target=None):
@@ -436,7 +465,11 @@ def _gt_to_pair(p, address, network):
     return {
         "dexId": "geckoterminal",
         "chainId": _GT_TO_CHAIN.get(network, network),
-        "liquidity": {"usd": _num(a.get("reserve_in_usd"))},
+        # None, not 0.0, when GeckoTerminal did not state a reserve -- see
+        # _reported_liquidity. A missing number must not arrive downstream as a measured
+        # zero.
+        "liquidity": {"usd": (None if a.get("reserve_in_usd") in (None, "")
+                              else _num(a.get("reserve_in_usd")))},
         "priceUsd": _gt_base_price(a),
         "pairCreatedAt": a.get("pool_created_at"),
         "volume": {"h24": _num((a.get("volume_usd") or {}).get("h24"))},
@@ -502,7 +535,8 @@ def _liquidity_signals(best, pairs, signals, evidence):
                                 "lifecycle"))
 
 
-async def _impersonation_signals(address, pairs, signals, evidence):
+async def _impersonation_signals(address, pairs, signals, evidence,
+                                 chain_hint=None):
     """Is this the token people mean when they say this ticker?
 
     The loss an agent is most likely to take is not an exotic exploit. It is buying the
@@ -528,18 +562,41 @@ async def _impersonation_signals(address, pairs, signals, evidence):
     if not symbol or len(symbol) < 2:
         return
 
-    mine = max((_pair_liquidity(p) for p in pairs
-                if ((p.get("baseToken") or {}).get("address") or "").lower()
-                == address.lower()), default=0.0)
+    # Our own side, measured the way the engine measures every other pool: through
+    # _pick_best, which applies the chain-canonicality and price sanity checks. Taking a
+    # raw max over pairs measured a different quantity from the one the verdict is based
+    # on, and the two can disagree.
+    ours = _pick_best(pairs, chain_hint=chain_hint, target=address)
+    mine = _reported_liquidity(ours) if ours is not None else None
+    if mine is None or mine <= 0:
+        return  # we cannot size our own side, so we cannot say anything is dwarfing it
+    home = (ours.get("chainId") or "").lower()
 
     found = await _fetch_json(
         "https://api.dexscreener.com/latest/dex/search?q=%s" % symbol.replace(" ", "%20"))
     if found is None:
         return  # no claim either way; absence of the check is not evidence of safety
 
-    # Deepest pool per rival contract, keyed by address so one token with many pools
-    # counts once.
-    rivals = {}
+    # Rivals are graded on the same chain only, and on the same evidence standard.
+    #
+    # Both restrictions were bought with false positives. The first version accepted any
+    # pool the search returned, on any chain, at whatever liquidity it claimed, with none
+    # of the checks _pick_best applies to our own side. Canonical ZORA on Base was then
+    # called "almost certainly not the token you meant" because a Solana pool listed
+    # under the same ticker reported $1,015,244,216 -- a number nobody verified, from a
+    # venue nobody asked about, and one an attacker can manufacture at will by standing
+    # up a pool under a target's ticker. Measured over the 207-token benchmark, the check
+    # fired warn-or-critical on 81 tokens labelled safe or alive.
+    #
+    # Same-chain also fixes the honest half of that. A token deployed on several chains
+    # has a different address on each, so its own other deployments looked like rivals --
+    # the canonical version of a multichain asset was competing with itself.
+    #
+    # What is lost: an impostor on chain A shadowing a famous token on chain B. That is a
+    # real pattern, but it cannot be told apart from bridged deployments and unpriced
+    # foreign venues with this data, and a check that cannot tell them apart is one that
+    # cries wolf on the canonical asset.
+    by_addr = {}
     for p in (found.get("pairs") or []):
         base = p.get("baseToken") or {}
         addr = (base.get("address") or "").lower()
@@ -547,7 +604,27 @@ async def _impersonation_signals(address, pairs, signals, evidence):
             continue
         if (base.get("symbol") or "").strip().lower() != symbol.lower():
             continue
-        rivals[addr] = max(rivals.get(addr, 0.0), _pair_liquidity(p))
+        if (p.get("chainId") or "").lower() != home:
+            continue
+        by_addr.setdefault(addr, []).append(p)
+
+    rivals = {}
+    for addr, their_pairs in by_addr.items():
+        best = _pick_best(their_pairs, chain_hint=home, target=addr)
+        liq = _reported_liquidity(best) if best is not None else None
+        if liq is None or liq <= 0:
+            continue
+        # Deliberately NOT corroborated against volume, though that was tried.
+        #
+        # The idea was that a pool nobody trades cannot be evidence of where a name's
+        # value sits, so a claimed reserve should have to be backed by turnover. It
+        # rejected the wrong thing. The genuine AAPLon impostor is caught by comparing
+        # against a $3,366,238 pool that trades $0.01 a day -- because the token it
+        # shadows is a tokenised equity, and low turnover against deep liquidity is what
+        # that asset class looks like, not what a fake looks like. The rule silently
+        # deleted a confirmed true positive to prevent a false one that same-chain
+        # filtering had already prevented.
+        rivals[addr] = liq
 
     if not rivals:
         return
@@ -556,11 +633,12 @@ async def _impersonation_signals(address, pairs, signals, evidence):
     evidence["same_symbol"] = {
         "symbol": symbol,
         "other_contracts": len(rivals),
+        "chain": home,
         "largest_rival_liquidity_usd": _sig_round(top_liq),
         "this_token_liquidity_usd": _sig_round(mine),
     }
 
-    ratio = top_liq / mine if mine > 0 else float("inf")
+    ratio = top_liq / mine
     if ratio >= 1000:
         signals.append(_sig(
             "critical", "Almost certainly not the token you meant",
@@ -890,23 +968,31 @@ async def assess(address, chain_hint=None, verbose=False):
             #
             # This is a sellability finding, not a depth one. Depth is how much slippage
             # you take; zero across every venue is whether you get out at all.
-            deepest = max((_pair_liquidity(p) for p in pairs), default=0.0)
-            if deepest <= 0:
-                evidence["pools_all_empty"] = len(pairs)
+            # Only pools that actually stated a depth can testify about depth.
+            # _pair_liquidity reports an unstated depth as 0.0, which is right for
+            # ranking and catastrophic here: it would let "nobody costed these pools"
+            # masquerade as "these pools are empty", and this branch turns that into a
+            # sentence about the user's money.
+            stated = [v for v in (_reported_liquidity(p) for p in pairs) if v is not None]
+            if stated and max(stated) <= 0:
+                evidence["pools_all_empty"] = len(stated)
                 signals.append(_sig(
                     "critical", "No liquidity left in any pool",
-                    "%d pool%s exist for this token and every one of them is empty. "
+                    "%d pool%s report their depth and every one of them is empty. "
                     "There is nothing to sell into at any price."
-                    % (len(pairs), "" if len(pairs) == 1 else "s"), "sellability"))
+                    % (len(stated), "" if len(stated) == 1 else "s"), "sellability"))
             else:
+                reason = ("no pair with a sane price" if stated
+                          else "no source reported pool depth")
                 data_gaps.append({"dimension": "liquidity", "source": source,
-                                  "reason": "no pair with a sane price"})
+                                  "reason": reason})
                 signals.append(_sig("warn", "No usable pool",
-                                    "Pairs exist but none had a sane price.",
+                                    "Pairs exist but none could be costed.",
                                     "no_liquidity"))
         else:
             _liquidity_signals(best, pairs, signals, evidence)
-            await _impersonation_signals(address, pairs, signals, evidence)
+            await _impersonation_signals(address, pairs, signals, evidence,
+                                         chain_hint=chain_hint)
 
     if _looks_evm(address):
         _honeypot_signals(

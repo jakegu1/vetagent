@@ -56,12 +56,22 @@ def install_engine_fetcher():
     risk._fetch_json = _fetch
 
 
-def ablate(address, signals):
-    """Re-grade with contract-safety signals only, to see how much judgement is left."""
+def ablate(address, signals, data_gaps=None):
+    """Re-grade with contract-safety signals only, to see how much judgement is left.
+
+    The gaps are passed through, filtered to the dimensions this column still covers.
+    Passing an empty list -- as this did -- switched off the fail-closed override for
+    every ablated verdict, so the published column reported low and medium for tokens
+    whose sell simulation never ran. The ablation is meant to remove *signals derived
+    from liquidity*, not to remove the rule that an unverified token cannot be called
+    safe, and a benchmark column that quietly grades itself under laxer rules than the
+    engine flatters the engine.
+    """
     kept = [s for s in signals if s["category"] in CONTRACT_CATEGORIES]
     if not kept:
         return "unknown", 0
-    r = risk._finalize(address, kept, {}, [])
+    gaps = [g for g in (data_gaps or []) if g.get("dimension") == "sellability"]
+    r = risk._finalize(address, kept, {}, gaps)
     return r["risk_level"], r["risk_score"]
 
 
@@ -186,7 +196,8 @@ def main():
             print("  %s failed to evaluate: %s" % (t.get("symbol"), e))
             continue
         sigs = res.get("signals") or []
-        ab_level, ab_score = ablate(t["address"], sigs)
+        ab_level, ab_score = ablate(t["address"], sigs,
+                                    (res.get("evidence") or {}).get("data_gaps"))
         rows.append({
             "address": t["address"], "symbol": t.get("symbol"), "chain": t["chain"],
             "outcome_label": t.get("outcome_label"), "goplus_label": t.get("goplus_label"),

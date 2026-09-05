@@ -558,6 +558,112 @@ def test_every_pool_empty_is_a_finding_not_a_gap():
     check("the verdict is not low", r["risk_level"] != "low", r["risk_level"])
 
 
+_MISSING = object()
+
+
+def test_unpriced_pools_are_not_empty_pools():
+    """A pool nobody costed is not a pool that holds nothing.
+
+    Found by adversarial review of the change that introduced it, not by any test here.
+    DexScreener returns "liquidity": null for pairs it has not costed -- 303 of the 3,909
+    pairs in this project's own benchmark cache, and for six tokens *every* pair is like
+    that. _pair_liquidity reports that as 0.0, which is correct for ranking pools and
+    catastrophic as evidence, and the drained-pool branch used it as evidence.
+
+    The engine told the truth about a token it had never measured: 30 pools, all
+    uncosted, 174 buys and 104 sells that same day, and the verdict read "there is
+    nothing to sell into at any price" with the liquidity data gap deleted, so confidence
+    went *up*. That is the fail-closed rule running backwards -- an unmeasured dimension
+    being converted into a measurement.
+    """
+    print("\n[liquidity] uncosted is not empty")
+
+    def pools(liq_value, n=3):
+        pair = {"chainId": "ethereum", "dexId": "uniswap",
+                "baseToken": {"address": WETH, "symbol": "UNPRICED"},
+                "quoteToken": {"address": "0xq"}, "priceUsd": "0.0001",
+                "volume": {"h24": 900.0},
+                "txns": {"h24": {"buys": 174, "sells": 104}},
+                "pairCreatedAt": 1589841515000}
+        out = []
+        for _ in range(n):
+            p = dict(pair)
+            p["liquidity"] = {"usd": liq_value} if liq_value is not _MISSING else None
+            out.append(p)
+        return {"pairs": out}
+
+    install_stub([("dex/tokens", pools(_MISSING)), ("dex/search", None),
+                  ("honeypot.is", _load("hp_matic.json"))])
+    r = run(risk.assess(WETH, chain_hint="ethereum"))
+    claims = [x for x in r["signals"]
+              if "every one of them is empty" in (x.get("message") or "")]
+    check("an uncosted pool is never called empty", not claims,
+          str([x["name"] for x in r["signals"]]))
+    gaps = (r.get("evidence") or {}).get("data_gaps") or []
+    check("and the liquidity gap is kept, so fail-closed still applies",
+          any(g.get("dimension") == "liquidity" for g in gaps), str(gaps))
+    check("the verdict is not low", r["risk_level"] != "low", r["risk_level"])
+
+    # A pool that really does report zero is still called out -- the fix must not have
+    # bought its safety by disabling the check.
+    install_stub([("dex/tokens", pools(0)), ("dex/search", None),
+                  ("honeypot.is", _load("hp_matic.json"))])
+    r2 = run(risk.assess(WETH, chain_hint="ethereum"))
+    check("a pool that reports zero is still called out",
+          any(x["severity"] == "critical" and x["category"] == "sellability"
+              for x in r2["signals"]),
+          str([(x["severity"], x["category"]) for x in r2["signals"]]))
+
+
+def test_impersonation_only_compares_within_one_chain():
+    """A rival on another chain is not evidence, and usually is not a rival.
+
+    Two failures, one filter. A same-ticker token on a foreign venue arrives with a
+    liquidity figure nobody here can check and an attacker can manufacture: canonical
+    ZORA on Base was called "almost certainly not the token you meant" because a Solana
+    pool under that ticker reported $1,015,244,216. And a token deployed on several
+    chains has a different address on each, so its own deployments looked like impostors.
+
+    Measured before the fix, over the 207-token benchmark: warn-or-critical on 81 tokens
+    labelled safe or alive.
+    """
+    print("\n[impersonation] rivals are compared on their own chain")
+
+    def pair(chain, addr, liq, sym="TKN"):
+        return {"chainId": chain, "dexId": "uniswap",
+                "baseToken": {"address": addr, "symbol": sym},
+                "quoteToken": {"address": "0xq"}, "priceUsd": "1.0",
+                # Healthy turnover on purpose: at 1% the engine correctly calls the
+                # pair abandoned, and this test is about impersonation, not lifecycle.
+                "liquidity": {"usd": liq}, "volume": {"h24": max(1.0, liq * 0.5)},
+                "txns": {"h24": {"buys": 30, "sells": 30}},
+                "pairCreatedAt": 1589841515000}
+
+    ours = pair("ethereum", WETH, 94_943.0)
+    foreign_giant = pair("solana", "SoLnaMintAddr1111111111111111111111111111", 1_015_244_216.0)
+    home_giant = pair("ethereum", "0x%040d" % 7, 3_366_238.0)
+
+    install_stub([("dex/tokens", {"pairs": [ours]}),
+                  ("dex/search", {"pairs": [ours, foreign_giant]}),
+                  ("honeypot.is", _load("hp_matic.json"))])
+    r = run(risk.assess(WETH, chain_hint="ethereum"))
+    check("a giant on another chain raises nothing",
+          not [x for x in r["signals"] if x["category"] == "impersonation"],
+          str([(x["severity"], x["name"]) for x in r["signals"]
+               if x["category"] == "impersonation"]))
+    check("and the verdict stays low", r["risk_level"] == "low", r["risk_level"])
+
+    # The genuine case still fires: a much larger namesake on our own chain.
+    install_stub([("dex/tokens", {"pairs": [pair("ethereum", WETH, 4_275.0)]}),
+                  ("dex/search", {"pairs": [pair("ethereum", WETH, 4_275.0), home_giant]}),
+                  ("honeypot.is", _load("hp_matic.json"))])
+    r2 = run(risk.assess(WETH, chain_hint="ethereum"))
+    imp = [x for x in r2["signals"] if x["category"] == "impersonation"]
+    check("a much larger namesake on the same chain still fires",
+          imp and imp[0]["severity"] in ("warn", "critical"),
+          str([(x["severity"], x["name"]) for x in imp]))
+
+
 def test_clean_token_stays_low():
     """Guard the other way: more signals must not let the score push a healthy token high."""
     print("\n[scoring] healthy token stays low")
