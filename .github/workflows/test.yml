@@ -38,6 +38,17 @@ jobs:
       - name: Parked opportunities are not overdue
         run: python tests/test_gates_get_reviewed.py
 
+      # What the site, the README and /llms.txt claim about accuracy must equal what the
+      # benchmark measured. They had drifted three generations apart, in a product whose
+      # pitch is that its numbers can be checked.
+      - name: Published accuracy figures match the benchmark
+        run: python tests/test_published_numbers.py
+
+      # The score moves with every commit, so it belongs in the run that produces the
+      # commit. It is also the check most likely to catch a stale claim elsewhere.
+      - name: Maturity scorecard
+        run: python bench/scorecard.py
+
   # Upstream contract monitor: real API calls that check the fields we depend on still exist.
   # Separate from the unit tests: a third-party outage turns it red, which is the signal.
   upstream-contract:
@@ -51,8 +62,23 @@ jobs:
       - name: Verify upstream API contracts
         run: python tests/test_upstream_contract.py
 
+      # Also network-dependent: it round-trips decoded pool addresses against the chain,
+      # which is the only assertion that can catch a wrong byte offset. It was written
+      # and then never wired in here, so it protected nothing outside a local run.
+      - name: Backfill decoder round-trip
+        run: python tests/test_backfill.py
+
   # Accuracy benchmark. Not on every push: heavy real upstream traffic, tens of minutes.
-  # Manual trigger or weekly; results are committed to the repo, so the diff is the signal.
+  # Pipeline smoke test -- NOT the published measurement.
+  #
+  # A runner has no bench/cache and no bench/backfill (both gitignored), so this
+  # rebuilds a small dataset from scratch and produces a different, smaller number
+  # than bench/results.md. It exists to prove the pipeline still runs end to end and
+  # that the independence assertions still hold, not to reproduce the report.
+  #
+  # The comment here used to say results were committed so the diff was the signal.
+  # Nothing was ever committed and nobody read the artifact, so the claim was doing
+  # the work the job was not.
   benchmark:
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     runs-on: ubuntu-latest
@@ -62,7 +88,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Rebuild labelled dataset
+      - name: Rebuild a small labelled dataset from scratch
         run: python bench/build_dataset.py --limit 150
       - name: Run benchmark
         # The independence assertions exit non-zero on failure, and must not be ignored:
@@ -70,7 +96,7 @@ jobs:
         run: python bench/run_benchmark.py
       - uses: actions/upload-artifact@v4
         with:
-          name: benchmark-results
+          name: pipeline-smoke-test-results
           path: |
             bench/results.md
             bench/results.json

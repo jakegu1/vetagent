@@ -21,6 +21,7 @@ Run:  python tests/test_gates_get_reviewed.py
 """
 
 import datetime
+import io
 import os
 import re
 import sys
@@ -56,6 +57,54 @@ def parse_entries(text):
     return out
 
 
+
+STRATEGY = os.path.join(ROOT, "docs", "STRATEGY.md")
+
+# Dates in the STRATEGY §8 gate table, matched off the table itself so a gate cannot be
+# added there without also becoming enforceable here.
+_GATE_ROW = re.compile(r"^\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*([^|]+?)\s*\|", re.M)
+
+
+def test_strategy_gates_are_answered_when_they_fall_due():
+    """A gate nobody is obliged to answer is not a gate.
+
+    Found by external audit, which was asked in the audit brief to check exactly this and
+    reported that the 2026-09-18 gate could not fail: the brief claimed OPPORTUNITIES.md
+    and this test kept it live, and neither covered it. STRATEGY.md said "skipping one
+    silently isn't allowed" and nothing enforced that sentence.
+
+    A gate that is due must carry a "Resolved:" line in the same table row, stating what
+    the measurement said and what was decided. Undecided is allowed; silent is not.
+    """
+    print("\n[gates] STRATEGY decision gates are answered on time")
+    whole = io.open(STRATEGY, encoding="utf-8").read()
+    # Only the section 8 table. Other tables in STRATEGY.md also begin rows with a date,
+    # and matching those made this report a gate that does not exist as overdue -- a
+    # false alarm is how a guard gets switched off.
+    start = whole.find("## 8. Decision gates")
+    if start < 0:
+        check("STRATEGY.md still has a decision-gate section", False, "heading missing")
+        return
+    end = whole.find("\n## ", start + 1)
+## ", start + 1)
+    text = whole[start:end if end > 0 else len(whole)]
+    rows = _GATE_ROW.findall(text)
+    check("the gate table is still parseable", len(rows) >= 3, "%d rows" % len(rows))
+
+    today = datetime.date.today()
+    for date_str, name in rows:
+        due = datetime.date.fromisoformat(date_str)
+        line = [ln for ln in text.splitlines() if ln.startswith("| " + date_str)]
+        resolved = any("Resolved:" in ln for ln in line)
+        if due <= today:
+            check("gate %s (%s) is due and carries a written conclusion"
+                  % (date_str, name[:34]), resolved,
+                  "add 'Resolved: <what the measurement said> -> <decision>' to its row")
+        else:
+            days = (due - today).days
+            print("  ..    gate %s (%s) due in %d days" % (date_str, name[:34], days))
+
+
 def main():
     print("=" * 68)
     print("Parked opportunities: are any overdue for review?")
@@ -70,6 +119,11 @@ def main():
     entries = parse_entries(text)
     check("at least one entry is parked or explicitly unblocked", bool(entries),
           "no ### entries found")
+
+    # The STRATEGY gates are the ones that can stop the project, so they are checked
+    # here too. They were not, which is how the 2026-09-18 gate came to be unenforced
+    # while the audit brief claimed this file kept it live.
+    test_strategy_gates_are_answered_when_they_fall_due()
 
     today = datetime.date.today()
     overdue = []

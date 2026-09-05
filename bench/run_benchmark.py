@@ -35,6 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "..", "src"))
 
+import labels as L  # noqa: E402
 import risk  # noqa: E402
 import fetcher as fetcher_module  # noqa: E402
 from fetcher import access_report, fetch_json, load_persisted_access_log  # noqa: E402
@@ -233,6 +234,10 @@ def main():
             "address": t["address"], "symbol": t.get("symbol"), "chain": t["chain"],
             "outcome_label": t.get("outcome_label"), "goplus_label": t.get("goplus_label"),
             "sampled_from": t.get("sampled_from"),
+            "liquidity_usd": ((res.get("evidence") or {}).get("best_pair") or {})
+                             .get("liquidity_usd"),
+            "gap_reasons": [g.get("reason") for g
+                            in ((res.get("evidence") or {}).get("data_gaps") or [])],
             "verdict": res.get("risk_level"), "score": res.get("risk_score"),
             "confidence": res.get("confidence"),
             "verdict_ablated": ab_level, "score_ablated": ab_score,
@@ -288,7 +293,7 @@ def main():
     print("  dead rated high (see report)     : %s (n=%d)" % (_pct(o["high"]), o["n"]))
     print("  still high on contract signals   : %s"
           % _pct(report["outcome"]["contract_only"]["bad"]["high"]))
-    print("  live tokens wrongly rated high   : %s (n=%d)"
+    print("  false positives, established     : %s (n=%d)"
           % (_pct(report["outcome"]["full"]["good"]["high"]),
              report["outcome"]["full"]["good"]["n"]))
     print("  unknown rate                     : %s" % _pct(report["overall"]["unknown_rate"]))
@@ -325,15 +330,28 @@ def write_markdown(rep):
     A("\n</details>\n")
 
     A("\n### Label definitions\n")
-    A("- **dead**: traded for real at some point (peak 7d volume ≥ $50k), then price "
-      "fell ≥ 90% off its peak **and** 7d volume collapsed below 5% of peak. A price "
-      "drop alone isn't death, and neither is volume drying up alone.\n")
-    A("- **alive**: ≥ 90 days of history, drawdown ≤ 70%, 7d volume ≥ 10% of peak "
-      "and ≥ $50k.\n")
-    A("- **unsafe**: GoPlus flags honeypot / pausable / blacklist / mutable tax / "
-      "reclaimable ownership / owner can rewrite balances / mintable with ownership "
-      "not renounced / buy or sell tax >10%.\n")
-    A("- **safe**: none of the above, plus open source and ≥ 100 holders.\n")
+    A("Generated from the constants in `bench/labels.py`, not written by hand — the two "
+      "had drifted apart and the published rule no longer matched the one applied.\n\n")
+    A("- **dead**: traded for real at some point (peak 7d volume >= $%s), then price fell "
+      ">= %.0f%% off its peak **and** 7d volume collapsed below %.0f%% of peak. A price "
+      "drop alone isn't death, and neither is volume drying up alone.\n"
+      % (format(L.DEAD_PEAK_VOL_7D, ","), L.DEAD_DRAWDOWN * 100,
+         (1 - L.DEAD_VOL_COLLAPSE) * 100))
+    A("- **alive**: >= %d days of history, drawdown <= %.0f%%, 7d volume >= %.0f%% of "
+      "peak and >= $%s.\n"
+      % (L.ALIVE_MIN_DAYS, L.ALIVE_MAX_DRAWDOWN * 100, L.ALIVE_MIN_VOL_RATIO * 100,
+         format(L.ALIVE_MIN_VOL_7D, ",")))
+    A("- **unsafe**: an unambiguously adversarial trait — cannot sell all / cannot buy / "
+      "self-destructible / per-address tax / buy or sell tax > %.0f%% / closed source "
+      "with privileged functions — outside the reputation guardrail.\n"
+      % (L.UNSAFE_TAX * 100))
+    A("  A honeypot flag counts **only** if the pool traded >= $%s in the last 7 days, or "
+      "another adversarial trait corroborates it. The oracle raises that flag when its own "
+      "sell simulation fails, and a sell simulation fails against an empty pool whatever "
+      "the contract does — so on a dead pool the flag is unfalsifiable and the token is "
+      "left unlabelled instead.\n" % format(L.HONEYPOT_TESTABLE_VOL_7D, ","))
+    A("- **safe**: none of the above, plus open source, >= %s holders and taxes <= %.0f%%.\n"
+      % (format(L.SAFE_MIN_HOLDERS, ","), L.SAFE_MAX_TAX * 100))
     A("\nAnything in between goes unlabelled — a smaller sample beats dirty labels.\n")
 
     ov = rep["overall"]
@@ -392,6 +410,35 @@ def write_markdown(rep):
         if cen.get("examples"):
             A("\nExamples: %s\n" % ", ".join(
                 "%s(%s)" % (e["symbol"] or "?", e["verdict"]) for e in cen["examples"]))
+
+    safe_rows = [r for r in rows if r.get("goplus_label") == "safe"]
+    if safe_rows:
+        sh = len([r for r in safe_rows if r["verdict"] == "high"])
+        A("\n> **Which population the false-positive rate describes.** The headline figure "
+          "is measured on `alive` tokens, and `alive` requires %d days of history and "
+          "real weekly volume -- so freshness signals cannot fire on them and liquidity "
+          "rarely does. Agents mostly ask about tokens younger than that. On the broader "
+          "`safe` cohort, which includes new tokens: high %.1f%% (%d of %d). Both are "
+          "reported because the first is the friendlier of the two.\n"
+          % (L.ALIVE_MIN_DAYS, 100.0 * sh / len(safe_rows), sh, len(safe_rows)))
+
+    unk = [r for r in rows if r["verdict"] == "unknown"]
+    if unk:
+        ours = [r for r in unk if any(str(g).startswith("upstream request failed")
+                                      for g in (r.get("gap_reasons") or []))]
+        A("\n### What the unknown rate is made of\n")
+        A("An `unknown` because we could not reach an upstream is a different thing from "
+          "an `unknown` about the token, and only the second is a property of the engine. "
+          "Reported separately because the first kind drifts between runs -- failed "
+          "requests are not cached, so each run re-rolls them -- and because a harness "
+          "that provokes refusals and then scores them has happened here twice.\n")
+        A("\n| | n | share of all %d |" % len(rows))
+        A("|---|---|---|")
+        A("| unknown, our side (upstream unreachable or uncovered) | %d | %.1f%% |"
+          % (len(ours), 100.0 * len(ours) / len(rows)))
+        A("| unknown, token side (nothing verifiable about it) | %d | %.1f%% |"
+          % (len(unk) - len(ours), 100.0 * (len(unk) - len(ours)) / len(rows)))
+        A("")
 
     comp = rep.get("composition") or {}
     if comp:
@@ -455,28 +502,45 @@ def write_markdown(rep):
     A("**`dead` is a market outcome; the engine scores a safety property.** They overlap "
       "and they are not the same, and until the cohort was big enough to look at, that "
       "difference was invisible.\n")
-    A("\nThe label means: traded for real, then price fell >=90% off peak and 7d volume "
-      "collapsed below 5% of peak. It says a project died. It does **not** say the "
-      "position is trapped -- and measured on this set, usually it is not:\n")
-    A("\n| | min | p25 | median | p75 | max |")
-    A("|---|---|---|---|---|---|")
-    A("| liquidity, `dead` (n=20) | $428 | $2,854 | **$7,330** | $31,612 | $87,472 |")
-    A("| liquidity, `alive` (n=84) | $12 | $190,066 | $649,717 | $2.3M | $113M |")
-    A("\nHalf the dead cohort still holds over $7,000 of liquidity and the top quartile "
-      "holds tens of thousands. You can still sell those. An engine that rated them "
-      "`high` would be calling a failed investment a safety hazard, which is a judgement "
-      "this tool refuses to make (see P1 in DECISIONS.md) -- so `medium` with an "
-      "abandoned-pool warning is the intended answer, not a miss.\n")
-    A("\n**What the number should be read against**: of 20 dead tokens, 19 are rated "
-      "something other than `low`. One is not, and that one is the real finding.\n")
-    A("\n**The limit this exposes.** The token that slipped through had a 98.8% drawdown "
-      "and a 7d volume collapse from $3,090,415 to $12,846 -- unambiguously finished -- "
-      "and the engine saw $65,486 of liquidity, working sells, and 3.7% daily turnover. "
-      "Nothing in the current snapshot says the price is down 99% from its peak, because "
-      "the engine has no price history. Turnover cannot substitute: at the current "
-      "threshold (2%) it catches 55% of the dead cohort for 7% of the live one, and "
-      "loosening it to 5% to catch this token would double the false-positive cost for "
-      "10 more points of recall.\n")
+    A("\nThe label means a project died -- price collapsed, volume collapsed. It does "
+      "**not** say the position is trapped, and measured on this set, usually it is not:\n")
+
+    def _q(rows_, sel):
+        vals = sorted(r["liquidity_usd"] for r in rows_
+                      if sel(r) and r.get("liquidity_usd") is not None)
+        if not vals:
+            return None
+        n = len(vals)
+        pick = [vals[0], vals[n // 4], vals[n // 2], vals[(3 * n) // 4], vals[-1]]
+        return n, ["$%s" % format(int(v), ",") for v in pick]
+
+    A("\n| | n | min | p25 | median | p75 | max |")
+    A("|---|---|---|---|---|---|---|")
+    for label, sel in (("`dead`", lambda r: r.get("outcome_label") == "dead"),
+                       ("`alive`", lambda r: r.get("outcome_label") == "alive")):
+        q = _q(rows, sel)
+        if q:
+            A("| liquidity, %s | %d | %s |" % (label, q[0], " | ".join(q[1])))
+
+    dead_rows = [r for r in rows if r.get("outcome_label") == "dead"]
+    still_liquid = len([r for r in dead_rows
+                        if (r.get("liquidity_usd") or 0) >= 5000])
+    A("\n%d of the %d dead tokens still hold $5,000 or more of liquidity. Those positions "
+      "can be sold. An engine that rated them `high` would be calling a failed investment "
+      "a safety hazard, which is a judgement this tool refuses to make (P1 in "
+      "DECISIONS.md) -- so `medium` with an abandoned-pool warning is the intended answer, "
+      "not a miss.\n" % (still_liquid, len(dead_rows)))
+
+    not_low = len([r for r in dead_rows if r["verdict"] != "low"])
+    A("\n**What the number should be read against**: of %d dead tokens, %d are rated "
+      "something other than `low`. The remainder is the real finding.\n"
+      % (len(dead_rows), not_low))
+    A("\n**The limit this exposes.** The engine scores the current snapshot and has no "
+      "price history, so a token whose price is down 99%% from a peak it cannot see looks "
+      "like a quiet pool with working sells. Turnover cannot substitute: at the current "
+      "2%% threshold it catches roughly half the dead cohort at a cost of several percent "
+      "of the live one, and loosening it doubles that cost for a few more points.\n")
+
     A("\nThe history that would catch it is GeckoTerminal daily OHLCV -- the exact series "
       "the `outcome` label is computed from. Wiring it into the engine would buy "
       "drawdown detection and simultaneously void this column as an independent "

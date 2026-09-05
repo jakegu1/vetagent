@@ -281,7 +281,11 @@ def label_one(c):
 
     gp = fetch_json("https://api.gopluslabs.io/api/v1/token_security/%s?contract_addresses=%s"
                     % (GOPLUS_CHAIN_ID[c["chain"]], c["address"]), role="label")
-    g_label, g_reasons, g_raw = goplus_label(gp, c["address"])
+    # The recent-volume figure comes from OHLCV we already fetched, so no new endpoint
+    # and no risk to the disjointness assertion. It exists to tell the contract oracle
+    # whether its own honeypot simulation could have run at all.
+    g_label, g_reasons, g_raw = goplus_label(
+        gp, c["address"], recent_volume_7d=(o_facts or {}).get("recent_volume_7d"))
 
     if o_label is None and g_label is None:
         return None

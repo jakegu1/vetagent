@@ -82,7 +82,7 @@ and Unibot at the head, with a very long tail), they compete with each other, an
 ## 3. Where we actually are (the starting line, unvarnished)
 
 - ✅ Engine runs, MCP endpoint live, landing page live
-- ✅ 153 tests + CI + upstream contract tests (this one is the key: honeypot detection
+- ✅ Full test suite + CI + upstream contract tests (this one is the key: honeypot detection
      once **failed silently** — it read a field the upstream doesn't have and returned
      "safe" for every token. Without contract tests you never catch that)
 - ✅ Accuracy benchmark v1 built; labelling sources and engine endpoints are
@@ -228,7 +228,7 @@ not a wall:
 
 | Frequency | Task | Automation status |
 |---|---|---|
-| Every push | 153 tests | ✅ CI configured |
+| Every push | the full suite | ✅ CI configured |
 | Daily | New-pool snapshot collection | ⬜ To build (§4.1) |
 | Weekly | Upstream contract tests + accuracy benchmark | ✅ Configured, notifies on red |
 | On red | Human intervention | 0 normally, about half a day when something breaks |

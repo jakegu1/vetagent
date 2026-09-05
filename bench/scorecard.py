@@ -28,6 +28,16 @@ Usage:
 import argparse
 import json
 import os
+import sys
+
+# The summary prints a warning glyph, and a Windows console defaults to GBK, which cannot
+# encode it -- so `python bench/scorecard.py --write` died on the owner's machine after
+# printing the score but before writing the file. Reconfigure our own stdout rather than
+# relying on the caller to set PYTHONIOENCODING.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, ValueError):  # pragma: no cover - very old interpreters
+    pass
 import subprocess
 import sys
 
@@ -114,8 +124,12 @@ RISK_VECTORS = [
     ("deployer history", False),
 ]
 
-# Target distribution channels. Listed ones are verified against the registry,
-# the rest come from what HANDOFF records.
+# Target distribution channels.
+#
+# These booleans are maintained by hand, not verified against anything -- the
+# comment used to say they were checked against the registry, which was never true
+# and is exactly the sort of claim this file exists to stop other people making.
+# Anyone changing one is asserting they went and looked.
 CHANNELS = [
     ("Official MCP Registry", True),
     ("PulseMCP (auto-synced from registry)", True),
@@ -269,7 +283,8 @@ def render(items, facts):
 
     A("\n---\n")
     A("**What 100 looks like** (deliberately not trimmed to what we can reach): recall >90%")
-    A("with false positives <2%, unknown <5%, all 12 dimensions covered, a year or more of")
+    A("with false positives <2%, unknown <5%, every applicable dimension covered, "
+      "a year or more of")
     A("outcome data, the benchmark methodology cited as a standard by peers, the default")
     A("choice at every agent entry point, and paying users who would complain if it "
       "disappeared.\n")

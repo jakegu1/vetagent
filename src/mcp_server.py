@@ -158,6 +158,18 @@ TOOLS = [
 ]
 
 
+def _as_bool(v):
+    """JSON-RPC clients send booleans as booleans, strings, and 0/1. Read all three.
+
+    bool("false") is True, so a client that sent the string "false" -- which several
+    MCP clients do, because the schema type gets lost on the way through -- turned
+    verbose on and got the full evidence payload it had explicitly declined.
+    """
+    if isinstance(v, str):
+        return v.strip().lower() in ("1", "true", "yes", "on")
+    return bool(v)
+
+
 def _error(req_id, code, message):
     return {"jsonrpc": "2.0", "id": req_id, "error": {"code": code, "message": message}}
 
@@ -223,7 +235,7 @@ async def _call_tool(req_id, params):
         if name == "assess_token_risk":
             result = await risk.assess(args.get("address", ""),
                                        args.get("chain_hint"),
-                                       bool(args.get("verbose", False)))
+                                       _as_bool(args.get("verbose", False)))
         elif name == "get_token_liquidity":
             result = await risk.liquidity(args.get("address", ""), args.get("chain_hint"))
         elif name == "find_new_hot_pools":

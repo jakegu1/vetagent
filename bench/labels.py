@@ -17,6 +17,28 @@ Both sets are biased, so they are reported separately, not merged into one "accu
 """
 
 # GoPlus chain ids
+# Label thresholds, named so the published definitions can be generated from them.
+#
+# They were prose in run_benchmark.py and numbers here, and the two had drifted: the
+# report said dead needed a 90% drawdown when the code used 80%, said alive needed $50k
+# of weekly volume when the code used $25k, said safe needed 100 holders when the code
+# used 500, and said the tax bar was 10% when it was 15%. Three of twenty dead tokens and
+# thirteen of eighty-five alive ones did not satisfy the published rule. A benchmark whose
+# stated method differs from its actual method is not a benchmark.
+DEAD_PEAK_VOL_7D = 50_000
+DEAD_VOL_COLLAPSE = 0.97      # recent 7d volume below (1 - this) of peak
+DEAD_DRAWDOWN = 0.80
+ALIVE_MIN_DAYS = 90
+ALIVE_MAX_DRAWDOWN = 0.70
+ALIVE_MIN_VOL_7D = 25_000
+ALIVE_MIN_VOL_RATIO = 0.05
+UNSAFE_TAX = 0.15
+SAFE_MIN_HOLDERS = 500
+SAFE_MAX_TAX = 0.03
+REPUTABLE_HOLDERS = 50_000
+HONEYPOT_TESTABLE_VOL_7D = 1_000
+
+
 GOPLUS_CHAIN_ID = {
     "ethereum": "1", "bsc": "56", "base": "8453", "polygon": "137",
     "arbitrum": "42161", "optimism": "10", "avalanche": "43114",
@@ -101,13 +123,15 @@ def outcome_label(ohlcv_list):
     #    90% drawdown gate threw it out.
     #  - Keep the $50k peak 7-day volume floor: a pool below it "never lived" rather than
     #    "died". Conflating the two scores freshly launched tokens nobody bought as rugs.
-    if peak_vol7 >= 50_000 and vol_collapse >= 0.97 and drawdown >= 0.80:
+    if (peak_vol7 >= DEAD_PEAK_VOL_7D and vol_collapse >= DEAD_VOL_COLLAPSE
+            and drawdown >= DEAD_DRAWDOWN):
         return "dead", facts
     # The alive volume floor came down from $50k to $25k: SHIB had $49,997 of 7-day volume
     # on one pool and was ruled unlabelable by three dollars — that kind of edge fragility
     # is itself the signal that the threshold was wrong.
-    if days >= 90 and drawdown <= 0.70 and recent_vol7 >= 25_000 \
-            and peak_vol7 > 0 and (recent_vol7 / peak_vol7) >= 0.05:
+    if (days >= ALIVE_MIN_DAYS and drawdown <= ALIVE_MAX_DRAWDOWN
+            and recent_vol7 >= ALIVE_MIN_VOL_7D and peak_vol7 > 0
+            and (recent_vol7 / peak_vol7) >= ALIVE_MIN_VOL_RATIO):
         return "alive", facts
     return None, facts
 
@@ -129,7 +153,7 @@ def _tax(d, key):
         return 0.0
 
 
-def goplus_label(payload, address):
+def goplus_label(payload, address, recent_volume_7d=None):
     """Decide from GoPlus token_security whether the contract itself is dangerous.
 
     Returns (label, reasons, raw_subset). label ∈ {"unsafe", "safe", "centralized", None}
@@ -185,8 +209,28 @@ def goplus_label(payload, address):
     #       scams are bound to be among them. That is **guilt by association**, not a
     #       property of this token.
     # Both are out of the unsafe criteria.
+    # Third calibration (2026-09-05, from an external audit). A honeypot verdict against
+    # a pool nobody can trade is unfalsifiable, and this oracle issues one anyway.
+    #
+    # Measured over the 28 tokens this labeller called unsafe: 27 had under $1,000 of
+    # liquidity left, an independent simulator said 19 of them were NOT honeypots
+    # (open source, 0% tax, simulation succeeded), and 27 of the 28 were flagged on
+    # is_honeypot alone. The flag fires when GoPlus's own sell simulation fails, and a
+    # sell simulation fails against an empty pool no matter what the contract does.
+    #
+    # So the cohort was mostly "drained pool" wearing the label "dangerous contract", and
+    # the engine's headline recall on it was measuring its liquidity checks -- exactly the
+    # tautology the ablation column exists to expose. This is E1 inside the oracle: an
+    # unobserved dimension reported as an observed fact.
+    #
+    # is_honeypot now needs the pool to have traded recently, or corroboration from a
+    # second adversarial trait. Where neither holds, the token leaves the labelled set
+    # rather than being called safe -- we cannot tell, and saying so is the point.
     adversarial = []
-    if _flag(d, "is_honeypot"):
+    honeypot_flag = _flag(d, "is_honeypot")
+    honeypot_testable = (recent_volume_7d is None
+                         or recent_volume_7d >= HONEYPOT_TESTABLE_VOL_7D)
+    if honeypot_flag and honeypot_testable:
         adversarial.append("honeypot")
     if _flag(d, "cannot_sell_all"):
         adversarial.append("cannot sell entire balance")
@@ -196,9 +240,9 @@ def goplus_label(payload, address):
         adversarial.append("self-destructible")
     if _flag(d, "personal_slippage_modifiable"):
         adversarial.append("tax changeable per address")
-    if _tax(d, "sell_tax") > 0.15:
+    if _tax(d, "sell_tax") > UNSAFE_TAX:
         adversarial.append("sell tax %.0f%%" % (_tax(d, "sell_tax") * 100))
-    if _tax(d, "buy_tax") > 0.15:
+    if _tax(d, "buy_tax") > UNSAFE_TAX:
         adversarial.append("buy tax %.0f%%" % (_tax(d, "buy_tax") * 100))
 
     # ---- Centralized privileges: USDT/WBTC/LDO all have them, not a scam in itself ----
@@ -230,6 +274,14 @@ def goplus_label(payload, address):
     if not _flag(d, "is_open_source") and privileged:
         adversarial.append("closed source with privileged functions")
 
+    # An untestable honeypot flag still counts once something else corroborates it.
+    if honeypot_flag and not honeypot_testable and adversarial:
+        adversarial.append("honeypot (pool inactive, flag not independently testable)")
+
+    if honeypot_flag and not honeypot_testable and not adversarial:
+        return None, ["is_honeypot on a pool with no recent trading: the oracle's own "
+                      "simulation cannot run there, so the flag is unfalsifiable"], subset
+
     if adversarial:
         # Reputation guardrail: on widely held assets, ones listed on major CEXes, or ones
         # on the GoPlus trust list, an adversarial flag is more likely **an upstream false
@@ -237,7 +289,7 @@ def goplus_label(payload, address):
         # Observed: GoPlus flags the real Status (SNT) as is_honeypot=1.
         # If even the "deterministic" fields have false positives, samples like this cannot
         # be ground truth — neither unsafe nor safe, dropped and left for manual review.
-        if reputable or holders >= 50_000:
+        if reputable or holders >= REPUTABLE_HOLDERS:
             return None, ["reputation guardrail: %s (%d holders, reputable=%s) — likely an "
                           "upstream false positive, excluded"
                           % ("; ".join(adversarial), holders, reputable)], subset
@@ -247,8 +299,9 @@ def goplus_label(payload, address):
         # Privileged but not adversarial: tracked on its own, scored neither way
         return "centralized", privileged, subset
 
-    if _flag(d, "is_open_source") and holders >= 500 \
-            and _tax(d, "sell_tax") <= 0.03 and _tax(d, "buy_tax") <= 0.03:
+    if (_flag(d, "is_open_source") and holders >= SAFE_MIN_HOLDERS
+            and _tax(d, "sell_tax") <= SAFE_MAX_TAX
+            and _tax(d, "buy_tax") <= SAFE_MAX_TAX):
         return "safe", [], subset
 
     return None, ["not enough evidence (open source=%s holders=%s)"

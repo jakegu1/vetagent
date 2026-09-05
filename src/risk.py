@@ -8,6 +8,7 @@ The rule the whole design bends to — fail closed:
 """
 
 import asyncio
+import contextvars
 import json
 import re
 from datetime import datetime, timezone
@@ -83,7 +84,22 @@ def _sig_round(x, digits=6):
 _FRESH_SECONDS = 60
 _STALE_OK_SECONDS = 900
 
-_STALE_HITS = []  # (url, age_seconds) recorded during one request, drained by assess()
+# Stale-cache disclosures for the request currently being served.
+#
+# This was a module-level list, cleared at the top of assess() and drained at the bottom.
+# A Worker isolate serves many requests concurrently, so two overlapping assessments
+# shared it: one could clear the other's hits, or report them as its own -- meaning the
+# "served from cache, N seconds old" disclosure could be attached to the wrong token.
+# A context variable is per-task, and each request is its own task.
+_STALE_HITS = contextvars.ContextVar("vetagent_stale_hits")
+
+
+def _stale_hits():
+    """The current request's disclosure list, or None outside a request."""
+    try:
+        return _STALE_HITS.get()
+    except LookupError:
+        return None
 
 
 async def _cache_get(url):
@@ -167,7 +183,9 @@ async def _fetch_json(url, retries=2, timeout=8, mark_missing=False):
             await asyncio.sleep(0.3 * (2 ** attempt))
 
     if cached is not None and age is not None and age <= _STALE_OK_SECONDS:
-        _STALE_HITS.append((url, int(age)))
+        hits = _stale_hits()
+        if hits is not None:
+            hits.append((url, int(age)))
         return cached
     return None
 
@@ -872,8 +890,25 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
         # completed sells against $0 of remaining liquidity: people got out, and then
         # the pool was drained behind them. Past sells say nothing about whether you
         # can exit now, and this override is a claim about now.
-        pool_alive = _num(bp.get("liquidity_usd")) >= 5000
-        sells_work = pool_alive and sells >= 20 and sells >= 0.15 * (buys + 1)
+        # Overturning a positive detection is the most dangerous thing this engine does,
+        # and it used to be cheap to trigger: $5,000 of liquidity and twenty sells at a
+        # 15% sell-to-buy ratio. A whitelist honeypot's own wallets produce that in a day
+        # for the cost of gas, and the reward is having the fatal verdict on their token
+        # downgraded to a warning.
+        #
+        # The thresholds are deliberately much higher than the ones _sells_demonstrated
+        # uses for reporting. Same evidence, different job: reporting activity alongside
+        # an open question is free, while silencing a detection has to be paid for. The
+        # asymmetry is the point -- evidence good enough to raise an alarm is not
+        # automatically good enough to switch one off.
+        #
+        # At $25,000 of standing liquidity, a hundred completed sells and a 30% ratio, a
+        # would-be attacker has to leave real money in a pool and generate real volume,
+        # while the genuine false positives this override exists for -- honeypot.is
+        # flagging established tokens that trade thousands of times a day -- clear it
+        # without noticing. Calibration is the owner's call; this is the conservative end.
+        pool_alive = _num(bp.get("liquidity_usd")) >= 25_000
+        sells_work = pool_alive and sells >= 100 and sells >= 0.30 * (buys + 1)
         if sells_work:
             signals.append(_sig(
                 "warn", "Upstream calls this a honeypot, the chain disagrees",
@@ -883,7 +918,13 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
                 "unclear rather than fatal."
                 % (format(sells, ",.0f"), format(buys, ",.0f")), "honeypot"))
             evidence["honeypot"]["contradicted_by_chain"] = {
-                "sells_24h": bp.get("sells_24h"), "buys_24h": bp.get("buys_24h")}
+                "sells_24h": bp.get("sells_24h"), "buys_24h": bp.get("buys_24h"),
+                "liquidity_usd": bp.get("liquidity_usd"),
+                # Stated so a caller can weigh the override rather than inherit it. A
+                # downgrade a reader cannot see is a downgrade they cannot disagree with.
+                "downgraded_from": "fatal",
+                "note": "A contract that blocks specific holders can produce this "
+                        "pattern deliberately. Treat as unresolved, not as cleared."}
         else:
             signals.append(_sig("fatal", "Honeypot",
                                 "Simulation confirms it: you can buy, you cannot sell.",
@@ -1126,7 +1167,7 @@ _SLIM_EVIDENCE_KEYS = (
 async def assess(address, chain_hint=None, verbose=False):
     """The core call: a token's risk profile. Fail closed, address validated up front."""
     address = validate_address(address)
-    del _STALE_HITS[:]          # per-request; drained into evidence at the end
+    _STALE_HITS.set([])         # per-request; drained into evidence at the end
     signals, evidence, data_gaps = [], {}, []
 
     pairs, source = await _load_pairs(address, chain_hint)
@@ -1200,13 +1241,14 @@ async def assess(address, chain_hint=None, verbose=False):
 
     # If any upstream was down and we answered from cache, say so. Serving stale data
     # is defensible; serving it silently is not.
-    if _STALE_HITS:
+    stale = _stale_hits() or []
+    if stale:
         evidence["served_stale"] = [
-            {"source": u.split("/")[2], "age_seconds": a} for u, a in _STALE_HITS]
+            {"source": u.split("/")[2], "age_seconds": a} for u, a in stale]
         signals.append(_sig(
             "info", "Answered partly from cache",
             "An upstream was unreachable, so up to %d seconds old data was used."
-            % max(a for _, a in _STALE_HITS), "freshness"))
+            % max(a for _, a in stale), "freshness"))
 
     result = _finalize(address, signals, evidence, data_gaps)
     if not verbose:

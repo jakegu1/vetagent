@@ -128,7 +128,7 @@ by an adversarial review (72 agents told to refute rather than confirm):
   figure is unverifiable and manufacturable by anyone willing to open a pool under a
   target's ticker.
 
-**The recurring shape**, which is now written up as `E1` in `DECISIONS.md`: *an observed
+**The recurring shape**, which is now written up as `E11` in `DECISIONS.md`: *an observed
 absence and an unobserved dimension are different things, and neither may impersonate the
 other.* It has cost this project defects in both directions — reading "we could not check"
 as "we checked and it is bad", and reading "nobody reported a number" as "the number is

@@ -41,7 +41,7 @@ This is not a tool for trading yourself, it **sells shovels** — keeping people
 | Landing page | https://vetagent.dev/ (VetAgent branding, SEO/GEO, JSON-LD)|
 | Source repo | **github.com/jakegu1/vetagent** (Worker version, main line of development)|
 | Docs repo | github.com/jakegu1/crypto-agent-risk (China-server version + ops docs)|
-| Cloudflare domain | veteagent.dev (zone id 371490a6e5d239a023df9667bfe811b7)|
+| Cloudflare domain | vetagent.dev (zone id 371490a6e5d239a023df9667bfe811b7)|
 | Account ID | 3976e6f6f8237d5aa08543efa0e78887 |
 
 > ⚠️ **Credential safety**: the Cloudflare API token lives in `.git-credentials` or comes from Jake, and **must never be committed to GitHub**. Deploy with the env vars `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` (see §6).
@@ -114,7 +114,7 @@ manually ran two or three addresses, missing a code path is inevitable, not bad 
 > and that case must be red before the fix. Every case under `tests/` maps to a defect that really happened in production.
 
 ```bash
-python tests/test_risk.py              # 71 cases, offline, real upstream snapshots
+python tests/test_risk.py              # offline, against real upstream snapshots
 python tests/test_mcp.py               # 41 cases, MCP protocol conformance
 python tests/test_upstream_contract.py # 41 cases, live network, checks upstream JSON paths
 ```
@@ -127,7 +127,7 @@ CI is set up (`.github/workflows/test.yml`); if either of the first two suites i
 fail-closed when simulation fails, validation and pool selection added to `liquidity()`, forked-chain pool-selection
 guard, pair-age fix, scoring model changed to "worst signal dominates", Solana path rewritten (score_normalised +
 authorities + holder concentration), MCP protocol conformance (top-level error / batch / 405 / CORS / version
-negotiation / structuredContent / annotations), 153 tests + CI, position-sizing advice removed from the docs.
+negotiation / structuredContent / annotations), the full suite in CI, and position-sizing advice removed from the docs.
 
 **🔴 Top priority: accuracy benchmark**
 

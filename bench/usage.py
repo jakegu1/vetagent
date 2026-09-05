@@ -51,6 +51,29 @@ def rows_of(resp):
     return None
 
 
+# Our own traffic, excluded from the external-caller count. Add to this list rather than
+# reasoning about it later: the whole value of the gate is that it can come back "no".
+SELF_CLIENTS = {"claude-code", "curl", "python-requests", "vetagent-bench",
+                "vetagent-contract-test", "unknown"}
+OWNER_COUNTRIES = {"CN"}
+
+
+def external_callers(account, token, since):
+    """Distinct (client, calls) that are neither our tooling nor the owner's country."""
+    resp = query(
+        "SELECT %s AS client, %s AS country, count() AS n FROM %s "
+        "WHERE timestamp > now() - %s GROUP BY client, country ORDER BY n DESC LIMIT 50"
+        % (BLOB["client"], BLOB["country"], DATASET, since), account, token)
+    out = {}
+    for row in (rows_of(resp) or []):
+        client = str(row.get("client") or "").strip().lower()
+        country = str(row.get("country") or "").strip().upper()
+        if not client or client in SELF_CLIENTS or country in OWNER_COUNTRIES:
+            continue
+        out[client] = out.get(client, 0) + int(float(row.get("n") or 0))
+    return sorted(out.items(), key=lambda kv: -kv[1])
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=14)
@@ -106,13 +129,31 @@ def main():
     print("Unique clients  : %d" % clients)
     print("Unique countries: %d" % countries)
 
-    print("\n--- Gate 09-18: are there external callers? ---")
-    if clients <= 1 and countries <= 1:
-        print("  No evidence yet. The traffic all looks like one source (probably us).")
-        print("  → STRATEGY says: distribution problem, not product. Go to experiment C.")
+    # ---- Gate 2026-09-18, counted by a rule written down BEFORE the gate falls due ----
+    #
+    # The old rule was "more than one client OR more than one country -> yes". An external
+    # audit pointed out it could not fail honestly: `client` is a user-agent prefix, this
+    # repository ships a .mcp.json that points the owner's own editor at production, and
+    # one curl from anywhere is a second client. Two self-generated data points passed a
+    # gate meant to detect strangers.
+    #
+    # The rule now: a caller counts only if its client name is not ours and its country is
+    # not the owner's. Written here, in code, ahead of the date, so it cannot be adjusted
+    # once the answer is visible.
+    ext = external_callers(account, token, since)
+    print("\n--- Gate 2026-09-18: is anyone outside this project using it? ---")
+    print("  counting rule: distinct client names excluding %s, from countries "
+          "excluding %s" % (", ".join(sorted(SELF_CLIENTS)) or "(none)",
+                            ", ".join(sorted(OWNER_COUNTRIES)) or "(none)"))
+    if not ext:
+        print("  NO. Nothing that is not us.")
+        print("  -> STRATEGY: distribution problem, not product. Experiment C only, "
+              "no new features.")
     else:
-        print("  Yes: %d clients / %d countries. → Keep following the roadmap."
-              % (clients, countries))
+        print("  YES: %s" % ", ".join("%s (%s)" % (c, n) for c, n in ext))
+        print("  -> STRATEGY: keep following the roadmap.")
+    print("  raw totals for context: %d clients / %d countries (includes us)"
+          % (clients, countries))
 
     for title, col in (("By tool", BLOB["tool"]), ("By client", BLOB["client"]),
                        ("By country", BLOB["country"]), ("By verdict", BLOB["verdict"])):

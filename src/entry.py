@@ -62,21 +62,32 @@ unknown  A critical check could NOT be completed. This is NOT a low-risk
 `confidence` measures how complete the input data was — not how safe the
 token is.
 
-## Measured accuracy (n=199, published)
+## Measured accuracy (n=558, published)
 
-False positives (healthy tokens flagged high) ....... 11.3%
-Answers returned as unknown ......................... 21.0%
+False positives (healthy tokens flagged high) ....... 3.5%
+Answers returned as unknown ......................... 17.2%
 Legitimate centralised assets flagged high .......... 6.7%
-Recall against actual rugs .......................... not measurable
+Dead tokens not rated low ........................... 95% (19 of 20)
 
-Recall is unmeasurable today for a structural reason worth stating: 199
-sampled tokens yielded zero dead ones, because every public data source
-(DexScreener search, GeckoTerminal listings) ranks by liquidity, so rugged
-pools drop off the list entirely. That data does not exist on any public
-endpoint at any price. The only way to obtain it is to record pools while
-alive and revisit them later, which VetAgent now does daily. Until that
-dataset matures the figure stays blank rather than becoming a marketing
-number.
+What that last line does and does not say. Recall was unmeasurable here
+until recently: every public data source ranks by liquidity, so rugged pools
+drop off the list and sampling produced no dead tokens at all. Pools are now
+recovered from chain history instead -- any past day is readable from the logs
+of the contract that created the pool -- which produced a cohort of 20
+confirmed-dead tokens.
+
+The honest reading is not flattering. Only 2 of those 20 are rated high; most
+land at medium. That is close to correct rather than a miss: half the dead
+cohort still holds over $5,000 of liquidity, so those positions can still be
+sold. "Dead" means the project died, a market outcome, while this tool scores
+whether you can get out, a safety property.
+
+The number we would most like to publish -- recall against deliberately
+adversarial contracts -- is still measured on about five tokens, because the
+oracle that labels them raises its honeypot flag whenever its own sell
+simulation fails, and that happens against any empty pool whatever the contract
+does. Until that cohort grows, read this tool as answering "can I still get out
+of this" rather than "is this a scam".
 
 Labels come from sources the engine itself never reads, and the benchmark
 exits non-zero if the two endpoint sets ever intersect.
@@ -124,7 +135,7 @@ _PRIVACY_HTML = """<!doctype html>
 <h2>What we collect</h2>
 <p><strong>No accounts, no cookies, no browser tracking.</strong> VetAgent has no
 user database and serves no third-party scripts.</p>
-<p><strong>We do not log the token addresses you look up.</strong> That query is the
+<p><strong>Our analytics never records the token address.</strong> That query is the
 most sensitive thing you send us &mdash; it can reveal what you are about to trade
 &mdash; so it is used to fetch public data and then discarded with the response. This
 is a deliberate trade: it means we cannot tell you which tokens are popular, and we
@@ -134,6 +145,16 @@ service. Each call records: which method and tool was invoked, the resulting ris
 level, whether it errored, a coarse client name taken from the user agent, and the
 country code Cloudflare attaches at the edge. <strong>No IP addresses, no full user
 agents, no token addresses, nothing that identifies a person or a request.</strong></p>
+
+<h2>One thing we cannot promise for you</h2>
+<p>The line above is about what <em>we</em> record, and it is enforced in code. It is not
+a claim about the internet. The convenience route <code>GET /assess/&lt;address&gt;</code>
+carries the address in the URL, and URLs are visible to the platform serving the request
+and to anything between you and it. We do not control those logs and neither do you.</p>
+<p>If that matters for what you are looking up, use a route that keeps the address out of
+the URL: the MCP endpoint at <code>/mcp</code> is a POST and carries it in the body, and
+<code>POST /assess</code> accepts <code>{"address": "0x...", "chain_hint": "..."}</code>
+for the same reason. Same answer, same code path.</p>
 
 <h2>What reaches third parties</h2>
 <p>To answer a request we query these public APIs, sending only the token address:</p>
@@ -218,6 +239,21 @@ def _country(request):
         return "??"
 
 
+def _truthy(v):
+    """Accept a flag however the caller spelled it: bool, "true", "1", "yes"."""
+    if isinstance(v, str):
+        return v.strip().lower() in ("1", "true", "yes", "on")
+    return bool(v)
+
+
+async def _read_json(request):
+    """Parse a JSON request body, returning None rather than raising."""
+    try:
+        return json.loads(await request.text())
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _json_response(obj, status=200, extra_headers=None):
     headers = {"content-type": _JSON}
     headers.update(_CORS)
@@ -277,11 +313,26 @@ class Default(WorkerEntrypoint):
                             headers={"content-type": "text/plain"}, status=200)
 
         try:
+            # POST /assess keeps the address in the body. GET /assess/<address> is
+            # kept because it is genuinely convenient, but a URL is logged by every hop
+            # that carries it, and the privacy page now says so rather than implying
+            # otherwise.
+            if path == "/assess" and request.method == "POST":
+                body = await _read_json(request)
+                if not isinstance(body, dict) or not body.get("address"):
+                    return _json_response({"error": "POST /assess needs "
+                                                    "{\"address\": \"0x...\"}"},
+                                          status=400)
+                return _json_response(await risk.assess(
+                    body.get("address", ""),
+                    body.get("chain_hint") or body.get("chain"),
+                    _truthy(body.get("verbose"))))
+
             if path.startswith("/assess/"):
                 return _json_response(await risk.assess(
                     path[len("/assess/"):],
                     query.get("chain_hint") or query.get("chain"),
-                    query.get("verbose", "").lower() in ("1", "true", "yes")))
+                    _truthy(query.get("verbose"))))
 
             if path.startswith("/liquidity/"):
                 return _json_response(await risk.liquidity(

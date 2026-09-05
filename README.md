@@ -61,8 +61,8 @@ Most token-risk tools publish a feature list. We publish **our error rates and t
 method behind them** — including the parts that do not work yet — against labels
 produced by data sources **the engine does not read**.
 
-What is measured today: a **11.3% false positive rate** on 97 healthy tokens, a
-**21.0% unknown rate**, and **6.7%** of legitimate centralised assets flagged high.
+What is measured today: a **3.5% false positive rate** on 85 healthy tokens, a
+**17.2% unknown rate**, and **6.7%** of legitimate centralised assets flagged high.
 
 What is **not** measured today: **recall**. Sampling turned up one dead token in 205,
 because every public source ranks by liquidity and rugged pools fall off the listing

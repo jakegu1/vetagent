@@ -864,6 +864,62 @@ def test_a_chain_the_simulator_does_not_cover_is_our_gap():
           str(gaps3))
 
 
+def test_overturning_a_honeypot_verdict_is_expensive():
+    """Found by external audit. Silencing a detection must cost more than raising one.
+
+    The engine downgrades a honeypot verdict when the chain shows sells completing, which
+    exists because the upstream flag has real false positives. But the bar was $5,000 of
+    liquidity and twenty sells at a 15% ratio -- a whitelist honeypot's own wallets
+    produce that in a day for the cost of gas, and the payoff is having the fatal verdict
+    on their token turned into a warning.
+
+    Note the deliberate asymmetry against test_market_activity_informs_but_does_not_verify:
+    there the same kind of evidence is allowed to *report* while a question stays open,
+    at a much lower bar. Reporting alongside an open question is free. Switching off an
+    alarm is not.
+    """
+    print("\n[honeypot] the chain may contradict the simulator, at a price")
+
+    def token(liq, buys, sells):
+        return {"pairs": [{
+            "chainId": "ethereum", "dexId": "uniswap",
+            "baseToken": {"address": WETH, "symbol": "TRAP"},
+            "quoteToken": {"address": "0xq"}, "priceUsd": "1.0",
+            "liquidity": {"usd": liq}, "volume": {"h24": liq},
+            "txns": {"h24": {"buys": buys, "sells": sells}},
+            "pairCreatedAt": 1589841515000}]}
+
+    hp = json.loads(json.dumps(_load("hp_matic.json")))
+    hp.setdefault("honeypotResult", {})["isHoneypot"] = True
+
+    def verdict(liq, buys, sells):
+        install_stub([("dex/tokens", token(liq, buys, sells)), ("dex/search", None),
+                      ("honeypot.is", hp)])
+        return run(risk.assess(WETH, chain_hint="ethereum"))
+
+    # What the attack used to cost: a small pool and a handful of self-dealt sells.
+    cheap = verdict(5_000, 100, 20)
+    check("a cheap pool with a few sells no longer buys a downgrade",
+          cheap["risk_level"] == "high",
+          "%s %s" % (cheap["risk_level"], cheap.get("risk_score")))
+
+    # Still too thin: real volume but a shallow pool.
+    thin = verdict(9_000, 300, 150)
+    check("volume alone does not buy it either", thin["risk_level"] == "high",
+          thin["risk_level"])
+
+    # A genuine upstream false positive: a deep pool trading heavily both ways.
+    real = verdict(400_000, 900, 800)
+    hp_sig = [x for x in real["signals"] if x["category"] == "honeypot"]
+    check("a deep, heavily traded pool does earn the downgrade",
+          any("chain disagrees" in x["name"] for x in hp_sig),
+          str([(x["severity"], x["name"]) for x in hp_sig]))
+    check("and the downgrade is recorded where a caller can see it",
+          (real.get("evidence", {}).get("honeypot") or {}).get("contradicted_by_chain"),
+          str((real.get("evidence", {}).get("honeypot") or {}).keys()))
+    check("it is never called low", real["risk_level"] != "low", real["risk_level"])
+
+
 def test_clean_token_stays_low():
     """Guard the other way: more signals must not let the score push a healthy token high."""
     print("\n[scoring] healthy token stays low")

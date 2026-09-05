@@ -60,9 +60,9 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 
 | Metric | Value |
 |---|---|
-| Verdict distribution | high=57, low=144, medium=260, unknown=97 |
-| unknown rate | 17.4% |
-| Share with a data gap | 19.0% |
+| Verdict distribution | high=65, low=144, medium=253, unknown=96 |
+| unknown rate | 17.2% |
+| Share with a data gap | 18.8% |
 
 > Read the unknown rate next to recall. A tool that answers unknown for everything has perfect recall and is useless.
 
@@ -103,7 +103,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 28 | 60.7% | 92.9% | 0.0% | 7.1% | 74.6 |
-| **safe** | 338 | 5.0% | 47.6% | 29.3% | 23.1% | 25.3 |
+| **safe** | 338 | 5.0% | 47.9% | 29.3% | 22.8% | 25.3 |
 
 ### Contract-safety signals only (ablated)
 
@@ -113,7 +113,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 28 | 17.9% | 46.4% | 39.3% | 14.3% | 31.9 |
-| **safe** | 338 | 3.3% | 14.5% | 61.5% | 24.0% | 10.8 |
+| **safe** | 338 | 3.3% | 14.5% | 61.8% | 23.7% | 10.8 |
 
 **Which signal category made the call on unsafe samples:** `liquidity` 18, `honeypot` 5, `impersonation` 4, `no_liquidity` 1
 
@@ -131,7 +131,7 @@ This bucket answers one question: **does the engine paint them all as high risk.
 
 | n | high rate | Verdict distribution |
 |---|---|---|
-| 174 | 13.2% | high=23, low=39, medium=95, unknown=17 |
+| 174 | 17.8% | high=31, low=39, medium=87, unknown=17 |
 
 Examples: HYDX(low), CP(low), Onyxcoin XCN Kendu(high), SAGE Free(medium), Core Keeper Overnight(medium), VIRTUAL(low), Crypto Carbon Verse(high), ?(medium), BIO(low), UNA(medium)
 

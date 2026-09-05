@@ -37,7 +37,7 @@
     {"@type":"Question","name":"What does a risk_level of unknown mean?",
      "acceptedAnswer":{"@type":"Answer","text":"It means a critical check could not be completed — usually an upstream data source failed. It is not a low-risk result and must not be used to justify a trade. evidence.data_gaps lists exactly which checks were missing."}},
     {"@type":"Question","name":"How accurate is VetAgent?",
-     "acceptedAnswer":{"@type":"Answer","text":"Measured on 199 tokens: 11.3% of healthy tokens were flagged high (false positives), 21.0% of answers were unknown, and 6.7% of legitimate centralised assets such as USDT and WBTC were flagged high. Recall against actual rugs is not yet measurable, because every public data source ranks by liquidity and dead pools drop off the list entirely. The full method and the raw numbers are published in the repository."}},
+     "acceptedAnswer":{"@type":"Answer","text":"Measured on 558 tokens: 3.5% of healthy tokens were flagged high (false positives), 17.2% of answers were unknown, and 6.7% of legitimate centralised assets such as USDT and WBTC were flagged high. 19 of 20 confirmed-dead tokens were not rated low, though only 2 were rated high, because a dead project whose pool still holds liquidity can still be sold. Recall against deliberately adversarial contracts is measured on about five tokens so far and is not yet a number worth quoting. The full method and the raw numbers are published in the repository."}},
     {"@type":"Question","name":"Is VetAgent free?",
      "acceptedAnswer":{"@type":"Answer","text":"Yes. The remote MCP endpoint and the HTTP API are free and require no account or key."}},
     {"@type":"Question","name":"Does VetAgent log the tokens I look up?",
@@ -165,29 +165,41 @@
 <div class="panel" style="border-color:var(--accent-dim)">
   <h2>We publish our error rates. Nobody else in this category does.</h2>
   <p style="color:var(--dim);font-size:14px;margin-bottom:12px">
-    A risk tool asking for your trust should show its work. Measured over 199 tokens,
+    A risk tool asking for your trust should show its work. Measured over 558 tokens,
     labelled from data sources the engine itself never reads:</p>
   <table>
     <thead><tr><th>Metric</th><th class="num">Value</th><th>Read it as</th></tr></thead>
     <tbody>
-      <tr><td>Healthy tokens flagged high</td><td class="num high">11.3%</td>
+      <tr><td>Healthy tokens flagged high</td><td class="num high">3.5%</td>
           <td>False positives. Too high; being worked on.</td></tr>
-      <tr><td>Answers returned as <code>unknown</code></td><td class="num unk">21.0%</td>
+      <tr><td>Answers returned as <code>unknown</code></td><td class="num unk">17.2%</td>
           <td>Refusals when a check could not run. Honest, still too many.</td></tr>
       <tr><td>Centralised assets (USDT, WBTC…) flagged high</td><td class="num low">6.7%</td>
           <td>We do <em>not</em> blanket-flag legitimate assets that hold admin powers.</td></tr>
-      <tr><td>Recall against real rugs</td><td class="num unk">not measurable</td>
-          <td>See below — and we would rather say so than invent a number.</td></tr>
+      <tr><td>Dead tokens not rated low</td><td class="num low">95%</td>
+          <td>19 of 20. Read the caveat below before quoting this one.</td></tr>
     </tbody>
   </table>
   <p style="color:var(--dim);font-size:13.5px;margin-top:12px">
-    <strong style="color:var(--txt)">Why recall is unmeasurable today:</strong> we tried.
-    199 sampled tokens produced <em>zero</em> dead ones. Every public source — DexScreener
-    search, GeckoTerminal listings — ranks by liquidity, so rugged pools fall off the list
-    entirely. That data does not exist on any public endpoint at any price. The only way to
-    get it is to record pools while they are alive and revisit them later, which we now do
-    daily. Until that dataset matures, this row stays blank rather than becoming a
-    marketing number.
+    <strong style="color:var(--txt)">What that row does and does not say.</strong>
+    Recall was unmeasurable here until recently, because every public source ranks by
+    liquidity and rugged pools fall off the list. We now recover pools from chain history
+    — every past day is readable from the logs of the contract that created the pool — and
+    that produced a cohort of 20 confirmed-dead tokens where sampling had produced none.
+    <br><br>
+    The honest reading is not flattering. Only 2 of those 20 are rated <em>high</em>;
+    most land at <em>medium</em>. That is close to correct rather than a miss: half the
+    dead cohort still holds over $5,000 of liquidity, so those positions can still be sold.
+    <em>Dead</em> means the project died, which is a market outcome; this tool scores
+    whether you can get out, which is a safety property. Rating a failed investment
+    <em>high</em> would be an investment judgement we refuse to make.
+    <br><br>
+    The number we would most like to publish — recall against deliberately adversarial
+    contracts — is still measured on about five tokens, because the oracle that labels
+    them raises its honeypot flag whenever its own sell simulation fails, and a sell
+    simulation fails against an empty pool whatever the contract does. Until that cohort
+    is larger, treat this tool as answering "can I still get out of this" and not "is this
+    a scam".
     <a href="https://github.com/jakegu1/vetagent/blob/master/bench/results.md">Full method and raw results →</a>
   </p>
 </div>
