@@ -85,7 +85,11 @@ ROUNDS = [
      "A generated development log and a backlog whose every open item names how it "
      "will be verified, after an audit found drift in almost every hand-maintained "
      "record here and none in the two that are generated."),
-    ("R12", "Next", None,
+    ("R12", "Measure a feature, then refuse to score it", "7a1a1c2",
+     "Owner powers read from contract bytecode. Keccak-256 implemented so selectors "
+     "are computed rather than remembered; measured over 417 contracts; found not to "
+     "discriminate at n=9; disclosed as unscored evidence instead."),
+    ("R13", "Next", None,
      "Open."),
 ]
 

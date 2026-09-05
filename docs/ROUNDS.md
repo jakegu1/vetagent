@@ -23,11 +23,12 @@ The maturity score for each round is read from `docs/SCORECARD.md` **as it stood
 | **R9** | Stop the instrument reporting its own failures | 5 | 2026-09-05 | 53/100 (+3) |
 | **R10** | External audit, and closing all seventeen findings | 6 | 2026-09-05 | 53/100 (+0) |
 | **R11** | Number the rounds | 3 | 2026-09-05 | 53/100 (+0) |
+| **R12** | Measure a feature, then refuse to score it | 2 | 2026-09-05 to 2026-09-06 | 53/100 (+0) |
 
 5 snapshot-job commits are excluded: they are data collection, not development, and would bury the rounds.
 
 
-**R12 -- Next** is open: Open. Its commits are listed here once it closes.
+**R13 -- Next** is open: Open. Its commits are listed here once it closes.
 
 ---
 
@@ -245,6 +246,23 @@ A generated development log and a backlog whose every open item names how it wil
 | `39a8986` | 2026-09-05 | Number the rounds, and generate the log rather than writing an eighth document |
 | `72365a5` | 2026-09-05 | Stop the round log going stale on its own commit |
 | `4a1c27c` | 2026-09-05 | Skip the open round in the summary table as well |
+
+Full reasoning for any line above: `git show <hash>`. The commit messages carry the measurement that motivated each change, and several admissions of error.
+
+
+---
+
+
+## R12 -- Measure a feature, then refuse to score it
+
+
+Owner powers read from contract bytecode. Keccak-256 implemented so selectors are computed rather than remembered; measured over 417 contracts; found not to discriminate at n=9; disclosed as unscored evidence instead.
+
+
+| Commit | Date | Change |
+|---|---|---|
+| `111faa0` | 2026-09-05 | Close R11 and open R12 |
+| `7a1a1c2` | 2026-09-06 | W1: measure owner powers, find they do not discriminate, disclose them anyway |
 
 Full reasoning for any line above: `git show <hash>`. The commit messages carry the measurement that motivated each change, and several admissions of error.
 
