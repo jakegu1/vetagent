@@ -96,7 +96,18 @@ RISK_VECTORS = [
     ("holder concentration (Solana)", True),
     ("mint / freeze authority (Solana)", True),
     ("holder concentration (EVM)", False),   # needs GoPlus, the held-out oracle (DECISIONS B2)
-    ("LP lock / burn", False),               # pulling the pool is the main EVM rug, uncovered
+    # None = measured, and rejected on the evidence. Not counted either way: scoring it
+    # as "missing" would keep rewarding someone for building it, and scoring it as
+    # "covered" would reward not building it. Both are wrong; the honest answer is that
+    # this dimension turned out not to be one.
+    #
+    # Measured 2026-09-05 over 74 V2 pairs (totalSupply and the two burn sinks, read
+    # straight off the pair): "LP is fully pullable" catches 4 of 8 confirmed-bad tokens
+    # and fires on 22 of 38 confirmed-good ones. It discriminates worse than chance,
+    # because most legitimate projects never burn LP -- they keep it to manage liquidity.
+    # And burning does not imply safe: 4 of the 8 bad tokens had burned 95%+.
+    # Building it would have added false positives and called it coverage.
+    ("LP lock / burn", None),
     ("same-name token impersonation", True),   # shipped 2026-09-05, same-chain only:
                                                # a cross-chain rival cannot be verified
                                                # and can be manufactured by an attacker
@@ -133,7 +144,9 @@ def score():
     tp, tdetail = tests_pass()
     b = benchmark_facts()
     days = snapshot_days()
-    covered = sum(1 for _, ok in RISK_VECTORS if ok)
+    applicable = [(n, ok) for n, ok in RISK_VECTORS if ok is not None]
+    rejected = [n for n, ok in RISK_VECTORS if ok is None]
+    covered = sum(1 for _, ok in applicable if ok)
     listed = sum(1 for _, ok in CHANNELS if ok)
 
     # Demand and external callers cannot be read automatically yet (needs a
@@ -157,9 +170,12 @@ def score():
                   "%.1f%%" % (ur * 100) if ur is not None else UNMEASURED))
 
     # --- Coverage 20 ---
+    if rejected:
+        print("  note: %d dimension(s) measured and rejected, excluded from the "
+              "denominator: %s" % (len(rejected), ", ".join(rejected)))
     items.append(("Coverage", "risk dimensions covered", 20,
-                  round(20.0 * covered / len(RISK_VECTORS), 1),
-                  "%d / %d" % (covered, len(RISK_VECTORS))))
+                  round(20.0 * covered / len(applicable), 1),
+                  "%d / %d" % (covered, len(applicable))))
 
     # --- Credibility 20 ---
     items.append(("Credibility", "recall is measurable", 10,

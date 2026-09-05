@@ -4,12 +4,12 @@
 > It moves with every commit, so `git diff` tells you what the change was worth.
 
 
-## Total: **52 / 100**
+## Total: **53 / 100**
 
 | Dimension | Score | Max |
 |---|---|---|
 | Correctness | 24.0 | 30 |
-| Coverage | 15.0 | 20 |
+| Coverage | 16.4 | 20 |
 | Credibility | 10.1 | 20 |
 | Distribution | 2.5 ⚠️ | 15 |
 | Demand | 0.0 | 15 |
@@ -24,7 +24,7 @@
 | Correctness | tests all green | 10.0 | 10 | test_risk.py 116 passed, 0 failed All passed; test_mcp.py 54 passed, 0 failed All passed |
 | Correctness | false positive rate (healthy rated high) | 8.0 | 10 | 4.7% |
 | Correctness | unknown rate | 6.0 | 10 | 12.7% |
-| Coverage | risk dimensions covered | 15.0 | 20 | 9 / 12 |
+| Coverage | risk dimensions covered | 16.4 | 20 | 9 / 11 |
 | Credibility | recall is measurable | 10.0 | 10 | dead samples: 20 (need ≥20) |
 | Credibility | days of snapshots | 0.1 | 10 | 2 of 180 days |
 | Distribution | channels listed on | 2.5 | 10 | 2 / 8 |
@@ -86,7 +86,7 @@ with false positives <2%, unknown <5%, all 12 dimensions covered, a year or more
 outcome data, the benchmark methodology cited as a standard by peers, the default
 choice at every agent entry point, and paying users who would complain if it disappeared.
 
-**The current 52 is not a failure** — it says precisely that the
+**The current 53 is not a failure** — it says precisely that the
 engineering is decent, proof and demand are both still zero, and writing more code
 cannot solve those last two.
 
