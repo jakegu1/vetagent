@@ -62,10 +62,10 @@ unknown  A critical check could NOT be completed. This is NOT a low-risk
 `confidence` measures how complete the input data was — not how safe the
 token is.
 
-## Measured accuracy (n=558, published)
+## Measured accuracy (n=559, published)
 
-False positives (healthy tokens flagged high) ....... 3.5%
-Answers returned as unknown ......................... 17.2%
+False positives (healthy tokens flagged high) ....... 4.6%
+Answers returned as unknown ......................... 17.9%
 Legitimate centralised assets flagged high .......... 6.7%
 Dead tokens not rated low ........................... 95% (19 of 20)
 

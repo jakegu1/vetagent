@@ -86,8 +86,17 @@ def outcome_label(ohlcv_list):
     get out of the position safely, and that is exactly the scope VetAgent claims to cover.
     """
     rows = [r for r in (ohlcv_list or []) if r and len(r) >= 6]
+
+    # Recent volume is computed before any early return, because a caller other than this
+    # function needs it: the contract oracle uses it to decide whether its own honeypot
+    # simulation could have run at all. It used to be produced only on the paths that
+    # reached a label, so 27 of the 28 tokens where the question mattered carried no
+    # figure -- and the guard that depended on it defaulted to "testable" and did nothing.
+    _recent7 = round(sum(float(r[5] or 0) for r in rows[:7]), 2)
+
     if len(rows) < 30:
-        return None, {"reason": "fewer than 30 days of history", "days": len(rows)}
+        return None, {"reason": "fewer than 30 days of history", "days": len(rows),
+                      "recent_volume_7d": _recent7}
 
     rows = list(reversed(rows))  # flip to oldest-first
     closes = [float(r[4] or 0) for r in rows]
@@ -96,7 +105,8 @@ def outcome_label(ohlcv_list):
 
     valid_closes = [c for c in closes if c > 0]
     if not valid_closes:
-        return None, {"reason": "no valid close price", "days": days}
+        return None, {"reason": "no valid close price", "days": days,
+                      "recent_volume_7d": _recent7}
 
     peak = max(valid_closes)
     last = closes[-1]

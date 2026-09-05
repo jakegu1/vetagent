@@ -552,6 +552,7 @@ def _gt_to_pair(p, address, network):
         "priceUsd": _gt_base_price(a),
         "pairCreatedAt": a.get("pool_created_at"),
         "volume": {"h24": _num((a.get("volume_usd") or {}).get("h24"))},
+        "priceChange": {"h24": (a.get("price_change_percentage") or {}).get("h24")},
         # The symbol comes along, because a consumer that needs it has no other source.
         # Without it _impersonation_signals found "" and returned, so the check was
         # silently skipped for every token that fell through to GeckoTerminal -- no
@@ -607,6 +608,29 @@ def _liquidity_signals(best, pairs, signals, evidence):
             signals.append(_sig("ok", "Established pair", "Main pair has existed for %d days." % age, "freshness"))
 
     # Lifecycle: "is the contract safe" and "does anyone still trade this" differ
+    # Price movement, reported and deliberately not scored.
+    #
+    # DexScreener returns it on every pair and the engine discarded it, so the one thing
+    # a caller most obviously wants to know -- did this just fall off a cliff -- was
+    # thrown away on arrival. It is surfaced here as information.
+    #
+    # Not scored, for two reasons. A price fall is an investment outcome, and rating one
+    # `high` is the judgement P1 says this tool does not make. And it cannot be validated
+    # on the current benchmark: the dead cohort died months ago, so their 24h change today
+    # is nil, and a signal that would only fire on a token dying right now is exactly what
+    # this dataset cannot measure. Adding an unscored fact is honest; adding an unmeasured
+    # threshold is how the false positives got in last time.
+    change_24h = (best.get("priceChange") or {}).get("h24")
+    if change_24h is not None:
+        evidence["price_change_24h_pct"] = _sig_round(_num(change_24h), 2)
+        if _num(change_24h) <= -50:
+            signals.append(_sig(
+                "info", "Price is sharply down today",
+                "Down %.0f%% in 24h. Reported, not scored: a falling price is not by "
+                "itself a safety finding, and this tool does not judge investments. "
+                "Check it against the liquidity and sell figures above."
+                % abs(_num(change_24h)), "lifecycle"))
+
     if liq > 0:
         turnover = vol / liq
         evidence["turnover_24h"] = _sig_round(turnover, 4)
@@ -1167,6 +1191,7 @@ async def _load_pairs(address, chain_hint):
 _SLIM_EVIDENCE_KEYS = (
     "best_pair", "chains", "pair_age_days", "turnover_24h", "honeypot",
     "rugcheck", "liquidity_source", "confidence", "data_gaps", "served_stale",
+    "price_change_24h_pct",
     "sellability_from_chain",
     "pools_all_empty",
     "same_symbol",

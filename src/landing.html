@@ -37,7 +37,7 @@
     {"@type":"Question","name":"What does a risk_level of unknown mean?",
      "acceptedAnswer":{"@type":"Answer","text":"It means a critical check could not be completed — usually an upstream data source failed. It is not a low-risk result and must not be used to justify a trade. evidence.data_gaps lists exactly which checks were missing."}},
     {"@type":"Question","name":"How accurate is VetAgent?",
-     "acceptedAnswer":{"@type":"Answer","text":"Measured on 558 tokens: 3.5% of healthy tokens were flagged high (false positives), 17.2% of answers were unknown, and 6.7% of legitimate centralised assets such as USDT and WBTC were flagged high. 19 of 20 confirmed-dead tokens were not rated low, though only 2 were rated high, because a dead project whose pool still holds liquidity can still be sold. Recall against deliberately adversarial contracts is measured on about five tokens so far and is not yet a number worth quoting. The full method and the raw numbers are published in the repository."}},
+     "acceptedAnswer":{"@type":"Answer","text":"Measured on 559 tokens: 4.6% of healthy tokens were flagged high (false positives), 17.9% of answers were unknown, and 6.7% of legitimate centralised assets such as USDT and WBTC were flagged high. 32 of 36 confirmed-dead tokens were not rated low, though only 2 were rated high, because a dead project whose pool still holds liquidity can still be sold. Recall against deliberately adversarial contracts is measured on about five tokens so far and is not yet a number worth quoting. The full method and the raw numbers are published in the repository."}},
     {"@type":"Question","name":"Is VetAgent free?",
      "acceptedAnswer":{"@type":"Answer","text":"Yes. The remote MCP endpoint and the HTTP API are free and require no account or key."}},
     {"@type":"Question","name":"Does VetAgent log the tokens I look up?",
@@ -165,14 +165,14 @@
 <div class="panel" style="border-color:var(--accent-dim)">
   <h2>We publish our error rates. Nobody else in this category does.</h2>
   <p style="color:var(--dim);font-size:14px;margin-bottom:12px">
-    A risk tool asking for your trust should show its work. Measured over 558 tokens,
+    A risk tool asking for your trust should show its work. Measured over 559 tokens,
     labelled from data sources the engine itself never reads:</p>
   <table>
     <thead><tr><th>Metric</th><th class="num">Value</th><th>Read it as</th></tr></thead>
     <tbody>
-      <tr><td>Healthy tokens flagged high</td><td class="num high">3.5%</td>
+      <tr><td>Healthy tokens flagged high</td><td class="num high">4.6%</td>
           <td>False positives. Too high; being worked on.</td></tr>
-      <tr><td>Answers returned as <code>unknown</code></td><td class="num unk">17.2%</td>
+      <tr><td>Answers returned as <code>unknown</code></td><td class="num unk">17.9%</td>
           <td>Refusals when a check could not run. Honest, still too many.</td></tr>
       <tr><td>Centralised assets (USDT, WBTC…) flagged high</td><td class="num low">6.7%</td>
           <td>We do <em>not</em> blanket-flag legitimate assets that hold admin powers.</td></tr>
