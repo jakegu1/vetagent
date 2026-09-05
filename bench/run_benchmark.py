@@ -144,6 +144,30 @@ def centralized_view(rows):
     }
 
 
+def composition(rows):
+    """What the sample is made of, split out for the bad cohort specifically.
+
+    A recall figure is a statement about a population, and this one's population is not
+    the market -- it is whatever the three sampling sources could reach. The bad cohort
+    especially: it is small, and if it turns out to be one chain and one source then the
+    number describes that corner rather than the tool. Printing it is the difference
+    between a reader being able to discount the result correctly and having to trust it.
+    """
+    from collections import Counter
+
+    def split(subset):
+        return {
+            "n": len(subset),
+            "chain": dict(Counter(r.get("chain") or "?" for r in subset).most_common()),
+            "source": dict(Counter((r.get("sampled_from") or "?").split("_")[0]
+                                   for r in subset).most_common()),
+        }
+
+    bad = [r for r in rows
+           if r.get("outcome_label") == "dead" or r.get("goplus_label") == "unsafe"]
+    return {"all": split(rows), "bad": split(bad)}
+
+
 def collect_disagreements(rows):
     """Samples where label and engine disagree. False negatives first — the real leads."""
     out = []
@@ -201,6 +225,7 @@ def main():
         rows.append({
             "address": t["address"], "symbol": t.get("symbol"), "chain": t["chain"],
             "outcome_label": t.get("outcome_label"), "goplus_label": t.get("goplus_label"),
+            "sampled_from": t.get("sampled_from"),
             "verdict": res.get("risk_level"), "score": res.get("risk_score"),
             "confidence": res.get("confidence"),
             "verdict_ablated": ab_level, "score_ablated": ab_score,
@@ -242,6 +267,7 @@ def main():
         "goplus": evaluate(rows, "goplus_label", "unsafe", "safe"),
         "centralized": centralized_view(rows),
         "disagreements": collect_disagreements(rows),
+        "composition": composition(rows),
         "rows": rows,
     }
     with open(RESULTS_JSON, "w", encoding="utf-8") as f:
@@ -252,7 +278,7 @@ def main():
 
     o = report["outcome"]["full"]["bad"]
     print("\nAt a glance:")
-    print("  dead tokens rated high           : %s (n=%d)" % (_pct(o["high"]), o["n"]))
+    print("  dead rated high (see report)     : %s (n=%d)" % (_pct(o["high"]), o["n"]))
     print("  still high on contract signals   : %s"
           % _pct(report["outcome"]["contract_only"]["bad"]["high"]))
     print("  live tokens wrongly rated high   : %s (n=%d)"
@@ -360,6 +386,25 @@ def write_markdown(rep):
             A("\nExamples: %s\n" % ", ".join(
                 "%s(%s)" % (e["symbol"] or "?", e["verdict"]) for e in cen["examples"]))
 
+    comp = rep.get("composition") or {}
+    if comp:
+        A("\n## What the sample is made of\n")
+        A("A recall figure describes a population, and this one's population is what "
+          "three sampling sources could reach -- not the market. The bad cohort is the "
+          "row that matters: it is the smallest, and if it sits on one chain from one "
+          "source then the number describes that corner rather than the tool.\n")
+        A("\n| | n | by chain | by source |")
+        A("|---|---|---|---|")
+        for key, label in (("all", "whole set"), ("bad", "**dead or unsafe**")):
+            c = comp.get(key) or {}
+            if not c:
+                continue
+            A("| %s | %d | %s | %s |" % (
+                label, c.get("n", 0),
+                ", ".join("%s %d" % kv for kv in (c.get("chain") or {}).items()) or "-",
+                ", ".join("%s %d" % kv for kv in (c.get("source") or {}).items()) or "-"))
+        A("")
+
     dis = rep.get("disagreements") or []
     if dis:
         A("\n## Disagreements (need manual review)\n")
@@ -398,6 +443,38 @@ def write_markdown(rep):
             for d in blind:
                 A("| `%s` | %s | %s | `%s` |" % (d["symbol"] or "?", d["chain"],
                                                  d["verdict"], d["address"]))
+
+    A("\n## Reading the `dead` recall figure\n")
+    A("**`dead` is a market outcome; the engine scores a safety property.** They overlap "
+      "and they are not the same, and until the cohort was big enough to look at, that "
+      "difference was invisible.\n")
+    A("\nThe label means: traded for real, then price fell >=90% off peak and 7d volume "
+      "collapsed below 5% of peak. It says a project died. It does **not** say the "
+      "position is trapped -- and measured on this set, usually it is not:\n")
+    A("\n| | min | p25 | median | p75 | max |")
+    A("|---|---|---|---|---|---|")
+    A("| liquidity, `dead` (n=20) | $428 | $2,854 | **$7,330** | $31,612 | $87,472 |")
+    A("| liquidity, `alive` (n=84) | $12 | $190,066 | $649,717 | $2.3M | $113M |")
+    A("\nHalf the dead cohort still holds over $7,000 of liquidity and the top quartile "
+      "holds tens of thousands. You can still sell those. An engine that rated them "
+      "`high` would be calling a failed investment a safety hazard, which is a judgement "
+      "this tool refuses to make (see P1 in DECISIONS.md) -- so `medium` with an "
+      "abandoned-pool warning is the intended answer, not a miss.\n")
+    A("\n**What the number should be read against**: of 20 dead tokens, 19 are rated "
+      "something other than `low`. One is not, and that one is the real finding.\n")
+    A("\n**The limit this exposes.** The token that slipped through had a 98.8% drawdown "
+      "and a 7d volume collapse from $3,090,415 to $12,846 -- unambiguously finished -- "
+      "and the engine saw $65,486 of liquidity, working sells, and 3.7% daily turnover. "
+      "Nothing in the current snapshot says the price is down 99% from its peak, because "
+      "the engine has no price history. Turnover cannot substitute: at the current "
+      "threshold (2%) it catches 55% of the dead cohort for 7% of the live one, and "
+      "loosening it to 5% to catch this token would double the false-positive cost for "
+      "10 more points of recall.\n")
+    A("\nThe history that would catch it is GeckoTerminal daily OHLCV -- the exact series "
+      "the `outcome` label is computed from. Wiring it into the engine would buy "
+      "drawdown detection and simultaneously void this column as an independent "
+      "measurement. That is a live trade-off, not an oversight, and it is recorded as an "
+      "open decision rather than settled quietly.\n")
 
     A("\n## What this benchmark does not measure\n")
     A("1. **Whether it warns you in time.** The engine scores the current state, and "
