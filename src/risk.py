@@ -685,6 +685,58 @@ async def _impersonation_signals(address, pairs, signals, evidence,
             "impersonation"))
 
 
+def _sells_answer(signals, evidence, sells, buys, why):
+    """Report that sells are completing, WITHOUT closing the sellability gap.
+
+    I tried closing it. The measurement was persuasive: of 97 unknown verdicts, 72 had
+    twenty or more completed sells against a live pool, 63 of those were confirmed good
+    and none were bad -- and the list included WETH, on which 4,540 sells settled against
+    $117.8M of liquidity in a day. Answering "unknown" for WETH makes the tool look
+    broken.
+
+    The fail-closed test went red, and it was right. A simulation tests whether *you* can
+    sell. Completed trades show that *other people* could. Those come apart exactly where
+    it matters: a blacklist honeypot lets ordinary traders in and out precisely so the
+    market looks healthy, and blocks the addresses it chooses. Market activity cannot see
+    that; a simulation of your own trade can. Substituting one for the other trades away
+    the specific attack the check exists to catch, in exchange for a nicer-looking
+    verdict.
+
+    So the evidence is reported and the gap stays open. The verdict remains `unknown` --
+    honest, because what we could not verify is whether *you* can get out -- while the
+    caller still gets the fact that the market is trading, which is what they would
+    otherwise have had to go and find out themselves.
+    """
+    signals.append(_sig(
+        "info", "Sells are completing on-chain for other holders",
+        "%s, so sellability could not be verified for you. For context: %s sells "
+        "completed against %s buys in the last 24h on a pool that still holds liquidity. "
+        "That shows the market is trading, not that your address can exit -- a contract "
+        "that blocks specific holders looks exactly like this from outside."
+        % (why, format(sells, ",.0f"), format(buys, ",.0f")), "sellability"))
+    evidence["sellability_from_chain"] = {"sells_24h": sells, "buys_24h": buys,
+                                          "verifies_your_exit": False}
+
+
+def _sells_demonstrated(evidence):
+    """Is the exit demonstrably open right now, on the chain's own evidence?
+
+    Exactly the predicate _honeypot_signals already uses to overrule a simulator that
+    calls something a honeypot while sells are visibly completing. Same thresholds on
+    purpose: if chain activity is strong enough to contradict a simulator's verdict, it
+    is strong enough to answer a question the simulator never got to.
+
+    The pool has to still be there. One token in the benchmark showed 458 completed sells
+    against $0 of remaining liquidity -- people got out, and then the pool was drained
+    behind them. Past sells say nothing about whether you can exit now.
+    """
+    bp = evidence.get("best_pair") or {}
+    sells, buys = _num(bp.get("sells_24h")), _num(bp.get("buys_24h"))
+    if _num(bp.get("liquidity_usd")) < 5000:
+        return False, sells, buys
+    return (sells >= 20 and sells >= 0.15 * (buys + 1)), sells, buys
+
+
 def _honeypot_signals(hp, signals, evidence, data_gaps):
     """Read honeypot.is.
 
@@ -701,6 +753,11 @@ def _honeypot_signals(hp, signals, evidence, data_gaps):
         # rule written for a token nothing can verify.
         data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
                           "reason": "the sell simulator has no record of this token"})
+        settled, sells, buys = _sells_demonstrated(evidence)
+        if settled:
+            _sells_answer(signals, evidence, sells, buys,
+                          "The sell-simulation service has no record of this token")
+            return
         signals.append(_sig(
             "warn", "No simulator has traded this token",
             "The sell-simulation service has no record of this token at all. That is "
@@ -711,6 +768,11 @@ def _honeypot_signals(hp, signals, evidence, data_gaps):
     if hp is None:
         data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
                           "reason": "upstream request failed"})
+        settled, sells, buys = _sells_demonstrated(evidence)
+        if settled:
+            _sells_answer(signals, evidence, sells, buys,
+                          "The sell-simulation service did not respond")
+            return
         signals.append(_sig("warn", "Sellability unverified",
                             "The sell-simulation service did not respond, so we could not confirm this token can be sold.", "sellability"))
         return
@@ -773,6 +835,18 @@ def _honeypot_signals(hp, signals, evidence, data_gaps):
                                 "Simulation confirms it: you can buy, you cannot sell.",
                                 "honeypot"))
     elif sim_ok is False or is_hp is None:
+        # Deliberately NOT settled by completed sells, unlike the two branches above.
+        #
+        # There the simulator told us nothing -- it was unreachable, or had never seen the
+        # token -- so the market is the only witness available and it is a good one. Here
+        # the simulator ran and something reverted, usually the buy leg. That is
+        # information, and sells completing does not address it: other people getting out
+        # says nothing about whether you can get in, and erasing a failed simulation with
+        # evidence about a different leg of the trade is how "we checked and something
+        # broke" turns back into "looks fine".
+        #
+        # The fail-closed regression test for this case went red the moment I tried it,
+        # which is exactly what it is for.
         err = hp.get("simulationError") or "unknown reason"
         data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
                           "reason": "simulation failed: %s" % err})
@@ -989,6 +1063,7 @@ async def _load_pairs(address, chain_hint):
 _SLIM_EVIDENCE_KEYS = (
     "best_pair", "chains", "pair_age_days", "turnover_24h", "honeypot",
     "rugcheck", "liquidity_source", "confidence", "data_gaps", "served_stale",
+    "sellability_from_chain",
     "pools_all_empty",
     "same_symbol",
 )

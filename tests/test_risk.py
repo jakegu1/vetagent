@@ -726,6 +726,61 @@ def test_simulator_404_is_about_the_token_not_about_us():
               for g in gaps2), str(gaps2))
 
 
+def test_market_activity_informs_but_does_not_verify_your_exit():
+    """Other people's completed sells are context, never a substitute for the check.
+
+    This exists because I tried to make it a substitute and the fail-closed test caught
+    me. The case for it was strong: of 97 unknown verdicts, 72 had twenty or more sells
+    against a live pool, 63 confirmed good and none bad, and the list included WETH --
+    4,540 sells against $117.8M of liquidity, answered "unknown". That looks broken.
+
+    It is still wrong. A simulation tests whether *you* can sell; completed trades show
+    that *other people* could. Those separate exactly where it matters, because a
+    blacklist honeypot lets ordinary traders through precisely so the market looks
+    healthy and blocks the addresses it picks. From outside, that is indistinguishable
+    from health -- which is the whole reason the simulation is worth running.
+
+    So: report the activity, keep the gap, keep the verdict honest.
+    """
+    print("\n[sellability] the market is context, not verification")
+
+    busy = {"pairs": [{
+        "chainId": "ethereum", "dexId": "uniswap",
+        "baseToken": {"address": WETH, "symbol": "BUSY"},
+        "quoteToken": {"address": "0xq"}, "priceUsd": "1.0",
+        "liquidity": {"usd": 500_000.0}, "volume": {"h24": 900_000.0},
+        "txns": {"h24": {"buys": 900, "sells": 850}},
+        "pairCreatedAt": 1589841515000}]}
+
+    # The simulator has no record of the token at all.
+    install_stub([("dex/tokens", busy), ("dex/search", None),
+                  ("honeypot.is", risk.NO_DATA)])
+    r = run(risk.assess(WETH, chain_hint="ethereum"))
+    sell = [x for x in r["signals"] if x["category"] == "sellability"]
+    check("the completed sells are reported",
+          any(x["severity"] == "info" and "completing on-chain" in x["name"]
+              for x in sell), str([(x["severity"], x["name"]) for x in sell]))
+    gaps = (r.get("evidence") or {}).get("data_gaps") or []
+    check("but the sellability gap stays open",
+          any(g.get("dimension") == "sellability" for g in gaps), str(gaps))
+    check("so the verdict is never low", r["risk_level"] != "low", r["risk_level"])
+    check("and the evidence says plainly that your exit is unverified",
+          (r.get("evidence") or {}).get("sellability_from_chain", {})
+          .get("verifies_your_exit") is False,
+          str((r.get("evidence") or {}).get("sellability_from_chain")))
+
+    # A quiet pool earns no such note -- there is nothing to report.
+    quiet = json.loads(json.dumps(busy))
+    quiet["pairs"][0]["txns"]["h24"] = {"buys": 3, "sells": 1}
+    install_stub([("dex/tokens", quiet), ("dex/search", None),
+                  ("honeypot.is", risk.NO_DATA)])
+    r2 = run(risk.assess(WETH, chain_hint="ethereum"))
+    check("a quiet pool produces no market-activity note",
+          not [x for x in r2["signals"]
+               if x["category"] == "sellability" and x["severity"] == "info"],
+          str([(x["severity"], x["name"]) for x in r2["signals"]]))
+
+
 def test_clean_token_stays_low():
     """Guard the other way: more signals must not let the score push a healthy token high."""
     print("\n[scoring] healthy token stays low")

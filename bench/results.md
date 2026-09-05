@@ -76,7 +76,7 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **dead** | 20 | 10.0% | 95.0% | 5.0% | 0.0% | 43.7 |
-| **alive** | 85 | 3.5% | 32.9% | 58.8% | 8.2% | 14.3 |
+| **alive** | 85 | 3.5% | 32.9% | 58.8% | 8.2% | 14.0 |
 
 ### Contract-safety signals only (ablated)
 
@@ -86,7 +86,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **dead** | 20 | 10.0% | 15.0% | 85.0% | 0.0% | 11.5 |
-| **alive** | 85 | 1.2% | 12.9% | 77.6% | 9.4% | 7.5 |
+| **alive** | 85 | 1.2% | 12.9% | 77.6% | 9.4% | 7.2 |
 
 **Which signal category made the call on dead samples:** `liquidity` 15, `honeypot` 3, `lifecycle` 1
 
@@ -103,7 +103,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 28 | 60.7% | 92.9% | 0.0% | 7.1% | 74.6 |
-| **safe** | 338 | 5.0% | 47.6% | 29.3% | 23.1% | 28.1 |
+| **safe** | 338 | 5.0% | 47.6% | 29.3% | 23.1% | 25.3 |
 
 ### Contract-safety signals only (ablated)
 
@@ -113,7 +113,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 28 | 17.9% | 46.4% | 39.3% | 14.3% | 31.9 |
-| **safe** | 338 | 3.3% | 14.5% | 61.5% | 24.0% | 13.9 |
+| **safe** | 338 | 3.3% | 14.5% | 61.5% | 24.0% | 10.8 |
 
 **Which signal category made the call on unsafe samples:** `liquidity` 18, `honeypot` 5, `impersonation` 4, `no_liquidity` 1
 
