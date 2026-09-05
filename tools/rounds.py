@@ -163,7 +163,10 @@ def render():
     for rid in order:
         m = meta[rid]
         cs = m["commits"]
-        if not cs:
+        # The open round is skipped here as well as below. Its commit count changes with
+        # every commit, so including it would leave this file stale by construction --
+        # and a guard that is red by default is one people learn to ignore.
+        if not cs or m["last"] is None:
             continue
         sc = score_at(m["last"])
         delta = ""
