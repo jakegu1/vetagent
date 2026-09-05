@@ -117,6 +117,16 @@ async def _cache_put(url, data):
         pass
 
 
+# Chains honeypot.is actually indexes. It answers 404 for every token on the others --
+# "No pairs found" for Arbitrum, "Token not found" for Polygon -- which is a statement
+# about its own coverage, not about the token. Treating that as evidence made the engine
+# rate a healthy Arbitrum token "unknown" with a note that the absence was "unusual for
+# anything with a real market", and rate a not-yet-indexed one "high" on the grounds that
+# "every legitimate token clears at least one of those two" -- a premise that is simply
+# false on a chain the simulator has never covered. The tool description advertises these
+# chains as valid hints.
+_SIMULATOR_CHAINS = ("ethereum", "bsc", "base")
+
 # Returned instead of None when upstream answered 404: it is not that we could not
 # reach the service, it is that the service has no record of this token. Third time
 # today the same distinction has mattered, which is how you know it is the right one.
@@ -359,6 +369,23 @@ def _reported_liquidity(pair):
     return None
 
 
+def _canonical_chain(hint):
+    """A caller's chain hint, normalised to the name DexScreener uses. "" if unknown.
+
+    Callers write the chain however their stack spells it. "eth" is the id our own
+    _GT_NETWORK table uses; an agent that read our GeckoTerminal mapping, or any of the
+    many tools that say "eth", passes it in good faith.
+    """
+    h = (hint or "").strip().lower()
+    if not h:
+        return ""
+    h = {"mainnet": "ethereum", "erc20": "ethereum", "binance-smart-chain": "bsc",
+         "bnb": "bsc", "binance": "bsc", "arbitrum_one": "arbitrum",
+         "arb": "arbitrum", "op": "optimism", "matic": "polygon"}.get(h, h)
+    gt = _GT_NETWORK.get(h)
+    return _GT_TO_CHAIN.get(gt, gt) if gt else h
+
+
 def _pick_best(pairs, chain_hint=None, target=None):
     """Pick a pool defensively: target chain first -> must contain the target address
     -> sane price -> deepest liquidity.
@@ -397,7 +424,7 @@ def _pick_best(pairs, chain_hint=None, target=None):
 
     if not pairs:
         return None
-    hint = (chain_hint or "").lower()
+    hint = _canonical_chain(chain_hint)
 
     # Which chain this token belongs to is decided BEFORE liquidity is considered, over
     # every pair that names it -- drained pools included.
@@ -409,12 +436,20 @@ def _pick_best(pairs, chain_hint=None, target=None):
     # whose actual exit was closed -- the same mispricing that put USDC at $0.00097, made
     # reachable again by the exact tokens the drained-pool check exists for.
     home = [p for p in pairs if _is_target(p)] or list(pairs)
-    if hint:
-        on_hint = [p for p in home if (p.get("chainId") or "").lower() == hint]
-        # Only ignore the hint when the token genuinely does not appear on that chain.
-        # Falling back because its pools happen to be empty is how a fork chain wins.
-        scoped = on_hint or home
+    on_hint = [p for p in home
+               if hint and (p.get("chainId") or "").lower() == hint]
+    if on_hint:
+        scoped = on_hint
     else:
+        # No hint, or a hint that matches nothing: rank by how canonical the chain is.
+        #
+        # The "matches nothing" case used to fall back to every pair and then take the
+        # deepest, with no rank filter at all -- so a hint the caller spelled differently
+        # from DexScreener silently disabled the one defence against fork chains.
+        # chain_hint="eth" resolved USDC to a pulsechain pool at $0.000967 against
+        # $7.9M of nominal liquidity: the original P0-C mispricing, reopened by the
+        # fix that was supposed to close it. A hint we cannot match is less information
+        # than no hint at all, and must never be treated as more.
         best_rank = min(_CHAIN_RANK.get((p.get("chainId") or "").lower(),
                                         _UNKNOWN_CHAIN_RANK) for p in home)
         scoped = [p for p in home
@@ -685,6 +720,11 @@ async def _impersonation_signals(address, pairs, signals, evidence,
             "impersonation"))
 
 
+def _chain_of(evidence):
+    """Chain of the pool the engine settled on, when the caller gave no usable hint."""
+    return ((evidence.get("best_pair") or {}).get("chain") or "").lower()
+
+
 def _sells_answer(signals, evidence, sells, buys, why):
     """Report that sells are completing, WITHOUT closing the sellability gap.
 
@@ -737,7 +777,7 @@ def _sells_demonstrated(evidence):
     return (sells >= 20 and sells >= 0.15 * (buys + 1)), sells, buys
 
 
-def _honeypot_signals(hp, signals, evidence, data_gaps):
+def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
     """Read honeypot.is.
 
     The old code read isHoneypot out of simulationResult — a key upstream does not
@@ -745,6 +785,20 @@ def _honeypot_signals(hp, signals, evidence, data_gaps):
     permanently "ok". It also discarded summary.risk, flags and contractCode, all of
     which were already in the response we had fetched.
     """
+    if hp is NO_DATA and chain and chain not in _SIMULATOR_CHAINS:
+        # Our coverage gap, not the token's absence: excluded from the no-trace
+        # escalation by starting the reason with the phrase _finalize reserves for
+        # our own shortcomings.
+        data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
+                          "reason": "upstream request failed: the sell simulator does "
+                                    "not cover %s" % chain})
+        signals.append(_sig(
+            "warn", "Sellability cannot be checked on this chain",
+            "The sell-simulation service does not cover %s, so this token's sellability "
+            "could not be tested. That is a gap in our coverage and says nothing about "
+            "the token." % chain, "sellability"))
+        return
+
     if hp is NO_DATA:
         # The simulator answered, and its answer is that it has never seen this token.
         # That is evidence about the token, not an outage on our side -- 15 of 25 sampled
@@ -1111,8 +1165,12 @@ async def assess(address, chain_hint=None, verbose=False):
             stated = [v for v in (_reported_liquidity(p) for p in pairs) if v is not None]
             if stated and max(stated) <= 0:
                 evidence["pools_all_empty"] = len(stated)
+                # fatal, not critical. "There is nothing to sell into at any price" is
+                # the most serious thing this engine can conclude, and at critical it
+                # scored 60 and came out medium -- the existing test only asserted "not
+                # low", so nobody noticed the verdict did not match the sentence.
                 signals.append(_sig(
-                    "critical", "No liquidity left in any pool",
+                    "fatal", "No liquidity left in any pool",
                     "%d pool%s report their depth and every one of them is empty. "
                     "There is nothing to sell into at any price."
                     % (len(stated), "" if len(stated) == 1 else "s"), "sellability"))
@@ -1133,7 +1191,8 @@ async def assess(address, chain_hint=None, verbose=False):
         _honeypot_signals(
             await _fetch_json("https://api.honeypot.is/v2/IsHoneypot?address=%s" % address,
                               mark_missing=True),
-            signals, evidence, data_gaps)
+            signals, evidence, data_gaps,
+            chain=_canonical_chain(chain_hint) or _chain_of(evidence))
     elif _looks_solana(address):
         _rugcheck_signals(
             await _fetch_json("https://api.rugcheck.xyz/v1/tokens/%s/report" % address),

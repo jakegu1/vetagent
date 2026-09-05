@@ -557,9 +557,14 @@ def test_every_pool_empty_is_a_finding_not_a_gap():
     install_stub([("dex/tokens", empty_pools(3)), ("honeypot.is", _load("hp_matic.json"))])
     r = run(risk.assess(WETH, chain_hint="ethereum"))
     sell = [x for x in r["signals"] if x["category"] == "sellability"]
-    check("drained pools raise a critical sellability signal",
-          any(x["severity"] == "critical" for x in sell),
+    # fatal, and the verdict must match the sentence. At critical this scored 60 and
+    # came out "medium" while telling the user there was nothing to sell into at any
+    # price -- and the assertion here was only "not low", so nobody noticed.
+    check("drained pools raise a fatal sellability signal",
+          any(x["severity"] == "fatal" for x in sell),
           str([(x["severity"], x["name"]) for x in r["signals"]]))
+    check("and the verdict says what the message says",
+          r["risk_level"] == "high", r["risk_level"])
     check("it says how many pools were checked",
           r.get("evidence", {}).get("pools_all_empty") == 3,
           str(r.get("evidence", {}).get("pools_all_empty")))
@@ -622,7 +627,7 @@ def test_unpriced_pools_are_not_empty_pools():
                   ("honeypot.is", _load("hp_matic.json"))])
     r2 = run(risk.assess(WETH, chain_hint="ethereum"))
     check("a pool that reports zero is still called out",
-          any(x["severity"] == "critical" and x["category"] == "sellability"
+          any(x["severity"] in ("critical", "fatal") and x["category"] == "sellability"
               for x in r2["signals"]),
           str([(x["severity"], x["category"]) for x in r2["signals"]]))
 
@@ -779,6 +784,84 @@ def test_market_activity_informs_but_does_not_verify_your_exit():
           not [x for x in r2["signals"]
                if x["category"] == "sellability" and x["severity"] == "info"],
           str([(x["severity"], x["name"]) for x in r2["signals"]]))
+
+
+def test_a_chain_hint_we_cannot_match_is_less_information_not_more():
+    """Found by external audit. A hint spelled differently disabled the fork defence.
+
+    Callers write the chain however their stack spells it, and "eth" is the id our own
+    _GT_NETWORK table uses -- an agent that read our GeckoTerminal mapping passes it in
+    good faith. It matched no DexScreener chainId, the code fell back to every pair, and
+    the pick became max(liquidity) with no canonical-chain ranking at all.
+
+    So chain_hint="eth" resolved USDC to a pulsechain pool at $0.000967 against $7.9M of
+    nominal liquidity: the original P0-C mispricing, reopened by the very change that was
+    meant to close it, and invisible because the fixture test only ever passed "ethereum".
+    """
+    print("\n[pool selection] a hint we cannot match must not disable the ranking")
+    pairs = _load("ds_usdc.json").get("pairs") or []
+    for hint in ("ethereum", "eth", "mainnet", "ETH ", "Ethereum", None):
+        best = risk._pick_best(pairs, chain_hint=hint, target=USDC)
+        chain = (best or {}).get("chainId")
+        check("hint %r resolves to ethereum, not a fork" % hint,
+              chain == "ethereum", "got %s at %s" % (chain, (best or {}).get("priceUsd")))
+    check("and the price is the real one",
+          abs(_num_or_zero(risk._pick_best(pairs, chain_hint="eth",
+                                           target=USDC).get("priceUsd")) - 1.0) < 0.05,
+          str(risk._pick_best(pairs, chain_hint="eth", target=USDC).get("priceUsd")))
+
+
+def test_a_chain_the_simulator_does_not_cover_is_our_gap():
+    """Found by external audit. honeypot.is 404s for whole chains we advertise.
+
+    It answers "No pairs found" for every Arbitrum token and "Token not found" for every
+    Polygon one -- a statement about its own coverage, not about the token. Filing that
+    as evidence made the engine tell users a healthy Arbitrum token was "unusual for
+    anything with a real market", and rate a not-yet-indexed one **high** on the grounds
+    that "every legitimate token clears at least one of those two" -- false on a chain the
+    simulator has never covered.
+
+    E1 again, instance five: an unobserved dimension wearing an observed absence's
+    clothes. This time it was introduced the same day the rule was written down.
+    """
+    print("\n[coverage] a chain our simulator skips is not a fact about the token")
+
+    def on(chain, pairs=True):
+        p = {"pairs": [{
+            "chainId": chain, "dexId": "uniswap",
+            "baseToken": {"address": WETH, "symbol": "TKN"},
+            "quoteToken": {"address": "0xq"}, "priceUsd": "0.45",
+            "liquidity": {"usd": 3_000_000.0}, "volume": {"h24": 1_500_000.0},
+            "txns": {"h24": {"buys": 4000, "sells": 3800}},
+            "pairCreatedAt": 1589841515000}]} if pairs else {"pairs": []}
+        install_stub([("dex/tokens", p), ("dex/search", None),
+                      ("honeypot.is", risk.NO_DATA)])
+        return run(risk.assess(WETH, chain_hint=chain))
+
+    r = on("arbitrum")
+    gaps = (r.get("evidence") or {}).get("data_gaps") or []
+    check("the gap blames our coverage, not the token",
+          any("does not cover" in str(g.get("reason", "")) for g in gaps), str(gaps))
+    check("no signal calls the absence unusual",
+          not any("unusual" in (x.get("message") or "") for x in r["signals"]),
+          str([x["name"] for x in r["signals"]]))
+    check("a healthy token there is not rated high", r["risk_level"] != "high",
+          r["risk_level"])
+
+    # The escalation must not fire either: it reasons that every legitimate token clears
+    # a market source or a simulator, and that premise does not hold where we have no
+    # simulator at all.
+    r2 = on("arbitrum", pairs=False)
+    check("an unindexed token on that chain is not rated high",
+          r2["risk_level"] != "high", "%s %s" % (r2["risk_level"],
+                                                 [x["name"] for x in r2["signals"]]))
+
+    # On a chain the simulator does cover, a 404 still means something about the token.
+    r3 = on("ethereum")
+    gaps3 = (r3.get("evidence") or {}).get("data_gaps") or []
+    check("but on a covered chain a 404 is still about the token",
+          any("no record of this token" in str(g.get("reason", "")) for g in gaps3),
+          str(gaps3))
 
 
 def test_clean_token_stays_low():
