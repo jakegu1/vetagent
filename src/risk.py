@@ -878,7 +878,20 @@ async def _owner_powers(address, chain):
     rpc = _CHAIN_RPC.get((chain or "").lower())
     if not rpc or not _looks_evm(address):
         return None
-    return _powers_from_code(await _eth_get_code(rpc, address))
+    code, why = await _eth_get_code(rpc, address)
+    if code is None:
+        # Say that the lookup failed rather than returning nothing.
+        #
+        # This is the only POST this Worker makes -- every other upstream call is a GET --
+        # and the runtime's fetch signature for a POST cannot be verified anywhere but in
+        # production. If it is wrong, the exception is caught and the feature does
+        # nothing, forever, while looking exactly like a contract we could not read.
+        #
+        # That is this project's oldest bug wearing a new hat: the honeypot check spent
+        # weeks reading a key upstream does not have, silently passing everything. So the
+        # failure is recorded where one live call can see it.
+        return {"unavailable": why}
+    return _powers_from_code(code)
 
 
 def _powers_from_code(code):
@@ -903,9 +916,13 @@ def _powers_from_code(code):
 
 
 async def _eth_get_code(rpc, address):
-    """One JSON-RPC eth_getCode. Any failure is None -- this is best-effort disclosure."""
+    """One JSON-RPC eth_getCode. Returns (code, reason) -- code is None on any failure.
+
+    The reason is carried out rather than swallowed, so that a single live call can tell
+    "this runtime cannot make this request" apart from "that chain's node was busy".
+    """
     if cf_fetch is None:
-        return None
+        return None, "no runtime fetch"
     payload = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "eth_getCode",
                           "params": [address, "latest"]})
     try:
@@ -913,11 +930,15 @@ async def _eth_get_code(rpc, address):
             cf_fetch(rpc, method="POST", body=payload,
                      headers={"content-type": "application/json"}), timeout=6)
         if resp.status != 200:
-            return None
-        return (json.loads(await asyncio.wait_for(resp.text(), timeout=6))
-                or {}).get("result")
-    except Exception:  # noqa: BLE001 -- an unreadable contract discloses nothing, quietly
-        return None
+            return None, "rpc %d" % resp.status
+        body = await asyncio.wait_for(resp.text(), timeout=6)
+        return (json.loads(body) or {}).get("result"), None
+    except TypeError as e:
+        # The signature is wrong for this runtime -- a deployment fault, not a chain one,
+        # and the single most likely way this feature dies quietly.
+        return None, "fetch signature: %s" % str(e)[:40]
+    except Exception as e:  # noqa: BLE001
+        return None, type(e).__name__
 
 
 def _owner_power_signal(info, signals, evidence):
@@ -925,6 +946,8 @@ def _owner_power_signal(info, signals, evidence):
     if not info:
         return
     evidence["owner_powers"] = info
+    if info.get("unavailable"):
+        return          # recorded, not claimed: no signal either way
     if info.get("is_proxy"):
         signals.append(_sig(
             "info", "Upgradeable contract: powers are not visible here",

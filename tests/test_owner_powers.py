@@ -129,6 +129,16 @@ def test_disclosure_never_moves_the_verdict():
     check("an unreadable contract discloses nothing",
           not signals3 and not evidence3, str(signals3))
 
+    # A lookup that failed is recorded, never claimed. This is the only POST the Worker
+    # makes and its signature cannot be checked outside production; if it is wrong the
+    # feature would otherwise do nothing forever while looking like an unreadable
+    # contract -- which is precisely how a honeypot check that never ran survived here.
+    signals4, evidence4 = [], {}
+    risk._owner_power_signal({"unavailable": "fetch signature: x"}, signals4, evidence4)
+    check("a failed lookup is recorded in evidence",
+          evidence4.get("owner_powers", {}).get("unavailable"), str(evidence4))
+    check("and claims nothing about the contract", not signals4, str(signals4))
+
 
 def test_a_real_contract_reads_correctly():
     """Contracts whose powers are public record, checked against their real bytecode.
