@@ -22,7 +22,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from fetcher import fetch_json, persist_access_log  # noqa: E402
+import backfill  # noqa: E402
+from fetcher import fetch_json, note_endpoint, persist_access_log  # noqa: E402
 from labels import GOPLUS_CHAIN_ID, GT_NETWORK, goplus_label, outcome_label  # noqa: E402
 
 # GeckoTerminal network id -> our canonical chain name (snapshots store the GT id)
@@ -88,6 +89,13 @@ def collect_candidates(limit):
     # sampled from, and has since finished being whatever it was going to be -- which is
     # the resolved outcome the labeller needs, available without waiting for it.
     _from_backfill(adder("backfill"), seen, limit)
+    if buckets["backfill"]:
+        # Backfill runs in its own process, so the endpoints it sampled from are not in
+        # this process's access log. Declaring them here is what lets the benchmark's
+        # disjointness assertion see a sampling source at all -- without it the guard
+        # would be silent about the newest way candidates get into the set.
+        for ep in backfill.SAMPLING_ENDPOINTS:
+            note_endpoint("label", ep)
 
     # Recently-launched, from the daily snapshot archive.
     #

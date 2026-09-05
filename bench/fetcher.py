@@ -124,6 +124,13 @@ def fetch_json(url, role, retries=2, timeout=25, use_cache=True):
 ACCESS_LOG_PATH = os.path.join(CACHE_DIR, "..", "access_log.json")
 
 
+def note_endpoint(role, endpoint):
+    """Record an endpoint a sibling process sampled from, so the guard can see it."""
+    assert role in ("engine", "label"), role
+    with _LOCK:
+        _ACCESS_LOG[role].add(endpoint)
+
+
 def persist_access_log():
     """Write this process's endpoint log to disk.
 
