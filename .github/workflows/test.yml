@@ -49,6 +49,17 @@ jobs:
       - name: Maturity scorecard
         run: python bench/scorecard.py
 
+      # The development log is generated from git, and this fails if any commit belongs
+      # to no round -- so the log cannot be incomplete, rather than relying on someone
+      # remembering to append to it.
+      - name: Development rounds are complete and current
+        run: python tests/test_rounds.py
+
+      # The backlog is the last hand-maintained document, so it gets the strictest shape
+      # check: an open item that cannot name how it will be verified is a wish.
+      - name: Backlog items can be verified
+        run: python tests/test_backlog.py
+
   # Upstream contract monitor: real API calls that check the fields we depend on still exist.
   # Separate from the unit tests: a third-party outage turns it red, which is the signal.
   upstream-contract:
