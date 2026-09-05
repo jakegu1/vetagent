@@ -197,21 +197,66 @@ Say what you need and Jake will sort it out:
 
 ## 9. Open decisions (Jake's call)
 
-1. **Whether to push and deploy this round's fixes.** Branch `fix/p0-honeypot-liquidity`, committed locally,
-   153 tests green. Production is still running the build where honeypot detection does nothing.
+> Last reviewed 2026-09-05. Items resolved since the previous review have been removed
+> rather than left ticked: a list of open questions that still contains closed ones stops
+> being read.
 
-2. **Infrastructure identifiers in a public repo.** The Cloudflare Account ID
-   (`3976e6f6...`) and Zone ID (`371490a6...`) in the §2 table are committed to a **public repo**.
-   Neither is a secret and neither alone lets anyone act on the account, but they are useful material for targeted social engineering or phishing.
-   Suggest moving them to a private note and leaving a single "ask Jake" line in the repo. Confirmed: git history contains **no**
-   token or credential file.
+1. **Should the engine be allowed to read price history?** *(new, 2026-09-05 — the
+   sharpest trade-off currently on the table.)*
 
-3. **Landing page language.** Chinese only right now. The tool itself has no language attachment,
-   and a Chinese page cuts out the overwhelming majority of potential users. Suggest an English version (or both).
+   The benchmark's `dead` cohort finally has 20 members, and one of them is rated `low`:
+   98.8% off its peak, 7-day volume down from $3,090,415 to $12,846, and nothing in the
+   present snapshot shows it. $65,486 of liquidity, sells work, 3.7% daily turnover. The
+   engine has no price history, so it cannot see a drawdown.
 
-4. **Distribution.** Not yet registered in the official MCP registry (`docs/server.json` is ready but was never submitted).
-   Not listed on awesome-mcp-servers, Smithery, mcp.so, PulseMCP, or Glama.
-   All of these are one-time work with long-lived acquisition.
+   Turnover cannot substitute. At the current 2% threshold it catches 55% of the dead
+   cohort at a cost of 7% of the live one; loosening it to 5% doubles that cost for ten
+   more points of recall. Measured, not guessed.
+
+   The series that would catch it is GeckoTerminal daily OHLCV — **the same series the
+   `outcome` label is computed from**. Wiring it into the engine buys drawdown detection
+   and simultaneously destroys the `outcome` column as an independent measurement. Same
+   shape as B2 (GoPlus held out as the GoPlus oracle), and the same question: is the
+   capability worth more than the ability to prove the capability?
+
+   Three ways out, in the order I would try them:
+   - **Hold the line.** Keep OHLCV out, document the limit, and say plainly that this
+     tool answers "can I get out" and not "is this project finished". Costs nothing,
+     concedes a real gap.
+   - **Buy an independent oracle.** If the `outcome` label came from a source the engine
+     will never read, OHLCV frees up. Nothing free was found that does this.
+   - **Split the labels.** Keep `outcome` for the ablated column only and let the full
+     engine use history — the ablation stays honest, the headline does not.
+
+   I have not picked one. It trades measurement for capability and that is a product
+   call, not an implementation detail.
+
+2. **Whether to push and deploy this round.** Nine commits sit unpushed on `master`;
+   181 tests green; maturity 36 → 50 today. Pushing is safe on its own — `deploy.yml`
+   skips when `CLOUDFLARE_API_TOKEN` is absent, which it is — so a push runs CI and
+   leaves production untouched.
+
+   Verified 2026-09-05 against the live endpoint: production has **never** run the
+   impersonation check (no signal, no `same_symbol` evidence for a token that should
+   trigger it), so the two critical defects found and fixed today never reached a user.
+   Production is simply old, not wrong.
+
+3. **`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` as GitHub Secrets.** One action
+   unlocks two things at once: automatic deploys, and the "external callers" line on the
+   scorecard, which currently reads `not measured` and is worth 5 points that cannot be
+   earned any other way.
+
+4. **Infrastructure identifiers in a public repo.** The Cloudflare Account ID
+   (`3976e6f6...`) and Zone ID (`371490a6...`) in the §2 table are committed to a
+   **public** repo. Neither is a secret and neither alone lets anyone act on the account,
+   but both are useful material for targeted phishing. Suggest moving them to a private
+   note with an "ask Jake" line left behind. Confirmed: git history contains **no** token
+   or credential file.
+
+5. **Distribution.** `docs/server.json` is ready and was never submitted to the official
+   MCP registry. Not listed on Glama, Smithery, mcp.so, PulseMCP, or awesome-mcp-servers.
+   All one-time work with long-lived acquisition, and all requiring an account I cannot
+   create. Glama should come first — awesome-mcp-servers expects a listing to exist.
 
 ## 10. Three things for whoever picks this up next
 
