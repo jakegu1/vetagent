@@ -97,7 +97,9 @@ RISK_VECTORS = [
     ("mint / freeze authority (Solana)", True),
     ("holder concentration (EVM)", False),   # needs GoPlus, the held-out oracle (DECISIONS B2)
     ("LP lock / burn", False),               # pulling the pool is the main EVM rug, uncovered
-    ("same-name token impersonation", False),  # the most common way an agent loses money
+    ("same-name token impersonation", True),   # shipped 2026-09-05, same-chain only:
+                                               # a cross-chain rival cannot be verified
+                                               # and can be manufactured by an attacker
     ("deployer history", False),
 ]
 
