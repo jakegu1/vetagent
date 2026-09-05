@@ -81,8 +81,12 @@ ROUNDS = [
     ("R10", "External audit, and closing all seventeen findings", "cfa6cb5",
      "A stronger model audited the repository against a brief written for it. Two HIGH "
      "regressions from that same day, and an oracle whose own flag was unfalsifiable."),
-    ("R11", "Number the rounds", None,
-     "This one."),
+    ("R11", "Number the rounds", "4a1c27c",
+     "A generated development log and a backlog whose every open item names how it "
+     "will be verified, after an audit found drift in almost every hand-maintained "
+     "record here and none in the two that are generated."),
+    ("R12", "Next", None,
+     "Open."),
 ]
 
 

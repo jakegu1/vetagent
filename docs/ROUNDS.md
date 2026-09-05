@@ -22,11 +22,12 @@ The maturity score for each round is read from `docs/SCORECARD.md` **as it stood
 | **R8** | Make recall measurable | 6 | 2026-09-05 | 50/100 (+14) |
 | **R9** | Stop the instrument reporting its own failures | 5 | 2026-09-05 | 53/100 (+3) |
 | **R10** | External audit, and closing all seventeen findings | 6 | 2026-09-05 | 53/100 (+0) |
+| **R11** | Number the rounds | 3 | 2026-09-05 | 53/100 (+0) |
 
 5 snapshot-job commits are excluded: they are data collection, not development, and would bury the rounds.
 
 
-**R11 -- Number the rounds** is open: This one. Its commits are listed here once it closes.
+**R12 -- Next** is open: Open. Its commits are listed here once it closes.
 
 ---
 
@@ -226,6 +227,24 @@ A stronger model audited the repository against a brief written for it. Two HIGH
 | `f953d6f` | 2026-09-05 | Say what a low verdict certifies, which is narrower than the copy promised |
 | `5edd221` | 2026-09-05 | Record the nine decisions the external audit forced |
 | `cfa6cb5` | 2026-09-05 | Re-measure on a corrected cohort: unsafe 28 -> 9, and the number that mattered |
+
+Full reasoning for any line above: `git show <hash>`. The commit messages carry the measurement that motivated each change, and several admissions of error.
+
+
+---
+
+
+## R11 -- Number the rounds
+
+
+A generated development log and a backlog whose every open item names how it will be verified, after an audit found drift in almost every hand-maintained record here and none in the two that are generated.
+
+
+| Commit | Date | Change |
+|---|---|---|
+| `39a8986` | 2026-09-05 | Number the rounds, and generate the log rather than writing an eighth document |
+| `72365a5` | 2026-09-05 | Stop the round log going stale on its own commit |
+| `4a1c27c` | 2026-09-05 | Skip the open round in the summary table as well |
 
 Full reasoning for any line above: `git show <hash>`. The commit messages carry the measurement that motivated each change, and several admissions of error.
 
