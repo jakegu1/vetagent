@@ -94,7 +94,7 @@ def collect_candidates(limit):
         # this process's access log. Declaring them here is what lets the benchmark's
         # disjointness assertion see a sampling source at all -- without it the guard
         # would be silent about the newest way candidates get into the set.
-        for ep in backfill.SAMPLING_ENDPOINTS:
+        for ep in backfill.sampling_endpoints():
             note_endpoint("label", ep)
 
     # Recently-launched, from the daily snapshot archive.
@@ -270,7 +270,11 @@ def label_one(c):
     """Apply both label sets to one candidate. Returns a dict, or None if neither stuck."""
     net = GT_NETWORK[c["chain"]]
     ohlcv = fetch_json(
-        "https://api.geckoterminal.com/api/v2/networks/%s/pools/%s/ohlcv/day?limit=180"
+        # limit=1000, not 180. A pool harvested from 300 days ago had its entire active
+        # life outside a 180-day window, so the labeller saw a flat tail and called it
+        # unlabelled -- the tokens furthest back, which are the ones whose outcome is
+        # most certainly resolved, were the ones it could say least about.
+        "https://api.geckoterminal.com/api/v2/networks/%s/pools/%s/ohlcv/day?limit=1000"
         % (net, c["pool"]), role="label")
     lst = (((ohlcv or {}).get("data") or {}).get("attributes") or {}).get("ohlcv_list") or []
     o_label, o_facts = outcome_label(lst)

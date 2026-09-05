@@ -385,9 +385,20 @@ def harvest(chain, day, want_symbols=True):
 # about a sampling source cannot object to it. The engine reads
 # networks/{net}/tokens/{id}/pools, which is a different path -- but "different, I
 # checked once" is exactly the kind of claim that rots, so it gets asserted instead.
-SAMPLING_ENDPOINTS = ["api.geckoterminal.com/api/v2/networks/{id}/pools/multi/{id}"]
-
+_MULTI_URL = "https://api.geckoterminal.com/api/v2/networks/%s/pools/multi/%s"
 _GT_PAGE = 30
+
+
+def sampling_endpoints():
+    """The endpoints this file samples from, in the benchmark's own normalised form.
+
+    Derived from the URL _resolve_pools actually builds rather than written out by hand.
+    A hand-written copy was already wrong on its first day -- it guessed the chain
+    segment would normalise to a placeholder when it does not -- and a declaration that
+    can drift from the code is worse than none, because the guard reads it as truth.
+    """
+    from fetcher import endpoint_of
+    return sorted({endpoint_of(_MULTI_URL % (chain, "0x0")) for chain in CHAINS})
 
 
 def _resolve_pools(chain, pools):
@@ -407,9 +418,7 @@ def _resolve_pools(chain, pools):
     out = {}
     for i in range(0, len(pools), _GT_PAGE):
         page = pools[i:i + _GT_PAGE]
-        url = ("https://api.geckoterminal.com/api/v2/networks/%s/pools/multi/%s"
-               % (chain, ",".join(page)))
-        d = fetch_json(url, role="label")
+        d = fetch_json(_MULTI_URL % (chain, ",".join(page)), role="label")
         if d is None:
             continue          # unknown, not empty -- these pools are simply skipped
         for p in (d.get("data") or []):
