@@ -22,9 +22,12 @@ The maturity score for each round is read from `docs/SCORECARD.md` **as it stood
 | **R8** | Make recall measurable | 6 | 2026-09-05 | 50/100 (+14) |
 | **R9** | Stop the instrument reporting its own failures | 5 | 2026-09-05 | 53/100 (+3) |
 | **R10** | External audit, and closing all seventeen findings | 6 | 2026-09-05 | 53/100 (+0) |
+| **R11** | Number the rounds | 1 | 2026-09-05 | 53/100 (+0) |
 
 5 snapshot-job commits are excluded: they are data collection, not development, and would bury the rounds.
 
+
+**R11 -- Number the rounds** is open: This one. Its commits are listed here once it closes.
 
 ---
 

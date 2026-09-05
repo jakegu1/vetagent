@@ -179,9 +179,14 @@ def render():
     A("\n%d snapshot-job commits are excluded: they are data collection, not "
       "development, and would bury the rounds.\n" % bots)
 
+    open_id = next((r for r in order if meta[r]["last"] is None), None)
+    if open_id:
+        A("\n**%s -- %s** is open: %s Its commits are listed here once it closes."
+          % (open_id, meta[open_id]["name"], meta[open_id]["blurb"]))
+
     for rid in order:
         m = meta[rid]
-        if not m["commits"]:
+        if not m["commits"] or m["last"] is None:
             continue
         A("\n---\n")
         A("\n## %s -- %s%s\n" % (rid, m["name"], "" if m["last"] else "  *(open)*"))
