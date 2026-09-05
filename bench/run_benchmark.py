@@ -36,6 +36,7 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "..", "src"))
 
 import risk  # noqa: E402
+import fetcher as fetcher_module  # noqa: E402
 from fetcher import access_report, fetch_json, load_persisted_access_log  # noqa: E402
 
 DATASET = os.path.join(HERE, "dataset.json")
@@ -51,8 +52,14 @@ CONTRACT_CATEGORIES = {
 
 def install_engine_fetcher():
     """Swap the engine's fetcher for one that caches and books which endpoints it hit."""
-    async def _fetch(url, retries=2, timeout=8):
-        return fetch_json(url, role="engine", retries=1)
+    async def _fetch(url, retries=2, timeout=8, mark_missing=False):
+        # retries=2, matching src/risk.py. It was 1, so the harness gave upstream one
+        # fewer chance than production does and then scored the engine on the result.
+        # Production is gentler still: it caches at the edge and serves data up to 15
+        # minutes stale rather than answering unknown, and it never asks about 558 tokens
+        # in a burst.
+        got = fetch_json(url, role="engine", retries=2, mark_missing=mark_missing)
+        return risk.NO_DATA if got is fetcher_module.NOT_FOUND else got
     risk._fetch_json = _fetch
 
 

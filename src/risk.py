@@ -117,7 +117,13 @@ async def _cache_put(url, data):
         pass
 
 
-async def _fetch_json(url, retries=2, timeout=8):
+# Returned instead of None when upstream answered 404: it is not that we could not
+# reach the service, it is that the service has no record of this token. Third time
+# today the same distinction has mattered, which is how you know it is the right one.
+NO_DATA = object()
+
+
+async def _fetch_json(url, retries=2, timeout=8, mark_missing=False):
     """Fetch and parse JSON.
 
     A dict means success. None means the **fetch failed** (network error, non-200,
@@ -137,6 +143,8 @@ async def _fetch_json(url, retries=2, timeout=8):
         try:
             resp = await asyncio.wait_for(
                 cf_fetch(url, headers={"Accept": "application/json"}), timeout=timeout)
+            if mark_missing and resp.status == 404:
+                return NO_DATA
             if resp.status == 200:
                 body = await asyncio.wait_for(resp.text(), timeout=timeout)
                 if body:
@@ -685,6 +693,21 @@ def _honeypot_signals(hp, signals, evidence, data_gaps):
     permanently "ok". It also discarded summary.risk, flags and contractCode, all of
     which were already in the response we had fetched.
     """
+    if hp is NO_DATA:
+        # The simulator answered, and its answer is that it has never seen this token.
+        # That is evidence about the token, not an outage on our side -- 15 of 25 sampled
+        # unknown verdicts were this case. Filing it under "upstream request failed"
+        # excused it from the no-trace escalation in _finalize, which is precisely the
+        # rule written for a token nothing can verify.
+        data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
+                          "reason": "the sell simulator has no record of this token"})
+        signals.append(_sig(
+            "warn", "No simulator has traded this token",
+            "The sell-simulation service has no record of this token at all. That is "
+            "unusual for anything with a real market and means sellability could not be "
+            "checked.", "sellability"))
+        return
+
     if hp is None:
         data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
                           "reason": "upstream request failed"})
@@ -1013,7 +1036,8 @@ async def assess(address, chain_hint=None, verbose=False):
 
     if _looks_evm(address):
         _honeypot_signals(
-            await _fetch_json("https://api.honeypot.is/v2/IsHoneypot?address=%s" % address),
+            await _fetch_json("https://api.honeypot.is/v2/IsHoneypot?address=%s" % address,
+                              mark_missing=True),
             signals, evidence, data_gaps)
     elif _looks_solana(address):
         _rugcheck_signals(

@@ -4,12 +4,12 @@
 > It moves with every commit, so `git diff` tells you what the change was worth.
 
 
-## Total: **50 / 100**
+## Total: **52 / 100**
 
 | Dimension | Score | Max |
 |---|---|---|
 | Correctness | 24.0 | 30 |
-| Coverage | 13.3 | 20 |
+| Coverage | 15.0 | 20 |
 | Credibility | 10.1 | 20 |
 | Distribution | 2.5 ⚠️ | 15 |
 | Demand | 0.0 | 15 |
@@ -21,10 +21,10 @@
 
 | Dimension | Item | Score | Max | Evidence |
 |---|---|---|---|---|
-| Correctness | tests all green | 10.0 | 10 | test_risk.py 111 passed, 0 failed All passed; test_mcp.py 54 passed, 0 failed All passed |
-| Correctness | false positive rate (healthy rated high) | 8.0 | 10 | 3.5% |
-| Correctness | unknown rate | 6.0 | 10 | 18.1% |
-| Coverage | risk dimensions covered | 13.3 | 20 | 8 / 12 |
+| Correctness | tests all green | 10.0 | 10 | test_risk.py 116 passed, 0 failed All passed; test_mcp.py 54 passed, 0 failed All passed |
+| Correctness | false positive rate (healthy rated high) | 8.0 | 10 | 4.7% |
+| Correctness | unknown rate | 6.0 | 10 | 12.7% |
+| Coverage | risk dimensions covered | 15.0 | 20 | 9 / 12 |
 | Credibility | recall is measurable | 10.0 | 10 | dead samples: 20 (need ≥20) |
 | Credibility | days of snapshots | 0.1 | 10 | 2 of 180 days |
 | Distribution | channels listed on | 2.5 | 10 | 2 / 8 |
@@ -63,7 +63,7 @@ Every unchecked line is a real blind spot, and the roadmap itself.
 | mint / freeze authority (Solana) | ✅ |
 | holder concentration (EVM) | ⬜ |
 | LP lock / burn | ⬜ |
-| same-name token impersonation | ⬜ |
+| same-name token impersonation | ✅ |
 | deployer history | ⬜ |
 
 ## Distribution channels
@@ -86,7 +86,7 @@ with false positives <2%, unknown <5%, all 12 dimensions covered, a year or more
 outcome data, the benchmark methodology cited as a standard by peers, the default
 choice at every agent entry point, and paying users who would complain if it disappeared.
 
-**The current 50 is not a failure** — it says precisely that the
+**The current 52 is not a failure** — it says precisely that the
 engineering is decent, proof and demand are both still zero, and writing more code
 cannot solve those last two.
 

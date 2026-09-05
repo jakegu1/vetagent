@@ -37,7 +37,7 @@ def install_stub(routes, default=None):
 
     routes: [(url substring, return value)]; a value of None means **the fetch failed**.
     """
-    async def _stub(url, retries=2):
+    async def _stub(url, *a, **kw):
         for frag, payload in routes:
             if frag in url:
                 return payload
@@ -664,6 +664,56 @@ def test_impersonation_only_compares_within_one_chain():
           str([(x["severity"], x["name"]) for x in imp]))
 
 
+def test_simulator_404_is_about_the_token_not_about_us():
+    """A 404 means the simulator has no record. That is evidence, not an outage.
+
+    Measured 2026-09-05: 15 of 25 sampled unknown verdicts were honeypot.is answering
+    404. The engine filed every one under "upstream request failed", which is the string
+    _finalize uses to decide a gap is OUR fault and therefore must not escalate. So the
+    tokens nothing can verify -- no market data, no simulator record -- were the ones
+    getting excused, which is the exact case the no-trace escalation exists for.
+
+    Same distinction as _reported_liquidity and the drained-pool branch: an observed
+    absence and an unobserved dimension are different things, and neither may impersonate
+    the other. Third time it has mattered in one day.
+    """
+    print("\n[upstream] 404 is an answer, not a failure")
+
+    pair = {"pairs": [{
+        "chainId": "ethereum", "dexId": "uniswap",
+        "baseToken": {"address": WETH, "symbol": "GHOST"},
+        "quoteToken": {"address": "0xq"}, "priceUsd": "0.01",
+        "liquidity": {"usd": 4000.0}, "volume": {"h24": 2000.0},
+        "txns": {"h24": {"buys": 10, "sells": 8}},
+        "pairCreatedAt": 1589841515000}]}
+
+    # Upstream says "no record of this token".
+    install_stub([("dex/tokens", pair), ("dex/search", None),
+                  ("honeypot.is", risk.NO_DATA)])
+    r = run(risk.assess(WETH, chain_hint="ethereum"))
+    gaps = (r.get("evidence") or {}).get("data_gaps") or []
+    sell = [g for g in gaps if g.get("dimension") == "sellability"]
+    check("a 404 records a sellability gap", bool(sell), str(gaps))
+    check("and the reason names the token, not our plumbing",
+          sell and "no record of this token" in sell[0].get("reason", ""),
+          str(sell))
+    check("it does not claim our request failed",
+          not any(str(g.get("reason", "")).startswith("upstream request failed")
+                  for g in gaps), str(gaps))
+    check("the verdict is not low", r["risk_level"] != "low", r["risk_level"])
+
+    # Contrast: we genuinely could not reach upstream. That must stay our fault, so the
+    # escalation keeps excusing it -- otherwise our outage becomes a verdict about
+    # somebody else's token.
+    install_stub([("dex/tokens", pair), ("dex/search", None),
+                  ("honeypot.is", None)])
+    r2 = run(risk.assess(WETH, chain_hint="ethereum"))
+    gaps2 = (r2.get("evidence") or {}).get("data_gaps") or []
+    check("an unreachable upstream is still recorded as ours",
+          any(str(g.get("reason", "")).startswith("upstream request failed")
+              for g in gaps2), str(gaps2))
+
+
 def test_clean_token_stays_low():
     """Guard the other way: more signals must not let the score push a healthy token high."""
     print("\n[scoring] healthy token stays low")
@@ -807,7 +857,7 @@ def test_geckoterminal_fallback_is_multichain():
     print("\n[P0-E] GeckoTerminal fallback is multichain")
     seen = []
 
-    async def _stub(url, retries=2):
+    async def _stub(url, *a, **kw):
         seen.append(url)
         if "dexscreener" in url:
             return {"pairs": []}

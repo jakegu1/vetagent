@@ -38,7 +38,7 @@ def _load(name):
 
 
 def stub_upstream():
-    async def _stub(url, retries=2):
+    async def _stub(url, *a, **kw):
         if "dexscreener" in url:
             return _load("ds_matic.json")
         if "honeypot.is" in url:

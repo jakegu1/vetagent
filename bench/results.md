@@ -60,9 +60,9 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 
 | Metric | Value |
 |---|---|
-| Verdict distribution | high=73, low=144, medium=240, unknown=101 |
-| unknown rate | 18.1% |
-| Share with a data gap | 24.4% |
+| Verdict distribution | high=83, low=144, medium=260, unknown=71 |
+| unknown rate | 12.7% |
+| Share with a data gap | 19.0% |
 
 > Read the unknown rate next to recall. A tool that answers unknown for everything has perfect recall and is useless.
 
@@ -76,7 +76,7 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **dead** | 20 | 10.0% | 95.0% | 5.0% | 0.0% | 43.7 |
-| **alive** | 85 | 3.5% | 32.9% | 58.8% | 8.2% | 15.9 |
+| **alive** | 85 | 4.7% | 34.1% | 58.8% | 7.1% | 16.2 |
 
 ### Contract-safety signals only (ablated)
 
@@ -102,8 +102,8 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
-| **unsafe** | 28 | 50.0% | 78.6% | 0.0% | 21.4% | 69.9 |
-| **safe** | 338 | 10.4% | 50.0% | 29.3% | 20.7% | 29.5 |
+| **unsafe** | 28 | 60.7% | 92.9% | 0.0% | 7.1% | 74.6 |
+| **safe** | 338 | 10.7% | 53.3% | 29.3% | 17.5% | 30.3 |
 
 ### Contract-safety signals only (ablated)
 
@@ -115,7 +115,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | **unsafe** | 28 | 17.9% | 46.4% | 39.3% | 14.3% | 31.9 |
 | **safe** | 338 | 3.8% | 15.1% | 61.5% | 23.4% | 16.8 |
 
-**Which signal category made the call on unsafe samples:** `liquidity` 15, `honeypot` 5, `impersonation` 4, `no_liquidity` 3, `sellability` 1
+**Which signal category made the call on unsafe samples:** `liquidity` 18, `honeypot` 5, `impersonation` 4, `no_liquidity` 1
 
 
 > If this concentrates in `upstream_risk`, the engine is mostly paraphrasing honeypot.is and adds little of its own.
@@ -131,7 +131,7 @@ This bucket answers one question: **does the engine paint them all as high risk.
 
 | n | high rate | Verdict distribution |
 |---|---|---|
-| 174 | 13.8% | high=24, low=39, medium=86, unknown=25 |
+| 174 | 17.2% | high=30, low=39, medium=95, unknown=10 |
 
 Examples: HYDX(low), CP(low), Onyxcoin XCN Kendu(high), SAGE Free(medium), Core Keeper Overnight(medium), VIRTUAL(low), Crypto Carbon Verse(high), ?(medium), BIO(low), UNA(medium)
 
@@ -175,7 +175,7 @@ Samples where the label and the engine disagree. Read the **false negatives** (l
 | false positive | `USD+` | base | goplus=safe | high | unknown | sellability |
 | false positive | `TORIVA` | base | goplus=safe | high | high | honeypot |
 
-(19 more in `results.json`)
+(21 more in `results.json`)
 
 
 ### Counted as false positives, but outside the labeller's reach

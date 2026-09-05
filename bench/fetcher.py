@@ -27,12 +27,28 @@ _LOCK = threading.Lock()
 _RATE = {
     "api.geckoterminal.com": 2.1,   # free tier is ~30 req/min
     "api.gopluslabs.io": 2.1,       # free tier is ~30 req/min
-    "api.honeypot.is": 0.4,
+    # 2.0s, not 0.4s. Measured 2026-09-05: of 101 unknown verdicts in a 558-token run,
+    # 62 carried the gap reason "upstream request failed" -- our outage, not the token's.
+    # Retrying twelve of them by hand at 2s spacing, nine answered immediately and the
+    # other three were honest 404s. So the benchmark was manufacturing its own upstream
+    # failures at 0.4s and then reporting them as the engine declining to judge.
+    #
+    # Two things were wrong with that, and the second is worse. It inflated the unknown
+    # rate, which is merely embarrassing. And several of the answers it never waited for
+    # were honeypotResult=true -- real detections, scored as unknown. A harness that
+    # provokes refusals measures the harness.
+    #
+    # The cost is one slow run: successes are cached forever, so only cache misses pay.
+    "api.honeypot.is": 2.0,
     "api.dexscreener.com": 0.25,    # ~300 req/min
     "api.rugcheck.xyz": 0.5,
 }
 _last_hit = {}
 _rate_lock = threading.Lock()
+
+
+# Mirrors risk.NO_DATA so the benchmark exercises the same code path as production.
+NOT_FOUND = object()
 
 
 def endpoint_of(url):
@@ -67,7 +83,8 @@ def _throttle(url):
         _last_hit[host] = time.time()
 
 
-def fetch_json(url, role, retries=2, timeout=25, use_cache=True):
+def fetch_json(url, role, retries=2, timeout=25, use_cache=True,
+               mark_missing=False):
     """Fetch JSON. role must be "engine" or "label", for provenance accounting.
 
     Returns a dict/list on success, None on a failed fetch — the same contract as
@@ -104,6 +121,8 @@ def fetch_json(url, role, retries=2, timeout=25, use_cache=True):
             if e.code == 429 and attempt < retries:
                 time.sleep(3.0 * (attempt + 1))
                 continue
+            if e.code == 404 and mark_missing:
+                return NOT_FOUND   # upstream has no record; not the same as unreachable
             if 400 <= e.code < 500 and e.code != 429:
                 break  # retrying a 4xx gets you nothing
         except Exception:
