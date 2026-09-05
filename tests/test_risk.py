@@ -109,8 +109,20 @@ def test_simulation_failure_is_fail_closed():
     cats = sig_categories(r)
     check("no ok honeypot signal allowed", cats.get("honeypot") != "ok", str(cats))
     check("must emit a sellability signal", "sellability" in cats, str(cats))
-    check("sellability must be critical", cats.get("sellability") == "critical", str(cats))
+    # warn, not critical. The regression this test exists for is "we called it safe",
+    # and that is guarded by the two checks above and the one below -- not by the
+    # severity, which was an implementation detail that happened to get written down.
+    #
+    # Scored as critical it was 60 points at sellability's weight of 1.0, so any token
+    # the simulator could not drive reached "high" on one more warning of any kind.
+    # Measured over 558 tokens: 42 such tokens, 29 already rated high, **none**
+    # confirmed bad and 33 confirmed good. "We could not check" must not be scored like
+    # "we checked and it is bad", in either direction.
+    check("sellability is a warning, not a finding",
+          cats.get("sellability") == "warn", str(cats))
     check("never rated low", r["risk_level"] != "low", r["risk_level"])
+    check("and an unverifiable simulation alone cannot reach high",
+          r["risk_level"] != "high", "%s %s" % (r["risk_level"], cats))
     check("data_gaps must be recorded", bool(r["evidence"].get("data_gaps")), "")
 
 

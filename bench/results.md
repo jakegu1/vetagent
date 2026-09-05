@@ -60,8 +60,8 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 
 | Metric | Value |
 |---|---|
-| Verdict distribution | high=83, low=144, medium=260, unknown=71 |
-| unknown rate | 12.7% |
+| Verdict distribution | high=57, low=144, medium=260, unknown=97 |
+| unknown rate | 17.4% |
 | Share with a data gap | 19.0% |
 
 > Read the unknown rate next to recall. A tool that answers unknown for everything has perfect recall and is useless.
@@ -76,7 +76,7 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **dead** | 20 | 10.0% | 95.0% | 5.0% | 0.0% | 43.7 |
-| **alive** | 85 | 4.7% | 34.1% | 58.8% | 7.1% | 16.2 |
+| **alive** | 85 | 3.5% | 32.9% | 58.8% | 8.2% | 14.3 |
 
 ### Contract-safety signals only (ablated)
 
@@ -86,7 +86,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **dead** | 20 | 10.0% | 15.0% | 85.0% | 0.0% | 11.5 |
-| **alive** | 85 | 1.2% | 12.9% | 77.6% | 9.4% | 9.6 |
+| **alive** | 85 | 1.2% | 12.9% | 77.6% | 9.4% | 7.5 |
 
 **Which signal category made the call on dead samples:** `liquidity` 15, `honeypot` 3, `lifecycle` 1
 
@@ -103,7 +103,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 28 | 60.7% | 92.9% | 0.0% | 7.1% | 74.6 |
-| **safe** | 338 | 10.7% | 53.3% | 29.3% | 17.5% | 30.3 |
+| **safe** | 338 | 5.0% | 47.6% | 29.3% | 23.1% | 28.1 |
 
 ### Contract-safety signals only (ablated)
 
@@ -113,7 +113,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 28 | 17.9% | 46.4% | 39.3% | 14.3% | 31.9 |
-| **safe** | 338 | 3.8% | 15.1% | 61.5% | 23.4% | 16.8 |
+| **safe** | 338 | 3.3% | 14.5% | 61.5% | 24.0% | 13.9 |
 
 **Which signal category made the call on unsafe samples:** `liquidity` 18, `honeypot` 5, `impersonation` 4, `no_liquidity` 1
 
@@ -131,7 +131,7 @@ This bucket answers one question: **does the engine paint them all as high risk.
 
 | n | high rate | Verdict distribution |
 |---|---|---|
-| 174 | 17.2% | high=30, low=39, medium=95, unknown=10 |
+| 174 | 13.2% | high=23, low=39, medium=95, unknown=17 |
 
 Examples: HYDX(low), CP(low), Onyxcoin XCN Kendu(high), SAGE Free(medium), Core Keeper Overnight(medium), VIRTUAL(low), Crypto Carbon Verse(high), ?(medium), BIO(low), UNA(medium)
 
@@ -159,28 +159,28 @@ Samples where the label and the engine disagree. Read the **false negatives** (l
 | false positive | `ALLO` | base | outcome=alive | high | low | liquidity |
 | false positive | `ALLO` | base | goplus=safe | high | low | liquidity |
 | false positive | `house` | base | goplus=safe | high | low | impersonation |
-| false positive | `RECALL` | base | goplus=safe | high | high | sellability |
-| false positive | `0x401c30cf` | base | goplus=safe | high | unknown | sellability |
 | false positive | `DOR` | base | goplus=safe | high | high | honeypot |
-| false positive | `sUSDS` | base | goplus=safe | high | unknown | sellability |
 | false positive | `ROBOTMONEY` | base | goplus=safe | high | high | honeypot |
-| false positive | `AORA` | base | goplus=safe | high | unknown | sellability |
 | false positive | `FRAME` | base | goplus=safe | high | high | honeypot |
-| false positive | `RIZE` | base | goplus=safe | high | unknown | sellability |
 | false positive | `USI` | base | goplus=safe | high | high | honeypot |
-| false positive | `WLTH` | base | goplus=safe | high | unknown | sellability |
-| false positive | `BURN` | base | goplus=safe | high | unknown | sellability |
-| false positive | `FARTGOAT` | base | goplus=safe | high | unknown | sellability |
-| false positive | `LsETH` | base | goplus=safe | high | unknown | sellability |
-| false positive | `USD+` | base | goplus=safe | high | unknown | sellability |
+| false positive | `BURN` | base | goplus=safe | high | unknown | impersonation |
 | false positive | `TORIVA` | base | goplus=safe | high | high | honeypot |
+| false positive | `TREB` | base | goplus=safe | high | high | honeypot |
+| false positive | `SNL` | base | goplus=safe | high | low | impersonation |
+| false positive | `CLAWD` | base | goplus=safe | high | unknown | impersonation |
+| false positive | `HYPER` | base | goplus=safe | high | high | honeypot |
+| false positive | `OMNI` | base | goplus=safe | high | high | honeypot |
+| false positive | `WMAI` | bsc | outcome=alive | high | unknown | no_liquidity |
+| false positive | `WMAI` | bsc | goplus=safe | high | unknown | no_liquidity |
+| false positive | `KITE` | bsc | outcome=alive | high | high | honeypot |
+| false positive | `KITE` | bsc | goplus=safe | high | high | honeypot |
 
-(21 more in `results.json`)
+(1 more in `results.json`)
 
 
 ### Counted as false positives, but outside the labeller's reach
 
-2 of the false positives above were driven by `impersonation`. GoPlus reads bytecode and ownership; impersonation is a fact about identity, and an impostor's bytecode is usually perfectly ordinary. So GoPlus returns `safe` for a token it has no instrument to judge, and the disagreement is structural rather than evidence either way.
+4 of the false positives above were driven by `impersonation`. GoPlus reads bytecode and ownership; impersonation is a fact about identity, and an impostor's bytecode is usually perfectly ordinary. So GoPlus returns `safe` for a token it has no instrument to judge, and the disagreement is structural rather than evidence either way.
 
 
 They stay in the headline rate anyway. A tool that subtracts its disagreements whenever it can explain them is grading its own homework, and an explanation is only worth something if it costs something. What this section buys is auditability: they are named, so a reader can check them one at a time instead of taking the framing on trust.
@@ -189,7 +189,9 @@ They stay in the headline rate anyway. A tool that subtracts its disagreements w
 | Token | Chain | Verdict | Address |
 |---|---|---|---|
 | `house` | base | high | `0x15f7cb0712fc9709883fe5a0ad8afd37a6cd321c` |
+| `BURN` | base | high | `0xa875a3c03cd561234c56998a9017e70346095092` |
 | `SNL` | base | high | `0xc5a861787f3e173f2b004d5cfa6a717f5dc5484d` |
+| `CLAWD` | base | high | `0xca6d2e377218d2432d38b3272df66f7632eb427b` |
 
 ## Reading the `dead` recall figure
 

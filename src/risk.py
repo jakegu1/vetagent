@@ -776,7 +776,27 @@ def _honeypot_signals(hp, signals, evidence, data_gaps):
         err = hp.get("simulationError") or "unknown reason"
         data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
                           "reason": "simulation failed: %s" % err})
-        signals.append(_sig("critical", "Sellability unverified",
+        # warn, not critical -- and the same severity as an unresponsive upstream a few
+        # lines up, because they are the same statement: we could not check.
+        #
+        # As a critical it scored 60 at sellability's weight of 1.0, so any token whose
+        # simulation failed reached "high" on one additional warning of any kind. That is
+        # fail-closed running in the wrong direction: the rule exists to stop an
+        # unverified token being called safe, not to manufacture a dangerous verdict out
+        # of our own inability to check.
+        #
+        # Measured over 558 tokens: 42 had a reverting buy simulation, 29 of them were
+        # already rated high, and **none** were confirmed bad while 33 were confirmed
+        # good -- 27 safe by the held-out contract oracle and 6 still alive. Against
+        # a base rate of 11% bad, a
+        # failed simulation is anti-correlated with danger; it mostly means an exotic
+        # router the simulator cannot drive. RECALL sat at high with $479,421 of
+        # liquidity, and sUSDS -- Sky's savings token -- at high with score 80.
+        #
+        # The fail-closed override in _finalize still does the real work: with the
+        # sellability dimension missing, the verdict cannot come back low or medium, so
+        # these land on "unknown", which is the honest answer.
+        signals.append(_sig("warn", "Sellability unverified",
                             "Buy/sell simulation failed (%s), so we cannot confirm this token can be sold." % err, "sellability"))
     else:
         sell_tax, buy_tax = _num(sim.get("sellTax")), _num(sim.get("buyTax"))
