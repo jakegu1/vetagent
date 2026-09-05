@@ -1,6 +1,7 @@
 # Audit Brief (AUDIT_BRIEF.md)
 
-> For a reviewing model with read access to this repository. Written 2026-09-05 by the
+> For a reviewing model with read access to this repository. First written 2026-09-05,
+> refreshed 2026-09-06 for the second audit, by the
 > agent who did the work, which is a conflict of interest you should treat as one.
 >
 > **Give the auditor the whole folder.** This file is a reading order and an evidence
@@ -45,12 +46,14 @@ after is verification.
 | 1 | `docs/STRATEGY.md` | Origin, vision, who it is for, moat, revenue, roadmap with decision rules | 372 |
 | 2 | `docs/DECISIONS.md` | Every decision, its reason, **and what enforces it** | 169 |
 | 3 | `docs/HANDOFF.md` | Current state, traps already hit, open decisions for the owner | 362 |
-| 4 | `git log` (50 commits) | The reasoning at the moment of each change — 1,229 lines of message | — |
+| 4 | `git log` (64 commits) | The reasoning at the moment of each change — 1,643 lines of message | — |
+| 4b | `docs/ROUNDS.md` | Generated from git: what each numbered round changed, and the score after it | generated |
 | 5 | `bench/results.md` | The accuracy benchmark, its method, and its stated limits | generated |
 | 6 | `docs/SCORECARD.md` | Maturity score, per-line, regenerated from measurements | 92 |
 | 7 | `docs/OPPORTUNITIES.md` | Ideas deliberately **parked**, each with a review date | 87 |
-| 8 | `tests/` (6 files, 1,798 lines) | What is actually guaranteed rather than claimed | — |
-| 9 | `src/` + `bench/` (4,361 lines) | The engine and the measurement harness | — |
+| 8 | `tests/` (10 files, 2,471 lines, 287 assertions) | What is actually guaranteed rather than claimed | — |
+| 9 | `src/` + `bench/` + `tools/` (5,363 lines) | The engine, the measurement harness, the log generator | — |
+| 10 | `docs/BACKLOG.md` | Open work. Every open item names how it will be verified | 66 |
 
 **Do not skip `git log`.** Commit messages here carry the reasoning, the measurement that
 motivated each change, and several admissions of error. They are the least sanitised record
@@ -61,13 +64,17 @@ in the repository. `git log -p` if you want the diff alongside.
 Almost every claim it makes about itself is checkable in one command:
 
 ```bash
-python bench/run_benchmark.py     # accuracy, on 558 labelled tokens
+python bench/run_benchmark.py     # accuracy, on 559 labelled tokens
 python bench/scorecard.py         # maturity score, per line item
-python tests/test_risk.py         # 122 assertions on the engine
+python tests/test_risk.py         # 140 assertions on the engine
 python tests/test_mcp.py          # 54 on the protocol layer
 python tests/test_upstream_contract.py   # hits live APIs; goes red when upstream changes
 python tests/test_english_only.py        # no Chinese anywhere in the repo
-python tests/test_gates_get_reviewed.py  # parked ideas have live review dates
+python tests/test_gates_get_reviewed.py  # parked ideas AND strategy gates are answered on time
+python tests/test_rounds.py              # every commit belongs to exactly one round
+python tests/test_backlog.py             # every open item names how it is verified
+python tests/test_owner_powers.py        # pinned selectors recompute; disclosure never scores
+python tests/test_published_numbers.py   # the site's accuracy claims match the benchmark
 ```
 
 **Run them before believing anything in this file.** If a number here does not reproduce,
@@ -91,9 +98,9 @@ caps out around 70 — the remaining 30 requires users, who do not exist yet.
 
 | Dimension | Score | The honest reading |
 |---|---|---|
-| Correctness | 24.0 / 30 | 233 tests green across 6 files; false positives 3.5%; unknown 17.4% |
-| Coverage | 16.4 / 20 | 9 of 11 risk dimensions; one measured and rejected on evidence |
-| Credibility | 10.2 / 20 | Recall measurable at last (20 dead samples); snapshot archive 3 of 180 days |
+| Correctness | 24.0 / 30 | 287 assertions green across 10 files; false positives 4.6%; unknown 17.9% |
+| Coverage | 16.4 / 20 | 9 of 11 risk dimensions; two measured and rejected on evidence |
+| Credibility | 10.2 / 20 | 36 dead samples; but the adversarial cohort is 9, and 4 of those are `low` when ablated |
 | Distribution | 2.5 / 15 | 2 of 8 channels; external-caller count not measurable yet |
 | Demand | 0.0 / 15 | **Zero users, zero revenue, zero inbound.** |
 
