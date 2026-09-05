@@ -60,6 +60,15 @@ def main():
           not open_rounds or open_rounds[0] == order[-1],
           "%s open, last is %s" % (open_rounds, order[-1]))
 
+    # A closed round whose commit is gone is the failure "nothing is unassigned" cannot
+    # see: the cursor never advances past it, every later commit lands in that round, and
+    # the log reports thirty-five commits as one while staying green. Verified by
+    # substituting a bogus hash and watching this go red.
+    gone = [r for r in order if meta[r].get("missing_last")]
+    check("every closed round's commit still exists", not gone,
+          "%s -- a rebase or an amend can do this, and it swallows every later commit"
+          % ", ".join("%s->%s" % (r, meta[r]["last"]) for r in gone))
+
     check("no commit belongs to no round", not unassigned,
           "%d unassigned: %s" % (len(unassigned),
                                  ", ".join(c["hash"] for c in unassigned[:5])))

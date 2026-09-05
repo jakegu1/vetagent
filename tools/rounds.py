@@ -117,11 +117,28 @@ def commits():
 
 
 def assign():
-    """Map each commit to a round. Returns (ordered rounds, unassigned, bot count)."""
+    """Map each commit to a round.
+
+    Returns (order, meta, unassigned, bots). `meta[rid]["missing_last"]` is True when a
+    closed round names a commit that is not in the history.
+
+    That case is why this returns more than it used to. A round's closing hash can stop
+    existing -- a rebase, an amend, a hash typed with a slip -- and then the cursor never
+    advances past it, so every later commit piles into that one round. Nothing is left
+    *unassigned*, which was the only thing the test checked, so the log silently reported
+    thirty-five commits as one round and stayed green. The guard written to stop this
+    project's records drifting had the same hole as the records.
+    """
     rows = commits()
     order = [r[0] for r in ROUNDS]
     meta = {r[0]: {"name": r[1], "last": r[2], "blurb": r[3], "commits": []}
             for r in ROUNDS}
+
+    seen_hashes = {c["hash"] for c in rows}
+    for rid in order:
+        last = meta[rid]["last"]
+        meta[rid]["missing_last"] = bool(
+            last and not any(h.startswith(last[:7]) for h in seen_hashes))
 
     idx = 0
     bots = 0
