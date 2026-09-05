@@ -4,11 +4,11 @@
 > It moves with every commit, so `git diff` tells you what the change was worth.
 
 
-## Total: **36 / 100**
+## Total: **40 / 100**
 
 | Dimension | Score | Max |
 |---|---|---|
-| Correctness | 20.0 | 30 |
+| Correctness | 24.0 | 30 |
 | Coverage | 13.3 | 20 |
 | Credibility | 0.1 | 20 |
 | Distribution | 2.5 ⚠️ | 15 |
@@ -21,11 +21,11 @@
 
 | Dimension | Item | Score | Max | Evidence |
 |---|---|---|---|---|
-| Correctness | tests all green | 10.0 | 10 | test_risk.py 90 passed, 0 failed All passed; test_mcp.py 54 passed, 0 failed All passed |
-| Correctness | false positive rate (healthy rated high) | 6.0 | 10 | 5.6% |
-| Correctness | unknown rate | 4.0 | 10 | 23.4% |
+| Correctness | tests all green | 10.0 | 10 | test_risk.py 111 passed, 0 failed All passed; test_mcp.py 54 passed, 0 failed All passed |
+| Correctness | false positive rate (healthy rated high) | 8.0 | 10 | 3.7% |
+| Correctness | unknown rate | 6.0 | 10 | 17.9% |
 | Coverage | risk dimensions covered | 13.3 | 20 | 8 / 12 |
-| Credibility | recall is measurable | 0.0 | 10 | dead samples: 1 (need ≥20) |
+| Credibility | recall is measurable | 0.0 | 10 | dead samples: 2 (need ≥20) |
 | Credibility | days of snapshots | 0.1 | 10 | 2 of 180 days |
 | Distribution | channels listed on | 2.5 | 10 | 2 / 8 |
 | Distribution | external callers | — | 5 | not measured (needs CLOUDFLARE_API_TOKEN, see bench/usage.py) |
@@ -86,7 +86,7 @@ with false positives <2%, unknown <5%, all 12 dimensions covered, a year or more
 outcome data, the benchmark methodology cited as a standard by peers, the default
 choice at every agent entry point, and paying users who would complain if it disappeared.
 
-**The current 36 is not a failure** — it says precisely that the
+**The current 40 is not a failure** — it says precisely that the
 engineering is decent, proof and demand are both still zero, and writing more code
 cannot solve those last two.
 
