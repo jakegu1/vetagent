@@ -390,23 +390,32 @@ def _pick_best(pairs, chain_hint=None, target=None):
     if not pairs:
         return None
     hint = (chain_hint or "").lower()
-    scoped = [p for p in pairs if (p.get("chainId") or "").lower() == hint] if hint else pairs
-    candidates = [p for p in scoped if _valid(p)] or [p for p in pairs if _valid(p)]
-    target_pools = [p for p in candidates if _is_target(p)]
-    pool = target_pools or candidates
-    if not pool:
-        return None
 
-    # With no chain_hint: narrow by how canonical the chain is first, then compare
-    # liquidity within that tier. A mispriced pool on an inherited pulsechain address
-    # then can't beat the real mainnet pool, even when it wins on both pool count and
-    # nominal liquidity.
-    if not hint:
-        best_rank = min(_CHAIN_RANK.get((p.get("chainId") or "").lower(), _UNKNOWN_CHAIN_RANK)
-                        for p in pool)
-        pool = [p for p in pool
-                if _CHAIN_RANK.get((p.get("chainId") or "").lower(),
-                                   _UNKNOWN_CHAIN_RANK) == best_rank] or pool
+    # Which chain this token belongs to is decided BEFORE liquidity is considered, over
+    # every pair that names it -- drained pools included.
+    #
+    # Deciding it afterwards was the bug. _valid drops any pool holding nothing, so once
+    # a token's real pools were emptied, the only survivors were the pools on forked
+    # chains that inherited its address, and those became the best tier by default. The
+    # engine would then report a pulsechain pool's depth and price as fact for a token
+    # whose actual exit was closed -- the same mispricing that put USDC at $0.00097, made
+    # reachable again by the exact tokens the drained-pool check exists for.
+    home = [p for p in pairs if _is_target(p)] or list(pairs)
+    if hint:
+        on_hint = [p for p in home if (p.get("chainId") or "").lower() == hint]
+        # Only ignore the hint when the token genuinely does not appear on that chain.
+        # Falling back because its pools happen to be empty is how a fork chain wins.
+        scoped = on_hint or home
+    else:
+        best_rank = min(_CHAIN_RANK.get((p.get("chainId") or "").lower(),
+                                        _UNKNOWN_CHAIN_RANK) for p in home)
+        scoped = [p for p in home
+                  if _CHAIN_RANK.get((p.get("chainId") or "").lower(),
+                                     _UNKNOWN_CHAIN_RANK) == best_rank]
+
+    pool = [p for p in scoped if _valid(p)]
+    if not pool:
+        return None      # the token's own chain has nothing usable; say so, do not roam
     return max(pool, key=_pair_liquidity)
 
 
@@ -473,7 +482,15 @@ def _gt_to_pair(p, address, network):
         "priceUsd": _gt_base_price(a),
         "pairCreatedAt": a.get("pool_created_at"),
         "volume": {"h24": _num((a.get("volume_usd") or {}).get("h24"))},
-        "baseToken": {"address": address},
+        # The symbol comes along, because a consumer that needs it has no other source.
+        # Without it _impersonation_signals found "" and returned, so the check was
+        # silently skipped for every token that fell through to GeckoTerminal -- no
+        # signal, no evidence, no gap, indistinguishable from having run and found
+        # nothing. That is the isHoneypot bug's exact shape: read a key the producer
+        # never writes, swallow the miss. And it skipped the thinly-indexed tokens,
+        # which are the ones most likely to be impostors.
+        "baseToken": {"address": address,
+                      "symbol": (a.get("name") or "").split("/")[0].strip()},
         "quoteToken": {"address": ""},
     }
 

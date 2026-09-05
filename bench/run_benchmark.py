@@ -281,7 +281,8 @@ def write_markdown(rep):
     A("\n**Runtime assertion**: engine endpoints ∩ labeller endpoints = ∅. If that "
       "fails, the benchmark declares itself invalid and exits non-zero. "
       "This run: **passed**.\n")
-    A("\n<details><summary>Endpoints actually hit on this run</summary>\n")
+    A('\n<details><summary>Endpoints hit: engine on this run, '
+      'labeller on the run that built the dataset</summary>\n')
     A("\nEngine:\n")
     for e in rep["independence"]["engine_endpoints"]:
         A("- `%s`" % e)
@@ -410,9 +411,12 @@ def write_markdown(rep):
     A("3. **GoPlus and honeypot.is may be correlated.** Both simulate buys and sells, "
       "so the `goplus` column flatters the engine. The `outcome` column doesn't have "
       "that problem.\n")
-    A("4. **Sample bias.** Head samples come from per-chain pool rankings (skewed "
-      "healthy), tail samples from keyword search (skewed junk). Neither is an "
-      "unbiased draw from real query traffic.\n")
+    A("**Sample bias.** Candidates come from three places: pool launches "
+      "recovered from chain history, the daily snapshot archive of "
+      "newly-listed pools, and per-chain pool rankings (which skew "
+      "healthy and act as the control group). Each has a fixed share of "
+      "the set. None is a random sample of what an agent would actually "
+      "be asked about.\n")
 
     with open(RESULTS_MD, "w", encoding="utf-8") as f:
         f.write("\n".join(L) + "\n")

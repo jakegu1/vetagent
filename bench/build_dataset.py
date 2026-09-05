@@ -4,10 +4,12 @@ Usage:
     python bench/build_dataset.py --limit 40          # smoke run
     python bench/build_dataset.py --limit 300         # real build
 
-Sampling deliberately runs down two paths, so the set is not just tokens that are
-obviously fine at a glance:
-  head  GeckoTerminal per-chain pool pages  -- skews healthy
-  tail  DexScreener keyword search          -- skews junk / dead
+Sampling runs down three paths, so the set is not just tokens that look fine at a glance:
+  backfill bench/backfill, launches recovered from chain history months back -- already
+           resolved into whatever they became, and available in any quantity today
+  archive  bench/snapshots, pools that were new on an earlier day -- the contemporaneous
+           record, one day per day, which is why backfill exists
+  head     GeckoTerminal per-chain pool pages -- skews healthy, the control group
 
 The labelers live in labels.py and only hit endpoints the engine never reads.
 Writes bench/dataset.json.
@@ -28,23 +30,28 @@ _GT_TO_CHAIN = {v: k for k, v in GT_NETWORK.items()}
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATASET = os.path.join(HERE, "dataset.json")
+BACKFILL_DIR = os.path.join(HERE, "backfill")
 
-# Tail sampling keywords: memecoin naming is highly homogeneous, so these words drag in
-# plenty of low-quality tokens.
-# The list is deliberately large -- a smoke run of 50 candidates turned up exactly 1 dead,
-# nowhere near enough samples.
-# This **does not filter on current liquidity**. Fishing for dead tokens by "liquidity is
-# low right now" would be more efficient, but that picks the samples by the engine's own
-# criterion, which makes recall in the full-signal column meaningless.
-TAIL_TERMS = [
-    "inu", "pepe", "moon", "elon", "safe", "baby", "doge", "shib", "ai",
-    "trump", "cat", "gold", "meta", "floki", "rocket", "chad", "wojak",
-    "bonk", "wif", "grok", "x", "swap", "token", "coin", "finance", "protocol",
-    "dao", "yield", "farm", "stake", "bull", "bear", "ape", "frog", "dog",
-    "king", "queen", "star", "sun", "fire", "ice", "cyber", "quantum", "neuro",
-    "agent", "bot", "gpt", "llm", "eth", "btc", "sol", "based", "degen",
-]
 HEAD_CHAINS = ["ethereum", "base", "bsc"]
+
+# What share of --limit each source may claim.
+#
+# These are quotas, not priorities, and that distinction is the whole point. The first
+# version of this just collected sources in order and truncated to --limit at the end,
+# which is not a sampling design -- it is whichever source happens to run first winning
+# the entire set. With backfill at 60% and the archive holding several hundred rows, the
+# truncation cut every last head-page token, and the head pages are the healthy control
+# group the false-positive rate is measured against. The benchmark would have reported a
+# false-positive rate computed on almost no legitimate tokens, and reported it as though
+# nothing had changed.
+#
+# A source that cannot fill its quota gives the remainder back to the others, so a day
+# with no backfill on disk still produces a full set.
+SOURCE_QUOTA = {
+    "backfill": 0.40,   # resolved outcomes, in quantity, from chain history
+    "snapshot": 0.30,   # the contemporaneous archive -- where the bad ones came from
+    "head": 0.30,       # established tokens; the control group, deliberately boring
+}
 
 
 def _norm_pair(p):
@@ -61,22 +68,28 @@ def _norm_pair(p):
 
 def collect_candidates(limit):
     """Sample candidates. Returns a deduped list in a fixed order (reproducible)."""
-    out, seen = [], set()
+    buckets = {"backfill": [], "snapshot": [], "head": []}
+    seen = set()
 
-    def add(c):
-        if not c.get("address") or not c.get("pool") or not c.get("chain"):
-            return
-        if c["chain"] not in GT_NETWORK or c["chain"] not in GOPLUS_CHAIN_ID:
-            return  # EVM only: the GoPlus labeler does not cover Solana
-        key = (c["chain"], c["address"].lower())
-        if key in seen:
-            return
-        seen.add(key)
-        out.append(c)
+    def adder(bucket):
+        def add(c):
+            if not c.get("address") or not c.get("pool") or not c.get("chain"):
+                return
+            if c["chain"] not in GT_NETWORK or c["chain"] not in GOPLUS_CHAIN_ID:
+                return  # EVM only: the GoPlus labeler does not cover Solana
+            key = (c["chain"], c["address"].lower())
+            if key in seen:
+                return
+            seen.add(key)
+            buckets[bucket].append(c)
+        return add
 
-    # Recently-launched, from the daily snapshot archive. **Collected first on purpose**:
-    # main() truncates to --limit, and head+tail alone overfill it, so anything appended
-    # after them is cut entirely.
+    # Pools recovered from chain history. Every one of them traded on the day it was
+    # sampled from, and has since finished being whatever it was going to be -- which is
+    # the resolved outcome the labeller needs, available without waiting for it.
+    _from_backfill(adder("backfill"), seen, limit)
+
+    # Recently-launched, from the daily snapshot archive.
     #
     # This is the fix for the sampling problem that made recall unmeasurable. Live
     # listings yielded 1 bad token in 209, because they rank by liquidity and scams never
@@ -85,15 +98,17 @@ def collect_candidates(limit):
     # 36 came back with no GoPlus data at all.
     #
     # A pool that was new *yesterday* sits in the gap: old enough that GoPlus knows it,
-    # young enough that a scam has not been delisted. That is exactly what the snapshot
-    # archive holds, so it starts paying off on day two rather than in six months.
-    _from_snapshots(add, seen)
+    # young enough that a scam has not been delisted.
+    _from_snapshots(adder("snapshot"), seen)
 
-    # Head: page through each chain
+    # Head: page through each chain. Skews healthy on purpose -- this is the control
+    # group, and a false-positive rate needs legitimate tokens to be computed against.
+    head_add = adder("head")
+    head_cap = int(limit * SOURCE_QUOTA["head"]) * 3   # over-collect, quota trims later
     for chain in HEAD_CHAINS:
         net = GT_NETWORK[chain]
         for page in range(1, 11):
-            if len(out) >= limit:
+            if len(buckets["head"]) >= head_cap:
                 break
             d = fetch_json("https://api.geckoterminal.com/api/v2/networks/%s/pools?page=%d"
                            % (net, page), role="label")
@@ -102,17 +117,99 @@ def collect_candidates(limit):
                 rel = p.get("relationships") or {}
                 bt = ((rel.get("base_token") or {}).get("data") or {}).get("id", "")
                 addr = bt.split("_", 1)[1] if "_" in bt else ""
-                add({"address": addr, "symbol": (a.get("name") or "").split("/")[0].strip(),
-                     "chain": chain, "pool": a.get("address"), "source": "gt_pools"})
+                head_add({"address": addr,
+                          "symbol": (a.get("name") or "").split("/")[0].strip(),
+                          "chain": chain, "pool": a.get("address"), "source": "gt_pools"})
 
-    # Tail: keyword search. Run every term -- the tail is where the dead samples come from.
-    for term in TAIL_TERMS:
-        d = fetch_json("https://api.dexscreener.com/latest/dex/search?q=%s" % term,
-                       role="label")
-        for p in ((d or {}).get("pairs") or []):
-            add(_norm_pair(p))
+    # DexScreener keyword search used to be a fourth source. It was removed for two
+    # reasons that happen to point the same way.
+    #
+    # It stopped earning its place: of the nine confirmed bad tokens in the labelled set,
+    # eight came from the snapshot archive and one from the pool pages. Keyword search
+    # contributed none -- it returns pairs that are currently indexed and trading, which
+    # is the same survivorship problem the archive was built to escape.
+    #
+    # And the engine now needs that endpoint for impersonation detection. Sampling from
+    # it would not make the labels circular -- labels come from OHLCV and GoPlus, not from
+    # search -- but the disjointness assertion does not model that distinction, and
+    # loosening a guard so it stops objecting to something we want to do is how guards
+    # die. Dropping the weaker sampling source is the cheaper side of that trade.
+    return _compose(buckets, limit)
 
+
+def _compose(buckets, limit):
+    """Fill each source's quota, then hand any shortfall to the sources that have more.
+
+    Written as an explicit second pass rather than "collect and truncate" because the
+    truncating version silently deleted a whole source, and it did so without changing
+    any number in the report that would have given it away.
+    """
+    out, leftovers = [], {}
+    for name, share in SOURCE_QUOTA.items():
+        rows = buckets.get(name) or []
+        want = int(limit * share)
+        out.extend(rows[:want])
+        leftovers[name] = rows[want:]
+
+    for name in SOURCE_QUOTA:
+        if len(out) >= limit:
+            break
+        out.extend(leftovers[name][:limit - len(out)])
+
+    got = {}
+    for c in out:
+        key = c["source"].split("_")[0]
+        got[key] = got.get(key, 0) + 1
+    print("  sampled %d candidates: %s"
+          % (len(out), ", ".join("%s=%d" % kv for kv in sorted(got.items()))))
     return out
+
+
+def _from_backfill(add, seen, cap):
+    """Add launches recovered from chain history by bench/backfill.py.
+
+    Read round-robin across the day files rather than one file at a time. Reading in
+    order would make a cap mean "the oldest day and nothing else", which quietly turns a
+    request for a diverse sample into a request for one Tuesday in June -- and any
+    market-wide event that day would then look like a property of tokens in general.
+    """
+    if cap <= 0 or not os.path.isdir(BACKFILL_DIR):
+        return
+    days = []
+    for fn in sorted(os.listdir(BACKFILL_DIR)):
+        if not (fn.startswith("pools-") and fn.endswith(".ndjson")):
+            continue
+        rows = []
+        with open(os.path.join(BACKFILL_DIR, fn), encoding="utf-8") as f:
+            for line in f:
+                try:
+                    rows.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+        if rows:
+            days.append((fn[6:16], rows))
+    if not days:
+        return
+
+    before = len(seen)
+    for i in range(max(len(r) for _, r in days)):
+        if len(seen) - before >= cap:
+            break
+        for stamp, rows in days:
+            if i >= len(rows) or len(seen) - before >= cap:
+                continue
+            r = rows[i]
+            bt = r.get("base_token") or ""
+            addr = bt.split("_", 1)[1] if "_" in bt else ""
+            if not addr.startswith("0x"):
+                continue
+            add({"address": addr,
+                 "symbol": r.get("name") or "",
+                 "chain": _GT_TO_CHAIN.get(r.get("chain"), r.get("chain")),
+                 "pool": r.get("pool_address"),
+                 "source": "backfill_%s" % stamp})
+    print("  chain history contributed %d candidates across %d days"
+          % (len(seen) - before, len(days)))
 
 
 def _from_snapshots(add, seen):
@@ -121,25 +218,44 @@ def _from_snapshots(add, seen):
     if not os.path.isdir(snap_dir):
         return
     before = len(seen)
+    days = []
     for fn in sorted(os.listdir(snap_dir)):
         if not (fn.startswith("pools-") and fn.endswith(".ndjson")):
             continue
+        rows = []
         with open(os.path.join(snap_dir, fn), encoding="utf-8") as f:
             for line in f:
                 try:
-                    r = json.loads(line)
+                    rows.append(json.loads(line))
                 except json.JSONDecodeError:
                     continue
-                bt = r.get("base_token") or ""
-                addr = bt.split("_", 1)[1] if "_" in bt else ""
-                if not addr.startswith("0x"):
-                    continue  # EVM only; the GoPlus labeler does not cover Solana
-                add({"address": addr,
-                     "symbol": (r.get("name") or "").split("/")[0].strip(),
-                     "chain": _GT_TO_CHAIN.get(r.get("chain"), r.get("chain")),
-                     "pool": r.get("pool_address"),
-                     "source": "snapshot_%s" % fn[6:16]})
-    print("  snapshot archive contributed %d candidates" % (len(seen) - before))
+        if rows:
+            days.append((fn[6:16], rows))
+
+    # Interleaved across days, not read day by day.
+    #
+    # The quota downstream takes a prefix of whatever this returns, so appending one
+    # whole day before starting the next meant the archive's entire contribution came
+    # from its oldest file. Every extra day the snapshot job collects would have been
+    # invisible to the benchmark -- a daily job whose output silently stopped mattering
+    # after the first day, which is the kind of thing that is only ever noticed by
+    # someone wondering why a growing archive changes nothing.
+    for i in range(max(len(r) for _, r in days) if days else 0):
+        for stamp, rows in days:
+            if i >= len(rows):
+                continue
+            r = rows[i]
+            bt = r.get("base_token") or ""
+            addr = bt.split("_", 1)[1] if "_" in bt else ""
+            if not addr.startswith("0x"):
+                continue  # EVM only; the GoPlus labeler does not cover Solana
+            add({"address": addr,
+                 "symbol": (r.get("name") or "").split("/")[0].strip(),
+                 "chain": _GT_TO_CHAIN.get(r.get("chain"), r.get("chain")),
+                 "pool": r.get("pool_address"),
+                 "source": "snapshot_%s" % stamp})
+    print("  snapshot archive contributed %d candidates across %d days"
+          % (len(seen) - before, len(days)))
 
 
 def label_one(c):

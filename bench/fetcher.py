@@ -137,15 +137,19 @@ def persist_access_log():
         blob = {k: sorted(v) for k, v in _ACCESS_LOG.items()}
     try:
         os.makedirs(os.path.dirname(os.path.abspath(ACCESS_LOG_PATH)), exist_ok=True)
-        existing = {}
-        if os.path.exists(ACCESS_LOG_PATH):
-            with open(ACCESS_LOG_PATH, encoding="utf-8") as f:
-                existing = json.load(f)
-        for role, eps in blob.items():
-            merged = set(existing.get(role) or []) | set(eps)
-            existing[role] = sorted(merged)
-        with open(ACCESS_LOG_PATH, "w", encoding="utf-8") as f:
-            json.dump(existing, f, ensure_ascii=False, indent=1)
+        # Replaces, never merges.
+        #
+        # It used to union each run into whatever was already on disk, which quietly
+        # turned "endpoints this run touched" into "endpoints any run has ever touched".
+        # That is wrong twice over: the benchmark prints the list under the heading
+        # "endpoints actually hit on this run", and the disjointness assertion tests
+        # against it. When DexScreener /search was dropped as a sampling source and
+        # picked up by the engine for impersonation, the stale label-side entry was still
+        # there, and the benchmark refused to run -- correctly objecting to an overlap
+        # that no longer existed. A guard that fires on history rather than on the
+        # present teaches people to work around it.
+        with open(ACCESS_LOG_PATH, "w", encoding="utf-8") as fh:
+            json.dump(blob, fh, ensure_ascii=False, indent=1)
     except (OSError, ValueError):
         pass
 
