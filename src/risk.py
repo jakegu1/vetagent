@@ -828,6 +828,119 @@ def _sells_demonstrated(evidence):
     return (sells >= 20 and sells >= 0.15 * (buys + 1)), sells, buys
 
 
+# ---------------------------------------------------------------- owner powers
+
+# Public JSON-RPC per chain, used for one call: eth_getCode. Bytecode is immutable for an
+# address, so this is cached hard and costs almost nothing after the first look.
+_CHAIN_RPC = {
+    "ethereum": "https://rpc.mevblocker.io",
+    "base": "https://mainnet.base.org",
+    "bsc": "https://bsc-dataseed.bnbchain.org",
+}
+
+# Four-byte selectors for functions that let an owner close the exit after you are in.
+# Computed with `python bench/keccak.py`-style hashing and pinned here so the Worker does
+# not carry a Keccak implementation; `test_owner_power_selectors_are_real` recomputes them
+# and fails if any drifts. Hashlib's sha3_256 is NOT Keccak-256 and would produce four
+# plausible bytes that match nothing on any chain.
+_OWNER_POWERS = {
+    "can pause transfers": (
+        "8456cb59", "3f4ba83a", "bedb86fb", "16c38b3c", "1031e36e", "c2e5ec04",
+        "379ba1d9"),
+    "can blacklist addresses": (
+        "f9f92be4", "0ecb93c0", "153b0d1e", "e47d6060", "9c0db5f3", "68092bd9"),
+    "can change the tax": (
+        "69fe0e2d", "0b78f9c0", "e9dae5ed", "dc1052e2", "8cd09d50", "061c82d0",
+        "8b4cee08", "0cc835a3"),
+    "can mint new supply": ("40c10f19", "a0712d68"),
+}
+_PROXY_SELECTOR = "5c60da1b"   # implementation()
+
+
+async def _owner_powers(address, chain):
+    """Which exit-closing powers this contract's bytecode contains. None if unreadable.
+
+    **Disclosure, not detection, and the distinction is load-bearing.** An external audit
+    built the token that beats every other check here: switchable tax, pausable transfers,
+    a blacklist and unlocked liquidity, sitting on $50k for a month with none of it
+    switched on. Nothing fires, because those are powers a contract holds rather than
+    behaviour it has shown.
+
+    Measured before building, over 417 labelled contracts: pausable appears in 11% of the
+    unsafe cohort against 5% of the safe one, mutable tax in 11% against 0%, blacklist in
+    neither, and mintable runs the *wrong* way -- 12% of safe tokens against 0% of unsafe.
+    With nine tokens in the unsafe cohort, "11%" is one token. That is an anecdote, not a
+    threshold, so nothing here is scored and the verdict does not move.
+
+    What it does is let a caller see what they are accepting. `low` already says the exit
+    was open when we looked; this says who can close it.
+    """
+    rpc = _CHAIN_RPC.get((chain or "").lower())
+    if not rpc or not _looks_evm(address):
+        return None
+    return _powers_from_code(await _eth_get_code(rpc, address))
+
+
+def _powers_from_code(code):
+    """Match selectors against bytecode. Pure, so it can be tested against real contracts.
+
+    Split out from the fetch deliberately. The fetch needs the Worker runtime, so a test
+    running anywhere else skips it -- and a skipped test is how this project shipped a
+    honeypot check that never ran. This half takes bytecode as an argument, so it can be
+    checked against USDT's real code from any machine.
+    """
+    if not code or len(code) < 10:
+        return None
+    body = code[2:].lower()
+    return {
+        "powers": sorted(name for name, sels in _OWNER_POWERS.items()
+                         if any(sel in body for sel in sels)),
+        # A proxy's logic lives at another address, so the absence of a power here means
+        # nothing at all. Saying so beats an empty list that reads as "none found".
+        "is_proxy": _PROXY_SELECTOR in body,
+        "bytecode_bytes": len(body) // 2,
+    }
+
+
+async def _eth_get_code(rpc, address):
+    """One JSON-RPC eth_getCode. Any failure is None -- this is best-effort disclosure."""
+    if cf_fetch is None:
+        return None
+    payload = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "eth_getCode",
+                          "params": [address, "latest"]})
+    try:
+        resp = await asyncio.wait_for(
+            cf_fetch(rpc, method="POST", body=payload,
+                     headers={"content-type": "application/json"}), timeout=6)
+        if resp.status != 200:
+            return None
+        return (json.loads(await asyncio.wait_for(resp.text(), timeout=6))
+                or {}).get("result")
+    except Exception:  # noqa: BLE001 -- an unreadable contract discloses nothing, quietly
+        return None
+
+
+def _owner_power_signal(info, signals, evidence):
+    """Record the powers as evidence and one info signal. Never changes the score."""
+    if not info:
+        return
+    evidence["owner_powers"] = info
+    if info.get("is_proxy"):
+        signals.append(_sig(
+            "info", "Upgradeable contract: powers are not visible here",
+            "This is a proxy, so its logic lives at another address and what its owner "
+            "can do cannot be read from this bytecode. Absence of a warning below is not "
+            "evidence of absence.", "contract"))
+        return
+    if info.get("powers"):
+        signals.append(_sig(
+            "info", "The owner holds powers that could close the exit later",
+            "This contract's code contains functions where the owner %s. None of them "
+            "has been used against you -- this is what the contract *can* do, not what it "
+            "has done, and it does not change the rating. Plenty of legitimate tokens "
+            "carry these." % ", ".join(info["powers"]), "contract"))
+
+
 def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
     """Read honeypot.is.
 
@@ -1191,6 +1304,7 @@ async def _load_pairs(address, chain_hint):
 _SLIM_EVIDENCE_KEYS = (
     "best_pair", "chains", "pair_age_days", "turnover_24h", "honeypot",
     "rugcheck", "liquidity_source", "confidence", "data_gaps", "served_stale",
+    "owner_powers",
     "price_change_24h_pct",
     "sellability_from_chain",
     "pools_all_empty",
@@ -1263,6 +1377,10 @@ async def assess(address, chain_hint=None, verbose=False):
                                          chain_hint=chain_hint)
 
     if _looks_evm(address):
+        _owner_power_signal(
+            await _owner_powers(address, _canonical_chain(chain_hint)
+                                or _chain_of(evidence)),
+            signals, evidence)
         _honeypot_signals(
             await _fetch_json("https://api.honeypot.is/v2/IsHoneypot?address=%s" % address,
                               mark_missing=True),

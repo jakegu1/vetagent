@@ -60,6 +60,11 @@ jobs:
       - name: Backlog items can be verified
         run: python tests/test_backlog.py
 
+      # The pinned function selectors are recomputed here. A wrong one never matches, so
+      # the contract looks powerless and the tool reports that as reassurance.
+      - name: Owner-power selectors are real, and disclosure never scores
+        run: python tests/test_owner_powers.py
+
   # Upstream contract monitor: real API calls that check the fields we depend on still exist.
   # Separate from the unit tests: a third-party outage turns it red, which is the signal.
   upstream-contract:

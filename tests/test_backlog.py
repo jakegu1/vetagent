@@ -70,7 +70,8 @@ def main():
           nums == list(range(1, len(nums) + 1)),
           "have %s" % nums)
 
-    import rounds  # noqa: E402  -- imported here so a missing tools/ fails loudly
+
+    import rounds  # noqa: E402
     known_rounds = {r[0] for r in rounds.ROUNDS}
 
     no_verify, bad_round, no_blocker = [], [], []
@@ -83,6 +84,13 @@ def main():
                 states["rejected"] += 1
             elif "Done" in outcome:
                 states["done"] += 1
+                # Closed rows cite a round too, and it is checked here as well -- a
+                # closed item pointing at a round that does not exist is the same broken
+                # link as an open one.
+                m = re.search(r"Done\s+(R\d+)", outcome)
+                if not m or m.group(1) not in known_rounds:
+                    bad_round.append("%s -> closed row cites %s"
+                                     % (r["id"], m.group(1) if m else "no round"))
             continue
 
         state = r["cells"][3] if len(r["cells"]) > 3 else ""
