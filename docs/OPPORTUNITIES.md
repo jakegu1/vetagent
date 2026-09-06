@@ -80,44 +80,34 @@ already carries roughly seventeen free token-safety MCP servers. Being inside so
 code beats being on a shelf next to sixteen alternatives. Execute under STRATEGY.md
 Experiment A; no gate required.
 
-### O4 - Pools that disagree about the price, as a signal in its own right
-
-**Found while fixing E-7 (2026-09-06). Deliberately NOT shipped with it.**
-
-E-7 asked for a price sanity check where the chain-rank table cannot help. Measuring the
-same comparison without the rank restriction turned up something larger:
-
-    693  tokens with two or more priced, costed pools in scope
-    214  (30.9%)  some pair of pools disagrees by more than 100x
-     31  (4.5%)   ...still true when both pools do $50k/day and 50+ trades
-
-MATIC's own test fixture carries a spread of $0.0882 to $1,345,090 between pools on
-Ethereum. Two pools of one token priced fifteen million times apart cannot both be right,
-and the deepest-pool-wins rule silently picks one and reports it as the price.
-
-**Why it is parked rather than built.** The measurement above says how often it *fires*,
-which is not the same as how often it is *right*. A dust pool quoting nonsense is not
-evidence about a token, and the difference between "a broken pool exists" and "the price
-we are about to report is wrong" is precisely what has not been measured. Shipping a
-signal at a 4.5% firing rate on that basis is how false positives get built.
-
-**What would settle it.** Take the pools that fire, ask GeckoTerminal's OHLCV endpoint for
-each one's independent price, and count how often the deepest pool -- the one we report --
-is the outlier rather than the dissenter. If the pool we already pick is nearly always
-right, this is noise and the entry closes. If it is wrong in a meaningful share of cases,
-it is a real defect in the primary number this tool reports, and it outranks most of what
-is on the roadmap.
-
-**Not blocked** - this is a measurement over data already on disk, not a new product
-line, and it bears directly on the primary number this tool reports. It needs no business
-gate; it needs the count above to exist before any code is written. Tracked in
-BACKLOG.md so it has an owner and a priority rather than a permanent parking space.
-
-The parking rule still applies to the *feature*: no price-disagreement signal ships until
-that measurement says the pool we already pick is wrong often enough to matter.
-
 ---
 
 ## Reviewed and closed
 
-*(Nothing yet. When a gate resolves, entries move here with the decision and the date.)*
+### O4 - Pools that disagree about the price · **CLOSED 2026-09-06, same day it opened**
+
+Parked in the morning with a gate: *do not build until we have counted how often the pool
+we already pick is the wrong one.* Closed in the afternoon because that count was finally
+run, and it found a live P0 rather than a feature.
+
+The measurement separated two questions that had been treated as one:
+
+| Question | Fires on | Verdict |
+|---|---|---|
+| Does SOME pool disagree with some other pool? | 30.9% of tokens | Noise. Dust pools quoting nonsense. Correctly not shipped |
+| Does THE POOL WE PICKED disagree with its peers? | 0.61% at 10x, 0.30% at 100x | The bug. Shipped as a selection rule |
+
+"A disagreement exists somewhere" and "the number we are about to publish is the outlier"
+are different questions, and only the second is worth acting on.
+
+**What it caught.** Production priced UNI at **$4,576,980**. The chosen pool claimed $44.4M
+of liquidity and carried two buys and one sell in a day, against pools holding $19.5M with
+real volume all quoting $6.99. Depth alone picked the liar. Fixed by rejecting candidates
+that the rest of the token's own market contradicts by two orders of magnitude, then
+ranking the survivors by depth as before.
+
+**The lesson is about the gate, not the signal.** Parking the broad version was right, and
+sizing E-7's guard to its measured 0-in-1,136 frequency was right. What was wrong was
+writing down the experiment that would settle it and then not spending the twenty minutes
+to run it. A parked opportunity with an unrun experiment is indistinguishable from a
+forgotten one, and this one was hiding a P0 for the length of the delay.
