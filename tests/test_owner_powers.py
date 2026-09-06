@@ -318,6 +318,32 @@ def test_bytecode_is_cached_as_advertised():
         risk._eth_get_code, risk._cache_get, risk._cache_put = real
 
 
+def test_selector_rejects_a_signature_it_cannot_compute():
+    """A space silently produced a selector that matches nothing on any chain.
+
+    `selector("mint(address, uint256)")` returned 36e59c31 against the correct 40c10f19 --
+    no error, no warning, just four bytes that will never match a function anywhere. That
+    is exactly the failure this module exists to prevent: the whole reason selectors are
+    computed here rather than pinned by hand is so a typo cannot quietly become a wrong
+    answer, and a typo was quietly becoming a wrong answer.
+
+    It refuses rather than strips. A signature carrying a space is one somebody typed by
+    hand, and the next hand-typed one may be wrong in a way stripping cannot repair.
+    Refusing converts a silent wrong answer into a loud question.
+    """
+    print("\n[keccak] a signature we cannot compute is an error, not a guess")
+    check("the canonical form still works",
+          selector("mint(address,uint256)") == "40c10f19",
+          selector("mint(address,uint256)"))
+    for bad in ("mint(address, uint256)", " mint(address,uint256)",
+                "mint(address,uint256) ", "mint(address,\tuint256)"):
+        try:
+            got = selector(bad)
+            check("%r is refused" % bad, False, "returned %s" % got)
+        except ValueError:
+            check("%r is refused" % bad, True)
+
+
 def main():
     print("=" * 68)
     print("Owner-power disclosure")

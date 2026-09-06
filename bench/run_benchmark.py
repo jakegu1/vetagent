@@ -591,9 +591,9 @@ def write_markdown(rep):
       "something other than `low`. The remainder is the real finding.\n"
       % (len(dead_rows), not_low))
     A("\n**The limit this exposes.** The engine scores the current snapshot and has no "
-      "price history, so a token whose price is down 99%% from a peak it cannot see looks "
+      "price history, so a token whose price is down 99% from a peak it cannot see looks "
       "like a quiet pool with working sells. Turnover cannot substitute: at the current "
-      "2%% threshold it catches roughly half the dead cohort at a cost of several percent "
+      "2% threshold it catches roughly half the dead cohort at a cost of several percent "
       "of the live one, and loosening it doubles that cost for a few more points.\n")
 
     A("\nThe history that would catch it is GeckoTerminal daily OHLCV -- the exact series "

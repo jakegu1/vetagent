@@ -250,7 +250,7 @@ The label means a project died -- price collapsed, volume collapsed. It does **n
 **What the number should be read against**: of 30 dead tokens, 26 are rated something other than `low`. The remainder is the real finding.
 
 
-**The limit this exposes.** The engine scores the current snapshot and has no price history, so a token whose price is down 99%% from a peak it cannot see looks like a quiet pool with working sells. Turnover cannot substitute: at the current 2%% threshold it catches roughly half the dead cohort at a cost of several percent of the live one, and loosening it doubles that cost for a few more points.
+**The limit this exposes.** The engine scores the current snapshot and has no price history, so a token whose price is down 99% from a peak it cannot see looks like a quiet pool with working sells. Turnover cannot substitute: at the current 2% threshold it catches roughly half the dead cohort at a cost of several percent of the live one, and loosening it doubles that cost for a few more points.
 
 
 The history that would catch it is GeckoTerminal daily OHLCV -- the exact series the `outcome` label is computed from. Wiring it into the engine would buy drawdown detection and simultaneously void this column as an independent measurement. That is a live trade-off, not an oversight, and it is recorded as an open decision rather than settled quietly.

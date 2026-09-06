@@ -79,7 +79,24 @@ def keccak256(data):
 
 
 def selector(signature):
-    """The 4-byte function selector for a Solidity signature, as lowercase hex."""
+    """The 4-byte function selector for a Solidity signature, as lowercase hex.
+
+    Whitespace is rejected rather than stripped. A canonical Solidity signature contains
+    none -- `mint(address,uint256)` -- and `selector("mint(address, uint256)")` silently
+    returned 36e59c31 against the correct 40c10f19: a selector that matches no function on
+    any chain, produced without complaint. That is precisely the failure this module was
+    written to prevent, since the whole point of computing selectors instead of pinning
+    them is that a typo becomes impossible.
+
+    Stripping would be the friendlier fix and the wrong one. A signature with a space in it
+    is a signature someone typed by hand, and the next hand-typed one may differ in a way
+    stripping cannot repair. Refusing turns a silent wrong answer into a loud question.
+    """
+    if any(ch.isspace() for ch in signature):
+        raise ValueError(
+            "signature must contain no whitespace: %r. A canonical Solidity signature "
+            "is written mint(address,uint256), and a space silently produces a selector "
+            "that matches nothing." % signature)
     return keccak256(signature)[:4].hex()
 
 
