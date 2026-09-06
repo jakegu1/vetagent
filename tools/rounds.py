@@ -143,9 +143,17 @@ def assign():
     idx = 0
     bots = 0
     unassigned = []
+    closed = True          # bot commits are only counted while rounds are still closing
     for c in rows:
         if c["subject"].startswith(BOT_PREFIX):
-            bots += 1
+            # Counted only up to the last closed round.
+            #
+            # The snapshot job commits every day, so a running total put a number in the
+            # generated file that went stale every day -- and a guard that is red by
+            # default is one people learn to ignore. Everything else in this document
+            # changes only when a round closes; this now does too.
+            if closed:
+                bots += 1
             continue
         if idx >= len(order):
             unassigned.append(c)
@@ -154,6 +162,7 @@ def assign():
         meta[rid]["commits"].append(c)
         if meta[rid]["last"] and c["hash"].startswith(meta[rid]["last"][:7]):
             idx += 1
+        closed = idx < len(order) and meta[order[idx]]["last"] is not None
     return order, meta, unassigned, bots
 
 
@@ -204,8 +213,10 @@ def render():
         A("| **%s** | %s | %d | %s | %s%s |"
           % (rid, m["name"], len(cs), span,
              ("%d/100" % sc) if sc is not None else "not scored yet", delta))
-    A("\n%d snapshot-job commits are excluded: they are data collection, not "
-      "development, and would bury the rounds.\n" % bots)
+    A("\n%d snapshot-job commits are excluded up to the last closed round: they are "
+      "data collection, not development, and would bury the rounds. The job commits "
+      "daily, so counting them past that point would date this file every morning.\n"
+      % bots)
 
     open_id = next((r for r in order if meta[r]["last"] is None), None)
     if open_id:

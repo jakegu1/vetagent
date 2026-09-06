@@ -25,7 +25,7 @@ The maturity score for each round is read from `docs/SCORECARD.md` **as it stood
 | **R11** | Number the rounds | 3 | 2026-09-05 | 53/100 (+0) |
 | **R12** | Measure a feature, then refuse to score it | 2 | 2026-09-05 to 2026-09-06 | 53/100 (+0) |
 
-5 snapshot-job commits are excluded: they are data collection, not development, and would bury the rounds.
+5 snapshot-job commits are excluded up to the last closed round: they are data collection, not development, and would bury the rounds. The job commits daily, so counting them past that point would date this file every morning.
 
 
 **R13 -- Next** is open: Open. Its commits are listed here once it closes.
