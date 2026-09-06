@@ -920,6 +920,47 @@ def test_overturning_a_honeypot_verdict_is_expensive():
     check("it is never called low", real["risk_level"] != "low", real["risk_level"])
 
 
+def test_the_simulator_is_asked_about_the_chain_we_settled_on():
+    """A wrong hint must not send the sell simulator to the wrong chain.
+
+    Caught in self-review an hour after shipping the change that caused it. Passing the
+    chain id to honeypot.is fixed Base WETH and friends, but it read the id off the
+    caller's hint -- and _pick_best deliberately ignores a hint that matches no pair, so
+    the chain being reported on can differ from the chain we were told. A hint of
+    "ethereum" on a Base-only token would have asked about Ethereum, drawn a 404, and
+    recorded "the simulator has no record of this token": our own mistake filed as a fact
+    about somebody's contract, which is precisely what the change was written to stop.
+    """
+    print("\n[chain] the simulator is asked about the pool we actually picked")
+
+    base_only = {"pairs": [{
+        "chainId": "base", "dexId": "uniswap",
+        "baseToken": {"address": WETH, "symbol": "TKN"},
+        "quoteToken": {"address": "0xq"}, "priceUsd": "1.0",
+        "liquidity": {"usd": 250_000.0}, "volume": {"h24": 120_000.0},
+        "txns": {"h24": {"buys": 400, "sells": 380}},
+        "pairCreatedAt": 1589841515000}]}
+
+    seen = []
+
+    async def _stub(url, *a, **kw):
+        if "honeypot.is" in url:
+            seen.append(url)
+            return _load("hp_matic.json")
+        if "dex/tokens" in url:
+            return base_only
+        return None
+    risk._fetch_json = _stub
+
+    # The caller insists on ethereum; the only pool is on Base.
+    run(risk.assess(WETH, chain_hint="ethereum"))
+    check("a honeypot lookup was made", seen, "none")
+    check("and it names Base, the chain the pool is on",
+          seen and "chainID=8453" in seen[0], seen[0] if seen else "")
+    check("not the chain the caller guessed",
+          seen and "chainID=1" not in seen[0], seen[0] if seen else "")
+
+
 def test_clean_token_stays_low():
     """Guard the other way: more signals must not let the score push a healthy token high."""
     print("\n[scoring] healthy token stays low")

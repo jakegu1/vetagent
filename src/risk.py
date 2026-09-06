@@ -1422,7 +1422,18 @@ async def assess(address, chain_hint=None, verbose=False):
         # Measured over forty unknown verdicts: three rescued, fifteen were 404 either
         # way (genuinely unknown to it), twenty-two unaffected. Small, and concentrated
         # exactly where being wrong looks worst.
-        hp_chain = _canonical_chain(chain_hint) or _chain_of(evidence)
+        # The pool we settled on wins over the caller's hint, and the order matters.
+        #
+        # _pick_best ignores a hint that matches no pair -- deliberately, so a caller who
+        # spells the chain differently does not lose the fork-chain defence. But that
+        # means the chain we are reporting on can differ from the chain we were told, and
+        # a hint of "ethereum" on a Base-only token would have sent chainID=1, drawn a
+        # 404, and been recorded as "the simulator has no record of this token". Which is
+        # the exact misattribution this change was written to remove, reintroduced by the
+        # change itself an hour later.
+        #
+        # The hint is still the fallback, for the case where no pool was found at all.
+        hp_chain = _chain_of(evidence) or _canonical_chain(chain_hint)
         hp_url = "https://api.honeypot.is/v2/IsHoneypot?address=%s" % address
         if hp_chain in _SIMULATOR_CHAIN_IDS:
             hp_url += "&chainID=%d" % _SIMULATOR_CHAIN_IDS[hp_chain]
