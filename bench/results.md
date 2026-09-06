@@ -67,8 +67,8 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 
 | Metric | Value |
 |---|---|
-| Verdict distribution | high=74, low=142, medium=260, unknown=100 |
-| unknown rate | 17.4% |
+| Verdict distribution | high=76, low=142, medium=259, unknown=99 |
+| unknown rate | 17.2% |
 | Share with a data gap | 20.8% |
 
 > Read the unknown rate next to recall. A tool that answers unknown for everything has perfect recall and is useless.
@@ -110,7 +110,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 17 | 64.7% | 94.1% | 0.0% | 5.9% | 77.1 |
-| **safe** | 349 | 6.0% | 50.7% | 27.8% | 21.5% | 25.9 |
+| **safe** | 349 | 6.3% | 51.0% | 27.8% | 21.2% | 26.1 |
 
 ### Contract-safety signals only (ablated)
 
@@ -120,7 +120,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 17 | 17.6% | 41.2% | 35.3% | 23.5% | 32.7 |
-| **safe** | 349 | 3.4% | 12.3% | 63.9% | 23.8% | 10.3 |
+| **safe** | 349 | 3.4% | 12.3% | 63.9% | 23.8% | 10.4 |
 
 **Which signal category made the call on unsafe samples:** `liquidity` 11, `honeypot` 3, `impersonation` 3
 
@@ -138,12 +138,29 @@ This bucket answers one question: **does the engine paint them all as high risk.
 
 | n | high rate | Verdict distribution |
 |---|---|---|
-| 179 | 21.2% | high=38, low=37, medium=85, unknown=19 |
+| 179 | 21.8% | high=39, low=37, medium=84, unknown=19 |
 
 Examples: HYDX(low), CP(unknown), TOSHE(medium), Onyxcoin XCN Kendu(high), SAGE Free(medium), Core Keeper Overnight(medium), VIRTUAL(low), Crypto Carbon Verse(high), ?(medium), BIO(medium)
 
 
-> **Which population the false-positive rate describes.** The headline figure is measured on `alive` tokens, and `alive` requires 90 days of history and real weekly volume -- so freshness signals cannot fire on them and liquidity rarely does. Agents mostly ask about tokens younger than that. On the broader `safe` cohort, which includes new tokens: high 6.0% (21 of 349). Both are reported because the first is the friendlier of the two.
+### Two oracles, two false-positive rates
+
+The false-positive rate depends on who is asked what a 'healthy token' is, and this benchmark has two answers available. They are reported together because reporting either alone hides something.
+
+
+| Oracle | What it actually measures | Independent of us? | Cohort | FP rate |
+|---|---|---|---|---|
+| realized market outcome | what happened to the money | **yes** -- built from price/volume history, not from any contract scanner | `alive`, n=162 | **3.7%** (6) |
+| GoPlus | what the contract does under simulation | **no** -- GoPlus is this benchmark's own labeller, so this is a disagreement rate | `safe`, n=349 | 6.3% (22) |
+| both, intersected | passes on both instruments | strictest available | n=95 | 3.2% (3) |
+
+**Read it this way.** The outcome-based rate is the one to trust on method: market outcome is causally independent of every contract scanner, so it cannot be circular. Its weakness is population -- `alive` requires 90 days of history and real weekly volume, so freshness signals cannot fire on those tokens and liquidity rarely does, while agents mostly ask about tokens younger than that.
+
+
+The GoPlus-based rate has the better population -- it includes new tokens -- and the worse oracle, because a rate measured against our own labeller is a disagreement rate wearing a false-positive label. An audit was right to flag it. What the audit assumed, and what turned out to be false, is that breaking the circularity required buying an independent oracle. It did not. The independent oracle was already in this file and had simply never been crossed against the other one.
+
+
+The three figures are statistically consistent, which is the substantive finding: the circularity is real as a method problem and does not appear to be moving the number much. That is a claim with a confidence interval on it, not a reassurance -- n is 162 on the independent side and the honest reading is that these rates are indistinguishable at this sample size, not that they are equal.
 
 
 ### What the unknown rate is made of
@@ -154,7 +171,7 @@ An `unknown` because we could not reach an upstream is a different thing from an
 | | n | share of all 576 |
 |---|---|---|
 | unknown, our side (upstream unreachable or uncovered) | 2 | 0.3% |
-| unknown, token side (nothing verifiable about it) | 98 | 17.0% |
+| unknown, token side (nothing verifiable about it) | 97 | 16.8% |
 
 
 ## What the sample is made of
@@ -196,7 +213,7 @@ Samples where the label and the engine disagree. Read the **false negatives** (l
 | false positive | `TORIVA` | base | goplus=safe | high | high | honeypot |
 | false positive | `TREB` | base | goplus=safe | high | high | honeypot |
 
-(11 more in `results.json`)
+(12 more in `results.json`)
 
 
 ### Counted as false positives, but outside the labeller's reach
@@ -224,7 +241,7 @@ The label means a project died -- price collapsed, volume collapsed. It does **n
 
 | | n | min | p25 | median | p75 | max |
 |---|---|---|---|---|---|---|
-| liquidity, `dead` | 30 | $43 | $2,853 | $7,470 | $31,418 | $495,002 |
+| liquidity, `dead` | 30 | $43 | $2,814 | $7,470 | $31,418 | $495,002 |
 | liquidity, `alive` | 158 | $12 | $194,321 | $649,717 | $2,595,120 | $671,966,000 |
 
 16 of the 30 dead tokens still hold $5,000 or more of liquidity. Those positions can be sold. An engine that rated them `high` would be calling a failed investment a safety hazard, which is a judgement this tool refuses to make (P1 in DECISIONS.md) -- so `medium` with an abandoned-pool warning is the intended answer, not a miss.

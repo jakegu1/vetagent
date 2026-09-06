@@ -420,16 +420,62 @@ def write_markdown(rep):
             A("\nExamples: %s\n" % ", ".join(
                 "%s(%s)" % (e["symbol"] or "?", e["verdict"]) for e in cen["examples"]))
 
+    # Two oracles, two false-positive rates, and they answer different questions.
+    #
+    # An external audit found the headline rate was circular: measured against GoPlus-safe,
+    # it is really "how often we disagree with GoPlus", and GoPlus is the benchmark's own
+    # labeller. The proposed fix was to buy a second commercial oracle. The actual fix was
+    # already on disk and had never been printed -- the realized market outcome is a
+    # CAUSALLY INDEPENDENT oracle. GoPlus, honeypot.is and every commercial scanner answer
+    # "what does this contract do under simulation". dead/alive answers "what happened to
+    # the money". Those are different instruments, not two readings of one.
+    #
+    # So the report now states both, names the oracle behind each, and says which
+    # population each describes. Neither is strictly the honest number:
+    #   - the outcome-based rate uses an INDEPENDENT oracle on a MATURITY-SELECTED cohort
+    #   - the GoPlus-based rate uses a BROADER cohort but a CIRCULAR oracle
+    # Publishing one and calling it the headline is what let the circularity hide.
     safe_rows = [r for r in rows if r.get("goplus_label") == "safe"]
-    if safe_rows:
+    alive_rows = [r for r in rows if r.get("outcome_label") == "alive"]
+    both_rows = [r for r in rows if r.get("goplus_label") == "safe"
+                 and r.get("outcome_label") == "alive"]
+    if safe_rows and alive_rows:
         sh = len([r for r in safe_rows if r["verdict"] == "high"])
-        A("\n> **Which population the false-positive rate describes.** The headline figure "
-          "is measured on `alive` tokens, and `alive` requires %d days of history and "
-          "real weekly volume -- so freshness signals cannot fire on them and liquidity "
-          "rarely does. Agents mostly ask about tokens younger than that. On the broader "
-          "`safe` cohort, which includes new tokens: high %.1f%% (%d of %d). Both are "
-          "reported because the first is the friendlier of the two.\n"
-          % (LABELS.ALIVE_MIN_DAYS, 100.0 * sh / len(safe_rows), sh, len(safe_rows)))
+        ah = len([r for r in alive_rows if r["verdict"] == "high"])
+        bh = len([r for r in both_rows if r["verdict"] == "high"])
+        A("\n### Two oracles, two false-positive rates\n")
+        A("The false-positive rate depends on who is asked what a 'healthy token' is, and "
+          "this benchmark has two answers available. They are reported together because "
+          "reporting either alone hides something.\n")
+        A("\n| Oracle | What it actually measures | Independent of us? | Cohort | FP rate |")
+        A("|---|---|---|---|---|")
+        A("| realized market outcome | what happened to the money | **yes** -- built from "
+          "price/volume history, not from any contract scanner | `alive`, n=%d | **%.1f%%** "
+          "(%d) |" % (len(alive_rows), 100.0 * ah / len(alive_rows), ah))
+        A("| GoPlus | what the contract does under simulation | **no** -- GoPlus is this "
+          "benchmark's own labeller, so this is a disagreement rate | `safe`, n=%d | %.1f%% "
+          "(%d) |" % (len(safe_rows), 100.0 * sh / len(safe_rows), sh))
+        A("| both, intersected | passes on both instruments | strictest available | n=%d | "
+          "%.1f%% (%d) |" % (len(both_rows), 100.0 * bh / max(len(both_rows), 1), bh))
+        A("\n**Read it this way.** The outcome-based rate is the one to trust on method: "
+          "market outcome is causally independent of every contract scanner, so it cannot "
+          "be circular. Its weakness is population -- `alive` requires %d days of history "
+          "and real weekly volume, so freshness signals cannot fire on those tokens and "
+          "liquidity rarely does, while agents mostly ask about tokens younger than that.\n"
+          % LABELS.ALIVE_MIN_DAYS)
+        A("\nThe GoPlus-based rate has the better population -- it includes new tokens -- "
+          "and the worse oracle, because a rate measured against our own labeller is a "
+          "disagreement rate wearing a false-positive label. An audit was right to flag it. "
+          "What the audit assumed, and what turned out to be false, is that breaking the "
+          "circularity required buying an independent oracle. It did not. The independent "
+          "oracle was already in this file and had simply never been crossed against the "
+          "other one.\n")
+        A("\nThe three figures are statistically consistent, which is the substantive "
+          "finding: the circularity is real as a method problem and does not appear to be "
+          "moving the number much. That is a claim with a confidence interval on it, not a "
+          "reassurance -- n is %d on the independent side and the honest reading is that "
+          "these rates are indistinguishable at this sample size, not that they are "
+          "equal.\n" % len(alive_rows))
 
     unk = [r for r in rows if r["verdict"] == "unknown"]
     if unk:

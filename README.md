@@ -62,7 +62,7 @@ method behind them** — including the parts that do not work yet — against la
 produced by data sources **the engine does not read**.
 
 What is measured today: a **3.7% false positive rate** on 162 healthy tokens, a
-**17.4% unknown rate**, and **6.7%** of legitimate centralised assets flagged high.
+**17.2% unknown rate**, and **6.7%** of legitimate centralised assets flagged high.
 
 What is **not** measured today: **recall**. Sampling turned up one dead token in 205,
 because every public source ranks by liquidity and rugged pools fall off the listing

@@ -24,11 +24,11 @@
  "overall": {
   "verdict_distribution": {
    "low": 142,
-   "unknown": 100,
-   "medium": 260,
-   "high": 74
+   "unknown": 99,
+   "medium": 259,
+   "high": 76
   },
-  "unknown_rate": 0.1736111111111111,
+  "unknown_rate": 0.171875,
   "data_gap_rate": 0.20833333333333334
  },
  "outcome": {
@@ -91,11 +91,11 @@
    },
    "good": {
     "n": 349,
-    "high": 0.06017191977077364,
-    "high_or_medium": 0.5071633237822349,
+    "high": 0.06303724928366762,
+    "high_or_medium": 0.5100286532951289,
     "low": 0.27793696275071633,
-    "unknown": 0.2148997134670487,
-    "mean_score": 25.888252148997136
+    "unknown": 0.21203438395415472,
+    "mean_score": 26.13753581661891
    }
   },
   "contract_only": {
@@ -113,7 +113,7 @@
     "high_or_medium": 0.12320916905444126,
     "low": 0.6389684813753582,
     "unknown": 0.23782234957020057,
-    "mean_score": 10.28080229226361
+    "mean_score": 10.35243553008596
    }
   },
   "driving_categories_on_bad": {
@@ -127,10 +127,10 @@
   "verdict_distribution": {
    "low": 37,
    "unknown": 19,
-   "medium": 85,
-   "high": 38
+   "medium": 84,
+   "high": 39
   },
-  "high_rate": 0.2122905027932961,
+  "high_rate": 0.21787709497206703,
   "examples": [
    {
     "symbol": "HYDX",
@@ -464,6 +464,16 @@
    "verdict": "high",
    "verdict_ablated": "unknown",
    "driver": "no_liquidity"
+  },
+  {
+   "kind": "false positive",
+   "label": "goplus=safe",
+   "address": "0x6ff45323817d1d53bbb8a8dfba9245ae74057777",
+   "symbol": "memestock",
+   "chain": "bsc",
+   "verdict": "high",
+   "verdict_ablated": "unknown",
+   "driver": "liquidity"
   },
   {
    "kind": "false positive",
@@ -1870,7 +1880,7 @@
    "outcome_label": null,
    "goplus_label": "centralized",
    "sampled_from": "backfill_2026-02-17",
-   "liquidity_usd": 1.49996,
+   "liquidity_usd": 0.00886333,
    "gap_reasons": [],
    "verdict": "medium",
    "score": 68,
@@ -2109,7 +2119,7 @@
    "outcome_label": "dead",
    "goplus_label": null,
    "sampled_from": "backfill_2025-12-09",
-   "liquidity_usd": 2853.86,
+   "liquidity_usd": 286.1,
    "gap_reasons": [],
    "verdict": "high",
    "score": 100,
@@ -3793,17 +3803,18 @@
    "outcome_label": null,
    "goplus_label": "centralized",
    "sampled_from": "backfill_2026-08-26",
-   "liquidity_usd": 80447.6,
+   "liquidity_usd": 42.1102,
    "gap_reasons": [],
    "verdict": "medium",
-   "score": 12,
+   "score": 68,
    "confidence": "high",
    "verdict_ablated": "low",
    "score_ablated": 0,
-   "driver": "lifecycle",
+   "driver": "liquidity",
    "categories": [
     "freshness",
     "honeypot",
+    "impersonation",
     "lifecycle",
     "liquidity",
     "upstream_risk"
@@ -4404,16 +4415,17 @@
    "outcome_label": null,
    "goplus_label": "centralized",
    "sampled_from": "backfill_2026-03-09",
-   "liquidity_usd": 552.904,
+   "liquidity_usd": 0.1095,
    "gap_reasons": [],
-   "verdict": "medium",
-   "score": 68,
+   "verdict": "high",
+   "score": 84,
    "confidence": "medium",
    "verdict_ablated": "medium",
    "score_ablated": 27,
-   "driver": "liquidity",
+   "driver": "impersonation",
    "categories": [
     "freshness",
+    "impersonation",
     "lifecycle",
     "liquidity",
     "sell_tax",
@@ -4547,10 +4559,10 @@
    "outcome_label": null,
    "goplus_label": "safe",
    "sampled_from": "backfill_2025-12-29",
-   "liquidity_usd": 19460.1,
+   "liquidity_usd": 0.0073648,
    "gap_reasons": [],
    "verdict": "medium",
-   "score": 34,
+   "score": 58,
    "confidence": "high",
    "verdict_ablated": "low",
    "score_ablated": 0,
@@ -5020,7 +5032,7 @@
    "outcome_label": "dead",
    "goplus_label": "safe",
    "sampled_from": "backfill_2025-11-09",
-   "liquidity_usd": 428.481,
+   "liquidity_usd": 145.791,
    "gap_reasons": [],
    "verdict": "medium",
    "score": 58,
@@ -6709,7 +6721,7 @@
    "outcome_label": null,
    "goplus_label": "safe",
    "sampled_from": "backfill_2026-05-08",
-   "liquidity_usd": 2958.0,
+   "liquidity_usd": 1031.62,
    "gap_reasons": [],
    "verdict": "high",
    "score": 100,
@@ -9600,18 +9612,19 @@
    "outcome_label": null,
    "goplus_label": "safe",
    "sampled_from": "snapshot_2026-09-04",
-   "liquidity_usd": 47826500.0,
+   "liquidity_usd": 1137.68,
    "gap_reasons": [
     "the sell simulator has no record of this token"
    ],
-   "verdict": "unknown",
-   "score": 15,
+   "verdict": "high",
+   "score": 78,
    "confidence": "low",
    "verdict_ablated": "unknown",
-   "score_ablated": 5,
-   "driver": "freshness",
+   "score_ablated": 30,
+   "driver": "liquidity",
    "categories": [
     "freshness",
+    "impersonation",
     "liquidity",
     "sellability"
    ],
