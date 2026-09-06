@@ -231,7 +231,15 @@ def main():
         ab_level, ab_score = ablate(t["address"], sigs,
                                     (res.get("evidence") or {}).get("data_gaps"))
         rows.append({
-            "address": t["address"], "symbol": t.get("symbol"), "chain": t["chain"],
+            # Sanitised at the boundary, not at each of the six places the report prints
+            # it. A ticker is upstream text: `results.md` renders it inside a markdown
+            # table, where an unescaped pipe silently reshapes the row, and this file is
+            # the project's public evidence. It is also how a CJK ticker turned the
+            # English-only guard red on a tip commit -- the guard was right, and the
+            # answer is to quote the ticker accurately in ASCII rather than to exempt the
+            # file from the rule.
+            "address": t["address"], "symbol": risk._ascii_safe(t.get("symbol")),
+            "chain": t["chain"],
             "outcome_label": t.get("outcome_label"), "goplus_label": t.get("goplus_label"),
             "sampled_from": t.get("sampled_from"),
             "liquidity_usd": ((res.get("evidence") or {}).get("best_pair") or {})
