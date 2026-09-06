@@ -34,6 +34,15 @@ RESULTS = os.path.join(HERE, "results.json")
 # belongs in that group. The regex has to be specific enough that it cannot match prose
 # that happens to contain a number.
 TARGETS = [
+    # docs/SCORECARD.md is generated too, and it went stale: it carried 4.3% while
+    # README carried 3.7%, because a benchmark re-run regenerated one and not the other.
+    # Two different values for the headline metric of a product whose whole claim is that
+    # its numbers can be checked is the worst possible place to have a drift, and an
+    # external audit found it before any of our own guards did. Adding it here means the
+    # guard fails instead of a reader noticing.
+    ("docs/SCORECARD.md", r"false positive rate \(healthy rated high\) \| [\d.]+ \| 10 \| ([\d.]+)%",
+     "fp_pct"),
+    ("docs/SCORECARD.md", r"unknown rate \| [\d.]+ \| 10 \| ([\d.]+)%", "unknown_pct"),
     ("README.md", r"a \*\*([\d.]+)% false positive rate\*\*", "fp_pct"),
     ("README.md", r"false positive rate\*\* on (\d+) healthy tokens", "healthy_n"),
     ("README.md", r"\*\*([\d.]+)% unknown rate\*\*", "unknown_pct"),
