@@ -141,7 +141,12 @@ async def _cache_put(url, data):
 # "every legitimate token clears at least one of those two" -- a premise that is simply
 # false on a chain the simulator has never covered. The tool description advertises these
 # chains as valid hints.
-_SIMULATOR_CHAINS = ("ethereum", "bsc", "base")
+# Chains the sell simulator covers, and the id it wants for each. Verified against the
+# API on 2026-09-06: these three answer, and every other chain we advertise as a
+# chain_hint returns HTTP 400 "Invalid chain". `test_simulator_chain_coverage` re-checks
+# it, so if honeypot.is adds a chain we find out instead of permanently declining to look.
+_SIMULATOR_CHAIN_IDS = {"ethereum": 1, "bsc": 56, "base": 8453}
+_SIMULATOR_CHAINS = tuple(_SIMULATOR_CHAIN_IDS)
 
 # Returned instead of None when upstream answered 404: it is not that we could not
 # reach the service, it is that the service has no record of this token. Third time
@@ -1404,11 +1409,25 @@ async def assess(address, chain_hint=None, verbose=False):
             await _owner_powers(address, _canonical_chain(chain_hint)
                                 or _chain_of(evidence)),
             signals, evidence)
-        _honeypot_signals(
-            await _fetch_json("https://api.honeypot.is/v2/IsHoneypot?address=%s" % address,
-                              mark_missing=True),
-            signals, evidence, data_gaps,
-            chain=_canonical_chain(chain_hint) or _chain_of(evidence))
+        # Pass the chain id when we know it, rather than letting the simulator guess.
+        #
+        # It supports three chains and has to pick one from the address alone, and for a
+        # token deployed at the same address on several chains -- which deterministic
+        # deployment makes common -- it can pick the wrong one or refuse outright. Base
+        # WETH, USDC and USDbC all returned 404 to a bare lookup and answered immediately
+        # once told the chain. Those are the assets an agent is most likely to ask about,
+        # and R10 had taught the engine to read that 404 as "the simulator has no record
+        # of this token": a fact about the token, when it was a fact about our request.
+        #
+        # Measured over forty unknown verdicts: three rescued, fifteen were 404 either
+        # way (genuinely unknown to it), twenty-two unaffected. Small, and concentrated
+        # exactly where being wrong looks worst.
+        hp_chain = _canonical_chain(chain_hint) or _chain_of(evidence)
+        hp_url = "https://api.honeypot.is/v2/IsHoneypot?address=%s" % address
+        if hp_chain in _SIMULATOR_CHAIN_IDS:
+            hp_url += "&chainID=%d" % _SIMULATOR_CHAIN_IDS[hp_chain]
+        _honeypot_signals(await _fetch_json(hp_url, mark_missing=True),
+                          signals, evidence, data_gaps, chain=hp_chain)
     elif _looks_solana(address):
         _rugcheck_signals(
             await _fetch_json("https://api.rugcheck.xyz/v1/tokens/%s/report" % address),

@@ -24,6 +24,21 @@ waiting for tomorrow's launches we can read any past Tuesday -- and a pool launc
 months ago has already finished being whatever it was going to be, which is exactly the
 resolved outcome the labeller needs.
 
+Which days to harvest
+---------------------
+Both ends, and for different labels.
+
+The outcome labels (`dead`, `alive`) need a pool old enough to have finished becoming
+whatever it became, so they come from months back. The contract label (`unsafe`) wants the
+opposite: it needs no resolution at all, but a honeypot flag only counts where the pool
+still trades, and a pool from last spring does not. Measured over the labelled set, five
+of nine unsafe tokens came from three days of snapshot archive and three from eleven
+backfill days spanning a year -- about ten times the yield per day, from the recent end.
+
+So this also runs *forwards*, recovering the recent days the snapshot archive missed
+because it only started collecting on 2026-09-03. The archive will cover them from now on;
+backfill is how the first weeks stop being a hole.
+
 What this is not
 ----------------
 Not a replacement for bench/snapshot.py. Backfill sees only what a factory event records,

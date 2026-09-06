@@ -13,7 +13,9 @@ Run:  python tests/test_upstream_contract.py
 """
 
 import json
+import os
 import subprocess
+import time
 import sys
 
 TIMEOUT = "30"
@@ -142,11 +144,69 @@ def test_rugcheck():
           d.get("risks") is None or isinstance(d.get("risks"), list), "")
 
 
+
+def test_simulator_chain_coverage():
+    """The chains we believe the sell simulator covers are the ones it actually covers.
+
+    `src/risk.py` hardcodes three, and uses that list to decide whether a 404 is a fact
+    about the token or a gap in our own coverage. If honeypot.is adds a chain and the list
+    does not, the engine goes on declining to check it forever and blaming its own
+    coverage -- politely, and wrongly. If it drops one, the engine starts telling users a
+    healthy token has no record anywhere.
+
+    Both directions are checked. A hardcoded list that nothing compares against the world
+    is a belief, not a fact.
+    """
+    print("\n[coverage] honeypot.is supports exactly the chains we think it does")
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                    "..", "src"))
+    import risk  # noqa: E402
+
+    # A real, liquid token on each chain the tool advertises as a chain_hint.
+    PROBE = {
+        "ethereum": (1, "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
+        "bsc": (56, "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c"),
+        "base": (8453, "0x4200000000000000000000000000000000000006"),
+        "arbitrum": (42161, "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"),
+        "polygon": (137, "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"),
+        "optimism": (10, "0x4200000000000000000000000000000000000006"),
+        "avalanche": (43114, "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7"),
+    }
+
+    answers = {}
+    for name, (cid, addr) in PROBE.items():
+        body = get("https://api.honeypot.is/v2/IsHoneypot?address=%s&chainID=%d"
+                   % (addr, cid))
+        answers[name] = bool(body and "honeypotResult" in body)
+        time.sleep(2.0)
+
+    reachable = [n for n, ok in answers.items() if ok]
+    check("at least the three we rely on answer",
+          all(answers.get(n) for n in ("ethereum", "bsc", "base")),
+          str(answers))
+
+    believed = set(risk._SIMULATOR_CHAIN_IDS)
+    actual = set(reachable)
+    check("nothing we rely on has been dropped", believed <= actual,
+          "we believe %s, it answers %s" % (sorted(believed), sorted(actual)))
+    check("nothing new is being refused for no reason", actual <= believed,
+          "it now also answers %s -- add it to _SIMULATOR_CHAIN_IDS"
+          % sorted(actual - believed))
+
+    # The ids themselves have to be right, or we would be asking about the wrong chain.
+    for name, (cid, _addr) in PROBE.items():
+        if name in risk._SIMULATOR_CHAIN_IDS:
+            check("%s maps to chain id %d" % (name, cid),
+                  risk._SIMULATOR_CHAIN_IDS[name] == cid,
+                  str(risk._SIMULATOR_CHAIN_IDS.get(name)))
+
 def main():
     print("=" * 68)
     print("VetAgent upstream contract tests (live network)")
     print("=" * 68)
-    for fn in (test_dexscreener, test_honeypot_is, test_geckoterminal, test_rugcheck):
+    for fn in (test_dexscreener, test_honeypot_is, test_geckoterminal, test_rugcheck,
+               test_simulator_chain_coverage):
         fn()
     print("\n" + "=" * 68)
     print("%d passed, %d failed" % (_PASSED, len(_FAILURES)))
