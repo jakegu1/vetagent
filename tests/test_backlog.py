@@ -32,6 +32,37 @@ _PASSED = 0
 _ROW = re.compile(r"^\|\s*(W\d+)\s*\|(.+)$", re.M)
 
 
+# What counts as naming a verification.
+#
+# The rule used to be `len(verify) < 25` -- a character count. Measured against its own
+# stated purpose it ran backwards:
+#
+#     "we will know it when we see it, probably soon enough"  52 chars, verifies
+#                                                             nothing          -> PASSED
+#     "`pytest -k owner`"                                     17 chars, an
+#                                                             actual command   -> REJECTED
+#
+# So the guard rewarded vagueness for being wordy and rejected the most precise answer
+# available for being short. A backlog item's verification is supposed to be the thing
+# somebody else can run; length is not even a proxy for that.
+#
+# The replacement asks for one of the three shapes a real verification takes: something
+# runnable in backticks, a path to the file that does it, or a number to hit. It is not
+# clever and it is not complete -- "`ls`" would pass -- but every shape it accepts is
+# checkable by a reader, and the shape it rejects is prose.
+_VERIFIABLE = re.compile(
+    r"`[^`]+`"              # a command or symbol in backticks
+    r"|\.py\b|\.md\b|\.yml\b"    # a file that carries the check
+    r"|\d+\s*%"             # a target rate
+    r"|\b\d[\d,]*\b",        # a target count
+)
+
+
+def names_a_verification(text):
+    """Whether a backlog row says something a reader could actually go and check."""
+    return bool(_VERIFIABLE.search(text or ""))
+
+
 def check(name, condition, detail=""):
     global _PASSED
     if condition:
@@ -42,10 +73,39 @@ def check(name, condition, detail=""):
         print("  FAIL  %s  %s" % (name, detail))
 
 
+def test_the_verification_rule_measures_verification():
+    """The old rule was anti-correlated with what it claimed to measure.
+
+    Found by external audit, which tested it directly rather than reading it. `len(verify)
+    < 25` accepted a 52-character sentence that verifies nothing and rejected a
+    17-character shell command that verifies something. A guard whose failures and passes
+    run opposite to its purpose is worse than no guard, because it certifies the thing it
+    was meant to catch.
+    """
+    print("\n[backlog] the rule accepts checkable things and rejects prose")
+    for text in ("`pytest -k owner`",
+                 "`python bench/usage.py --days 14`",
+                 "tests/test_risk.py goes green",
+                 "false positive rate below 5%",
+                 "at least 3 trial commitments"):
+        check("accepts %r" % text[:38], names_a_verification(text), "rejected")
+    for text in ("we will know it when we see it, probably soon enough",
+                 "it should be obvious once the work is finished",
+                 "when it feels right",
+                 ""):
+        check("rejects %r" % text[:38], not names_a_verification(text), "accepted")
+
+
 def main():
     print("=" * 68)
     print("Backlog: every open item can be verified")
     print("=" * 68)
+
+    # Discovered, not listed. Fourth runner in this repository to hide a test from
+    # itself by naming its checks by hand.
+    for _, _fn in sorted((k, v) for k, v in globals().items()
+                         if k.startswith("test_")):
+        _fn()
 
     if not os.path.exists(BACKLOG):
         print("docs/BACKLOG.md is missing -- the queue has no home.")
@@ -98,7 +158,7 @@ def main():
 
         if state.startswith("Open"):
             states["open"] += 1
-            if len(verify) < 25:
+            if not names_a_verification(verify):
                 no_verify.append("%s (%r)" % (r["id"], verify[:40]))
         elif state.startswith("Blocked"):
             states["blocked"] += 1
