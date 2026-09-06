@@ -341,6 +341,63 @@ def _urlq(value):
     return "".join(out)
 
 
+def _low_recommendation(evidence):
+    """The `low` sentence, saying which owner-power case we are actually in.
+
+    All three bytecode outcomes used to produce one byte-identical sentence:
+
+        all four powers present   low / score 3 / confidence high
+        no powers found           low / score 0 / confidence high
+        RPC unreadable            low / score 0 / confidence high
+
+    Distinct recommendation strings across the three: one. The generic list of four
+    powers was recited whether we had found all of them, none of them, or had not been
+    able to look -- so the one sentence an agent is guaranteed to read could not tell
+    those apart, and a warning printed on every `low` verdict is a warning callers learn
+    to skip.
+
+    E19 (disclose, do not score) is unchanged and is not the problem: n=9 cannot support a
+    threshold, and scoring an unvalidated one is how the false positives got in. The score
+    is identical in all three cases here. What changes is that the sentence stops being
+    identical.
+
+    The unreadable case was the worst of the three and a fresh E11:
+    `owner_powers.unavailable` recorded that we could not look, and nothing in the
+    verdict, the confidence or the recommendation reflected it -- an unobserved dimension
+    delivered exactly like an observed absence, on the field whose own docstring is about
+    that distinction.
+    """
+    base = ("Low risk: sellable and liquid when checked, no fatal signal. The exit was "
+            "open when we looked; that is not the same as it cannot be closed. ")
+    info = evidence.get("owner_powers")
+
+    if not isinstance(info, dict):
+        # No bytecode scan applies here at all (non-EVM, or an unsupported chain).
+        return base + ("Owner powers -- switchable tax, pausable transfers, blacklist, "
+                       "removable liquidity -- were not checked on this chain.")
+
+    if info.get("unavailable"):
+        return base + ("**Owner powers unchecked**: bytecode unreadable (%s). A gap on "
+                       "our side, not a clean result."
+                       % _ascii_safe(info.get("unavailable"), 24))
+
+    powers = [p for p in (info.get("powers") or []) if p]
+    if powers:
+        return base + ("**This contract can: %s.** None was switched on while we "
+                       "looked -- these are capabilities, not behaviour, which is why "
+                       "the verdict is low. Whoever holds the keys can change that."
+                       % ", ".join(_ascii_safe(p, 40) for p in powers))
+
+    if info.get("is_proxy"):
+        return base + ("A proxy: its logic lives at another address, so owner powers "
+                       "are not readable here. Whoever can upgrade it can change the "
+                       "token's behaviour after you buy.")
+
+    return base + ("A scan for pause, blacklist, mutable-tax and mint functions found "
+                   "none here. Read that as 'nothing found', not 'nothing there': it "
+                   "catches about a third of the powers that exist.")
+
+
 def _sig(severity, name, message, category):
     return {"severity": severity, "name": name, "message": message, "category": category}
 
@@ -508,7 +565,7 @@ def _finalize(address, signals, evidence, data_gaps):
             # deliberately hold out (B2 in DECISIONS.md). So `low` means the exit
             # was open when we looked -- not that nobody can close it tomorrow, and
             # a caller is entitled to be told which of those we checked.
-            "low": "Low risk: sellable and liquid when checked, no fatal signal. Narrower than 'not a scam': dormant owner powers (switchable tax, pausable transfers, blacklist, removable liquidity) are not covered. The exit is open now; that is not the same as it cannot be closed.",
+            "low": _low_recommendation(evidence),
             "unknown": "Not assessed. A critical check could not be completed, so this is NOT a low-risk result and must not justify a trade. See evidence.data_gaps.",
         }[level])
     return result

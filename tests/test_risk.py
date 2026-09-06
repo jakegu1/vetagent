@@ -659,6 +659,80 @@ def test_unranked_chains_get_a_price_sanity_check():
           str([(x["category"], x["name"]) for x in fork["signals"]]))
 
 
+def test_the_recommendation_says_what_we_actually_found():
+    """Same token, three bytecode outcomes, one identical sentence.
+
+    Found by external audit, which ran the three cases and counted the distinct
+    recommendation strings: **one**.
+
+        all four owner powers present   low / score 3 / confidence high
+        no powers found                 low / score 0 / confidence high
+        RPC unreadable                  low / score 0 / confidence high
+
+    E19 -- disclose, do not score -- is right and is not what is being changed here. n=9
+    cannot support a threshold, and scoring an unvalidated one is how the false positives
+    got in. The defect is delivery: the `low` recommendation recites the same generic list
+    of four powers whether we found all of them, none of them, or could not look, so the
+    one sentence an agent is guaranteed to read cannot tell those apart. A warning printed
+    on every single `low` verdict is a warning callers learn to skip.
+
+    The third row is a fresh E11 and the worst of the three: `owner_powers.unavailable`
+    records that we could not look, and nothing in the verdict, the confidence or the
+    recommendation reflects it. An unobserved dimension reported exactly like an observed
+    absence -- the pattern this project keeps paying for, on the field whose own docstring
+    is about that pattern.
+
+    Nothing here touches the score.
+    """
+    print("\n[disclosure] the recommendation distinguishes found, none, and unreadable")
+
+    def clean_pair():
+        return {"pairs": [{"chainId": "ethereum", "dexId": "uniswap",
+                           "baseToken": {"address": WETH, "symbol": "TKN"},
+                           "quoteToken": {"address": "0xq"}, "priceUsd": "1.0",
+                           "liquidity": {"usd": 900_000}, "volume": {"h24": 400_000},
+                           "txns": {"h24": {"buys": 900, "sells": 800}},
+                           "pairCreatedAt": 1589841515000}]}
+
+    def assess_with(powers_info):
+        install_stub([("dex/tokens", clean_pair()), ("dex/search", {"pairs": []}),
+                      ("honeypot.is", _load("hp_matic.json"))])
+        real = risk._owner_powers
+
+        async def _fake(address, chain):
+            return powers_info
+        risk._owner_powers = _fake
+        try:
+            return run(risk.assess(WETH, chain_hint="ethereum"))
+        finally:
+            risk._owner_powers = real
+
+    found = assess_with({"powers": ["can pause transfers", "can blacklist addresses"],
+                         "scan_is_incomplete": True, "found_none": False,
+                         "is_proxy": False, "bytecode_bytes": 4096})
+    none = assess_with({"powers": [], "scan_is_incomplete": True, "found_none": True,
+                        "is_proxy": False, "bytecode_bytes": 4096})
+    blind = assess_with({"unavailable": "rpc 429"})
+
+    for label, r in (("found", found), ("none", none), ("blind", blind)):
+        check("%s is still low -- the score is untouched" % label,
+              r["risk_level"] == "low", r["risk_level"])
+
+    recs = {r["recommendation"] for r in (found, none, blind)}
+    check("the three cases produce three different sentences", len(recs) == 3,
+          "%d distinct: %s" % (len(recs), [x[:60] for x in recs]))
+
+    check("when powers are found, it names them",
+          "pause transfers" in found["recommendation"], found["recommendation"])
+    check("when the lookup failed, it says so",
+          "could not" in blind["recommendation"].lower()
+          or "unreadable" in blind["recommendation"].lower(),
+          blind["recommendation"])
+    check("and a failed lookup is not described as finding nothing",
+          "found none" not in blind["recommendation"].lower(),
+          blind["recommendation"])
+
+
 def test_an_error_body_is_not_data():
     """GeckoTerminal says "you have exceeded the rate limit" with a 200 attached.
 
