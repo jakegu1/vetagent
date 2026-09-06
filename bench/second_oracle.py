@@ -37,8 +37,40 @@ WHAT WE ALREADY KNOW WITHOUT SPENDING ANYTHING
 The unknowns do not appear to be hiding danger. Among those with a market outcome,
 `simulation failed` is 2 dead of 17 (12%) and `no record` is 0 of 6, against a 16% base
 rate across the labelled set. Small n, so this is directional — but it means the unknown
-rate is a usability problem (one query in six goes unanswered), not a safety hole. Anyone
-arguing for the paid tier on safety grounds has to beat that number first.
+rate is a usability problem (one query in six goes unanswered), not a safety hole.
+
+A CLAIM RETRACTED, 2026-09-07
+
+An earlier version of this file said the 42 BUY_FAILED unknowns were on-chain reverts
+that a second simulator would reproduce identically, and put the recovery ceiling at
+9.5%. That was wrong, and an auditor caught it using data already in this repository.
+
+Of the 45 BUY_FAILED/SETUP_FAILED tokens, 18 carry a market-outcome label and 16 of them
+are alive: crvUSD holding $97.6M, USDG $20M, SPR $11.1M, XAUt $1.7M, all trading daily.
+A buy that genuinely reverts on chain does not describe a token with $20M of depth and
+continuous volume. Both lines sat in the same commit -- "17 have outcome labels, only 2
+dead" and "a second simulator reproduces them identically" -- and only the second was
+reasoned from, because it came from a subagent while the first was my own measurement.
+
+Diagnosed since: honeypot.is picks its own pair and reverts on it. For USDG it chose
+0xa38Cd437... while our chosen pool held $20,030,126. Passing our pair turns XAUt from
+BUY_FAILED into a clean simulation with honeypot=False. Where the pool sits on a DEX it
+cannot simulate at all (Curve, Aerodrome) it still cannot answer -- a coverage limit, not
+a fact about the token.
+
+So the recovery ceiling is not 9.5%, a second simulator with different venue coverage
+would help, and any argument that leaned on this to dismiss the engine role was leaning
+on something false. What still stands against that role is the licence question and the
+zero marginal chain coverage; neither of them needed this claim.
+
+A RELATED CLAIM, ALSO WRONG
+
+I said the fee-on-transfer hypothesis was free to test from cached honeypot.is responses.
+It is not. Across 1,104 cached responses every simulation failure is flattened to
+"HP: BUY_FAILED", and INSUFFICIENT_OUTPUT_AMOUNT appears in only 10 -- all of them in
+`honeypotResult.honeypotReason` for tokens already flagged, never in the
+`simulationError` of a BUY_FAILED case. Nothing on disk separates fee-on-transfer from
+any other buy failure.
 
 B2 COMPLIANCE
 

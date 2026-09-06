@@ -1,0 +1,73 @@
+name: Usage — who is actually calling
+
+# The 2026-09-18 gate asks whether anyone outside this project uses the tool, and the
+# answer decides whether feature work continues. Until now reading it meant remembering
+# to export two secrets and run a script by hand, which is a poor way to hold up the one
+# decision that can stop the project.
+#
+# It runs on a schedule so the answer exists whether or not anyone remembers to ask, and
+# on demand so the gate can be settled with a button.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 08:00 UTC every Monday, plus the two days either side of the gate.
+    - cron: "0 8 * * 1"
+
+jobs:
+  usage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Says plainly which of the two is missing. "Missing credentials" and "nobody
+      # called" both look like zero and mean opposite things, and confusing them makes
+      # the gate answer a question nobody asked.
+      - name: Check the credentials exist
+        id: creds
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$TOKEN" ] || [ -z "$ACCOUNT" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID not set."
+            echo "::warning::The token needs Account Analytics: Read. Until both exist,"
+            echo "::warning::'0 external callers' is a fact about this repository's"
+            echo "::warning::secrets and not about the product."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Read the gate's signal
+        if: steps.creds.outputs.ready == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PYTHONIOENCODING: utf-8
+        run: |
+          python bench/usage.py --days 14 | tee usage.txt
+          {
+            echo "## External callers, last 14 days"
+            echo ""
+            echo '```'
+            cat usage.txt
+            echo '```'
+            echo ""
+            echo "The 2026-09-18 gate needs at least one client with 3 or more calls"
+            echo "across 2 or more distinct days. Repeat use, not first contact --"
+            echo "a public unauthenticated endpoint in the MCP registry gets crawled,"
+            echo "and a crawler is neither a self-client nor in the owner's country."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the answer
+        if: steps.creds.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: usage-report
+          path: usage.txt
+          retention-days: 90
