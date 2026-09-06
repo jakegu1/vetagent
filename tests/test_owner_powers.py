@@ -201,12 +201,66 @@ def test_a_real_contract_reads_correctly():
 
 
 
+def test_minimal_and_slot_proxies_are_recognised():
+    """`is_proxy` looked for one selector, and missed the proxy that has no selectors.
+
+    Found by external audit, with the strongest evidence in the report: bytecode fetched
+    for 555 dataset contracts, and **53 of 53 EIP-1167 minimal proxies read
+    `is_proxy=False`**. Of 99 contracts the labelling oracle flags as proxies, 49 read
+    False, and 48 of those then got the silent empty-`powers` treatment.
+
+    The check was `"5c60da1b" in body` -- the selector for `implementation()`. An EIP-1167
+    minimal proxy has no dispatcher and no selectors at all: it is 45 bytes of delegatecall
+    around a hardcoded address. Looking for a function in a contract that has no functions.
+
+    Why it matters is the pattern this project keeps paying for. `is_proxy` exists so that
+    `found_none` can be read correctly -- a proxy's logic lives at another address, so
+    finding no powers in *this* bytecode means nothing whatsoever. With `is_proxy` wrong,
+    `evidence.owner_powers` says "no powers found, and this is not a proxy" about a
+    contract whose behaviour is entirely somewhere else. An unobserved dimension reported
+    as an observed absence, on the one field whose whole job was to prevent that reading.
+    """
+    print("\n[proxy] a proxy with no functions is still a proxy")
+
+    # A real EIP-1167 minimal proxy: prefix, 20-byte implementation address, suffix.
+    impl = "bebc44782c7db0a1a60cb6fe97d0b483032ff1c7"
+    eip1167 = "0x363d3d373d3d3d363d73" + impl + "5af43d82803e903d91602b57fd5bf3"
+    r = risk._powers_from_code(eip1167)
+    check("an EIP-1167 minimal proxy is recognised", r and r["is_proxy"] is True,
+          repr(r))
+    check("and it does not claim the contract has no powers",
+          r and r["found_none"] is False, repr(r))
+
+    # ERC-1967: the implementation slot constant appears in the bytecode.
+    slot = "360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
+    erc1967 = "0x6080604052" + slot + "600080fd"
+    r2 = risk._powers_from_code(erc1967)
+    check("an ERC-1967 slot proxy is recognised", r2 and r2["is_proxy"] is True,
+          repr(r2))
+
+    # The original transparent-proxy selector still works.
+    r3 = risk._powers_from_code("0x6080604052635c60da1b600080fd")
+    check("implementation() still counts", r3 and r3["is_proxy"] is True, repr(r3))
+
+    # And an ordinary contract is still not a proxy.
+    r4 = risk._powers_from_code("0x6080604052" + "63a9059cbb" + "600080fd")
+    check("a plain token is not called a proxy", r4 and r4["is_proxy"] is False,
+          repr(r4))
+
+    # Case-insensitivity: node responses are not consistent about hex casing.
+    r5 = risk._powers_from_code(eip1167.upper().replace("0X", "0x"))
+    check("uppercase bytecode is read the same way", r5 and r5["is_proxy"] is True,
+          repr(r5))
+
+
 def main():
     print("=" * 68)
     print("Owner-power disclosure")
     print("=" * 68)
-    for fn in (test_selectors_are_real, test_disclosure_never_moves_the_verdict,
-               test_a_real_contract_reads_correctly):
+    # Discovered, not listed. A hand-maintained list means a new test runs only if
+    # someone remembers to add it, and a test that never runs is worse than no test --
+    # it reports PASS by silence. test_risk.py and test_mcp.py already discover.
+    for _, fn in sorted((k, v) for k, v in globals().items() if k.startswith("test_")):
         fn()
     print("\n" + "=" * 68)
     print("%d passed, %d failed" % (_PASSED, len(_FAILURES)))

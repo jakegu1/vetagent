@@ -1051,6 +1051,36 @@ _OWNER_POWERS = {
 }
 _PROXY_SELECTOR = "5c60da1b"   # implementation()
 
+# EIP-1167 minimal proxy: 45 bytes of delegatecall around a hardcoded address, with no
+# dispatcher and no selectors at all. Looking for `implementation()` in it was looking for
+# a function in a contract that has no functions -- 53 of 53 in the benchmark read as "not
+# a proxy", and then got the silent empty-powers treatment.
+_EIP1167_PREFIX = "363d3d373d3d3d363d73"
+_EIP1167_SUFFIX = "5af43d82803e903d91602b57fd5bf3"
+
+# ERC-1967: keccak256("eip1967.proxy.implementation") - 1, embedded in the bytecode of
+# every upgradeable proxy that follows the standard.
+_ERC1967_SLOT = "360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
+
+
+def _is_proxy_code(body):
+    """Whether this bytecode delegates its behaviour to another address.
+
+    Three shapes, because "proxy" is not one thing: the transparent proxy that exposes
+    `implementation()`, the minimal proxy that exposes nothing, and the ERC-1967
+    upgradeable proxy that carries the implementation slot constant.
+
+    This matters more than it looks. `is_proxy` exists so `found_none` can be read
+    correctly -- a proxy's logic lives at another address, so finding no powers in *this*
+    bytecode means nothing whatsoever. With it wrong, the evidence said "no powers found,
+    and this is not a proxy" about a contract whose behaviour is entirely somewhere else:
+    an unobserved dimension reported as an observed absence, on the one field whose whole
+    job was to prevent that reading.
+    """
+    if _PROXY_SELECTOR in body or _ERC1967_SLOT in body:
+        return True
+    return _EIP1167_PREFIX in body and _EIP1167_SUFFIX in body
+
 
 async def _owner_powers(address, chain):
     """Which exit-closing powers this contract's bytecode contains. None if unreadable.
@@ -1120,10 +1150,14 @@ def _powers_from_code(code):
         # read as a clean contract. Stated in the payload because an empty array is
         # exactly the kind of thing a caller reads as reassurance.
         "scan_is_incomplete": True,
-        "found_none": not powers,
+        # Only claimed when we actually read the contract that holds the behaviour. For a
+        # proxy this bytecode is a forwarder, so "found none" would be a statement about
+        # the wrong contract -- and it is the exact statement a caller is most likely to
+        # misread as reassurance.
+        "found_none": not powers and not _is_proxy_code(body),
         # A proxy's logic lives at another address, so the absence of a power here means
         # nothing at all. Saying so beats an empty list that reads as "none found".
-        "is_proxy": _PROXY_SELECTOR in body,
+        "is_proxy": _is_proxy_code(body),
         "bytecode_bytes": len(body) // 2,
     }
 
@@ -1182,6 +1216,13 @@ def _owner_power_signal(info, signals, evidence):
             "has been used against you -- this is what the contract *can* do, not what it "
             "has done, and it does not change the rating. Plenty of legitimate tokens "
             "carry these." % ", ".join(info["powers"]), "contract"))
+    elif info.get("is_proxy"):
+        signals.append(_sig(
+            "info", "This contract's behaviour lives at another address",
+            "It is a proxy: calls are forwarded to an implementation contract, so a scan "
+            "of this address says nothing about what the token can do. Whoever can "
+            "upgrade the implementation can change its behaviour after you buy.",
+            "contract"))
     elif info.get("found_none"):
         signals.append(_sig(
             "info", "No owner powers found, which is weaker than it sounds",
