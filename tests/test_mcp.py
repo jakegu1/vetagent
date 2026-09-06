@@ -195,6 +195,71 @@ def test_verbose_flag_changes_payload_size():
     check("slim output < 1800 bytes", slim < 1800, "%d" % slim)
 
 
+def test_array_params_are_rejected_not_fatal():
+    """`"params": [1, 2]` is legal JSON-RPC, and it took the endpoint down.
+
+    Found by external audit. `params = body.get("params") or {}` leaves a list intact --
+    a list is truthy -- and `_call_tool` then calls `params.get("name")`, which raises
+    AttributeError. `/mcp` is routed before the try/except that guards `/assess` and
+    `/liquidity`, so nothing caught it. Inside a batch it took down every other message in
+    the batch with it.
+
+    JSON-RPC 2.0 permits `params` to be an Array. This server's methods all take arguments
+    by name, so the right answer is INVALID_PARAMS -- a refusal, which is a normal thing
+    for a protocol to say, rather than a 500 for a request the spec allows.
+
+    Two smaller conformance points fixed with it: `id` is restricted to String, Number or
+    Null, and a dict or list was being echoed back verbatim; and the dispatch is now
+    wrapped so an unforeseen exception becomes INTERNAL_ERROR for that one message instead
+    of a dead response for all of them.
+    """
+    print("\n[jsonrpc] a legal message must not be a fatal one")
+
+    def call(body):
+        return asyncio.run(mcp_server.handle_mcp_request(body))
+
+    # -- Array params: a refusal, not a crash. -------------------------------
+    for method in ("tools/call", "tools/list", "initialize"):
+        try:
+            r = call({"jsonrpc": "2.0", "id": 1, "method": method, "params": [1, 2]})
+        except Exception as e:  # noqa: BLE001
+            check("%s with array params does not raise" % method, False,
+                  "%s: %s" % (type(e).__name__, e))
+            continue
+        check("%s with array params does not raise" % method, True)
+        check("%s with array params is INVALID_PARAMS" % method,
+              (r or {}).get("error", {}).get("code") == mcp_server.INVALID_PARAMS,
+              json.dumps(r)[:200])
+
+    # -- Other non-object params are refused the same way. -------------------
+    for bad in ("a string", 7, True):
+        r = call({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": bad})
+        check("params=%r is refused" % (bad,),
+              (r or {}).get("error", {}).get("code") == mcp_server.INVALID_PARAMS,
+              json.dumps(r)[:200])
+
+    # -- Absent or null params still mean "no arguments". --------------------
+    for ok in ({}, None):
+        r = call({"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": ok})
+        check("params=%r still lists tools" % (ok,), "result" in (r or {}),
+              json.dumps(r)[:200])
+
+    # -- id must be String, Number or Null. ----------------------------------
+    for bad_id in ({"a": 1}, [1, 2]):
+        r = call({"jsonrpc": "2.0", "id": bad_id, "method": "tools/list"})
+        check("a %s id is refused" % type(bad_id).__name__,
+              (r or {}).get("error", {}).get("code") == mcp_server.INVALID_REQUEST,
+              json.dumps(r)[:200])
+        check("and is not echoed back as-is", (r or {}).get("id") is None,
+              json.dumps(r)[:200])
+
+    for good_id in (0, "abc", None, 1.5):
+        body = {"jsonrpc": "2.0", "id": good_id, "method": "tools/list"}
+        r = call(body)
+        check("a %r id is accepted" % (good_id,), "result" in (r or {}),
+              json.dumps(r)[:200])
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)

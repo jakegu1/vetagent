@@ -190,12 +190,32 @@ async def handle_mcp_request(body):
 
     method = body.get("method")
     req_id = body.get("id")
-    params = body.get("params") or {}
 
     # A notification has no "id" key. id=0 is a legal request id, so test for the
     # key itself, not for truthiness.
     if "id" not in body:
         return None
+
+    # JSON-RPC restricts id to String, Number or Null; a dict or list was being echoed
+    # back verbatim. bool is excluded explicitly because in Python it is a subclass of
+    # int, and a JSON boolean is not a Number.
+    if not (req_id is None or isinstance(req_id, str)
+            or (isinstance(req_id, (int, float)) and not isinstance(req_id, bool))):
+        return _error(None, INVALID_REQUEST,
+                      "id must be a string, number or null")
+
+    # `params` was read as `body.get("params") or {}`, and a list is truthy, so an Array
+    # survived unchanged and `_call_tool` then called `.get` on it -- AttributeError,
+    # uncaught, on a message JSON-RPC 2.0 explicitly permits. Every method here takes its
+    # arguments by name, so an Array is a refusal rather than a crash: INVALID_PARAMS is
+    # a normal thing for a protocol to say. Tested against `is None` rather than
+    # truthiness so that `"params": 0` is refused too and does not fall through as {}.
+    params = body.get("params")
+    if params is None:
+        params = {}
+    elif not isinstance(params, dict):
+        return _error(req_id, INVALID_PARAMS, "params must be an object")
+
     if not method:
         return _error(req_id, INVALID_REQUEST, "Missing method")
 

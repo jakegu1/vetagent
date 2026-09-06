@@ -381,16 +381,34 @@ class Default(WorkerEntrypoint):
                     {"jsonrpc": "2.0", "id": None,
                      "error": {"code": mcp_server.INVALID_REQUEST, "message": "Empty batch"}},
                     status=400)
+            # One bad message must not take the batch down with it. /mcp is routed
+            # before the try/except that guards /assess and /liquidity, so an
+            # unforeseen exception here meant no response at all -- for every message
+            # in the batch, including the well-formed ones.
             responses = []
             for item in body:
-                r = await mcp_server.handle_mcp_request(item)
+                try:
+                    r = await mcp_server.handle_mcp_request(item)
+                except Exception:  # noqa: BLE001
+                    r = {"jsonrpc": "2.0",
+                         "id": (item.get("id") if isinstance(item, dict) else None),
+                         "error": {"code": mcp_server.INTERNAL_ERROR,
+                                   "message": "Internal error"}}
                 if r is not None:
                     responses.append(r)
             if not responses:
                 return Response("", headers=_CORS, status=202)
             return _json_response(responses, extra_headers=headers)
 
-        result = await mcp_server.handle_mcp_request(body)
+        try:
+            result = await mcp_server.handle_mcp_request(body)
+        except Exception:  # noqa: BLE001
+            return _json_response(
+                {"jsonrpc": "2.0",
+                 "id": (body.get("id") if isinstance(body, dict) else None),
+                 "error": {"code": mcp_server.INTERNAL_ERROR,
+                           "message": "Internal error"}},
+                extra_headers=headers)
 
         # Record one usage point: which tool was called, what the verdict was, and
         # what kind of client it came from. No addresses, no IPs.
