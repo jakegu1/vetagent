@@ -37,6 +37,11 @@ _GT_NETWORK = {
 # Reverse: GeckoTerminal network id -> our canonical chain name
 _GT_TO_CHAIN = {"eth": "ethereum", "polygon_pos": "polygon", "avax": "avalanche"}
 
+# The chain names we can actually recognise in a caller's hint. Deliberately *not* the
+# set of chains that exist: DexScreener covers many more, and a name it hands us is an
+# observation whatever we think of it. This set exists only to judge a **claim**.
+_KNOWN_CHAINS = frozenset(_GT_TO_CHAIN.get(v, v) for v in _GT_NETWORK.values())
+
 # How canonical a chain is; lower is more trustworthy.
 # This is a safety property, not a preference: Ethereum forks like pulsechain
 # **inherit the same contract address**, so USDC's address has pools there too,
@@ -1104,14 +1109,17 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
         # Our coverage gap, not the token's absence: excluded from the no-trace
         # escalation by starting the reason with the phrase _finalize reserves for
         # our own shortcomings.
+        # Escaped on the way out: `chain` can be an observed name from upstream, and
+        # upstream text does not get to write sentences in our voice.
+        safe_chain = _ascii_safe(chain, 24)
         data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
                           "reason": "upstream request failed: the sell simulator does "
-                                    "not cover %s" % chain})
+                                    "not cover %s" % safe_chain})
         signals.append(_sig(
             "warn", "Sellability cannot be checked on this chain",
             "The sell-simulation service does not cover %s, so this token's sellability "
             "could not be tested. That is a gap in our coverage and says nothing about "
-            "the token." % chain, "sellability"))
+            "the token." % safe_chain, "sellability"))
         return
 
     if hp is NO_DATA:
@@ -1586,12 +1594,32 @@ async def assess(address, chain_hint=None, verbose=False):
         # change itself an hour later.
         #
         # The hint is still the fallback, for the case where no pool was found at all.
-        hp_chain = _chain_of(evidence) or _canonical_chain(chain_hint)
+        #
+        # An observed chain is a fact; a claimed one is a fact only if we recognise it.
+        # `_canonical_chain` hands back the caller's string unchanged when it recognises
+        # nothing in it, so `chain_hint="erc-20"` used to become the chain "erc-20" --
+        # and every branch downstream then reasoned about a chain that does not exist,
+        # including one that files its gap as *our* outage and excuses the token from the
+        # no-trace escalation. A typo should not buy a token an alibi.
+        observed = _chain_of(evidence)
+        claimed = _canonical_chain(chain_hint)
+        claimed_is_known = claimed in _KNOWN_CHAINS
+        hp_chain = observed or (claimed if claimed_is_known else "")
         hp_url = "https://api.honeypot.is/v2/IsHoneypot?address=%s" % address
         if hp_chain in _SIMULATOR_CHAIN_IDS:
             hp_url += "&chainID=%d" % _SIMULATOR_CHAIN_IDS[hp_chain]
         _honeypot_signals(await _fetch_json(hp_url, mark_missing=True),
                           signals, evidence, data_gaps, chain=hp_chain)
+        if chain_hint and not observed and not claimed_is_known:
+            # Worth a signal rather than a silent shrug: the caller believes they scoped
+            # this request to a chain, and they did not. Naming what we do recognise lets
+            # an agent correct itself on the next call instead of trusting an answer that
+            # was never scoped the way it asked.
+            signals.append(_sig(
+                "info", "Chain hint not recognised",
+                "The chain hint %s is not a chain name this tool knows, so it was "
+                "ignored and every chain was considered. Recognised names: %s."
+                % (_quoted(chain_hint), ", ".join(sorted(_KNOWN_CHAINS))), "coverage"))
     elif _looks_solana(address):
         _rugcheck_signals(
             await _fetch_json("https://api.rugcheck.xyz/v1/tokens/%s/report" % address),
