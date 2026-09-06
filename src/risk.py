@@ -402,7 +402,22 @@ def _finalize(address, signals, evidence, data_gaps):
     # unknown -- the exact token this escalation was written for.
     if evidence.get("pools_all_empty"):
         token_side_dims.add("liquidity")
-    if token_side_dims >= set(_CRITICAL_DIMENSIONS):
+    # ...and only when we know which chain we searched.
+    #
+    # "Nothing about this token can be verified" is a claim about the token, and it is the
+    # loudest thing this engine says on its own authority. With no pair found and no chain
+    # hint, we do not know what chain the address is on: the simulator was asked about its
+    # default chain, answered "no record", and that answer -- about the wrong chain, or
+    # about no particular chain -- was read as the token having no trace anywhere. The
+    # premise is false for four of the seven chains this tool advertises.
+    #
+    # The gate is "we know where we looked", not "the chain is one the simulator covers".
+    # The narrower version is right for EVM and wrong at the edge: Solana's sellability
+    # oracle is RugCheck, not the simulator, and Solana is not in _SIMULATOR_CHAINS, so
+    # that gate would have switched the escalation off for an entire chain. A known chain
+    # the simulator does not cover is already handled -- the coverage branch files that
+    # gap as ours, so the escalation cannot fire regardless.
+    if token_side_dims >= set(_CRITICAL_DIMENSIONS) and evidence.get("chain_searched"):
         level = "high"
         score = max(score, 70)
         signals.append(_sig(
@@ -1516,6 +1531,7 @@ _SLIM_EVIDENCE_KEYS = (
     "price_change_24h_pct",
     "sellability_from_chain",
     "pools_all_empty",
+    "chain_searched",
     "same_symbol",
 )
 
@@ -1526,7 +1542,21 @@ async def assess(address, chain_hint=None, verbose=False):
     _STALE_HITS.set([])         # per-request; drained into evidence at the end
     signals, evidence, data_gaps = [], {}, []
 
+    # Which chain this answer is about, recorded before anything is concluded from it.
+    #
+    # An observation beats a claim: pools we actually saw settle the chain even when none
+    # of them is usable, which is the drained-token case -- the pools are on Ethereum
+    # whether or not any of them can be priced. Failing that, a hint we recognise. Failing
+    # that, empty, and callers can see that we did not know.
     pairs, source = await _load_pairs(address, chain_hint)
+    if _looks_solana(address):
+        evidence["chain_searched"] = "solana"
+    else:
+        scope = _home_scope(pairs or [], chain_hint, address)
+        observed_chain = ((scope[0].get("chainId") or "").lower() if scope else "")
+        claimed_chain = _canonical_chain(chain_hint)
+        evidence["chain_searched"] = observed_chain or (
+            claimed_chain if claimed_chain in _KNOWN_CHAINS else "")
     if pairs is None:
         data_gaps.append({"dimension": "liquidity", "source": "dexscreener+geckoterminal",
                           "reason": "upstream request failed"})

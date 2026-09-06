@@ -403,6 +403,82 @@ def test_chain_activity_overrules_a_honeypot_verdict():
           str([(x["severity"], x["name"]) for x in hp3]))
 
 
+def test_the_escalation_must_know_where_it_looked():
+    """"Nothing about this token can be verified" is a claim about the token.
+
+    Found by external audit. The no-trace escalation says: no market data source could
+    price it, its sellability could not be simulated, and every legitimate token clears at
+    least one of those. It is the loudest thing this engine says on its own authority.
+
+    With no pair found and no chain hint, we do not know what chain the address is on. The
+    simulator was then asked about its default chain, answered "no record", and that
+    answer -- about the wrong chain, or about no particular chain -- was read as the
+    token having no trace anywhere. The premise is false for four of the seven chains
+    this tool advertises.
+
+    The audit proposed gating on `chain in _SIMULATOR_CHAINS`. That is right for EVM and
+    wrong at the edge: Solana's sellability oracle is RugCheck, not the simulator, and
+    Solana is not in that set -- the gate would have silently switched the escalation off
+    for a whole chain. The property that actually matters is weaker and more honest: we
+    must know **which chain we searched**. When the chain is known but uncovered, the
+    coverage branch already files the gap as ours and the escalation cannot fire anyway.
+    """
+    print("\n[no-trace] a verdict about a token requires knowing where we looked")
+
+    def assess(pairs, hint=None, addr=WETH):
+        install_stub([("dex/tokens", {"pairs": pairs}), ("dex/search", {"pairs": []}),
+                      ("honeypot.is", risk.NO_DATA), ("goplus", None),
+                      ("rugcheck", risk.NO_DATA)])
+        return run(risk.assess(addr, chain_hint=hint))
+
+    def escalated(r):
+        return any(x["name"] == "Nothing about this token can be verified"
+                   for x in r["signals"])
+
+    # -- 1. No pair, no hint: we do not know where we looked. ----------------
+    blind = assess([])
+    check("no chain and no pair does not become a verdict", not escalated(blind),
+          "%s -- %s" % (blind["risk_level"], [x["name"] for x in blind["signals"]]))
+    check("it is declined, not answered", blind["risk_level"] == "unknown",
+          blind["risk_level"])
+
+    # -- 2. A hint we recognise tells us where we looked. --------------------
+    told = assess([], "ethereum")
+    check("a known chain with no trace anywhere is still the finding", escalated(told),
+          "%s -- %s" % (told["risk_level"], [x["name"] for x in told["signals"]]))
+    check("and it is high", told["risk_level"] == "high", told["risk_level"])
+
+    # -- 3. A hint we do not recognise tells us nothing. ---------------------
+    #
+    # This revises a claim made two commits ago. The E-2 test asserted that an
+    # unrecognised hint must still escalate -- E-2 was about the gap being misfiled as
+    # *our* outage, and I read "not excused" as "therefore convicted". It is neither: an
+    # unrecognised hint leaves us not knowing which chain to search, so the honest answer
+    # is `unknown`. What survives from E-2 is that the gap is not filed as our outage and
+    # the false sentence is not printed.
+    typo = assess([], "erc-20")
+    check("an unrecognised hint does not become a verdict either", not escalated(typo),
+          "%s -- %s" % (typo["risk_level"], [x["name"] for x in typo["signals"]]))
+
+    # -- 4. Observed pools settle the chain even when none is usable. --------
+    drained_pairs = [{"chainId": "ethereum", "dexId": "uniswap",
+                      "baseToken": {"address": WETH, "symbol": "TKN"},
+                      "quoteToken": {"address": "0xq"}, "priceUsd": "1.0",
+                      "liquidity": {"usd": 0}, "volume": {"h24": 0},
+                      "txns": {"h24": {"buys": 0, "sells": 0}},
+                      "pairCreatedAt": 1589841515000}]
+    seen = assess(drained_pairs)
+    check("pools we saw settle the chain even if none can be priced", escalated(seen),
+          "%s -- %s" % (seen["risk_level"], [x["name"] for x in seen["signals"]]))
+
+    # -- 5. And the caller is told which chain the answer is about. ----------
+    for label, r, want in (("hint", told, "ethereum"), ("observed", seen, "ethereum"),
+                           ("blind", blind, "")):
+        got = (r.get("evidence") or {}).get("chain_searched")
+        check("%s: the answer says which chain it searched" % label, got == want,
+              "%r != %r" % (got, want))
+
+
 def test_a_fork_pool_cannot_silence_a_drained_rug():
     """The drained check counted pools the rest of the engine had already refused.
 
@@ -532,8 +608,11 @@ def test_an_unrecognised_chain_hint_is_not_a_chain():
     check("and the gap is not filed as our own outage",
           not sellability_gap(bad).startswith("upstream request failed"),
           sellability_gap(bad))
-    check("so a token with no trace is still escalated",
-          bad["risk_level"] == "high",
+    # Superseded by test_the_escalation_must_know_where_it_looked, which is where the
+    # reasoning lives: not being excused as our outage is not the same as being convicted.
+    # An unrecognised hint leaves the chain unknown, and `unknown` is the honest answer.
+    check("but it is not convicted either -- we still do not know the chain",
+          bad["risk_level"] == "unknown",
           "%s -- %s" % (bad["risk_level"],
                         [x["name"] for x in bad["signals"]]))
 
