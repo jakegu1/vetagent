@@ -80,6 +80,37 @@ already carries roughly seventeen free token-safety MCP servers. Being inside so
 code beats being on a shelf next to sixteen alternatives. Execute under STRATEGY.md
 Experiment A; no gate required.
 
+### O4 - Pools that disagree about the price, as a signal in its own right
+
+**Found while fixing E-7 (2026-09-06). Deliberately NOT shipped with it.**
+
+E-7 asked for a price sanity check where the chain-rank table cannot help. Measuring the
+same comparison without the rank restriction turned up something larger:
+
+    693  tokens with two or more priced, costed pools in scope
+    214  (30.9%)  some pair of pools disagrees by more than 100x
+     31  (4.5%)   ...still true when both pools do $50k/day and 50+ trades
+
+MATIC's own test fixture carries a spread of $0.0882 to $1,345,090 between pools on
+Ethereum. Two pools of one token priced fifteen million times apart cannot both be right,
+and the deepest-pool-wins rule silently picks one and reports it as the price.
+
+**Why it is parked rather than built.** The measurement above says how often it *fires*,
+which is not the same as how often it is *right*. A dust pool quoting nonsense is not
+evidence about a token, and the difference between "a broken pool exists" and "the price
+we are about to report is wrong" is precisely what has not been measured. Shipping a
+signal at a 4.5% firing rate on that basis is how false positives get built.
+
+**What would settle it.** Take the pools that fire, ask GeckoTerminal's OHLCV endpoint for
+each one's independent price, and count how often the deepest pool -- the one we report --
+is the outlier rather than the dissenter. If the pool we already pick is nearly always
+right, this is noise and the entry closes. If it is wrong in a meaningful share of cases,
+it is a real defect in the primary number this tool reports, and it outranks most of what
+is on the roadmap.
+
+**Gate**: do not build until that count exists. Estimated cost: one pass over the cached
+disagreeing tokens, no new data source.
+
 ---
 
 ## Reviewed and closed

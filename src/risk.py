@@ -553,6 +553,54 @@ def _canonical_chain(hint):
     return _GT_TO_CHAIN.get(gt, gt) if gt else h
 
 
+# Two pools of the same token priced orders of magnitude apart cannot both be right.
+# 100x: arbitrage keeps honest pools far inside it, and the case this exists for is the
+# pulsechain mispricing, which was off by a thousand.
+_PRICE_DISAGREEMENT_FACTOR = 100.0
+
+
+def _unranked_price_conflict(scope):
+    """(low, high) when rank cannot help us and the pools contradict each other.
+
+    `_CHAIN_RANK` holds 20 chains and everything else ties at rank 9, so when every
+    candidate is unranked the tie falls through to deepest-pool-wins -- the rule that put
+    USDC at $0.00097 on a pulsechain fork, with the one defence against it switched off.
+    New L2s arrive faster than anyone edits a table.
+
+    Measured on this project's cache before choosing a fix, because a fix should be the
+    size of its problem:
+
+        1,136 token responses with pairs
+          183 (16.1%)  whole scope on chains the table has never heard of
+            0 (0.00%)  ...spanning two or more such chains
+
+    Zero. Two pools on two unranked chains, tie broken by depth, does not occur once. When
+    every candidate is unranked they are all on **one** chain, and breaking that tie by
+    depth is correct -- there is no cross-chain ambiguity to defend against. So this is
+    insurance against a hazard that has not happened yet, written to cost nothing when it
+    is wrong, and it must not be described as a repair for observed damage.
+
+    Deliberately narrow. The same comparison over all pools regardless of rank fires on
+    4.5%-31% of tokens depending on thresholds -- MATIC's own fixture holds a
+    15-million-fold spread between two Ethereum pools -- which may well be worth having
+    and has not been validated. It is parked in OPPORTUNITIES.md, not folded in here.
+    """
+    if not scope:
+        return None
+    ranks = [_CHAIN_RANK.get((p.get("chainId") or "").lower(), _UNKNOWN_CHAIN_RANK)
+             for p in scope]
+    if min(ranks) != _UNKNOWN_CHAIN_RANK:
+        return None                      # rank had something to say; it said it
+    if len({(p.get("chainId") or "").lower() for p in scope}) < 2:
+        return None                      # one chain is not an ambiguity
+    prices = [_num(p.get("priceUsd")) for p in scope
+              if _num(p.get("priceUsd")) > 0 and _reported_liquidity(p)]
+    if len(prices) < 2:
+        return None
+    lo, hi = min(prices), max(prices)
+    return (lo, hi) if hi / lo > _PRICE_DISAGREEMENT_FACTOR else None
+
+
 def _home_scope(pairs, chain_hint=None, target=None):
     """The pools on the chain this token actually belongs to.
 
@@ -1661,6 +1709,7 @@ _SLIM_EVIDENCE_KEYS = (
     "sellability_from_chain",
     "pools_all_empty",
     "chain_searched",
+    "price_disagreement",
     "same_symbol",
 )
 
@@ -1700,6 +1749,24 @@ async def assess(address, chain_hint=None, verbose=False):
     else:
         evidence["liquidity_source"] = source
         best = _pick_best(pairs, chain_hint=chain_hint, target=address)
+        # Judged over the pools we actually chose from. A fork pool rank already excluded
+        # is not a disagreement, it is a pool we refused.
+        conflict = _unranked_price_conflict(_home_scope(pairs, chain_hint, address))
+        if best is not None and conflict:
+            lo, hi = conflict
+            evidence["price_disagreement"] = {"low_usd": _sig_round(lo),
+                                              "high_usd": _sig_round(hi)}
+            data_gaps.append({
+                "dimension": "price", "source": source,
+                "reason": "pools on unranked chains disagree on the price by %.0fx"
+                          % (hi / lo)})
+            signals.append(_sig(
+                "warn", "Pools disagree about the price",
+                "This token trades only on chains we cannot rank for canonicality, and "
+                "those pools quote prices from $%s to $%s -- a %.0fx spread. At least one "
+                "is wrong and we have no way to tell which, so the depth below is "
+                "measured and the price is not settled."
+                % (_sig_round(lo), _sig_round(hi), hi / lo), "price_disagreement"))
         if best is None:
             # Two different things reach here, and only one of them is ignorance.
             #

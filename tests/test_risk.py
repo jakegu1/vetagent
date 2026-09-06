@@ -404,6 +404,93 @@ def test_chain_activity_overrules_a_honeypot_verdict():
           str([(x["severity"], x["name"]) for x in hp3]))
 
 
+def test_unranked_chains_get_a_price_sanity_check():
+    """`_CHAIN_RANK` holds 20 chains, and new L2s arrive faster than anyone edits it.
+
+    Found by external audit. Everything outside the table ties at rank 9, so when every
+    candidate is unranked the tie falls through to deepest-pool-wins -- the exact rule
+    that put USDC at $0.00097 on a pulsechain fork, with the one defence against it
+    switched off.
+
+    Measured on this project's own cache before choosing a fix, because the fix should be
+    the size of the problem:
+
+        1,136 token responses with pairs
+          183 (16.1%)  whole scope on chains the table has never heard of
+            0 (0.00%)  ...spanning two or more such chains
+
+    Zero. The shape the finding describes -- two pools, two unranked chains, tie broken by
+    depth -- does not occur once in the dataset. When every candidate is unranked they are
+    all on **one** chain, and breaking that tie by depth is simply correct: there is no
+    cross-chain ambiguity to defend against.
+
+    So this guard is insurance against a hazard that has not happened yet, not a repair
+    for observed damage, and it is written to cost nothing when it is wrong. It fires only
+    where the defence is both needed and missing: several unranked chains at once, whose
+    pools cannot agree on a price. Then we keep the deepest pool's depth -- depth is what
+    depth earns -- and stop presenting its price as settled.
+
+    A broader version of this check, over all pools regardless of chain rank, fires on
+    4.5% to 31% of tokens depending on where the thresholds sit; MATIC's own test fixture
+    carries a 15-million-fold spread between two Ethereum pools. That is a real and
+    interesting lead, and it is parked in OPPORTUNITIES.md rather than smuggled in here as
+    part of a bug fix, because its accuracy has not been measured and this one's cost has.
+    """
+    print("\n[unranked] no canonical chain to prefer, so do not assert a price")
+
+    def pool(chain, liq, price):
+        return {"chainId": chain, "dexId": "uniswap",
+                "baseToken": {"address": WETH, "symbol": "TKN"},
+                "quoteToken": {"address": "0xq"}, "priceUsd": str(price),
+                "liquidity": {"usd": liq}, "volume": {"h24": liq},
+                "txns": {"h24": {"buys": 50, "sells": 40}},
+                "pairCreatedAt": 1589841515000}
+
+    def assess(pairs, hint=None):
+        install_stub([("dex/tokens", {"pairs": pairs}), ("dex/search", {"pairs": []}),
+                      ("honeypot.is", _load("hp_matic.json"))])
+        return run(risk.assess(WETH, chain_hint=hint))
+
+    def disputed(r):
+        return any(x["category"] == "price_disagreement" for x in r["signals"])
+
+    # -- The audit's case: two unranked chains, no defence, prices far apart. -
+    exposed = assess([pool("hyperevm", 9_000_000, 0.00001),
+                      pool("sonic", 500_000, 1.00)])
+    check("unranked chains disagreeing on price is disclosed", disputed(exposed),
+          str([(x["category"], x["name"]) for x in exposed["signals"]]))
+    check("and the answer is not low", exposed["risk_level"] != "low",
+          exposed["risk_level"])
+    check("the price is recorded as a gap",
+          any(g.get("dimension") == "price"
+              for g in (exposed.get("evidence") or {}).get("data_gaps") or []),
+          str((exposed.get("evidence") or {}).get("data_gaps")))
+    check("but the depth is still reported",
+          ((exposed.get("evidence") or {}).get("best_pair") or {})
+          .get("liquidity_usd") == 9_000_000,
+          repr((exposed.get("evidence") or {}).get("best_pair")))
+
+    # -- One unranked chain is not ambiguous, whatever its pools say. --------
+    single = assess([pool("hyperevm", 9_000_000, 0.00001),
+                     pool("hyperevm", 500_000, 1.00)])
+    check("pools on one unranked chain raise nothing", not disputed(single),
+          str([(x["category"], x["name"]) for x in single["signals"]]))
+
+    # -- Unranked chains that agree raise nothing. ---------------------------
+    agree = assess([pool("hyperevm", 9_000_000, 1.00), pool("sonic", 500_000, 1.02)])
+    check("unranked chains that agree raise nothing", not disputed(agree),
+          str([(x["category"], x["name"]) for x in agree["signals"]]))
+
+    # -- A ranked chain has a real defence and must keep using it. -----------
+    fork = assess([pool("pulsechain", 9_000_000, 0.00097),
+                   pool("ethereum", 500_000, 1.00)])
+    best = (fork.get("evidence") or {}).get("best_pair") or {}
+    check("the canonical chain still wins on rank", best.get("chain") == "ethereum",
+          repr(best))
+    check("and rank, having worked, raises nothing", not disputed(fork),
+          str([(x["category"], x["name"]) for x in fork["signals"]]))
+
+
 def test_every_tool_discloses_stale_data():
     """The argument for serving stale data is that we disclose it. Two tools did not.
 
