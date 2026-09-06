@@ -39,8 +39,19 @@ call, and one an AI can discover and use directly (that is what the MCP protocol
 
 ## 1. What we are actually selling
 
-Not data. The upstream sources (DexScreener / honeypot.is / GoPlus / RugCheck) are
-mostly free and public.
+Not data. The upstream sources (DexScreener / GeckoTerminal / honeypot.is / RugCheck)
+are mostly free and public.
+
+> **Corrected 2026-09-06.** This line read "DexScreener / honeypot.is / GoPlus / RugCheck"
+> for three days. GoPlus is **not** an upstream and never has been — `tests/test_risk.py`
+> fails the build if the string appears anywhere in `src/`, because DECISIONS B2 reserves
+> it as the benchmark's held-out labelling oracle. An external competitive review took
+> this file at its word, and every conclusion it drew about "adjudicating better over the
+> same signals GoPlus reads" was built on it. We read liquidity depth GoPlus never reads;
+> GoPlus reads contract state we never see. That is a different input set, not a better
+> reading of a shared one. For a product whose only real claim is that its numbers can be
+> checked, publishing a wrong dependency list is the fastest available way to lose the
+> argument.
 
 We sell three things, in order of importance:
 

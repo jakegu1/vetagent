@@ -270,6 +270,27 @@ def test_benchmark_oracle_stays_out_of_the_engine():
         for token in forbidden:
             if token in body:
                 offenders.append("%s contains %r" % (fn, token))
+    # The code check passed for three days while docs/STRATEGY.md told readers GoPlus was
+    # an upstream. A guard on the implementation and none on the claim about it is exactly
+    # the asymmetry this project keeps paying for: the engine was right and the document a
+    # reader actually reads was wrong, and an outside review found it before we did.
+    docs = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "docs")
+    claims = []
+    for name in sorted(os.listdir(docs)):
+        if not name.endswith(".md"):
+            continue
+        with open(os.path.join(docs, name), encoding="utf-8") as fh:
+            for i, line in enumerate(fh, 1):
+                low = line.lower()
+                if "goplus" not in low:
+                    continue
+                # Naming it as a source/upstream is the error; naming it as the held-out
+                # oracle, or as a thing we deliberately do not call, is the whole point.
+                if ("upstream source" in low or "upstream sources" in low
+                        or "data sources" in low) and "held-out" not in low:
+                    claims.append("%s:%d" % (name, i))
+    check("no doc calls GoPlus an upstream", not claims, str(claims))
+
     check("no GoPlus anywhere in src/", not offenders, "; ".join(offenders))
 
 
