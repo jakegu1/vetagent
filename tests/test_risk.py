@@ -403,6 +403,88 @@ def test_chain_activity_overrules_a_honeypot_verdict():
           str([(x["severity"], x["name"]) for x in hp3]))
 
 
+def test_a_fork_pool_cannot_silence_a_drained_rug():
+    """The drained check counted pools the rest of the engine had already refused.
+
+    Found by external audit. `_pick_best` decides which chain a token belongs to and
+    ignores everything else -- the fork-chain defence, written because Ethereum forks
+    inherit the same contract address, so USDC has pulsechain pools too. When it returns
+    None, the drained-pool branch asks whether every pool is empty. It asked that question
+    over **every pair on every chain**, including the ones the fork-chain defence had just
+    thrown out.
+
+    So an Ethereum token whose pools have all been emptied, with a single inherited
+    pulsechain pool holding anything at all, escaped the verdict. The pool that silenced
+    "there is nothing to sell into at any price" was a pool the engine had already
+    decided it would not price the token from. Both halves of one function disagreeing
+    about which pools count.
+
+    This is the fourth time the fork-chain boundary has been reopened by a change made
+    somewhere else, which is why the scope is now computed in one place and used by both
+    halves rather than described twice.
+    """
+    print("\n[drained] the pools that count are the ones on the token's own chain")
+
+    def pool(chain, liq, addr=None):
+        p = {"chainId": chain, "dexId": "uniswap",
+             "baseToken": {"address": addr or WETH, "symbol": "TKN"},
+             "quoteToken": {"address": "0xq"}, "priceUsd": "1.0",
+             "volume": {"h24": 0}, "txns": {"h24": {"buys": 0, "sells": 0}},
+             "pairCreatedAt": 1589841515000}
+        p["liquidity"] = {"usd": liq} if liq is not None else {}
+        return p
+
+    def assess(pairs, hint=None, hp=None):
+        install_stub([("dex/tokens", {"pairs": pairs}), ("dex/search", {"pairs": []}),
+                      ("honeypot.is", risk.NO_DATA if hp is None else hp),
+                      ("goplus", None), ("rugcheck", None)])
+        return run(risk.assess(WETH, chain_hint=hint))
+
+    def drained(r):
+        return any(x["name"] == "No liquidity left in any pool" for x in r["signals"])
+
+    # -- The bug: one inherited fork pool, and the verdict goes quiet. --------
+    forked = [pool("ethereum", 0), pool("ethereum", 0), pool("pulsechain", 250_000)]
+    for hint in ("ethereum", None):
+        r = assess(forked, hint)
+        check("drained on its own chain is still drained (hint=%s)" % hint, drained(r),
+              "%s -- %s" % (r["risk_level"], [x["name"] for x in r["signals"]]))
+        check("and it is fatal, not a shrug (hint=%s)" % hint, r["risk_level"] == "high",
+              r["risk_level"])
+
+    # -- What it actually costs. ---------------------------------------------
+    #
+    # Above, the verdict still reached high -- but through the no-trace escalation, which
+    # needs sellability to be missing too. Let the simulator answer and that route closes,
+    # leaving the drained check as the only thing standing between a caller and a token
+    # whose exit is shut. This is the case the finding is really about.
+    answered = assess(forked, "ethereum", hp=_load("hp_matic.json"))
+    check("a drained token is not medium just because the simulator replied",
+          answered["risk_level"] == "high",
+          "%s -- %s" % (answered["risk_level"],
+                        [x["name"] for x in answered["signals"]]))
+    check("and the finding names the exit, not a missing pool",
+          drained(answered), str([x["name"] for x in answered["signals"]]))
+
+    # -- No regression: a token that really does live on the fork chain. -----
+    lives_there = [pool("pulsechain", 250_000)]
+    r2 = assess(lives_there)
+    check("a token whose only pools are alive is not called drained", not drained(r2),
+          str([x["name"] for x in r2["signals"]]))
+
+    # -- No regression: uncosted is still not empty. -------------------------
+    uncosted = [pool("ethereum", None), pool("ethereum", None)]
+    r3 = assess(uncosted)
+    check("pools nobody costed are not reported as empty", not drained(r3),
+          str([x["name"] for x in r3["signals"]]))
+
+    # -- And a costed-empty home pool alongside an uncosted one still counts. -
+    mixed = [pool("ethereum", 0), pool("ethereum", None)]
+    r4 = assess(mixed)
+    check("the pools that stated a depth still testify", drained(r4),
+          str([x["name"] for x in r4["signals"]]))
+
+
 def test_an_unrecognised_chain_hint_is_not_a_chain():
     """A typo in the caller's hint bought the token an excuse.
 

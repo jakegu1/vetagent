@@ -493,6 +493,56 @@ def _canonical_chain(hint):
     return _GT_TO_CHAIN.get(gt, gt) if gt else h
 
 
+def _home_scope(pairs, chain_hint=None, target=None):
+    """The pools on the chain this token actually belongs to.
+
+    Which chain a token belongs to is decided BEFORE liquidity is considered, over every
+    pair that names it -- drained pools included.
+
+    Deciding it afterwards was the original bug. Any filter that drops empty pools leaves,
+    for a token whose real pools have been emptied, only the pools on forked chains that
+    inherited its address; those then become the best tier by default. The engine would
+    report a pulsechain pool's depth and price as fact for a token whose actual exit was
+    closed -- the same mispricing that put USDC at $0.00097, reachable again through the
+    exact tokens the drained-pool check exists for.
+
+    It lives in its own function because the drained-pool check needs the same answer and
+    was computing a different one: it asked "is every pool empty?" over *every pair on
+    every chain*, including the ones this scope had already refused. An Ethereum token
+    with all its pools emptied and one inherited pulsechain pool holding anything at all
+    escaped the verdict -- silenced by a pool the engine had already decided it would not
+    price the token from. Two halves of one decision, described twice and drifting.
+    """
+    target_l = (target or "").lower()
+
+    def _is_target(p):
+        bt = ((p.get("baseToken") or {}).get("address") or "").lower()
+        qt = ((p.get("quoteToken") or {}).get("address") or "").lower()
+        return (bt == target_l or qt == target_l) if target_l else True
+
+    if not pairs:
+        return []
+    hint = _canonical_chain(chain_hint)
+    home = [p for p in pairs if _is_target(p)] or list(pairs)
+    on_hint = [p for p in home if hint and (p.get("chainId") or "").lower() == hint]
+    if on_hint:
+        return on_hint
+    # No hint, or a hint that matches nothing: rank by how canonical the chain is.
+    #
+    # The "matches nothing" case used to fall back to every pair and then take the
+    # deepest, with no rank filter at all -- so a hint the caller spelled differently from
+    # DexScreener silently disabled the one defence against fork chains. chain_hint="eth"
+    # resolved USDC to a pulsechain pool at $0.000967 against $7.9M of nominal liquidity:
+    # the original P0-C mispricing, reopened by the fix that was supposed to close it. A
+    # hint we cannot match is less information than no hint at all, and must never be
+    # treated as more.
+    best_rank = min(_CHAIN_RANK.get((p.get("chainId") or "").lower(),
+                                    _UNKNOWN_CHAIN_RANK) for p in home)
+    return [p for p in home
+            if _CHAIN_RANK.get((p.get("chainId") or "").lower(),
+                               _UNKNOWN_CHAIN_RANK) == best_rank]
+
+
 def _pick_best(pairs, chain_hint=None, target=None):
     """Pick a pool defensively: target chain first -> must contain the target address
     -> sane price -> deepest liquidity.
@@ -531,39 +581,8 @@ def _pick_best(pairs, chain_hint=None, target=None):
 
     if not pairs:
         return None
-    hint = _canonical_chain(chain_hint)
 
-    # Which chain this token belongs to is decided BEFORE liquidity is considered, over
-    # every pair that names it -- drained pools included.
-    #
-    # Deciding it afterwards was the bug. _valid drops any pool holding nothing, so once
-    # a token's real pools were emptied, the only survivors were the pools on forked
-    # chains that inherited its address, and those became the best tier by default. The
-    # engine would then report a pulsechain pool's depth and price as fact for a token
-    # whose actual exit was closed -- the same mispricing that put USDC at $0.00097, made
-    # reachable again by the exact tokens the drained-pool check exists for.
-    home = [p for p in pairs if _is_target(p)] or list(pairs)
-    on_hint = [p for p in home
-               if hint and (p.get("chainId") or "").lower() == hint]
-    if on_hint:
-        scoped = on_hint
-    else:
-        # No hint, or a hint that matches nothing: rank by how canonical the chain is.
-        #
-        # The "matches nothing" case used to fall back to every pair and then take the
-        # deepest, with no rank filter at all -- so a hint the caller spelled differently
-        # from DexScreener silently disabled the one defence against fork chains.
-        # chain_hint="eth" resolved USDC to a pulsechain pool at $0.000967 against
-        # $7.9M of nominal liquidity: the original P0-C mispricing, reopened by the
-        # fix that was supposed to close it. A hint we cannot match is less information
-        # than no hint at all, and must never be treated as more.
-        best_rank = min(_CHAIN_RANK.get((p.get("chainId") or "").lower(),
-                                        _UNKNOWN_CHAIN_RANK) for p in home)
-        scoped = [p for p in home
-                  if _CHAIN_RANK.get((p.get("chainId") or "").lower(),
-                                     _UNKNOWN_CHAIN_RANK) == best_rank]
-
-    pool = [p for p in scoped if _valid(p)]
+    pool = [p for p in _home_scope(pairs, chain_hint, target) if _valid(p)]
     if not pool:
         return None      # the token's own chain has nothing usable; say so, do not roam
     return max(pool, key=_pair_liquidity)
@@ -1540,7 +1559,11 @@ async def assess(address, chain_hint=None, verbose=False):
             # ranking and catastrophic here: it would let "nobody costed these pools"
             # masquerade as "these pools are empty", and this branch turns that into a
             # sentence about the user's money.
-            stated = [v for v in (_reported_liquidity(p) for p in pairs) if v is not None]
+            # Scoped to the token's own chain, exactly as _pick_best scoped it a line
+            # ago. Asking this over every pair on every chain let one inherited fork pool
+            # answer a question about the token's real exit.
+            scope = _home_scope(pairs, chain_hint, address)
+            stated = [v for v in (_reported_liquidity(p) for p in scope) if v is not None]
             if stated and max(stated) <= 0:
                 evidence["pools_all_empty"] = len(stated)
                 # fatal, not critical. "There is nothing to sell into at any price" is
