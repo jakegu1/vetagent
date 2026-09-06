@@ -238,7 +238,10 @@ def main():
     print("Evaluating %d tokens ..." % len(tokens))
     for i, t in enumerate(tokens, 1):
         try:
-            res = asyncio.run(risk.assess(t["address"], t["chain"]))
+            # verbose=True only to see `best_pair.pair_address`. It adds evidence
+            # fields and changes no verdict, no score and no signal -- the numbers below
+            # are identical either way.
+            res = asyncio.run(risk.assess(t["address"], t["chain"], verbose=True))
         except Exception as e:  # noqa: BLE001
             print("  %s failed to evaluate: %s" % (t.get("symbol"), e))
             continue
@@ -255,6 +258,13 @@ def main():
             # file from the rule.
             "address": t["address"], "symbol": risk._ascii_safe(t.get("symbol")),
             "chain": t["chain"],
+            # The pool the LABEL describes, and the pool the ENGINE judged. They are
+            # picked independently -- build_dataset samples one pool and assess() runs
+            # its own selection -- so they are not always the same venue, and every
+            # disagreement between them was being booked as an engine error.
+            "labelled_pool": (t.get("pool") or "").lower() or None,
+            "engine_pool": ((((res.get("evidence") or {}).get("best_pair") or {})
+                             .get("pair_address")) or "").lower() or None,
             "outcome_label": t.get("outcome_label"), "goplus_label": t.get("goplus_label"),
             "sampled_from": t.get("sampled_from"),
             "liquidity_usd": ((res.get("evidence") or {}).get("best_pair") or {})
@@ -450,6 +460,39 @@ def write_markdown(rep):
     #   - the outcome-based rate uses an INDEPENDENT oracle on a MATURITY-SELECTED cohort
     #   - the GoPlus-based rate uses a BROADER cohort but a CIRCULAR oracle
     # Publishing one and calling it the headline is what let the circularity hide.
+    # How often the label and the verdict are even about the same pool.
+    #
+    # build_dataset labels ONE sampled pool; assess() independently picks its own. When
+    # they differ, a "false positive" may be the engine saying "this contract is a
+    # honeypot right now" against a label saying "this pool traded healthily last week" --
+    # two answers to two different questions, booked as one error. The audit measured 84%
+    # agreement and explicitly declined to publish a corrected false-positive rate,
+    # because checking each disagreement showed its first correction was unsupported.
+    # That restraint is right and the mismatch rate is still owed to a reader: it does
+    # not tell you the number is wrong, it tells you how much of it is not a clean
+    # comparison.
+    matched = [r for r in rows if r.get("labelled_pool") and r.get("engine_pool")]
+    same = [r for r in matched if r["labelled_pool"] == r["engine_pool"]]
+    if matched:
+        A("\n### Are the label and the verdict about the same pool?\n")
+        A("The label describes one sampled pool; the engine picks its own. The pool the "
+          "engine actually **judged** is the labelled one on **%d of %d** rows where "
+          "both are known (%.0f%%).\n"
+          % (len(same), len(matched), 100.0 * len(same) / len(matched)))
+        A("\nThat is a stricter question than the one an external audit measured. It "
+          "found the labelled pool was among the pairs the engine *loaded* 84% of the "
+          "time. Loading it and choosing it are different: the engine ranks by chain "
+          "canonicality and depth and then judges a single pool, so it can hold the "
+          "labelled pool in hand and still return a verdict about another venue. Both "
+          "numbers are true; this is the one that governs whether a disagreement is a "
+          "like-for-like comparison.\n")
+        A("\nOn the rest, a disagreement is not necessarily an engine error -- it can be "
+          "the engine judging a different venue than the one the label was computed from. "
+          "No corrected false-positive rate is offered here: an attempt to produce one "
+          "did not survive checking the individual rows. What is supported is that the "
+          "headline rate mixes at least three kinds of disagreement, and this is how much "
+          "of it is not a like-for-like comparison.\n")
+
     # What the `unsafe` cohort is made of, printed next to the recall it produces.
     #
     # HONEYPOT_TESTABLE_VOL_7D exists to stop a honeypot flag being asserted about a token

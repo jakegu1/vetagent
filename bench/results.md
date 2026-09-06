@@ -143,6 +143,17 @@ This bucket answers one question: **does the engine paint them all as high risk.
 Examples: HYDX(low), CP(unknown), TOSHE(medium), Onyxcoin XCN Kendu(high), SAGE Free(medium), Core Keeper Overnight(medium), VIRTUAL(low), Crypto Carbon Verse(high), ?(medium), BIO(medium)
 
 
+### Are the label and the verdict about the same pool?
+
+The label describes one sampled pool; the engine picks its own. The pool the engine actually **judged** is the labelled one on **312 of 549** rows where both are known (57%).
+
+
+That is a stricter question than the one an external audit measured. It found the labelled pool was among the pairs the engine *loaded* 84% of the time. Loading it and choosing it are different: the engine ranks by chain canonicality and depth and then judges a single pool, so it can hold the labelled pool in hand and still return a verdict about another venue. Both numbers are true; this is the one that governs whether a disagreement is a like-for-like comparison.
+
+
+On the rest, a disagreement is not necessarily an engine error -- it can be the engine judging a different venue than the one the label was computed from. No corrected false-positive rate is offered here: an attempt to produce one did not survive checking the individual rows. What is supported is that the headline rate mixes at least three kinds of disagreement, and this is how much of it is not a like-for-like comparison.
+
+
 ### What the `unsafe` cohort is, before you read a recall number off it
 
 The adversarial cohort is **n=17**, and it is not a sample of adversarial contracts in the wild. It is what survived a testability gate, and the gate selects for recency more than for hostility.

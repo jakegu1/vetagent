@@ -954,6 +954,9 @@ def _gt_to_pair(p, address, network):
     a = p.get("attributes") or {}
     return {
         "dexId": "geckoterminal",
+        # GeckoTerminal pool ids look like "eth_0xabc..."; the address is the tail.
+        "pairAddress": (a.get("address")
+                        or (str(p.get("id") or "").split("_", 1)[-1] or None)),
         "chainId": _GT_TO_CHAIN.get(network, network),
         # None, not 0.0, when GeckoTerminal did not state a reserve -- see
         # _reported_liquidity. A missing number must not arrive downstream as a measured
@@ -1007,6 +1010,13 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
         "liquidity_usd": _sig_round(liq),
         # The price of the token asked about, not of whichever side the pool lists first.
         "price_usd": _sig_round(_price_of_target(best, target)),
+        # Which pool this verdict is actually about. A caller comparing our answer to
+        # anything else -- another scanner, their own dashboard, a benchmark label --
+        # needs to know we were both looking at the same venue. The benchmark was not:
+        # it labels one sampled pool and the engine independently picks its own, and for
+        # 16% of the set those are different pools, with the disagreement booked as
+        # engine error.
+        "pair_address": _ascii_safe(best.get("pairAddress") or best.get("pool_id"), 48),
         "sellers_24h": ((best.get("traders") or {}).get("h24") or {}).get("sellers"),
         "volume_24h_usd": _sig_round(vol), "pair_created_at": best.get("pairCreatedAt"),
         "buys_24h": txns.get("buys"), "sells_24h": txns.get("sells"),
@@ -2080,6 +2090,13 @@ async def assess(address, chain_hint=None, verbose=False):
         # or taxDistribution.
         result["evidence"] = {k: v for k, v in result["evidence"].items()
                               if k in _SLIM_EVIDENCE_KEYS}
+        # `pair_address` is 42 characters that matter to a benchmark and rarely to an
+        # agent -- it exists so a comparison can prove both sides looked at the same
+        # venue. Verbose-only, so the disclosure the benchmark needs does not come out
+        # of the output budget every caller pays.
+        bp = result["evidence"].get("best_pair")
+        if isinstance(bp, dict):
+            bp.pop("pair_address", None)
     return result
 
 
