@@ -488,6 +488,48 @@ def _finalize(address, signals, evidence, data_gaps):
 _MIN_CREDIBLE_DEPTH_USD = 1e-6
 
 
+def _price_of_target(pair, target):
+    """This pool's USD price FOR THE TOKEN WE WERE ASKED ABOUT. None if underivable.
+
+    DexScreener's `priceUsd` is always the BASE token's price. `_is_target` accepts a pair
+    when the queried address is base OR quote -- correctly, because a WETH/USDT pool is a
+    real venue for USDT -- but the price was then read as though the queried token were
+    always the base. Production consequence, found by querying our own endpoint: `/assess`
+    reported USDT at **$2,502.65** (the price of ether) and UNI at **$4,576,980**.
+
+    Measured over the benchmark cache: the queried token is the quote side of its selected
+    pool for 21 of 479 tokens (4.4%), wrong by up to eight orders of magnitude -- AAPLon
+    published at $0.0000043 against a true $326.49. The benchmark rate understates the
+    production rate, because the tokens most often used as quote assets are USDT, USDC and
+    WETH, which are also the ones agents ask about most.
+
+    `priceNative` is how many quote tokens one base token costs, so the quote token's USD
+    price is priceUsd / priceNative. When priceNative is missing or zero there is nothing
+    to invert by, and the honest answer is None -- a gap -- rather than the other token's
+    price wearing this token's name.
+
+    This is the founding P0 in a new mechanism: that one resolved USDC to a fork chain and
+    priced it at $0.00097; this one keeps the right chain and the right pool and still
+    reports a number that is not this token's price.
+    """
+    price = _num(pair.get("priceUsd"))
+    if price <= 0:
+        return None
+    t = (target or "").lower()
+    if not t:
+        return price
+    base = ((pair.get("baseToken") or {}).get("address") or "").lower()
+    if base == t or not t:
+        return price
+    quote = ((pair.get("quoteToken") or {}).get("address") or "").lower()
+    if quote != t:
+        return price          # neither side matches; caller's scoping decides
+    native = _num(pair.get("priceNative"))
+    if native <= 0:
+        return None           # nothing to invert by; do not guess
+    return price / native
+
+
 def _pair_liquidity(pair):
     """Depth in USD, with an unreported depth counted as zero.
 
@@ -808,7 +850,7 @@ def _gt_to_pair(p, address, network):
 
 # ---------------------------------------------------------------- building signals
 
-def _liquidity_signals(best, pairs, signals, evidence):
+def _liquidity_signals(best, pairs, signals, evidence, target=None):
     liq = _pair_liquidity(best)
     vol = _num((best.get("volume") or {}).get("h24"))
     # Buy/sell counts come free in the same response and are the only direct evidence we
@@ -816,7 +858,9 @@ def _liquidity_signals(best, pairs, signals, evidence):
     txns = ((best.get("txns") or {}).get("h24") or {})
     evidence["best_pair"] = {
         "dex": best.get("dexId"), "chain": best.get("chainId"),
-        "liquidity_usd": _sig_round(liq), "price_usd": _sig_round(best.get("priceUsd")),
+        "liquidity_usd": _sig_round(liq),
+        # The price of the token asked about, not of whichever side the pool lists first.
+        "price_usd": _sig_round(_price_of_target(best, target)),
         "sellers_24h": ((best.get("traders") or {}).get("h24") or {}).get("sellers"),
         "volume_24h_usd": _sig_round(vol), "pair_created_at": best.get("pairCreatedAt"),
         "buys_24h": txns.get("buys"), "sells_24h": txns.get("sells"),
@@ -1810,7 +1854,7 @@ async def assess(address, chain_hint=None, verbose=False):
                                     "Pairs exist but none could be costed.",
                                     "no_liquidity"))
         else:
-            _liquidity_signals(best, pairs, signals, evidence)
+            _liquidity_signals(best, pairs, signals, evidence, target=address)
             await _impersonation_signals(address, pairs, signals, evidence,
                                          chain_hint=chain_hint)
 
@@ -1949,7 +1993,7 @@ async def liquidity(address, chain_hint=None):
         # Upstream names, escaped like every other upstream string that reaches a caller.
         "best_pair_chain": _ascii_safe(best.get("chainId"), 24),
         "best_pair_dex": _ascii_safe(best.get("dexId"), 24),
-        "price_usd": _sig_round(best.get("priceUsd")),
+        "price_usd": _sig_round(_price_of_target(best, address)),
         "liquidity_usd": _sig_round(_pair_liquidity(best)),
         "volume_24h_usd": _sig_round(_num((best.get("volume") or {}).get("h24"))),
         "pairs_total": len(pairs),

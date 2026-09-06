@@ -404,6 +404,78 @@ def test_chain_activity_overrules_a_honeypot_verdict():
           str([(x["severity"], x["name"]) for x in hp3]))
 
 
+def test_price_is_the_asked_token_not_the_other_side():
+    """We were publishing the price of whichever token the pool happened to list first.
+
+    Found in production while measuring reliability, not by the audit. `/assess` for USDT
+    returned **$2,502.65** and for UNI **$4,576,980**.
+
+    DexScreener's `priceUsd` is always the BASE token's price. `_is_target` accepts a pair
+    when the queried address is base OR quote -- correctly, since a WETH/USDT pool is a
+    real venue for USDT -- but the price field was then read as if the queried token were
+    always the base. Ask about USDT, get matched to WETH/USDT, and be told USDT costs
+    $2,502, which is the price of ether.
+
+    Measured over the benchmark cache: the queried token is the quote side of its selected
+    pool for **21 of 479 tokens (4.4%)**, and the published figure is wrong by up to eight
+    orders of magnitude -- AAPLon reported at $0.0000043 against a true $326.49. The
+    benchmark rate understates production, because the tokens most often used as quote
+    assets are USDT, USDC and WETH, which are also the tokens agents ask about most.
+
+    The correct price is derivable from data already in the response: `priceNative` is how
+    many quote tokens one base token costs, so the quote token's USD price is
+    priceUsd / priceNative.
+
+    This is the founding P0 in a new mechanism. That one resolved USDC to a fork chain and
+    priced it at $0.00097; this one keeps the right chain and the right pool and still
+    reports a number that is not this token's price. Same lesson: a confident wrong number
+    is the worst thing this tool can emit, and it will be read by something that cannot
+    sanity-check it.
+    """
+    print("\n[price] the price we report must be the price of the token asked about")
+
+    USDT = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+
+    def pool(base_addr, base_sym, quote_addr, quote_sym, price_usd, price_native):
+        return {"chainId": "ethereum", "dexId": "uniswap",
+                "baseToken": {"address": base_addr, "symbol": base_sym},
+                "quoteToken": {"address": quote_addr, "symbol": quote_sym},
+                "priceUsd": str(price_usd), "priceNative": str(price_native),
+                "liquidity": {"usd": 1_297_190}, "volume": {"h24": 1_740_530},
+                "txns": {"h24": {"buys": 2246, "sells": 1953}},
+                "pairCreatedAt": 1738339799000}
+
+    def price_of(addr, pairs):
+        install_stub([("dex/tokens", {"pairs": pairs}), ("dex/search", {"pairs": []}),
+                      ("honeypot.is", _load("hp_matic.json"))])
+        r = run(risk.assess(addr, chain_hint="ethereum"))
+        return ((r.get("evidence") or {}).get("best_pair") or {}).get("price_usd")
+
+    # The production case: a WETH/USDT pool, asked about USDT.
+    weth_usdt = pool(WETH, "WETH", USDT, "USDT", 2502.65, 2502.65)
+    got = price_of(USDT, [weth_usdt])
+    check("asking about the quote token gives the quote token's price",
+          got is not None and abs(got - 1.0) < 0.05, repr(got))
+
+    # And the base side is unchanged.
+    got_base = price_of(WETH, [weth_usdt])
+    check("asking about the base token still gives the base token's price",
+          got_base is not None and abs(got_base - 2502.65) < 1.0, repr(got_base))
+
+    # A pool that reports no priceNative cannot be inverted -- do not guess.
+    no_native = {k: v for k, v in weth_usdt.items() if k != "priceNative"}
+    got_none = price_of(USDT, [no_native])
+    check("with nothing to invert by, no price is asserted", got_none in (None, 0, 0.0),
+          repr(got_none))
+
+    # The tool endpoint has to agree with the assessment.
+    install_stub([("dex/tokens", {"pairs": [weth_usdt]}), ("dex/search", {"pairs": []})])
+    liq = run(risk.liquidity(USDT, chain_hint="ethereum"))
+    check("get_token_liquidity reports the same corrected price",
+          liq.get("price_usd") is not None and abs(liq["price_usd"] - 1.0) < 0.05,
+          json.dumps(liq))
+
+
 def test_unranked_chains_get_a_price_sanity_check():
     """`_CHAIN_RANK` holds 20 chains, and new L2s arrive faster than anyone edits it.
 
