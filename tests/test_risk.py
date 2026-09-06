@@ -733,6 +733,94 @@ def test_the_recommendation_says_what_we_actually_found():
           blind["recommendation"])
 
 
+def test_the_simulator_gets_a_second_chance_on_our_pool():
+    """honeypot.is reverts on the pool it picked, while we are holding a better one.
+
+    45 tokens came back "execution reverted: HP: BUY_FAILED" and were filed as unknown. I
+    described those as on-chain reverts any simulator would reproduce. An auditor refuted
+    it with data already in this repository: of the 18 carrying a market-outcome label,
+    **16 are alive** -- crvUSD $97.6M, USDG $20M, SPR $11.1M, XAUt $1.7M, trading daily.
+    A buy that genuinely reverts on chain does not describe a token with $20M of depth.
+
+    What fails is the venue. honeypot.is chooses its own pair; for USDG it chose
+    0xa38Cd437... and reverted while our pool held $20,030,126.
+
+    THE ORDER MATTERS, AND I SHIPPED IT BACKWARDS FIRST. Passing our pair on every call
+    recovered 26 of the 42 BUY_FAILED cases and cost 58 new ones, because a pair on a DEX
+    honeypot.is does not index -- Curve, Aerodrome -- returns 404 and reads as "no record
+    of this token". Net 100 -> 133 unknowns. Measured, caught, reversed. Asking only
+    after a failure keeps the recoveries and none of the regressions: 100 -> 88, eleven
+    tokens recovered and zero newly unknown.
+
+    A failed retry must also not overwrite a real answer. "The simulator reverted on its
+    own pool" is more informative than "no record", so the first response wins whenever
+    the second comes back empty.
+    """
+    print("\n[retry] ask about our pool only when the simulator's own choice failed")
+
+    calls = []
+
+    PAIR = "0x" + "ab" * 20
+
+    def pair_with(addr):
+        return {"pairs": [{"chainId": "ethereum", "dexId": "uniswap",
+                           "pairAddress": PAIR,
+                           "baseToken": {"address": addr, "symbol": "TKN"},
+                           "quoteToken": {"address": "0xq"}, "priceUsd": "1.0",
+                           "liquidity": {"usd": 20_030_126}, "volume": {"h24": 500_000},
+                           "txns": {"h24": {"buys": 400, "sells": 350}},
+                           "pairCreatedAt": 1589841515000}]}
+
+    def run_with(first, second):
+        """first = what the default call returns; second = what the &pair= call returns."""
+        del calls[:]
+
+        async def _stub(url, *a, **kw):
+            if "honeypot.is" in url:
+                calls.append(url)
+                return second if "&pair=" in url else first
+            if "dex/tokens" in url:
+                return pair_with(WETH)
+            return {"pairs": []}
+        risk._fetch_json = _stub
+        return run(risk.assess(WETH, chain_hint="ethereum"))
+
+    ok = json.loads(json.dumps(_load("hp_matic.json")))
+    ok["simulationSuccess"] = True
+    ok.pop("simulationError", None)
+
+    failed = json.loads(json.dumps(_load("hp_matic.json")))
+    failed["simulationSuccess"] = False
+    failed["simulationError"] = 'execution reverted: "revert: HP: BUY_FAILED"'
+
+    # 1. The default worked: do not spend a second request.
+    run_with(ok, ok)
+    check("a working simulation is not retried", len(calls) == 1,
+          "%d calls" % len(calls))
+
+    # 2. The default failed and ours works: use ours.
+    r = run_with(failed, ok)
+    check("a failed simulation is retried on our pool", len(calls) == 2,
+          "%d calls" % len(calls))
+    check("and the retry supplies the answer",
+          any("&pair=" in c for c in calls), str(calls))
+    check("so the token is no longer unknown for that reason",
+          not any("BUY_FAILE" in str(g.get("reason", ""))
+                  for g in (r.get("evidence") or {}).get("data_gaps") or []),
+          str((r.get("evidence") or {}).get("data_gaps")))
+
+    # 3. The retry has no record: keep the first answer, do not downgrade to "no record".
+    r2 = run_with(failed, risk.NO_DATA)
+    gaps = str((r2.get("evidence") or {}).get("data_gaps"))
+    check("an empty retry does not overwrite the real failure",
+          "no record" not in gaps, gaps)
+
+    # 4. The retry also failed: still the first answer, still one honest gap.
+    r3 = run_with(failed, failed)
+    check("two failures are still one finding",
+          r3["risk_level"] in ("unknown", "medium", "high"), r3["risk_level"])
+
+
 def test_an_error_body_is_not_data():
     """GeckoTerminal says "you have exceeded the rate limit" with a 200 attached.
 

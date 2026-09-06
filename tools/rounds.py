@@ -105,7 +105,7 @@ ROUNDS = [
      "no-trace verdict was reached without knowing which chain it searched, and the "
      "bytecode cache the comments promised did not exist. Two verdicts moved out of "
      "572 -- the round corrected what the tool says, not what it concludes."),
-    ("R15", "Guards that guard, and numbers that are watched", "54b7c89",
+    ("R15", "Guards that guard, and numbers that are watched", "83e34a6",
      "Cleared the audit's twelve M and G findings. Four published figures were guarded "
      "by nothing and all four flattered -- centralised-flagged-high read 6.7% against a "
      "measured 21.8% -- so the check was inverted to ask 'is every number guarded', not "

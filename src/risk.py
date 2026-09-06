@@ -1508,6 +1508,20 @@ def _owner_power_signal(info, signals, evidence):
             "Read this as 'nothing found', not 'nothing there'.", "contract"))
 
 
+def _sim_failed(hp):
+    """Whether honeypot.is answered, but its own simulation did not complete.
+
+    Distinct from "no record" (NO_DATA) and from "the request failed" (None): here the
+    service replied and told us its buy or setup reverted on the pool IT chose. That is
+    the only case worth spending a second request on.
+    """
+    if not isinstance(hp, dict):
+        return False
+    if hp.get("simulationSuccess") is True:
+        return False
+    return bool(hp.get("simulationError"))
+
+
 def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
     """Read honeypot.is.
 
@@ -2057,8 +2071,38 @@ async def assess(address, chain_hint=None, verbose=False):
         hp_url = "https://api.honeypot.is/v2/IsHoneypot?address=%s" % address
         if hp_chain in _SIMULATOR_CHAIN_IDS:
             hp_url += "&chainID=%d" % _SIMULATOR_CHAIN_IDS[hp_chain]
-        _honeypot_signals(await _fetch_json(hp_url, mark_missing=True),
-                          signals, evidence, data_gaps, chain=hp_chain)
+        hp = await _fetch_json(hp_url, mark_missing=True)
+
+        # Second chance on OUR pool, but only when the simulator's own choice failed.
+        #
+        # 45 tokens came back "execution reverted: HP: BUY_FAILED" and were filed as
+        # unknown. I described those as on-chain reverts any simulator would reproduce.
+        # That was wrong, and the refuting data was already here: of the 18 carrying a
+        # market-outcome label, 16 are alive -- crvUSD $97.6M, USDG $20M, SPR $11.1M,
+        # XAUt $1.7M, trading daily. A buy that genuinely reverts on chain does not
+        # describe a token with $20M of depth.
+        #
+        # What fails is the venue. honeypot.is picks its own pair; for USDG it chose
+        # 0xa38Cd437... and reverted while our pool held $20,030,126.
+        #
+        # The order matters and I had it backwards first. Passing our pair on EVERY call
+        # recovered 26 of the 42 BUY_FAILED cases and cost 58 new ones, because a pair on
+        # a DEX honeypot.is does not index -- Curve, Aerodrome -- comes back 404 and
+        # reads as "no record of this token". Net 100 -> 133 unknowns. Asking only after
+        # a failure keeps the recoveries and none of the regressions, and costs one extra
+        # request on the small minority of tokens that need it.
+        #
+        # A failed retry must not overwrite a real answer either: if the second call
+        # comes back empty we keep the first response, because "the simulator reverted on
+        # its own pool" is a more informative thing to report than "no record".
+        hp_pair = ((evidence.get("best_pair") or {}).get("pair_address") or "")
+        if (_sim_failed(hp) and hp_pair.startswith("0x") and len(hp_pair) == 42):
+            retry = await _fetch_json("%s&pair=%s" % (hp_url, hp_pair),
+                                      mark_missing=True)
+            if retry is not None and retry is not NO_DATA and not _sim_failed(retry):
+                hp = retry
+
+        _honeypot_signals(hp, signals, evidence, data_gaps, chain=hp_chain)
         if chain_hint and not observed and not claimed_is_known:
             # Worth a signal rather than a silent shrug: the caller believes they scoped
             # this request to a chain, and they did not. Naming what we do recognise lets

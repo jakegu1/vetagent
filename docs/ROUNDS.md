@@ -28,7 +28,7 @@ The maturity score for each round is read from `docs/SCORECARD.md` **as it stood
 | **R14** | Stop the token from writing inside our verdict | 20 | 2026-09-06 | 53/100 (+0) |
 | **R15** | Guards that guard, and numbers that are watched | 20 | 2026-09-06 to 2026-09-07 | 53/100 (+0) |
 
-9 snapshot-job commits are excluded up to the last closed round: they are data collection, not development, and would bury the rounds. The job commits daily, so counting them past that point would date this file every morning.
+10 snapshot-job commits are excluded up to the last closed round: they are data collection, not development, and would bury the rounds. The job commits daily, so counting them past that point would date this file every morning.
 
 
 **R16 -- Next** is open: Open. Its commits are listed here once it closes.
@@ -362,7 +362,7 @@ Cleared the audit's twelve M and G findings. Four published figures were guarded
 | `e926504` | 2026-09-07 | M-3: three different bytecode findings produced one identical sentence |
 | `b565afc` | 2026-09-07 | M-4: the adversarial cohort is 16 empty pools and a testability gate |
 | `1bfebfa` | 2026-09-07 | M-6: the label and the verdict describe the same pool 57% of the time |
-| `54b7c89` | 2026-09-07 | M-2: reopen W1, because the measurement that closed it cannot be re-run |
+| `83e34a6` | 2026-09-07 | M-2: reopen W1, because the measurement that closed it cannot be re-run |
 
 Full reasoning for any line above: `git show <hash>`. The commit messages carry the measurement that motivated each change, and several admissions of error.
 

@@ -98,7 +98,7 @@ caps out around 70 — the remaining 30 requires users, who do not exist yet.
 
 | Dimension | Score | The honest reading |
 |---|---|---|
-| Correctness | 24.0 / 30 | all 11 test files green (`for f in tests/test_*.py; do python $f; done`); false positives 3.7%; unknown 17.2% |
+| Correctness | 24.0 / 30 | all 11 test files green (`for f in tests/test_*.py; do python $f; done`); false positives 4.3%; unknown 15.3% |
 | Coverage | 16.4 / 20 | 9 of 11 risk dimensions; two measured and rejected on evidence |
 | Credibility | 10.2 / 20 | 30 dead samples; but the adversarial cohort is 9, and 4 of those are `low` when ablated |
 | Distribution | 2.5 / 15 | 2 of 8 channels; external-caller count not measurable yet |

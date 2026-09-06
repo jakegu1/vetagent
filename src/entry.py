@@ -65,9 +65,9 @@ token is.
 
 ## Measured accuracy (n=576, published)
 
-False positives (healthy tokens flagged high) ....... 3.7%
-Answers returned as unknown ......................... 17.2%
-Legitimate centralised assets flagged high .......... 21.8%
+False positives (healthy tokens flagged high) ....... 4.3%
+Answers returned as unknown ......................... 15.3%
+Legitimate centralised assets flagged high .......... 22.9%
 Dead tokens not rated low ........................... 86.7% (26 of 30)
 
 What that last line does and does not say. Recall was unmeasurable here

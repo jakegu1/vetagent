@@ -23,13 +23,13 @@
  },
  "overall": {
   "verdict_distribution": {
-   "low": 142,
-   "unknown": 99,
-   "medium": 259,
-   "high": 76
+   "low": 143,
+   "unknown": 88,
+   "medium": 263,
+   "high": 82
   },
-  "unknown_rate": 0.171875,
-  "data_gap_rate": 0.20833333333333334
+  "unknown_rate": 0.1527777777777778,
+  "data_gap_rate": 0.1892361111111111
  },
  "outcome": {
   "bad_label": "dead",
@@ -45,11 +45,11 @@
    },
    "good": {
     "n": 162,
-    "high": 0.037037037037037035,
-    "high_or_medium": 0.3395061728395062,
-    "low": 0.5185185185185185,
-    "unknown": 0.1419753086419753,
-    "mean_score": 15.481481481481481
+    "high": 0.043209876543209874,
+    "high_or_medium": 0.35802469135802467,
+    "low": 0.5246913580246914,
+    "unknown": 0.11728395061728394,
+    "mean_score": 15.555555555555555
    }
   },
   "contract_only": {
@@ -63,11 +63,11 @@
    },
    "good": {
     "n": 162,
-    "high": 0.018518518518518517,
-    "high_or_medium": 0.1419753086419753,
-    "low": 0.7037037037037037,
-    "unknown": 0.15432098765432098,
-    "mean_score": 9.123456790123457
+    "high": 0.024691358024691357,
+    "high_or_medium": 0.16049382716049382,
+    "low": 0.7098765432098766,
+    "unknown": 0.12962962962962962,
+    "mean_score": 9.37037037037037
    }
   },
   "driving_categories_on_bad": {
@@ -91,11 +91,11 @@
    },
    "good": {
     "n": 349,
-    "high": 0.06303724928366762,
-    "high_or_medium": 0.5100286532951289,
+    "high": 0.07449856733524356,
+    "high_or_medium": 0.5272206303724928,
     "low": 0.27793696275071633,
-    "unknown": 0.21203438395415472,
-    "mean_score": 26.13753581661891
+    "unknown": 0.19484240687679083,
+    "mean_score": 26.693409742120345
    }
   },
   "contract_only": {
@@ -109,11 +109,11 @@
    },
    "good": {
     "n": 349,
-    "high": 0.034383954154727794,
-    "high_or_medium": 0.12320916905444126,
+    "high": 0.045845272206303724,
+    "high_or_medium": 0.14040114613180515,
     "low": 0.6389684813753582,
-    "unknown": 0.23782234957020057,
-    "mean_score": 10.35243553008596
+    "unknown": 0.22063037249283668,
+    "mean_score": 11.154727793696274
    }
   },
   "driving_categories_on_bad": {
@@ -126,11 +126,11 @@
   "n": 179,
   "verdict_distribution": {
    "low": 37,
-   "unknown": 19,
-   "medium": 84,
-   "high": 39
+   "unknown": 15,
+   "medium": 86,
+   "high": 41
   },
-  "high_rate": 0.21787709497206703,
+  "high_rate": 0.22905027932960895,
   "examples": [
    {
     "symbol": "HYDX",
@@ -298,6 +298,16 @@
   {
    "kind": "false positive",
    "label": "goplus=safe",
+   "address": "0x4154550f4db74dc38d1fe98e1f3f28ed6dad627d",
+   "symbol": "jEUR",
+   "chain": "base",
+   "verdict": "high",
+   "verdict_ablated": "high",
+   "driver": "honeypot"
+  },
+  {
+   "kind": "false positive",
+   "label": "goplus=safe",
    "address": "0x4f990fe48210cad87240e1acddc3338f7dce32d6",
    "symbol": "QuintondeKock_BASE",
    "chain": "base",
@@ -374,6 +384,16 @@
    "verdict": "high",
    "verdict_ablated": "unknown",
    "driver": "no_liquidity"
+  },
+  {
+   "kind": "false positive",
+   "label": "goplus=safe",
+   "address": "0xb79dd08ea68a908a97220c76d19a6aa9cbde4376",
+   "symbol": "USD+",
+   "chain": "base",
+   "verdict": "high",
+   "verdict_ablated": "high",
+   "driver": "honeypot"
   },
   {
    "kind": "false positive",
@@ -464,6 +484,36 @@
    "verdict": "high",
    "verdict_ablated": "unknown",
    "driver": "no_liquidity"
+  },
+  {
+   "kind": "false positive",
+   "label": "goplus=safe",
+   "address": "0x475cbf5919608e0c6af00e7bf87fab83bf3ef6e2",
+   "symbol": "ROBO",
+   "chain": "bsc",
+   "verdict": "high",
+   "verdict_ablated": "high",
+   "driver": "honeypot"
+  },
+  {
+   "kind": "false positive",
+   "label": "outcome=alive",
+   "address": "0x4b3d30992f003c8167699735f5ab2831b2a087d3",
+   "symbol": "COLLECT",
+   "chain": "bsc",
+   "verdict": "high",
+   "verdict_ablated": "high",
+   "driver": "honeypot"
+  },
+  {
+   "kind": "false positive",
+   "label": "goplus=safe",
+   "address": "0x4b3d30992f003c8167699735f5ab2831b2a087d3",
+   "symbol": "COLLECT",
+   "chain": "bsc",
+   "verdict": "high",
+   "verdict_ablated": "high",
+   "driver": "honeypot"
   },
   {
    "kind": "false positive",
@@ -2100,22 +2150,20 @@
    "goplus_label": "centralized",
    "sampled_from": "backfill_2026-08-27",
    "liquidity_usd": 0.03,
-   "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
-   ],
-   "verdict": "unknown",
-   "score": 68,
-   "confidence": "low",
-   "verdict_ablated": "unknown",
-   "score_ablated": 30,
-   "driver": "liquidity",
+   "gap_reasons": [],
+   "verdict": "high",
+   "score": 100,
+   "confidence": "high",
+   "verdict_ablated": "high",
+   "score_ablated": 100,
+   "driver": "honeypot",
    "categories": [
     "freshness",
+    "honeypot",
     "lifecycle",
-    "liquidity",
-    "sellability"
+    "liquidity"
    ],
-   "has_data_gap": true
+   "has_data_gap": false
   },
   {
    "address": "0x29bbe265cae393137a4331dc3178cdfe917fc603",
@@ -2901,22 +2949,20 @@
    "goplus_label": "safe",
    "sampled_from": "backfill_2026-08-28",
    "liquidity_usd": 533445.0,
-   "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
-   ],
-   "verdict": "unknown",
-   "score": 40,
-   "confidence": "low",
-   "verdict_ablated": "unknown",
-   "score_ablated": 30,
-   "driver": "sellability",
+   "gap_reasons": [],
+   "verdict": "high",
+   "score": 100,
+   "confidence": "high",
+   "verdict_ablated": "high",
+   "score_ablated": 100,
+   "driver": "honeypot",
    "categories": [
     "freshness",
+    "honeypot",
     "lifecycle",
-    "liquidity",
-    "sellability"
+    "liquidity"
    ],
-   "has_data_gap": true
+   "has_data_gap": false
   },
   {
    "address": "0x4200000000000000000000000000000000000006",
@@ -6070,21 +6116,19 @@
    "goplus_label": "centralized",
    "sampled_from": "backfill_2025-12-09",
    "liquidity_usd": 54103.7,
-   "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED"
-   ],
-   "verdict": "unknown",
+   "gap_reasons": [],
+   "verdict": "medium",
    "score": 30,
-   "confidence": "low",
-   "verdict_ablated": "unknown",
+   "confidence": "medium",
+   "verdict_ablated": "medium",
    "score_ablated": 30,
-   "driver": "sellability",
+   "driver": "honeypot",
    "categories": [
     "freshness",
-    "liquidity",
-    "sellability"
+    "honeypot",
+    "liquidity"
    ],
-   "has_data_gap": true
+   "has_data_gap": false
   },
   {
    "address": "0xa875a3c03cd561234c56998a9017e70346095092",
@@ -7167,22 +7211,20 @@
    "goplus_label": "safe",
    "sampled_from": "backfill_2026-02-17",
    "liquidity_usd": 264076.0,
-   "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
-   ],
-   "verdict": "unknown",
-   "score": 40,
-   "confidence": "low",
-   "verdict_ablated": "unknown",
-   "score_ablated": 30,
-   "driver": "sellability",
+   "gap_reasons": [],
+   "verdict": "high",
+   "score": 100,
+   "confidence": "high",
+   "verdict_ablated": "high",
+   "score_ablated": 100,
+   "driver": "honeypot",
    "categories": [
     "freshness",
+    "honeypot",
     "lifecycle",
-    "liquidity",
-    "sellability"
+    "liquidity"
    ],
-   "has_data_gap": true
+   "has_data_gap": false
   },
   {
    "address": "0xb8147ce9b0dac5f8165785dec6494e57748e4b78",
@@ -7613,22 +7655,20 @@
    "goplus_label": "centralized",
    "sampled_from": "backfill_2025-12-29",
    "liquidity_usd": 2295510.0,
-   "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
-   ],
-   "verdict": "unknown",
-   "score": 40,
-   "confidence": "low",
-   "verdict_ablated": "unknown",
-   "score_ablated": 30,
-   "driver": "sellability",
+   "gap_reasons": [],
+   "verdict": "high",
+   "score": 100,
+   "confidence": "high",
+   "verdict_ablated": "high",
+   "score_ablated": 100,
+   "driver": "honeypot",
    "categories": [
     "freshness",
+    "honeypot",
     "lifecycle",
-    "liquidity",
-    "sellability"
+    "liquidity"
    ],
-   "has_data_gap": true
+   "has_data_gap": false
   },
   {
    "address": "0xbf8e8f0e8866a7052f948c16508644347c57aba3",
@@ -9383,22 +9423,20 @@
    "goplus_label": "centralized",
    "sampled_from": "gt_pools",
    "liquidity_usd": 22494.5,
-   "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED: 0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e48503a204255595f4641494c4544000000000000000000000000000000000000"
-   ],
-   "verdict": "unknown",
+   "gap_reasons": [],
+   "verdict": "medium",
    "score": 40,
-   "confidence": "low",
-   "verdict_ablated": "unknown",
+   "confidence": "high",
+   "verdict_ablated": "medium",
    "score_ablated": 30,
-   "driver": "sellability",
+   "driver": "honeypot",
    "categories": [
     "cross_chain",
     "freshness",
-    "liquidity",
-    "sellability"
+    "honeypot",
+    "liquidity"
    ],
-   "has_data_gap": true
+   "has_data_gap": false
   },
   {
    "address": "0x0f0df6cb17ee5e883eddfef9153fc6036bdb4e37",
@@ -9616,21 +9654,20 @@
    "goplus_label": null,
    "sampled_from": "gt_pools",
    "liquidity_usd": 1707280.0,
-   "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED: 0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e48503a204255595f4641494c4544000000000000000000000000000000000000"
-   ],
-   "verdict": "unknown",
-   "score": 30,
-   "confidence": "low",
-   "verdict_ablated": "unknown",
-   "score_ablated": 30,
-   "driver": "sellability",
+   "gap_reasons": [],
+   "verdict": "low",
+   "score": 0,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
    "categories": [
     "freshness",
+    "honeypot",
     "liquidity",
-    "sellability"
+    "upstream_risk"
    ],
-   "has_data_gap": true
+   "has_data_gap": false
   },
   {
    "address": "0x255e746abb8d9acac00d6d023e5e63e3b8dfa7cd",
@@ -9795,21 +9832,19 @@
    "goplus_label": "safe",
    "sampled_from": "gt_pools",
    "liquidity_usd": 21297.3,
-   "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED: 0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e48503a204255595f4641494c4544000000000000000000000000000000000000"
-   ],
-   "verdict": "unknown",
+   "gap_reasons": [],
+   "verdict": "medium",
    "score": 40,
-   "confidence": "low",
-   "verdict_ablated": "unknown",
+   "confidence": "medium",
+   "verdict_ablated": "medium",
    "score_ablated": 30,
-   "driver": "sellability",
+   "driver": "honeypot",
    "categories": [
     "freshness",
-    "liquidity",
-    "sellability"
+    "honeypot",
+    "liquidity"
    ],
-   "has_data_gap": true
+   "has_data_gap": false
   },
   {
    "address": "0x3d4f0513e8a29669b960f9dbca61861548a9a760",
@@ -9846,21 +9881,19 @@
    "goplus_label": "safe",
    "sampled_from": "gt_pools",
    "liquidity_usd": 7333.83,
-   "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED: 0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e48503a204255595f4641494c4544000000000000000000000000000000000000"
-   ],
-   "verdict": "unknown",
+   "gap_reasons": [],
+   "verdict": "medium",
    "score": 40,
-   "confidence": "low",
-   "verdict_ablated": "unknown",
+   "confidence": "medium",
+   "verdict_ablated": "medium",
    "score_ablated": 30,
-   "driver": "sellability",
+   "driver": "honeypot",
    "categories": [
     "freshness",
-    "liquidity",
-    "sellability"
+    "honeypot",
+    "liquidity"
    ],
-   "has_data_gap": true
+   "has_data_gap": false
   },
   {
    "address": "0x3efbfff95576e1d23cf6ead0acd2e73f4d6a7777",
@@ -9948,22 +9981,20 @@
    "goplus_label": "safe",
    "sampled_from": "gt_pools",
    "liquidity_usd": 99.88,
-   "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED: 0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e48503a204255595f4641494c4544000000000000000000000000000000000000"
-   ],
-   "verdict": "unknown",
-   "score": 68,
-   "confidence": "low",
-   "verdict_ablated": "unknown",
-   "score_ablated": 30,
-   "driver": "liquidity",
+   "gap_reasons": [],
+   "verdict": "high",
+   "score": 100,
+   "confidence": "high",
+   "verdict_ablated": "high",
+   "score_ablated": 100,
+   "driver": "honeypot",
    "categories": [
     "freshness",
+    "honeypot",
     "lifecycle",
-    "liquidity",
-    "sellability"
+    "liquidity"
    ],
-   "has_data_gap": true
+   "has_data_gap": false
   },
   {
    "address": "0x477c2c0459004e3354ba427fa285d7c053203c0e",
@@ -10000,21 +10031,19 @@
    "goplus_label": "safe",
    "sampled_from": "gt_pools",
    "liquidity_usd": 2683.2,
-   "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED: 0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e48503a204255595f4641494c4544000000000000000000000000000000000000"
-   ],
-   "verdict": "unknown",
-   "score": 58,
-   "confidence": "low",
-   "verdict_ablated": "unknown",
-   "score_ablated": 30,
-   "driver": "liquidity",
+   "gap_reasons": [],
+   "verdict": "high",
+   "score": 100,
+   "confidence": "medium",
+   "verdict_ablated": "high",
+   "score_ablated": 100,
+   "driver": "honeypot",
    "categories": [
     "freshness",
-    "liquidity",
-    "sellability"
+    "honeypot",
+    "liquidity"
    ],
-   "has_data_gap": true
+   "has_data_gap": false
   },
   {
    "address": "0x4ef9d3062c7f6eba4aae4990c5036598c6eff4ec",
