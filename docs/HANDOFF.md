@@ -90,6 +90,7 @@ wrangler.jsonc   — Cloudflare config (routes: vetagent.dev custom_domain)
 | 16 | **A file-scanning guard that filters by extension skips every extensionless file.** `.gitignore` sat with Chinese comments in it for weeks while `test_english_only.py` reported PASS on every run | the guard now carries an explicit list of extensionless files we own. A check that quietly declines to look at a file is worse than none — it buys confidence it has not earned |
 | 17 | Every free **BSC** RPC tried refuses `eth_getLogs` at any range down to 500 blocks (`-32005 limit exceeded`). Chain-history backfill therefore covers eth and base only | needs a keyed provider before BSC history is reachable. Two chains that work beat three where one quietly returns nothing |
 | 18 | **Free chain RPCs meter per call, not per request.** Resolving 250 pools as 500 `eth_call`s got 19 of them in 3.7 minutes; the same day resolves 216 in 79 seconds through GeckoTerminal's 30-per-request pool endpoint | prefer an endpoint that answers in bulk over parallelism against a metered one. Concurrency against a rate limiter is self-harm |
+| 19 | **`.venv-workers` is platform-specific and pywrangler will not fix it.** A run under WSL against a `.venv-workers` created on Windows dies with `Python interpreter not found at .venv-workers/bin/python3` — Windows made `Scripts/`, Linux wants `bin/`. pywrangler also *deletes and recreates* `.venv` on every run, so the two platforms fight over it | `rm -rf .venv-workers python_modules` before deploying from WSL. Both are gitignored and disposable; the Windows `.venv` rebuilds itself as a Linux one and local tests keep working because they run on the system interpreter |
 
 ## 5. Unfinished / next priorities
 
@@ -231,15 +232,23 @@ Say what you need and Jake will sort it out:
    I have not picked one. It trades measurement for capability and that is a product
    call, not an implementation detail.
 
-2. **Whether to push and deploy this round.** Nine commits sit unpushed on `master`;
-   181 tests green; maturity 36 → 50 today. Pushing is safe on its own — `deploy.yml`
-   skips when `CLOUDFLARE_API_TOKEN` is absent, which it is — so a push runs CI and
-   leaves production untouched.
+2. ~~**Whether to push and deploy this round.**~~ **Resolved 2026-09-06: deployed.**
 
-   Verified 2026-09-05 against the live endpoint: production has **never** run the
-   impersonation check (no signal, no `same_symbol` evidence for a token that should
-   trigger it), so the two critical defects found and fixed today never reached a user.
-   Production is simply old, not wrong.
+   An external audit found production had been mispricing USDC by 1,050x for the whole
+   time the fix sat unshipped: `chain_hint=eth` resolved it to a PulseChain fork at
+   $0.0009525, and `/assess` rated real USDC `medium` on the strength of it. The founding
+   P0 bug, fixed in the repo since R10 and never deployed, because `deploy.yml` skips
+   silently without `CLOUDFLARE_API_TOKEN`.
+
+   Deployed from WSL with the OAuth session (version `8e352bbf`). Verified: every chain
+   hint spelling now returns ethereum at $0.9998 from dexscreener. Also verified in
+   production for the first time — the owner-powers RPC path works, USDT reports its
+   blacklist and pause switch read live from bytecode, which settles the R12 claim that
+   the POST signature could not be checked outside production.
+
+   **W9 still matters.** This was a manual deploy from one machine. Until the secret is in
+   GitHub Secrets, every future fix has the same failure mode: correct in the repo,
+   invisible to callers, silently.
 
 3. **`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` as GitHub Secrets.** One action
    unlocks two things at once: automatic deploys, and the "external callers" line on the
