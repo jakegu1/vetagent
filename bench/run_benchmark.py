@@ -45,6 +45,21 @@ RESULTS_JSON = os.path.join(HERE, "results.json")
 RESULTS_MD = os.path.join(HERE, "results.md")
 
 # Contract-safety signals: the ones independent of how much liquidity is left right now
+# What survives when the market-data signals are stripped. The point of the column is to
+# show what the engine concludes from CONTRACT evidence alone -- the part a competitor
+# reading the same free liquidity feed could not trivially reproduce.
+#
+# `drained` is deliberately absent, and it used to be inside `sellability`. The
+# drained-pool finding is computed entirely from DexScreener liquidity figures: it fires
+# when every pool on the token's own chain reports a depth of zero. That is a market-data
+# conclusion wearing a sellability label, and it carried `fatal` (100) into the ablated
+# score after R10 promoted it from `critical`. 14 of 42 ablated-high verdicts -- a third --
+# rode on it, which is a third of the column's headline claiming to be contract evidence
+# while being liquidity evidence.
+#
+# All 14 are currently `centralized`, so the published unsafe/dead ablated figures were
+# not yet contaminated. W3 grows the adversarial cohort with exactly these tokens, so the
+# contamination was scheduled rather than avoided.
 CONTRACT_CATEGORIES = {
     "honeypot", "sellability", "sell_tax", "upstream_risk",
     "rugcheck", "contract", "concentration",

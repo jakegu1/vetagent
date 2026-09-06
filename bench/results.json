@@ -10139,12 +10139,13 @@
     "the sell simulator has no record of this token"
    ],
    "verdict": "high",
-   "score": 100,
+   "score": 70,
    "confidence": "low",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "sellability",
+   "verdict_ablated": "unknown",
+   "score_ablated": 30,
+   "driver": "drained",
    "categories": [
+    "drained",
     "no_liquidity",
     "sellability"
    ],
@@ -10924,14 +10925,14 @@
    "liquidity_usd": null,
    "gap_reasons": [],
    "verdict": "high",
-   "score": 100,
+   "score": 50,
    "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "sellability",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": "drained",
    "categories": [
+    "drained",
     "honeypot",
-    "sellability",
     "upstream_risk"
    ],
    "has_data_gap": false
@@ -11042,14 +11043,14 @@
    "liquidity_usd": null,
    "gap_reasons": [],
    "verdict": "high",
-   "score": 100,
+   "score": 50,
    "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "sellability",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": "drained",
    "categories": [
+    "drained",
     "honeypot",
-    "sellability",
     "upstream_risk"
    ],
    "has_data_gap": false
@@ -11064,14 +11065,14 @@
    "liquidity_usd": null,
    "gap_reasons": [],
    "verdict": "high",
-   "score": 100,
+   "score": 50,
    "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "sellability",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": "drained",
    "categories": [
+    "drained",
     "honeypot",
-    "sellability",
     "upstream_risk"
    ],
    "has_data_gap": false
@@ -11184,14 +11185,14 @@
    "liquidity_usd": null,
    "gap_reasons": [],
    "verdict": "high",
-   "score": 100,
+   "score": 50,
    "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "sellability",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": "drained",
    "categories": [
+    "drained",
     "honeypot",
-    "sellability",
     "upstream_risk"
    ],
    "has_data_gap": false
@@ -11206,14 +11207,14 @@
    "liquidity_usd": null,
    "gap_reasons": [],
    "verdict": "high",
-   "score": 100,
+   "score": 50,
    "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "sellability",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": "drained",
    "categories": [
+    "drained",
     "honeypot",
-    "sellability",
     "upstream_risk"
    ],
    "has_data_gap": false
@@ -11418,14 +11419,14 @@
    "liquidity_usd": null,
    "gap_reasons": [],
    "verdict": "high",
-   "score": 100,
+   "score": 50,
    "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "sellability",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": "drained",
    "categories": [
+    "drained",
     "honeypot",
-    "sellability",
     "upstream_risk"
    ],
    "has_data_gap": false
@@ -11795,14 +11796,14 @@
    "liquidity_usd": null,
    "gap_reasons": [],
    "verdict": "high",
-   "score": 100,
+   "score": 50,
    "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "sellability",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": "drained",
    "categories": [
+    "drained",
     "honeypot",
-    "sellability",
     "upstream_risk"
    ],
    "has_data_gap": false
@@ -12006,14 +12007,14 @@
    "liquidity_usd": null,
    "gap_reasons": [],
    "verdict": "high",
-   "score": 100,
+   "score": 50,
    "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "sellability",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": "drained",
    "categories": [
+    "drained",
     "honeypot",
-    "sellability",
     "upstream_risk"
    ],
    "has_data_gap": false
@@ -12407,14 +12408,14 @@
    "liquidity_usd": null,
    "gap_reasons": [],
    "verdict": "high",
-   "score": 100,
+   "score": 50,
    "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "sellability",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": "drained",
    "categories": [
+    "drained",
     "honeypot",
-    "sellability",
     "upstream_risk"
    ],
    "has_data_gap": false
@@ -12522,14 +12523,14 @@
    "liquidity_usd": null,
    "gap_reasons": [],
    "verdict": "high",
-   "score": 100,
+   "score": 50,
    "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "sellability",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": "drained",
    "categories": [
+    "drained",
     "honeypot",
-    "sellability",
     "upstream_risk"
    ],
    "has_data_gap": false
@@ -12592,14 +12593,14 @@
    "liquidity_usd": null,
    "gap_reasons": [],
    "verdict": "high",
-   "score": 100,
+   "score": 50,
    "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "sellability",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": "drained",
    "categories": [
+    "drained",
     "honeypot",
-    "sellability",
     "upstream_risk"
    ],
    "has_data_gap": false
@@ -12858,14 +12859,14 @@
    "liquidity_usd": null,
    "gap_reasons": [],
    "verdict": "high",
-   "score": 100,
+   "score": 50,
    "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "sellability",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": "drained",
    "categories": [
+    "drained",
     "honeypot",
-    "sellability",
     "upstream_risk"
    ],
    "has_data_gap": false
@@ -13189,14 +13190,14 @@
    "liquidity_usd": null,
    "gap_reasons": [],
    "verdict": "high",
-   "score": 100,
+   "score": 50,
    "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "sellability",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": "drained",
    "categories": [
+    "drained",
     "honeypot",
-    "sellability",
     "upstream_risk"
    ],
    "has_data_gap": false
@@ -13857,14 +13858,14 @@
    "liquidity_usd": null,
    "gap_reasons": [],
    "verdict": "high",
-   "score": 100,
+   "score": 50,
    "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "sellability",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": "drained",
    "categories": [
+    "drained",
     "honeypot",
-    "sellability",
     "upstream_risk"
    ],
    "has_data_gap": false

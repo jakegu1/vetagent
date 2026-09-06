@@ -1435,11 +1435,14 @@ def test_every_pool_empty_is_a_finding_not_a_gap():
 
     install_stub([("dex/tokens", empty_pools(3)), ("honeypot.is", _load("hp_matic.json"))])
     r = run(risk.assess(WETH, chain_hint="ethereum"))
-    sell = [x for x in r["signals"] if x["category"] == "sellability"]
+    # `drained` since M-5: it carries its own category so the benchmark's ablation
+    # column can exclude it, because it is computed from liquidity and not from contract
+    # evidence. The engine still treats it as sellability evidence for confidence.
+    sell = [x for x in r["signals"] if x["category"] == "drained"]
     # fatal, and the verdict must match the sentence. At critical this scored 60 and
     # came out "medium" while telling the user there was nothing to sell into at any
     # price -- and the assertion here was only "not low", so nobody noticed.
-    check("drained pools raise a fatal sellability signal",
+    check("drained pools raise a fatal signal in their own category",
           any(x["severity"] == "fatal" for x in sell),
           str([(x["severity"], x["name"]) for x in r["signals"]]))
     check("and the verdict says what the message says",
@@ -1506,7 +1509,7 @@ def test_unpriced_pools_are_not_empty_pools():
                   ("honeypot.is", _load("hp_matic.json"))])
     r2 = run(risk.assess(WETH, chain_hint="ethereum"))
     check("a pool that reports zero is still called out",
-          any(x["severity"] in ("critical", "fatal") and x["category"] == "sellability"
+          any(x["severity"] in ("critical", "fatal") and x["category"] == "drained"
               for x in r2["signals"]),
           str([(x["severity"], x["category"]) for x in r2["signals"]]))
 

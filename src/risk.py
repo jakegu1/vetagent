@@ -450,7 +450,12 @@ def _finalize(address, signals, evidence, data_gaps):
 
     total = len(signals)
     has_liquidity = any(s["category"] in ("liquidity", "no_liquidity") for s in signals)
-    has_sellability = any(s["category"] in ("honeypot", "sellability", "rugcheck")
+    # `drained` is sellability evidence for the purpose of confidence -- "there is nothing
+    # to sell into" is the strongest sellability statement there is. It carries its own
+    # category only so the benchmark's ablation column can exclude it, because it is
+    # computed from liquidity figures rather than from contract evidence.
+    has_sellability = any(s["category"] in ("honeypot", "sellability", "rugcheck",
+                                            "drained")
                           for s in signals)
     # confidence measures **how complete the data is**, not how risky the token is
     if data_gaps or total < 2:
@@ -1900,7 +1905,7 @@ async def assess(address, chain_hint=None, verbose=False):
                     "fatal", "No liquidity left in any pool",
                     "%d pool%s report their depth and every one of them is empty. "
                     "There is nothing to sell into at any price."
-                    % (len(stated), "" if len(stated) == 1 else "s"), "sellability"))
+                    % (len(stated), "" if len(stated) == 1 else "s"), "drained"))
             else:
                 reason = ("no pair with a sane price" if stated
                           else "no source reported pool depth")
