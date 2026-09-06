@@ -134,6 +134,12 @@ TOOLS = [
                 "liquidity_usd": {"type": ["number", "null"]},
                 "volume_24h_usd": {"type": "number"},
                 "pairs_total": {"type": "integer"},
+                "served_stale": {
+                    "type": "array",
+                    "description": "Present only when an upstream was unreachable and "
+                                   "this answer used cached data. Each entry names the "
+                                   "source and how many seconds old it was.",
+                    "items": {"type": "object"}},
                 "chains": {"type": "array", "items": {"type": "string"}},
             },
             "required": ["address", "status"],

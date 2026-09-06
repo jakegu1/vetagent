@@ -107,6 +107,26 @@ def _stale_hits():
         return None
 
 
+def _begin_request():
+    """Start collecting stale-cache disclosures for this request.
+
+    Every public entry point calls it. Only assess() used to, so `_stale_hits()` returned
+    None in the other two tools and the ages were dropped on the floor -- they answered
+    `{"status": "ok", ...}` from data up to _STALE_OK_SECONDS old with nothing to
+    distinguish it from a live read. The argument for serving stale data at all is that it
+    is disclosed; the disclosure reached one caller in three.
+    """
+    _STALE_HITS.set([])
+
+
+def _stale_disclosure():
+    """What to attach to a response, or None if everything was live."""
+    stale = _stale_hits() or []
+    if not stale:
+        return None
+    return [{"source": u.split("/")[2], "age_seconds": a} for u, a in stale]
+
+
 async def _cache_get(url):
     """Return (data, age_seconds) from the edge cache, or (None, None)."""
     try:
@@ -1579,7 +1599,7 @@ _SLIM_EVIDENCE_KEYS = (
 async def assess(address, chain_hint=None, verbose=False):
     """The core call: a token's risk profile. Fail closed, address validated up front."""
     address = validate_address(address)
-    _STALE_HITS.set([])         # per-request; drained into evidence at the end
+    _begin_request()            # per-request; drained into evidence at the end
     signals, evidence, data_gaps = [], {}, []
 
     # Which chain this answer is about, recorded before anything is concluded from it.
@@ -1722,8 +1742,7 @@ async def assess(address, chain_hint=None, verbose=False):
     # is defensible; serving it silently is not.
     stale = _stale_hits() or []
     if stale:
-        evidence["served_stale"] = [
-            {"source": u.split("/")[2], "age_seconds": a} for u, a in stale]
+        evidence["served_stale"] = _stale_disclosure()
         signals.append(_sig(
             "info", "Answered partly from cache",
             "An upstream was unreachable, so up to %d seconds old data was used."
@@ -1738,16 +1757,27 @@ async def assess(address, chain_hint=None, verbose=False):
     return result
 
 
+def _disclosed(payload):
+    """Attach the stale-cache disclosure to a tool response, if there is one."""
+    d = _stale_disclosure()
+    if d:
+        payload["served_stale"] = d
+    return payload
+
+
 async def liquidity(address, chain_hint=None):
     """Liquidity snapshot. Same validation and pool-picking logic as assess."""
     address = validate_address(address)
+    _begin_request()
     pairs, source = await _load_pairs(address, chain_hint)
     if pairs is None:
-        return {"address": address, "status": "unavailable",
-                "note": "Market data request failed. This does NOT mean the token has no liquidity."}
+        return _disclosed({"address": address, "status": "unavailable",
+                           "note": "Market data request failed. This does NOT mean the "
+                                   "token has no liquidity."})
     if not pairs:
-        return {"address": address, "status": "not_found", "liquidity_usd": 0,
-                "pairs_total": 0, "note": "No trading pair found for this address."}
+        return _disclosed({"address": address, "status": "not_found",
+                           "liquidity_usd": 0, "pairs_total": 0,
+                           "note": "No trading pair found for this address."})
     best = _pick_best(pairs, chain_hint=chain_hint, target=address)
     if best is None:
         # "not_found, liquidity_usd 0, pairs_total 3" -- three statements in one answer
@@ -1767,16 +1797,18 @@ async def liquidity(address, chain_hint=None):
         scope = _home_scope(pairs, chain_hint, address)
         stated = [v for v in (_reported_liquidity(p) for p in scope) if v is not None]
         if stated and max(stated) <= 0:
-            return {"address": address, "status": "drained", "liquidity_usd": 0,
+            return _disclosed({"address": address, "status": "drained",
+                               "liquidity_usd": 0,
                     "pairs_total": len(pairs),
                     "note": "%d pool%s on this token's own chain report their depth and "
                             "every one is empty. There is nothing to sell into."
-                            % (len(stated), "" if len(stated) == 1 else "s")}
-        return {"address": address, "status": "unpriced", "liquidity_usd": None,
+                            % (len(stated), "" if len(stated) == 1 else "s")})
+        return _disclosed({"address": address, "status": "unpriced",
+                           "liquidity_usd": None,
                 "pairs_total": len(pairs),
                 "note": "Pairs exist but none could be costed, so the depth is unknown. "
-                        "This is not a statement that the token has no liquidity."}
-    return {
+                        "This is not a statement that the token has no liquidity."})
+    return _disclosed({
         "address": address, "status": "ok", "source": source,
         # Upstream names, escaped like every other upstream string that reaches a caller.
         "best_pair_chain": _ascii_safe(best.get("chainId"), 24),
@@ -1787,11 +1819,12 @@ async def liquidity(address, chain_hint=None):
         "pairs_total": len(pairs),
         "chains": sorted({_ascii_safe(p.get("chainId"), 24)
                           for p in pairs if p.get("chainId")}),
-    }
+    })
 
 
 async def new_pools(chain="solana", limit=10):
     """Scan a chain for new and trending pools."""
+    _begin_request()
     chain = (chain or "solana").strip().lower()
     net = _GT_NETWORK.get(chain, chain)
     if not re.match(r"^[a-z0-9_\-]{1,32}$", net):
@@ -1816,7 +1849,10 @@ async def new_pools(chain="solana", limit=10):
                 continue
             a = p.get("attributes") or {}
             merged[pid] = {
-                "kind": kind, "pool_id": pid, "name": a.get("name"),
+                # Pool names are upstream text and reach the caller verbatim -- the
+                # same sink as fb77083, through the third tool.
+                "kind": kind, "pool_id": _ascii_safe(pid, 64),
+                "name": _ascii_safe(a.get("name"), 48),
                 "price_usd": _sig_round(a.get("base_token_price_usd")),
                 "liquidity_usd": _sig_round(a.get("reserve_in_usd")),
                 "volume_24h_usd": _sig_round((a.get("volume_usd") or {}).get("h24")),
@@ -1826,5 +1862,5 @@ async def new_pools(chain="solana", limit=10):
         # Fail closed: a failed fetch is not the same as no new pools. Returning an
         # empty array would tell the caller "we scanned, there was nothing there".
         raise RuntimeError("GeckoTerminal request failed; could not scan new pools on %s" % chain)
-    return {"chain": chain, "network": net, "count": len(merged),
-            "pools": list(merged.values())[:limit]}
+    return _disclosed({"chain": chain, "network": net, "count": len(merged),
+                       "pools": list(merged.values())[:limit]})

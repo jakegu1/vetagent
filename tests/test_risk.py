@@ -404,6 +404,74 @@ def test_chain_activity_overrules_a_honeypot_verdict():
           str([(x["severity"], x["name"]) for x in hp3]))
 
 
+def test_every_tool_discloses_stale_data():
+    """The argument for serving stale data is that we disclose it. Two tools did not.
+
+    Found by external audit. `_fetch_json`'s design comment says stale data is defensible
+    *because* it is disclosed -- when an upstream is down, an answer up to
+    `_STALE_OK_SECONDS` old beats no answer, provided the caller is told. Only `assess()`
+    ever set the contextvar that collects those disclosures, so in `get_token_liquidity`
+    and `find_new_hot_pools` `_stale_hits()` returned None and the age was discarded.
+
+    Those two returned `{"status": "ok", "price_usd": ...}` for data up to fifteen minutes
+    old, with nothing to distinguish it from a live read. The justification existed; the
+    mechanism reached one caller in three.
+
+    Same shape as the round's other findings, one level up: the disclosure was not
+    missing because anyone decided against it, but because the code that produces it was
+    only wired into the function it was written in.
+    """
+    print("\n[stale] the tool that serves cached data has to say so")
+
+    def with_stale(fn):
+        """Run a tool with one upstream answered from a 900-second-old cache entry."""
+        risk._STALE_HITS.set(None)      # as if no tool had initialised it
+        pair = {"chainId": "ethereum", "dexId": "uniswap",
+                "baseToken": {"address": WETH, "symbol": "TKN"},
+                "quoteToken": {"address": "0xq"}, "priceUsd": "1.0",
+                "liquidity": {"usd": 250_000}, "volume": {"h24": 5_000},
+                "txns": {"h24": {"buys": 10, "sells": 8}},
+                "pairCreatedAt": 1589841515000}
+
+        async def _stub(url, *a, **kw):
+            hits = risk._stale_hits()
+            if hits is not None:
+                hits.append((url, 900))
+            if "dex/tokens" in url:
+                return {"pairs": [pair]}
+            if "geckoterminal" in url:
+                return {"data": [{"id": "eth_0x1", "type": "pool",
+                                  "attributes": {"name": "TKN / WETH",
+                                                 "reserve_in_usd": "250000",
+                                                 "base_token_price_usd": "1.0"}}]}
+            return {"pairs": []}
+        risk._fetch_json = _stub
+        return run(fn())
+
+    liq = with_stale(lambda: risk.liquidity(WETH, chain_hint="ethereum"))
+    check("get_token_liquidity discloses that it answered from cache",
+          liq.get("served_stale"), json.dumps(liq)[:300])
+
+    pools = with_stale(lambda: risk.new_pools("ethereum", 3))
+    check("find_new_hot_pools discloses it too", pools.get("served_stale"),
+          json.dumps(pools)[:300])
+
+    # And a live answer must not claim staleness it does not have.
+    async def _fresh(url, *a, **kw):
+        if "dex/tokens" in url:
+            return {"pairs": [{"chainId": "ethereum", "dexId": "uniswap",
+                               "baseToken": {"address": WETH, "symbol": "TKN"},
+                               "quoteToken": {"address": "0xq"}, "priceUsd": "1.0",
+                               "liquidity": {"usd": 250_000}, "volume": {"h24": 5_000},
+                               "txns": {"h24": {"buys": 10, "sells": 8}},
+                               "pairCreatedAt": 1589841515000}]}
+        return {"pairs": []}
+    risk._fetch_json = _fresh
+    fresh = run(risk.liquidity(WETH, chain_hint="ethereum"))
+    check("a live answer carries no staleness claim", not fresh.get("served_stale"),
+          json.dumps(fresh)[:300])
+
+
 def test_liquidity_tool_tells_uncosted_from_empty():
     """`get_token_liquidity` answered "not_found, liquidity_usd 0, pairs_total 3".
 
