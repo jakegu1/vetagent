@@ -72,6 +72,13 @@ jobs:
       - name: Owner-power selectors are real, and disclosure never scores
         run: python tests/test_owner_powers.py
 
+      # DECISIONS.md calls a named test "the strongest kind" of enforcement. Three of the
+      # names it gave pointed at tests that do not exist, and one of those was drift
+      # introduced by a rename in this very round. This step also fails if a test file
+      # exists that no step above runs -- a guard CI never invokes is not a guard.
+      - name: Decisions name real tests, and every test runs here
+        run: python tests/test_decisions_enforcement.py
+
   # Upstream contract monitor: real API calls that check the fields we depend on still exist.
   # Separate from the unit tests: a third-party outage turns it red, which is the signal.
   upstream-contract:

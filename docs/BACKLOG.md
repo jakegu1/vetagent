@@ -45,7 +45,7 @@ instead of restating it.
 | W7 | Point-in-time evaluation from the snapshot archive | The benchmark scores "now" against a retrospective label, so it cannot answer "would it have warned me". The archive records contemporaneous state and the labeller never reads it | **Blocked** on archive depth: needs ≥60 days of contemporaneous snapshots, 3 as of R11. Accrues on its own via `snapshot.yml`, so the wait is the work | Blocked |
 | W17 | **Score** owner powers, rather than only disclosing them | Blocked twice over: the cohort is 9, and the instrument finds 31% of what it looks for | **Blocked** on W18 and W3. Widening the list from the oracle's labels would fix recall and void the benchmark (B2), so it needs a source that is not the oracle | Blocked |
 | W18 | A selector source that is not the labelling oracle | The bytecode scan finds 31% of the powers that exist because contracts name these functions in more ways than a fixed list holds. Deriving the list from the oracle's labels would fix it and void the benchmark | A public signature directory, or PUSH4 extraction plus a lookup. Verify by re-running the recall measurement against the oracle: it must clear ~80% before any discrimination claim means anything | Open |
-| W8 | Consolidate `DECISIONS.md` | 63 rows against its own stated ceiling of 40. The file says test-enforced entries that never failed should collapse to one line | The row count, and that no enforcement is lost in the merge | Open |
+| W8 | Consolidate `DECISIONS.md` | 55 rows against its own stated ceiling of 40. The file says test-enforced entries that never failed should collapse to one line | The row count, and that no enforcement is lost in the merge | Open |
 
 ## Yours
 
