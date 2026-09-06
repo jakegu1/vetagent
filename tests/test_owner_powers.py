@@ -253,6 +253,71 @@ def test_minimal_and_slot_proxies_are_recognised():
           repr(r5))
 
 
+def test_bytecode_is_cached_as_advertised():
+    """"cached hard and costs almost nothing after the first look" -- it was neither.
+
+    Found by external audit. The comment above `_CHAIN_RPC` states that bytecode is
+    immutable for an address, so the lookup is cached and nearly free after the first
+    call. `_eth_get_code` called `cf_fetch` directly and never touched `_cache_get` or
+    `_cache_put`. Every EVM `assess()` made an uncached POST to a free public RPC on the
+    request path -- and HANDOFF trap 18 already records that free RPCs meter per call, not
+    per request.
+
+    The premise was right and only the caching was missing, which is the dangerous version
+    of this mistake: the comment is load-bearing documentation that a reader (including
+    me, later) uses to reason about cost, and it was describing an intention rather than
+    the code underneath it.
+
+    Cached under a synthetic key, because the real request is a POST to one shared RPC URL
+    for every address -- caching on the request URL would have served one contract's
+    bytecode for another's. Successes only: a cached failure turns one busy node into a
+    permanent "we cannot read this contract", which is the same rule `_fetch_json` already
+    follows and for the same reason.
+    """
+    print("\n[cache] bytecode is immutable, so read it once")
+
+    calls = []
+    store = {}
+
+    async def _fake_get_code(rpc, address):
+        calls.append(address)
+        if address.endswith("dead"):
+            return None, "rpc 429"
+        return "0x6080604052" + "63a9059cbb" + "600080fd", None
+
+    async def _fake_cache_get(url):
+        hit = store.get(url)
+        return (hit, 0) if hit is not None else (None, None)
+
+    async def _fake_cache_put(url, data, ttl=None):
+        store[url] = data
+
+    real = (risk._eth_get_code, risk._cache_get, risk._cache_put)
+    risk._eth_get_code, risk._cache_get, risk._cache_put = (
+        _fake_get_code, _fake_cache_get, _fake_cache_put)
+    try:
+        addr = "0x" + "ab" * 20
+        first = asyncio.run(risk._owner_powers(addr, "ethereum"))
+        second = asyncio.run(risk._owner_powers(addr, "ethereum"))
+        check("the bytecode is read once, not twice", len(calls) == 1, repr(calls))
+        check("and the second answer is the same", first == second,
+              "%r != %r" % (first, second))
+
+        other = "0x" + "cd" * 20
+        asyncio.run(risk._owner_powers(other, "ethereum"))
+        check("a different address is not served the first one's code",
+              len(calls) == 2 and calls[1] == other, repr(calls))
+
+        # A failure must not be cached: one busy node would become permanent blindness.
+        bad = "0x" + "00" * 18 + "dead"
+        asyncio.run(risk._owner_powers(bad, "ethereum"))
+        asyncio.run(risk._owner_powers(bad, "ethereum"))
+        check("a failed read is retried, not remembered",
+              calls.count(bad) == 2, repr(calls))
+    finally:
+        risk._eth_get_code, risk._cache_get, risk._cache_put = real
+
+
 def main():
     print("=" * 68)
     print("Owner-power disclosure")

@@ -143,14 +143,15 @@ async def _cache_get(url):
         return None, None
 
 
-async def _cache_put(url, data):
+async def _cache_put(url, data, ttl=None):
     try:
         from js import Date, Request, Response as JsResponse, caches
         from pyodide.ffi import to_js
         from js import Object
         payload = json.dumps({"_at": Date.now() / 1000.0, "_data": data})
         headers = to_js({"content-type": "application/json",
-                         "cache-control": "max-age=%d" % _STALE_OK_SECONDS},
+                         "cache-control": "max-age=%d"
+                                          % (ttl or _STALE_OK_SECONDS)},
                         dict_converter=Object.fromEntries)
         init = to_js({"headers": headers}, dict_converter=Object.fromEntries)
         await caches.default.put(Request.new(url), JsResponse.new(payload, init))
@@ -1027,6 +1028,12 @@ def _sells_demonstrated(evidence):
 
 # Public JSON-RPC per chain, used for one call: eth_getCode. Bytecode is immutable for an
 # address, so this is cached hard and costs almost nothing after the first look.
+# A day. Bytecode at an address does not change -- the exceptions are SELFDESTRUCT
+# followed by a CREATE2 redeploy, and a proxy's implementation changing, which does not
+# alter the proxy's own code. A day bounds the first case without pretending it cannot
+# happen.
+_BYTECODE_TTL_SECONDS = 86400
+
 _CHAIN_RPC = {
     "ethereum": "https://rpc.mevblocker.io",
     "base": "https://mainnet.base.org",
@@ -1114,7 +1121,28 @@ async def _owner_powers(address, chain):
     rpc = _CHAIN_RPC.get((chain or "").lower())
     if not rpc or not _looks_evm(address):
         return None
+
+    # The comment above _CHAIN_RPC has always said bytecode is immutable for an address,
+    # so this is "cached hard and costs almost nothing after the first look". It was not
+    # cached at all: _eth_get_code called the runtime fetch directly, so every EVM assess()
+    # made an uncached POST to a free public RPC on the request path -- and HANDOFF trap 18
+    # records that free RPCs meter per call, not per request. The premise was right and
+    # only the caching was missing, which is the dangerous version: a comment a later
+    # reader uses to reason about cost, describing an intention rather than the code.
+    #
+    # Keyed synthetically. The real request is a POST to one shared RPC URL for every
+    # address, so caching on the request URL would serve one contract's bytecode for
+    # another's.
+    key = "https://bytecode.vetagent.internal/%s/%s" % (chain, address.lower())
+    cached, age = await _cache_get(key)
+    if cached is not None and age is not None and age <= _BYTECODE_TTL_SECONDS:
+        return _powers_from_code(cached)
+
     code, why = await _eth_get_code(rpc, address)
+    if code:
+        # Successes only. A cached failure turns one busy node into a permanent "we cannot
+        # read this contract" -- the rule _fetch_json already follows, for the same reason.
+        await _cache_put(key, code, ttl=_BYTECODE_TTL_SECONDS)
     if code is None:
         # Say that the lookup failed rather than returning nothing.
         #
