@@ -89,7 +89,12 @@ ROUNDS = [
      "Owner powers read from contract bytecode. Keccak-256 implemented so selectors "
      "are computed rather than remembered; measured over 417 contracts; found not to "
      "discriminate at n=9; disclosed as unscored evidence instead."),
-    ("R13", "Next", None,
+    ("R13", "Withdraw a conclusion, and double the cohort it rested on", "0d390a8",
+     "Told the sell simulator which chain we meant, which rescued Base WETH and its "
+     "peers; found and fixed the regression that fix introduced an hour later; "
+     "withdrew R12's finding after measuring the instrument at 31% recall; and grew "
+     "the adversarial cohort from 9 to 17 by harvesting recent days."),
+    ("R14", "Next", None,
      "Open."),
 ]
 

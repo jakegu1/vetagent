@@ -24,11 +24,12 @@ The maturity score for each round is read from `docs/SCORECARD.md` **as it stood
 | **R10** | External audit, and closing all seventeen findings | 6 | 2026-09-05 | 53/100 (+0) |
 | **R11** | Number the rounds | 3 | 2026-09-05 | 53/100 (+0) |
 | **R12** | Measure a feature, then refuse to score it | 2 | 2026-09-05 to 2026-09-06 | 53/100 (+0) |
+| **R13** | Withdraw a conclusion, and double the cohort it rested on | 12 | 2026-09-06 | 53/100 (+0) |
 
-5 snapshot-job commits are excluded up to the last closed round: they are data collection, not development, and would bury the rounds. The job commits daily, so counting them past that point would date this file every morning.
+8 snapshot-job commits are excluded up to the last closed round: they are data collection, not development, and would bury the rounds. The job commits daily, so counting them past that point would date this file every morning.
 
 
-**R13 -- Next** is open: Open. Its commits are listed here once it closes.
+**R14 -- Next** is open: Open. Its commits are listed here once it closes.
 
 ---
 
@@ -263,6 +264,33 @@ Owner powers read from contract bytecode. Keccak-256 implemented so selectors ar
 |---|---|---|
 | `111faa0` | 2026-09-05 | Close R11 and open R12 |
 | `7a1a1c2` | 2026-09-06 | W1: measure owner powers, find they do not discriminate, disclose them anyway |
+
+Full reasoning for any line above: `git show <hash>`. The commit messages carry the measurement that motivated each change, and several admissions of error.
+
+
+---
+
+
+## R13 -- Withdraw a conclusion, and double the cohort it rested on
+
+
+Told the sell simulator which chain we meant, which rescued Base WETH and its peers; found and fixed the regression that fix introduced an hour later; withdrew R12's finding after measuring the instrument at 31% recall; and grew the adversarial cohort from 9 to 17 by harvesting recent days.
+
+
+| Commit | Date | Change |
+|---|---|---|
+| `a68c965` | 2026-09-06 | Close R12 and open R13 |
+| `45a4e34` | 2026-09-06 | Make the one POST this Worker makes report why it failed |
+| `151e0c1` | 2026-09-06 | Refresh the audit brief before the second audit |
+| `bdacdc3` | 2026-09-06 | The round guard had the hole it was built to prevent |
+| `85b6cf1` | 2026-09-06 | Tell the sell simulator which chain we mean instead of making it guess |
+| `9d02091` | 2026-09-06 | W5 is blocked on a credential, not on engineering |
+| `c61177e` | 2026-09-06 | Measured: passing the chain rescues WETH, USDC and USDbC on Base |
+| `ff67575` | 2026-09-06 | The snapshot bot commits daily; the round log counted it daily |
+| `355be46` | 2026-09-06 | The unknown rate is now one vendor away, not one fix away |
+| `894bf40` | 2026-09-06 | A wrong hint must not send the simulator to the wrong chain |
+| `887eca8` | 2026-09-06 | Withdraw R12's conclusion: it was measured with a two-thirds blind instrument |
+| `0d390a8` | 2026-09-06 | W3: the adversarial cohort doubles, and B14 is why |
 
 Full reasoning for any line above: `git show <hash>`. The commit messages carry the measurement that motivated each change, and several admissions of error.
 
