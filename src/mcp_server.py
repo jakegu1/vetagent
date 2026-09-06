@@ -106,9 +106,13 @@ TOOLS = [
         "description": (
             "Liquidity snapshot for a token's primary trading pair: price, 24h volume, "
             "pair count and the chains it trades on.\n"
-            "Check 'status' before using the numbers: 'ok' means real data, 'unavailable' "
-            "means the upstream request failed (which does NOT mean the token has no "
-            "liquidity), and 'not_found' means no trading pair was found."
+            "Check 'status' before using the numbers. 'ok' means real data. "
+            "'unavailable' means the upstream request failed, which does NOT mean the "
+            "token has no liquidity. 'not_found' means no trading pair exists for this "
+            "address at all. 'unpriced' means pairs exist but no source has costed them, "
+            "so liquidity_usd is null and the depth is unknown -- this is NOT a report of "
+            "zero liquidity. 'drained' means every pool on the token's own chain reports "
+            "its depth and every one is empty: there is nothing to sell into."
         ),
         "inputSchema": {
             "type": "object",
@@ -123,9 +127,11 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "address": {"type": "string"},
-                "status": {"type": "string", "enum": ["ok", "not_found", "unavailable"]},
+                "status": {"type": "string",
+                           "enum": ["ok", "not_found", "unpriced", "drained",
+                                    "unavailable"]},
                 "price_usd": {"type": "number"},
-                "liquidity_usd": {"type": "number"},
+                "liquidity_usd": {"type": ["number", "null"]},
                 "volume_24h_usd": {"type": "number"},
                 "pairs_total": {"type": "integer"},
                 "chains": {"type": "array", "items": {"type": "string"}},

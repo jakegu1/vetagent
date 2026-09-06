@@ -44,7 +44,8 @@ assess_token_risk(address, chain_hint?, verbose?)
 
 get_token_liquidity(address, chain_hint?)
   Price, 24h volume, pair count and chains for the primary trading pair.
-  Check `status` first: ok | not_found | unavailable.
+  Check `status` first: ok | not_found | unpriced | drained | unavailable.
+  `unpriced` means nobody costed the pools, not that liquidity is zero.
 
 find_new_hot_pools(chain?, limit?)
   Newest and most active pools on a chain. Discovery only, never an

@@ -1750,16 +1750,43 @@ async def liquidity(address, chain_hint=None):
                 "pairs_total": 0, "note": "No trading pair found for this address."}
     best = _pick_best(pairs, chain_hint=chain_hint, target=address)
     if best is None:
-        return {"address": address, "status": "not_found", "liquidity_usd": 0,
-                "pairs_total": len(pairs), "note": "Pairs exist but none had a sane price."}
+        # "not_found, liquidity_usd 0, pairs_total 3" -- three statements in one answer
+        # that contradict each other, and the tool description tells the model
+        # `not_found` means no pair exists for the address. A model reading it concludes
+        # the token does not trade. The token that produced it had 174 buys and 104 sells
+        # that day; DexScreener had simply not costed its pools.
+        #
+        # assess() was fixed for exactly this in R7, when _reported_liquidity was
+        # introduced to separate "no source stated a depth" from "the depth is zero".
+        # liquidity() was never brought along and still called _pair_liquidity, which
+        # reports an unstated depth as 0.0. Same bug, same file, one function over.
+        #
+        # `unpriced` is not a hedge. It is the only true answer when nobody has costed the
+        # pools, and it is the whole difference between "this token has no market" and "we
+        # do not know how deep its market is".
+        scope = _home_scope(pairs, chain_hint, address)
+        stated = [v for v in (_reported_liquidity(p) for p in scope) if v is not None]
+        if stated and max(stated) <= 0:
+            return {"address": address, "status": "drained", "liquidity_usd": 0,
+                    "pairs_total": len(pairs),
+                    "note": "%d pool%s on this token's own chain report their depth and "
+                            "every one is empty. There is nothing to sell into."
+                            % (len(stated), "" if len(stated) == 1 else "s")}
+        return {"address": address, "status": "unpriced", "liquidity_usd": None,
+                "pairs_total": len(pairs),
+                "note": "Pairs exist but none could be costed, so the depth is unknown. "
+                        "This is not a statement that the token has no liquidity."}
     return {
         "address": address, "status": "ok", "source": source,
-        "best_pair_chain": best.get("chainId"), "best_pair_dex": best.get("dexId"),
+        # Upstream names, escaped like every other upstream string that reaches a caller.
+        "best_pair_chain": _ascii_safe(best.get("chainId"), 24),
+        "best_pair_dex": _ascii_safe(best.get("dexId"), 24),
         "price_usd": _sig_round(best.get("priceUsd")),
         "liquidity_usd": _sig_round(_pair_liquidity(best)),
         "volume_24h_usd": _sig_round(_num((best.get("volume") or {}).get("h24"))),
         "pairs_total": len(pairs),
-        "chains": sorted({p.get("chainId") for p in pairs if p.get("chainId")}),
+        "chains": sorted({_ascii_safe(p.get("chainId"), 24)
+                          for p in pairs if p.get("chainId")}),
     }
 
 
