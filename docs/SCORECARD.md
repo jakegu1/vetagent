@@ -21,11 +21,11 @@
 
 | Dimension | Item | Score | Max | Evidence |
 |---|---|---|---|---|
-| Correctness | tests all green | 10.0 | 10 | test_risk.py 140 passed, 0 failed All passed; test_mcp.py 54 passed, 0 failed All passed |
-| Correctness | false positive rate (healthy rated high) | 8.0 | 10 | 3.9% |
-| Correctness | unknown rate | 6.0 | 10 | 17.9% |
+| Correctness | tests all green | 10.0 | 10 | test_risk.py 143 passed, 0 failed All passed; test_mcp.py 54 passed, 0 failed All passed |
+| Correctness | false positive rate (healthy rated high) | 8.0 | 10 | 4.3% |
+| Correctness | unknown rate | 6.0 | 10 | 17.4% |
 | Coverage | risk dimensions covered | 16.4 | 20 | 9 / 11 |
-| Credibility | recall is measurable | 10.0 | 10 | dead samples: 36 (need ≥20) |
+| Credibility | recall is measurable | 10.0 | 10 | dead samples: 30 (need ≥20) |
 | Credibility | days of snapshots | 0.2 | 10 | 3 of 180 days |
 | Distribution | channels listed on | 2.5 | 10 | 2 / 8 |
 | Distribution | external callers | — | 5 | not measured (needs CLOUDFLARE_API_TOKEN, see bench/usage.py) |

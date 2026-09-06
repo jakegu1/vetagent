@@ -81,16 +81,61 @@
    }
   },
   {
+   "address": "0x00e57ec29ef2ba7df07ad10573011647b2366f6d",
+   "symbol": "TOSHE",
+   "chain": "base",
+   "pool": "0x0178fe2461858bd59275cf5c8adb8db713c760f8",
+   "sampled_from": "backfill_2026-09-03",
+   "outcome_label": null,
+   "outcome_facts": {
+    "days": 184,
+    "peak_close": 3.08414972641957e-09,
+    "last_close": 1.5835038914839e-10,
+    "drawdown": 0.9487,
+    "peak_volume_7d": 529.55,
+    "recent_volume_7d": 8.38,
+    "volume_collapse": 0.9842
+   },
+   "goplus_label": "centralized",
+   "goplus_reasons": [
+    "tax changeable"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "1",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "10951",
+    "owner_address": "0x0000000000000000000000000000000000000000",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
    "address": "0x00f3c42833c3170159af4e92dbb451fb3f708917",
    "symbol": "ICP",
    "chain": "base",
    "pool": "0xbe762d548f8ca86a78e9da6e3ddc87f91457e398",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 184,
+    "peak_close": 3.60760590424119,
+    "last_close": 2.64850915293798,
+    "drawdown": 0.2659,
+    "peak_volume_7d": 6191290.8,
+    "recent_volume_7d": 4441074.75,
+    "volume_collapse": 0.2827
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -494,8 +539,8 @@
    "outcome_label": null,
    "outcome_facts": {
     "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 3,
+    "recent_volume_7d": 0.02
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
@@ -563,20 +608,16 @@
    }
   },
   {
-   "address": "0x08df470d41c11ba5cb60242747d76c65ca52c94c",
-   "symbol": "CPHY",
+   "address": "0x096746e984e57ae9a2922a08fc969bbe76963a72",
+   "symbol": "SHOW",
    "chain": "base",
-   "pool": "0x0d28347093e04e2a576a7b111e70fc2b2fa5e74a",
-   "sampled_from": "backfill_2026-02-07",
+   "pool": "0x041b87f3c56eb684918c3f63e14940d389de0612",
+   "sampled_from": "backfill_2026-08-25",
    "outcome_label": null,
    "outcome_facts": {
-    "days": 42,
-    "peak_close": 0.000351825980643368,
-    "last_close": 0.000137496355038156,
-    "drawdown": 0.6092,
-    "peak_volume_7d": 2149.08,
-    "recent_volume_7d": 1063.66,
-    "volume_collapse": 0.5051
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -595,86 +636,8 @@
     "is_proxy": "0",
     "buy_tax": "0",
     "sell_tax": "0",
-    "holder_count": "804",
+    "holder_count": "5071",
     "owner_address": "0xe220329659d41b2a9f26e83816b424bdacf62567",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
-   "address": "0x08ecc147ba8331df2848011dd816935f98e271ee",
-   "symbol": "MONEY",
-   "chain": "base",
-   "pool": "0x1c8abe211c183a00d115d99154b7f62b47a34f52",
-   "sampled_from": "backfill_2026-02-17",
-   "outcome_label": "dead",
-   "outcome_facts": {
-    "days": 184,
-    "peak_close": 0.00191820768995968,
-    "last_close": 6.55845570089032e-05,
-    "drawdown": 0.9658,
-    "peak_volume_7d": 315757.69,
-    "recent_volume_7d": 42.97,
-    "volume_collapse": 0.9999
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "0",
-    "is_mintable": "0",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "0",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "",
-    "sell_tax": "",
-    "holder_count": "17837",
-    "owner_address": "0xe220329659d41b2a9f26e83816b424bdacf62567",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
-   "address": "0x09b8903abf2ea0721e34427353988c2f43c6d64f",
-   "symbol": "LIQ",
-   "chain": "base",
-   "pool": "0x52c84b74461f956470e48b691c24e194c5b6863b80d0b5412c6f9d9b8e118fcc",
-   "sampled_from": "gt_pools",
-   "outcome_label": null,
-   "outcome_facts": {
-    "days": 151,
-    "peak_close": 5.43373792170805e-05,
-    "last_close": 1.48340621985098e-05,
-    "drawdown": 0.727,
-    "peak_volume_7d": 10857575.02,
-    "recent_volume_7d": 384470.7,
-    "volume_collapse": 0.9646
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "0",
-    "is_mintable": "0",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "0",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "",
-    "sell_tax": "",
-    "holder_count": "2811",
-    "owner_address": "0x872c561f699b42977c093f0ed8b4c9a431280c6c",
     "reputable": false,
     "cex_listed": []
    }
@@ -892,13 +855,13 @@
    "address": "0x0f61edbfe6cd86024c0f210c0695b08df55fdfc9",
    "symbol": "BSTONK",
    "chain": "base",
-   "pool": "0xc9786476d2492eb8ddb2ebf8b4b69e227e1f31397c790d877541ab0ed5cf5ee2",
-   "sampled_from": "snapshot_2026-09-04",
+   "pool": "0x04a686aea74e279f4e802dd9fe56b02a47a91dba",
+   "sampled_from": "backfill_2026-08-28",
    "outcome_label": null,
    "outcome_facts": {
     "reason": "fewer than 30 days of history",
-    "days": 20,
-    "recent_volume_7d": 1633869.82
+    "days": 0,
+    "recent_volume_7d": 0
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -993,7 +956,7 @@
    "symbol": "CTR",
    "chain": "base",
    "pool": "0x0ab02e160f0df68dc049b012c514857306960eae",
-   "sampled_from": "backfill_2026-05-28",
+   "sampled_from": "backfill_2026-08-26",
    "outcome_label": null,
    "outcome_facts": {
     "days": 103,
@@ -1030,46 +993,6 @@
    }
   },
   {
-   "address": "0x1111111111166b7fe7bd91427724b487980afc69",
-   "symbol": "ZORA",
-   "chain": "base",
-   "pool": "0x1a0d63f2ccc5494252f13c4deb6e2ed894fd8892",
-   "sampled_from": "backfill_2026-02-17",
-   "outcome_label": null,
-   "outcome_facts": {
-    "days": 184,
-    "peak_close": 0.0229359576090868,
-    "last_close": 0.00867526486528977,
-    "drawdown": 0.6218,
-    "peak_volume_7d": 102.46,
-    "recent_volume_7d": 0.85,
-    "volume_collapse": 0.9917
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "0",
-    "is_mintable": "0",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "0",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "1117428",
-    "reputable": true,
-    "cex_listed": [
-     "Coinbase"
-    ]
-   }
-  },
-  {
    "address": "0x1217bfe6c773eec6cc4a38b5dc45b92292b6e189",
    "symbol": "",
    "chain": "base",
@@ -1094,6 +1017,66 @@
     "buy_tax": "0",
     "sell_tax": "0",
     "holder_count": "15019",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0x13ea5bb744b2710600dcf384d78f74e0cb39bb07",
+   "symbol": "牛来",
+   "chain": "base",
+   "pool": "0x01e36902eb95d030e9f381d7fd5de760f90391aa",
+   "sampled_from": "backfill_2026-08-31",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 1,
+    "recent_volume_7d": 10738928.26
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "5084",
+    "owner_address": "0x0000000000000000000000000000000000000000",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0x14a9a1516b0b02ac5e97ba82eb27137bbd9b0b77",
+   "symbol": "topnftart",
+   "chain": "base",
+   "pool": "0x037cb3e78529b045bbc19d676dd7ef4c9198d571",
+   "sampled_from": "backfill_2026-08-31",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "honeypot_with_same_creator": "0",
+    "is_open_source": "1",
+    "is_proxy": "1",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "551",
     "reputable": false,
     "cex_listed": []
    }
@@ -1138,27 +1121,30 @@
    }
   },
   {
-   "address": "0x15f7cb0712fc9709883fe5a0ad8afd37a6cd321c",
-   "symbol": "house",
+   "address": "0x15fd17582742efdd04e038dea4a088bc636bb990",
+   "symbol": "NIKITA",
    "chain": "base",
-   "pool": "0x187492118d8313e1c567df5e232220d4a8589874",
-   "sampled_from": "backfill_2026-02-17",
+   "pool": "0x043ab7fed50d48d17da57204a06f6059e6c5fa6d",
+   "sampled_from": "backfill_2026-09-02",
    "outcome_label": null,
    "outcome_facts": {
     "reason": "fewer than 30 days of history",
-    "days": 29,
-    "recent_volume_7d": 0.2
+    "days": 2,
+    "recent_volume_7d": 6497.55
    },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
+   "goplus_label": "unsafe",
+   "goplus_reasons": [
+    "honeypot"
+   ],
    "goplus_raw": {
-    "honeypot_with_same_creator": "0",
+    "is_honeypot": "1",
+    "honeypot_with_same_creator": "2",
     "is_mintable": "1",
-    "is_open_source": "1",
-    "is_proxy": "1",
-    "buy_tax": "",
-    "sell_tax": "",
-    "holder_count": "9542",
+    "is_open_source": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "18",
+    "owner_address": "",
     "reputable": false,
     "cex_listed": []
    }
@@ -1271,6 +1257,40 @@
     "cex_listed": [
      "Coinbase"
     ]
+   }
+  },
+  {
+   "address": "0x1b6a569dd61edce3c383f6d565e2f79ec3a12980",
+   "symbol": "PEEZY",
+   "chain": "base",
+   "pool": "0x011146e0f2b57472bfa0e9ba502e1411f3ba286e",
+   "sampled_from": "backfill_2026-08-31",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "672876",
+    "reputable": false,
+    "cex_listed": []
    }
   },
   {
@@ -1559,7 +1579,7 @@
    "symbol": "RECALL",
    "chain": "base",
    "pool": "0x0abe41c8aaa9282429e06ebed48be36298981d94",
-   "sampled_from": "backfill_2026-05-28",
+   "sampled_from": "backfill_2026-08-26",
    "outcome_label": "alive",
    "outcome_facts": {
     "days": 117,
@@ -1590,7 +1610,7 @@
    "symbol": "BORING",
    "chain": "base",
    "pool": "0x08c8db2bdb4f1e1a46ca71c0f809973eec5474a3",
-   "sampled_from": "backfill_2026-05-28",
+   "sampled_from": "backfill_2026-08-28",
    "outcome_label": null,
    "outcome_facts": {
     "days": 122,
@@ -1650,6 +1670,45 @@
     "sell_tax": "0",
     "holder_count": "7476",
     "owner_address": "0xe220329659d41b2a9f26e83816b424bdacf62567",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0x222f10edab925bdd8d6241d488ad576fa7dfb12e",
+   "symbol": "cbCEN",
+   "chain": "base",
+   "pool": "0x01489c1893dfb67aac62007d4874ffd206687630",
+   "sampled_from": "backfill_2026-09-03",
+   "outcome_label": null,
+   "outcome_facts": {
+    "days": 184,
+    "peak_close": 7.31981919011839e-13,
+    "last_close": 2.41201937221777e-13,
+    "drawdown": 0.6705,
+    "peak_volume_7d": 602.2,
+    "recent_volume_7d": 73.41,
+    "volume_collapse": 0.8781
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "2",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0.004",
+    "sell_tax": "0.004",
+    "holder_count": "11594",
+    "owner_address": "0x0000000000000000000000000000000000000000",
     "reputable": false,
     "cex_listed": []
    }
@@ -1739,16 +1798,60 @@
    }
   },
   {
-   "address": "0x24569d33653c404f90af10a2b98d6e0030d3d267",
-   "symbol": "UNA",
+   "address": "0x23ee2343b892b1bb63503a4fabc840e0e2c6810f",
+   "symbol": "AXL",
    "chain": "base",
-   "pool": "0x01c1cff07a7f967fd7613088bb1712554944c6e6",
-   "sampled_from": "backfill_2025-12-29",
+   "pool": "0x0a7dc3d5746d97b659d2bf02b2b4fdf6dcef8822",
+   "sampled_from": "backfill_2026-08-31",
    "outcome_label": null,
    "outcome_facts": {
     "reason": "fewer than 30 days of history",
     "days": 0,
     "recent_volume_7d": 0
+   },
+   "goplus_label": "centralized",
+   "goplus_reasons": [
+    "owner can change balances",
+    "mintable and owner has not renounced"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "7",
+    "is_mintable": "1",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "1",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "",
+    "sell_tax": "",
+    "holder_count": "74933",
+    "owner_address": "0xe432150cce91c13a887f7d836923d5597add8e31",
+    "reputable": true,
+    "cex_listed": [
+     "Binance"
+    ]
+   }
+  },
+  {
+   "address": "0x24569d33653c404f90af10a2b98d6e0030d3d267",
+   "symbol": "UNA",
+   "chain": "base",
+   "pool": "0x01c1cff07a7f967fd7613088bb1712554944c6e6",
+   "sampled_from": "backfill_2025-12-29",
+   "outcome_label": "dead",
+   "outcome_facts": {
+    "days": 184,
+    "peak_close": 0.0065846595023984,
+    "last_close": 0.000378510448302555,
+    "drawdown": 0.9425,
+    "peak_volume_7d": 129255.87,
+    "recent_volume_7d": 3854.51,
+    "volume_collapse": 0.9702
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
@@ -1776,48 +1879,11 @@
    }
   },
   {
-   "address": "0x2465a955573c1fd69023e58cf2c07971e200b3c9",
-   "symbol": "COCORO pool",
-   "chain": "base",
-   "pool": "0x0db004e825de038d1c043f8acfdc74a8d4eafbad",
-   "sampled_from": "backfill_2026-03-09",
-   "outcome_label": null,
-   "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
-   },
-   "goplus_label": "centralized",
-   "goplus_reasons": [
-    "owner can change balances"
-   ],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "3067",
-    "is_mintable": "1",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "1",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "2",
-    "owner_address": "0x0000000000000000000000000000000000000000",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
    "address": "0x25e0a7767d03461eaf88b47cd9853722fe05dfd3",
    "symbol": "SCI",
    "chain": "base",
    "pool": "0x0962a51e121aa8371cd4bb0458b7e5a08c1cbd29",
-   "sampled_from": "backfill_2025-12-29",
+   "sampled_from": "backfill_2026-08-25",
    "outcome_label": null,
    "outcome_facts": {
     "days": 184,
@@ -1885,6 +1951,40 @@
     "sell_tax": "0",
     "holder_count": "6187",
     "owner_address": "0x0000000000000000000000000000000000000000",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0x2719e6c4eb27f5c1cfdc682cb7dd478e5fa35903",
+   "symbol": "UTOF",
+   "chain": "base",
+   "pool": "0x09a69483644cda7bbe348095a96665ea04622978",
+   "sampled_from": "backfill_2026-08-28",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "20850",
     "reputable": false,
     "cex_listed": []
    }
@@ -1964,25 +2064,19 @@
    }
   },
   {
-   "address": "0x27990c0fe8bb79126f8f012a77e0a5837b2be0e1",
-   "symbol": "POKEPULL",
+   "address": "0x27b4c4043bf5e2049a4f1110abd9aeb784be274f",
+   "symbol": "BANGARANG",
    "chain": "base",
-   "pool": "0x0caea6d9f7e6ccf820f559412f7cf195b28e1657",
-   "sampled_from": "backfill_2026-03-09",
-   "outcome_label": "dead",
+   "pool": "0x02c7e3e672f45f2007ee307c88e53528b0528176",
+   "sampled_from": "backfill_2026-09-03",
+   "outcome_label": null,
    "outcome_facts": {
-    "days": 83,
-    "peak_close": 0.000179814446507766,
-    "last_close": 4.9995624028776e-06,
-    "drawdown": 0.9722,
-    "peak_volume_7d": 416683.85,
-    "recent_volume_7d": 390.56,
-    "volume_collapse": 0.9991
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
    },
-   "goplus_label": null,
-   "goplus_reasons": [
-    "not enough evidence (open source=1 holders=256)"
-   ],
+   "goplus_label": "safe",
+   "goplus_reasons": [],
    "goplus_raw": {
     "is_honeypot": "0",
     "honeypot_with_same_creator": "0",
@@ -1998,8 +2092,7 @@
     "is_proxy": "0",
     "buy_tax": "0",
     "sell_tax": "0",
-    "holder_count": "256",
-    "owner_address": "0xe220329659d41b2a9f26e83816b424bdacf62567",
+    "holder_count": "4608",
     "reputable": false,
     "cex_listed": []
    }
@@ -2034,6 +2127,70 @@
     "buy_tax": "0",
     "sell_tax": "0",
     "holder_count": "128556",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0x28ed8909de1b3881400413ea970cce377a004cca",
+   "symbol": "Punk",
+   "chain": "base",
+   "pool": "0x0351f5efd5fb8ef36856d2c7e2aa5356528f47b9",
+   "sampled_from": "backfill_2026-08-27",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
+   },
+   "goplus_label": "centralized",
+   "goplus_reasons": [
+    "tax changeable",
+    "mintable and owner has not renounced"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "1",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "1",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "1",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "",
+    "sell_tax": "",
+    "holder_count": "9784",
+    "owner_address": "0xd1d2a7d1deae0109699b91911a2cdca137df7517",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0x29bbe265cae393137a4331dc3178cdfe917fc603",
+   "symbol": "Pi",
+   "chain": "base",
+   "pool": "0x03f4eb81668472494b24b13ce626ed9e107ba7de",
+   "sampled_from": "backfill_2026-08-26",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "1",
+    "is_open_source": "1",
+    "is_proxy": "1",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "3413",
     "reputable": false,
     "cex_listed": []
    }
@@ -2145,6 +2302,47 @@
     "sell_tax": "0",
     "holder_count": "617890",
     "owner_address": "0xcc29169da9063f893d7958e8c021e788446e7229",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0x2b177e990c5594c713c422d1573c892f3c186b8a",
+   "symbol": "BASEPUP",
+   "chain": "base",
+   "pool": "0x037797ed94fc2e3dfe1cc70c74d3d59e432db240",
+   "sampled_from": "backfill_2026-08-28",
+   "outcome_label": null,
+   "outcome_facts": {
+    "days": 184,
+    "peak_close": 0.175603061999433,
+    "last_close": 0.11161449905037,
+    "drawdown": 0.3644,
+    "peak_volume_7d": 38.74,
+    "recent_volume_7d": 6.26,
+    "volume_collapse": 0.8383
+   },
+   "goplus_label": "centralized",
+   "goplus_reasons": [
+    "tax changeable"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "1",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0.01",
+    "sell_tax": "0.009",
+    "holder_count": "52",
+    "owner_address": "0xdf7d156b68a940d31064c2c8c9d76cf173a55b3b",
     "reputable": false,
     "cex_listed": []
    }
@@ -2272,6 +2470,43 @@
    }
   },
   {
+   "address": "0x30457a1ab7cd796d6e55e4e5ba12e09f2283e856",
+   "symbol": "DUB",
+   "chain": "base",
+   "pool": "0x03af80cd5b189b59db1c86f76b688abcdac5955b",
+   "sampled_from": "backfill_2026-08-27",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
+   },
+   "goplus_label": "centralized",
+   "goplus_reasons": [
+    "tax changeable"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "1",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "865",
+    "owner_address": "0x0000000000000000000000000000000000000000",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
    "address": "0x306acd0c07c430abbbb2e74ef7bde94f32a898c0",
    "symbol": "SEDA",
    "chain": "base",
@@ -2296,6 +2531,44 @@
     "buy_tax": "0",
     "sell_tax": "0",
     "holder_count": "2322",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0x30c1d9b1cbd5590d6da01069a331e110482a8a91",
+   "symbol": "Mog",
+   "chain": "base",
+   "pool": "0x0b0ff813dbed94745b18f86a3fb8bf051c661c2e",
+   "sampled_from": "backfill_2026-08-29",
+   "outcome_label": null,
+   "outcome_facts": {
+    "days": 184,
+    "peak_close": 2.85071480110165e-06,
+    "last_close": 2.47694401406612e-06,
+    "drawdown": 0.1311,
+    "peak_volume_7d": 197.78,
+    "recent_volume_7d": 1.07,
+    "volume_collapse": 0.9946
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "1309744",
     "reputable": false,
     "cex_listed": []
    }
@@ -2335,47 +2608,6 @@
     "owner_address": "0x0000000000000000000000000000000000000000",
     "reputable": false,
     "cex_listed": []
-   }
-  },
-  {
-   "address": "0x311935cd80b76769bf2ecc9d8ab7635b2139cf82",
-   "symbol": "SOL",
-   "chain": "base",
-   "pool": "0x1cca8388e671e83010843a1a0535b04f2d7e946b",
-   "sampled_from": "backfill_2026-02-17",
-   "outcome_label": "alive",
-   "outcome_facts": {
-    "days": 184,
-    "peak_close": 109.471186217929,
-    "last_close": 102.172366694303,
-    "drawdown": 0.0667,
-    "peak_volume_7d": 487677.2,
-    "recent_volume_7d": 211111.71,
-    "volume_collapse": 0.5671
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "0",
-    "is_mintable": "0",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "0",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "24259",
-    "owner_address": "0x3eff766c76a1be2ce1acf2b69c78bcae257d5188",
-    "reputable": true,
-    "cex_listed": [
-     "Coinbase"
-    ]
    }
   },
   {
@@ -2519,20 +2751,16 @@
    }
   },
   {
-   "address": "0x36be1d329444aef5d28df3662ec5b4f965cd93e9",
-   "symbol": "wXCH",
+   "address": "0x36912b5cf63e509f18e53ac98b3012fa79e77bf5",
+   "symbol": "FUEGO",
    "chain": "base",
-   "pool": "0x113138dc05b05afbe25e8c31ca9de9b445caca48",
-   "sampled_from": "backfill_2026-05-08",
+   "pool": "0x09298025e7bd3f128833e6d6f2ece92e46a33f04",
+   "sampled_from": "backfill_2026-08-25",
    "outcome_label": null,
    "outcome_facts": {
-    "days": 184,
-    "peak_close": 3.68696426937408,
-    "last_close": 1.4472172770523,
-    "drawdown": 0.6075,
-    "peak_volume_7d": 23375.2,
-    "recent_volume_7d": 1902.77,
-    "volume_collapse": 0.9186
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -2551,7 +2779,8 @@
     "is_proxy": "0",
     "buy_tax": "0",
     "sell_tax": "0",
-    "holder_count": "1537",
+    "holder_count": "247642",
+    "owner_address": "0x0000000000000000000000000000000000000000",
     "reputable": false,
     "cex_listed": []
    }
@@ -2668,6 +2897,36 @@
     "sell_tax": "0",
     "holder_count": "1930",
     "owner_address": "0xe220329659d41b2a9f26e83816b424bdacf62567",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0x39b63898575768388c3f7480d9231f961b977754",
+   "symbol": "EBV",
+   "chain": "base",
+   "pool": "0x081a3db1a321df48b985cb1060db3f130ccf94cf",
+   "sampled_from": "backfill_2026-09-01",
+   "outcome_label": null,
+   "outcome_facts": {
+    "days": 68,
+    "peak_close": 0.000319688572055529,
+    "last_close": 0.000245392364877762,
+    "drawdown": 0.2324,
+    "peak_volume_7d": 303.51,
+    "recent_volume_7d": 0.04,
+    "volume_collapse": 0.9999
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "1",
+    "is_open_source": "1",
+    "is_proxy": "1",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "22071",
     "reputable": false,
     "cex_listed": []
    }
@@ -2808,102 +3067,6 @@
    }
   },
   {
-   "address": "0x3c56e6326ac0510b114d6057bdd2f73bcaeb76fe",
-   "symbol": "BLUEX",
-   "chain": "base",
-   "pool": "0x16e5082cf1622fb40c7af867abd520a251377771",
-   "sampled_from": "backfill_2025-12-09",
-   "outcome_label": "dead",
-   "outcome_facts": {
-    "days": 95,
-    "peak_close": 0.000142437877022528,
-    "last_close": 1.63539339941538e-06,
-    "drawdown": 0.9885,
-    "peak_volume_7d": 262672.42,
-    "recent_volume_7d": 160.51,
-    "volume_collapse": 0.9994
-   },
-   "goplus_label": null,
-   "goplus_reasons": [
-    "no GoPlus data"
-   ],
-   "goplus_raw": {}
-  },
-  {
-   "address": "0x3cc0f75faf2c852d62763d660d3a3f93f5d84c27",
-   "symbol": "Stellar GateToken",
-   "chain": "base",
-   "pool": "0x194ec2e1e3b52e83df121adb24d91c584fbbd7be",
-   "sampled_from": "backfill_2026-02-17",
-   "outcome_label": null,
-   "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 1,
-    "recent_volume_7d": 0.02
-   },
-   "goplus_label": "centralized",
-   "goplus_reasons": [
-    "owner can change balances"
-   ],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "174",
-    "is_mintable": "1",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "1",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "4",
-    "owner_address": "0x0000000000000000000000000000000000000000",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
-   "address": "0x3ce3f151aae9cabca172bd267429e2e2dd9d0534",
-   "symbol": "AI Jeffrey",
-   "chain": "base",
-   "pool": "0x0c9dc4a847a1e54000cfe1ef10bdc9839d5aab9d",
-   "sampled_from": "backfill_2026-02-07",
-   "outcome_label": null,
-   "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 2,
-    "recent_volume_7d": 0.04
-   },
-   "goplus_label": "centralized",
-   "goplus_reasons": [
-    "owner can change balances"
-   ],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "10",
-    "is_mintable": "1",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "1",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "7",
-    "owner_address": "0x0000000000000000000000000000000000000000",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
    "address": "0x3cf255a7a03d74b6f9d58456cbedbc0705626354",
    "symbol": "NEUY",
    "chain": "base",
@@ -3030,8 +3193,8 @@
    "outcome_label": null,
    "outcome_facts": {
     "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 29,
+    "recent_volume_7d": 275652.98
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -3081,6 +3244,44 @@
     "sell_tax": "0",
     "holder_count": "2355",
     "owner_address": "0x1e63183fb2123f0674582a5a2d251e72de0bd8bf",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0x4154550f4db74dc38d1fe98e1f3f28ed6dad627d",
+   "symbol": "jEUR",
+   "chain": "base",
+   "pool": "0x02b6b7ab1ede16f48c57893d2fdf6251c2cb3821",
+   "sampled_from": "backfill_2026-08-28",
+   "outcome_label": null,
+   "outcome_facts": {
+    "days": 33,
+    "peak_close": 1.17042864323754,
+    "last_close": 1.16465406286493,
+    "drawdown": 0.0049,
+    "peak_volume_7d": 987050.89,
+    "recent_volume_7d": 485557.4,
+    "volume_collapse": 0.5081
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "1",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "1010",
     "reputable": false,
     "cex_listed": []
    }
@@ -3163,6 +3364,42 @@
    }
   },
   {
+   "address": "0x45d9c101a3870ca5024582fd788f4e1e8f7971c3",
+   "symbol": "MASQ",
+   "chain": "base",
+   "pool": "0x07f81c455db3e3c0af00fbb8c6d2834495c3c06d",
+   "sampled_from": "backfill_2026-08-28",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
+   },
+   "goplus_label": "centralized",
+   "goplus_reasons": [
+    "owner can change balances"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "1",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "1",
+    "hidden_owner": "1",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "9613",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
    "address": "0x46c85152bfe9f96829aa94755d9f915f9b10ef5f",
    "symbol": "cNGN",
    "chain": "base",
@@ -3170,9 +3407,13 @@
    "sampled_from": "backfill_2025-12-29",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 184,
+    "peak_close": 0.000749115641847478,
+    "last_close": 0.000650517750565903,
+    "drawdown": 0.1316,
+    "peak_volume_7d": 216303.0,
+    "recent_volume_7d": 23205.61,
+    "volume_collapse": 0.8927
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -3188,20 +3429,56 @@
    }
   },
   {
-   "address": "0x475e372b23d75a745bceb431107167f2583ada4c",
-   "symbol": "DMND",
+   "address": "0x47501c13821db943dfcd8393993af41d39e4439e",
+   "symbol": "TSLA",
    "chain": "base",
-   "pool": "0x0b444e0ad2bde2bada50cbcb3019d5b89fa5bf90",
+   "pool": "0x02a1cc97c10cdea3de9cea835cf3d81e04f3946c",
    "sampled_from": "backfill_2025-12-29",
-   "outcome_label": null,
+   "outcome_label": "dead",
    "outcome_facts": {
     "days": 184,
-    "peak_close": 7.76580533249363e-05,
-    "last_close": 1.36099471603227e-06,
-    "drawdown": 0.9825,
-    "peak_volume_7d": 8258.81,
-    "recent_volume_7d": 111.01,
-    "volume_collapse": 0.9866
+    "peak_close": 425104.844376256,
+    "last_close": 2.14883296328104e-08,
+    "drawdown": 1.0,
+    "peak_volume_7d": 15925425.92,
+    "recent_volume_7d": 15.47,
+    "volume_collapse": 1.0
+   },
+   "goplus_label": null,
+   "goplus_reasons": [
+    "is_honeypot on a pool with no recent trading: the oracle's own simulation cannot run there, so the flag is unfalsifiable"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "1",
+    "honeypot_with_same_creator": "1",
+    "is_mintable": "1",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "1",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "17395",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0x499a12387357e3ec8facc011a2ab662e8abdbd8f",
+   "symbol": "STRM",
+   "chain": "base",
+   "pool": "0x05f6c348e293ce068b5f7682cb01dc28524bf6a0",
+   "sampled_from": "backfill_2026-08-30",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -3213,50 +3490,14 @@
     "is_blacklisted": "0",
     "slippage_modifiable": "0",
     "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
     "hidden_owner": "0",
     "selfdestruct": "0",
     "is_open_source": "1",
     "is_proxy": "0",
     "buy_tax": "0",
     "sell_tax": "0",
-    "holder_count": "5877",
-    "owner_address": "0x0000000000000000000000000000000000000000",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
-   "address": "0x47ff656872e11ed238b44b809ed460aa244d7a9d",
-   "symbol": "ETH",
-   "chain": "base",
-   "pool": "0x1ac1f8c311985d16ff3086f0aa4ace417167e694",
-   "sampled_from": "backfill_2026-02-17",
-   "outcome_label": null,
-   "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
-   },
-   "goplus_label": "centralized",
-   "goplus_reasons": [
-    "tax changeable"
-   ],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "6",
-    "is_mintable": "0",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "1",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "0",
-    "hidden_owner": "1",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0.03",
-    "sell_tax": "0",
-    "holder_count": "89",
+    "holder_count": "83701",
     "owner_address": "0x0000000000000000000000000000000000000000",
     "reputable": false,
     "cex_listed": []
@@ -3298,45 +3539,6 @@
    }
   },
   {
-   "address": "0x4afaabdcdf69978587f959e59c11d9077f4c79c8",
-   "symbol": "DOR",
-   "chain": "base",
-   "pool": "0x189d460340b74dd77050f1594656da46b89343eb",
-   "sampled_from": "backfill_2025-12-09",
-   "outcome_label": null,
-   "outcome_facts": {
-    "days": 184,
-    "peak_close": 0.020519237980825,
-    "last_close": 0.000191381607718565,
-    "drawdown": 0.9907,
-    "peak_volume_7d": 15884.25,
-    "recent_volume_7d": 26.95,
-    "volume_collapse": 0.9983
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "0",
-    "is_mintable": "0",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "0",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "6982",
-    "owner_address": "0x0000000000000000000000000000000000000000",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
    "address": "0x4b711422285a99852e88903c2466cabec098e1c7",
    "symbol": "eusdc yvault",
    "chain": "base",
@@ -3368,6 +3570,44 @@
     "buy_tax": "0",
     "sell_tax": "0",
     "holder_count": "2",
+    "owner_address": "0x0000000000000000000000000000000000000000",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0x4baeb8620399fa024ff149acd1ac86b2641b0d5d",
+   "symbol": "pepeinme",
+   "chain": "base",
+   "pool": "0x09d20582d7fd62cdc1e5697068787bebe7124926",
+   "sampled_from": "backfill_2026-08-27",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
+   },
+   "goplus_label": "centralized",
+   "goplus_reasons": [
+    "has a blacklist",
+    "tax changeable"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "1",
+    "slippage_modifiable": "1",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "52",
     "owner_address": "0x0000000000000000000000000000000000000000",
     "reputable": false,
     "cex_listed": []
@@ -3415,11 +3655,45 @@
    }
   },
   {
+   "address": "0x4c96a67b0577358894407af7bc3158fc1dffbeb5",
+   "symbol": "POV",
+   "chain": "base",
+   "pool": "0x03aa71a42e90521fe0f5372b69906db5ce09718e",
+   "sampled_from": "backfill_2026-09-02",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "1135674",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
    "address": "0x4d58608eff50b691a3b76189af2a7a123df1e9ba",
    "symbol": "BOYS",
    "chain": "base",
    "pool": "0x0b1e820eb65289896cbb6b152ee1fa12ec3d2b18",
-   "sampled_from": "backfill_2026-02-07",
+   "sampled_from": "backfill_2026-08-26",
    "outcome_label": null,
    "outcome_facts": {
     "days": 184,
@@ -3564,20 +3838,41 @@
    }
   },
   {
+   "address": "0x4f990fe48210cad87240e1acddc3338f7dce32d6",
+   "symbol": "QuintondeKock_BASE",
+   "chain": "base",
+   "pool": "0x03fd509a5e3bd4d6e8eec8b1ffb8b88d76bbc56f",
+   "sampled_from": "backfill_2026-09-04",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "honeypot_with_same_creator": "0",
+    "is_open_source": "1",
+    "is_proxy": "1",
+    "buy_tax": "",
+    "sell_tax": "",
+    "holder_count": "567",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
    "address": "0x50c5725949a6f0c72e6c4a641f24049a917db0cb",
    "symbol": "DAI",
    "chain": "base",
-   "pool": "0x0feb1490f80b6978002c3e501753562f2f2853b2",
-   "sampled_from": "backfill_2025-12-09",
+   "pool": "0x019eff8e9b225d8cbc6127748f5f47ea3e2f28e5",
+   "sampled_from": "backfill_2026-08-25",
    "outcome_label": null,
    "outcome_facts": {
-    "days": 184,
-    "peak_close": 1.00559004681048,
-    "last_close": 0.997714392491142,
-    "drawdown": 0.0078,
-    "peak_volume_7d": 668.07,
-    "recent_volume_7d": 142.29,
-    "volume_collapse": 0.787
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
@@ -3635,37 +3930,36 @@
    }
   },
   {
-   "address": "0x514d8e8099286a13486ef6c525c120f51c239b52",
-   "symbol": "OBT",
+   "address": "0x52220332f48f1e2cd3128025cf70bcba5a513c57",
+   "symbol": "BRETTSKY",
    "chain": "base",
-   "pool": "0x0adabef97ffe363eb71c5fe2a6e3673fc4eba0ae",
-   "sampled_from": "backfill_2026-05-28",
+   "pool": "0x01b120087c3fa9faba4391f63772a826e0feaf1a",
+   "sampled_from": "backfill_2026-08-30",
    "outcome_label": null,
    "outcome_facts": {
     "reason": "fewer than 30 days of history",
     "days": 0,
     "recent_volume_7d": 0
    },
-   "goplus_label": "centralized",
-   "goplus_reasons": [
-    "owner can change balances"
-   ],
+   "goplus_label": "safe",
+   "goplus_reasons": [],
    "goplus_raw": {
     "is_honeypot": "0",
     "honeypot_with_same_creator": "0",
-    "is_mintable": "1",
+    "is_mintable": "0",
     "transfer_pausable": "0",
     "is_blacklisted": "0",
     "slippage_modifiable": "0",
     "can_take_back_ownership": "0",
-    "owner_change_balance": "1",
-    "hidden_owner": "1",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
     "selfdestruct": "0",
     "is_open_source": "1",
     "is_proxy": "0",
     "buy_tax": "0",
     "sell_tax": "0",
-    "holder_count": "152046",
+    "holder_count": "162255",
+    "owner_address": "0x0000000000000000000000000000000000000000",
     "reputable": false,
     "cex_listed": []
    }
@@ -3784,41 +4078,29 @@
    }
   },
   {
-   "address": "0x53f39e5c53ee40bbc3da97c3b47bd2968d110a8d",
-   "symbol": "align",
+   "address": "0x5443654c9eae15748677d66c4698e303913b7ccd",
+   "symbol": "$NVDAC",
    "chain": "base",
-   "pool": "0x0f56aeba06f65e2790c5b6687f5c3128b7456f76",
-   "sampled_from": "gt_pools",
+   "pool": "0x01a569342a90c61a6045c345025bdabf08be3c0a",
+   "sampled_from": "backfill_2026-08-31",
    "outcome_label": null,
    "outcome_facts": {
     "reason": "fewer than 30 days of history",
-    "days": 17,
-    "recent_volume_7d": 1097965.27
+    "days": 0,
+    "recent_volume_7d": 0
    },
-   "goplus_label": "centralized",
-   "goplus_reasons": [
-    "owner can change balances"
-   ],
+   "goplus_label": "safe",
+   "goplus_reasons": [],
    "goplus_raw": {
-    "is_honeypot": "0",
     "honeypot_with_same_creator": "0",
     "is_mintable": "1",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "1",
-    "hidden_owner": "1",
-    "selfdestruct": "0",
     "is_open_source": "1",
-    "is_proxy": "0",
+    "is_proxy": "1",
     "buy_tax": "0",
     "sell_tax": "0",
-    "holder_count": "21564",
-    "reputable": true,
-    "cex_listed": [
-     "Coinbase"
-    ]
+    "holder_count": "7771",
+    "reputable": false,
+    "cex_listed": []
    }
   },
   {
@@ -3860,6 +4142,45 @@
     "cex_listed": [
      "Binance"
     ]
+   }
+  },
+  {
+   "address": "0x55ff51da774b8ce0ed1abaed1cb76236bc6b2f16",
+   "symbol": "ADM",
+   "chain": "base",
+   "pool": "0x039f7c7e22c1c3bba5e871029ca72d5ddead295b",
+   "sampled_from": "backfill_2026-08-30",
+   "outcome_label": "alive",
+   "outcome_facts": {
+    "days": 184,
+    "peak_close": 0.00160425173024527,
+    "last_close": 0.00134445538709837,
+    "drawdown": 0.1619,
+    "peak_volume_7d": 641692.52,
+    "recent_volume_7d": 457842.75,
+    "volume_collapse": 0.2865
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "4249",
+    "owner_address": "0xe220329659d41b2a9f26e83816b424bdacf62567",
+    "reputable": false,
+    "cex_listed": []
    }
   },
   {
@@ -3935,35 +4256,6 @@
    }
   },
   {
-   "address": "0x5875eee11cf8398102fdad704c9e96607675467a",
-   "symbol": "sUSDS",
-   "chain": "base",
-   "pool": "0x09b367f0fb9456d4d9dcaba5f4f11f7bc1f5bdca",
-   "sampled_from": "backfill_2025-12-29",
-   "outcome_label": null,
-   "outcome_facts": {
-    "days": 184,
-    "peak_close": 1.138338797865,
-    "last_close": 1.10621357657884,
-    "drawdown": 0.0282,
-    "peak_volume_7d": 3350.72,
-    "recent_volume_7d": 4.78,
-    "volume_collapse": 0.9986
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "honeypot_with_same_creator": "0",
-    "is_open_source": "1",
-    "is_proxy": "1",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "76946",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
    "address": "0x589c8e8fe013133b41abf546c819787a75688690",
    "symbol": "SQUOGE",
    "chain": "base",
@@ -3997,43 +4289,6 @@
     "buy_tax": "0",
     "sell_tax": "0",
     "holder_count": "9885",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
-   "address": "0x5a2eac3fff92338483ca73f15ac4f9744079266b",
-   "symbol": "Neos.ai Free",
-   "chain": "base",
-   "pool": "0x0c23257461ece7b8b021b8108f10b42833ad9cd0",
-   "sampled_from": "backfill_2026-02-07",
-   "outcome_label": null,
-   "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
-   },
-   "goplus_label": "centralized",
-   "goplus_reasons": [
-    "owner can change balances"
-   ],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "62",
-    "is_mintable": "1",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "1",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "4",
-    "owner_address": "0x0000000000000000000000000000000000000000",
     "reputable": false,
     "cex_listed": []
    }
@@ -4139,7 +4394,7 @@
    "symbol": "CIRCLE",
    "chain": "base",
    "pool": "0x079afca3a0c334e2e0b4206834bc4be097839fb7",
-   "sampled_from": "backfill_2026-05-28",
+   "sampled_from": "backfill_2026-08-26",
    "outcome_label": null,
    "outcome_facts": {
     "days": 184,
@@ -4279,6 +4534,43 @@
    }
   },
   {
+   "address": "0x5f7373fa845692b1dd7bfae576d6c743482bf26a",
+   "symbol": "CLARK",
+   "chain": "base",
+   "pool": "0x012163efe687f5be2d2fc7815c76e876b266fab2",
+   "sampled_from": "backfill_2026-08-28",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
+   },
+   "goplus_label": "centralized",
+   "goplus_reasons": [
+    "owner can change balances"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "1",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "54491",
+    "owner_address": "0x0000000000000000000000000000000000000000",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
    "address": "0x5f980dcfc4c0fa3911554cf5ab288ed0eb13dba3",
    "symbol": "GITLAWB",
    "chain": "base",
@@ -4313,43 +4605,6 @@
     "sell_tax": "0",
     "holder_count": "10863",
     "owner_address": "0x660eaaedebc968f8f3694354fa8ec0b4c5ba8d12",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
-   "address": "0x5ffb95e4c50536733c7d03bf0d64d4f2c3cd1dab",
-   "symbol": "Curve DAO Token Kava",
-   "chain": "base",
-   "pool": "0x1864955a6cba876fb320ac9eb3d8f571081ce59c",
-   "sampled_from": "backfill_2026-02-17",
-   "outcome_label": null,
-   "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 1,
-    "recent_volume_7d": 0.02
-   },
-   "goplus_label": "centralized",
-   "goplus_reasons": [
-    "owner can change balances"
-   ],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "75",
-    "is_mintable": "1",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "1",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "4",
-    "owner_address": "0x0000000000000000000000000000000000000000",
     "reputable": false,
     "cex_listed": []
    }
@@ -4417,44 +4672,6 @@
     "sell_tax": "0",
     "holder_count": "4",
     "owner_address": "0x0000000000000000000000000000000000000000",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
-   "address": "0x61e39a8338d6049db936534596f29ec26ff5ae7a",
-   "symbol": "PERPS",
-   "chain": "base",
-   "pool": "0x0c21ec681dd60a7db6f27aada69e86759f9e721f",
-   "sampled_from": "backfill_2025-12-29",
-   "outcome_label": "dead",
-   "outcome_facts": {
-    "days": 184,
-    "peak_close": 0.00153523139969348,
-    "last_close": 2.91855344012847e-05,
-    "drawdown": 0.981,
-    "peak_volume_7d": 1337604.05,
-    "recent_volume_7d": 174.29,
-    "volume_collapse": 0.9999
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "0",
-    "is_mintable": "0",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "0",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "2241",
     "reputable": false,
     "cex_listed": []
    }
@@ -4622,37 +4839,35 @@
    }
   },
   {
-   "address": "0x6656af92733073dee7d17e1593c14c50de3c2af4",
-   "symbol": "TRUST DICKBUTT",
+   "address": "0x6653dd4b92a0e5bf8ae570a98906d9d6fd2eec09",
+   "symbol": "RCKT",
    "chain": "base",
-   "pool": "0x0d4c4ba5cf5d55899109989c206eb68ad0e42df5",
-   "sampled_from": "backfill_2026-03-09",
+   "pool": "0x0054c66cb7b352dc79fd5f6a024d6f8a215ff2ce",
+   "sampled_from": "backfill_2026-08-25",
    "outcome_label": null,
    "outcome_facts": {
     "reason": "fewer than 30 days of history",
-    "days": 1,
-    "recent_volume_7d": 0.01
+    "days": 0,
+    "recent_volume_7d": 0
    },
-   "goplus_label": "centralized",
-   "goplus_reasons": [
-    "owner can change balances"
-   ],
+   "goplus_label": "safe",
+   "goplus_reasons": [],
    "goplus_raw": {
     "is_honeypot": "0",
-    "honeypot_with_same_creator": "3615",
+    "honeypot_with_same_creator": "0",
     "is_mintable": "1",
     "transfer_pausable": "0",
     "is_blacklisted": "0",
     "slippage_modifiable": "0",
     "can_take_back_ownership": "0",
-    "owner_change_balance": "1",
+    "owner_change_balance": "0",
     "hidden_owner": "0",
     "selfdestruct": "0",
     "is_open_source": "1",
     "is_proxy": "0",
     "buy_tax": "0",
     "sell_tax": "0",
-    "holder_count": "4",
+    "holder_count": "56090",
     "owner_address": "0x0000000000000000000000000000000000000000",
     "reputable": false,
     "cex_listed": []
@@ -4690,6 +4905,43 @@
     "buy_tax": "0",
     "sell_tax": "0",
     "holder_count": "2",
+    "owner_address": "0x0000000000000000000000000000000000000000",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0x677db5a751fbd0b130ddc02715223d9da4a98f8f",
+   "symbol": "MY",
+   "chain": "base",
+   "pool": "0x0af54963c33c48f692ee68ea57b6eccaec107b19",
+   "sampled_from": "backfill_2026-08-26",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
+   },
+   "goplus_label": "centralized",
+   "goplus_reasons": [
+    "owner can change balances"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "1",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "1",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "10029",
     "owner_address": "0x0000000000000000000000000000000000000000",
     "reputable": false,
     "cex_listed": []
@@ -4800,6 +5052,28 @@
      "Coinbase"
     ]
    }
+  },
+  {
+   "address": "0x6985884c4392d348587b19cb9eaaf157f13271cd",
+   "symbol": "ZRO",
+   "chain": "base",
+   "pool": "0x717e174d5dae280802d1a2c15c1c0976561a3f61",
+   "sampled_from": "gt_pools",
+   "outcome_label": "alive",
+   "outcome_facts": {
+    "days": 144,
+    "peak_close": 1.99795327464977,
+    "last_close": 1.06777193993911,
+    "drawdown": 0.4656,
+    "peak_volume_7d": 7250038.2,
+    "recent_volume_7d": 2802643.71,
+    "volume_collapse": 0.6134
+   },
+   "goplus_label": null,
+   "goplus_reasons": [
+    "no GoPlus data"
+   ],
+   "goplus_raw": {}
   },
   {
    "address": "0x6a8b79ad3b331002d7c2358f2d06fbad17147c67",
@@ -4973,7 +5247,7 @@
    "symbol": "AORA",
    "chain": "base",
    "pool": "0x0aed2bd5abdffcde57c0bcf30e75cd594b8876a9",
-   "sampled_from": "backfill_2026-05-28",
+   "sampled_from": "backfill_2026-08-28",
    "outcome_label": "dead",
    "outcome_facts": {
     "days": 115,
@@ -5007,20 +5281,16 @@
    }
   },
   {
-   "address": "0x6e9e87f33d36b40d08bbca06966e66a5fb555c0c",
-   "symbol": "LYD",
+   "address": "0x6f89bca4ea5931edfcb09786267b251dee752b07",
+   "symbol": "REGENT",
    "chain": "base",
-   "pool": "0x0ebbafb9110f7895985bac0a1e7fbd0ad40b6c64",
-   "sampled_from": "backfill_2026-05-28",
+   "pool": "0x0088af3909485832738ee3365b074db24fe3853e",
+   "sampled_from": "backfill_2026-08-30",
    "outcome_label": null,
    "outcome_facts": {
-    "days": 184,
-    "peak_close": 2.48557254350965e-08,
-    "last_close": 5.66635373068496e-09,
-    "drawdown": 0.772,
-    "peak_volume_7d": 47.43,
-    "recent_volume_7d": 4.96,
-    "volume_collapse": 0.8954
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -5037,38 +5307,10 @@
     "selfdestruct": "0",
     "is_open_source": "1",
     "is_proxy": "0",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "791099",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
-   "address": "0x6efa86edc290516415f4f2fe1ab3dfef695a4b6a",
-   "symbol": "MECKA",
-   "chain": "base",
-   "pool": "0x0d7ad645c2812829055ca3458091db04a949ec13",
-   "sampled_from": "backfill_2026-03-09",
-   "outcome_label": null,
-   "outcome_facts": {
-    "days": 44,
-    "peak_close": 0.414091883442535,
-    "last_close": 0.333991373399294,
-    "drawdown": 0.1934,
-    "peak_volume_7d": 1550305.35,
-    "recent_volume_7d": 1301248.19,
-    "volume_collapse": 0.1607
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "honeypot_with_same_creator": "0",
-    "is_open_source": "1",
-    "is_proxy": "1",
     "buy_tax": "",
-    "sell_tax": "",
-    "holder_count": "2047",
+    "sell_tax": "0",
+    "holder_count": "2376",
+    "owner_address": "0x0000000000000000000000000000000000000000",
     "reputable": false,
     "cex_listed": []
    }
@@ -5152,43 +5394,6 @@
    }
   },
   {
-   "address": "0x70eb3505c832af24b8cb2b577092b0e9cccb5810",
-   "symbol": "ZBCN Rexas Finance",
-   "chain": "base",
-   "pool": "0x0d70c346b0fbb28c302005e340f22c4ee23a971a",
-   "sampled_from": "backfill_2026-03-09",
-   "outcome_label": null,
-   "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 1,
-    "recent_volume_7d": 0.0
-   },
-   "goplus_label": "centralized",
-   "goplus_reasons": [
-    "owner can change balances"
-   ],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "2517",
-    "is_mintable": "1",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "1",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "4",
-    "owner_address": "0x0000000000000000000000000000000000000000",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
    "address": "0x72499bddb67f4ca150e1f522ca82c87bc9fb18c8",
    "symbol": "BONK",
    "chain": "base",
@@ -5229,6 +5434,43 @@
     "cex_listed": [
      "Binance"
     ]
+   }
+  },
+  {
+   "address": "0x7274f2b1dab92526f5c7bf70a2bb32a549be198b",
+   "symbol": "COGE",
+   "chain": "base",
+   "pool": "0x0bfa5e7c983cfeb442efd6f46ca09b70d15cd4ee",
+   "sampled_from": "backfill_2026-02-17",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 2,
+    "recent_volume_7d": 11603.32
+   },
+   "goplus_label": "unsafe",
+   "goplus_reasons": [
+    "honeypot"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "1",
+    "honeypot_with_same_creator": "1",
+    "is_mintable": "1",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "26",
+    "owner_address": "",
+    "reputable": false,
+    "cex_listed": []
    }
   },
   {
@@ -5334,6 +5576,47 @@
     "buy_tax": "0",
     "sell_tax": "0",
     "holder_count": "7591",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0x74aa9bb52b36a378a6e641b86d7acb76dc9b3940",
+   "symbol": "TRVL",
+   "chain": "base",
+   "pool": "0x0511a888d009029781f34696996742b0a55db585",
+   "sampled_from": "backfill_2026-08-24",
+   "outcome_label": null,
+   "outcome_facts": {
+    "days": 184,
+    "peak_close": 0.00270365342363926,
+    "last_close": 0.000805366460019857,
+    "drawdown": 0.7021,
+    "peak_volume_7d": 7592.97,
+    "recent_volume_7d": 32.8,
+    "volume_collapse": 0.9957
+   },
+   "goplus_label": "centralized",
+   "goplus_reasons": [
+    "mintable and owner has not renounced"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "1",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "21995",
+    "owner_address": "0x5e27e54908b7686a175c6d8e6ef0b683e5ec5721",
     "reputable": false,
     "cex_listed": []
    }
@@ -5467,9 +5750,13 @@
    "sampled_from": "backfill_2025-12-09",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 66,
+    "peak_close": 7.19087014854631e-05,
+    "last_close": 1.8460295898986e-06,
+    "drawdown": 0.9743,
+    "peak_volume_7d": 10398.19,
+    "recent_volume_7d": 117.32,
+    "volume_collapse": 0.9887
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
@@ -5635,43 +5922,6 @@
    }
   },
   {
-   "address": "0x7cede7d2b953054c16b4278e94c4dd8d9f0681d2",
-   "symbol": "Monkey Peepo Eifi FInance",
-   "chain": "base",
-   "pool": "0x0a282a2d41436ceab141744b243c6aeabe953c79",
-   "sampled_from": "backfill_2026-02-07",
-   "outcome_label": null,
-   "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 1,
-    "recent_volume_7d": 0.02
-   },
-   "goplus_label": "centralized",
-   "goplus_reasons": [
-    "owner can change balances"
-   ],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "86",
-    "is_mintable": "1",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "1",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "4",
-    "owner_address": "0x0000000000000000000000000000000000000000",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
    "address": "0x7d49a065d17d6d4a55dc13649901fdbb98b2afba",
    "symbol": "SUSHI",
    "chain": "base",
@@ -5744,6 +5994,43 @@
     "sell_tax": "0",
     "holder_count": "795",
     "owner_address": "0xe57a09c3fdfb6bd2b8ebc46e0ff884876fae60fd",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0x7f65323e468939073ef3b5287c73f13951b0ff5b",
+   "symbol": "BLUE",
+   "chain": "base",
+   "pool": "0x03623367f4a833f23e8c917b3448dd31805e3d07",
+   "sampled_from": "backfill_2026-08-28",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
+   },
+   "goplus_label": "centralized",
+   "goplus_reasons": [
+    "owner can change balances"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "1",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "433200",
+    "owner_address": "0x0000000000000000000000000000000000000000",
     "reputable": false,
     "cex_listed": []
    }
@@ -5822,45 +6109,6 @@
     "sell_tax": "0",
     "holder_count": "26584",
     "owner_address": "0xe220329659d41b2a9f26e83816b424bdacf62567",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
-   "address": "0x81f35261b90ad59a1277c0e94f8012371eaafcb9",
-   "symbol": "LUCKY",
-   "chain": "base",
-   "pool": "0x1ccc72110446486e662151f8a2f559bd9bcf9cf0",
-   "sampled_from": "backfill_2026-02-17",
-   "outcome_label": null,
-   "outcome_facts": {
-    "days": 184,
-    "peak_close": 9.43574003440846e-05,
-    "last_close": 2.19649180650897e-06,
-    "drawdown": 0.9767,
-    "peak_volume_7d": 2759.8,
-    "recent_volume_7d": 7.65,
-    "volume_collapse": 0.9972
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "0",
-    "is_mintable": "0",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "0",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "25266",
-    "owner_address": "0x0000000000000000000000000000000000000000",
     "reputable": false,
     "cex_listed": []
    }
@@ -6048,11 +6296,49 @@
    }
   },
   {
+   "address": "0x885129e35d247b01c4485ef6b48564d0ebc8c362",
+   "symbol": "Brett2.0",
+   "chain": "base",
+   "pool": "0x00dcbcb7d433c52b9eaf0b32aa9c1d392cf03137",
+   "sampled_from": "backfill_2026-09-01",
+   "outcome_label": null,
+   "outcome_facts": {
+    "days": 157,
+    "peak_close": 0.000174123871450508,
+    "last_close": 1.01756199647432e-05,
+    "drawdown": 0.9416,
+    "peak_volume_7d": 10.37,
+    "recent_volume_7d": 0.15,
+    "volume_collapse": 0.9851
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "713476",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
    "address": "0x88fb150bdc53a65fe94dea0c9ba0a6daf8c6e196",
    "symbol": "LINK",
    "chain": "base",
    "pool": "0x07b1be2f179313c4f3c7124893d46990672c3f1a",
-   "sampled_from": "backfill_2026-02-07",
+   "sampled_from": "backfill_2026-08-28",
    "outcome_label": "alive",
    "outcome_facts": {
     "days": 184,
@@ -6151,82 +6437,27 @@
    }
   },
   {
-   "address": "0x8b15cbb7ecd9b8fff38da8ead55a20490b99ad11",
-   "symbol": "BALL",
+   "address": "0x8bff2d9709140b63a66653244c05ea180de9f31d",
+   "symbol": "BULLISH",
    "chain": "base",
-   "pool": "0x0c7c548a359dab300045c10c5770ea64fa2ce760",
-   "sampled_from": "backfill_2026-03-09",
+   "pool": "0x0637dfd3323d16111e4a487e610b913b89e71556",
+   "sampled_from": "backfill_2026-09-01",
    "outcome_label": null,
    "outcome_facts": {
-    "days": 184,
-    "peak_close": 0.000436612569951006,
-    "last_close": 1.8566107648744e-05,
-    "drawdown": 0.9575,
-    "peak_volume_7d": 5809.68,
-    "recent_volume_7d": 2080.59,
-    "volume_collapse": 0.6419
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
    },
-   "goplus_label": "centralized",
-   "goplus_reasons": [
-    "transfers pausable"
-   ],
+   "goplus_label": "safe",
+   "goplus_reasons": [],
    "goplus_raw": {
-    "is_honeypot": "0",
     "honeypot_with_same_creator": "0",
-    "is_mintable": "1",
-    "transfer_pausable": "1",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "0",
-    "hidden_owner": "1",
-    "selfdestruct": "0",
     "is_open_source": "1",
-    "is_proxy": "0",
+    "is_proxy": "1",
     "buy_tax": "0",
     "sell_tax": "0",
-    "holder_count": "5207",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
-   "address": "0x8c62ac3b71db8c81a764b84ffbc2a8d0bad7f111",
-   "symbol": "PREME",
-   "chain": "base",
-   "pool": "0x103eae85bbd3cbf6b8201eae19b134ab5d46b7b5",
-   "sampled_from": "backfill_2026-05-28",
-   "outcome_label": null,
-   "outcome_facts": {
-    "days": 107,
-    "peak_close": 0.00246679865225351,
-    "last_close": 0.00150846338060609,
-    "drawdown": 0.3885,
-    "peak_volume_7d": 82390.44,
-    "recent_volume_7d": 2090.06,
-    "volume_collapse": 0.9746
-   },
-   "goplus_label": "centralized",
-   "goplus_reasons": [
-    "tax changeable"
-   ],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "0",
-    "is_mintable": "0",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "1",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "0",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0.0199",
-    "sell_tax": "0.0199",
-    "holder_count": "38263",
-    "owner_address": "0x6416a4cfff06654600ee99fb33136886c55b3c34",
+    "holder_count": "10180",
+    "owner_address": "0xde0b9150a10f2bcee5b4da5d89c378ab940f0f7a",
     "reputable": false,
     "cex_listed": []
    }
@@ -6265,6 +6496,42 @@
     "buy_tax": "0",
     "sell_tax": "0",
     "holder_count": "238022",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0x8d2ae8831fc9c7cfa143c3acb1f3f664d56fb6b1",
+   "symbol": "BNQ",
+   "chain": "base",
+   "pool": "0x013348516c1a0b0e1c2f181a964d877193134d6e",
+   "sampled_from": "backfill_2026-09-04",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 2,
+    "recent_volume_7d": 13715.97
+   },
+   "goplus_label": "unsafe",
+   "goplus_reasons": [
+    "honeypot"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "1",
+    "honeypot_with_same_creator": "1",
+    "is_mintable": "1",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "20",
     "reputable": false,
     "cex_listed": []
    }
@@ -6309,47 +6576,78 @@
    }
   },
   {
-   "address": "0x8ee73c484a26e0a5df2ee2a4960b789967dd0415",
-   "symbol": "CRV",
+   "address": "0x8f79bea6c430eccb5c0b1878a1bc0d52f38de202",
+   "symbol": "HFURY",
    "chain": "base",
-   "pool": "0x1bd7ff4999325eebca07863857457e70e2b3d1ba",
-   "sampled_from": "backfill_2026-02-17",
+   "pool": "0x064b3bcb87ef77305b672d86de5808d5d8fa8c3d",
+   "sampled_from": "backfill_2026-08-27",
    "outcome_label": null,
    "outcome_facts": {
     "days": 184,
-    "peak_close": 0.369006332727885,
-    "last_close": 0.351438672648193,
-    "drawdown": 0.0476,
-    "peak_volume_7d": 835.52,
-    "recent_volume_7d": 477.74,
-    "volume_collapse": 0.4282
+    "peak_close": 0.000378539769488706,
+    "last_close": 4.79029351437501e-05,
+    "drawdown": 0.8735,
+    "peak_volume_7d": 10722.13,
+    "recent_volume_7d": 198.23,
+    "volume_collapse": 0.9815
    },
-   "goplus_label": "centralized",
-   "goplus_reasons": [
-    "owner can change balances",
-    "mintable and owner has not renounced"
-   ],
+   "goplus_label": "safe",
+   "goplus_reasons": [],
    "goplus_raw": {
     "is_honeypot": "0",
-    "honeypot_with_same_creator": "1",
-    "is_mintable": "1",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
     "transfer_pausable": "0",
     "is_blacklisted": "0",
     "slippage_modifiable": "0",
     "can_take_back_ownership": "0",
-    "owner_change_balance": "1",
+    "owner_change_balance": "0",
     "hidden_owner": "0",
     "selfdestruct": "0",
     "is_open_source": "1",
     "is_proxy": "0",
     "buy_tax": "0",
     "sell_tax": "0",
-    "holder_count": "75121",
-    "owner_address": "0x4200000000000000000000000000000000000010",
-    "reputable": true,
-    "cex_listed": [
-     "Binance"
-    ]
+    "holder_count": "6271",
+    "owner_address": "0xe220329659d41b2a9f26e83816b424bdacf62567",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0x9048d83c1009af3cb3cda3703d1c4624752ca61c",
+   "symbol": "GROVE",
+   "chain": "base",
+   "pool": "0x095c4281816abd08d47a3f6a76d21940046282ff",
+   "sampled_from": "backfill_2026-08-30",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 2,
+    "recent_volume_7d": 12265.74
+   },
+   "goplus_label": "unsafe",
+   "goplus_reasons": [
+    "honeypot"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "1",
+    "honeypot_with_same_creator": "1",
+    "is_mintable": "1",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "19",
+    "reputable": false,
+    "cex_listed": []
    }
   },
   {
@@ -6815,12 +7113,16 @@
    "symbol": "WLTH",
    "chain": "base",
    "pool": "0x02d48df39d05596439b3aee17e2a2a9512dd0f07",
-   "sampled_from": "backfill_2025-12-29",
-   "outcome_label": null,
+   "sampled_from": "backfill_2026-08-25",
+   "outcome_label": "dead",
    "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 184,
+    "peak_close": 0.00201877336647285,
+    "last_close": 0.000397768119224725,
+    "drawdown": 0.803,
+    "peak_volume_7d": 96434.96,
+    "recent_volume_7d": 2598.99,
+    "volume_collapse": 0.973
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -6882,6 +7184,41 @@
     "cex_listed": [
      "Coinbase"
     ]
+   }
+  },
+  {
+   "address": "0x9aaf64e8d528ea3b33a5d2aca7911c6ac985d713",
+   "symbol": "HYPER",
+   "chain": "base",
+   "pool": "0x07c8f5b4cd0c8dbd89831e8e608e11eaaf5d13ff",
+   "sampled_from": "backfill_2026-08-27",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "522",
+    "owner_address": "0x0000000000000000000000000000000000000000",
+    "reputable": false,
+    "cex_listed": []
    }
   },
   {
@@ -6956,9 +7293,13 @@
    "sampled_from": "backfill_2025-12-09",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 161,
+    "peak_close": 0.190176913446191,
+    "last_close": 0.100552816551738,
+    "drawdown": 0.4713,
+    "peak_volume_7d": 87013.42,
+    "recent_volume_7d": 1.04,
+    "volume_collapse": 1.0
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
@@ -6990,7 +7331,7 @@
    "symbol": "BENTO",
    "chain": "base",
    "pool": "0x08c03a6b5d51a8915bae08a0f182dab6fb2c059b",
-   "sampled_from": "backfill_2025-12-29",
+   "sampled_from": "backfill_2026-08-28",
    "outcome_label": null,
    "outcome_facts": {
     "days": 184,
@@ -7329,6 +7670,76 @@
    }
   },
   {
+   "address": "0xa4c5bda935aad63578bc1557736c71560bc44add",
+   "symbol": "RABIES",
+   "chain": "base",
+   "pool": "0x006bf5d0b6228f80f6fd8561979503a21838a124",
+   "sampled_from": "backfill_2026-08-24",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0.02",
+    "sell_tax": "0.02",
+    "holder_count": "9392",
+    "owner_address": "0xe5e1e0e1279db3f62c11d98a17edc2372456829b",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0xa5b77571543c615ba5603b66333c4693349d8e4b",
+   "symbol": "BONKO",
+   "chain": "base",
+   "pool": "0x0a3219d3f60806c283a0870e653b484dda7dbf2c",
+   "sampled_from": "backfill_2026-08-26",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "",
+    "sell_tax": "",
+    "holder_count": "462782",
+    "owner_address": "0x0000000000000000000000000000000000000000",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
    "address": "0xa7f6e8a35d83228cc6c241c8dd0fb687552f75d1",
    "symbol": "DNODE",
    "chain": "base",
@@ -7444,12 +7855,16 @@
    "symbol": "WELL",
    "chain": "base",
    "pool": "0x08c29a6f7a00a6c892dce8633dfb09e877fc4fc9",
-   "sampled_from": "backfill_2026-02-07",
+   "sampled_from": "backfill_2026-08-28",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 184,
+    "peak_close": 0.0312520339351492,
+    "last_close": 0.00215129093407263,
+    "drawdown": 0.9312,
+    "peak_volume_7d": 3.39,
+    "recent_volume_7d": 0.67,
+    "volume_collapse": 0.8033
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -7467,37 +7882,37 @@
    }
   },
   {
-   "address": "0xa8b81b8d0a7f0684ddd4c9b38bc972768e19a6ce",
-   "symbol": "STOANE",
+   "address": "0xa994c1a11d8e3273f349e4c095e5486d619f42ab",
+   "symbol": "Cate",
    "chain": "base",
-   "pool": "0x0a1a17a2e6376a699d846c769b69472854c2e7cc",
-   "sampled_from": "backfill_2026-02-07",
+   "pool": "0x082b063ec2fa53979978b9f08d6fc8646a570bec",
+   "sampled_from": "backfill_2026-08-30",
    "outcome_label": null,
    "outcome_facts": {
     "reason": "fewer than 30 days of history",
-    "days": 1,
-    "recent_volume_7d": 0.02
+    "days": 0,
+    "recent_volume_7d": 0
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
-    "owner can change balances"
+    "transfers pausable"
    ],
    "goplus_raw": {
     "is_honeypot": "0",
-    "honeypot_with_same_creator": "49",
-    "is_mintable": "1",
-    "transfer_pausable": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "1",
     "is_blacklisted": "0",
     "slippage_modifiable": "0",
     "can_take_back_ownership": "0",
-    "owner_change_balance": "1",
+    "owner_change_balance": "0",
     "hidden_owner": "0",
     "selfdestruct": "0",
     "is_open_source": "1",
     "is_proxy": "0",
     "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "4",
+    "sell_tax": "",
+    "holder_count": "128",
     "owner_address": "0x0000000000000000000000000000000000000000",
     "reputable": false,
     "cex_listed": []
@@ -7543,6 +7958,144 @@
     "cex_listed": [
      "Binance"
     ]
+   }
+  },
+  {
+   "address": "0xa9e23871156718c1d55e90dad1c4ea8a33480dfd",
+   "symbol": "INSTACLAW",
+   "chain": "base",
+   "pool": "0x038f1cdc67a5836f00806b273e5cbf2636716bf5",
+   "sampled_from": "backfill_2026-08-30",
+   "outcome_label": null,
+   "outcome_facts": {
+    "days": 184,
+    "peak_close": 0.00285881919570454,
+    "last_close": 0.0006019680156415,
+    "drawdown": 0.7894,
+    "peak_volume_7d": 2293685.66,
+    "recent_volume_7d": 6261.14,
+    "volume_collapse": 0.9973
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "4367",
+    "owner_address": "0xe220329659d41b2a9f26e83816b424bdacf62567",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0xa9f24aab14a3d2e13db4c22f243c4ea138e307a8",
+   "symbol": "$MTL",
+   "chain": "base",
+   "pool": "0x00128a55c791e9bea15f4293d2a262b6b3a6d74f",
+   "sampled_from": "backfill_2026-09-04",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 1,
+    "recent_volume_7d": 0.04
+   },
+   "goplus_label": "centralized",
+   "goplus_reasons": [
+    "mintable and owner has not renounced"
+   ],
+   "goplus_raw": {
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "1",
+    "is_open_source": "1",
+    "is_proxy": "1",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "9",
+    "owner_address": "0x43a96b0e08d68ed6ae094595db28ddeec8b99e31",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0xa9f6d9eca1f803854a13cecad0f21d43e007db07",
+   "symbol": "BAES",
+   "chain": "base",
+   "pool": "0x0606ce6291d3223cd8251e2add79e79e467f2b94",
+   "sampled_from": "backfill_2026-08-26",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "",
+    "sell_tax": "0",
+    "holder_count": "1669",
+    "owner_address": "0x0000000000000000000000000000000000000000",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0xaaae82df66e6113ff9d2e08e2a740f2215b2d60e",
+   "symbol": "Z",
+   "chain": "base",
+   "pool": "0x06e8e25229992bfc95852b82f2ea4a7a8f41452e",
+   "sampled_from": "backfill_2026-08-31",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "4686",
+    "owner_address": "0x000000000000000000000000000000000000dead",
+    "reputable": false,
+    "cex_listed": []
    }
   },
   {
@@ -7666,41 +8219,6 @@
    }
   },
   {
-   "address": "0xac1bd2486aaf3b5c0fc3fd868558b082a531b2b4",
-   "symbol": "TOSHI",
-   "chain": "base",
-   "pool": "0x09f058106ff62ab2076f1c7f3becfc0eec8a7acf",
-   "sampled_from": "backfill_2025-12-29",
-   "outcome_label": null,
-   "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "0",
-    "is_mintable": "0",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "0",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "holder_count": "1019091",
-    "owner_address": "0x0000000000000000000000000000000000000000",
-    "reputable": true,
-    "cex_listed": [
-     "Coinbase"
-    ]
-   }
-  },
-  {
    "address": "0xacfe6019ed1a7dc6f7b508c02d1b04ec88cc21bf",
    "symbol": "VVV",
    "chain": "base",
@@ -7806,9 +8324,13 @@
    "sampled_from": "backfill_2026-05-08",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 174,
+    "peak_close": 0.00946169483067671,
+    "last_close": 2.64279136950659e-06,
+    "drawdown": 0.9997,
+    "peak_volume_7d": 1219909.83,
+    "recent_volume_7d": 38114.52,
+    "volume_collapse": 0.9688
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -7947,6 +8469,44 @@
    }
   },
   {
+   "address": "0xadf478d92a6c5e0cc2e9b04a5e770bbe5572bdae",
+   "symbol": "MARTIN",
+   "chain": "base",
+   "pool": "0x0352ada1c4b6e96d509ce7d41b33d4dc2377fd42",
+   "sampled_from": "backfill_2026-08-28",
+   "outcome_label": "dead",
+   "outcome_facts": {
+    "days": 184,
+    "peak_close": 0.00121436786096627,
+    "last_close": 3.34424237273576e-06,
+    "drawdown": 0.9972,
+    "peak_volume_7d": 499956.68,
+    "recent_volume_7d": 4243.07,
+    "volume_collapse": 0.9915
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "1",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "",
+    "sell_tax": "",
+    "holder_count": "609",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
    "address": "0xadf4af1800e46d5bfeae5c8921605a6ad5b2e7d6",
    "symbol": "PERF-NINJA",
    "chain": "base",
@@ -8014,46 +8574,6 @@
     "buy_tax": "",
     "sell_tax": "",
     "holder_count": "2205",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
-   "address": "0xadf6d8a4b8b590b5ae97a8a908e4f831b662be88",
-   "symbol": "BIOME",
-   "chain": "base",
-   "pool": "0x1b1b5e999f3899308e17099872201a2953eb7271",
-   "sampled_from": "backfill_2026-02-17",
-   "outcome_label": "dead",
-   "outcome_facts": {
-    "days": 184,
-    "peak_close": 0.000569087300042952,
-    "last_close": 3.17422540935246e-06,
-    "drawdown": 0.9944,
-    "peak_volume_7d": 236111.56,
-    "recent_volume_7d": 2428.96,
-    "volume_collapse": 0.9897
-   },
-   "goplus_label": null,
-   "goplus_reasons": [
-    "not enough evidence (open source=1 holders=438)"
-   ],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "1",
-    "is_mintable": "0",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "0",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "",
-    "sell_tax": "",
-    "holder_count": "438",
     "reputable": false,
     "cex_listed": []
    }
@@ -8283,7 +8803,7 @@
    "symbol": "EXPO",
    "chain": "base",
    "pool": "0x0888ae6632cbe58886a03c5765e33597a3e5fa14",
-   "sampled_from": "backfill_2026-05-08",
+   "sampled_from": "backfill_2026-08-28",
    "outcome_label": null,
    "outcome_facts": {
     "reason": "fewer than 30 days of history",
@@ -8346,45 +8866,6 @@
     "buy_tax": "",
     "sell_tax": "",
     "holder_count": "993",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
-   "address": "0xaea742f80922f7c94b8fd91686c9dfbdfe90d9e6",
-   "symbol": "PREDI",
-   "chain": "base",
-   "pool": "0x0c86a9584175ad79252316d46fb127002ee9b3c6",
-   "sampled_from": "backfill_2026-05-28",
-   "outcome_label": "dead",
-   "outcome_facts": {
-    "days": 184,
-    "peak_close": 0.0155718181697741,
-    "last_close": 7.03000331749863e-05,
-    "drawdown": 0.9955,
-    "peak_volume_7d": 1188722.94,
-    "recent_volume_7d": 0.01,
-    "volume_collapse": 1.0
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "0",
-    "is_mintable": "0",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "0",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "6781",
-    "owner_address": "0xe220329659d41b2a9f26e83816b424bdacf62567",
     "reputable": false,
     "cex_listed": []
    }
@@ -8536,45 +9017,6 @@
    }
   },
   {
-   "address": "0xb1a1d8cb266a7a4f6e070a7d2e026c5c02e788da",
-   "symbol": "NEOX",
-   "chain": "base",
-   "pool": "0x0ccb7e919f8e0eeb8d5a12768450c0021cda1123",
-   "sampled_from": "backfill_2026-05-08",
-   "outcome_label": null,
-   "outcome_facts": {
-    "days": 90,
-    "peak_close": 0.00419277169440124,
-    "last_close": 0.000138670447005011,
-    "drawdown": 0.9669,
-    "peak_volume_7d": 11138.25,
-    "recent_volume_7d": 0.1,
-    "volume_collapse": 1.0
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "0",
-    "is_mintable": "0",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "0",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "5793",
-    "owner_address": "0xe220329659d41b2a9f26e83816b424bdacf62567",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
    "address": "0xb1d999dfe837dceb95194b8878a53b73109c0262",
    "symbol": "Neiro SPX",
    "chain": "base",
@@ -8607,78 +9049,6 @@
     "sell_tax": "0",
     "holder_count": "4",
     "owner_address": "0x0000000000000000000000000000000000000000",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
-   "address": "0xb2000000000000000000002d0ba3164cc74f58b7",
-   "symbol": "GOOGLc",
-   "chain": "base",
-   "pool": "0xb1987cad1682841b4b641d50e520777ec5ab5542",
-   "sampled_from": "gt_pools",
-   "outcome_label": null,
-   "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 21,
-    "recent_volume_7d": 20902312.14
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "is_open_source": "1",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "533",
-    "owner_address": "",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
-   "address": "0xb2000000000000000000004c27f6523082f41d01",
-   "symbol": "Basecat",
-   "chain": "base",
-   "pool": "0x215b2146c3164aba3f5b18e8619b737c7f7dd11e5ba693646dcd9a336c5a30ba",
-   "sampled_from": "snapshot_2026-09-03",
-   "outcome_label": null,
-   "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 22,
-    "recent_volume_7d": 15520795.66
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "is_open_source": "1",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "4123",
-    "owner_address": "",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
-   "address": "0xb20000000000000000000078ee7ce2fe4908108c",
-   "symbol": "NVDAc",
-   "chain": "base",
-   "pool": "0x853f5f1b92b16714fe6cda67caad0856b83c7ab9",
-   "sampled_from": "snapshot_2026-09-03",
-   "outcome_label": null,
-   "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 20,
-    "recent_volume_7d": 42633723.27
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "is_open_source": "1",
-    "buy_tax": "",
-    "sell_tax": "",
-    "holder_count": "564",
-    "owner_address": "",
     "reputable": false,
     "cex_listed": []
    }
@@ -9108,6 +9478,43 @@
    }
   },
   {
+   "address": "0xb899bc543b0a983845097176991b1a3c0c3df36b",
+   "symbol": "PissCoin",
+   "chain": "base",
+   "pool": "0x01ccdddc6290ce2c1c0d8141b6fd90df4b05d692",
+   "sampled_from": "backfill_2026-09-04",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 2,
+    "recent_volume_7d": 10782.49
+   },
+   "goplus_label": "unsafe",
+   "goplus_reasons": [
+    "honeypot"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "1",
+    "honeypot_with_same_creator": "2",
+    "is_mintable": "1",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "1",
+    "hidden_owner": "1",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "2",
+    "owner_address": "0x0000000000000000000000000000000000000000",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
    "address": "0xb89d354ad1b0d95a48b3de4607f75a8cd710c1ba",
    "symbol": "LAY",
    "chain": "base",
@@ -9188,45 +9595,6 @@
    }
   },
   {
-   "address": "0xb8d98a102b0079b69ffbc760c8d857a31653e56e",
-   "symbol": "toby",
-   "chain": "base",
-   "pool": "0x0a312c519a48fa4d0bb8ea408a7003d1fc30fbe9",
-   "sampled_from": "backfill_2025-12-29",
-   "outcome_label": null,
-   "outcome_facts": {
-    "days": 184,
-    "peak_close": 2.14838535341091e-08,
-    "last_close": 1.20066091186205e-08,
-    "drawdown": 0.4411,
-    "peak_volume_7d": 12.91,
-    "recent_volume_7d": 2.92,
-    "volume_collapse": 0.7735
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "0",
-    "is_mintable": "0",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "0",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "1410982",
-    "owner_address": "0x0000000000000000000000000000000000000001",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
    "address": "0xb96450dcb16e4a30b999cb5f4087bae9c0ffac4e",
    "symbol": "TREB",
    "chain": "base",
@@ -9297,6 +9665,80 @@
     "buy_tax": "0",
     "sell_tax": "0",
     "holder_count": "4",
+    "owner_address": "0x0000000000000000000000000000000000000000",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0xba0dda8762c24da9487f5fa026a9b64b695a07ea",
+   "symbol": "OX",
+   "chain": "base",
+   "pool": "0x01b8d26d7c43b81fabc02dc51bacb60de6f24c71",
+   "sampled_from": "backfill_2026-09-04",
+   "outcome_label": null,
+   "outcome_facts": {
+    "days": 184,
+    "peak_close": 0.000128649638690058,
+    "last_close": 2.21292036052495e-05,
+    "drawdown": 0.828,
+    "peak_volume_7d": 60.76,
+    "recent_volume_7d": 2.22,
+    "volume_collapse": 0.9635
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "532001",
+    "owner_address": "0x48375f609f570a89d6814405b69fe019ec90f333",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0xbabe84b6f6e039fad97036fcf568631082b2cb07",
+   "symbol": "我的女友景甜",
+   "chain": "base",
+   "pool": "0x03ccb6118d8b37901ec7b01bd5efea755f69b29b",
+   "sampled_from": "backfill_2026-09-01",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 1,
+    "recent_volume_7d": 13181261.01
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "4933",
     "owner_address": "0x0000000000000000000000000000000000000000",
     "reputable": false,
     "cex_listed": []
@@ -9413,6 +9855,48 @@
    }
   },
   {
+   "address": "0xbe5614875952b1683cb0a2c20e6509be46d353a4",
+   "symbol": "BBRETT",
+   "chain": "base",
+   "pool": "0x05511784abc6e20b3f206101bb48d222771ebd85",
+   "sampled_from": "backfill_2026-08-29",
+   "outcome_label": null,
+   "outcome_facts": {
+    "days": 184,
+    "peak_close": 0.000408872167838618,
+    "last_close": 0.000189489492637402,
+    "drawdown": 0.5366,
+    "peak_volume_7d": 14472.33,
+    "recent_volume_7d": 1953.47,
+    "volume_collapse": 0.865
+   },
+   "goplus_label": "centralized",
+   "goplus_reasons": [
+    "transfers pausable",
+    "tax changeable"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "1",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "1",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0.05",
+    "sell_tax": "0.0498",
+    "holder_count": "121827",
+    "owner_address": "0x0000000000000000000000000000000000000000",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
    "address": "0xbeda6aaa850ce782abfaea09083e908bd8e20914",
    "symbol": "SANTA",
    "chain": "base",
@@ -9482,35 +9966,6 @@
    }
   },
   {
-   "address": "0xbeee084cfe068d150f643047e9bd35c73b19dfc2",
-   "symbol": "chironchain",
-   "chain": "base",
-   "pool": "0x1a69f9407a202d43de62ee3216e53e368c8b45ee",
-   "sampled_from": "backfill_2026-02-17",
-   "outcome_label": null,
-   "outcome_facts": {
-    "days": 86,
-    "peak_close": 0.000610649407961692,
-    "last_close": 8.27673282243494e-06,
-    "drawdown": 0.9864,
-    "peak_volume_7d": 2.93,
-    "recent_volume_7d": 0.13,
-    "volume_collapse": 0.9571
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "honeypot_with_same_creator": "4",
-    "is_open_source": "1",
-    "is_proxy": "1",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "711",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
    "address": "0xbf1aea8670d2528e08334083616dd9c5f3b087ae",
    "symbol": "MAI",
    "chain": "base",
@@ -9518,9 +9973,13 @@
    "sampled_from": "backfill_2025-12-29",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 45,
+    "peak_close": 0.997330458597767,
+    "last_close": 0.991769856377988,
+    "drawdown": 0.0056,
+    "peak_volume_7d": 5323.36,
+    "recent_volume_7d": 2339.36,
+    "volume_collapse": 0.5605
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
@@ -9582,35 +10041,6 @@
     "sell_tax": "0",
     "holder_count": "8471",
     "owner_address": "0x660eaaedebc968f8f3694354fa8ec0b4c5ba8d12",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
-   "address": "0xbf927b841994731c573bdf09ceb0c6b0aa887cdd",
-   "symbol": "VELVET",
-   "chain": "base",
-   "pool": "0x6b0f53cbd9272d8117e9535fe25371dedf39a1be",
-   "sampled_from": "gt_pools",
-   "outcome_label": null,
-   "outcome_facts": {
-    "days": 184,
-    "peak_close": 1.88638551748871,
-    "last_close": 0.0868103956459966,
-    "drawdown": 0.954,
-    "peak_volume_7d": 80932518.53,
-    "recent_volume_7d": 9337160.39,
-    "volume_collapse": 0.8846
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "honeypot_with_same_creator": "0",
-    "is_open_source": "1",
-    "is_proxy": "1",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "10035",
     "reputable": false,
     "cex_listed": []
    }
@@ -9694,50 +10124,11 @@
    }
   },
   {
-   "address": "0xc3d64ee7056cfd33c8382679773f8d6277e5c2c9",
-   "symbol": "IAMAI",
-   "chain": "base",
-   "pool": "0x0f44bafa356d1808e0d288b843236e718f338278",
-   "sampled_from": "backfill_2026-05-28",
-   "outcome_label": null,
-   "outcome_facts": {
-    "days": 184,
-    "peak_close": 2.25821491370685e-05,
-    "last_close": 1.4145494928155e-05,
-    "drawdown": 0.3736,
-    "peak_volume_7d": 7712.37,
-    "recent_volume_7d": 7.22,
-    "volume_collapse": 0.9991
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "0",
-    "is_mintable": "0",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "0",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "42437",
-    "owner_address": "0xe220329659d41b2a9f26e83816b424bdacf62567",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
    "address": "0xc44141a684f6aa4e36cd9264ab55550b03c88643",
    "symbol": "ETHY",
    "chain": "base",
    "pool": "0x07b8c1606790d7b50a4952951f416ac52008f888",
-   "sampled_from": "backfill_2026-02-07",
+   "sampled_from": "backfill_2026-08-28",
    "outcome_label": null,
    "outcome_facts": {
     "days": 184,
@@ -9780,8 +10171,8 @@
    "outcome_label": null,
    "outcome_facts": {
     "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 18,
+    "recent_volume_7d": 15.46
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -9846,44 +10237,6 @@
    }
   },
   {
-   "address": "0xc5a861787f3e173f2b004d5cfa6a717f5dc5484d",
-   "symbol": "SNL",
-   "chain": "base",
-   "pool": "0x0b1a0884d21169867595ed632f3b03440543f22c",
-   "sampled_from": "backfill_2025-12-29",
-   "outcome_label": null,
-   "outcome_facts": {
-    "days": 44,
-    "peak_close": 1.4539021343163e-07,
-    "last_close": 1.7738405136606e-09,
-    "drawdown": 0.9878,
-    "peak_volume_7d": 0.0,
-    "recent_volume_7d": 0.0,
-    "volume_collapse": 0.8264
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "0",
-    "is_mintable": "0",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "0",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "1835113",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
    "address": "0xc64902d3eeb0da4c2e106bdff83be520894013a9",
    "symbol": "Kekius Maximus Free",
    "chain": "base",
@@ -9928,9 +10281,13 @@
    "sampled_from": "backfill_2026-02-17",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 156,
+    "peak_close": 4.05409897360177e-05,
+    "last_close": 5.76554870517219e-06,
+    "drawdown": 0.8578,
+    "peak_volume_7d": 38392.53,
+    "recent_volume_7d": 97.61,
+    "volume_collapse": 0.9975
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -10189,32 +10546,56 @@
    }
   },
   {
-   "address": "0xcde172dc5ffc46d228838446c57c1227e0b82049",
-   "symbol": "BOOMER",
+   "address": "0xcfa3697e1e5bd24979401e26da71cc27e0ceb9b1",
+   "symbol": "BASSIC",
    "chain": "base",
-   "pool": "0x0c04155b948497dda17b81faa62609485b08a7a2",
-   "sampled_from": "backfill_2026-05-08",
+   "pool": "0x09db7cf8050cbb2e7ac4cac7490fcf2117caeb8d",
+   "sampled_from": "backfill_2026-08-28",
    "outcome_label": null,
    "outcome_facts": {
-    "days": 184,
-    "peak_close": 0.00102456905088277,
-    "last_close": 0.000332460266414345,
-    "drawdown": 0.6755,
-    "peak_volume_7d": 179.68,
-    "recent_volume_7d": 1.32,
-    "volume_collapse": 0.9927
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
    },
-   "goplus_label": "centralized",
-   "goplus_reasons": [
-    "tax changeable"
-   ],
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "1",
+    "is_open_source": "1",
+    "is_proxy": "1",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "221439",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0xd080ed3c74a20250a2c9821885203034acd2d5ae",
+   "symbol": "ZFI",
+   "chain": "base",
+   "pool": "0x07bdda4ab33c2163510284fe15b46187ad840ff9",
+   "sampled_from": "backfill_2026-08-28",
+   "outcome_label": null,
+   "outcome_facts": {
+    "days": 117,
+    "peak_close": 0.00995204232282871,
+    "last_close": 0.00638280607212027,
+    "drawdown": 0.3586,
+    "peak_volume_7d": 1030.01,
+    "recent_volume_7d": 167.34,
+    "volume_collapse": 0.8375
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
    "goplus_raw": {
     "is_honeypot": "0",
     "honeypot_with_same_creator": "0",
     "is_mintable": "0",
     "transfer_pausable": "0",
     "is_blacklisted": "0",
-    "slippage_modifiable": "1",
+    "slippage_modifiable": "0",
     "can_take_back_ownership": "0",
     "owner_change_balance": "0",
     "hidden_owner": "0",
@@ -10223,44 +10604,34 @@
     "is_proxy": "0",
     "buy_tax": "0",
     "sell_tax": "0",
-    "holder_count": "2632895",
-    "owner_address": "0x0000000000000000000000000000000000000000",
+    "holder_count": "4135",
+    "owner_address": "0x891c2b1d414f6ab5e5b4d6edabcba3659516dbf0",
     "reputable": false,
     "cex_listed": []
    }
   },
   {
-   "address": "0xd36fcb815a383c900ca7756961aff02b62cd9124",
-   "symbol": "wojak",
+   "address": "0xd26dbabd7d608ea191913eeaea63be8b651b37f8",
+   "symbol": "THE POWELL",
    "chain": "base",
-   "pool": "0x0d21bf9da935bf40741745c00f63339e2e87c5c0",
-   "sampled_from": "backfill_2026-02-07",
+   "pool": "0x02a8ab67ccb887bec80050f8fbe55a2484d21421",
+   "sampled_from": "backfill_2026-08-25",
    "outcome_label": null,
    "outcome_facts": {
     "reason": "fewer than 30 days of history",
-    "days": 3,
-    "recent_volume_7d": 642840.84
+    "days": 0,
+    "recent_volume_7d": 0
    },
-   "goplus_label": "centralized",
-   "goplus_reasons": [
-    "has a blacklist"
-   ],
+   "goplus_label": "safe",
+   "goplus_reasons": [],
    "goplus_raw": {
-    "is_honeypot": "0",
     "honeypot_with_same_creator": "0",
-    "is_mintable": "0",
-    "transfer_pausable": "0",
-    "is_blacklisted": "1",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "0",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
     "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "",
-    "sell_tax": "",
-    "holder_count": "51",
+    "is_proxy": "1",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "34092",
+    "owner_address": "0x2ba5363531b86694d0f1274ee35935c6222faaf3",
     "reputable": false,
     "cex_listed": []
    }
@@ -10307,45 +10678,6 @@
    }
   },
   {
-   "address": "0xd63f21e7f4205d59c5b486273c42e261d5cd4d1d",
-   "symbol": "BLKH",
-   "chain": "base",
-   "pool": "0x17eefe6b6d55f77dd7a1be29f86586aadba8cce2",
-   "sampled_from": "backfill_2025-12-09",
-   "outcome_label": "dead",
-   "outcome_facts": {
-    "days": 130,
-    "peak_close": 0.00198177646160788,
-    "last_close": 0.00024616771397887,
-    "drawdown": 0.8758,
-    "peak_volume_7d": 65641.25,
-    "recent_volume_7d": 1339.1,
-    "volume_collapse": 0.9796
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "0",
-    "is_mintable": "0",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "0",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "5464",
-    "owner_address": "0xe220329659d41b2a9f26e83816b424bdacf62567",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
    "address": "0xd769d56f479e9e72a77bb1523e866a33098feec5",
    "symbol": "Base is for everyone",
    "chain": "base",
@@ -10380,12 +10712,16 @@
    "symbol": "NATO",
    "chain": "base",
    "pool": "0x02623e0e65a1d8537f6235512839e2f7b76c7a12",
-   "sampled_from": "backfill_2026-05-28",
+   "sampled_from": "backfill_2026-08-28",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 184,
+    "peak_close": 6.19868401520559e-07,
+    "last_close": 7.62266079930357e-08,
+    "drawdown": 0.877,
+    "peak_volume_7d": 6043.79,
+    "recent_volume_7d": 273.1,
+    "volume_collapse": 0.9548
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -10539,20 +10875,53 @@
    }
   },
   {
-   "address": "0xdf64dee8b899cac9d3e6d2562d94d876940c13ce",
-   "symbol": "ARLO",
+   "address": "0xe09c27aa597c2cd7605b8944cb6fce2883405251",
+   "symbol": "ERIC",
    "chain": "base",
-   "pool": "0x18d387c54772aa74d2f72516d965bdf8536fa827",
-   "sampled_from": "backfill_2026-02-17",
-   "outcome_label": "dead",
+   "pool": "0x0499f4849bba5a1a7ffe3359e315886d65b78fb7",
+   "sampled_from": "backfill_2026-09-04",
+   "outcome_label": null,
    "outcome_facts": {
-    "days": 99,
-    "peak_close": 0.000322564632326579,
-    "last_close": 4.72905095559172e-05,
-    "drawdown": 0.8534,
-    "peak_volume_7d": 644222.25,
-    "recent_volume_7d": 9.84,
-    "volume_collapse": 1.0
+    "reason": "fewer than 30 days of history",
+    "days": 3,
+    "recent_volume_7d": 0.13
+   },
+   "goplus_label": "centralized",
+   "goplus_reasons": [
+    "tax changeable"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "1",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "1",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "201",
+    "owner_address": "0x0000000000000000000000000000000000000000",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0xe1469c07aa8b15e7c5fe97fe0367f9fd6f7bd2fd",
+   "symbol": "CHOCO",
+   "chain": "base",
+   "pool": "0x0473cd45342ed0afa6efca7bedcb47957cf6d2a4",
+   "sampled_from": "backfill_2026-09-03",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -10571,8 +10940,7 @@
     "is_proxy": "0",
     "buy_tax": "0",
     "sell_tax": "0",
-    "holder_count": "1526",
-    "owner_address": "0xe220329659d41b2a9f26e83816b424bdacf62567",
+    "holder_count": "156311",
     "reputable": false,
     "cex_listed": []
    }
@@ -10687,6 +11055,31 @@
     "sell_tax": "0",
     "holder_count": "5823",
     "owner_address": "0x0000000000000000000000000000000000000000",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0xe2c86869216ac578bd62a4b8313770d9ee359a05",
+   "symbol": "EMT",
+   "chain": "base",
+   "pool": "0x09e98d1aace718a5e4c1dd7c6eb48e98cbaa05ed",
+   "sampled_from": "backfill_2026-08-26",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "honeypot_with_same_creator": "0",
+    "is_open_source": "1",
+    "is_proxy": "1",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "75708",
     "reputable": false,
     "cex_listed": []
    }
@@ -10845,42 +11238,6 @@
    }
   },
   {
-   "address": "0xe707dceba56f66c3f53774cb3f37bf9d7671b350",
-   "symbol": "AIB",
-   "chain": "base",
-   "pool": "0x0f428eaf946eb0bc507469a0e9caa7eb7aec533a",
-   "sampled_from": "backfill_2026-05-08",
-   "outcome_label": null,
-   "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 2,
-    "recent_volume_7d": 10101.82
-   },
-   "goplus_label": "unsafe",
-   "goplus_reasons": [
-    "honeypot"
-   ],
-   "goplus_raw": {
-    "is_honeypot": "1",
-    "honeypot_with_same_creator": "1",
-    "is_mintable": "1",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "0",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "19",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
    "address": "0xe782f67c77a539704349495a50fcaab16366a82b",
    "symbol": "RA",
    "chain": "base",
@@ -10987,37 +11344,74 @@
    }
   },
   {
-   "address": "0xec36ba0b66713c02a7a3f488d59d8e4f906dbe47",
-   "symbol": "Micromines PolyBeta Finance",
+   "address": "0xe9d1cc2c0ed97125c5c2a76a64539f3aea44f000",
+   "symbol": "Uno",
    "chain": "base",
-   "pool": "0x0b339d4bf2728962f41cc56c41051648a691cb24",
-   "sampled_from": "backfill_2026-02-07",
+   "pool": "0x056bf63b5e6feb457a157b46c9b49712212f9e32",
+   "sampled_from": "backfill_2026-09-04",
    "outcome_label": null,
    "outcome_facts": {
     "reason": "fewer than 30 days of history",
-    "days": 1,
-    "recent_volume_7d": 0.02
+    "days": 4,
+    "recent_volume_7d": 6710.37
    },
-   "goplus_label": "centralized",
+   "goplus_label": "unsafe",
    "goplus_reasons": [
-    "owner can change balances"
+    "honeypot"
    ],
    "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "119",
+    "is_honeypot": "1",
+    "honeypot_with_same_creator": "2",
     "is_mintable": "1",
     "transfer_pausable": "0",
     "is_blacklisted": "0",
     "slippage_modifiable": "0",
     "can_take_back_ownership": "0",
     "owner_change_balance": "1",
-    "hidden_owner": "0",
+    "hidden_owner": "1",
     "selfdestruct": "0",
     "is_open_source": "1",
     "is_proxy": "0",
     "buy_tax": "0",
     "sell_tax": "0",
-    "holder_count": "4",
+    "holder_count": "16",
+    "owner_address": "0x0000000000000000000000000000000000000000",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0xea5d82e120f470838d4883405526726b768c2f64",
+   "symbol": "MOM",
+   "chain": "base",
+   "pool": "0x025893ca74919fcf67fe4445868aad559218ed47",
+   "sampled_from": "backfill_2026-09-04",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 2,
+    "recent_volume_7d": 8596.73
+   },
+   "goplus_label": "unsafe",
+   "goplus_reasons": [
+    "honeypot"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "1",
+    "honeypot_with_same_creator": "2",
+    "is_mintable": "1",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "1",
+    "hidden_owner": "1",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "2",
     "owner_address": "0x0000000000000000000000000000000000000000",
     "reputable": false,
     "cex_listed": []
@@ -11080,35 +11474,6 @@
     "buy_tax": "0",
     "sell_tax": "0",
     "holder_count": "65943",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
-   "address": "0xedfa23602d0ec14714057867a78d01e94176bea0",
-   "symbol": "wrsETH",
-   "chain": "base",
-   "pool": "0x16e25facba67a40da3436ab9e2e00c30dab0dd97",
-   "sampled_from": "backfill_2025-12-09",
-   "outcome_label": null,
-   "outcome_facts": {
-    "days": 184,
-    "peak_close": 2688.74227344711,
-    "last_close": 2616.98390503941,
-    "drawdown": 0.0267,
-    "peak_volume_7d": 47848.25,
-    "recent_volume_7d": 16714.71,
-    "volume_collapse": 0.6507
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "honeypot_with_same_creator": "1",
-    "is_open_source": "1",
-    "is_proxy": "1",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "48995",
     "reputable": false,
     "cex_listed": []
    }
@@ -11192,28 +11557,6 @@
    }
   },
   {
-   "address": "0xf30bf00edd0c22db54c9274b90d2a4c21fc09b07",
-   "symbol": "FELIX",
-   "chain": "base",
-   "pool": "0x1b9522055e0b6bb7b36d7d167a232283f2245f01",
-   "sampled_from": "backfill_2026-02-17",
-   "outcome_label": "dead",
-   "outcome_facts": {
-    "days": 42,
-    "peak_close": 5.37094316247554e-05,
-    "last_close": 1.50123192971966e-06,
-    "drawdown": 0.972,
-    "peak_volume_7d": 266566.0,
-    "recent_volume_7d": 13.07,
-    "volume_collapse": 1.0
-   },
-   "goplus_label": null,
-   "goplus_reasons": [
-    "no GoPlus data"
-   ],
-   "goplus_raw": {}
-  },
-  {
    "address": "0xf43eb8de897fbc7f2502483b2bef7bb9ea179229",
    "symbol": "ZEN",
    "chain": "base",
@@ -11259,7 +11602,7 @@
    "symbol": "DIEM",
    "chain": "base",
    "pool": "0x063555796734ff6d04b8f27cd216bb05b6d95394",
-   "sampled_from": "backfill_2026-03-09",
+   "sampled_from": "backfill_2026-08-28",
    "outcome_label": null,
    "outcome_facts": {
     "days": 184,
@@ -11447,48 +11790,6 @@
    }
   },
   {
-   "address": "0xf9a4a6d7060e93160c972292438c4614d3d3ef05",
-   "symbol": "GD",
-   "chain": "base",
-   "pool": "0x0fbd83d1f4a3b5ee0a13b85ad067db2c3afa2702",
-   "sampled_from": "backfill_2026-05-08",
-   "outcome_label": "dead",
-   "outcome_facts": {
-    "days": 184,
-    "peak_close": 0.0904575684700273,
-    "last_close": 0.00361747098563966,
-    "drawdown": 0.96,
-    "peak_volume_7d": 785745.78,
-    "recent_volume_7d": 2257.09,
-    "volume_collapse": 0.9971
-   },
-   "goplus_label": "centralized",
-   "goplus_reasons": [
-    "transfers pausable",
-    "tax changeable"
-   ],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "0",
-    "is_mintable": "0",
-    "transfer_pausable": "1",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "1",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "0",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "11118",
-    "owner_address": "0x000000000000000000000000000000000000dead",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
    "address": "0xf9b738c2e7adc4f299c57afd0890b925a5efea6f",
    "symbol": "",
    "chain": "base",
@@ -11564,40 +11865,6 @@
     "sell_tax": "0",
     "holder_count": "107608",
     "owner_address": "0xb11c0189c5e2b4acc797e893447bab452f38811e",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
-   "address": "0xfad8cb754230dbfd249db0e8eccb5142dd675a0d",
-   "symbol": "AEROBUD",
-   "chain": "base",
-   "pool": "0x0b018aad1212aff98921061697d5aa3ded7041a8",
-   "sampled_from": "backfill_2026-02-07",
-   "outcome_label": null,
-   "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "0",
-    "is_mintable": "0",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "0",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "329765",
     "reputable": false,
     "cex_listed": []
    }
@@ -11793,43 +12060,6 @@
    }
   },
   {
-   "address": "0xff401ee5cb36f2febcc74540b57556b48591ef01",
-   "symbol": "BTX",
-   "chain": "base",
-   "pool": "0x0ba28d848dff671808c90cdfa38622fb8f7b8827",
-   "sampled_from": "backfill_2026-02-07",
-   "outcome_label": null,
-   "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 6,
-    "recent_volume_7d": 23.76
-   },
-   "goplus_label": "centralized",
-   "goplus_reasons": [
-    "owner can change balances"
-   ],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "4515",
-    "is_mintable": "1",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "1",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "5",
-    "owner_address": "0x0000000000000000000000000000000000000000",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
    "address": "0xff8104251e7761163fac3211ef5583fb3f8583d6",
    "symbol": "REPPO",
    "chain": "base",
@@ -11869,6 +12099,28 @@
    }
   },
   {
+   "address": "0x0000000000000000000000000000000000000000",
+   "symbol": "BNB",
+   "chain": "bsc",
+   "pool": "0xd37aa0f0d66ad670279f6b89325c88bdff17d0265144762fb01f54fca9779944",
+   "sampled_from": "gt_pools",
+   "outcome_label": "alive",
+   "outcome_facts": {
+    "days": 184,
+    "peak_close": 766.95,
+    "last_close": 756.91,
+    "drawdown": 0.0131,
+    "peak_volume_7d": 59569948.36,
+    "recent_volume_7d": 44812182.08,
+    "volume_collapse": 0.2477
+   },
+   "goplus_label": null,
+   "goplus_reasons": [
+    "no GoPlus data"
+   ],
+   "goplus_raw": {}
+  },
+  {
    "address": "0x000008d2175f9aeaddb2430c26f8a6f73c5a0000",
    "symbol": "UP",
    "chain": "bsc",
@@ -11903,42 +12155,6 @@
     "sell_tax": "0",
     "holder_count": "5815",
     "owner_address": "0x0958d8ab8bd86ce7451156dff0783152bea21514",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
-   "address": "0x000ae314e2a2172a039b26378814c252734f556a",
-   "symbol": "ASTER",
-   "chain": "bsc",
-   "pool": "0x1b451880bd8ed2db08f707d18bee6a874e068d1879cab60dc7262b65d1e1ca2f",
-   "sampled_from": "gt_pools",
-   "outcome_label": "alive",
-   "outcome_facts": {
-    "days": 184,
-    "peak_close": 0.755543467226391,
-    "last_close": 0.73329179274848,
-    "drawdown": 0.0295,
-    "peak_volume_7d": 32249333.11,
-    "recent_volume_7d": 15722024.93,
-    "volume_collapse": 0.5125
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "is_honeypot": "0",
-    "honeypot_with_same_creator": "0",
-    "is_mintable": "0",
-    "transfer_pausable": "0",
-    "is_blacklisted": "0",
-    "slippage_modifiable": "0",
-    "can_take_back_ownership": "0",
-    "owner_change_balance": "0",
-    "hidden_owner": "0",
-    "selfdestruct": "0",
-    "is_open_source": "1",
-    "is_proxy": "0",
-    "holder_count": "259730",
     "reputable": false,
     "cex_listed": []
    }
@@ -12148,6 +12364,41 @@
    }
   },
   {
+   "address": "0x0e15c2472ae5d7ba564215d38f7b4d968effe4ad",
+   "symbol": "BABY",
+   "chain": "bsc",
+   "pool": "0x7cb7615458c849bc8bfd6d62e0e7d21dc41464aa",
+   "sampled_from": "snapshot_2026-09-05",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 1,
+    "recent_volume_7d": 74693.6
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "695",
+    "owner_address": "0x0000000000000000000000000000000000000000",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
    "address": "0x0e4f6209ed984b21edea43ace6e09559ed051d48",
    "symbol": "ON",
    "chain": "bsc",
@@ -12235,9 +12486,13 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 184,
+    "peak_close": 0.0567762038035423,
+    "last_close": 0.0279477701306609,
+    "drawdown": 0.5078,
+    "peak_volume_7d": 171210916.59,
+    "recent_volume_7d": 7727068.81,
+    "volume_collapse": 0.9549
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -12270,8 +12525,8 @@
    "outcome_label": null,
    "outcome_facts": {
     "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 14,
+    "recent_volume_7d": 45840249.65
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -12959,31 +13214,6 @@
    "goplus_raw": {}
   },
   {
-   "address": "0x46ceefda28dd7207059ed19b0acdc026955bb15c",
-   "symbol": "GMEB",
-   "chain": "bsc",
-   "pool": "0x908d49048eb3a7bedfd238972403842805eaf2be",
-   "sampled_from": "gt_pools",
-   "outcome_label": null,
-   "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 25,
-    "recent_volume_7d": 10797366.72
-   },
-   "goplus_label": "safe",
-   "goplus_reasons": [],
-   "goplus_raw": {
-    "honeypot_with_same_creator": "1",
-    "is_open_source": "1",
-    "is_proxy": "1",
-    "buy_tax": "0",
-    "sell_tax": "0",
-    "holder_count": "52950",
-    "reputable": false,
-    "cex_listed": []
-   }
-  },
-  {
    "address": "0x475cbf5919608e0c6af00e7bf87fab83bf3ef6e2",
    "symbol": "ROBO",
    "chain": "bsc",
@@ -13126,6 +13356,42 @@
    }
   },
   {
+   "address": "0x4f799d114f1ee560dc1ce4f8b9867bed42c8eefd",
+   "symbol": "ATHX",
+   "chain": "bsc",
+   "pool": "0x1b95ea9cec6dd4e525d91ebca464a0acca600096",
+   "sampled_from": "snapshot_2026-09-05",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 1,
+    "recent_volume_7d": 15278.96
+   },
+   "goplus_label": "unsafe",
+   "goplus_reasons": [
+    "honeypot"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "1",
+    "honeypot_with_same_creator": "1",
+    "is_mintable": "1",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "24",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
    "address": "0x4fa7c69a7b69f8bc48233024d546bc299d6b03bf",
    "symbol": "quq",
    "chain": "bsc",
@@ -13250,11 +13516,15 @@
    "chain": "bsc",
    "pool": "0x172fcd41e0913e95784454622d1c3724f546f849",
    "sampled_from": "snapshot_2026-09-04",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 184,
+    "peak_close": 1.00078727510175,
+    "last_close": 1.0002981435108,
+    "drawdown": 0.0005,
+    "peak_volume_7d": 1913557742.08,
+    "recent_volume_7d": 740198003.11,
+    "volume_collapse": 0.6132
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
@@ -13345,11 +13615,15 @@
    "chain": "bsc",
    "pool": "0x90a54475d512b8f3852351611c38fad30a513491",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 184,
+    "peak_close": 0.0316253480102941,
+    "last_close": 0.0316253480102941,
+    "drawdown": 0.0,
+    "peak_volume_7d": 35771077.92,
+    "recent_volume_7d": 26431151.71,
+    "volume_collapse": 0.2611
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -13579,8 +13853,8 @@
    "outcome_label": null,
    "outcome_facts": {
     "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 26,
+    "recent_volume_7d": 12309880.24
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -13748,6 +14022,41 @@
     "sell_tax": "",
     "holder_count": "20618",
     "owner_address": "0x8fd4b4e4bd10454a0e3aee57e1b969231e604b63",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0x760f35eb9b535fa894d41ccdae4cbcd0f2d9b748",
+   "symbol": "CC",
+   "chain": "bsc",
+   "pool": "0x67cacd5cb92a889a635c4ef042cd985008c3381f",
+   "sampled_from": "snapshot_2026-09-05",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "534",
+    "owner_address": "0x0000000000000000000000000000000000000000",
     "reputable": false,
     "cex_listed": []
    }
@@ -14539,6 +14848,42 @@
    }
   },
   {
+   "address": "0xab19cfea487d2f6a56b5b551ced572c8214630b2",
+   "symbol": "GOLD",
+   "chain": "bsc",
+   "pool": "0xa8528482ec694e0a4d58439b1cd3ff22319e401d",
+   "sampled_from": "snapshot_2026-09-05",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 1,
+    "recent_volume_7d": 62723.83
+   },
+   "goplus_label": "unsafe",
+   "goplus_reasons": [
+    "honeypot"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "1",
+    "honeypot_with_same_creator": "1",
+    "is_mintable": "1",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "29",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
    "address": "0xac23b90a79504865d52b49b327328411a23d4db2",
    "symbol": "FF",
    "chain": "bsc",
@@ -15149,9 +15494,13 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 77,
+    "peak_close": 0.0110518548723696,
+    "last_close": 0.00271795977442023,
+    "drawdown": 0.7541,
+    "peak_volume_7d": 8141566.93,
+    "recent_volume_7d": 2567353.72,
+    "volume_collapse": 0.6847
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -15488,8 +15837,8 @@
    "outcome_label": null,
    "outcome_facts": {
     "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 15,
+    "recent_volume_7d": 1264157.44
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
@@ -15512,6 +15861,43 @@
     "sell_tax": "0",
     "holder_count": "62",
     "owner_address": "0x2f0f35765563ba038ba80ffb80d76eb6106b946a",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
+   "address": "0x08efcc2f3e61185d0ea7f8830b3fec9bfa2ee313",
+   "symbol": "sNUSD",
+   "chain": "ethereum",
+   "pool": "0x3428d48d5668452e3df1ee8c8b740788245c1340e9471a89fb9b868a6698f3fe",
+   "sampled_from": "snapshot_2026-09-04",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 1,
+    "recent_volume_7d": 51.55
+   },
+   "goplus_label": "centralized",
+   "goplus_reasons": [
+    "has a blacklist"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "1",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "1",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "",
+    "sell_tax": "",
+    "holder_count": "538",
+    "owner_address": "0x51de41ec06e779715d7fb71ef83a736cfc903217",
     "reputable": false,
     "cex_listed": []
    }
@@ -15567,11 +15953,15 @@
    "chain": "ethereum",
    "pool": "0x155738f4da7d7b55876f5398bb0195d027400127",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 139,
+    "peak_close": 0.121269136735374,
+    "last_close": 0.0577773829642901,
+    "drawdown": 0.5236,
+    "peak_volume_7d": 4001267.15,
+    "recent_volume_7d": 422785.6,
+    "volume_collapse": 0.8943
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -15697,6 +16087,31 @@
     "cex_listed": [
      "Coinbase"
     ]
+   }
+  },
+  {
+   "address": "0x14c3abf95cb9c93a8b82c1cdcb76d72cb87b2d4c",
+   "symbol": "AAPLon",
+   "chain": "ethereum",
+   "pool": "0x62d817ca2ee431bf34359fbf29b3d2986d905b1d787df554af81ee59cf861045",
+   "sampled_from": "snapshot_2026-09-04",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 1,
+    "recent_volume_7d": 3486.22
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "honeypot_with_same_creator": "1",
+    "is_open_source": "1",
+    "is_proxy": "1",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "2109",
+    "reputable": false,
+    "cex_listed": []
    }
   },
   {
@@ -15874,9 +16289,13 @@
    "sampled_from": "gt_pools",
    "outcome_label": null,
    "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 184,
+    "peak_close": 0.00455333913733636,
+    "last_close": 0.00048941239592925,
+    "drawdown": 0.8925,
+    "peak_volume_7d": 465653.39,
+    "recent_volume_7d": 199285.39,
+    "volume_collapse": 0.572
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -16123,6 +16542,41 @@
     "cex_listed": [
      "Coinbase"
     ]
+   }
+  },
+  {
+   "address": "0x241863ffb3b0395195823ac4fe2ea6be4636702b",
+   "symbol": "CLRI",
+   "chain": "ethereum",
+   "pool": "0x0d6655a1df0a726b8d8a84edb0131b4820e9d3d5",
+   "sampled_from": "snapshot_2026-09-04",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
+   },
+   "goplus_label": "centralized",
+   "goplus_reasons": [
+    "owner can change balances"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "1",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "",
+    "sell_tax": "",
+    "holder_count": "1",
+    "reputable": false,
+    "cex_listed": []
    }
   },
   {
@@ -16618,6 +17072,35 @@
    }
   },
   {
+   "address": "0x45804880de22913dafe09f4980848ece6ecbaf78",
+   "symbol": "PAXG",
+   "chain": "ethereum",
+   "pool": "0x27a515848de77ab6f757173877d9e15ec8f8b6f4",
+   "sampled_from": "snapshot_2026-09-04",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 2,
+    "recent_volume_7d": 10658.42
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "1",
+    "is_open_source": "1",
+    "is_proxy": "1",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "86821",
+    "reputable": true,
+    "cex_listed": [
+     "Binance",
+     "Coinbase"
+    ]
+   }
+  },
+  {
    "address": "0x4aa873db9daef2949eef55591ed5ba7702ff5e62",
    "symbol": "TBCC",
    "chain": "ethereum",
@@ -16736,11 +17219,15 @@
    "chain": "ethereum",
    "pool": "0x9ecc2b9b4171c12e89ea93ed63eb2b0b18048c51be2846e94be3d7c478354441",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 184,
+    "peak_close": 0.181067757306037,
+    "last_close": 0.142199376530397,
+    "drawdown": 0.2147,
+    "peak_volume_7d": 2955045.37,
+    "recent_volume_7d": 482804.52,
+    "volume_collapse": 0.8366
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -17000,11 +17487,15 @@
    "chain": "ethereum",
    "pool": "0x949cddfee3b676c528c9c79ccce04f9062ef8527098dd871a27bc423856443a3",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 184,
+    "peak_close": 0.0895398411455347,
+    "last_close": 0.0699515127089761,
+    "drawdown": 0.2188,
+    "peak_volume_7d": 9447069.64,
+    "recent_volume_7d": 2792301.97,
+    "volume_collapse": 0.7044
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -17345,6 +17836,41 @@
    }
   },
   {
+   "address": "0x68b36248477277865c64dfc78884ef80577078f3",
+   "symbol": "Hold",
+   "chain": "ethereum",
+   "pool": "0xe4eb16580f73a9b09a0997df1e561b4a45ef92b1ca06c27bcf32b6ed11e8dc4b",
+   "sampled_from": "snapshot_2026-09-04",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 2,
+    "recent_volume_7d": 7089.11
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "0",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "0",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "0",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "4421",
+    "owner_address": "0x0000000000000000000000000000000000000000",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
    "address": "0x68bbed6a47194eff1cf514b50ea91895597fc91e",
    "symbol": "ANDY",
    "chain": "ethereum",
@@ -17547,8 +18073,8 @@
    "outcome_label": null,
    "outcome_facts": {
     "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 1,
+    "recent_volume_7d": 130.47
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
@@ -18390,6 +18916,44 @@
    }
   },
   {
+   "address": "0x95f79aeae58cb021d6eed69af21fa7fc2f1dd314",
+   "symbol": "STEOST",
+   "chain": "ethereum",
+   "pool": "0x2e4d3963d934d20b1bc2b1bfeec67d59f9482eea",
+   "sampled_from": "snapshot_2026-09-04",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 2,
+    "recent_volume_7d": 1227.22
+   },
+   "goplus_label": "centralized",
+   "goplus_reasons": [
+    "transfers pausable",
+    "tax changeable"
+   ],
+   "goplus_raw": {
+    "is_honeypot": "0",
+    "honeypot_with_same_creator": "0",
+    "is_mintable": "0",
+    "transfer_pausable": "1",
+    "is_blacklisted": "0",
+    "slippage_modifiable": "1",
+    "can_take_back_ownership": "0",
+    "owner_change_balance": "0",
+    "hidden_owner": "1",
+    "selfdestruct": "0",
+    "is_open_source": "1",
+    "is_proxy": "0",
+    "buy_tax": "",
+    "sell_tax": "",
+    "holder_count": "2",
+    "owner_address": "0x0000000000000000000000000000000000000000",
+    "reputable": false,
+    "cex_listed": []
+   }
+  },
+  {
    "address": "0x974733a3f37208647577bb925d8ee854c7337e29",
    "symbol": "WFC",
    "chain": "ethereum",
@@ -18588,11 +19152,15 @@
    "chain": "ethereum",
    "pool": "0x4d68b530920d26c3b01c99fecc19e21011b72bbd",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 184,
+    "peak_close": 0.0605722099629676,
+    "last_close": 0.0536294582232116,
+    "drawdown": 0.1146,
+    "peak_volume_7d": 17821763.58,
+    "recent_volume_7d": 3989846.43,
+    "volume_collapse": 0.7761
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -18661,11 +19229,15 @@
    "chain": "ethereum",
    "pool": "0x147d15e009a63ebed5196ea029679329204f98fd",
    "sampled_from": "gt_pools",
-   "outcome_label": null,
+   "outcome_label": "alive",
    "outcome_facts": {
-    "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 184,
+    "peak_close": 2521.24,
+    "last_close": 2503.49,
+    "drawdown": 0.007,
+    "peak_volume_7d": 27592403.1,
+    "recent_volume_7d": 7350637.25,
+    "volume_collapse": 0.7336
    },
    "goplus_label": "centralized",
    "goplus_reasons": [
@@ -19614,8 +20186,8 @@
    "outcome_label": null,
    "outcome_facts": {
     "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 1,
+    "recent_volume_7d": 139.02
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -19983,8 +20555,8 @@
    "outcome_label": null,
    "outcome_facts": {
     "reason": "fewer than 30 days of history",
-    "days": 0,
-    "recent_volume_7d": 0
+    "days": 1,
+    "recent_volume_7d": 710.52
    },
    "goplus_label": "safe",
    "goplus_reasons": [],
@@ -20234,17 +20806,42 @@
     "reputable": false,
     "cex_listed": []
    }
+  },
+  {
+   "address": "0xfedc5f4a6c38211c1338aa411018dfaf26612c08",
+   "symbol": "SPYon",
+   "chain": "ethereum",
+   "pool": "0x266f39de9e27618c0ce212781688623f73e38c402f16d5492bc09bf3f87ba20f",
+   "sampled_from": "snapshot_2026-09-04",
+   "outcome_label": null,
+   "outcome_facts": {
+    "reason": "fewer than 30 days of history",
+    "days": 0,
+    "recent_volume_7d": 0
+   },
+   "goplus_label": "safe",
+   "goplus_reasons": [],
+   "goplus_raw": {
+    "honeypot_with_same_creator": "1",
+    "is_open_source": "1",
+    "is_proxy": "1",
+    "buy_tax": "0",
+    "sell_tax": "0",
+    "holder_count": "1781",
+    "reputable": false,
+    "cex_listed": []
+   }
   }
  ],
  "counts": {
   "outcome": {
-   "dead": 36,
-   "alive": 153
+   "dead": 30,
+   "alive": 162
   },
   "goplus": {
-   "safe": 337,
-   "centralized": 181,
-   "unsafe": 9
+   "safe": 349,
+   "centralized": 179,
+   "unsafe": 17
   }
  }
 }
