@@ -871,14 +871,25 @@ async def _owner_powers(address, chain):
     switched on. Nothing fires, because those are powers a contract holds rather than
     behaviour it has shown.
 
-    Measured before building, over 417 labelled contracts: pausable appears in 11% of the
-    unsafe cohort against 5% of the safe one, mutable tax in 11% against 0%, blacklist in
-    neither, and mintable runs the *wrong* way -- 12% of safe tokens against 0% of unsafe.
-    With nine tokens in the unsafe cohort, "11%" is one token. That is an anecdote, not a
-    threshold, so nothing here is scored and the verdict does not move.
+    **This scan is incomplete, and by a lot.** Checked against the labelling oracle's own
+    flags for the same four powers over 120 contracts that it says hold at least one: the
+    bytecode scan finds 41 of 133, or 31%. Per power it is worse -- 5% for a mutable tax,
+    20% for a blacklist, 25% for a pause switch, 38% for mint. Contracts name these
+    functions in more ways than any hand-written list will hold.
 
-    What it does is let a caller see what they are accepting. `low` already says the exit
-    was open when we looked; this says who can close it.
+    Two consequences, and the second is the one that matters.
+
+    A power reported here is real: a selector match is a function that exists. But
+    **silence means nothing at all**, and a caller must not read an empty list as "this
+    contract has no owner powers". The evidence says so explicitly rather than leaving an
+    empty array to be misread.
+
+    And the measurement that rejected scoring this in R12 -- pausable in 11% of the unsafe
+    cohort against 5% of the safe one, mintable running the wrong way -- was taken with
+    this same blind instrument, so it does not establish what it was taken to establish.
+    Scoring is still off, but now for want of an instrument rather than for want of a
+    signal. Widening the list from the oracle's own labels would fix the recall and void
+    the benchmark (B2), so it needs a source that is not the oracle.
     """
     rpc = _CHAIN_RPC.get((chain or "").lower())
     if not rpc or not _looks_evm(address):
@@ -910,9 +921,16 @@ def _powers_from_code(code):
     if not code or len(code) < 10:
         return None
     body = code[2:].lower()
+    powers = sorted(name for name, sels in _OWNER_POWERS.items()
+                    if any(sel in body for sel in sels))
     return {
-        "powers": sorted(name for name, sels in _OWNER_POWERS.items()
-                         if any(sel in body for sel in sels)),
+        "powers": powers,
+        # Measured against the labelling oracle: this scan finds 31% of the powers it
+        # asserts. So a hit is real and a miss says nothing, and an empty list must not be
+        # read as a clean contract. Stated in the payload because an empty array is
+        # exactly the kind of thing a caller reads as reassurance.
+        "scan_is_incomplete": True,
+        "found_none": not powers,
         # A proxy's logic lives at another address, so the absence of a power here means
         # nothing at all. Saying so beats an empty list that reads as "none found".
         "is_proxy": _PROXY_SELECTOR in body,
@@ -967,6 +985,13 @@ def _owner_power_signal(info, signals, evidence):
             "has been used against you -- this is what the contract *can* do, not what it "
             "has done, and it does not change the rating. Plenty of legitimate tokens "
             "carry these." % ", ".join(info["powers"]), "contract"))
+    elif info.get("found_none"):
+        signals.append(_sig(
+            "info", "No owner powers found, which is weaker than it sounds",
+            "The scan for pause, blacklist, mutable-tax and mint functions found none. "
+            "It is known to find only about a third of the ones that exist, because "
+            "contracts name these functions in more ways than a fixed list can hold. "
+            "Read this as 'nothing found', not 'nothing there'.", "contract"))
 
 
 def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):

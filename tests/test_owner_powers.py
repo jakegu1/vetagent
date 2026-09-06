@@ -123,6 +123,21 @@ def test_disclosure_never_moves_the_verdict():
           signals2 and signals2[0]["severity"] == "info",
           signals2[0]["severity"] if signals2 else "none")
 
+    # Finding nothing must not read as finding nothing there. Measured against the
+    # labelling oracle over 120 contracts it says hold at least one of these powers, the
+    # bytecode scan finds 31% of them -- 5% for a mutable tax. So an empty list is a
+    # statement about the scan, and the payload has to say which.
+    signals5, evidence5 = [], {}
+    risk._owner_power_signal({"powers": [], "is_proxy": False, "found_none": True,
+                              "scan_is_incomplete": True, "bytecode_bytes": 9000},
+                             signals5, evidence5)
+    check("finding nothing produces an explicit caveat",
+          signals5 and "weaker than it sounds" in signals5[0]["name"],
+          str([x["name"] for x in signals5]))
+    check("and the payload marks the scan incomplete",
+          evidence5.get("owner_powers", {}).get("scan_is_incomplete") is True,
+          str(evidence5))
+
     # Unreadable contract: say nothing at all.
     signals3, evidence3 = [], {}
     risk._owner_power_signal(None, signals3, evidence3)
