@@ -108,8 +108,13 @@ right, this is noise and the entry closes. If it is wrong in a meaningful share 
 it is a real defect in the primary number this tool reports, and it outranks most of what
 is on the roadmap.
 
-**Gate**: do not build until that count exists. Estimated cost: one pass over the cached
-disagreeing tokens, no new data source.
+**Not blocked** - this is a measurement over data already on disk, not a new product
+line, and it bears directly on the primary number this tool reports. It needs no business
+gate; it needs the count above to exist before any code is written. Tracked in
+BACKLOG.md so it has an owner and a priority rather than a permanent parking space.
+
+The parking rule still applies to the *feature*: no price-disagreement signal ships until
+that measurement says the pool we already pick is wrong often enough to matter.
 
 ---
 
