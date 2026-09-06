@@ -67,8 +67,8 @@ token is.
 
 False positives (healthy tokens flagged high) ....... 3.7%
 Answers returned as unknown ......................... 17.2%
-Legitimate centralised assets flagged high .......... 6.7%
-Dead tokens not rated low ........................... 95% (19 of 20)
+Legitimate centralised assets flagged high .......... 21.8%
+Dead tokens not rated low ........................... 86.7% (26 of 30)
 
 What that last line does and does not say. Recall was unmeasurable here
 until recently: every public data source ranks by liquidity, so rugged pools

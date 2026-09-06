@@ -62,6 +62,28 @@ TARGETS = [
     # auditor's attention pointed at numbers that had moved -- and it was an auditor who
     # noticed. Bringing it under the same guard as everything else is the only version of
     # this fix that survives the next re-measurement.
+    ("README.md", r"\*\*([\d.]+)%\*\* of legitimate centralised assets flagged high",
+     "centralized_high_pct"),
+    ("src/landing.html",
+     r"<td>Centralised assets \(USDT, WBTC\u2026\) flagged high</td><td class=\"num low\">([\d.]+)%",
+     "centralized_high_pct"),
+    ("src/landing.html", r"<td>Dead tokens not rated low</td><td class=\"num low\">([\d.]+)%",
+     "dead_not_low_pct"),
+    ("src/landing.html", r"([\d.]+)% of legitimate centralised assets", "centralized_high_pct"),
+    ("src/landing.html", r"(\d+) of \d+ confirmed-dead tokens were not rated low",
+     "dead_not_low_n"),
+    ("src/entry.py", r"Legitimate centralised assets flagged high \.+ ([\d.]+)%",
+     "centralized_high_pct"),
+    ("src/entry.py", r"Dead tokens not rated low \.+ ([\d.]+)%", "dead_not_low_pct"),
+    # The "N of M" pairs, which drifted furthest of all: "95% (19 of 20)" was sitting four
+    # lines below "n=576". A ratio is two numbers and both of them move.
+    ("src/landing.html", r"(\d+) of \d+\. Read the caveat below", "dead_not_low_n"),
+    ("src/landing.html", r"\d+ of (\d+)\. Read the caveat below", "dead_n"),
+    ("src/entry.py", r"Dead tokens not rated low \.+ [\d.]+% \((\d+) of \d+\)",
+     "dead_not_low_n"),
+    ("src/entry.py", r"Dead tokens not rated low \.+ [\d.]+% \(\d+ of (\d+)\)", "dead_n"),
+    ("README.md", r"Sampling has turned up (\d+) dead tokens in \d+", "dead_n"),
+    ("README.md", r"Sampling has turned up \d+ dead tokens in (\d+)", "n"),
     ("docs/AUDIT_BRIEF.md", r"false positives ([\d.]+)%", "fp_pct"),
     ("docs/AUDIT_BRIEF.md", r"unknown ([\d.]+)%", "unknown_pct"),
     ("docs/AUDIT_BRIEF.md", r"(\d+) dead samples", "dead_n"),
@@ -81,12 +103,22 @@ def figures():
     unknown = [r for r in rows if r["verdict"] == "unknown"]
     fp = [r for r in alive if r["verdict"] == "high"]
 
+    centralized = [r for r in rows if r.get("goplus_label") == "centralized"]
+    centralized_high = [r for r in centralized if r["verdict"] == "high"]
     return {
         "n": "%d" % len(rows),
         "healthy_n": "%d" % len(alive),
         "fp_pct": "%.1f" % (100.0 * len(fp) / len(alive)) if alive else "0.0",
         "unknown_pct": "%.1f" % (100.0 * len(unknown) / len(rows)) if rows else "0.0",
         "dead_n": "%d" % len(dead),
+        # Every one of these was published and guarded by nothing, and every one of them
+        # flattered: centralised-flagged-high read 6.7% against a measured 21.8%, and the
+        # dead cohort was quoted as "95% (19 of 20)" four lines below "n=576".
+        "centralized_n": "%d" % len(centralized),
+        "centralized_high_pct": ("%.1f" % (100.0 * len(centralized_high) / len(centralized))
+                                 if centralized else "0.0"),
+        "dead_not_low_pct": ("%.1f" % (100.0 * len([r for r in dead if r["verdict"] != "low"])
+                                       / len(dead)) if dead else "0.0"),
         "dead_not_low_n": "%d" % len([r for r in dead if r["verdict"] != "low"]),
     }
 
@@ -114,6 +146,64 @@ def scan(write):
     return vals, stale, changed
 
 
+# Lines that are making an accuracy claim. Any percentage on one of these has to be
+# owned by a TARGET, or it is a number nobody is checking.
+# Numbers that are deliberately not tracked, each with a reason. An exemption list with
+# reasons is honest; a looser regex would just hide the same thing.
+_EXEMPT_CONTEXT = (
+    "Rejected.",           # a historical measurement of a signal we removed (LP lock/burn)
+    "What 100 looks like",  # the scorecard's aspiration block, not a measurement
+)
+
+_CLAIM_WORDS = ("false positive", "unknown", "centralised", "centralized",
+                "flagged high", "not rated low", "confirmed-dead", "recall",
+                "dead token")
+
+
+def unclaimed_percentages():
+    """Percentages on accuracy lines that no TARGET pattern captures.
+
+    Adding a target for each number found by an audit fixes those four numbers and
+    nothing else -- the next hand-written figure is unguarded again, which is exactly
+    how these four got there. Four separate numbers drifted, all in the same direction,
+    in the product whose single differentiator is that its numbers can be checked.
+
+    So the check is inverted: instead of asking "does each guarded number match", it
+    also asks "is every number guarded". A percentage on a line that is making an
+    accuracy claim, in a file we publish, must be claimed by a TARGET.
+    """
+    by_file = {}
+    for rel, pattern, key in TARGETS:
+        by_file.setdefault(rel, []).append(pattern)
+
+    out = []
+    for rel, patterns in sorted(by_file.items()):
+        path = os.path.join(ROOT, rel)
+        if not os.path.exists(path):
+            continue
+        with io.open(path, encoding="utf-8") as f:
+            text = f.read()
+        claimed = set()
+        for pat in patterns:
+            for m in re.finditer(pat, text):
+                claimed.add(m.group(1))
+        for line in text.splitlines():
+            low = line.lower()
+            if not any(w in low for w in _CLAIM_WORDS):
+                continue
+            for m in re.finditer(r"([<>≤≥]?\s*)(\d+(?:\.\d+)?)%", line):
+                # A number preceded by < or > is a TARGET, not a measurement -- "recall
+                # >90%" is what we are aiming at, and it must not track results.json.
+                if m.group(1).strip():
+                    continue
+                if m.group(2) in claimed:
+                    continue
+                if any(w in line for w in _EXEMPT_CONTEXT):
+                    continue
+                out.append((rel, m.group(2), line.strip()[:88]))
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--write", action="store_true",
@@ -128,7 +218,16 @@ def main():
     print("Measured: n=%s, false positives %s%% on %s healthy tokens, unknown %s%%"
           % (vals["n"], vals["fp_pct"], vals["healthy_n"], vals["unknown_pct"]))
 
-    if not stale:
+    loose = unclaimed_percentages()
+    if loose:
+        print("\n%d published percentage(s) on accuracy lines that NO target claims:"
+              % len(loose))
+        for rel, pct, line in loose:
+            print("  %-18s %s%%   %s" % (rel, pct, line))
+        print("\nAdd a TARGETS entry, or stop publishing the number. An unguarded figure")
+        print("is how the previous four drifted, all of them in the flattering direction.")
+
+    if not stale and not loose:
         print("Everything published matches the benchmark.")
         return 0
 

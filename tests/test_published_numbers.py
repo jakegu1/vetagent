@@ -37,16 +37,31 @@ def main():
           % (vals["n"], vals["fp_pct"], vals["healthy_n"], vals["unknown_pct"],
              vals["dead_n"]))
 
-    if not stale:
-        print("\nevery published figure matches")
+    # Not just "does each guarded number match" but "is every number guarded". Four
+    # published figures had drifted with nothing watching them, all four in the
+    # flattering direction, in the product whose one differentiator is that its numbers
+    # can be checked. Adding a target per number an audit happens to find fixes those
+    # four and leaves the fifth wide open -- which is how these four got there.
+    loose = publish_numbers.unclaimed_percentages()
+
+    if not stale and not loose:
+        print("\nevery published figure matches, and every published figure is guarded")
         print("PASS")
         return 0
 
-    print("\n%d published figure(s) disagree:\n" % len(stale))
-    for rel, pattern, found, want in stale:
-        print("  %-18s published %-8s measured %-8s" % (rel, found, want))
-        print("      %s" % pattern[:70])
-    print("\nRun `python bench/publish_numbers.py --write`, then redeploy.")
+    if loose:
+        print("\n%d published percentage(s) that no target claims:\n" % len(loose))
+        for rel, pct, line in loose:
+            print("  %-18s %s%%" % (rel, pct))
+            print("      %s" % line)
+        print("\nAdd a TARGETS entry, or stop publishing the number.")
+
+    if stale:
+        print("\n%d published figure(s) disagree:\n" % len(stale))
+        for rel, pattern, found, want in stale:
+            print("  %-18s published %-8s measured %-8s" % (rel, found, want))
+            print("      %s" % pattern[:70])
+        print("\nRun `python bench/publish_numbers.py --write`, then redeploy.")
     print("FAIL")
     return 1
 
