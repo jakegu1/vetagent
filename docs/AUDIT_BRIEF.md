@@ -98,9 +98,9 @@ caps out around 70 — the remaining 30 requires users, who do not exist yet.
 
 | Dimension | Score | The honest reading |
 |---|---|---|
-| Correctness | 24.0 / 30 | 287 assertions green across 10 files; false positives 4.6%; unknown 17.9% |
+| Correctness | 24.0 / 30 | all 11 test files green (`for f in tests/test_*.py; do python $f; done`); false positives 3.7%; unknown 17.2% |
 | Coverage | 16.4 / 20 | 9 of 11 risk dimensions; two measured and rejected on evidence |
-| Credibility | 10.2 / 20 | 36 dead samples; but the adversarial cohort is 9, and 4 of those are `low` when ablated |
+| Credibility | 10.2 / 20 | 30 dead samples; but the adversarial cohort is 9, and 4 of those are `low` when ablated |
 | Distribution | 2.5 / 15 | 2 of 8 channels; external-caller count not measurable yet |
 | Demand | 0.0 / 15 | **Zero users, zero revenue, zero inbound.** |
 
@@ -234,12 +234,25 @@ rediscover them:
   would fix it is the same series the benchmark's outcome label is computed from.
   Capability against the ability to prove capability. Three routes are written down and
   none is chosen; the owner's call, and a good thing for you to have an opinion on.
-- **The `dead` recall figure is 10% and that number is misleading.** `bench/results.md`
-  explains why (`dead` is a market outcome, the engine scores a safety property, and half
-  the dead cohort still holds over $7,000 of liquidity). Check whether that explanation is
-  honest or self-serving. It was written by the agent whose number it flatters.
-- **The bad cohort is 40 of 47 on one chain and 35 of 47 from one sampling source.** Stated
-  in the report. Say how much it should discount the result.
+- **The `dead` recall figure is low and the report argues that the number is
+  misleading.** Read the current figure off `bench/results.md` -- deliberately not
+  restated here, see the note below -- along with its stated defence: `dead` is a market
+  outcome while the engine scores a safety property, and much of the dead cohort still
+  holds real liquidity. Check whether that explanation is honest or self-serving. It was
+  written by the agent whose number it flatters, which is exactly the argument that most
+  needs an outsider.
+- **The adversarial and dead cohorts are concentrated on one chain and one sampling
+  source.** The composition is printed in `bench/results.md`; say how much it should
+  discount the result.
+
+> **Why this section names no figures.** It used to. Sections 1 and 3 were refreshed by
+> hand and section 7 was not, so the part of this document whose only job is to direct an
+> auditor's attention pointed at numbers that had moved -- and an auditor found that
+> before it found anything else. Every measured figure now either lives in
+> `bench/results.md`, which is generated, or is guarded by
+> `bench/publish_numbers.py`. A brief that quotes a number by hand is a brief that will be
+> wrong the next time the benchmark runs, and being wrong here costs more than being wrong
+> elsewhere: it is the document that decides where a reviewer looks.
 
 ---
 

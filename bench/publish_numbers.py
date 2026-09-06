@@ -57,6 +57,14 @@ TARGETS = [
     ("src/landing.html",
      r'<td>Answers returned as <code>unknown</code></td><td class="num unk">([\d.]+)%',
      "unknown_pct"),
+    # The audit brief quotes measured figures too. Section 1 and 3 were refreshed by hand
+    # in R11 and section 7 was not, so the document whose entire job is to direct an
+    # auditor's attention pointed at numbers that had moved -- and it was an auditor who
+    # noticed. Bringing it under the same guard as everything else is the only version of
+    # this fix that survives the next re-measurement.
+    ("docs/AUDIT_BRIEF.md", r"false positives ([\d.]+)%", "fp_pct"),
+    ("docs/AUDIT_BRIEF.md", r"unknown ([\d.]+)%", "unknown_pct"),
+    ("docs/AUDIT_BRIEF.md", r"(\d+) dead samples", "dead_n"),
     ("src/entry.py", r"## Measured accuracy \(n=(\d+), published\)", "n"),
     ("src/entry.py", r"False positives \(healthy tokens flagged high\) \.+ ([\d.]+)%", "fp_pct"),
     ("src/entry.py", r"Answers returned as unknown \.+ ([\d.]+)%", "unknown_pct"),
