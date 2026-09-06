@@ -659,6 +659,59 @@ def test_unranked_chains_get_a_price_sanity_check():
           str([(x["category"], x["name"]) for x in fork["signals"]]))
 
 
+def test_an_error_body_is_not_data():
+    """GeckoTerminal says "you have exceeded the rate limit" with a 200 attached.
+
+    Found by external audit. GeckoTerminal returns
+
+        {"status": {"error_code": 429, "error_message": "You've exceeded the Rate Limit"}}
+
+    and the auditor observed it under HTTP 429, where the engine behaves correctly. A
+    finder reported the HTTP 200 variant, where nothing fires: the body parses, it is not
+    None, so `_fetch_json` hands it back as data and caches it. `find_new_hot_pools` then
+    reads no `data` key, finds nothing, and answers `count: 0` -- "we scanned, there was
+    nothing there" -- which is the exact sentence its own fail-closed comment says must
+    never be produced by a failure.
+
+    The audit was careful to say it confirmed the body format and not the 200 status, and
+    that is the right place to be careful. But the fix does not depend on which status it
+    arrives with: a body whose top-level `status.error_code` is set is an error however it
+    is delivered, and treating it as data is wrong under 200, 429 and anything else.
+
+    It must also not be cached. Caching an error body turns one rate-limited minute into
+    fifteen minutes of confidently answering nothing.
+    """
+    print("\n[upstream] an error body is a failure, whatever status carried it")
+
+    ERR = {"status": {"error_code": 429,
+                      "error_message": "You've exceeded the Rate Limit"}}
+
+    seen = []
+
+    async def _stub(url, *a, **kw):
+        seen.append(url)
+        return ERR
+    risk._fetch_json = _stub
+
+    # new_pools must fail closed rather than report an empty scan.
+    raised = False
+    try:
+        run(risk.new_pools("ethereum", 5))
+    except RuntimeError:
+        raised = True
+    check("find_new_hot_pools refuses rather than reporting count: 0", raised,
+          "returned a result built from an error body")
+
+    # And the reader itself must not hand the body back as data.
+    check("_looks_like_error recognises the shape",
+          risk._is_error_body(ERR), repr(ERR))
+    check("a normal body is not mistaken for one",
+          not risk._is_error_body({"data": [{"id": "x"}]}), "false positive")
+    check("a body with a status block but no error code is fine",
+          not risk._is_error_body({"status": {"ok": True}, "data": []}),
+          "false positive")
+
+
 def test_every_tool_discloses_stale_data():
     """The argument for serving stale data is that we disclose it. Two tools did not.
 

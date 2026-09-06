@@ -128,6 +128,29 @@ def _stale_disclosure():
     return [{"source": u.split("/")[2], "age_seconds": a} for u, a in stale]
 
 
+def _is_error_body(data):
+    """Whether an upstream handed us an error document instead of data.
+
+    GeckoTerminal answers a rate limit with
+
+        {"status": {"error_code": 429, "error_message": "You've exceeded the Rate Limit"}}
+
+    and it does not always attach a failing HTTP status to it. Under a 200 the body parses,
+    it is not None, and every guard downstream treats it as a successful fetch: it gets
+    returned, it gets cached for fifteen minutes, and `find_new_hot_pools` reads no `data`
+    key and answers `count: 0` -- "we scanned, there was nothing there", the precise
+    sentence its own fail-closed comment forbids.
+
+    The check does not care which status carried it. A body whose top-level
+    `status.error_code` is set is an error under 200, 429 and everything else, and the
+    version of this bug that hurts is the one where the transport says success.
+    """
+    if not isinstance(data, dict):
+        return False
+    status = data.get("status")
+    return isinstance(status, dict) and status.get("error_code") is not None
+
+
 async def _cache_get(url):
     """Return (data, age_seconds) from the edge cache, or (None, None)."""
     try:
@@ -207,6 +230,11 @@ async def _fetch_json(url, retries=2, timeout=8, mark_missing=False):
                 body = await asyncio.wait_for(resp.text(), timeout=timeout)
                 if body:
                     data = json.loads(body)
+                    # An error document delivered with a 200. Not returned and not
+                    # cached: caching it turns one rate-limited minute into fifteen
+                    # minutes of confidently answering nothing.
+                    if _is_error_body(data):
+                        return None
                     await _cache_put(url, data)
                     return data
         except Exception:  # timeout, network, parse error: all count as a failed fetch
@@ -2081,7 +2109,11 @@ async def new_pools(chain="solana", limit=10):
     for kind, path in (("new", "new_pools"), ("trending", "trending_pools")):
         data = await _fetch_json(
             "https://api.geckoterminal.com/api/v2/networks/%s/%s" % (net, path))
-        if data is None:
+        # An error body counts as a failed endpoint, not as an empty scan. _fetch_json
+        # already filters these, so this is defence in depth -- but it is the layer that
+        # decides whether the tool says "nothing found", and that sentence is worth
+        # guarding twice.
+        if data is None or _is_error_body(data):
             continue  # this endpoint failed
         reachable = True
         for p in (data.get("data") or []):
