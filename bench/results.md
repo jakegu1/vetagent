@@ -143,6 +143,24 @@ This bucket answers one question: **does the engine paint them all as high risk.
 Examples: HYDX(low), CP(unknown), TOSHE(medium), Onyxcoin XCN Kendu(high), SAGE Free(medium), Core Keeper Overnight(medium), VIRTUAL(low), Crypto Carbon Verse(high), ?(medium), BIO(medium)
 
 
+### What the `unsafe` cohort is, before you read a recall number off it
+
+The adversarial cohort is **n=17**, and it is not a sample of adversarial contracts in the wild. It is what survived a testability gate, and the gate selects for recency more than for hostility.
+
+
+| Property | Count |
+|---|---|
+| holds under $1 of liquidity | 15 of 17 |
+| no liquidity figure at all | 1 of 17 |
+| our engine rates them low or medium | 5 of 17 |
+| chain concentration | base 11, bsc 4, ethereum 2 |
+
+**Read the recall figure against that.** A cohort of 17 tokens of which 16 hold under a dollar is measuring whether we flag empty pools, which we do for reasons that have nothing to do with the contract being adversarial. And on 5 of them our own engine disagrees with the labeller outright -- `results.md` presents the oracle's verdict as ground truth, and on those rows two instruments contradict each other and we cannot say which is right.
+
+
+Cleaning this cohort needs a **third, engine-independent oracle** -- requiring honeypot.is corroboration would make the label circular under B1/B2, since the engine reads honeypot.is. That is BACKLOG W5, and it is a prerequisite for W3 rather than the coverage fix it was originally filed as.
+
+
 ### Two oracles, two false-positive rates
 
 The false-positive rate depends on who is asked what a 'healthy token' is, and this benchmark has two answers available. They are reported together because reporting either alone hides something.

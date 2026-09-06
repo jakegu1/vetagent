@@ -450,6 +450,52 @@ def write_markdown(rep):
     #   - the outcome-based rate uses an INDEPENDENT oracle on a MATURITY-SELECTED cohort
     #   - the GoPlus-based rate uses a BROADER cohort but a CIRCULAR oracle
     # Publishing one and calling it the headline is what let the circularity hide.
+    # What the `unsafe` cohort is made of, printed next to the recall it produces.
+    #
+    # HONEYPOT_TESTABLE_VOL_7D exists to stop a honeypot flag being asserted about a token
+    # nothing has traded, and it works: it collapsed the cohort from 28 to 9. But what it
+    # selects for is not what the report implied. Measured here rather than asserted: the
+    # survivors are almost entirely tokens holding no liquidity at all, so the gate moved
+    # the cutoff from "dead" to "died recently" -- it did not produce a cohort of
+    # adversarial contracts, which is what a recall figure computed on it would suggest.
+    #
+    # A reader deciding how much the recall number is worth needs this in the same place
+    # as the number, not in a commit message.
+    unsafe_rows = [r for r in rows if r.get("goplus_label") == "unsafe"]
+    if unsafe_rows:
+        thin = [r for r in unsafe_rows
+                if isinstance(r.get("liquidity_usd"), (int, float))
+                and r["liquidity_usd"] < 1]
+        nolq = [r for r in unsafe_rows if r.get("liquidity_usd") is None]
+        ours_disagree = [r for r in unsafe_rows if r["verdict"] in ("low", "medium")]
+        by_chain = {}
+        for r in unsafe_rows:
+            by_chain[r["chain"]] = by_chain.get(r["chain"], 0) + 1
+        A("\n### What the `unsafe` cohort is, before you read a recall number off it\n")
+        A("The adversarial cohort is **n=%d**, and it is not a sample of adversarial "
+          "contracts in the wild. It is what survived a testability gate, and the gate "
+          "selects for recency more than for hostility.\n" % len(unsafe_rows))
+        A("\n| Property | Count |")
+        A("|---|---|")
+        A("| holds under $1 of liquidity | %d of %d |" % (len(thin), len(unsafe_rows)))
+        A("| no liquidity figure at all | %d of %d |" % (len(nolq), len(unsafe_rows)))
+        A("| our engine rates them low or medium | %d of %d |"
+          % (len(ours_disagree), len(unsafe_rows)))
+        A("| chain concentration | %s |"
+          % ", ".join("%s %d" % kv for kv in sorted(by_chain.items(),
+                                                    key=lambda kv: -kv[1])))
+        A("\n**Read the recall figure against that.** A cohort of %d tokens of which %d "
+          "hold under a dollar is measuring whether we flag empty pools, which we do for "
+          "reasons that have nothing to do with the contract being adversarial. And on "
+          "%d of them our own engine disagrees with the labeller outright -- `results.md` "
+          "presents the oracle's verdict as ground truth, and on those rows two "
+          "instruments contradict each other and we cannot say which is right.\n"
+          % (len(unsafe_rows), len(thin) + len(nolq), len(ours_disagree)))
+        A("\nCleaning this cohort needs a **third, engine-independent oracle** -- "
+          "requiring honeypot.is corroboration would make the label circular under B1/B2, "
+          "since the engine reads honeypot.is. That is BACKLOG W5, and it is a "
+          "prerequisite for W3 rather than the coverage fix it was originally filed as.\n")
+
     safe_rows = [r for r in rows if r.get("goplus_label") == "safe"]
     alive_rows = [r for r in rows if r.get("outcome_label") == "alive"]
     both_rows = [r for r in rows if r.get("goplus_label") == "safe"
