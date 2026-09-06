@@ -12,7 +12,14 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 0, because tools/rounds.py reads the whole history and
+      # score_at() does `git show <commit>:docs/SCORECARD.md`. The default depth
+      # of 1 made test_rounds.py fail on every push from R11 onwards, and because
+      # it fails early the three steps after it -- the backlog check, the
+      # owner-power suite and the scorecard -- had never run in CI at all.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:

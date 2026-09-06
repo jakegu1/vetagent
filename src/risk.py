@@ -941,8 +941,15 @@ def _powers_from_code(code):
 async def _eth_get_code(rpc, address):
     """One JSON-RPC eth_getCode. Returns (code, reason) -- code is None on any failure.
 
-    The reason is carried out rather than swallowed, so that a single live call can tell
-    "this runtime cannot make this request" apart from "that chain's node was busy".
+    The reason is carried out rather than swallowed, so a single live call can tell "this
+    runtime cannot make this request" apart from "that chain's node was busy".
+
+    An earlier version of this comment said the POST signature could not be verified
+    outside production. That was wrong, and an external audit checked what I had not:
+    `workers/types.py` declares `FetchKwargs` with `headers`, `body` and `method`, and it
+    is vendored in `.venv` on this machine. I looked in `.venv-workers`, found nothing,
+    and generalised from one empty directory to "unverifiable" -- which is the same move
+    as reading a failed lookup as an absence, applied to my own tooling.
     """
     if cf_fetch is None:
         return None, "no runtime fetch"

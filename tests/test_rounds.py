@@ -74,6 +74,17 @@ def main():
                                  ", ".join(c["hash"] for c in unassigned[:5])))
 
     total = sum(len(meta[r]["commits"]) for r in order)
+    # A shallow clone is the failure this file could not see. On `fetch-depth: 1` there is
+    # one commit, every other check passes happily, and the log cheerfully reports the
+    # project as one round of one commit. CI ran in exactly that state from R11 until this
+    # was found by an external audit -- red at this step on every push, with the three
+    # steps after it never executing.
+    #
+    # The floor is deliberately far below the real count: it exists to catch a truncated
+    # history, not to need updating every round.
+    check("the history is not truncated (a shallow clone reads as one round)",
+          total >= 20, "%d development commits visible -- if this is CI, the checkout "
+                       "needs fetch-depth: 0" % total)
     check("the rounds together account for the whole history",
           total > 0, "%d development commits across %d rounds (%d snapshot commits "
                      "excluded)" % (total, len([r for r in order if meta[r]["commits"]]),
