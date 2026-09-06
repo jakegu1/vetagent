@@ -80,6 +80,41 @@ already carries roughly seventeen free token-safety MCP servers. Being inside so
 code beats being on a shelf next to sixteen alternatives. Execute under STRATEGY.md
 Experiment A; no gate required.
 
+### O5 - The owner-power scan is blinder than its own headline says
+
+**Not blocked** - this is a measurement over data now cached on disk, and it constrains a
+decision already on the backlog (W1). It needs no gate; it needs someone to widen the
+selector list from a source that is not the labelling oracle (W18).
+
+`bench/owner_powers_measure.py` is committed and re-runnable, and on 250 contracts with
+cached bytecode it measures recall against GoPlus's **per-flag fields** rather than the
+derived cohort labels:
+
+| GoPlus flag | it says | we find | recall |
+|---|---|---|---|
+| `is_mintable` | 73 | 26 | 35.6% |
+| `is_blacklisted` | 7 | 1 | 14.3% |
+| `slippage_modifiable` | 16 | 1 | 6.2% |
+| `transfer_pausable` | 3 | 0 | 0.0% |
+
+The published headline was 31% overall. Per power it is worse than that, and on two of
+the four powers the scan is effectively blind.
+
+**The audit's proposed additions do not fix it, and one of them would make things worse.**
+Adding `isBlacklisted(address)`, `blacklist(address,bool)`, `blacklists(address)`,
+`issue(uint256)` and the fee setters changes not one row of the recall table on this
+sample - those functions do not appear in these contracts. Adding `enableTrading()` and
+`openTrading()`, the pair the audit brute-forced as reproducing the original R12 table,
+takes "can pause transfers" from 6 claims to **14, with GoPlus agreeing on none of
+them**. Those selectors detect a launch gate, not a pause switch. That is good evidence
+the original table was computed with selectors measuring a different property, which is
+exactly why it could not be reproduced from the shipped list.
+
+**What would settle it.** A selector corpus that is not GoPlus-derived - W18 - since
+widening the list from the oracle's own labels would fix the recall and void the
+benchmark (B2). Until then the honest position is that the instrument is too blind to
+support either conclusion, and W1 says so.
+
 ---
 
 ## Reviewed and closed

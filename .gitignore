@@ -32,6 +32,11 @@ wrangler.toml.local
 .pytest_cache/
 tests/fixtures/__pycache__/
 bench/cache/
+# bench/cache_bytecode/ is deliberately NOT ignored. It is 3.1MB of
+# immutable contract bytecode, and committing it is what makes
+# bench/owner_powers_measure.py re-runnable without network access.
+# W1 was closed on a measurement nobody could repeat; that is the
+# mistake this directory exists to prevent.
 bench/build.log
 bench/run.log
 bench/access_log.json
