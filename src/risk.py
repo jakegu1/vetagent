@@ -9,6 +9,7 @@ The rule the whole design bends to — fail closed:
 
 import asyncio
 import contextvars
+import statistics
 import json
 import re
 from datetime import datetime, timezone
@@ -643,6 +644,59 @@ def _unranked_price_conflict(scope):
     return (lo, hi) if hi / lo > _PRICE_DISAGREEMENT_FACTOR else None
 
 
+# How far a single pool may sit from the median of its peers before it stops being a
+# price and starts being a broken pool. 100x: honest venues for the same token are kept
+# within a few percent by arbitrage, and the case this exists for was off by 650,000x.
+_MAX_PRICE_DEVIATION = 100.0
+
+# A median needs peers. With two pools disagreeing there is no majority and no honest way
+# to pick a side, so the rule stays out of it.
+_MIN_POOLS_FOR_CONSENSUS = 3
+
+
+def _drop_price_outliers(candidates, target):
+    """Remove pools whose price contradicts the median of every other pool.
+
+    `_pick_best` takes the deepest valid pool, and nothing checked the price that came with
+    it against the pools around it. In production that priced UNI at **$4,576,980**: the
+    chosen pool claimed $44.4M of liquidity and carried two buys and one sell in a day,
+    while pools holding $19.5M, $5.5M and $4.4M with real volume all said $6.99.
+
+    This is the half of audit finding E-7 that I narrowed away. E-7 said the fork-chain
+    defence is off on unranked chains; that exact shape occurs 0 times in 1,136 cached
+    responses, so the guard for it was written narrow and the broader price-disagreement
+    idea was parked as OPPORTUNITIES O4 -- it fired on 30.9% of tokens and its accuracy was
+    unmeasured. Running the measurement separates the two cleanly:
+
+        does SOME pool disagree with some other      -> 30.9% of tokens  (dust, noise)
+        does THE POOL WE PICKED disagree with peers  ->  0.61% at 10x
+                                                         0.30% at 100x  (this bug)
+
+    "A disagreement exists somewhere" and "the number we are about to publish is the
+    outlier" are different questions, and only the second is worth acting on. Hence a
+    selection rule rather than the disclosure signal O4 proposed.
+
+    Depth is still what picks the winner. This only removes candidates that the rest of the
+    token's own market contradicts by two orders of magnitude.
+    """
+    priced = []
+    for p in candidates:
+        v = _price_of_target(p, target)
+        if v and v > 0:
+            priced.append((v, p))
+    if len(priced) < _MIN_POOLS_FOR_CONSENSUS:
+        return candidates
+    med = statistics.median([v for v, _ in priced])
+    if med <= 0:
+        return candidates
+    kept = [p for v, p in priced
+            if max(v / med, med / v) <= _MAX_PRICE_DEVIATION]
+    # Pools we could not price are not outliers; they simply cannot vote. Keep them, since
+    # depth ranking may still legitimately choose one.
+    unpriced = [p for p in candidates if not any(p is q for _, q in priced)]
+    return (kept + unpriced) or candidates
+
+
 def _home_scope(pairs, chain_hint=None, target=None):
     """The pools on the chain this token actually belongs to.
 
@@ -735,7 +789,9 @@ def _pick_best(pairs, chain_hint=None, target=None):
     pool = [p for p in _home_scope(pairs, chain_hint, target) if _valid(p)]
     if not pool:
         return None      # the token's own chain has nothing usable; say so, do not roam
-    return max(pool, key=_pair_liquidity)
+    # Depth still decides the winner -- but only among pools the rest of this token's
+    # market does not flatly contradict.
+    return max(_drop_price_outliers(pool, target), key=_pair_liquidity)
 
 
 def _pair_created_ms(value):

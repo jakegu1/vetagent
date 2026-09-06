@@ -404,6 +404,81 @@ def test_chain_activity_overrules_a_honeypot_verdict():
           str([(x["severity"], x["name"]) for x in hp3]))
 
 
+def test_the_deepest_pool_does_not_outvote_every_other_pool():
+    """UNI was priced at $4,576,980 by a pool with two trades in it.
+
+    Found in production. `/assess` for UNI returned $4,576,980. DexScreener lists UNI at
+    $6.99 across pools holding $19.5M, $5.5M and $4.4M with real volume. The pool we chose
+    claimed $44.4M of liquidity, carried **2 buys and 1 sell in 24 hours**, and quoted a
+    price 650,000x above every one of its peers. `_pick_best` takes the deepest valid pool,
+    and nothing checked the price it came with against the pools around it.
+
+    This is the second half of audit finding E-7, which I narrowed. E-7 said the fork-chain
+    defence is off on unranked chains; I measured that exact shape at 0 occurrences in
+    1,136 cached responses, shipped a guard for it, and parked the broader
+    price-disagreement idea as OPPORTUNITIES O4 because it fired on 30.9% of tokens and its
+    accuracy was unmeasured. The narrowing was right and the parking was right, and the
+    measurement that would have settled it was the one I did not run.
+
+    Run now, it separates the two ideas cleanly:
+
+        does SOME pool disagree with some other pool   -> 30.9% of tokens   (noise, dust)
+        does THE POOL WE PICKED disagree with its peers ->  0.61% at 10x
+                                                            0.30% at 100x  (this bug)
+
+    "A disagreement exists" and "the number we are about to publish is the outlier" are
+    different questions, and only the second one is worth acting on. The rule is a
+    selection rule, not a disclosure one: a pool that contradicts the median of every other
+    pool for the same token is not evidence about the token, it is a broken pool.
+
+    A median needs peers, so this only applies with three or more priced pools. With two
+    pools disagreeing there is no majority and no honest way to pick a side.
+    """
+    print("\n[outlier] one deep pool does not outvote every other pool")
+
+    UNI = "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984"
+
+    def pool(price, liq, buys=500, sells=400):
+        return {"chainId": "ethereum", "dexId": "uniswap",
+                "baseToken": {"address": UNI, "symbol": "UNI"},
+                "quoteToken": {"address": "0xq", "symbol": "WETH"},
+                "priceUsd": str(price), "priceNative": "0.0028",
+                "liquidity": {"usd": liq}, "volume": {"h24": liq / 4},
+                "txns": {"h24": {"buys": buys, "sells": sells}},
+                "pairCreatedAt": 1606193377000}
+
+    def price_of(pairs):
+        install_stub([("dex/tokens", {"pairs": pairs}), ("dex/search", {"pairs": []}),
+                      ("honeypot.is", _load("hp_matic.json"))])
+        r = run(risk.assess(UNI, chain_hint="ethereum"))
+        return ((r.get("evidence") or {}).get("best_pair") or {}).get("price_usd")
+
+    # The production case: four honest pools, one deep liar with almost no trades.
+    real = [pool(6.99, 19_532_842), pool(6.98, 5_507_926), pool(6.98, 4_398_302),
+            pool(6.98, 4_338_385)]
+    liar = pool(4_576_980, 44_433_100, buys=2, sells=1)
+    got = price_of(real + [liar])
+    check("the outlier does not win on depth alone",
+          got is not None and 6.0 < got < 8.0, repr(got))
+
+    # The same pool, when it is NOT an outlier, is still allowed to win on depth.
+    honest_deep = pool(6.99, 44_433_100)
+    got2 = price_of(real + [honest_deep])
+    check("a deep pool that agrees with its peers still wins",
+          got2 is not None and 6.0 < got2 < 8.0, repr(got2))
+    check("and it really is the deep one that was chosen",
+          price_of([honest_deep] + real) is not None, "no pool chosen")
+
+    # Two pools cannot form a majority: do not invent one.
+    two = price_of([pool(6.99, 5_000_000), pool(4_576_980, 44_433_100, buys=2, sells=1)])
+    check("with only two pools no majority is invented", two is not None, repr(two))
+
+    # A normal token is untouched.
+    normal = price_of([pool(6.99, 1_000_000), pool(7.01, 900_000), pool(6.97, 800_000)])
+    check("pools that agree are unaffected",
+          normal is not None and 6.0 < normal < 8.0, repr(normal))
+
+
 def test_price_is_the_asked_token_not_the_other_side():
     """We were publishing the price of whichever token the pool happened to list first.
 
