@@ -67,9 +67,9 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 
 | Metric | Value |
 |---|---|
-| Verdict distribution | high=80, low=142, medium=254, unknown=100 |
-| unknown rate | 17.4% |
-| Share with a data gap | 20.0% |
+| Verdict distribution | high=74, low=142, medium=261, unknown=99 |
+| unknown rate | 17.2% |
+| Share with a data gap | 19.8% |
 
 > Read the unknown rate next to recall. A tool that answers unknown for everything has perfect recall and is useless.
 
@@ -83,7 +83,7 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **dead** | 30 | 10.0% | 80.0% | 13.3% | 6.7% | 41.5 |
-| **alive** | 162 | 4.3% | 34.0% | 51.9% | 14.2% | 15.9 |
+| **alive** | 162 | 3.7% | 34.0% | 51.9% | 14.2% | 15.5 |
 
 ### Contract-safety signals only (ablated)
 
@@ -93,7 +93,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **dead** | 30 | 10.0% | 13.3% | 80.0% | 6.7% | 13.0 |
-| **alive** | 162 | 2.5% | 14.2% | 70.4% | 15.4% | 9.6 |
+| **alive** | 162 | 1.9% | 14.2% | 70.4% | 15.4% | 9.1 |
 
 **Which signal category made the call on dead samples:** `liquidity` 19, `honeypot` 4, `sellability` 2, `lifecycle` 1
 
@@ -110,7 +110,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 17 | 64.7% | 94.1% | 0.0% | 5.9% | 77.1 |
-| **safe** | 349 | 6.9% | 50.7% | 27.8% | 21.5% | 26.5 |
+| **safe** | 349 | 6.0% | 50.7% | 27.8% | 21.5% | 25.9 |
 
 ### Contract-safety signals only (ablated)
 
@@ -120,7 +120,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 17 | 17.6% | 41.2% | 35.3% | 23.5% | 32.7 |
-| **safe** | 349 | 4.3% | 12.3% | 63.9% | 23.8% | 10.9 |
+| **safe** | 349 | 3.4% | 12.3% | 63.9% | 23.8% | 10.3 |
 
 **Which signal category made the call on unsafe samples:** `liquidity` 11, `honeypot` 3, `impersonation` 3
 
@@ -138,12 +138,12 @@ This bucket answers one question: **does the engine paint them all as high risk.
 
 | n | high rate | Verdict distribution |
 |---|---|---|
-| 179 | 22.9% | high=41, low=37, medium=82, unknown=19 |
+| 179 | 21.2% | high=38, low=37, medium=86, unknown=18 |
 
-Examples: HYDX(low), CP(unknown), TOSHE(medium), Onyxcoin XCN Kendu(high), SAGE Free(medium), Core Keeper Overnight(medium), VIRTUAL(low), Crypto Carbon Verse(high), ?(medium), BIO(high)
+Examples: HYDX(low), CP(unknown), TOSHE(medium), Onyxcoin XCN Kendu(high), SAGE Free(medium), Core Keeper Overnight(medium), VIRTUAL(low), Crypto Carbon Verse(high), ?(medium), BIO(medium)
 
 
-> **Which population the false-positive rate describes.** The headline figure is measured on `alive` tokens, and `alive` requires 90 days of history and real weekly volume -- so freshness signals cannot fire on them and liquidity rarely does. Agents mostly ask about tokens younger than that. On the broader `safe` cohort, which includes new tokens: high 6.9% (24 of 349). Both are reported because the first is the friendlier of the two.
+> **Which population the false-positive rate describes.** The headline figure is measured on `alive` tokens, and `alive` requires 90 days of history and real weekly volume -- so freshness signals cannot fire on them and liquidity rarely does. Agents mostly ask about tokens younger than that. On the broader `safe` cohort, which includes new tokens: high 6.0% (21 of 349). Both are reported because the first is the friendlier of the two.
 
 
 ### What the unknown rate is made of
@@ -154,7 +154,7 @@ An `unknown` because we could not reach an upstream is a different thing from an
 | | n | share of all 576 |
 |---|---|---|
 | unknown, our side (upstream unreachable or uncovered) | 2 | 0.3% |
-| unknown, token side (nothing verifiable about it) | 98 | 17.0% |
+| unknown, token side (nothing verifiable about it) | 97 | 16.8% |
 
 
 ## What the sample is made of
@@ -184,9 +184,7 @@ Samples where the label and the engine disagree. Read the **false negatives** (l
 | false positive | `ALLO` | base | outcome=alive | high | low | liquidity |
 | false positive | `ALLO` | base | goplus=safe | high | low | liquidity |
 | false positive | `TRUMP` | base | outcome=alive | high | high | honeypot |
-| false positive | `THQ` | base | goplus=safe | high | high | honeypot |
-| false positive | `USD₮0` | base | goplus=safe | high | high | honeypot |
-| false positive | `牛来` | base | goplus=safe | high | unknown | liquidity |
+| false positive | `\u725b\u6765` | base | goplus=safe | high | unknown | impersonation |
 | false positive | `QuintondeKock_BASE` | base | goplus=safe | high | unknown | no_liquidity |
 | false positive | `$NVDAC` | base | goplus=safe | high | high | honeypot |
 | false positive | `ROBOTMONEY` | base | goplus=safe | high | high | honeypot |
@@ -195,13 +193,15 @@ Samples where the label and the engine disagree. Read the **false negatives** (l
 | false positive | `HYPER` | base | goplus=safe | high | high | honeypot |
 | false positive | `BONKO` | base | goplus=safe | high | high | honeypot |
 | false positive | `BURN` | base | goplus=safe | high | unknown | impersonation |
+| false positive | `TORIVA` | base | goplus=safe | high | high | honeypot |
+| false positive | `TREB` | base | goplus=safe | high | high | honeypot |
 
-(15 more in `results.json`)
+(11 more in `results.json`)
 
 
 ### Counted as false positives, but outside the labeller's reach
 
-4 of the false positives above were driven by `impersonation`. GoPlus reads bytecode and ownership; impersonation is a fact about identity, and an impostor's bytecode is usually perfectly ordinary. So GoPlus returns `safe` for a token it has no instrument to judge, and the disagreement is structural rather than evidence either way.
+5 of the false positives above were driven by `impersonation`. GoPlus reads bytecode and ownership; impersonation is a fact about identity, and an impostor's bytecode is usually perfectly ordinary. So GoPlus returns `safe` for a token it has no instrument to judge, and the disagreement is structural rather than evidence either way.
 
 
 They stay in the headline rate anyway. A tool that subtracts its disagreements whenever it can explain them is grading its own homework, and an explanation is only worth something if it costs something. What this section buys is auditability: they are named, so a reader can check them one at a time instead of taking the framing on trust.
@@ -209,6 +209,7 @@ They stay in the headline rate anyway. A tool that subtracts its disagreements w
 
 | Token | Chain | Verdict | Address |
 |---|---|---|---|
+| `\u725b\u6765` | base | high | `0x13ea5bb744b2710600dcf384d78f74e0cb39bb07` |
 | `BURN` | base | high | `0xa875a3c03cd561234c56998a9017e70346095092` |
 | `CLAWD` | base | high | `0xca6d2e377218d2432d38b3272df66f7632eb427b` |
 | `BABY` | bsc | high | `0x0e15c2472ae5d7ba564215d38f7b4d968effe4ad` |

@@ -24,12 +24,12 @@
  "overall": {
   "verdict_distribution": {
    "low": 142,
-   "unknown": 100,
-   "medium": 254,
-   "high": 80
+   "unknown": 99,
+   "medium": 261,
+   "high": 74
   },
-  "unknown_rate": 0.1736111111111111,
-  "data_gap_rate": 0.1996527777777778
+  "unknown_rate": 0.171875,
+  "data_gap_rate": 0.19791666666666666
  },
  "outcome": {
   "bad_label": "dead",
@@ -45,11 +45,11 @@
    },
    "good": {
     "n": 162,
-    "high": 0.043209876543209874,
+    "high": 0.037037037037037035,
     "high_or_medium": 0.3395061728395062,
     "low": 0.5185185185185185,
     "unknown": 0.1419753086419753,
-    "mean_score": 15.91358024691358
+    "mean_score": 15.481481481481481
    }
   },
   "contract_only": {
@@ -63,11 +63,11 @@
    },
    "good": {
     "n": 162,
-    "high": 0.024691358024691357,
+    "high": 0.018518518518518517,
     "high_or_medium": 0.1419753086419753,
     "low": 0.7037037037037037,
     "unknown": 0.15432098765432098,
-    "mean_score": 9.555555555555555
+    "mean_score": 9.123456790123457
    }
   },
   "driving_categories_on_bad": {
@@ -91,11 +91,11 @@
    },
    "good": {
     "n": 349,
-    "high": 0.06876790830945559,
+    "high": 0.06017191977077364,
     "high_or_medium": 0.5071633237822349,
     "low": 0.27793696275071633,
     "unknown": 0.2148997134670487,
-    "mean_score": 26.498567335243553
+    "mean_score": 25.92836676217765
    }
   },
   "contract_only": {
@@ -109,11 +109,11 @@
    },
    "good": {
     "n": 349,
-    "high": 0.04297994269340974,
+    "high": 0.034383954154727794,
     "high_or_medium": 0.12320916905444126,
     "low": 0.6389684813753582,
     "unknown": 0.23782234957020057,
-    "mean_score": 10.882521489971346
+    "mean_score": 10.28080229226361
    }
   },
   "driving_categories_on_bad": {
@@ -126,11 +126,11 @@
   "n": 179,
   "verdict_distribution": {
    "low": 37,
-   "unknown": 19,
-   "medium": 82,
-   "high": 41
+   "unknown": 18,
+   "medium": 86,
+   "high": 38
   },
-  "high_rate": 0.22905027932960895,
+  "high_rate": 0.2122905027932961,
   "examples": [
    {
     "symbol": "HYDX",
@@ -189,7 +189,7 @@
    {
     "symbol": "BIO",
     "chain": "base",
-    "verdict": "high",
+    "verdict": "medium",
     "driver": "honeypot"
    }
   ]
@@ -288,32 +288,12 @@
   {
    "kind": "false positive",
    "label": "goplus=safe",
-   "address": "0x0b2558bdbc7ffec0f327fb3579c23dabd1699706",
-   "symbol": "THQ",
-   "chain": "base",
-   "verdict": "high",
-   "verdict_ablated": "high",
-   "driver": "honeypot"
-  },
-  {
-   "kind": "false positive",
-   "label": "goplus=safe",
-   "address": "0x102d758f688a4c1c5a80b116bd945d4455460282",
-   "symbol": "USD₮0",
-   "chain": "base",
-   "verdict": "high",
-   "verdict_ablated": "high",
-   "driver": "honeypot"
-  },
-  {
-   "kind": "false positive",
-   "label": "goplus=safe",
    "address": "0x13ea5bb744b2710600dcf384d78f74e0cb39bb07",
-   "symbol": "牛来",
+   "symbol": "\\u725b\\u6765",
    "chain": "base",
    "verdict": "high",
    "verdict_ablated": "unknown",
-   "driver": "liquidity"
+   "driver": "impersonation"
   },
   {
    "kind": "false positive",
@@ -419,31 +399,11 @@
    "kind": "false positive",
    "label": "goplus=safe",
    "address": "0xbabe84b6f6e039fad97036fcf568631082b2cb07",
-   "symbol": "我的女友景甜",
+   "symbol": "\\u6211\\u7684\\u5973\\u53cb\\u666f\\u751c",
    "chain": "base",
    "verdict": "high",
    "verdict_ablated": "unknown",
    "driver": "liquidity"
-  },
-  {
-   "kind": "false positive",
-   "label": "outcome=alive",
-   "address": "0xc52aedec3374422d7510e294cfaa90799595cba3",
-   "symbol": "Surplus",
-   "chain": "base",
-   "verdict": "high",
-   "verdict_ablated": "high",
-   "driver": "honeypot"
-  },
-  {
-   "kind": "false positive",
-   "label": "goplus=safe",
-   "address": "0xc52aedec3374422d7510e294cfaa90799595cba3",
-   "symbol": "Surplus",
-   "chain": "base",
-   "verdict": "high",
-   "verdict_ablated": "high",
-   "driver": "honeypot"
   },
   {
    "kind": "false positive",
@@ -1039,11 +999,11 @@
    "sampled_from": "backfill_2026-04-08",
    "liquidity_usd": 38817.9,
    "gap_reasons": [],
-   "verdict": "high",
-   "score": 100,
+   "verdict": "medium",
+   "score": 40,
    "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
+   "verdict_ablated": "medium",
+   "score_ablated": 30,
    "driver": "honeypot",
    "categories": [
     "freshness",
@@ -1174,18 +1134,18 @@
   },
   {
    "address": "0x102d758f688a4c1c5a80b116bd945d4455460282",
-   "symbol": "USD₮0",
+   "symbol": "USD\\u20ae0",
    "chain": "base",
    "outcome_label": null,
    "goplus_label": "safe",
    "sampled_from": "backfill_2026-02-07",
    "liquidity_usd": 19568.2,
    "gap_reasons": [],
-   "verdict": "high",
-   "score": 100,
+   "verdict": "medium",
+   "score": 40,
    "confidence": "high",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
+   "verdict_ablated": "medium",
+   "score_ablated": 30,
    "driver": "honeypot",
    "categories": [
     "cross_chain",
@@ -1267,7 +1227,7 @@
   },
   {
    "address": "0x13ea5bb744b2710600dcf384d78f74e0cb39bb07",
-   "symbol": "牛来",
+   "symbol": "\\u725b\\u6765",
    "chain": "base",
    "outcome_label": null,
    "goplus_label": "safe",
@@ -1277,13 +1237,14 @@
     "the sell simulator has no record of this token"
    ],
    "verdict": "high",
-   "score": 78,
+   "score": 84,
    "confidence": "low",
    "verdict_ablated": "unknown",
    "score_ablated": 30,
-   "driver": "liquidity",
+   "driver": "impersonation",
    "categories": [
     "freshness",
+    "impersonation",
     "lifecycle",
     "liquidity",
     "sellability"
@@ -1747,11 +1708,11 @@
    "sampled_from": "backfill_2026-02-07",
    "liquidity_usd": 362681.0,
    "gap_reasons": [],
-   "verdict": "high",
-   "score": 100,
+   "verdict": "medium",
+   "score": 30,
    "confidence": "high",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
+   "verdict_ablated": "medium",
+   "score_ablated": 30,
    "driver": "honeypot",
    "categories": [
     "cross_chain",
@@ -2820,22 +2781,22 @@
    "outcome_label": null,
    "goplus_label": "centralized",
    "sampled_from": "backfill_2026-08-28",
-   "liquidity_usd": null,
-   "gap_reasons": [
-    "no trading pair found"
-   ],
-   "verdict": "unknown",
-   "score": 24,
-   "confidence": "low",
+   "liquidity_usd": 38129.1,
+   "gap_reasons": [],
+   "verdict": "medium",
+   "score": 34,
+   "confidence": "high",
    "verdict_ablated": "low",
    "score_ablated": 0,
-   "driver": "no_liquidity",
+   "driver": "liquidity",
    "categories": [
+    "freshness",
     "honeypot",
-    "no_liquidity",
+    "lifecycle",
+    "liquidity",
     "upstream_risk"
    ],
-   "has_data_gap": true
+   "has_data_gap": false
   },
   {
    "address": "0x46c85152bfe9f96829aa94755d9f915f9b10ef5f",
@@ -4304,11 +4265,11 @@
    "sampled_from": "backfill_2025-12-09",
    "liquidity_usd": 644597.0,
    "gap_reasons": [],
-   "verdict": "high",
-   "score": 100,
+   "verdict": "medium",
+   "score": 30,
    "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
+   "verdict_ablated": "medium",
+   "score_ablated": 30,
    "driver": "honeypot",
    "categories": [
     "freshness",
@@ -6920,7 +6881,7 @@
   },
   {
    "address": "0xbabe84b6f6e039fad97036fcf568631082b2cb07",
-   "symbol": "我的女友景甜",
+   "symbol": "\\u6211\\u7684\\u5973\\u53cb\\u666f\\u751c",
    "chain": "base",
    "outcome_label": null,
    "goplus_label": "safe",
@@ -7238,11 +7199,11 @@
    "sampled_from": "snapshot_2026-09-03",
    "liquidity_usd": 566128.0,
    "gap_reasons": [],
-   "verdict": "high",
-   "score": 100,
+   "verdict": "medium",
+   "score": 30,
    "confidence": "high",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
+   "verdict_ablated": "medium",
+   "score_ablated": 30,
    "driver": "honeypot",
    "categories": [
     "freshness",
@@ -10090,7 +10051,7 @@
   },
   {
    "address": "0x91fcbae169a6bcc342b108979929cdbe93fd7777",
-   "symbol": "热钱",
+   "symbol": "\\u70ed\\u94b1",
    "chain": "bsc",
    "outcome_label": null,
    "goplus_label": "safe",
@@ -10107,6 +10068,7 @@
    "driver": "liquidity",
    "categories": [
     "freshness",
+    "impersonation",
     "liquidity",
     "sellability"
    ],
@@ -10469,7 +10431,7 @@
   },
   {
    "address": "0xbeea1d618e533a387d941f58a7d4c9b7bd377777",
-   "symbol": "牛来",
+   "symbol": "\\u725b\\u6765",
    "chain": "bsc",
    "outcome_label": null,
    "goplus_label": "safe",
@@ -10486,6 +10448,7 @@
    "driver": "freshness",
    "categories": [
     "freshness",
+    "impersonation",
     "liquidity",
     "sellability"
    ],
@@ -10702,7 +10665,7 @@
   },
   {
    "address": "0xd9d3dad2efed7ee99f1363fac549f5e476f19a5a",
-   "symbol": "喵喵币",
+   "symbol": "\\u55b5\\u55b5\\u5e01",
    "chain": "bsc",
    "outcome_label": null,
    "goplus_label": "centralized",
@@ -10824,7 +10787,7 @@
   },
   {
    "address": "0xf84048b1a6f04b0ff71e122443c7fa4418777777",
-   "symbol": "黄金狗",
+   "symbol": "\\u9ec4\\u91d1\\u72d7",
    "chain": "bsc",
    "outcome_label": null,
    "goplus_label": "safe",
@@ -10882,7 +10845,7 @@
     "the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
-   "score": 30,
+   "score": 15,
    "confidence": "low",
    "verdict_ablated": "unknown",
    "score_ablated": 5,
@@ -10975,11 +10938,11 @@
    "sampled_from": "snapshot_2026-09-04",
    "liquidity_usd": 25585000.0,
    "gap_reasons": [],
-   "verdict": "high",
-   "score": 100,
+   "verdict": "medium",
+   "score": 50,
    "confidence": "high",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
+   "verdict_ablated": "medium",
+   "score_ablated": 30,
    "driver": "honeypot",
    "categories": [
     "freshness",
@@ -11086,7 +11049,7 @@
   },
   {
    "address": "0x1145e7ff3d2c5e321b0d2db749dbb1b19d463721",
-   "symbol": "💎PRMX",
+   "symbol": "\\U0001f48ePRMX",
    "chain": "ethereum",
    "outcome_label": null,
    "goplus_label": "centralized",
@@ -11206,7 +11169,7 @@
   },
   {
    "address": "0x15a0689f8ddd578cba2c1f725fda654da9d08cfb",
-   "symbol": "💫NVLT",
+   "symbol": "\\U0001f4abNVLT",
    "chain": "ethereum",
    "outcome_label": null,
    "goplus_label": "centralized",
