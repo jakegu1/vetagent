@@ -1239,7 +1239,27 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
     risks = [r for r in (rc.get("risks") or []) if isinstance(r, dict)]
     top_holders = [h for h in (rc.get("topHolders") or []) if isinstance(h, dict)]
     top10 = sum(_num(h.get("pct")) for h in top_holders[:10])
-    normalised = _num(rc.get("score_normalised"))
+    # A missing score is a gap, not a zero.
+    #
+    # _num(None) is 0.0 and 0 is the *best* possible normalised score, so an upstream
+    # field that failed to arrive was reported to the caller as "RugCheck passed -- 0/100,
+    # no risk items". Fail-open on the entire Solana path, and invisible: the guard above
+    # only catches a wholly empty body, so a response carrying `mint` but no
+    # `score_normalised` sailed through with a clean bill of health.
+    #
+    # The same shape as reading isHoneypot from a key upstream does not have, and as
+    # treating an uncosted pool as an empty one. Third time, on a third field.
+    raw_normalised = rc.get("score_normalised")
+    if raw_normalised is None or raw_normalised == "":
+        data_gaps.append({"dimension": "sellability", "source": "rugcheck",
+                          "reason": "no normalised risk score in the report"})
+        signals.append(_sig(
+            "warn", "RugCheck score missing",
+            "RugCheck returned a report with no normalised risk score, so its verdict "
+            "could not be read. This is not a passing score.", "sellability"))
+        normalised = None
+    else:
+        normalised = _num(raw_normalised)
 
     evidence["rugcheck"] = {
         "rugged": rc.get("rugged"),
@@ -1272,7 +1292,7 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
     # established the token is rather than in isolation.
     established = (_num(rc.get("totalHolders")) >= 100_000
                    or bool(rc.get("verification"))
-                   or normalised <= 5)
+                   or (normalised is not None and normalised <= 5))
     freeze, mint = rc.get("freezeAuthority"), rc.get("mintAuthority")
     if freeze or mint:
         held = " and ".join(n for n, v in (("freeze", freeze), ("mint", mint)) if v)
@@ -1301,7 +1321,9 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
     # unrevoked freeze authority.
     names = [r.get("name") for r in risks if r.get("name")]
     detail = ("; ".join(names[:4])) if names else "no risk items"
-    if normalised >= 50:
+    if normalised is None:
+        pass          # already reported as a gap; no score to grade
+    elif normalised >= 50:
         signals.append(_sig("critical", "RugCheck rates this high risk",
                             "Normalised risk score %.0f/100 (%s)." % (normalised, detail), "rugcheck"))
     elif normalised >= 20:

@@ -961,6 +961,51 @@ def test_the_simulator_is_asked_about_the_chain_we_settled_on():
           seen and "chainID=1" not in seen[0], seen[0] if seen else "")
 
 
+def test_rugcheck_missing_score_is_a_gap_not_a_pass():
+    """A score that never arrived was reported as the best score there is.
+
+    Found by external audit. `_num(None)` is 0.0, and 0 is the *best* normalised RugCheck
+    score, so a response that lost `score_normalised` produced "RugCheck passed -- 0/100,
+    no risk items". Fail-open across the whole Solana path.
+
+    The existing guard did not catch it: it only fires on a wholly empty body, so a report
+    carrying `mint` but missing the score sailed through with a clean bill of health.
+
+    Third instance of one shape on a third field -- after isHoneypot read from a key
+    upstream does not have, and an uncosted pool read as an empty one. Absence keeps
+    arriving dressed as a measurement.
+    """
+    print("\n[rugcheck] a missing score is not a passing score")
+
+    def with_score(value, present=True):
+        rc = json.loads(json.dumps(_load("rc_bonk.json")))
+        if present:
+            rc["score_normalised"] = value
+        else:
+            rc.pop("score_normalised", None)
+        install_stub([("rugcheck", rc)])
+        return run(risk.assess(BONK))
+
+    for label, r in (("absent", with_score(None, present=False)),
+                     ("null", with_score(None))):
+        names = [x["name"] for x in r["signals"]]
+        check("%s: no passing grade is claimed" % label,
+              not any("RugCheck passed" in n for n in names), str(names))
+        check("%s: it is reported as missing" % label,
+              any("score missing" in n for n in names), str(names))
+        gaps = (r.get("evidence") or {}).get("data_gaps") or []
+        check("%s: and recorded as a gap" % label,
+              any("normalised risk score" in str(g.get("reason", "")) for g in gaps),
+              str(gaps))
+        check("%s: never rated low" % label, r["risk_level"] != "low", r["risk_level"])
+
+    # A real zero is a real score, and must still read as a pass.
+    r0 = with_score(0)
+    check("a genuine 0/100 still passes",
+          any("RugCheck passed" in x["name"] for x in r0["signals"]),
+          str([x["name"] for x in r0["signals"]]))
+
+
 def test_clean_token_stays_low():
     """Guard the other way: more signals must not let the score push a healthy token high."""
     print("\n[scoring] healthy token stays low")
