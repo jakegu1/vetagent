@@ -312,10 +312,28 @@ Skipping one silently isn't allowed.
 
 | Date | Gate | Test | Action |
 |---|---|---|---|
-| 2026-09-18 | Is anyone using it | ≥1 external caller within 14 days | Yes → continue; no → run only Experiment C, add no features |
+| 2026-09-18 | Is anyone using it | ≥1 external client with ≥3 calls on ≥2 distinct days, within 14 days | Yes → continue; no → run only Experiment C, add no features |
 | 2026-10-16 | Does anyone want to pay | ≥3 trial commitments in Experiment D | Yes → build payments; no → pick a different customer segment and run D again |
 | 2026-12-04 | Is further investment worth it | MRR >$0 or >500 calls/day | Yes → continue per §7; no → move to low-maintenance mode |
 | 2027-03-04 | Does the data asset hold up | Snapshot archive ≥6 months and trains a signal better than the current rules | Yes → that becomes the main product; no → keep the tool, drop the data narrative |
+
+> **The 2026-09-18 test was tightened on 2026-09-07, eleven days before it came due,
+> and the reasoning is recorded here rather than left in a diff.** It read "≥1 external
+> caller". That is satisfiable by noise: this endpoint is public, unauthenticated and
+> listed in the official MCP registry, so directory health-checkers and crawlers hit it
+> from foreign IPs, and a crawler is neither a self-client nor in the owner's country --
+> every filter `bench/usage.py` applies waves it straight through. The gate would have
+> come back "yes, someone is using it" on a robot, and bought another round of building
+> on the strength of it. That is the expensive direction to fail in.
+>
+> Repeat use is the cheapest property noise does not have. Three calls across two days is
+> still a very low bar -- one person trying the tool, leaving, and coming back -- but it
+> is not one a crawler clears by accident. `qualifying_callers()` in `bench/usage.py`
+> measures exactly this, so the gate and its instrument agree.
+>
+> Changing a pre-registered test before it falls due is exactly the drift this document
+> forbids, which is why it is dated, argued and left in place rather than quietly edited.
+> It moves the bar **up**, not down.
 
 **The maintenance commitment.** We will never leave a risk tool running unmaintained.
 A risk tool whose upstreams have drifted doesn't go quiet — it keeps answering, exactly

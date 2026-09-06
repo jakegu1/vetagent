@@ -29,6 +29,29 @@ import sys
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 OPPS = os.path.join(ROOT, "docs", "OPPORTUNITIES.md")
 
+# The gates that must exist, pinned here so removing one is itself a failure.
+#
+# An external audit forced today = 2026-09-19 in a scratch copy and tried four ways to
+# escape the overdue gate. Three failed correctly: no Resolved line -> RED, a bare
+# "Resolved:" -> RED, "Resolved: no" -> RED. Two succeeded:
+#
+#     deleting the 2026-09-18 row entirely      -> GREEN
+#     changing its date to 2027-09-18           -> GREEN
+#
+# So the check was sound against a lazy answer and defenceless against removing the
+# question. That is the more likely failure of the two: nobody writes "Resolved: no" to
+# dodge a gate, but a table row quietly disappears during an edit and nothing notices.
+# test_rounds.py already pins every commit; this file pinned nothing.
+#
+# Changing this list is allowed. Doing it silently is not -- it now requires a commit
+# that says which gate was moved and why.
+PINNED_GATES = [
+    ("2026-09-18", "Is anyone using it"),
+    ("2026-10-16", "Does anyone want to pay"),
+    ("2026-12-04", "Is further investment worth it"),
+    ("2027-03-04", "Does the data asset hold up"),
+]
+
 _FAILURES = []
 _PASSED = 0
 
@@ -105,6 +128,26 @@ def test_strategy_gates_are_answered_when_they_fall_due():
             print("  ..    gate %s (%s) due in %d days" % (date_str, name[:34], days))
 
 
+def test_no_gate_can_quietly_disappear():
+    """Deleting a gate row, or pushing its date out, must fail the build.
+
+    Verified by the audit that found it: with today forced to 2026-09-19, deleting the
+    2026-09-18 row turned CI green, and so did moving its date to 2027-09-18. Both are
+    the gate answering "no question was ever asked", which is worse than answering badly.
+    """
+    print("\n[gates] the set of gates is pinned, not merely present")
+    with io.open(STRATEGY, encoding="utf-8") as f:
+        text = f.read()
+    rows = dict(_GATE_ROW.findall(text))
+    for date, name in PINNED_GATES:
+        check("gate %s (%s) is still in the table" % (date, name),
+              date in rows, "row missing -- deleting a gate needs an argument")
+        if date in rows:
+            check("  ...and still asks the same question",
+                  name.lower() in rows[date].lower(),
+                  "table says %r, pinned as %r" % (rows[date], name))
+
+
 def main():
     print("=" * 68)
     print("Parked opportunities: are any overdue for review?")
@@ -123,7 +166,14 @@ def main():
     # The STRATEGY gates are the ones that can stop the project, so they are checked
     # here too. They were not, which is how the 2026-09-18 gate came to be unenforced
     # while the audit brief claimed this file kept it live.
-    test_strategy_gates_are_answered_when_they_fall_due()
+    #
+    # Discovered, not listed. This runner named one function explicitly, so a second
+    # check added to this file passed by never executing -- the third hand-maintained
+    # runner in this repository to do exactly that, after test_owner_powers.py and CI's
+    # own step list. A guard that does not run reports PASS by silence.
+    for _, _fn in sorted((k, v) for k, v in globals().items()
+                         if k.startswith("test_")):
+        _fn()
 
     today = datetime.date.today()
     overdue = []
