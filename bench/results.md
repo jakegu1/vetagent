@@ -66,7 +66,7 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 
 | Metric | Value |
 |---|---|
-| Verdict distribution | high=69, low=145, medium=245, unknown=100 |
+| Verdict distribution | high=68, low=145, medium=246, unknown=100 |
 | unknown rate | 17.9% |
 | Share with a data gap | 19.3% |
 
@@ -82,7 +82,7 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **dead** | 36 | 8.3% | 86.1% | 11.1% | 2.8% | 38.9 |
-| **alive** | 153 | 4.6% | 33.3% | 52.3% | 14.4% | 15.9 |
+| **alive** | 153 | 3.9% | 32.7% | 52.9% | 14.4% | 15.5 |
 
 ### Contract-safety signals only (ablated)
 
@@ -92,7 +92,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **dead** | 36 | 5.6% | 11.1% | 86.1% | 2.8% | 8.2 |
-| **alive** | 153 | 3.3% | 15.0% | 69.9% | 15.0% | 10.3 |
+| **alive** | 153 | 2.6% | 15.0% | 69.9% | 15.0% | 9.9 |
 
 **Which signal category made the call on dead samples:** `liquidity` 25, `honeypot` 3, `lifecycle` 3, `sellability` 1
 
@@ -109,7 +109,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 9 | 55.6% | 88.9% | 0.0% | 11.1% | 77.8 |
-| **safe** | 337 | 6.2% | 47.2% | 29.1% | 23.7% | 26.0 |
+| **safe** | 337 | 5.6% | 47.2% | 29.7% | 23.1% | 25.4 |
 
 ### Contract-safety signals only (ablated)
 
@@ -119,7 +119,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 9 | 33.3% | 33.3% | 44.4% | 22.2% | 40.0 |
-| **safe** | 337 | 4.5% | 13.4% | 62.0% | 24.6% | 11.4 |
+| **safe** | 337 | 3.9% | 12.8% | 63.2% | 24.0% | 10.7 |
 
 **Which signal category made the call on unsafe samples:** `liquidity` 4, `honeypot` 3, `impersonation` 2
 
@@ -137,12 +137,12 @@ This bucket answers one question: **does the engine paint them all as high risk.
 
 | n | high rate | Verdict distribution |
 |---|---|---|
-| 181 | 21.5% | high=39, low=39, medium=87, unknown=16 |
+| 181 | 22.1% | high=40, low=38, medium=86, unknown=17 |
 
-Examples: HYDX(low), CP(low), Onyxcoin XCN Kendu(high), SAGE Free(medium), Core Keeper Overnight(medium), VIRTUAL(low), Crypto Carbon Verse(high), ?(medium), BIO(low), UNA(medium)
+Examples: HYDX(low), CP(unknown), Onyxcoin XCN Kendu(high), SAGE Free(medium), Core Keeper Overnight(medium), VIRTUAL(low), Crypto Carbon Verse(high), ?(medium), BIO(high), UNA(medium)
 
 
-> **Which population the false-positive rate describes.** The headline figure is measured on `alive` tokens, and `alive` requires 90 days of history and real weekly volume -- so freshness signals cannot fire on them and liquidity rarely does. Agents mostly ask about tokens younger than that. On the broader `safe` cohort, which includes new tokens: high 6.2% (21 of 337). Both are reported because the first is the friendlier of the two.
+> **Which population the false-positive rate describes.** The headline figure is measured on `alive` tokens, and `alive` requires 90 days of history and real weekly volume -- so freshness signals cannot fire on them and liquidity rarely does. Agents mostly ask about tokens younger than that. On the broader `safe` cohort, which includes new tokens: high 5.6% (19 of 337). Both are reported because the first is the friendlier of the two.
 
 
 ### What the unknown rate is made of
@@ -187,15 +187,15 @@ Samples where the label and the engine disagree. Read the **false negatives** (l
 | false positive | `USD₮0` | base | goplus=safe | high | high | honeypot |
 | false positive | `house` | base | goplus=safe | high | low | impersonation |
 | false positive | `DOR` | base | goplus=safe | high | high | honeypot |
-| false positive | `HOME` | base | goplus=safe | high | high | honeypot |
 | false positive | `ROBOTMONEY` | base | goplus=safe | high | high | honeypot |
-| false positive | `0x79bbf450` | base | goplus=safe | high | high | honeypot |
 | false positive | `FRAME` | base | goplus=safe | high | high | honeypot |
 | false positive | `USI` | base | goplus=safe | high | high | honeypot |
-| false positive | `BID` | base | outcome=alive | high | high | honeypot |
 | false positive | `BURN` | base | goplus=safe | high | unknown | impersonation |
+| false positive | `TORIVA` | base | goplus=safe | high | high | honeypot |
+| false positive | `TREB` | base | goplus=safe | high | high | honeypot |
+| false positive | `Surplus` | base | outcome=alive | high | high | honeypot |
 
-(12 more in `results.json`)
+(9 more in `results.json`)
 
 
 ### Counted as false positives, but outside the labeller's reach

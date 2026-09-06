@@ -23,9 +23,9 @@
  "overall": {
   "verdict_distribution": {
    "low": 145,
-   "high": 69,
    "unknown": 100,
-   "medium": 245
+   "high": 68,
+   "medium": 246
   },
   "unknown_rate": 0.17889087656529518,
   "data_gap_rate": 0.19320214669051877
@@ -44,11 +44,11 @@
    },
    "good": {
     "n": 153,
-    "high": 0.0457516339869281,
-    "high_or_medium": 0.3333333333333333,
-    "low": 0.5228758169934641,
+    "high": 0.0392156862745098,
+    "high_or_medium": 0.32679738562091504,
+    "low": 0.5294117647058824,
     "unknown": 0.1437908496732026,
-    "mean_score": 15.92156862745098
+    "mean_score": 15.477124183006536
    }
   },
   "contract_only": {
@@ -62,11 +62,11 @@
    },
    "good": {
     "n": 153,
-    "high": 0.032679738562091505,
+    "high": 0.026143790849673203,
     "high_or_medium": 0.1503267973856209,
     "low": 0.6993464052287581,
     "unknown": 0.1503267973856209,
-    "mean_score": 10.294117647058824
+    "mean_score": 9.88888888888889
    }
   },
   "driving_categories_on_bad": {
@@ -90,11 +90,11 @@
    },
    "good": {
     "n": 337,
-    "high": 0.06231454005934718,
+    "high": 0.05637982195845697,
     "high_or_medium": 0.47181008902077154,
-    "low": 0.29080118694362017,
-    "unknown": 0.23738872403560832,
-    "mean_score": 26.038575667655785
+    "low": 0.29673590504451036,
+    "unknown": 0.2314540059347181,
+    "mean_score": 25.40652818991098
    }
   },
   "contract_only": {
@@ -108,11 +108,11 @@
    },
    "good": {
     "n": 337,
-    "high": 0.04451038575667656,
-    "high_or_medium": 0.13353115727002968,
-    "low": 0.6201780415430267,
-    "unknown": 0.24629080118694363,
-    "mean_score": 11.445103857566766
+    "high": 0.03857566765578635,
+    "high_or_medium": 0.12759643916913946,
+    "low": 0.6320474777448071,
+    "unknown": 0.2403560830860534,
+    "mean_score": 10.697329376854599
    }
   },
   "driving_categories_on_bad": {
@@ -124,12 +124,12 @@
  "centralized": {
   "n": 181,
   "verdict_distribution": {
-   "low": 39,
-   "high": 39,
-   "medium": 87,
-   "unknown": 16
+   "low": 38,
+   "unknown": 17,
+   "high": 40,
+   "medium": 86
   },
-  "high_rate": 0.2154696132596685,
+  "high_rate": 0.22099447513812154,
   "examples": [
    {
     "symbol": "HYDX",
@@ -140,8 +140,8 @@
    {
     "symbol": "CP",
     "chain": "base",
-    "verdict": "low",
-    "driver": "impersonation"
+    "verdict": "unknown",
+    "driver": "sellability"
    },
    {
     "symbol": "Onyxcoin XCN Kendu",
@@ -182,8 +182,8 @@
    {
     "symbol": "BIO",
     "chain": "base",
-    "verdict": "low",
-    "driver": "impersonation"
+    "verdict": "high",
+    "driver": "honeypot"
    },
    {
     "symbol": "UNA",
@@ -327,28 +327,8 @@
   {
    "kind": "false positive",
    "label": "goplus=safe",
-   "address": "0x4bfaa776991e85e5f8b1255461cbbd216cfc714f",
-   "symbol": "HOME",
-   "chain": "base",
-   "verdict": "high",
-   "verdict_ablated": "high",
-   "driver": "honeypot"
-  },
-  {
-   "kind": "false positive",
-   "label": "goplus=safe",
    "address": "0x65021a79aeef22b17cdc1b768f5e79a8618beba3",
    "symbol": "ROBOTMONEY",
-   "chain": "base",
-   "verdict": "high",
-   "verdict_ablated": "high",
-   "driver": "honeypot"
-  },
-  {
-   "kind": "false positive",
-   "label": "goplus=safe",
-   "address": "0x79bbf4508b1391af3a0f4b30bb5fc4aa9ab0e07c",
-   "symbol": "",
    "chain": "base",
    "verdict": "high",
    "verdict_ablated": "high",
@@ -369,16 +349,6 @@
    "label": "goplus=safe",
    "address": "0x987603a52d8b966e10fbd29dcb1a574049e25b07",
    "symbol": "USI",
-   "chain": "base",
-   "verdict": "high",
-   "verdict_ablated": "high",
-   "driver": "honeypot"
-  },
-  {
-   "kind": "false positive",
-   "label": "outcome=alive",
-   "address": "0xa1832f7f4e534ae557f9b5ab76de54b1873e498b",
-   "symbol": "BID",
    "chain": "base",
    "verdict": "high",
    "verdict_ablated": "high",
@@ -575,20 +545,21 @@
    "goplus_label": "centralized",
    "sampled_from": "snapshot_2026-09-04",
    "liquidity_usd": 926081.0,
-   "gap_reasons": [],
-   "verdict": "low",
-   "score": 4,
-   "confidence": "high",
-   "verdict_ablated": "low",
-   "score_ablated": 0,
-   "driver": "impersonation",
+   "gap_reasons": [
+    "simulation failed: execution reverted: HP: BUY_FAILED"
+   ],
+   "verdict": "unknown",
+   "score": 30,
+   "confidence": "low",
+   "verdict_ablated": "unknown",
+   "score_ablated": 30,
+   "driver": "sellability",
    "categories": [
-    "honeypot",
     "impersonation",
     "liquidity",
-    "upstream_risk"
+    "sellability"
    ],
-   "has_data_gap": false
+   "has_data_gap": true
   },
   {
    "address": "0x00f3c42833c3170159af4e92dbb451fb3f708917",
@@ -840,7 +811,7 @@
    "sampled_from": "backfill_2026-02-17",
    "liquidity_usd": 113239.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "simulation failed: execution reverted: HP: BUY_FAILED"
    ],
    "verdict": "unknown",
    "score": 30,
@@ -1074,21 +1045,22 @@
    "goplus_label": null,
    "sampled_from": "gt_pools",
    "liquidity_usd": 125439.0,
-   "gap_reasons": [],
-   "verdict": "low",
-   "score": 4,
-   "confidence": "high",
-   "verdict_ablated": "low",
-   "score_ablated": 0,
-   "driver": "impersonation",
+   "gap_reasons": [
+    "simulation failed: execution reverted: HP: BUY_FAILED"
+   ],
+   "verdict": "unknown",
+   "score": 30,
+   "confidence": "low",
+   "verdict_ablated": "unknown",
+   "score_ablated": 30,
+   "driver": "sellability",
    "categories": [
     "cross_chain",
-    "honeypot",
     "impersonation",
     "liquidity",
-    "upstream_risk"
+    "sellability"
    ],
-   "has_data_gap": false
+   "has_data_gap": true
   },
   {
    "address": "0x0ea98d7b077e42caee9faab7f7da6a41517a7c11",
@@ -1592,21 +1564,19 @@
    "goplus_label": "safe",
    "sampled_from": "backfill_2026-05-28",
    "liquidity_usd": 479421.0,
-   "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED: 0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e48503a204255595f4641494c4544000000000000000000000000000000000000"
-   ],
-   "verdict": "unknown",
-   "score": 40,
-   "confidence": "low",
-   "verdict_ablated": "unknown",
-   "score_ablated": 40,
-   "driver": "sellability",
+   "gap_reasons": [],
+   "verdict": "low",
+   "score": 0,
+   "confidence": "medium",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
    "categories": [
-    "contract",
+    "honeypot",
     "liquidity",
-    "sellability"
+    "upstream_risk"
    ],
-   "has_data_gap": true
+   "has_data_gap": false
   },
   {
    "address": "0x2112b92a4f6496b7b2f10850857ffa270464d054",
@@ -1665,18 +1635,17 @@
    "sampled_from": "backfill_2026-02-07",
    "liquidity_usd": 362681.0,
    "gap_reasons": [],
-   "verdict": "low",
-   "score": 4,
+   "verdict": "high",
+   "score": 100,
    "confidence": "high",
-   "verdict_ablated": "low",
-   "score_ablated": 0,
-   "driver": "impersonation",
+   "verdict_ablated": "high",
+   "score_ablated": 100,
+   "driver": "honeypot",
    "categories": [
     "cross_chain",
     "honeypot",
     "impersonation",
-    "liquidity",
-    "upstream_risk"
+    "liquidity"
    ],
    "has_data_gap": false
   },
@@ -2043,7 +2012,7 @@
    "sampled_from": "backfill_2025-12-09",
    "liquidity_usd": 198135.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "simulation failed: execution reverted: HP: BUY_FAILED"
    ],
    "verdict": "unknown",
    "score": 30,
@@ -2258,7 +2227,7 @@
    "sampled_from": "backfill_2025-10-10",
    "liquidity_usd": 139.602,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "simulation failed: execution reverted: HP: BUY_FAILED"
    ],
    "verdict": "unknown",
    "score": 68,
@@ -2594,22 +2563,21 @@
    "goplus_label": "safe",
    "sampled_from": "backfill_2026-02-17",
    "liquidity_usd": 117853000.0,
-   "gap_reasons": [
-    "the sell simulator has no record of this token"
-   ],
-   "verdict": "unknown",
-   "score": 5,
-   "confidence": "low",
-   "verdict_ablated": "unknown",
-   "score_ablated": 5,
-   "driver": "sellability",
+   "gap_reasons": [],
+   "verdict": "low",
+   "score": 0,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
    "categories": [
     "cross_chain",
     "freshness",
+    "honeypot",
     "liquidity",
-    "sellability"
+    "upstream_risk"
    ],
-   "has_data_gap": true
+   "has_data_gap": false
   },
   {
    "address": "0x420bffa22313c04fd3fa1ac0498468f4c0f55c87",
@@ -2787,16 +2755,17 @@
    "sampled_from": "backfill_2026-02-17",
    "liquidity_usd": 17677.3,
    "gap_reasons": [],
-   "verdict": "high",
-   "score": 100,
-   "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "honeypot",
+   "verdict": "medium",
+   "score": 24,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": "liquidity",
    "categories": [
     "cross_chain",
     "honeypot",
-    "liquidity"
+    "liquidity",
+    "upstream_risk"
    ],
    "has_data_gap": false
   },
@@ -3818,7 +3787,7 @@
    "sampled_from": "backfill_2026-05-28",
    "liquidity_usd": 22261.1,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "simulation failed: execution reverted: HP: BUY_FAILED"
    ],
    "verdict": "unknown",
    "score": 40,
@@ -4148,18 +4117,19 @@
    "sampled_from": "backfill_2026-04-08",
    "liquidity_usd": 182820.0,
    "gap_reasons": [],
-   "verdict": "high",
-   "score": 100,
+   "verdict": "medium",
+   "score": 12,
    "confidence": "high",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "honeypot",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": "lifecycle",
    "categories": [
     "cross_chain",
     "freshness",
     "honeypot",
     "lifecycle",
-    "liquidity"
+    "liquidity",
+    "upstream_risk"
    ],
    "has_data_gap": false
   },
@@ -4435,21 +4405,20 @@
    "goplus_label": "safe",
    "sampled_from": "backfill_2026-02-07",
    "liquidity_usd": 29295900.0,
-   "gap_reasons": [
-    "the sell simulator has no record of this token"
-   ],
-   "verdict": "unknown",
-   "score": 5,
-   "confidence": "low",
-   "verdict_ablated": "unknown",
-   "score_ablated": 5,
-   "driver": "sellability",
+   "gap_reasons": [],
+   "verdict": "low",
+   "score": 0,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
    "categories": [
     "freshness",
+    "honeypot",
     "liquidity",
-    "sellability"
+    "upstream_risk"
    ],
-   "has_data_gap": true
+   "has_data_gap": false
   },
   {
    "address": "0x853a7c99227499dba9db8c3a02aa691afdebf841",
@@ -4908,7 +4877,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 23769.3,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "simulation failed: execution reverted: HP: BUY_FAILED"
    ],
    "verdict": "unknown",
    "score": 40,
@@ -4976,7 +4945,7 @@
    "sampled_from": "backfill_2025-12-29",
    "liquidity_usd": 14884.2,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED"
+    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "unknown",
    "score": 40,
@@ -5067,18 +5036,17 @@
    "sampled_from": "backfill_2025-12-09",
    "liquidity_usd": 19930100.0,
    "gap_reasons": [],
-   "verdict": "medium",
-   "score": 12,
+   "verdict": "high",
+   "score": 100,
    "confidence": "high",
-   "verdict_ablated": "low",
-   "score_ablated": 0,
-   "driver": "lifecycle",
+   "verdict_ablated": "high",
+   "score_ablated": 100,
+   "driver": "honeypot",
    "categories": [
     "freshness",
     "honeypot",
     "lifecycle",
-    "liquidity",
-    "upstream_risk"
+    "liquidity"
    ],
    "has_data_gap": false
   },
@@ -5209,16 +5177,17 @@
    "sampled_from": "backfill_2025-12-09",
    "liquidity_usd": 354282.0,
    "gap_reasons": [],
-   "verdict": "high",
-   "score": 100,
-   "confidence": "medium",
-   "verdict_ablated": "high",
-   "score_ablated": 100,
-   "driver": "honeypot",
+   "verdict": "low",
+   "score": 0,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
    "categories": [
     "cross_chain",
     "honeypot",
-    "liquidity"
+    "liquidity",
+    "upstream_risk"
    ],
    "has_data_gap": false
   },
@@ -5324,7 +5293,7 @@
    "sampled_from": "backfill_2025-12-09",
    "liquidity_usd": 54103.7,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "simulation failed: execution reverted: HP: BUY_FAILED"
    ],
    "verdict": "unknown",
    "score": 30,
@@ -6382,7 +6351,7 @@
    "sampled_from": "backfill_2026-02-17",
    "liquidity_usd": 264076.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED"
+    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "unknown",
    "score": 40,
@@ -6767,20 +6736,21 @@
    "goplus_label": "safe",
    "sampled_from": "snapshot_2026-09-03",
    "liquidity_usd": 425378.0,
-   "gap_reasons": [],
-   "verdict": "low",
-   "score": 0,
-   "confidence": "high",
-   "verdict_ablated": "low",
-   "score_ablated": 0,
-   "driver": null,
+   "gap_reasons": [
+    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+   ],
+   "verdict": "unknown",
+   "score": 30,
+   "confidence": "low",
+   "verdict_ablated": "unknown",
+   "score_ablated": 30,
+   "driver": "sellability",
    "categories": [
     "freshness",
-    "honeypot",
     "liquidity",
-    "upstream_risk"
+    "sellability"
    ],
-   "has_data_gap": false
+   "has_data_gap": true
   },
   {
    "address": "0xbf927b841994731c573bdf09ceb0c6b0aa887cdd",
@@ -7099,7 +7069,7 @@
    "sampled_from": "backfill_2026-05-08",
    "liquidity_usd": 152240.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "simulation failed: execution reverted: HP: BUY_FAILED"
    ],
    "verdict": "unknown",
    "score": 30,
@@ -7336,22 +7306,21 @@
    "goplus_label": "safe",
    "sampled_from": "backfill_2026-05-08",
    "liquidity_usd": 9999690.0,
-   "gap_reasons": [
-    "the sell simulator has no record of this token"
-   ],
-   "verdict": "unknown",
-   "score": 40,
-   "confidence": "low",
-   "verdict_ablated": "unknown",
-   "score_ablated": 30,
-   "driver": "sellability",
+   "gap_reasons": [],
+   "verdict": "medium",
+   "score": 12,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": "lifecycle",
    "categories": [
     "freshness",
+    "honeypot",
     "lifecycle",
     "liquidity",
-    "sellability"
+    "upstream_risk"
    ],
-   "has_data_gap": true
+   "has_data_gap": false
   },
   {
    "address": "0xd9bf9127e37d33514aa485ff7d3b26f1f5298411",
@@ -7408,22 +7377,21 @@
    "goplus_label": "safe",
    "sampled_from": "backfill_2026-02-17",
    "liquidity_usd": 188458.0,
-   "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED"
-   ],
-   "verdict": "unknown",
-   "score": 40,
-   "confidence": "low",
-   "verdict_ablated": "unknown",
-   "score_ablated": 40,
-   "driver": "sellability",
+   "gap_reasons": [],
+   "verdict": "medium",
+   "score": 58,
+   "confidence": "high",
+   "verdict_ablated": "medium",
+   "score_ablated": 58,
+   "driver": "upstream_risk",
    "categories": [
     "contract",
     "freshness",
+    "honeypot",
     "liquidity",
-    "sellability"
+    "upstream_risk"
    ],
-   "has_data_gap": true
+   "has_data_gap": false
   },
   {
    "address": "0xdf64dee8b899cac9d3e6d2562d94d876940c13ce",
@@ -9836,11 +9804,11 @@
     "the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
-   "score": 40,
+   "score": 34,
    "confidence": "low",
    "verdict_ablated": "unknown",
    "score_ablated": 5,
-   "driver": "freshness",
+   "driver": "liquidity",
    "categories": [
     "freshness",
     "liquidity",
@@ -9951,14 +9919,14 @@
    "sampled_from": "snapshot_2026-09-04",
    "liquidity_usd": 19193.7,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
-   "score": 40,
+   "score": 24,
    "confidence": "low",
    "verdict_ablated": "unknown",
-   "score_ablated": 30,
-   "driver": "sellability",
+   "score_ablated": 5,
+   "driver": "liquidity",
    "categories": [
     "cross_chain",
     "freshness",
@@ -10825,20 +10793,22 @@
    "goplus_label": "safe",
    "sampled_from": "gt_pools",
    "liquidity_usd": 2124490.0,
-   "gap_reasons": [],
-   "verdict": "medium",
-   "score": 30,
-   "confidence": "high",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
-   "driver": "honeypot",
+   "gap_reasons": [
+    "the sell simulator has no record of this token"
+   ],
+   "verdict": "unknown",
+   "score": 5,
+   "confidence": "low",
+   "verdict_ablated": "unknown",
+   "score_ablated": 5,
+   "driver": "sellability",
    "categories": [
     "cross_chain",
     "freshness",
-    "honeypot",
-    "liquidity"
+    "liquidity",
+    "sellability"
    ],
-   "has_data_gap": false
+   "has_data_gap": true
   },
   {
    "address": "0x152649ea73beab28c5b49b26eb48f7ead6d4c898",
@@ -11060,16 +11030,16 @@
    "liquidity_usd": 13162.6,
    "gap_reasons": [],
    "verdict": "medium",
-   "score": 37,
-   "confidence": "medium",
-   "verdict_ablated": "medium",
-   "score_ablated": 27,
-   "driver": "sell_tax",
+   "score": 24,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": "liquidity",
    "categories": [
     "freshness",
+    "honeypot",
     "lifecycle",
     "liquidity",
-    "sell_tax",
     "upstream_risk"
    ],
    "has_data_gap": false
@@ -12430,7 +12400,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 936431.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED"
+    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "unknown",
    "score": 30,
@@ -12593,7 +12563,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 54741.8,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED: 0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e48503a204255595f4641494c4544000000000000000000000000000000000000"
+    "simulation failed: execution reverted: HP: SETUP_FAILED"
    ],
    "verdict": "unknown",
    "score": 30,
@@ -13405,7 +13375,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 1689750.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "simulation failed: execution reverted: HP: BUY_FAILED"
    ],
    "verdict": "unknown",
    "score": 30,
@@ -13620,21 +13590,22 @@
    "goplus_label": "safe",
    "sampled_from": "gt_pools",
    "liquidity_usd": 97617600.0,
-   "gap_reasons": [],
-   "verdict": "medium",
-   "score": 12,
-   "confidence": "high",
-   "verdict_ablated": "low",
-   "score_ablated": 0,
-   "driver": "lifecycle",
+   "gap_reasons": [
+    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+   ],
+   "verdict": "unknown",
+   "score": 40,
+   "confidence": "low",
+   "verdict_ablated": "unknown",
+   "score_ablated": 30,
+   "driver": "sellability",
    "categories": [
     "freshness",
-    "honeypot",
     "lifecycle",
     "liquidity",
-    "upstream_risk"
+    "sellability"
    ],
-   "has_data_gap": false
+   "has_data_gap": true
   },
   {
    "address": "0xfaba6f8e4a5e8ab82f62fe7c39859fa577269be3",
