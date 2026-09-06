@@ -94,7 +94,18 @@ ROUNDS = [
      "peers; found and fixed the regression that fix introduced an hour later; "
      "withdrew R12's finding after measuring the instrument at 31% recall; and grew "
      "the adversarial cohort from 9 to 17 by harvesting recent days."),
-    ("R14", "Next", None,
+    ("R14", "Stop the token from writing inside our verdict", "4870424",
+     "Deployed the P0 chain-hint fix that had sat unshipped since R10, then cleared "
+     "all fourteen engine findings from the second external audit. The largest was "
+     "not on the list: a token's own ticker was interpolated verbatim into the "
+     "sentences an agent reads as this tool's verdict, so anyone could deploy a "
+     "contract whose name argues for itself inside our output. Also: a request the "
+     "JSON-RPC spec permits crashed /mcp, 53 of 53 minimal proxies read as 'not a "
+     "proxy', a $0.000000000019 reserve was spent as a measured depth, the "
+     "no-trace verdict was reached without knowing which chain it searched, and the "
+     "bytecode cache the comments promised did not exist. Two verdicts moved out of "
+     "572 -- the round corrected what the tool says, not what it concludes."),
+    ("R15", "Next", None,
      "Open."),
 ]
 

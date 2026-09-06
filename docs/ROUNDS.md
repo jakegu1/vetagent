@@ -25,11 +25,12 @@ The maturity score for each round is read from `docs/SCORECARD.md` **as it stood
 | **R11** | Number the rounds | 3 | 2026-09-05 | 53/100 (+0) |
 | **R12** | Measure a feature, then refuse to score it | 2 | 2026-09-05 to 2026-09-06 | 53/100 (+0) |
 | **R13** | Withdraw a conclusion, and double the cohort it rested on | 12 | 2026-09-06 | 53/100 (+0) |
+| **R14** | Stop the token from writing inside our verdict | 20 | 2026-09-06 | 53/100 (+0) |
 
 8 snapshot-job commits are excluded up to the last closed round: they are data collection, not development, and would bury the rounds. The job commits daily, so counting them past that point would date this file every morning.
 
 
-**R14 -- Next** is open: Open. Its commits are listed here once it closes.
+**R15 -- Next** is open: Open. Its commits are listed here once it closes.
 
 ---
 
@@ -291,6 +292,41 @@ Told the sell simulator which chain we meant, which rescued Base WETH and its pe
 | `894bf40` | 2026-09-06 | A wrong hint must not send the simulator to the wrong chain |
 | `887eca8` | 2026-09-06 | Withdraw R12's conclusion: it was measured with a two-thirds blind instrument |
 | `0d390a8` | 2026-09-06 | W3: the adversarial cohort doubles, and B14 is why |
+
+Full reasoning for any line above: `git show <hash>`. The commit messages carry the measurement that motivated each change, and several admissions of error.
+
+
+---
+
+
+## R14 -- Stop the token from writing inside our verdict
+
+
+Deployed the P0 chain-hint fix that had sat unshipped since R10, then cleared all fourteen engine findings from the second external audit. The largest was not on the list: a token's own ticker was interpolated verbatim into the sentences an agent reads as this tool's verdict, so anyone could deploy a contract whose name argues for itself inside our output. Also: a request the JSON-RPC spec permits crashed /mcp, 53 of 53 minimal proxies read as 'not a proxy', a $0.000000000019 reserve was spent as a measured depth, the no-trace verdict was reached without knowing which chain it searched, and the bytecode cache the comments promised did not exist. Two verdicts moved out of 572 -- the round corrected what the tool says, not what it concludes.
+
+
+| Commit | Date | Change |
+|---|---|---|
+| `fee6cbb` | 2026-09-06 | Close R13 and open R14 |
+| `2a8edbd` | 2026-09-06 | P0-2: CI has been red since R11, and three suites had never run |
+| `aae3bcd` | 2026-09-06 | E-1: a RugCheck score that never arrived was reported as a perfect one |
+| `8f18f90` | 2026-09-06 | E-3 and E-4: the override was dead on a fifth of tokens, and mis-aimed on the rest |
+| `2f37f68` | 2026-09-06 | Deploy: production stops mispricing USDC by 1,050x |
+| `fb77083` | 2026-09-06 | A token's own metadata was being read to the agent as our verdict |
+| `9af5b7a` | 2026-09-06 | Re-measure: 8 verdicts moved, and only 2 of them are mine |
+| `6ab5433` | 2026-09-06 | E-2: a typo in the caller's chain hint bought the token an alibi |
+| `0d9b792` | 2026-09-06 | E-5: a fork pool on another chain silenced the drained-rug verdict |
+| `6da36bf` | 2026-09-06 | E-12: the loudest verdict was reached without knowing which chain it searched |
+| `08b05d5` | 2026-09-06 | E-11: a request the spec explicitly permits killed the endpoint |
+| `6596205` | 2026-09-06 | E-6: a pool timestamped an hour ahead had no age, and so had no freshness |
+| `16f6c89` | 2026-09-06 | E-10: a reserve of $0.000000000019 was spent as a measured depth |
+| `0932e55` | 2026-09-06 | E-9: "not_found, liquidity_usd 0, pairs_total 3" was three answers at once |
+| `429baa0` | 2026-09-06 | E-14: the argument for serving stale data is disclosure, and two tools did not |
+| `5f91d62` | 2026-09-06 | E-8: the proxy check missed the one proxy that has no functions |
+| `cf0c42b` | 2026-09-06 | E-13: "cached hard and costs almost nothing" described an intention, not the code |
+| `b1f4948` | 2026-09-06 | E-7: a price sanity check exactly where chain rank cannot help |
+| `fe9f9b5` | 2026-09-06 | Re-measure after fourteen engine fixes: two verdicts moved |
+| `4870424` | 2026-09-06 | Give O4 a review date, because the last commit went red and I pushed anyway |
 
 Full reasoning for any line above: `git show <hash>`. The commit messages carry the measurement that motivated each change, and several admissions of error.
 
