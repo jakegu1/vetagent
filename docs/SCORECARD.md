@@ -21,7 +21,7 @@
 
 | Dimension | Item | Score | Max | Evidence |
 |---|---|---|---|---|
-| Correctness | tests all green | 10.0 | 10 | test_risk.py 241 passed, 0 failed All passed; test_mcp.py 73 passed, 0 failed All passed |
+| Correctness | tests all green | 10.0 | 10 | test_risk.py 252 passed, 0 failed All passed; test_mcp.py 73 passed, 0 failed All passed |
 | Correctness | false positive rate (healthy rated high) | 8.0 | 10 | 3.7% |
 | Correctness | unknown rate | 6.0 | 10 | 17.2% |
 | Coverage | risk dimensions covered | 16.4 | 20 | 9 / 11 |

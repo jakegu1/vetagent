@@ -26,11 +26,12 @@ The maturity score for each round is read from `docs/SCORECARD.md` **as it stood
 | **R12** | Measure a feature, then refuse to score it | 2 | 2026-09-05 to 2026-09-06 | 53/100 (+0) |
 | **R13** | Withdraw a conclusion, and double the cohort it rested on | 12 | 2026-09-06 | 53/100 (+0) |
 | **R14** | Stop the token from writing inside our verdict | 20 | 2026-09-06 | 53/100 (+0) |
+| **R15** | Guards that guard, and numbers that are watched | 20 | 2026-09-06 to 2026-09-07 | 53/100 (+0) |
 
-8 snapshot-job commits are excluded up to the last closed round: they are data collection, not development, and would bury the rounds. The job commits daily, so counting them past that point would date this file every morning.
+9 snapshot-job commits are excluded up to the last closed round: they are data collection, not development, and would bury the rounds. The job commits daily, so counting them past that point would date this file every morning.
 
 
-**R15 -- Next** is open: Open. Its commits are listed here once it closes.
+**R16 -- Next** is open: Open. Its commits are listed here once it closes.
 
 ---
 
@@ -327,6 +328,41 @@ Deployed the P0 chain-hint fix that had sat unshipped since R10, then cleared al
 | `b1f4948` | 2026-09-06 | E-7: a price sanity check exactly where chain rank cannot help |
 | `fe9f9b5` | 2026-09-06 | Re-measure after fourteen engine fixes: two verdicts moved |
 | `4870424` | 2026-09-06 | Give O4 a review date, because the last commit went red and I pushed anyway |
+
+Full reasoning for any line above: `git show <hash>`. The commit messages carry the measurement that motivated each change, and several admissions of error.
+
+
+---
+
+
+## R15 -- Guards that guard, and numbers that are watched
+
+
+Cleared the audit's twelve M and G findings. Four published figures were guarded by nothing and all four flattered -- centralised-flagged-high read 6.7% against a measured 21.8% -- so the check was inverted to ask 'is every number guarded', not just 'does each guarded number match'. Four hand-maintained test runners were hiding tests from themselves, including CI's own step list. The 09-18 gate could be deleted with CI staying green, and a crawler could have passed it. And W1 was reopened: the measurement that closed it could not be re-run, so the script and 250 contracts of bytecode are now committed -- measured against GoPlus's per-flag fields the scan finds 0% of pausable and 6% of mutable-tax, and the selectors that would reproduce the original table detect a launch gate, not a pause switch.
+
+
+| Commit | Date | Change |
+|---|---|---|
+| `092b4ad` | 2026-09-06 | R14: stop the token from writing inside our verdict |
+| `574382f` | 2026-09-06 | P0: /assess reported USDT at $2,502 and UNI at $4,576,980 |
+| `63aca78` | 2026-09-06 | P0-2: UNI was priced at $4,576,980 by a pool with two trades in it |
+| `19d97ad` | 2026-09-06 | Close O4/W19: the parked experiment was hiding a P0 for half a day |
+| `079910d` | 2026-09-06 | The scorecard published 4.3% while the README published 3.7% |
+| `49f34ec` | 2026-09-06 | STRATEGY.md said GoPlus was an upstream. It is the held-out oracle |
+| `85043d0` | 2026-09-06 | Size the second-judge question: 121 calls, not 576, and not $80 |
+| `706678c` | 2026-09-06 | The independent oracle was already on disk; nobody had crossed it against the other |
+| `d94bf90` | 2026-09-07 | G-5: a selector helper that answered wrong, and two things that printed wrong |
+| `e513f1b` | 2026-09-07 | G-3: the file whose entire point is enforcement had none |
+| `7217899` | 2026-09-07 | G-1: the gate could be deleted, and a crawler could have passed it |
+| `41bd760` | 2026-09-07 | G-2: the backlog rule rewarded verbosity and punished precision |
+| `56c44d1` | 2026-09-07 | G-4: the brief that directs the auditor was the stalest file in the repo |
+| `817977e` | 2026-09-07 | M-1: four published numbers guarded by nothing, and all four flattered |
+| `6540d95` | 2026-09-07 | M-5: a third of the ablation column was liquidity evidence in a contract costume |
+| `281ea73` | 2026-09-07 | M-7: a rate limit that arrives with a 200 attached |
+| `e926504` | 2026-09-07 | M-3: three different bytecode findings produced one identical sentence |
+| `b565afc` | 2026-09-07 | M-4: the adversarial cohort is 16 empty pools and a testability gate |
+| `1bfebfa` | 2026-09-07 | M-6: the label and the verdict describe the same pool 57% of the time |
+| `54b7c89` | 2026-09-07 | M-2: reopen W1, because the measurement that closed it cannot be re-run |
 
 Full reasoning for any line above: `git show <hash>`. The commit messages carry the measurement that motivated each change, and several admissions of error.
 

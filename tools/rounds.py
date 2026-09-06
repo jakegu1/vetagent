@@ -105,7 +105,18 @@ ROUNDS = [
      "no-trace verdict was reached without knowing which chain it searched, and the "
      "bytecode cache the comments promised did not exist. Two verdicts moved out of "
      "572 -- the round corrected what the tool says, not what it concludes."),
-    ("R15", "Next", None,
+    ("R15", "Guards that guard, and numbers that are watched", "54b7c89",
+     "Cleared the audit's twelve M and G findings. Four published figures were guarded "
+     "by nothing and all four flattered -- centralised-flagged-high read 6.7% against a "
+     "measured 21.8% -- so the check was inverted to ask 'is every number guarded', not "
+     "just 'does each guarded number match'. Four hand-maintained test runners were "
+     "hiding tests from themselves, including CI's own step list. The 09-18 gate could "
+     "be deleted with CI staying green, and a crawler could have passed it. And W1 was "
+     "reopened: the measurement that closed it could not be re-run, so the script and "
+     "250 contracts of bytecode are now committed -- measured against GoPlus's per-flag "
+     "fields the scan finds 0% of pausable and 6% of mutable-tax, and the selectors that "
+     "would reproduce the original table detect a launch gate, not a pause switch."),
+    ("R16", "Next", None,
      "Open."),
 ]
 
