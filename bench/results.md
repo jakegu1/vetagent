@@ -67,9 +67,9 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 
 | Metric | Value |
 |---|---|
-| Verdict distribution | high=74, low=142, medium=261, unknown=99 |
-| unknown rate | 17.2% |
-| Share with a data gap | 19.8% |
+| Verdict distribution | high=74, low=142, medium=260, unknown=100 |
+| unknown rate | 17.4% |
+| Share with a data gap | 20.8% |
 
 > Read the unknown rate next to recall. A tool that answers unknown for everything has perfect recall and is useless.
 
@@ -138,7 +138,7 @@ This bucket answers one question: **does the engine paint them all as high risk.
 
 | n | high rate | Verdict distribution |
 |---|---|---|
-| 179 | 21.2% | high=38, low=37, medium=86, unknown=18 |
+| 179 | 21.2% | high=38, low=37, medium=85, unknown=19 |
 
 Examples: HYDX(low), CP(unknown), TOSHE(medium), Onyxcoin XCN Kendu(high), SAGE Free(medium), Core Keeper Overnight(medium), VIRTUAL(low), Crypto Carbon Verse(high), ?(medium), BIO(medium)
 
@@ -154,7 +154,7 @@ An `unknown` because we could not reach an upstream is a different thing from an
 | | n | share of all 576 |
 |---|---|---|
 | unknown, our side (upstream unreachable or uncovered) | 2 | 0.3% |
-| unknown, token side (nothing verifiable about it) | 97 | 16.8% |
+| unknown, token side (nothing verifiable about it) | 98 | 17.0% |
 
 
 ## What the sample is made of
@@ -192,7 +192,7 @@ Samples where the label and the engine disagree. Read the **false negatives** (l
 | false positive | `USI` | base | goplus=safe | high | high | honeypot |
 | false positive | `HYPER` | base | goplus=safe | high | high | honeypot |
 | false positive | `BONKO` | base | goplus=safe | high | high | honeypot |
-| false positive | `BURN` | base | goplus=safe | high | unknown | impersonation |
+| false positive | `BURN` | base | goplus=safe | high | unknown | no_liquidity |
 | false positive | `TORIVA` | base | goplus=safe | high | high | honeypot |
 | false positive | `TREB` | base | goplus=safe | high | high | honeypot |
 
@@ -201,7 +201,7 @@ Samples where the label and the engine disagree. Read the **false negatives** (l
 
 ### Counted as false positives, but outside the labeller's reach
 
-5 of the false positives above were driven by `impersonation`. GoPlus reads bytecode and ownership; impersonation is a fact about identity, and an impostor's bytecode is usually perfectly ordinary. So GoPlus returns `safe` for a token it has no instrument to judge, and the disagreement is structural rather than evidence either way.
+4 of the false positives above were driven by `impersonation`. GoPlus reads bytecode and ownership; impersonation is a fact about identity, and an impostor's bytecode is usually perfectly ordinary. So GoPlus returns `safe` for a token it has no instrument to judge, and the disagreement is structural rather than evidence either way.
 
 
 They stay in the headline rate anyway. A tool that subtracts its disagreements whenever it can explain them is grading its own homework, and an explanation is only worth something if it costs something. What this section buys is auditability: they are named, so a reader can check them one at a time instead of taking the framing on trust.
@@ -210,7 +210,6 @@ They stay in the headline rate anyway. A tool that subtracts its disagreements w
 | Token | Chain | Verdict | Address |
 |---|---|---|---|
 | `\u725b\u6765` | base | high | `0x13ea5bb744b2710600dcf384d78f74e0cb39bb07` |
-| `BURN` | base | high | `0xa875a3c03cd561234c56998a9017e70346095092` |
 | `CLAWD` | base | high | `0xca6d2e377218d2432d38b3272df66f7632eb427b` |
 | `BABY` | bsc | high | `0x0e15c2472ae5d7ba564215d38f7b4d968effe4ad` |
 | `CC` | bsc | high | `0x760f35eb9b535fa894d41ccdae4cbcd0f2d9b748` |
@@ -226,7 +225,7 @@ The label means a project died -- price collapsed, volume collapsed. It does **n
 | | n | min | p25 | median | p75 | max |
 |---|---|---|---|---|---|---|
 | liquidity, `dead` | 30 | $43 | $2,853 | $7,470 | $31,418 | $495,002 |
-| liquidity, `alive` | 160 | $0 | $190,066 | $623,590 | $2,595,120 | $671,966,000 |
+| liquidity, `alive` | 158 | $12 | $194,321 | $649,717 | $2,595,120 | $671,966,000 |
 
 16 of the 30 dead tokens still hold $5,000 or more of liquidity. Those positions can be sold. An engine that rated them `high` would be calling a failed investment a safety hazard, which is a judgement this tool refuses to make (P1 in DECISIONS.md) -- so `medium` with an abandoned-pool warning is the intended answer, not a miss.
 
