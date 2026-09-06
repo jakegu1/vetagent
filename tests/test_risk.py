@@ -864,60 +864,76 @@ def test_a_chain_the_simulator_does_not_cover_is_our_gap():
           str(gaps3))
 
 
-def test_overturning_a_honeypot_verdict_is_expensive():
-    """Found by external audit. Silencing a detection must cost more than raising one.
+def test_overturning_a_honeypot_verdict_needs_distinct_sellers():
+    """Silencing a detection must cost something, but not the wrong thing.
 
-    The engine downgrades a honeypot verdict when the chain shows sells completing, which
-    exists because the upstream flag has real false positives. But the bar was $5,000 of
-    liquidity and twenty sells at a 15% ratio -- a whitelist honeypot's own wallets
-    produce that in a day for the cost of gas, and the payoff is having the fatal verdict
-    on their token turned into a warning.
+    Two audits have now touched this. The first said the override was too cheap at $5,000
+    and twenty sells -- a whitelist honeypot's own wallets produce that in a day -- so R10
+    raised it to $25,000, a hundred sells and a 30% ratio.
 
-    Note the deliberate asymmetry against test_market_activity_informs_but_does_not_verify:
-    there the same kind of evidence is allowed to *report* while a question stays open,
-    at a much lower bar. Reporting alongside an open question is free. Switching off an
-    alarm is not.
+    The second measured that raise on the same benchmark and the same cache: exactly eight
+    tokens flipped medium -> high, **every one a false positive**, while the adversarial
+    cohort detected identically at 5 of 9. Eight costs, no benefit. A flat sell count
+    penalises depth -- PONS holds $25,585,025 and was rated high because only 28 sells
+    cleared that day, while a wash-trader on a $25,000 pool can produce a hundred without
+    trying. The bar was aimed at the wrong quantity.
+
+    So the thresholds go back, and the cost is charged where wash trading is actually
+    expensive: **distinct sellers**. Cheap in transactions, expensive in funded addresses.
+    Applied only where the count exists, because DexScreener does not report it and
+    requiring data that 79% of tokens cannot supply would reinstate by omission the false
+    positives this override exists to remove.
     """
-    print("\n[honeypot] the chain may contradict the simulator, at a price")
+    print("\n[honeypot] the chain may contradict the simulator, at the right price")
 
-    def token(liq, buys, sells):
-        return {"pairs": [{
+    def token(liq, buys, sells, sellers=None):
+        pair = {
             "chainId": "ethereum", "dexId": "uniswap",
             "baseToken": {"address": WETH, "symbol": "TRAP"},
             "quoteToken": {"address": "0xq"}, "priceUsd": "1.0",
             "liquidity": {"usd": liq}, "volume": {"h24": liq},
             "txns": {"h24": {"buys": buys, "sells": sells}},
-            "pairCreatedAt": 1589841515000}]}
+            "pairCreatedAt": 1589841515000}
+        if sellers is not None:
+            pair["traders"] = {"h24": {"buyers": buys, "sellers": sellers}}
+        return {"pairs": [pair]}
 
     hp = json.loads(json.dumps(_load("hp_matic.json")))
     hp.setdefault("honeypotResult", {})["isHoneypot"] = True
 
-    def verdict(liq, buys, sells):
-        install_stub([("dex/tokens", token(liq, buys, sells)), ("dex/search", None),
-                      ("honeypot.is", hp)])
+    def verdict(liq, buys, sells, sellers=None):
+        install_stub([("dex/tokens", token(liq, buys, sells, sellers)),
+                      ("dex/search", None), ("honeypot.is", hp)])
         return run(risk.assess(WETH, chain_hint="ethereum"))
 
-    # What the attack used to cost: a small pool and a handful of self-dealt sells.
-    cheap = verdict(5_000, 100, 20)
-    check("a cheap pool with a few sells no longer buys a downgrade",
-          cheap["risk_level"] == "high",
-          "%s %s" % (cheap["risk_level"], cheap.get("risk_score")))
+    def overridden(r):
+        return any("chain disagrees" in x["name"] for x in r["signals"])
 
-    # Still too thin: real volume but a shallow pool.
-    thin = verdict(9_000, 300, 150)
-    check("volume alone does not buy it either", thin["risk_level"] == "high",
-          thin["risk_level"])
+    # A pool too thin to matter buys nothing, whatever it claims.
+    check("a pool under the liquidity floor cannot buy a downgrade",
+          not overridden(verdict(2_000, 400, 300)), "overridden")
 
-    # A genuine upstream false positive: a deep pool trading heavily both ways.
-    real = verdict(400_000, 900, 800)
-    hp_sig = [x for x in real["signals"] if x["category"] == "honeypot"]
-    check("a deep, heavily traded pool does earn the downgrade",
-          any("chain disagrees" in x["name"] for x in hp_sig),
-          str([(x["severity"], x["name"]) for x in hp_sig]))
-    check("and the downgrade is recorded where a caller can see it",
-          (real.get("evidence", {}).get("honeypot") or {}).get("contradicted_by_chain"),
-          str((real.get("evidence", {}).get("honeypot") or {}).keys()))
-    check("it is never called low", real["risk_level"] != "low", real["risk_level"])
+    # Real two-sided trading on a live pool: the false positive this exists for.
+    check("a genuinely traded pool earns the downgrade",
+          overridden(verdict(400_000, 900, 800)), "not overridden")
+
+    # A deep, slow pool must not be punished for being deep -- the R10 regression.
+    deep = verdict(25_000_000, 60, 28)
+    check("a deep pool with few trades is not punished for depth",
+          overridden(deep), "%s -- PONS was rated high for exactly this"
+          % deep["risk_level"])
+
+    # The wash-trading shape: many sells, almost no distinct sellers.
+    check("many trades from few addresses buys nothing",
+          not overridden(verdict(30_000, 400, 300, sellers=3)), "overridden")
+    check("the same trades from many addresses do",
+          overridden(verdict(30_000, 400, 300, sellers=120)), "not overridden")
+
+    # Whatever happens, a flagged token is never called low.
+    for r in (verdict(400_000, 900, 800), verdict(2_000, 400, 300),
+              verdict(30_000, 400, 300, sellers=3)):
+        check("a flagged token is never rated low", r["risk_level"] != "low",
+              r["risk_level"])
 
 
 def test_the_simulator_is_asked_about_the_chain_we_settled_on():
@@ -1004,6 +1020,44 @@ def test_rugcheck_missing_score_is_a_gap_not_a_pass():
     check("a genuine 0/100 still passes",
           any("RugCheck passed" in x["name"] for x in r0["signals"]),
           str([x["name"] for x in r0["signals"]]))
+
+
+def test_the_override_can_fire_on_the_geckoterminal_path():
+    """The GeckoTerminal shim carried no trade counts, so the override was dead there.
+
+    Found by external audit. `_gt_to_pair` never set a `txns` key, `_num(None)` is 0.0,
+    and so `sells >= N` could never hold. The "adjudicate, don't relay" mechanism -- the
+    product's stated differentiator, and the fix for 13 of 20 earlier false positives --
+    was switched off for every token resolving through the fallback: 21% of the benchmark
+    set.
+
+    A feature that silently does nothing for a fifth of traffic is this project's oldest
+    failure mode, and this is the fourth place it has turned up.
+    """
+    print("\n[fallback] the override works on the GeckoTerminal path too")
+
+    gt = {"data": [{"attributes": {
+        "address": "0xpool", "name": "TKN / WETH",
+        "reserve_in_usd": "250000", "base_token_price_usd": "1.0",
+        "pool_created_at": "2024-01-01T00:00:00Z",
+        "volume_usd": {"h24": "180000"},
+        "transactions": {"h24": {"buys": 40, "sells": 900,
+                                 "buyers": 35, "sellers": 640}}}}]}
+    hp = json.loads(json.dumps(_load("hp_matic.json")))
+    hp.setdefault("honeypotResult", {})["isHoneypot"] = True
+
+    # DexScreener empty forces the GeckoTerminal fallback.
+    install_stub([("dex/tokens", {"pairs": []}), ("dex/search", None),
+                  ("geckoterminal", gt), ("honeypot.is", hp)])
+    r = run(risk.assess(WETH, chain_hint="ethereum"))
+
+    bp = (r.get("evidence") or {}).get("best_pair") or {}
+    check("the fallback carries trade counts", bp.get("sells_24h"), str(bp))
+    check("and distinct sellers", bp.get("sellers_24h"), str(bp))
+    check("so the override can fire",
+          any("chain disagrees" in x["name"] for x in r["signals"]),
+          str([(x["severity"], x["name"]) for x in r["signals"]]))
+    check("and it is still never rated low", r["risk_level"] != "low", r["risk_level"])
 
 
 def test_clean_token_stays_low():

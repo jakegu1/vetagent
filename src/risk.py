@@ -558,6 +558,23 @@ def _gt_to_pair(p, address, network):
         "pairCreatedAt": a.get("pool_created_at"),
         "volume": {"h24": _num((a.get("volume_usd") or {}).get("h24"))},
         "priceChange": {"h24": (a.get("price_change_percentage") or {}).get("h24")},
+        # Trade counts, which this shim simply did not carry. _num(None) is 0.0, so the
+        # honeypot override's `sells >= N` could never hold and the whole "adjudicate,
+        # don't relay" mechanism was switched off for every token that resolves through
+        # this fallback -- 21% of the benchmark set, on the product's stated
+        # differentiator.
+        #
+        # GeckoTerminal also reports distinct buyers and sellers, which DexScreener does
+        # not. Carried through because it is the honest discriminator for the override:
+        # wash trading is cheap in transactions and expensive in funded addresses.
+        "txns": {"h24": {"buys": _num(((a.get("transactions") or {}).get("h24") or {})
+                                      .get("buys")),
+                         "sells": _num(((a.get("transactions") or {}).get("h24") or {})
+                                       .get("sells"))}},
+        "traders": {"h24": {"buyers": ((a.get("transactions") or {}).get("h24") or {})
+                            .get("buyers"),
+                            "sellers": ((a.get("transactions") or {}).get("h24") or {})
+                            .get("sellers")}},
         # The symbol comes along, because a consumer that needs it has no other source.
         # Without it _impersonation_signals found "" and returned, so the check was
         # silently skipped for every token that fell through to GeckoTerminal -- no
@@ -582,6 +599,7 @@ def _liquidity_signals(best, pairs, signals, evidence):
     evidence["best_pair"] = {
         "dex": best.get("dexId"), "chain": best.get("chainId"),
         "liquidity_usd": _sig_round(liq), "price_usd": _sig_round(best.get("priceUsd")),
+        "sellers_24h": ((best.get("traders") or {}).get("h24") or {}).get("sellers"),
         "volume_24h_usd": _sig_round(vol), "pair_created_at": best.get("pairCreatedAt"),
         "buys_24h": txns.get("buys"), "sells_24h": txns.get("sells"),
     }
@@ -1096,25 +1114,30 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
         # completed sells against $0 of remaining liquidity: people got out, and then
         # the pool was drained behind them. Past sells say nothing about whether you
         # can exit now, and this override is a claim about now.
-        # Overturning a positive detection is the most dangerous thing this engine does,
-        # and it used to be cheap to trigger: $5,000 of liquidity and twenty sells at a
-        # 15% sell-to-buy ratio. A whitelist honeypot's own wallets produce that in a day
-        # for the cost of gas, and the reward is having the fatal verdict on their token
-        # downgraded to a warning.
+        # Back to $5,000 / 20 sells / 15%, plus a distinct-seller bar where we have one.
         #
-        # The thresholds are deliberately much higher than the ones _sells_demonstrated
-        # uses for reporting. Same evidence, different job: reporting activity alongside
-        # an open question is free, while silencing a detection has to be paid for. The
-        # asymmetry is the point -- evidence good enough to raise an alarm is not
-        # automatically good enough to switch one off.
+        # I raised this to $25,000 / 100 / 30% in R10 on the reasoning that silencing a
+        # detection should cost more than raising one. The reasoning still stands; the
+        # implementation was wrong, and an external audit measured it: rerunning the same
+        # benchmark on the same cache with the old numbers against the new ones flips
+        # exactly 8 tokens medium -> high, **every one a false positive** -- 0% buy and
+        # sell tax, two-sided trading, no adversarial trait -- while the unsafe cohort
+        # detects identically at 5 of 9. Eight costs, zero benefit.
         #
-        # At $25,000 of standing liquidity, a hundred completed sells and a 30% ratio, a
-        # would-be attacker has to leave real money in a pool and generate real volume,
-        # while the genuine false positives this override exists for -- honeypot.is
-        # flagging established tokens that trade thousands of times a day -- clear it
-        # without noticing. Calibration is the owner's call; this is the conservative end.
-        pool_alive = _num(bp.get("liquidity_usd")) >= 25_000
-        sells_work = pool_alive and sells >= 100 and sells >= 0.30 * (buys + 1)
+        # The flaw is that a flat sell count penalises *depth*. PONS holds $25,585,025 and
+        # was rated high because only 28 sells cleared in a day, while a wash-trader on a
+        # $25,000 pool can produce a hundred. The bar was aimed at the wrong quantity.
+        #
+        # The honest discriminator is distinct sellers: wash trading is cheap in
+        # transactions and expensive in funded addresses. GeckoTerminal reports them and
+        # E-3 now carries them through. It is applied only where the number exists --
+        # DexScreener does not provide it, and demanding data 79% of tokens cannot supply
+        # would reinstate by omission the false positives this override exists to remove.
+        sellers = (bp.get("sellers_24h"))
+        pool_alive = _num(bp.get("liquidity_usd")) >= 5_000
+        sells_work = pool_alive and sells >= 20 and sells >= 0.15 * (buys + 1)
+        if sells_work and sellers is not None and _num(sellers) < 10:
+            sells_work = False      # many trades, few addresses: the wash-trading shape
         if sells_work:
             signals.append(_sig(
                 "warn", "Upstream calls this a honeypot, the chain disagrees",
