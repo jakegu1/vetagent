@@ -632,13 +632,29 @@ def _pair_created_ms(value):
     return None
 
 
+# How far ahead of us an upstream timestamp may be and still be read as "just now".
+# Generous on purpose: the cost of reading skew as newness is a freshness warning on a
+# new pool, and the cost of the reverse is no freshness check at all.
+_MAX_CLOCK_SKEW_DAYS = 2.0
+
+
 def _age_days(created_value, now=None):
     ms = _pair_created_ms(created_value)
     if ms is None:
         return None
     now = now or datetime.now(timezone.utc)
     days = (now.timestamp() * 1000 - ms) / 86400000.0
-    return int(days) if days >= 0 else None
+    # A timestamp slightly in the future is clock skew, and the honest reading of it is
+    # "brand new". Returning None instead made the freshness dimension vanish silently --
+    # no signal, no gap -- on precisely the pools it exists for: the ones created within a
+    # rounding error of now, which is the highest-risk window there is. A minute of skew
+    # between us and an upstream was enough to switch it off.
+    #
+    # Far enough ahead and skew stops being a credible explanation; that is a bad value,
+    # and a bad value is a gap rather than an age.
+    if days < 0:
+        return 0 if days > -_MAX_CLOCK_SKEW_DAYS else None
+    return int(days)
 
 
 def _gt_base_price(a):

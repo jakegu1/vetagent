@@ -7,6 +7,7 @@ Run:  python tests/test_risk.py
 """
 
 import asyncio
+import datetime
 import json
 import os
 import sys
@@ -401,6 +402,56 @@ def test_chain_activity_overrules_a_honeypot_verdict():
     check("missing txn data does not excuse the token",
           hp3 and hp3[0]["severity"] == "fatal",
           str([(x["severity"], x["name"]) for x in hp3]))
+
+
+def test_a_future_timestamp_is_not_a_missing_age():
+    """A pool created "in an hour" had no age, and so had no freshness at all.
+
+    Found by external audit. `_age_days` returned None for any timestamp at or after now,
+    and None makes the freshness dimension vanish silently -- no signal, no gap. The
+    tokens this hits are the ones whose creation time is within a rounding error of now:
+    **brand-new pools**, the highest-risk window, and the entire reason the freshness
+    signal exists. A minute of clock skew between us and an upstream was enough.
+
+    Same shape as the original `pairCreatedAt` bug, and the same shape as E11 generally:
+    an absence produced by our own arithmetic, reported as though the dimension had never
+    existed.
+
+    The two cases are told apart by size. A few hours ahead is skew, and the honest
+    reading is "brand new" -- age 0, freshness fires. A timestamp weeks ahead is not skew,
+    it is a bad value, and a bad value is a gap rather than an age.
+    """
+    print("\n[age] a pool from the future is new, or it is nonsense")
+
+    now = datetime.datetime(2026, 9, 6, 12, 0, 0, tzinfo=datetime.timezone.utc)
+
+    def age(delta_hours):
+        ms = int((now.timestamp() + delta_hours * 3600) * 1000)
+        return risk._age_days(ms, now=now)
+
+    check("a pool created right now is 0 days old", age(0) == 0, repr(age(0)))
+    check("an hour of clock skew is still 0 days old", age(1) == 0, repr(age(1)))
+    check("six hours ahead is still read as brand new", age(6) == 0, repr(age(6)))
+    check("two days ago is two days old", age(-48) == 2, repr(age(-48)))
+
+    # Far enough ahead that skew is not a credible explanation.
+    check("a timestamp weeks ahead is not an age", age(24 * 30) is None,
+          repr(age(24 * 30)))
+
+    # And the dimension must actually reach the caller for a fresh pool.
+    fresh = {"pairs": [{"chainId": "ethereum", "dexId": "uniswap",
+                        "baseToken": {"address": WETH, "symbol": "TKN"},
+                        "quoteToken": {"address": "0xq"}, "priceUsd": "1.0",
+                        "liquidity": {"usd": 50_000}, "volume": {"h24": 1_000},
+                        "txns": {"h24": {"buys": 10, "sells": 5}},
+                        "pairCreatedAt": int((datetime.datetime.now(
+                            datetime.timezone.utc).timestamp() + 3600) * 1000)}]}
+    install_stub([("dex/tokens", fresh), ("dex/search", {"pairs": []}),
+                  ("honeypot.is", _load("hp_matic.json"))])
+    r = run(risk.assess(WETH, chain_hint="ethereum"))
+    check("a pool timestamped an hour ahead still gets a freshness signal",
+          any(x["category"] == "freshness" for x in r["signals"]),
+          str([(x["category"], x["name"]) for x in r["signals"]]))
 
 
 def test_the_escalation_must_know_where_it_looked():
