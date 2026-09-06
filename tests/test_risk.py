@@ -404,6 +404,81 @@ def test_chain_activity_overrules_a_honeypot_verdict():
           str([(x["severity"], x["name"]) for x in hp3]))
 
 
+def test_a_dust_reserve_is_not_a_measurement():
+    """$0.000000000019 is not a pool depth, and we reported it as one.
+
+    Found by external audit. GeckoTerminal reported `reserve_in_usd:
+    "0.00000000001920487286"` for TRUMP on base, alongside `volume_usd.h24: "0.0"` --
+    while GT's *own* OHLCV endpoint reported $567,990 of seven-day volume for the same
+    pool. The engine took the figure at face value and emitted "Very low liquidity ... Main
+    pair holds only $0" and "0.0% turnover", a specific-sounding finding assembled out of
+    a number that cannot be true.
+
+    Seven of 559 benchmark rows carry a figure below $0.000001, which is not a pool depth
+    at any supply or price. A further 58 sit between $0.000001 and $1, and those are
+    plausible dust -- real, tiny, and none of this applies to them. The floor is set to
+    separate the two rather than to tidy up small numbers.
+
+    `_valid` rejects only an exact zero, and its comment correctly argues that a *price*
+    floor would be wrong: supply and price are reciprocal, so a quadrillion-supply coin
+    trades at 1e-22 and is perfectly real. That argument does not transfer to a **USD
+    reserve**, which is denominated in dollars and has no such reciprocal. The same `> 0`
+    test was guarding both.
+
+    Fail-closed then does the rest: an unreported depth is a gap, and a gap cannot buy
+    reassurance. What it must not do is get dressed up as a measurement.
+    """
+    print("\n[dust] a number that cannot be a depth is not a depth")
+
+    def pair(liq):
+        p = {"chainId": "ethereum", "dexId": "uniswap",
+             "baseToken": {"address": WETH, "symbol": "TKN"},
+             "quoteToken": {"address": "0xq"}, "priceUsd": "1.0",
+             "volume": {"h24": 0}, "txns": {"h24": {"buys": 174, "sells": 104}},
+             "pairCreatedAt": 1589841515000}
+        p["liquidity"] = {"usd": liq}
+        return p
+
+    # -- The reader itself. ---------------------------------------------------
+    check("an impossible reserve is not a stated depth",
+          risk._reported_liquidity(pair("0.00000000001920487286")) is None,
+          repr(risk._reported_liquidity(pair("0.00000000001920487286"))))
+    check("a real zero is still a stated depth",
+          risk._reported_liquidity(pair(0)) == 0.0,
+          repr(risk._reported_liquidity(pair(0))))
+    check("plausible dust is still a measurement",
+          risk._reported_liquidity(pair("0.5")) == 0.5,
+          repr(risk._reported_liquidity(pair("0.5"))))
+    check("and so is a normal pool",
+          risk._reported_liquidity(pair(250_000)) == 250_000,
+          repr(risk._reported_liquidity(pair(250_000))))
+
+    # -- And what the caller is told. -----------------------------------------
+    install_stub([("dex/tokens", {"pairs": [pair("0.00000000001920487286")]}),
+                  ("dex/search", {"pairs": []}),
+                  ("honeypot.is", _load("hp_matic.json"))])
+    r = run(risk.assess(WETH, chain_hint="ethereum"))
+    text = json.dumps(r)
+    check("we do not tell the caller the pool holds $0",
+          "holds only $0." not in text and "holds only $0 " not in text,
+          str([x["message"] for x in r["signals"] if x["category"] == "liquidity"]))
+    check("the depth is recorded as a gap instead",
+          any(g.get("dimension") == "liquidity"
+              for g in (r.get("evidence") or {}).get("data_gaps") or []),
+          str((r.get("evidence") or {}).get("data_gaps")))
+    check("and the verdict is not low", r["risk_level"] != "low", r["risk_level"])
+
+    # -- An impossible reserve must not win the pool selection either. --------
+    install_stub([("dex/tokens", {"pairs": [pair("0.00000000001920487286"),
+                                            pair(250_000)]}),
+                  ("dex/search", {"pairs": []}),
+                  ("honeypot.is", _load("hp_matic.json"))])
+    r2 = run(risk.assess(WETH, chain_hint="ethereum"))
+    best = (r2.get("evidence") or {}).get("best_pair") or {}
+    check("a real pool beats an impossible one", best.get("liquidity_usd") == 250_000,
+          repr(best.get("liquidity_usd")))
+
+
 def test_a_future_timestamp_is_not_a_missing_age():
     """A pool created "in an hour" had no age, and so had no freshness at all.
 

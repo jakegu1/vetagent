@@ -461,6 +461,12 @@ def _finalize(address, signals, evidence, data_gaps):
 
 # ---------------------------------------------------------------- pool selection
 
+# Below this, a stated USD depth is not a small pool but a broken number. Set to
+# separate the impossible from the merely tiny: 7 of 559 benchmark rows fall below it,
+# while the 58 rows between it and $1 are plausible dust and are left alone.
+_MIN_CREDIBLE_DEPTH_USD = 1e-6
+
+
 def _pair_liquidity(pair):
     """Depth in USD, with an unreported depth counted as zero.
 
@@ -487,7 +493,25 @@ def _reported_liquidity(pair):
     liq = pair.get("liquidity") or {}
     for v in (liq.get("usd"), pair.get("reserveInUsd")):
         if v is not None and v != "":
-            return _num(v)
+            n = _num(v)
+            # A figure this small is not a small pool, it is a broken number, and it was
+            # being spent as a measurement: GeckoTerminal reported reserve_in_usd
+            # 0.0000000000192 for a pool its own OHLCV endpoint credited with $567,990 of
+            # weekly volume, and the engine turned that into "Main pair holds only $0.
+            # High rug and slippage risk." -- a specific-sounding finding assembled from a
+            # value that cannot be true.
+            #
+            # Zero itself is exempt: a pool stating zero is stating something, and the
+            # drained-rug verdict is built on exactly that statement.
+            #
+            # _valid rejects only an exact zero, and its comment rightly argues a *price*
+            # floor would be wrong -- supply and price are reciprocal, so a
+            # quadrillion-supply coin trades at 1e-22 and is perfectly real. That argument
+            # does not transfer to a USD reserve, which is denominated in dollars and has
+            # no reciprocal. One `> 0` test was guarding both quantities.
+            if n != 0 and abs(n) < _MIN_CREDIBLE_DEPTH_USD:
+                return None
+            return n
     return None
 
 
