@@ -53,8 +53,19 @@ def rows_of(resp):
 
 # Our own traffic, excluded from the external-caller count. Add to this list rather than
 # reasoning about it later: the whole value of the gate is that it can come back "no".
-SELF_CLIENTS = {"curl", "python-requests", "vetagent-bench",
-                "vetagent-contract-test", "unknown"}
+# Only names WE chose for our own tooling. Nothing else can be assumed to be us.
+#
+# This set used to contain "unknown", "curl" and "python-requests" as well, and that cost
+# 19 tool calls -- 16% of all tool use in 14 days -- which were filtered out and never
+# looked at. "unknown" is what `_client_name` returns when a request carries no
+# User-Agent at all: that is UNIDENTIFIED, not ours. And curl and python-requests are
+# what any integrator reaches for first while trying a server out.
+#
+# The arithmetic that exposed it: 83 + 22 + 15 = 120 tool calls by tool, against 101
+# attributed to the four clients the gate printed. A single genuine adopter making two
+# calls sits exactly in that gap, and the gate was reporting on a set it had silently
+# truncated.
+SELF_CLIENTS = {"vetagent-bench", "vetagent-contract-test"}
 
 # Clients that are OURS and also the most likely shape of a real user, so they can be
 # neither counted nor silently dropped.
@@ -71,7 +82,9 @@ SELF_CLIENTS = {"curl", "python-requests", "vetagent-bench",
 # customer. So the number is reported on its own line, with the ambiguity stated, and the
 # owner can settle it in one move: remove vetagent from the owner's own MCP config, after
 # which any claude-code traffic is external by construction.
-AMBIGUOUS_CLIENTS = {"claude-code"}
+AMBIGUOUS_CLIENTS = {"claude-code", "curl", "python-requests", "unknown",
+                     "node", "undici", "mozilla", "python-httpx", "python-httpx2",
+                     "go-http-client", "bun"}
 OWNER_COUNTRIES = {"CN"}
 
 
@@ -317,6 +330,25 @@ def main():
 
     if tools:
         print_profile(caller_profile(account, token, since, tools), tools)
+
+    # Does the per-client attribution account for every tool call? It did not, and
+    # nothing noticed: 120 calls by tool against 101 attributed, so 19 belonged to
+    # clients the gate had filtered out as "ours". A gate that silently drops a sixth of
+    # its own evidence is not measuring what it claims to.
+    by_tool = query(
+        "SELECT sum(_sample_interval) AS n FROM %s WHERE timestamp > now() - %s "
+        "AND %s != '' AND NOT startsWith(%s, '__')"
+        % (DATASET, since, BLOB["tool"], BLOB["tool"]), account, token)
+    tot_rows = rows_of(by_tool)
+    if tot_rows:
+        total_tool_calls = int(float(tot_rows[0].get("n") or 0))
+        attributed = sum(r["n"] for _, r in (tools or []))
+        print("\n  reconciliation: %d tool calls recorded, %d attributed above"
+              % (total_tool_calls, attributed))
+        if total_tool_calls != attributed:
+            print("  %d UNATTRIBUTED -- these belong to clients filtered out as ours."
+                  % (total_tool_calls - attributed))
+            print("  A single genuine adopter making two calls sits exactly there.")
 
     print("\n  for context, clients that merely connected: %d" % len(ext or []))
     if ext:

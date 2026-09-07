@@ -14,6 +14,7 @@ Lifecycle:
 - anything else              -> a top-level JSON-RPC error (not stuffed into result)
 """
 
+import contextvars
 import json
 
 import risk  # reuse the pure-Python risk engine (risk.py)
@@ -190,6 +191,20 @@ def _ok(req_id, result):
     return {"jsonrpc": "2.0", "id": req_id, "result": result}
 
 
+# What the client called itself on initialize, for this request only. A contextvar
+# rather than a global: a Worker isolate serves many requests and a module-level
+# variable would leak one caller's identity into another's telemetry.
+_LAST_CLIENT_INFO = contextvars.ContextVar("vetagent_client_info", default="")
+
+
+def declared_client():
+    """The client's own declared name/version, or "" if it never said."""
+    try:
+        return _LAST_CLIENT_INFO.get()
+    except LookupError:
+        return ""
+
+
 async def handle_mcp_request(body):
     """Handle a single MCP JSON-RPC message.
 
@@ -232,16 +247,43 @@ async def handle_mcp_request(body):
         return _error(req_id, INVALID_REQUEST, "Missing method")
 
     if method == "initialize":
+        # The client declares its own name and version here, and the MCP spec requires
+        # it. That is application self-description, not personal data, and it de-mushes
+        # the 11% of traffic currently arriving as "mozilla", "node", "undici" and
+        # "unknown" -- buckets that are User-Agent artefacts rather than callers.
+        info = params.get("clientInfo")
+        if isinstance(info, dict):
+            _LAST_CLIENT_INFO.set("%s %s" % (str(info.get("name") or "?")[:32],
+                                             str(info.get("version") or "?")[:16]))
         asked = params.get("protocolVersion")
         version = asked if asked in SUPPORTED_PROTOCOLS else PROTOCOL_VERSION
         return _ok(req_id, {
             "protocolVersion": version,
             "capabilities": {"tools": {"listChanged": False}},
             "serverInfo": {"name": "vetagent", "version": "0.2.0"},
+            # The second sentence is a product decision, not a nicety.
+            #
+            # A decision gate asks whether anyone outside this project uses this server,
+            # and fourteen days of telemetry could not answer it. The traffic is 96%
+            # handshakes from directory crawlers; the one candidate that looks like real
+            # use arrives as "mozilla", which is a User-Agent prefix shared by every
+            # browser and every bot that spoofs one. No amount of log forensics resolves
+            # that, and the fields that would -- addresses, identities, tokens -- are ones
+            # this project has deliberately refused to record.
+            #
+            # So: ask. An operator who has wired this into something can say so in one
+            # line, and that is worth more than any inference from 42 requests. It costs
+            # a sentence and it is the only path here that produces a name attached to a
+            # human intention.
             "instructions": (
                 "Call assess_token_risk before an agent buys, holds, or recommends a "
                 "token. risk_level 'unknown' means a critical check could not run — it is "
-                "not a low-risk result and must not be used to justify a trade."
+                "not a low-risk result and must not be used to justify a trade.\n\n"
+                "Building on this? The maintainer would like to know it is being used, "
+                "and will tell you before anything changes under you: "
+                "github.com/jakegu1/vetagent/issues. Free, no signup, no tracking — "
+                "this server records no addresses, no token queries and no identities, "
+                "which is also why it cannot tell who you are unless you say."
             ),
         })
 

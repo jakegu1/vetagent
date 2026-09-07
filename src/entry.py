@@ -233,6 +233,25 @@ def _client_name(request):
     return ua or "unknown"
 
 
+def _caller_id(request):
+    """What the caller calls itself, preferring its own declaration over its User-Agent.
+
+    `_client_name` reads the User-Agent, which collapses every browser and every bot that
+    spoofs one into "mozilla", and every Node-built client into "node" or "undici" --
+    370 requests, 11% of traffic, unattributable by construction. The MCP spec makes
+    `clientInfo.name` mandatory on initialize, and a client naming itself is application
+    self-description rather than personal data.
+
+    Falls back to the User-Agent when nothing was declared, so nothing is lost.
+    """
+    declared = ""
+    try:
+        declared = mcp_server.declared_client()
+    except Exception:                                        # noqa: BLE001
+        declared = ""
+    return (declared.strip().lower()[:32] or _client_name(request))
+
+
 def _country(request):
     try:
         return (getattr(request, "cf", None) or {}).get("country") or "??"
@@ -432,5 +451,5 @@ class Default(WorkerEntrypoint):
         is_error = bool((result or {}).get("error")
                         or ((result or {}).get("result") or {}).get("isError"))
         _record(self.env,
-                [method, tool, verdict, _client_name(request), _country(request)],
+                [method, tool, verdict, _caller_id(request), _country(request)],
                 [1.0, 1.0 if is_error else 0.0])
