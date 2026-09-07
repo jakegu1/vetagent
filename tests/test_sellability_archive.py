@@ -354,6 +354,14 @@ def test_the_manifest_separates_a_failed_page_from_an_empty_one():
           '"outcome": "ok"' in body and '"rows": page_rows' in body)
     check("a failed page raises a CI warning rather than passing quietly",
           "::warning::" in src and "page fetches failed" in src)
+    # A failed page used to end the whole chain/kind. The first CI pass with a manifest
+    # reported nine failures across all eight chains, five of them on page 1 -- so those
+    # combinations collected nothing at all, and it read downstream as a quiet market.
+    check("a failed page does not abandon the rest of the chain",
+          "misses += 1" in body and "continue" in body.split("misses += 1")[1][:400],
+          "one bad page must not discard pages 2-5")
+    check("but it does give up after a second miss",
+          "if misses >= 2:" in body, "otherwise a rate limit is hammered")
 
     d = os.path.join(ROOT, "bench", "snapshots")
     runs = sorted(f for f in (os.listdir(d) if os.path.isdir(d) else [])

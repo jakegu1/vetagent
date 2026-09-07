@@ -28,6 +28,7 @@ import io
 import json
 import os
 import sys
+import time
 from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -138,7 +139,7 @@ def collect(chains, pages=5):
     for chain in chains:
         for kind, path, n_pages in (("new", "new_pools", pages),
                                     ("trending", "trending_pools", 1)):
-            got = 0
+            got, misses = 0, 0
             for page in range(1, n_pages + 1):
                 url = ("https://api.geckoterminal.com/api/v2/networks/%s/%s?page=%d"
                        % (chain, path, page))
@@ -151,11 +152,27 @@ def collect(chains, pages=5):
                     # "page 3 timed out and we stopped". Downstream those are identical,
                     # and no later analysis can separate them -- the information was
                     # never written down. Recorded now, per page, in the manifest.
+                    #
+                    # And recording it immediately proved the `break` was wrong too. The
+                    # first CI pass with a manifest reported NINE failed page fetches
+                    # across all eight chains, five of them on page 1 -- which under the
+                    # old rule meant those chain/kind combinations collected nothing at
+                    # all, silently. It also explains the daily row counts that looked
+                    # like market variance (160 / 664 / 2252 / 1468 / 359) and were
+                    # partly fetch-failure variance.
+                    #
+                    # Pages are independent listings, so a failed one is a hole, not an
+                    # ending. Back off, take the next page, and only give up on this
+                    # chain after two misses -- past that it is a rate limit rather than
+                    # a blip, and hammering it makes things worse for the next chain.
                     manifest.append({"seen_at": seen_at, "chain": chain, "kind": kind,
                                      "page": page, "outcome": "fetch_failed", "rows": 0})
-                    if page == 1:
-                        print("  %-8s %-9s fetch failed" % (chain, kind))
-                    break
+                    misses += 1
+                    print("  %-8s %-9s page %d failed" % (chain, kind, page))
+                    if misses >= 2:
+                        break
+                    time.sleep(3.0 * misses)
+                    continue
                 pools = data.get("data") or []
                 page_rows = 0
                 if not pools:
