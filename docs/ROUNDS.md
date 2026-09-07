@@ -31,7 +31,7 @@ The maturity score for each round is read from `docs/SCORECARD.md` **as it stood
 10 snapshot-job commits are excluded up to the last closed round: they are data collection, not development, and would bury the rounds. The job commits daily, so counting them past that point would date this file every morning.
 
 
-**R16 -- Next** is open: Open. Its commits are listed here once it closes.
+**R16 -- Make the gate readable, then stop** is open: Instrumented /assess. `_record_call` was reachable only from `_handle_mcp`, so every HTTP request was invisible and the gate deciding whether to keep building had been reading one of the two interfaces the product exposes -- and the one an integrator reaches for first. Pinned the invariant that made adding telemetry safe: the token address is still never recorded. Then wrote Experiment C, the post that publishes the benchmark, and put its figures under the same guard as every other published number -- including the 10% dead-token recall it is built around, which was quoted in three places and computed in none. No engine features: every branch of the 09-18 gate says do Experiment C. Its commits are listed here once it closes.
 
 ---
 

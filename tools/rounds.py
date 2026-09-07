@@ -116,7 +116,17 @@ ROUNDS = [
      "250 contracts of bytecode are now committed -- measured against GoPlus's per-flag "
      "fields the scan finds 0% of pausable and 6% of mutable-tax, and the selectors that "
      "would reproduce the original table detect a launch gate, not a pause switch."),
-    ("R16", "Next", None,
+    ("R16", "Make the gate readable, then stop", None,
+     "Instrumented /assess. `_record_call` was reachable only from `_handle_mcp`, so "
+     "every HTTP request was invisible and the gate deciding whether to keep building "
+     "had been reading one of the two interfaces the product exposes -- and the one an "
+     "integrator reaches for first. Pinned the invariant that made adding telemetry "
+     "safe: the token address is still never recorded. Then wrote Experiment C, the "
+     "post that publishes the benchmark, and put its figures under the same guard as "
+     "every other published number -- including the 10% dead-token recall it is built "
+     "around, which was quoted in three places and computed in none. No engine "
+     "features: every branch of the 09-18 gate says do Experiment C."),
+    ("R17", "Next", None,
      "Open."),
 ]
 

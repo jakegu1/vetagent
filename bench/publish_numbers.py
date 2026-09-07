@@ -84,6 +84,17 @@ TARGETS = [
     ("src/entry.py", r"Dead tokens not rated low \.+ [\d.]+% \(\d+ of (\d+)\)", "dead_n"),
     ("README.md", r"Sampling has turned up (\d+) dead tokens in \d+", "dead_n"),
     ("README.md", r"Sampling has turned up \d+ dead tokens in (\d+)", "n"),
+    # docs/EXPERIMENT_C.md is the text that goes to Hacker News and Reddit. A number
+    # that drifts there is worse than one that drifts in the README: it is quoted in
+    # public, by us, to an audience invited specifically to check it.
+    ("docs/EXPERIMENT_C.md", r"\| \*\*([\d.]+)%\*\* \(7 of \d+\) \|", "fp_pct"),
+    ("docs/EXPERIMENT_C.md", r"\| \*\*([\d.]+)%\*\* \(88 of \d+\) \|", "unknown_pct"),
+    ("docs/EXPERIMENT_C.md", r"\| \*\*([\d.]+)%\*\* \(41 of \d+\) \|",
+     "centralized_high_pct"),
+    ("docs/EXPERIMENT_C.md", r"\| ([\d.]+)% \(26 of \d+\) \|", "dead_not_low_pct"),
+    ("docs/EXPERIMENT_C.md", r"\| \*\*([\d.]+)%\*\* \(3 of \d+\) \|", "dead_high_pct"),
+    ("docs/EXPERIMENT_C.md", r"we rate only ([\d.]+)%", "dead_high_pct_round"),
+    ("docs/EXPERIMENT_C.md", r"([\d.]+)% dead-token recall", "dead_high_pct_round"),
     ("docs/AUDIT_BRIEF.md", r"false positives ([\d.]+)%", "fp_pct"),
     ("docs/AUDIT_BRIEF.md", r"unknown ([\d.]+)%", "unknown_pct"),
     ("docs/AUDIT_BRIEF.md", r"(\d+) dead samples", "dead_n"),
@@ -117,6 +128,13 @@ def figures():
         "centralized_n": "%d" % len(centralized),
         "centralized_high_pct": ("%.1f" % (100.0 * len(centralized_high) / len(centralized))
                                  if centralized else "0.0"),
+        # The least flattering figure in the whole benchmark, and the one the Experiment
+        # C post is built around: of the tokens that actually died, how many did we rate
+        # high. It was quoted in three places and computed in none.
+        "dead_high_pct_round": ("%.0f" % (100.0 * len([r for r in dead if r["verdict"] == "high"])
+                                          / len(dead)) if dead else "0"),
+        "dead_high_pct": ("%.1f" % (100.0 * len([r for r in dead if r["verdict"] == "high"])
+                                    / len(dead)) if dead else "0.0"),
         "dead_not_low_pct": ("%.1f" % (100.0 * len([r for r in dead if r["verdict"] != "low"])
                                        / len(dead)) if dead else "0.0"),
         "dead_not_low_n": "%d" % len([r for r in dead if r["verdict"] != "low"]),
@@ -153,6 +171,15 @@ def scan(write):
 _EXEMPT_CONTEXT = (
     "Rejected.",           # a historical measurement of a signal we removed (LP lock/burn)
     "What 100 looks like",  # the scorecard's aspiration block, not a measurement
+    # Other vendors' published claims, quoted in the Experiment C post so that we are the
+    # ones who already know the counterexamples rather than the ones corrected by a
+    # commenter. They are their numbers, not ours, and must not track our benchmark.
+    "Hypernative", "Forta", "Blockaid", "ChainAware", "HoneypotScan", "Solsniffer",
+    # Measurements of things we chose NOT to ship, quoted as evidence against ourselves.
+    "worse than chance",
+    "0% of pausable",
+    # The pool-match rate, which is computed in run_benchmark and not by this script.
+    "same pool only",
 )
 
 _CLAIM_WORDS = ("false positive", "unknown", "centralised", "centralized",
