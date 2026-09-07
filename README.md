@@ -23,6 +23,47 @@ Remote MCP endpoint: **`https://vetagent.dev/mcp`** · Landing page: **https://v
 
 ---
 
+## Install
+
+Nothing to install. It is a remote server: no package, no container, no API key, no
+signup. Add one URL.
+
+Claude Code:
+
+```bash
+claude mcp add --transport http vetagent https://vetagent.dev/mcp
+```
+
+Cline, Cursor, Claude Desktop, or any other MCP client — add to the MCP config:
+
+```json
+{
+  "mcpServers": {
+    "vetagent": {
+      "type": "http",
+      "url": "https://vetagent.dev/mcp"
+    }
+  }
+}
+```
+
+Confirm it worked — three tools should come back:
+
+```bash
+curl -s -X POST https://vetagent.dev/mcp \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+Not using MCP? The same engine answers over plain HTTP:
+`GET https://vetagent.dev/assess/<address>`
+
+See [`llms-install.md`](llms-install.md) for the version written for an agent doing the
+installing, and [`docs/AGENT-INTEGRATION.md`](docs/AGENT-INTEGRATION.md) for how to use
+the output once connected.
+
+---
+
 ## `unknown` is not `low`
 
 This is the single most important thing to know about the output.
