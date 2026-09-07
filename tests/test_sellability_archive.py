@@ -386,6 +386,31 @@ def test_the_manifest_separates_a_failed_page_from_an_empty_one():
     check("every manifest row is well formed", not bad, "; ".join(bad[:3]))
 
 
+def test_no_single_chain_can_take_the_whole_budget():
+    """BSC launches fastest, and honeypot.is answers for it 0% of the time.
+
+    Measured over the first 53 probes: base 3/3 answered, eth 2/2 answered, bsc 0 of 48.
+    Youngest-first sorting handed BSC the entire quota -- one CI pass spent all 25
+    requests there and answered none. The two chains that answer every time got nothing.
+    """
+    print("\n[archive] one prolific chain must not starve the others")
+    rows = []
+    for i in range(30):                       # bsc floods the candidate list
+        rows.append({"kind": "new", "chain": "bsc", "base_token": "bsc_0x%040d" % i,
+                     "pool_address": "0x" + "b" * 40,
+                     "pool_created_at": "2026-09-07T15:%02d:00Z" % (i % 60)})
+    for i in range(3):
+        rows.append({"kind": "new", "chain": "base", "base_token": "base_0x%040d" % (900 + i),
+                     "pool_address": "0x" + "c" * 40,
+                     "pool_created_at": "2026-09-07T09:0%d:00Z" % i})
+    out, _ = _probe({"simulationSuccess": True}, rows=rows, limit=6)
+    chains = set(r["chain"] for r in out)
+    check("base is reached even though bsc floods the list", "base" in chains, str(chains))
+    check("and bsc does not take all six",
+          sum(1 for r in out if r["chain"] == "bsc") < 6,
+          str([r["chain"] for r in out]))
+
+
 def test_the_workflow_actually_runs_it():
     """A probe the scheduled job never calls collects nothing, forever.
 

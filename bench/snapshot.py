@@ -219,6 +219,25 @@ def _address_of(token_id, chain):
 _MAX_ATTEMPTS = 3
 
 
+def _round_robin_by_chain(rows):
+    """Interleave an already-ranked list so each chain takes turns.
+
+    Preserves the ranking within a chain, so the best candidate on each is still reached
+    first -- it only stops one prolific chain consuming the whole budget.
+    """
+    order, buckets = [], {}
+    for r in rows:
+        buckets.setdefault(r.get("chain"), []).append(r)
+    chains = list(buckets)
+    i = 0
+    while any(buckets[c] for c in chains):
+        c = chains[i % len(chains)]
+        if buckets[c]:
+            order.append(buckets[c].pop(0))
+        i += 1
+    return order
+
+
 def _unsimulatable(row):
     """1 if honeypot.is structurally cannot answer for this pool, 0 otherwise.
 
@@ -305,14 +324,29 @@ def probe_sellability(rows, seen_at, limit):
     fresh = [r for r in rows
              if r.get("kind") == "new" and r.get("chain") in _SIM_CHAIN_ID
              and r.get("base_token")]
-    # Answerable venues first, then youngest.
+    # Answerable venues first, then youngest -- and then shared out across chains.
     #
     # Youngest-first alone was the whole rule, and it aimed the budget straight at
-    # Uniswap V4 launches -- which honeypot.is cannot simulate, because it wants a pair
-    # address and a V4 pool is a 32-byte pool id with no pair. Those come back unanswered
-    # 79% of the time. Deprioritised rather than skipped: the other 21% do answer, and a
-    # V4 pool still gets probed whenever the budget outlasts the answerable candidates.
+    # Uniswap V4 launches, which honeypot.is cannot simulate: it wants a pair address and
+    # a V4 pool is a 32-byte pool id with no pair. Those come back unanswered 79% of the
+    # time. Deprioritised rather than skipped -- the other 21% do answer.
+    #
+    # Sorting by age alone had a second and larger cost, and it took the `outcome` field
+    # to see it. BSC launches new pools faster than the other two chains combined, so
+    # youngest-first handed it the ENTIRE budget: one CI pass spent all 25 requests on
+    # BSC and answered none. Measured across the first 53 probes:
+    #
+    #     base   3 ok,  0 no_record   100%
+    #     eth    2 ok,  0 no_record   100%
+    #     bsc    0 ok, 48 no_record     0%
+    #
+    # honeypot.is simply does not index new BSC tokens on this timescale. So 48 of 53
+    # requests bought nothing, and the two chains that answer every time were starved.
+    # Round-robin rather than dropping BSC or weighting by the measured rate: 53 samples
+    # is thin, coverage can change, and a fixed share bounds the waste at a third while
+    # leaving the door open. `_MAX_ATTEMPTS` already caps what any one token can burn.
     fresh.sort(key=lambda r: (_unsimulatable(r), _neg_time(r)))
+    fresh = _round_robin_by_chain(fresh)
 
     out, asked = [], set()
     for r in fresh:
