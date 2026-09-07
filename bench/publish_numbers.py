@@ -95,6 +95,12 @@ TARGETS = [
     ("docs/EXPERIMENT_C.md", r"\| \*\*([\d.]+)%\*\* \(3 of \d+\) \|", "dead_high_pct"),
     ("docs/EXPERIMENT_C.md", r"we rate only ([\d.]+)%", "dead_high_pct_round"),
     ("docs/EXPERIMENT_C.md", r"([\d.]+)% dead-token recall", "dead_high_pct_round"),
+    ("docs/EXPERIMENT_C.md", r"GoPlus's labels it is ([\d.]+)%", "goplus_fp_pct"),
+    ("docs/EXPERIMENT_C.md", r"same pool only ([\d.]+)% of the time", "pool_match_pct"),
+    ("docs/EXPERIMENT_C.md", r"\*\*([\d.]+)% of the dataset is Base",
+     "base_share_pct"),
+    ("docs/EXPERIMENT_C.md", r"adversarial cohort is ([\d.]+)% Base", "bad_base_share_pct"),
+    ("docs/EXPERIMENT_C.md", r"dataset is ([\d.]+)% Base\" and", "base_share_pct"),
     ("docs/AUDIT_BRIEF.md", r"false positives ([\d.]+)%", "fp_pct"),
     ("docs/AUDIT_BRIEF.md", r"unknown ([\d.]+)%", "unknown_pct"),
     ("docs/AUDIT_BRIEF.md", r"(\d+) dead samples", "dead_n"),
@@ -107,7 +113,14 @@ TARGETS = [
 def figures():
     """The numbers a reader is entitled to, straight from the last benchmark run."""
     with io.open(RESULTS, encoding="utf-8") as f:
-        rows = json.load(f)["rows"]
+        data = json.load(f)
+    rows = data["rows"]
+    comp = (data.get("composition") or {}).get("all") or {"n": 0, "chain": {}}
+    bad = (data.get("composition") or {}).get("bad") or {"n": 0, "chain": {}}
+    goplus_good = (((data.get("goplus") or {}).get("full") or {}).get("good") or {})
+    pool_both = [r for r in rows if r.get("engine_pool") and r.get("labelled_pool")]
+    pool_same = [r for r in pool_both
+                 if str(r["engine_pool"]).lower() == str(r["labelled_pool"]).lower()]
 
     alive = [r for r in rows if r.get("outcome_label") == "alive"]
     dead = [r for r in rows if r.get("outcome_label") == "dead"]
@@ -138,6 +151,19 @@ def figures():
         "dead_not_low_pct": ("%.1f" % (100.0 * len([r for r in dead if r["verdict"] != "low"])
                                        / len(dead)) if dead else "0.0"),
         "dead_not_low_n": "%d" % len([r for r in dead if r["verdict"] != "low"]),
+        # Everything below was quoted in the Experiment C post and computed nowhere. The
+        # exercise of making them computable found one of them wrong: the post said
+        # "83% of the dataset is Base" twice. The dataset is 58% Base. 83% is the
+        # ADVERSARIAL COHORT, which is 47 tokens, not 576 -- a real weakness of the
+        # sampling, misattributed to a set twelve times larger.
+        "goplus_fp_pct": "%.1f" % (100.0 * goplus_good.get("high", 0.0)),
+        "base_share_pct": ("%.0f" % (100.0 * comp["chain"].get("base", 0) / comp["n"])
+                           if comp.get("n") else "0"),
+        "bad_base_share_pct": ("%.0f" % (100.0 * bad["chain"].get("base", 0) / bad["n"])
+                               if bad.get("n") else "0"),
+        "bad_n": "%d" % bad.get("n", 0),
+        "pool_match_pct": ("%.0f" % (100.0 * len(pool_same) / len(pool_both))
+                           if pool_both else "0"),
     }
 
 
@@ -177,55 +203,86 @@ _EXEMPT_CONTEXT = (
     "Hypernative", "Forta", "Blockaid", "ChainAware", "HoneypotScan", "Solsniffer",
     # Measurements of things we chose NOT to ship, quoted as evidence against ourselves.
     "worse than chance",
-    "0% of pausable",
+    "37% of the contracts",   # owner-power recall, measured by bench/owner_powers_measure.py
     # The pool-match rate, which is computed in run_benchmark and not by this script.
     "same pool only",
 )
 
-_CLAIM_WORDS = ("false positive", "unknown", "centralised", "centralized",
-                "flagged high", "not rated low", "confirmed-dead", "recall",
-                "dead token")
+# Files a reader takes as this tool's CURRENT accuracy claim. Every percentage in one of
+# these must be computed from results.json, exempt by name, or written as a target (<, >).
+#
+# Keyword gating used to decide what counted as a claim: a percentage was only checked if
+# its line contained one of nine phrases. An audit walked straight through it with four
+# mutations -- a percentage on a line without a keyword, "flags 12.3% of healthy tokens",
+# a stale count with no percent sign, and anything on a line containing "Rejected."
+# A guard with a keyword list is a guard with a documented bypass.
+LIVE_CLAIM_FILES = ("README.md", "src/landing.html", "src/entry.py",
+                    "docs/AUDIT_BRIEF.md", "docs/EXPERIMENT_C.md", "docs/SCORECARD.md")
+
+# Logs are frozen ON PURPOSE and are excluded ON PURPOSE, not by oversight. ROUNDS.md is
+# generated from commit messages; DECISIONS, HANDOFF, BACKLOG, OPPORTUNITIES and STRATEGY
+# record what was believed and measured at a date, including numbers later withdrawn. A
+# guard that rewrote those would erase the corrections this project is built on.
+FROZEN_LOG_FILES = ("docs/ROUNDS.md", "docs/DECISIONS.md", "docs/HANDOFF.md",
+                    "docs/BACKLOG.md", "docs/OPPORTUNITIES.md", "docs/STRATEGY.md")
+
+# (file, exact substring that must appear on the line) -- scoped to one file each, so an
+# exemption written for one sentence cannot silently cover a new number somewhere else.
+# "Rejected." as a bare global substring exempted every line that happened to contain it.
+_EXEMPT_LINES = (
+    ("docs/AUDIT_BRIEF.md", "Rejected."),
+    ("docs/EXPERIMENT_C.md", "Hypernative"),
+    ("docs/EXPERIMENT_C.md", "Blockaid"),
+    ("docs/EXPERIMENT_C.md", "sensitivity /"),
+    ("docs/EXPERIMENT_C.md", "LP lock/burn detection fires on"),
+    ("docs/EXPERIMENT_C.md", "the scan finds"),      # owner-power recall, see below
+    ("docs/EXPERIMENT_C.md", "those that can blacklist"),
+    ("docs/SCORECARD.md", "What 100 looks like"),
+)
+
+# Percentages inside a <style> block are CSS, not claims.
+_CSS = re.compile(r"<style[^>]*>.*?</style>", re.S | re.I)
 
 
 def unclaimed_percentages():
-    """Percentages on accuracy lines that no TARGET pattern captures.
+    """Every percentage in a live-claim file that no TARGET computes.
 
-    Adding a target for each number found by an audit fixes those four numbers and
-    nothing else -- the next hand-written figure is unguarded again, which is exactly
-    how these four got there. Four separate numbers drifted, all in the same direction,
-    in the product whose single differentiator is that its numbers can be checked.
+    Adding a target for each number an audit finds fixes those numbers and nothing else:
+    the next hand-written figure is unguarded again, which is exactly how four of them
+    got there. So the check is inverted -- not "does each guarded number match" but "is
+    every number guarded".
 
-    So the check is inverted: instead of asking "does each guarded number match", it
-    also asks "is every number guarded". A percentage on a line that is making an
-    accuracy claim, in a file we publish, must be claimed by a TARGET.
+    Two things this catches that the keyword-gated version did not, both found the day it
+    was written: the Experiment C post said "83% of the dataset is Base" twice, when the
+    dataset is 58% Base and 83% is the 47-token adversarial cohort; and the owner-power
+    recall figures in the same post were measured on 250 Base contracts holding 3 of the
+    19 pausable ones.
     """
     by_file = {}
     for rel, pattern, key in TARGETS:
         by_file.setdefault(rel, []).append(pattern)
 
     out = []
-    for rel, patterns in sorted(by_file.items()):
+    for rel in LIVE_CLAIM_FILES:
         path = os.path.join(ROOT, rel)
         if not os.path.exists(path):
+            out.append((rel, "-", "LIVE CLAIM FILE IS MISSING"))
             continue
         with io.open(path, encoding="utf-8") as f:
-            text = f.read()
+            text = _CSS.sub("", f.read())
         claimed = set()
-        for pat in patterns:
+        for pat in by_file.get(rel, []):
             for m in re.finditer(pat, text):
                 claimed.add(m.group(1))
+        exempt = tuple(sub for f, sub in _EXEMPT_LINES if f == rel)
         for line in text.splitlines():
-            low = line.lower()
-            if not any(w in low for w in _CLAIM_WORDS):
-                continue
-            for m in re.finditer(r"([<>≤≥]?\s*)(\d+(?:\.\d+)?)%", line):
-                # A number preceded by < or > is a TARGET, not a measurement -- "recall
-                # >90%" is what we are aiming at, and it must not track results.json.
+            for m in re.finditer(r"([<>\u2264\u2265~]?\s*)(\d+(?:\.\d+)?)%", line):
+                # "recall >90%" is what we aim at; it must not track results.json.
                 if m.group(1).strip():
                     continue
                 if m.group(2) in claimed:
                     continue
-                if any(w in line for w in _EXEMPT_CONTEXT):
+                if any(sub in line for sub in exempt):
                     continue
                 out.append((rel, m.group(2), line.strip()[:88]))
     return out

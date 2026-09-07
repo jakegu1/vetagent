@@ -90,15 +90,31 @@ selector list from a source that is not the labelling oracle (W18).
 cached bytecode it measures recall against GoPlus's **per-flag fields** rather than the
 derived cohort labels:
 
-| GoPlus flag | it says | we find | recall |
-|---|---|---|---|
-| `is_mintable` | 73 | 26 | 35.6% |
-| `is_blacklisted` | 7 | 1 | 14.3% |
-| `slippage_modifiable` | 16 | 1 | 6.2% |
-| `transfer_pausable` | 3 | 0 | 0.0% |
+| GoPlus flag | it says | we find | recall | 95% CI |
+|---|---|---|---|---|
+| `is_mintable` | 156 | 81 | 51.9% | 44.1 - 59.6% |
+| `transfer_pausable` | 19 | 7 | 36.8% | 19.1 - 59.0% |
+| `is_blacklisted` | 19 | 5 | 26.3% | 11.8 - 48.8% |
+| `slippage_modifiable` | 38 | 3 | 7.9% | 2.7 - 20.8% |
 
-The published headline was 31% overall. Per power it is worse than that, and on two of
-the four powers the scan is effectively blind.
+**Corrected 2026-09-07. The first version of this table was measured on the wrong 250
+contracts and two of its four rows were badly wrong.** `fill_cache` took contracts in
+dataset order, the dataset is 83% Base, and recall's denominator is the *positives* --
+so it caught 3 of the 19 pausable contracts and 7 of the 19 blacklist ones. It reported
+`transfer_pausable` 0.0% and `is_blacklisted` 14.3%, and this document concluded from
+them that "on two of the four powers the scan is effectively blind". Zero of three has a
+95% upper bound near 71%. It was compatible with finding most of them, and it did:
+measured on all 19, across all three chains, pausable recall is **36.8%**.
+
+The script now fetches flag-carrying contracts first, every denominator above is the
+whole dataset rather than a sample, and every rate is printed with its interval so a
+number resting on n=3 cannot look like one resting on n=156 again.
+
+The conclusion survives the correction, on much better evidence and stated more
+carefully: the scan misses roughly **half** the mintable contracts, **two thirds** of
+the pausable ones, **three quarters** of the blacklist ones and **nine tenths** of the
+tax-mutable ones. It is not blind. It is unreliable in a way that would be invisible to
+anyone reading a checkbox, which is the same reason not to score it -- W1 stands.
 
 **The audit's proposed additions do not fix it, and one of them would make things worse.**
 Adding `isBlacklisted(address)`, `blacklist(address,bool)`, `blacklists(address)`,

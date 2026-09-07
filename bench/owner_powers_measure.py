@@ -138,15 +138,50 @@ def fetch_code(chain, address, timeout=20):
         return None
 
 
+def wilson(hits, n, z=1.96):
+    """95% Wilson interval for a proportion, as (low, high) percentages.
+
+    Printed beside every recall figure because the small denominators here are the whole
+    story: 0 of 3 and 0 of 19 are both "0.0%", and only one of them supports a claim.
+    Wilson rather than normal-approximation because the counts are small and the
+    proportions sit at the boundary, where the normal approximation gives intervals that
+    include impossible values.
+    """
+    if not n:
+        return (0.0, 100.0)
+    p = float(hits) / n
+    d = 1.0 + z * z / n
+    centre = (p + z * z / (2 * n)) / d
+    half = (z / d) * ((p * (1 - p) / n + z * z / (4 * n * n)) ** 0.5)
+    return (max(0.0, centre - half) * 100.0, min(1.0, centre + half) * 100.0)
+
+
 def load_tokens():
     with open(DATASET, encoding="utf-8") as f:
         return [t for t in (json.load(f).get("tokens") or [])
                 if t.get("goplus_raw") and t.get("chain") in RPC]
 
 
+def _flag_count(token):
+    raw = token.get("goplus_raw") or {}
+    return sum(1 for f in FLAG_TO_POWER if str(raw.get(f) or "0") == "1")
+
+
 def fill_cache(tokens, limit):
+    """Fetch the contracts that carry a power first, and every chain, not file order.
+
+    The first 250 contracts this script cached were taken in dataset order. The dataset
+    is 83% Base, so the cache was 83% Base -- and worse, recall's denominator is the
+    POSITIVES, of which it caught 3 of 19 pausable and 7 of 19 blacklist. "Effectively
+    blind on two of four powers" was then published on n=3. Zero of three has a 95%
+    upper bound near 0.7: it is compatible with finding two thirds of them.
+
+    A contract GoPlus flags is worth a hundred it does not, for this question. Ordering
+    by flag count costs nothing and moves every denominator to the whole population.
+    """
     os.makedirs(CODE_CACHE, exist_ok=True)
     uncached = [t for t in tokens if cached_code(t["chain"], t["address"]) is None]
+    uncached.sort(key=lambda t: (-_flag_count(t), t["chain"]))
     todo = uncached[:limit]
     print("fetching bytecode for %d contracts (%d cached, %d still missing after this)"
           % (len(todo), len(tokens) - len(uncached), len(uncached) - len(todo)))
@@ -195,15 +230,21 @@ def report(rows, title):
     print("of which proxies (behaviour lives elsewhere, so a miss is expected): %d"
           % len(proxies))
     print()
-    print("%-24s %-10s %-10s %-8s" % ("power (GoPlus flag)", "GoPlus says", "we find",
-                                      "recall"))
-    print("-" * 60)
+    print("%-24s %-10s %-10s %-8s %s" % ("power (GoPlus flag)", "GoPlus says", "we find",
+                                        "recall", "95% CI"))
+    print("-" * 74)
     for flag, power in sorted(FLAG_TO_POWER.items()):
         have = [r for r in rows if str((r[0].get("goplus_raw") or {}).get(flag)) == "1"]
         hit = [r for r in have if power in r[1]]
         rate = (100.0 * len(hit) / len(have)) if have else 0.0
-        print("%-24s %-10d %-10d %5.1f%%"
-              % (flag, len(have), len(hit), rate))
+        lo, hi = wilson(len(hit), len(have))
+        print("%-24s %-10d %-10d %5.1f%%   %4.1f%% - %4.1f%%"
+              % (flag, len(have), len(hit), rate, lo, hi))
+    print("  The interval is the point of this table. An earlier run of this script")
+    print("  cached the first 250 contracts in dataset order, which is 83% Base, and")
+    print("  caught 3 of the 19 pausable contracts. It reported 0.0% recall, and")
+    print("  \"effectively blind on two of four powers\" was published from it. 0 of 3")
+    print("  has a 95% upper bound near 71%: it is compatible with finding most of them.")
     print()
     # The other direction: how often do we claim a power GoPlus does not see?
     print("%-24s %-10s %-10s" % ("power", "we claim", "GoPlus agrees"))

@@ -76,8 +76,9 @@ spotting bad tokens rates 10% of the tokens that actually died as high risk.
 - **One feature was measured and deleted.** LP lock/burn detection fires on 58% of good
   tokens — worse than chance — so it was removed from our own coverage denominator rather
   than shipped as a checkbox.
-- **83% of the dataset is Base.** Sampling reaches what three sources could reach, not the
-  market.
+- **58% of the dataset is Base, and the adversarial cohort is 83% Base.** Sampling reaches
+  what three sources could reach, not the market — and the skew is worst exactly where the
+  set is smallest.
 
 The design decision underneath all of it: when a critical check cannot run, the answer is
 `unknown`, never "low risk". That is why 15.3% of answers are a refusal. For a human
@@ -117,8 +118,9 @@ safety property — they overlap and are not the same thing.
 What it actually checks: sell simulation (can you get out), buy/sell tax, liquidity
 depth, pair age, same-ticker impersonation, and owner powers read from bytecode. What it
 deliberately does not do: score dormant owner powers, because measured against an
-independent oracle the scan finds 0% of pausable and 6% of mutable-tax contracts, and
-scoring a two-thirds-blind instrument is how false positives get in.
+independent oracle the scan finds 37% of the contracts that can pause transfers, 26% of
+those that can blacklist and 8% of those that can change the tax. Scoring a check that
+misses most of what it looks for is how false positives get in.
 
 Everything is reproducible — `python bench/run_benchmark.py` regenerates every number,
 and the disagreements are listed by token so you can check them one at a time.
@@ -158,7 +160,10 @@ github.com/jakegu1/vetagent
   be ready to name Hypernative, Forta and Blockaid if challenged — being the person who
   already knows the counterexamples is stronger than being corrected.
 - **Do not use the GoPlus comparison.** Withdrawn, see the header.
-- Expect "your dataset is 83% Base" and "n=576 is small". Both are true, both are in the
-  report, and agreeing immediately is the right response.
+- Expect "your dataset is 58% Base" and "n=576 is small". Both are true, both are in the
+  report, and agreeing immediately is the right response. An earlier draft of this post
+  said 83%, which is the adversarial cohort's Base share — 47 tokens, not 576. Do not
+  quote a number for a set twelve times larger than the one it was measured on, in a post
+  whose entire argument is that our numbers can be checked.
 - If anyone asks whether it is safe to depend on: it is a solo project, four upstreams,
   no SLA. Say so.

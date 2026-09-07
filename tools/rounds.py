@@ -114,7 +114,7 @@ ROUNDS = [
      "be deleted with CI staying green, and a crawler could have passed it. And W1 was "
      "reopened: the measurement that closed it could not be re-run, so the script and "
      "250 contracts of bytecode are now committed -- measured against GoPlus's per-flag "
-     "fields the scan finds 0% of pausable and 6% of mutable-tax, and the selectors that "
+     "fields the scan finds 0% of pausable and 6% of mutable-tax (corrected in R17: that was 250 Base contracts holding 3 of the 19 pausable ones; on all of them it is 37%), and the selectors that "
      "would reproduce the original table detect a launch gate, not a pause switch."),
     ("R16", "Make the gate readable, then stop", "49d7548",
      "Instrumented /assess. `_record_call` was reachable only from `_handle_mcp`, so "
