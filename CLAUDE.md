@@ -30,6 +30,34 @@ writing its output file.
 **`git pull --rebase` rewrites commit SHAs**, which breaks the commit pinned in
 `tools/rounds.py`. `test_rounds.py` catches it; repin and regenerate.
 
+**Never let a workflow's agent count depend on model output.** On 2026-09-07 a review
+workflow spawned **233 agents**, spent 5.2M output tokens, exhausted the account's session
+limit and killed 190 of its own agents — including the synthesizer, whose memo was the
+only thing wanted. 43 finished. About 80% of the spend bought nothing, and the account was
+unusable for hours.
+
+One line caused it: three verifiers per finding, where `findings` was whatever the models
+returned. The schema had no `maxItems`, so seven finders returned 75 findings and the
+verify stage became 225 agents. **The count has to be a constant known before the run.**
+
+Use `.claude/workflows/budgeted-review.js` rather than writing a fresh fan-out. It encodes
+the six rules that failure taught:
+
+1. **Cap findings at the schema** (`maxItems`) — N finders → at most N×K findings.
+2. **Dedup and rank in plain code** before spending. Triage costs zero tokens.
+3. **Scale verifiers by severity** (3/2/1/0), not uniformly. A `low` cosmetic note got the
+   same three adversarial refuters as a critical data-loss finding.
+4. **Reserve budget for synthesis and check it.** The output that matters must not be last
+   in a queue that may not reach it. Build a plain-code fallback memo so a result exists
+   either way.
+5. **Tier effort.** `opts.effort: 'low'` for verifiers checking whether a line number is
+   real.
+6. **Never cap silently.** `log()` what was dropped, and report an unjudged finding as
+   *unverified* — not as absent, and not as confirmed.
+
+Same seven dimensions under those caps: under 40 agents instead of 233. The twelve
+findings that survived verification came entirely from the top slice the caps keep.
+
 ## The order that matters
 
 After any change touching the engine or the benchmark:
