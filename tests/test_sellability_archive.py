@@ -301,6 +301,83 @@ def test_the_pools_archive_on_disk_is_wellformed():
           "; ".join(bad[:4]))
 
 
+def test_a_missing_answer_says_which_kind_of_missing():
+    """E11, in the archive's own storage layer, written by me the day before.
+
+    `answered: false` merged four different facts: honeypot.is has no record of this
+    token, honeypot.is refused us, our request timed out, and the venue is one it
+    structurally cannot read. The first is a fact about the TOKEN; the rest are facts
+    about US. A cohort assembled in 2027 from `answered: false` rows cannot tell them
+    apart, and only one of them is correlated with anything.
+
+    Four independent reviewers raised this from four different angles, which is why it is
+    pinned rather than merely fixed.
+    """
+    print("\n[archive] an absence has to say what kind of absence it is")
+    out, _ = _probe({"simulationSuccess": True, "honeypotResult": {"isHoneypot": False},
+                     "simulationResult": {}})
+    check("a real answer is ok", out and out[0]["outcome"] == "ok",
+          str(out and out[0].get("outcome")))
+
+    out, _ = _probe(snapshot.NOT_FOUND)
+    check("upstream has no record -> no_record",
+          out and out[0]["outcome"] == "no_record", str(out and out[0].get("outcome")))
+    check("and that still counts as unanswered",
+          out and out[0]["answered"] is False)
+
+    out, _ = _probe(None)
+    check("we could not ask -> unreachable",
+          out and out[0]["outcome"] == "unreachable", str(out and out[0].get("outcome")))
+
+    # A request that never reached honeypot.is is not evidence about the token, so it
+    # must not spend that token's budget.
+    key = ("base", ADDR)
+    check("an unreachable attempt does not count toward the cap",
+          _probe({"simulationSuccess": True}, done={key: 0})[0],
+          "a token whose only attempts failed must be asked again")
+
+
+def test_the_manifest_separates_a_failed_page_from_an_empty_one():
+    """A failed fetch and an exhausted listing took the same `break`.
+
+    So "base recorded 40 pools this pass" could mean Base was quiet or that page 3 timed
+    out and collection stopped. Downstream those are identical and no later analysis can
+    separate them, because the information was never written down. Every other finding in
+    this review loses a column; this one made the surviving columns un-interpretable.
+    """
+    print("\n[archive] a rate-limit is not a fact about the market")
+    src = io.open(os.path.join(ROOT, "bench", "snapshot.py"), encoding="utf-8").read()
+    body = src.split("def collect(")[1].split("\ndef ")[0]
+    check("collect() records a per-page outcome", '"outcome": "fetch_failed"' in body)
+    check("and distinguishes the end of a listing", '"outcome": "end_of_listing"' in body)
+    check("and a successful page with its row count",
+          '"outcome": "ok"' in body and '"rows": page_rows' in body)
+    check("a failed page raises a CI warning rather than passing quietly",
+          "::warning::" in src and "page fetches failed" in src)
+
+    d = os.path.join(ROOT, "bench", "snapshots")
+    runs = sorted(f for f in (os.listdir(d) if os.path.isdir(d) else [])
+                  if f.startswith("runs-"))
+    if not runs:
+        print("  (no manifest written yet -- nothing on disk to check)")
+        return
+    need = {"seen_at", "chain", "kind", "page", "outcome", "rows"}
+    bad = []
+    for fn in runs:
+        for i, line in enumerate(io.open(os.path.join(d, fn), encoding="utf-8"), 1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                o = json.loads(line)
+            except ValueError:
+                bad.append("%s:%d unparseable" % (fn, i))
+                continue
+            if not need <= set(o):
+                bad.append("%s:%d missing %s" % (fn, i, sorted(need - set(o))))
+    check("every manifest row is well formed", not bad, "; ".join(bad[:3]))
+
+
 def test_the_workflow_actually_runs_it():
     """A probe the scheduled job never calls collects nothing, forever.
 

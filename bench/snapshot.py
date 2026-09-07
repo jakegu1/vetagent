@@ -32,7 +32,7 @@ from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from fetcher import fetch_json  # noqa: E402
+from fetcher import NOT_FOUND, fetch_json  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(HERE, "snapshots")
@@ -134,7 +134,7 @@ def collect(chains, pages=5):
     scheduled run finishes in minutes and leaves headroom for the benchmark's own calls.
     """
     seen_at = datetime.now(timezone.utc).isoformat()
-    rows, seen_ids = [], set()
+    rows, seen_ids, manifest = [], set(), []
     for chain in chains:
         for kind, path, n_pages in (("new", "new_pools", pages),
                                     ("trending", "trending_pools", 1)):
@@ -146,11 +146,22 @@ def collect(chains, pages=5):
                 # twice under two timestamps and silently corrupt the history.
                 data = fetch_json(url, role="label", use_cache=False)
                 if data is None:
+                    # A failed fetch and an exhausted listing took the SAME `break`, so
+                    # "base recorded 40 pools this pass" could mean "Base was quiet" or
+                    # "page 3 timed out and we stopped". Downstream those are identical,
+                    # and no later analysis can separate them -- the information was
+                    # never written down. Recorded now, per page, in the manifest.
+                    manifest.append({"seen_at": seen_at, "chain": chain, "kind": kind,
+                                     "page": page, "outcome": "fetch_failed", "rows": 0})
                     if page == 1:
                         print("  %-8s %-9s fetch failed" % (chain, kind))
                     break
                 pools = data.get("data") or []
+                page_rows = 0
                 if not pools:
+                    manifest.append({"seen_at": seen_at, "chain": chain, "kind": kind,
+                                     "page": page, "outcome": "end_of_listing",
+                                     "rows": 0})
                     break  # past the last page
                 for p in pools:
                     pid = p.get("id")
@@ -159,9 +170,12 @@ def collect(chains, pages=5):
                     seen_ids.add((chain, pid, kind))
                     rows.append(_row(chain, kind, p, seen_at))
                     got += 1
+                    page_rows += 1
+                manifest.append({"seen_at": seen_at, "chain": chain, "kind": kind,
+                                 "page": page, "outcome": "ok", "rows": page_rows})
             if got:
                 print("  %-8s %-9s %d pools" % (chain, kind, got))
-    return rows, seen_at
+    return rows, seen_at, manifest
 
 
 # honeypot.is covers three chains, under GeckoTerminal's names for them. Verified in
@@ -235,7 +249,12 @@ def _probed_already():
                 except ValueError:
                     continue
                 key = (o.get("chain"), str(o.get("token") or "").lower())
-                attempts[key] = attempts.get(key, 0) + 1
+                # An attempt that never reached honeypot.is is not evidence about the
+                # token and must not count against its budget.
+                if o.get("outcome") != "unreachable":
+                    attempts[key] = attempts.get(key, 0) + 1
+                elif key not in attempts:
+                    attempts[key] = 0
                 if o.get("answered"):
                     answered.add(key)
     return {k: (_MAX_ATTEMPTS if k in answered else n) for k, n in attempts.items()}
@@ -298,7 +317,26 @@ def probe_sellability(rows, seen_at, limit):
         # this probe deliberately asks about tokens minutes old, and depositing that
         # answer in the shared cache would let a benchmark run days later score the
         # engine against a birth-moment response.
-        hp = fetch_json(url, role="engine", use_cache=False, write_cache=False)
+        hp = fetch_json(url, role="engine", use_cache=False, write_cache=False,
+                        mark_missing=True)
+        # `answered: false` merged four different facts into one boolean: honeypot.is has
+        # no record of this token, honeypot.is refused us, our request timed out, and the
+        # venue is one it structurally cannot read. Those mean opposite things -- the
+        # first is a fact about the TOKEN, the rest are facts about US -- and collapsing
+        # them is the exact defect this project keeps re-committing (E11: an observed
+        # absence is a finding, an unobserved dimension is a gap, and neither may
+        # impersonate the other).
+        #
+        # It matters here more than usual. A cohort assembled in 2027 from rows where
+        # `answered` is false cannot tell "honeypot.is had never indexed it" from "our
+        # runner was rate-limited", and the second is correlated with nothing while the
+        # first is correlated with being brand new -- which is the whole population.
+        missing = hp is NOT_FOUND
+        if missing:
+            hp = None
+        outcome = ("ok" if hp is not None
+                   else "no_record" if missing
+                   else "unreachable")
         sim = (hp or {}).get("simulationResult") or {}
         res = (hp or {}).get("honeypotResult") or {}
         hold = (hp or {}).get("holderAnalysis") or {}
@@ -312,6 +350,8 @@ def probe_sellability(rows, seen_at, limit):
             "pool_created_at": r.get("pool_created_at"),
             "reserve_usd": r.get("reserve_usd"),
             "answered": hp is not None,
+            # ok / no_record / unreachable -- see the comment where this is computed.
+            "outcome": outcome,
             # Raw upstream fields, spelled as honeypot.is spells them.
             "simulationSuccess": (hp or {}).get("simulationSuccess"),
             "simulationError": (hp or {}).get("simulationError"),
@@ -423,12 +463,23 @@ def main():
                                   seen_at)
 
     print("Collecting: %s" % ", ".join(chains))
-    rows, seen_at = collect(chains, pages=args.pages)
+    rows, seen_at, manifest = collect(chains, pages=args.pages)
     if not rows:
         print("Nothing collected — upstream is probably all down. Not writing a file.")
         return 1
 
     day = seen_at[:10]
+    if manifest:
+        mpath = os.path.join(OUT_DIR, "runs-%s.ndjson" % day)
+        with io.open(mpath, "a", encoding="utf-8", newline="") as f:
+            for m in manifest:
+                f.write(json.dumps(m, ensure_ascii=False) + "\n")
+        failed = [m for m in manifest if m["outcome"] == "fetch_failed"]
+        if failed:
+            print("::warning::%d page fetches failed this pass: %s"
+                  % (len(failed),
+                     ", ".join(sorted({"%s/%s" % (m["chain"], m["kind"])
+                                       for m in failed}))))
     path = os.path.join(OUT_DIR, "pools-%s.ndjson" % day)
     with open(path, "a", encoding="utf-8") as f:
         for r in rows:
