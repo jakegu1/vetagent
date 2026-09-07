@@ -141,6 +141,77 @@ def tool_callers(account, token, since):
     return sorted(by_client.items(), key=lambda kv: -kv[1]["n"])
 
 
+def caller_profile(account, token, since, clients):
+    """Timing and verdict spread per client -- what separates a monitor from a user.
+
+    Passing "did it call a tool" was necessary and is not sufficient. A thorough MCP
+    auditor calls every tool once to check that each one answers; sasame-mcp-audit did
+    exactly that, thirteen times across all three tools. So the filter that finally
+    excluded crawlers still admits the diligent ones.
+
+    Two things separate them, and both are already recorded:
+
+    VERDICT SPREAD. A monitor re-tests the same fixed token, so it receives the same
+    verdict every time. A user asks about the token in front of them, so the verdicts
+    vary. One distinct verdict across forty calls is a health check; five distinct
+    verdicts is somebody looking things up. This costs nothing -- `verdict` has been in
+    the blob since the first version.
+
+    HOUR SPREAD. A monitor runs on a timer and its calls land in a small number of
+    repeating hours. A person or an agent works in bursts inside a waking day. Distinct
+    hours-of-day, and calls per active day, separate those without recording anything
+    about who is calling.
+
+    Neither is conclusive alone and both are free. Reported so a human can read them
+    together rather than have a threshold decide.
+    """
+    if not clients:
+        return {}
+    names = ", ".join("'%s'" % c.replace("'", "") for c, _ in clients)
+    resp = query(
+        "SELECT %s AS client, %s AS verdict, toDate(timestamp) AS day, "
+        "toHour(timestamp) AS hour, count() AS n FROM %s "
+        "WHERE timestamp > now() - %s AND %s != '' AND %s IN (%s) "
+        "GROUP BY client, verdict, day, hour ORDER BY client LIMIT 1000"
+        % (BLOB["client"], BLOB["verdict"], DATASET, since, BLOB["tool"],
+           BLOB["client"], names), account, token)
+    rows = rows_of(resp)
+    if rows is None:
+        return {}
+    prof = {}
+    for row in rows:
+        c = str(row.get("client") or "").strip().lower()
+        p = prof.setdefault(c, {"verdicts": {}, "hours": set(), "days": set(), "n": 0})
+        v = str(row.get("verdict") or "").strip() or "(none)"
+        n = int(float(row.get("n") or 0))
+        p["verdicts"][v] = p["verdicts"].get(v, 0) + n
+        p["hours"].add(int(float(row.get("hour") or 0)))
+        p["days"].add(str(row.get("day")))
+        p["n"] += n
+    return prof
+
+
+def print_profile(prof, clients):
+    """Print the shape of each caller's traffic, without deciding for the reader."""
+    if not prof:
+        return
+    print("\n  --- what each caller's traffic looks like ---")
+    print("  %-26s %-6s %-6s %-7s %s"
+          % ("client", "calls", "days", "hours", "verdicts seen"))
+    for client, _ in clients:
+        p = prof.get(client)
+        if not p:
+            continue
+        vs = ", ".join("%s x%d" % (k, v) for k, v in
+                       sorted(p["verdicts"].items(), key=lambda kv: -kv[1])[:5])
+        print("  %-26s %-6d %-6d %-7d %s"
+              % (client, p["n"], len(p["days"]), len(p["hours"]), vs))
+    print("  A single repeated verdict across many calls is a health check on one fixed")
+    print("  token. Varied verdicts are somebody looking different things up. Calls")
+    print("  spread evenly over many hours is a timer; clustered in few hours is a person")
+    print("  or an agent working. Neither settles it alone; read them together.")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=14)
@@ -243,6 +314,9 @@ def main():
         else:
             print("  -> NOT SETTLED. Every tool call came from a client that cannot be")
             print("     distinguished from us. Resolve the ambiguity above, then re-run.")
+
+    if tools:
+        print_profile(caller_profile(account, token, since, tools), tools)
 
     print("\n  for context, clients that merely connected: %d" % len(ext or []))
     if ext:
