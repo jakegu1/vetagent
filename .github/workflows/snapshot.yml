@@ -37,25 +37,29 @@ jobs:
         with:
           python-version: "3.12"
 
-      # --sellability: for 25 of the newest tokens each pass, ask honeypot.is whether
-      # they can be sold RIGHT NOW. It is the only observable here that cannot be
-      # recovered later -- a sell simulation needs a live pool, and a dead token has
-      # none. 100 a day; by the time the archive matures it is the adversarial cohort
-      # the benchmark has never been able to grow.
-      - name: Collect
-        run: python bench/snapshot.py --pages 5 --sellability 25
+      # The pool rows are the irreplaceable product: "a day we miss never existed".
+      # Collect and COMMIT them before anything optional runs.
+      - name: Collect pools
+        run: python bench/snapshot.py --pages 5 --sellability 0
 
-      - name: Commit
-        run: |
-          git config user.name "vetagent-snapshot[bot]"
-          git config user.email "noreply@vetagent.dev"
-          git add bench/snapshots/
-          if git diff --staged --quiet; then
-            # Zero rows means every upstream is down. That deserves a warning, not silence.
-            echo "::warning::no snapshot rows collected — every upstream may be down"
-            exit 0
-          fi
-          days=$(ls bench/snapshots/pools-*.ndjson 2>/dev/null | wc -l)
-          rows=$(cat bench/snapshots/pools-*.ndjson | wc -l)
-          git commit -m "Snapshot $(date -u +%F): ${days} days, ${rows} rows total"
-          git push
+      - name: Commit pools
+        run: bash .github/scripts/snapshot-commit.sh "pools"
+
+      # Only now the add-on. For 25 of the newest tokens, ask honeypot.is whether they
+      # can be sold RIGHT NOW -- the only observable here that cannot be recovered later,
+      # because a sell simulation needs a live pool and a dead token has none.
+      #
+      # It runs SECOND, in its own step, with continue-on-error, for a reason that was
+      # measured rather than guessed: its worst case is roughly 25 x (25 s timeout x 3
+      # retries), which exceeds this job's 25-minute limit. In the original ordering that
+      # sat between the pool file being written and the commit, so a honeypot.is outage
+      # would take the runner down with that pass's pool rows still only on the runner's
+      # disk. The optional thing could permanently destroy the primary thing, and
+      # precisely when the upstream was already degraded.
+      - name: Collect day-one sellability
+        continue-on-error: true
+        run: python bench/snapshot.py --sellability-only 25
+
+      - name: Commit sellability
+        continue-on-error: true
+        run: bash .github/scripts/snapshot-commit.sh "sellability"

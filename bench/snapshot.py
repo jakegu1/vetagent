@@ -74,6 +74,39 @@ def _row(chain, kind, p, seen_at):
         "sells_h24": h24.get("sells"),
         "buyers_h24": h24.get("buyers"),
         "sellers_h24": h24.get("sellers"),
+
+        # The seven flat fields above are four of the eighteen bucket-slots this response
+        # carries. GeckoTerminal returns `transactions`, `volume_usd` and
+        # `price_change_percentage` each as a six-bucket dict -- m5, m15, m30, h1, h6,
+        # h24 -- confirmed in 5,276 of 5,276 cached pool objects with no variation. We
+        # were storing h24 (and one h1) and discarding the rest of a payload already
+        # fetched, already parsed and already paid for.
+        #
+        # `transactions` is the one that matters, because it is the one that expires.
+        # `volume_usd` and `price_change_percentage` are substantially recoverable after
+        # the fact from the OHLCV endpoints this repo already queries in
+        # build_dataset.py. Buys, sells, buyers and sellers appear in NO historical
+        # endpoint anywhere -- 5 discarded buckets x 4 counts = 20 numbers per pool per
+        # pass that no amount of money buys back in 2027. The other two are stored
+        # anyway: the marginal cost is bytes in a file that git deltas to nothing.
+        #
+        # Kept verbatim, spelled as the upstream spells them, rather than flattened into
+        # twenty more keys. A future reader wants to be able to compare a row against a
+        # live API response without a translation table.
+        "tx": a.get("transactions"),
+        "volume": a.get("volume_usd"),
+        "price_change": a.get("price_change_percentage"),
+
+        # The venue. A launchpad pool, a Uniswap V4 hook pool and a plain V2 pair are
+        # different populations with different death rates, so this is a first-order
+        # prior on everything the archive is being collected to answer. It is in every
+        # response and nothing in this repository has ever read it -- and it is the
+        # single field that would have shown, on day one, that the sell simulator cannot
+        # answer for V4 pools, instead of that arriving as unexplained nulls.
+        "dex": ((rel.get("dex") or {}).get("data") or {}).get("id"),
+
+        # What this row means, for whoever reads it in 2027 after the fields have moved.
+        "schema": 2,
     }
 
 
@@ -149,9 +182,46 @@ def _address_of(token_id, chain):
     return t if t.startswith("0x") and len(t) == 42 else ""
 
 
+# How many times to ask honeypot.is about one token before giving up on it. An answered
+# token is never asked again; an unanswered one is retried across later passes, because
+# indexing lag is real and a single miss is not evidence of anything.
+_MAX_ATTEMPTS = 3
+
+
+def _unsimulatable(row):
+    """1 if honeypot.is structurally cannot answer for this pool, 0 otherwise.
+
+    A Uniswap V4 "pool address" is a 32-byte pool id (66 characters), not a pair contract.
+    honeypot.is simulates against a pair, so it has nothing to work with.
+    """
+    return 1 if len(str(row.get("pool_address") or "")) > 42 else 0
+
+
+def _neg_time(row):
+    """Sort key that puts the most recently created pool first."""
+    t = str(row.get("pool_created_at") or "")
+    return tuple(-ord(c) for c in t) if t else (0,)
+
+
 def _probed_already():
-    """Every (chain, token) this archive has already asked about."""
-    done = set()
+    """What the archive already knows about each (chain, token) it has asked about.
+
+    Returns {(chain, token): attempts}, and the caller skips a token once honeypot.is has
+    actually ANSWERED about it or we have asked _MAX_ATTEMPTS times without one.
+
+    The first version returned a flat set of every token ever asked about, answered or
+    not, so a single unanswered attempt blacklisted a token permanently. That is not a
+    small waste: honeypot.is cannot simulate Uniswap V4 pools at all, the probe sorts
+    youngest-first which is exactly where V4 launches concentrate, and a measured 79% of
+    V4-only picks came back with no answer. So roughly a third of a hard-capped budget
+    was being spent to permanently exclude tokens -- and the exclusion was strongest on
+    the newest venue, which is the population the archive most needs.
+
+    Retrying is not free either, and a token honeypot.is has never indexed after several
+    days is usually one it never will (11 of the 14 oldest V4-only tokens still 404 four
+    days on). Hence a cap rather than an unbounded retry.
+    """
+    attempts, answered = {}, set()
     for fn in sorted(os.listdir(OUT_DIR)) if os.path.isdir(OUT_DIR) else []:
         if not (fn.startswith("sellability-") and fn.endswith(".ndjson")):
             continue
@@ -164,8 +234,11 @@ def _probed_already():
                     o = json.loads(line)
                 except ValueError:
                     continue
-                done.add((o.get("chain"), str(o.get("token") or "").lower()))
-    return done
+                key = (o.get("chain"), str(o.get("token") or "").lower())
+                attempts[key] = attempts.get(key, 0) + 1
+                if o.get("answered"):
+                    answered.add(key)
+    return {k: (_MAX_ATTEMPTS if k in answered else n) for k, n in attempts.items()}
 
 
 def probe_sellability(rows, seen_at, limit):
@@ -193,12 +266,17 @@ def probe_sellability(rows, seen_at, limit):
     if limit <= 0:
         return []
     done = _probed_already()
-    # Youngest pools first: a token that launched an hour ago is the scarce sample, and
-    # the one most likely to be gone before anyone thinks to look for it.
     fresh = [r for r in rows
              if r.get("kind") == "new" and r.get("chain") in _SIM_CHAIN_ID
              and r.get("base_token")]
-    fresh.sort(key=lambda r: str(r.get("pool_created_at") or ""), reverse=True)
+    # Answerable venues first, then youngest.
+    #
+    # Youngest-first alone was the whole rule, and it aimed the budget straight at
+    # Uniswap V4 launches -- which honeypot.is cannot simulate, because it wants a pair
+    # address and a V4 pool is a 32-byte pool id with no pair. Those come back unanswered
+    # 79% of the time. Deprioritised rather than skipped: the other 21% do answer, and a
+    # V4 pool still gets probed whenever the budget outlasts the answerable candidates.
+    fresh.sort(key=lambda r: (_unsimulatable(r), _neg_time(r)))
 
     out, asked = [], set()
     for r in fresh:
@@ -206,7 +284,8 @@ def probe_sellability(rows, seen_at, limit):
             break
         chain = r["chain"]
         token = _address_of(r["base_token"], chain)
-        if not token or (chain, token) in done or (chain, token) in asked:
+        if (not token or (chain, token) in asked
+                or done.get((chain, token), 0) >= _MAX_ATTEMPTS):
             continue
         asked.add((chain, token))
         url = ("https://api.honeypot.is/v2/IsHoneypot?address=%s&chainID=%d"
@@ -218,6 +297,9 @@ def probe_sellability(rows, seen_at, limit):
         hp = fetch_json(url, role="engine", use_cache=False)
         sim = (hp or {}).get("simulationResult") or {}
         res = (hp or {}).get("honeypotResult") or {}
+        hold = (hp or {}).get("holderAnalysis") or {}
+        code = (hp or {}).get("contractCode") or {}
+        tok = (hp or {}).get("token") or {}
         out.append({
             "seen_at": seen_at,
             "chain": chain,
@@ -235,8 +317,71 @@ def probe_sellability(rows, seen_at, limit):
             "sellTax": sim.get("sellTax"),
             "transferTax": sim.get("transferTax"),
             "flags": (hp or {}).get("flags"),
+
+            # honeypot.is returns thirteen top-level branches and the first version of
+            # this kept five. Every one of these came back in the same response, already
+            # parsed, on a call we had already paid for -- and this is the one endpoint
+            # in the archive whose answer genuinely expires, so a field dropped here is
+            # dropped for good.
+            #
+            # holderAnalysis is the densest of them: `failed` and `siphoned` are counts
+            # of real holders who tried to sell and could not. That is close to the label
+            # this whole archive exists to manufacture, observed directly rather than
+            # inferred from a price chart four months later.
+            "holderAnalysis": hold or None,
+            "contractCode": code or None,
+            "totalHolders": tok.get("totalHolders"),
+            "buyGas": sim.get("buyGas"),
+            "sellGas": sim.get("sellGas"),
+            "pair": (hp or {}).get("pair"),
+            "unsimulatable_venue": bool(_unsimulatable(r)),
+            "schema": 2,
         })
     return out
+
+
+def _last_pass():
+    """The rows written by the most recent collection pass, and its timestamp.
+
+    Re-collecting from GeckoTerminal just to have candidates to probe would double the
+    upstream cost of every pass and, worse, probe a DIFFERENT set of pools than the one
+    the archive recorded -- so the day-one simulation would not correspond to the day-one
+    row it is meant to annotate. The rows are already on disk; read them.
+    """
+    files = sorted(fn for fn in os.listdir(OUT_DIR)
+                   if fn.startswith("pools-") and fn.endswith(".ndjson"))
+    if not files:
+        return [], ""
+    rows = []
+    with io.open(os.path.join(OUT_DIR, files[-1]), encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rows.append(json.loads(line))
+            except ValueError:
+                continue
+    if not rows:
+        return [], ""
+    latest = max(str(r.get("seen_at") or "") for r in rows)
+    return [r for r in rows if str(r.get("seen_at") or "") == latest], latest
+
+
+def _write_sellability(sell, seen_at):
+    """Append sellability rows for one pass. Returns a process exit code."""
+    if not sell:
+        print("sellability: nothing to record")
+        return 0
+    path = os.path.join(OUT_DIR, "sellability-%s.ndjson" % seen_at[:10])
+    with io.open(path, "a", encoding="utf-8", newline="") as f:
+        for r in sell:
+            f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    answered = sum(1 for r in sell if r.get("answered"))
+    hp = sum(1 for r in sell if r.get("isHoneypot"))
+    print("sellability: asked %d, answered %d, honeypot %d -> %s"
+          % (len(sell), answered, hp, os.path.basename(path)))
+    return 0
 
 
 def main():
@@ -244,6 +389,11 @@ def main():
     ap.add_argument("--chains", default=",".join(DEFAULT_CHAINS))
     ap.add_argument("--pages", type=int, default=5,
                     help="pages of new_pools per chain (10 is the API maximum)")
+    ap.add_argument("--sellability-only", type=int, default=0, dest="sellability_only",
+                    help="skip pool collection; sell-simulate N tokens from the most "
+                         "recent pass already on disk. Lets the workflow commit the "
+                         "irreplaceable pool rows BEFORE running the optional probe, so "
+                         "a honeypot.is outage cannot take the pass down with it.")
     ap.add_argument("--sellability", type=int, default=25,
                     help="how many brand-new tokens to sell-simulate this pass "
                          "(0 disables). The only observable here that cannot be "
@@ -252,6 +402,16 @@ def main():
     chains = [c.strip() for c in args.chains.split(",") if c.strip()]
 
     os.makedirs(OUT_DIR, exist_ok=True)
+
+    if args.sellability_only:
+        rows, seen_at = _last_pass()
+        if not rows:
+            print("No pool rows on disk to probe. Run the collector first.")
+            return 1
+        print("Probing the most recent pass: %d rows at %s" % (len(rows), seen_at))
+        return _write_sellability(probe_sellability(rows, seen_at, args.sellability_only),
+                                  seen_at)
+
     print("Collecting: %s" % ", ".join(chains))
     rows, seen_at = collect(chains, pages=args.pages)
     if not rows:
@@ -264,16 +424,7 @@ def main():
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
-    sell = probe_sellability(rows, seen_at, args.sellability)
-    if sell:
-        sp = os.path.join(OUT_DIR, "sellability-%s.ndjson" % day)
-        with io.open(sp, "a", encoding="utf-8", newline="") as f:
-            for r in sell:
-                f.write(json.dumps(r, ensure_ascii=False) + "\n")
-        answered = sum(1 for r in sell if r.get("answered"))
-        hp = sum(1 for r in sell if r.get("isHoneypot"))
-        print("sellability: asked %d, answered %d, honeypot %d -> %s"
-              % (len(sell), answered, hp, os.path.basename(sp)))
+    _write_sellability(probe_sellability(rows, seen_at, args.sellability), seen_at)
 
     total_days = len({fn[6:16] for fn in os.listdir(OUT_DIR)
                       if fn.startswith("pools-") and fn.endswith(".ndjson")})
