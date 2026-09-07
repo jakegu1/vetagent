@@ -141,6 +141,117 @@ def test_a_failed_query_is_not_an_answer():
     check("a failed query returns None, not an empty list", got is None, repr(got))
 
 
+def _caller(name, n=6, days=2, tools=("assess_token_risk",),
+            verdicts=("high", "low"), countries=("US",)):
+    """One caller, in the two shapes the two queries return it."""
+    rec = {"n": n, "days": days, "tools": set(tools),
+           "ambiguous": name in usage.AMBIGUOUS_CLIENTS}
+    prof = {"verdicts": {v: 1 for v in verdicts if v}, "hours": {3, 4},
+            "days": {"2026-09-0%d" % (i + 1) for i in range(days)},
+            "countries": set(countries), "n": n}
+    return (name, rec), prof
+
+
+def _decide(*callers):
+    tools = [c for c, _ in callers]
+    prof = {name: p for (name, _), p in callers}
+    return usage.gate_verdict(tools, prof)[0]
+
+
+def test_the_frozen_rule_says_no_to_everything_seen_so_far():
+    """Every bucket in fourteen days of real traffic, replayed through the rule.
+
+    This is the test the previous three rules did not have. Each of them was written in
+    prose, read by a human against a printout, and each said YES to something that was
+    us or a robot. On 2026-09-07 the printed verdict was:
+
+        YES: sasame-mcp-audit    13 calls, verdicts "(none) x13"
+        YES: rokmcp-collector     3 calls, 1 per day, find_new_hot_pools only
+        YES: vetagent-r16-verify  1 call
+        -> STRATEGY: keep following the roadmap.
+
+    An audit scanner that never got an answer, a once-a-day collector, and the developer's
+    own verification call made eight minutes earlier -- and on the strength of those three
+    lines the gate recommended another round of building.
+    """
+    print("\n[gate] the three lines that printed YES must now print NO")
+
+    verify, vp = _caller("vetagent-r16-verify", n=1, days=1, verdicts=("high",))
+    check("our own verification call is ours, by prefix not by list",
+          _decide((verify, vp)) == "NO")
+
+    demo, dp = _caller(usage.LANDING_DEMO, n=42, days=4,
+                       verdicts=("high", "unknown"), countries=("CN",))
+    check("a click on our own landing page is never adoption",
+          _decide((demo, dp)) == "NO")
+
+    # A thorough auditor calls every tool once and receives an error from each.
+    sasame, sp = _caller("sasame-mcp-audit", n=13, days=2, verdicts=(),
+                         tools=("assess_token_risk", "get_token_liquidity",
+                                "find_new_hot_pools"))
+    check("a scanner that never received a verdict is not a user",
+          _decide((sasame, sp)) == "NO")
+
+    # A collector on a timer: many days, one tool, the same answer every time.
+    rok, rp = _caller("rokmcp-collector", n=3, days=3,
+                      tools=("find_new_hot_pools",), verdicts=("ok",))
+    check("one repeated verdict across many days is a monitor",
+          _decide((rok, rp)) == "NEAR")
+
+    # The browser bucket before the demo was tagged: real verdicts, but the name is
+    # shared with every browser and every bot that spoofs one, and country was "??".
+    moz, mp = _caller("mozilla", n=42, days=4, verdicts=("high", "unknown"),
+                      countries=("??",))
+    check("an unattributable name with no known country cannot pass",
+          _decide((moz, mp)) == "NEAR")
+
+    check("all of them together still say NO",
+          _decide((verify, vp), (demo, dp), (sasame, sp), (rok, rp), (moz, mp))
+          in ("NO", "NEAR"))
+
+
+def test_the_frozen_rule_can_still_say_yes():
+    """A gate that cannot pass is not a gate -- it is a decision already made.
+
+    The rule has been tightened four times, always upward. This pins the other end: a
+    caller with the properties the gate was written to detect must clear it, or the
+    tightening has quietly turned into a refusal to look.
+    """
+    print("\n[gate] and it must still be passable by the thing it is looking for")
+
+    real, rp = _caller("acme-trading-agent", n=9, days=3,
+                       verdicts=("high", "low", "unknown"), countries=("US",))
+    check("a named client, repeat days, varied verdicts, foreign country -> YES",
+          _decide((real, rp)) == "YES")
+
+    # `_country` was fixed on 2026-09-07, and this is what that fix buys: the one bucket
+    # the gate could never resolve becomes resolvable without recording anything new.
+    cc_home, hp = _caller("claude-code", n=9, days=3, countries=("CN",))
+    cc_away, ap = _caller("claude-code", n=9, days=3, countries=("US",))
+    check("claude-code from the owner's country is still ours", _decide((cc_home, hp)) == "NEAR")
+    check("claude-code from anywhere else is external by construction",
+          _decide((cc_away, ap)) == "YES")
+
+    mixed, mxp = _caller("claude-code", n=9, days=3, countries=("CN", "SG"))
+    check("one foreign row is enough -- the owner cannot be in two places",
+          _decide((mixed, mxp)) == "YES")
+
+
+def test_the_rule_is_frozen_and_the_date_says_so():
+    """The rule is dated in the file, and main() prints that date when it runs."""
+    print("\n[gate] the rule is frozen, dated, and printed")
+    src = open(os.path.join(ROOT, "bench", "usage.py"), encoding="utf-8").read()
+    check("the freeze date is recorded next to the rule",
+          usage.GATE_FROZEN == "2026-09-07", usage.GATE_FROZEN)
+    check("main() prints the date, so a reader sees when it was fixed",
+          "GATE_FROZEN" in src.split("def main(")[-1])
+    check("main() decides with gate_verdict and not with an inline rule",
+          "gate_verdict(tools, prof)" in src.split("def main(")[-1])
+    check("no counting rule is dead code",
+          all(("%s(" % fn) in src.split("def main(")[-1]
+              for fn in ("gate_verdict", "tool_callers", "external_callers")))
+
+
 def main():
     print("=" * 68)
     print("Usage gate: does the counting rule count the right thing?")

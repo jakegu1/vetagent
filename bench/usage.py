@@ -67,6 +67,23 @@ def rows_of(resp):
 # truncated.
 SELF_CLIENTS = {"vetagent-bench", "vetagent-contract-test"}
 
+# Anything naming itself vetagent-* is this project. An exact-match set is a list that
+# has to be remembered at the exact moment nobody is thinking about it: the /assess
+# instrumentation was verified with User-Agent `vetagent-r16-verify`, which is not in the
+# set above, so the next run of this gate printed
+#
+#     YES: vetagent-r16-verify   1 call
+#     -> STRATEGY: keep following the roadmap.
+#
+# The instrument built to answer "is anyone outside using this" answered YES on the
+# developer's own test call, on its first day. A prefix cannot be forgotten.
+LANDING_DEMO = "vetagent-landing-demo"
+
+
+def is_self(client):
+    """Ours: our tooling, our verification calls, our own landing-page demo button."""
+    return client.startswith("vetagent-") or client in SELF_CLIENTS
+
 # Clients that are OURS and also the most likely shape of a real user, so they can be
 # neither counted nor silently dropped.
 #
@@ -92,13 +109,13 @@ def external_callers(account, token, since):
     """Distinct (client, calls) that are neither our tooling nor the owner's country."""
     resp = query(
         "SELECT %s AS client, %s AS country, count() AS n FROM %s "
-        "WHERE timestamp > now() - %s GROUP BY client, country ORDER BY n DESC LIMIT 50"
+        "WHERE timestamp > now() - %s GROUP BY client, country ORDER BY n DESC LIMIT 500"
         % (BLOB["client"], BLOB["country"], DATASET, since), account, token)
     out = {}
     for row in (rows_of(resp) or []):
         client = str(row.get("client") or "").strip().lower()
         country = str(row.get("country") or "").strip().upper()
-        if not client or client in SELF_CLIENTS or country in OWNER_COUNTRIES:
+        if not client or is_self(client) or country in OWNER_COUNTRIES:
             continue
         out[client] = out.get(client, 0) + int(float(row.get("n") or 0))
     return sorted(out.items(), key=lambda kv: -kv[1])
@@ -125,12 +142,16 @@ def tool_callers(account, token, since):
     help: sentineloracle made 1,259 requests. Volume is the one thing a crawler has in
     abundance. Calling a tool is the thing it has no reason to do.
 
-    Note also that the country filter has never excluded anything: Analytics Engine
-    reports every one of these as "??", so `OWNER_COUNTRIES` has been inert since the day
-    it was written. A filter that has never removed a row is not protecting the gate.
+    The country filter was inert for a different reason than anyone thought. Every row
+    reported "??", and this docstring recorded that as a fact about Analytics Engine.
+    It was a fact about `_country()`, which called `.get()` on a JsProxy that has no
+    `.get`, and swallowed the AttributeError. Fixed 2026-09-07. Rows written before that
+    date still say "??" and always will, so the filter only starts protecting the gate
+    from today -- which is why `gate_verdict` treats "??" as unknown rather than as
+    cleared.
     """
     resp = query(
-        "SELECT %s AS client, %s AS tool, count() AS n, "
+        "SELECT %s AS client, %s AS tool, sum(_sample_interval) AS n, "
         "count(DISTINCT toDate(timestamp)) AS days FROM %s "
         "WHERE timestamp > now() - %s AND %s != '' "
         "GROUP BY client, tool ORDER BY n DESC LIMIT 200"
@@ -142,10 +163,10 @@ def tool_callers(account, token, since):
     for row in rows:
         client = str(row.get("client") or "").strip().lower()
         tool = str(row.get("tool") or "").strip()
-        if not client or client in SELF_CLIENTS:
+        if not client or is_self(client):
             continue
-        if not tool or tool.startswith("__"):
-            continue                     # auth probes are not tool use
+        if not tool or tool == "?" or tool.startswith("__"):
+            continue    # auth probes and unnamed tools/call are not tool use
         rec = by_client.setdefault(client, {"n": 0, "days": 0, "tools": set(),
                                             "ambiguous": client in AMBIGUOUS_CLIENTS})
         rec["n"] += int(float(row.get("n") or 0))
@@ -182,24 +203,26 @@ def caller_profile(account, token, since, clients):
         return {}
     names = ", ".join("'%s'" % c.replace("'", "") for c, _ in clients)
     resp = query(
-        "SELECT %s AS client, %s AS verdict, toDate(timestamp) AS day, "
-        "toHour(timestamp) AS hour, count() AS n FROM %s "
+        "SELECT %s AS client, %s AS verdict, %s AS country, toDate(timestamp) AS day, "
+        "toHour(timestamp) AS hour, sum(_sample_interval) AS n FROM %s "
         "WHERE timestamp > now() - %s AND %s != '' AND %s IN (%s) "
-        "GROUP BY client, verdict, day, hour ORDER BY client LIMIT 1000"
-        % (BLOB["client"], BLOB["verdict"], DATASET, since, BLOB["tool"],
-           BLOB["client"], names), account, token)
+        "GROUP BY client, verdict, country, day, hour ORDER BY client LIMIT 1000"
+        % (BLOB["client"], BLOB["verdict"], BLOB["country"], DATASET, since,
+           BLOB["tool"], BLOB["client"], names), account, token)
     rows = rows_of(resp)
     if rows is None:
         return {}
     prof = {}
     for row in rows:
         c = str(row.get("client") or "").strip().lower()
-        p = prof.setdefault(c, {"verdicts": {}, "hours": set(), "days": set(), "n": 0})
+        p = prof.setdefault(c, {"verdicts": {}, "hours": set(), "days": set(),
+                                "countries": set(), "n": 0})
         v = str(row.get("verdict") or "").strip() or "(none)"
         n = int(float(row.get("n") or 0))
         p["verdicts"][v] = p["verdicts"].get(v, 0) + n
         p["hours"].add(int(float(row.get("hour") or 0)))
         p["days"].add(str(row.get("day")))
+        p["countries"].add(str(row.get("country") or "??").strip().upper() or "??")
         p["n"] += n
     return prof
 
@@ -223,6 +246,91 @@ def print_profile(prof, clients):
     print("  token. Varied verdicts are somebody looking different things up. Calls")
     print("  spread evenly over many hours is a timer; clustered in few hours is a person")
     print("  or an agent working. Neither settles it alone; read them together.")
+
+
+# --------------------------------------------------------------------------------------
+# The gate's decision function. Frozen 2026-09-07, eleven days before the date.
+# --------------------------------------------------------------------------------------
+#
+# Four counting rules have now been written for one gate, each after looking at the data
+# the previous one produced, each on a 14-day window that slides under the reader's feet.
+# That is fitting, whatever the intention: a rule chosen after seeing the answer is not a
+# test. This is the last one, it lives in a function rather than in prose and a human's
+# judgement, and `tests/test_usage_gate.py` pins its behaviour so it cannot drift quietly.
+#
+# It moves the bar UP, as every previous correction did. The five conditions are the
+# properties the traffic actually observed does not have:
+#
+#   1. not ours          -- vetagent-* is this project, including the landing-page demo
+#                           button and any verification call made while deploying
+#   2. named a tool      -- "" and "?" are handshakes and malformed calls, not use
+#   3. got an answer     -- at least one non-empty verdict. Scanners fuzz arguments and
+#                           collect errors; sasame-mcp-audit called all three tools
+#                           thirteen times and received a verdict on none of them
+#   4. came back         -- two distinct days. One visit is a look, not use
+#   5. asked more than   -- two distinct verdicts. A monitor re-checks one fixed token
+#      one question         and sees one verdict forever; rokmcp-collector calls
+#                           find_new_hot_pools once a day and always gets the same shape
+#
+#   plus, for a client whose NAME cannot be told from ours (claude-code, curl, mozilla):
+#   at least one request from a country that is not the owner's. `_country` was broken
+#   until today, so every historical row says "??" and "??" can neither confirm nor
+#   disqualify -- an ambiguous client with no known country stays NEAR, never YES.
+#
+# Condition 5 has a false-negative cost and it is accepted deliberately: a real user who
+# only ever checks scam tokens sees "high" every time and this rule says NO. The gate is
+# built to be hard to pass, its failing branch prescribes an action we would take anyway
+# (Experiment C, no new features), and the expensive direction to fail in is the other
+# one -- buying another month of building on a robot.
+GATE_FROZEN = "2026-09-07"
+
+
+def gate_verdict(tools, prof):
+    """Decide the 2026-09-18 gate. Returns (verdict, lines) with verdict in
+    YES / NEAR / NO. Pure -- takes what the queries returned, touches no network."""
+    lines = []
+    passed, near = [], []
+    for client, rec in (tools or []):
+        p = (prof or {}).get(client) or {}
+        real_tools = sorted(t for t in rec.get("tools") or ()
+                            if t and t != "?" and not t.startswith("__"))
+        verdicts = sorted(v for v in (p.get("verdicts") or {})
+                          if v and v != "(none)")
+        days = max(int(rec.get("days") or 0), len(p.get("days") or ()))
+        known = {c for c in (p.get("countries") or set()) if c and c != "??"}
+        foreign = known - OWNER_COUNTRIES
+
+        fails = []
+        if is_self(client):
+            fails.append("ours (vetagent-*)")
+        if not real_tools:
+            fails.append("never named a tool")
+        if not verdicts:
+            fails.append("never received a verdict")
+        if days < 2:
+            fails.append("one day only")
+        if len(verdicts) < 2:
+            fails.append("one distinct verdict (%s)" % (verdicts[0] if verdicts else "-"))
+        if client in AMBIGUOUS_CLIENTS and not foreign:
+            fails.append("name indistinguishable from ours, country %s"
+                         % ("/".join(sorted(known)) or "??"))
+
+        if not fails:
+            passed.append(client)
+            lines.append("  YES:  %-26s %d calls, %d days, verdicts %s, country %s"
+                         % (client, rec.get("n") or 0, days, "/".join(verdicts),
+                            "/".join(sorted(known)) or "??"))
+        elif not is_self(client) and real_tools and verdicts:
+            near.append(client)
+            lines.append("  NEAR: %-26s %s" % (client, "; ".join(fails)))
+        else:
+            lines.append("  no:   %-26s %s" % (client, "; ".join(fails)))
+
+    if passed:
+        return "YES", lines
+    if near:
+        return "NEAR", lines
+    return "NO", lines
 
 
 def main():
@@ -294,11 +402,15 @@ def main():
     ext = external_callers(account, token, since)
     tools = tool_callers(account, token, since)
 
+    prof = caller_profile(account, token, since, tools) if tools else {}
+
     print("\n--- Gate 2026-09-18: is anyone outside this project using it? ---")
-    print("  counting rule: a client that is not ours AND actually called a tool.")
-    print("  Connecting is not using. A first run of this gate answered YES on 47")
-    print("  'external callers' of whom 20 have prober/scan/audit/registry in their own")
-    print("  name, across 3,314 requests of which 3,193 carried no tool name at all.")
+    print("  rule frozen %s, in gate_verdict(), pinned by tests/test_usage_gate.py:" %
+          GATE_FROZEN)
+    print("  not ours; named a tool; got a verdict; two distinct days; two distinct")
+    print("  verdicts; and if the name could be ours, one non-owner country.")
+    print("  Four rules have been written for this gate, each after seeing the data the")
+    print("  last one produced. This is the last. It is not adjusted after a run.")
 
     if tools is None:
         print("  QUERY FAILED -- this is not the same as nobody calling.")
@@ -308,28 +420,26 @@ def main():
         print("  -> STRATEGY: distribution problem, not product. Experiment C only, "
               "no new features.")
     else:
-        clear = [(c, r) for c, r in tools if not r["ambiguous"]]
-        murky = [(c, r) for c, r in tools if r["ambiguous"]]
-
-        for client, rec in clear:
-            print("  YES: %-28s %d calls on %d day(s): %s"
-                  % (client, rec["n"], rec["days"], ", ".join(sorted(rec["tools"]))))
-        for client, rec in murky:
-            print("  MAYBE: %-26s %d calls on %d day(s): %s"
-                  % (client, rec["n"], rec["days"], ", ".join(sorted(rec["tools"]))))
-            print("         Cannot be told from the owner's own editor. `_client_name`")
-            print("         reads the User-Agent, and this project deliberately records")
-            print("         no address. Settle it by removing vetagent from the owner's")
-            print("         own MCP config -- then this line is external by construction.")
-
-        if clear:
-            print("  -> STRATEGY: keep following the roadmap.")
+        verdict, lines = gate_verdict(tools, prof)
+        for line in lines:
+            print(line)
+        if verdict == "YES":
+            print("  -> YES. STRATEGY: continue per the roadmap.")
+        elif verdict == "NEAR":
+            print("  -> NO. Callers marked NEAR did something real and did not clear the")
+            print("     bar. They are evidence, not a pass, and the rule is not moved to")
+            print("     admit them. STRATEGY: Experiment C only, no new features.")
         else:
-            print("  -> NOT SETTLED. Every tool call came from a client that cannot be")
-            print("     distinguished from us. Resolve the ambiguity above, then re-run.")
+            print("  -> NO. STRATEGY: Experiment C only, no new features.")
 
     if tools:
-        print_profile(caller_profile(account, token, since, tools), tools)
+        print_profile(prof, tools)
+        demo = prof.get(LANDING_DEMO)
+        if demo:
+            print("\n  landing-page demo button: %d clicks on %d day(s), %d hour(s)."
+                  % (demo["n"], len(demo["days"]), len(demo["hours"])))
+            print("  This is Experiment C's own metric, not the gate's. A click on our")
+            print("  own page is interest; it is not an integration and never counts.")
 
     # Does the per-client attribution account for every tool call? It did not, and
     # nothing noticed: 120 calls by tool against 101 attributed, so 19 belonged to
@@ -337,8 +447,8 @@ def main():
     # its own evidence is not measuring what it claims to.
     by_tool = query(
         "SELECT sum(_sample_interval) AS n FROM %s WHERE timestamp > now() - %s "
-        "AND %s != '' AND NOT startsWith(%s, '__')"
-        % (DATASET, since, BLOB["tool"], BLOB["tool"]), account, token)
+        "AND %s != '' AND %s != '?' AND NOT startsWith(%s, '__')"
+        % (DATASET, since, BLOB["tool"], BLOB["tool"], BLOB["tool"]), account, token)
     tot_rows = rows_of(by_tool)
     if tot_rows:
         total_tool_calls = int(float(tot_rows[0].get("n") or 0))
@@ -348,15 +458,24 @@ def main():
         if total_tool_calls != attributed:
             print("  %d UNATTRIBUTED -- these belong to clients filtered out as ours."
                   % (total_tool_calls - attributed))
-            print("  A single genuine adopter making two calls sits exactly there.")
+            print("  These are clients filtered out as ours. That gap once hid 19")
+            print("  real tool calls; it is now expected to hold only vetagent-* rows,")
+            print("  so a gap LARGER than our own traffic is the thing to look at.")
 
-    print("\n  for context, clients that merely connected: %d" % len(ext or []))
+    # This printed "merely connected: 50" against 78 distinct clients, because the
+    # query said LIMIT 50 and the print said "clients". The 28 it cut were the
+    # lowest-volume ones -- which is exactly where a person trying the tool once sits,
+    # and exactly the opposite of where a crawler sits.
+    print("\n  for context, clients that merely connected: %d%s"
+          % (len(ext or []), " (CAPPED -- raise the LIMIT)" if len(ext or []) >= 500
+             else ""))
     if ext:
         print("    %s" % ", ".join("%s (%s)" % (c, n) for c, n in ext[:12]))
     print("  raw totals: %d clients / %d countries (includes us)"
           % (clients, countries))
-    print("  NOTE: every row reports country '??', so the owner-country filter has")
-    print("  never excluded anything. Do not read it as protection.")
+    print("  NOTE: rows written before 2026-09-07 all report country '??'. _country()")
+    print("  called .get() on a JsProxy, which has no .get, and the bare except turned")
+    print("  every AttributeError into '??'. Fixed; rows from today carry a country.")
 
     for title, col in (("By tool", BLOB["tool"]), ("By client", BLOB["client"]),
                        ("By country", BLOB["country"]), ("By verdict", BLOB["verdict"])):

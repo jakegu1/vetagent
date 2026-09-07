@@ -304,7 +304,12 @@
     if (chain) { args.chain_hint = chain; }
     fetch('https://vetagent.dev/mcp', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      // Name ourselves. Without this the demo's calls arrive as User-Agent "mozilla",
+      // which is indistinguishable from any browser and from any bot that spoofs one --
+      // and 42 such calls were read for four days as a possible first real adopter.
+      // A button on our own page is not adoption; it belongs in its own bucket.
+      headers: {'Content-Type': 'application/json',
+                'X-MCP-Client': 'vetagent-landing-demo'},
       body: JSON.stringify({jsonrpc: '2.0', id: 1, method: 'tools/call',
                             params: {name: 'assess_token_risk', arguments: args}})
     }).then(function (r) { return r.json(); }).then(function (d) {

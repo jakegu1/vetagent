@@ -32,7 +32,7 @@ The maturity score for each round is read from `docs/SCORECARD.md` **as it stood
 11 snapshot-job commits are excluded up to the last closed round: they are data collection, not development, and would bury the rounds. The job commits daily, so counting them past that point would date this file every morning.
 
 
-**R17 -- Next** is open: Open. Its commits are listed here once it closes.
+**R17 -- Fix the instrument, then freeze it** is open: An external audit read the gate's own output and found it printing YES on the developer's verification call made eight minutes earlier: SELF_CLIENTS was an exact-match set and `vetagent-r16-verify` was not in it. Three more of the same shape. `mozilla`, read for four days as a possible first adopter, is this project's own landing-page demo button. `request.cf` is a JsProxy, so `(cf or {}).get('country')` threw on every request ever served and STRATEGY reasoned three times from the premise that Cloudflare withheld the field. And `clientInfo` labels the handshake, not the tool call, because no session id is issued -- so R15's de-mushing applied only to the rows the gate discards. Fixed all four, plus the batch path and the LIMIT that printed a cap as a count, then froze the decision in `gate_verdict()` with the five conditions pinned in a test. Four counting rules have now been written for one gate, each after seeing what the last one produced. This is the last. Its commits are listed here once it closes.
 
 ---
 

@@ -22,6 +22,7 @@ Run:  python tests/test_http_telemetry.py
 """
 
 import asyncio
+import io
 import os
 import sys
 import types
@@ -62,6 +63,7 @@ def _install_worker_stub():
 
 _install_worker_stub()
 import entry  # noqa: E402
+import mcp_server  # noqa: E402
 import risk  # noqa: E402
 
 
@@ -151,6 +153,142 @@ def test_the_token_address_is_never_recorded():
         check("no URL in %r" % (blobs[1],),
               "vetagent.dev" not in joined and "http://" not in joined
               and "https://" not in joined, joined[:120])
+
+
+class FakeCf:
+    """What `request.cf` actually is: a JsProxy of a plain JS object.
+
+    Attribute access only. No `.get`, no `__getitem__`, no mapping protocol -- which is
+    precisely why `(cf or {}).get("country")` raised AttributeError on every request the
+    service ever served, and why the bare `except` turned all 3,414 rows into "??".
+    """
+
+    def __init__(self, country="US"):
+        self.country = country
+        self.colo = "SIN"
+
+
+def test_country_reads_a_jsproxy_not_a_dict():
+    """The discriminator the gate wrote off as unavailable was available all along.
+
+    STRATEGY §8 records "the country filter has never excluded a single row ... it has
+    been inert since it was written", and the gate was re-argued three times around that
+    absence. It was not Cloudflare withholding the field. It was one `.get`.
+    """
+    print("\n[http] request.cf is attribute-access, and it always was")
+    r = FakeRequest("https://vetagent.dev/assess/%s" % ADDRESS)
+    r.cf = FakeCf("SG")
+    check("a JsProxy-shaped cf yields the country", entry._country(r) == "SG",
+          entry._country(r))
+
+    check("the old expression is what failed",
+          not hasattr(FakeCf("SG"), "get"),
+          "if cf grows a .get, this test stops proving anything")
+
+    r.cf = {"country": "US"}
+    check("a plain dict still works, so tests and production agree",
+          entry._country(r) == "US", entry._country(r))
+
+    r.cf = None
+    check("no cf is still '??', not a crash", entry._country(r) == "??")
+
+    r.cf = FakeCf(None)
+    check("cf without a country is '??'", entry._country(r) == "??")
+
+
+def test_a_caller_can_name_itself_on_every_request():
+    """`clientInfo` labels the handshake. The gate counts the tool call.
+
+    `declared_client()` reads a contextvar set while handling `initialize`. No session id
+    is issued, so the `tools/call` that follows is a different request in a different
+    context and the contextvar is back at its default. R15 claimed this field
+    "de-mushes 370 requests"; it de-mushes handshakes, which `tool_callers()` discards.
+    A header travels with every request and needs no session.
+    """
+    print("\n[http] the row the gate counts is the row that must carry a name")
+    r = FakeRequest(
+        "https://vetagent.dev/assess/%s" % ADDRESS,
+        headers={"user-agent": "Mozilla/5.0", "x-mcp-client": "Acme-Bot"})
+    check("the header wins over the User-Agent",
+          entry._caller_id(r) == "acme-bot", entry._caller_id(r))
+
+    plain = FakeRequest("https://vetagent.dev/assess/%s" % ADDRESS,
+                        headers={"user-agent": "Mozilla/5.0"})
+    check("without it we still fall back, so nothing is lost",
+          entry._caller_id(plain) == "mozilla", entry._caller_id(plain))
+
+    check("the header is allowed cross-origin, or a browser blocks the caller trying",
+          "x-mcp-client" in entry._CORS["access-control-allow-headers"])
+
+    landing = io.open(os.path.join(ROOT, "src", "landing.html"),
+                      encoding="utf-8").read()
+    check("our own demo button sends it, so browser clicks stop hiding in 'mozilla'",
+          "X-MCP-Client" in landing and "vetagent-landing-demo" in landing)
+
+
+def _mcp(body, recorded, result=None):
+    """Drive _handle_mcp with the MCP layer stubbed, collecting what got recorded."""
+    original_record = entry._record
+    original_handle = mcp_server.handle_mcp_request
+
+    def _rec(env, blobs, doubles):
+        recorded.append(blobs)
+
+    async def _handle(msg):
+        return result if result is not None else {
+            "jsonrpc": "2.0", "id": msg.get("id"),
+            "result": {"structuredContent": {"risk_level": "high"}}}
+
+    class Req(FakeRequest):
+        async def json(self):
+            return body
+
+    entry._record = _rec
+    mcp_server.handle_mcp_request = _handle
+    try:
+        w = entry.Default()
+        asyncio.run(w.fetch(Req("https://vetagent.dev/mcp", method="POST")))
+    finally:
+        entry._record = original_record
+        mcp_server.handle_mcp_request = original_handle
+
+
+def test_a_batched_tool_call_is_still_a_tool_call():
+    """The batch branch returned before reaching the recording block.
+
+    JSON-RPC batching is what an integration reaches for the moment it has more than one
+    token to check -- so the invisible path was, again, the one a real user is most
+    likely to be on.
+    """
+    print("\n[http] batched calls were invisible to the gate")
+    recorded = []
+    _mcp([{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+           "params": {"name": "assess_token_risk", "arguments": {"address": ADDRESS}}},
+          {"jsonrpc": "2.0", "id": 2, "method": "tools/call",
+           "params": {"name": "get_token_liquidity", "arguments": {"address": ADDRESS}}}],
+         recorded)
+    check("both messages in the batch are recorded", len(recorded) == 2,
+          str(recorded))
+    if len(recorded) == 2:
+        check("with their own tool names",
+              [b[1] for b in recorded]
+              == ["assess_token_risk", "get_token_liquidity"],
+              str([b[1] for b in recorded]))
+        check("and no address leaks through the batch path either",
+              ADDRESS.lower() not in " ".join(str(b) for r in recorded
+                                              for b in r).lower())
+
+
+def test_an_unnamed_tool_call_is_not_tool_use():
+    """`tool` was recorded as "?" for a malformed tools/call, which then sat in the
+    gate's evidence looking exactly like a real one."""
+    print("\n[http] a malformed call is not evidence of use")
+    recorded = []
+    _mcp({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {}}, recorded)
+    check("one row recorded", len(recorded) == 1, str(recorded))
+    if recorded:
+        check("the tool is empty, not '?'", recorded[0][1] == "",
+              repr(recorded[0][1]))
 
 
 def main():

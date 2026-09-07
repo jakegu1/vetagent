@@ -190,7 +190,10 @@ _JSON = "application/json"
 _CORS = {
     "access-control-allow-origin": "*",
     "access-control-allow-methods": "GET, POST, OPTIONS",
-    "access-control-allow-headers": "content-type, accept, mcp-protocol-version, mcp-session-id",
+    # x-mcp-client lets a caller name itself on every request, not only on initialize.
+    # Without it here, a cross-origin caller that tries is blocked by its own browser.
+    "access-control-allow-headers":
+        "content-type, accept, mcp-protocol-version, mcp-session-id, x-mcp-client",
     "access-control-max-age": "86400",
 }
 
@@ -233,17 +236,35 @@ def _client_name(request):
     return ua or "unknown"
 
 
+CLIENT_HEADER = "x-mcp-client"
+
+
 def _caller_id(request):
-    """What the caller calls itself, preferring its own declaration over its User-Agent.
+    """What the caller calls itself: header, then handshake declaration, then User-Agent.
 
-    `_client_name` reads the User-Agent, which collapses every browser and every bot that
-    spoofs one into "mozilla", and every Node-built client into "node" or "undici" --
-    370 requests, 11% of traffic, unattributable by construction. The MCP spec makes
-    `clientInfo.name` mandatory on initialize, and a client naming itself is application
-    self-description rather than personal data.
+    **`clientInfo` cannot label the rows the gate counts, and R15 claimed it could.**
+    `declared_client()` reads a contextvar set while handling `initialize`. This server
+    issues no `Mcp-Session-Id`, so every POST is a separate request in a separate
+    context: on the `tools/call` that follows, the contextvar is back at its default.
+    The claim that this "de-mushes 370 requests" is true of handshake rows only -- and
+    handshake rows are exactly the rows `tool_callers()` throws away. For the gate the
+    field was decorative.
 
-    Falls back to the User-Agent when nothing was declared, so nothing is lost.
+    `X-MCP-Client` is the fix that works on the request that matters. Any caller can name
+    itself on every request with one header, it survives having no session, and it is
+    application self-description -- no address, no identity, nothing about a person. It
+    is what the `initialize` instructions invite integrators to send, and our own landing
+    page demo is the first thing to use it, so browser clicks stop hiding inside
+    "mozilla".
+
+    The User-Agent fallback stays, so nothing is lost for callers that send neither.
     """
+    try:
+        header = (request.headers.get(CLIENT_HEADER) or "").strip().lower()[:32]
+    except Exception:                                        # noqa: BLE001
+        header = ""
+    if header:
+        return header
     declared = ""
     try:
         declared = mcp_server.declared_client()
@@ -253,8 +274,35 @@ def _caller_id(request):
 
 
 def _country(request):
+    """Cloudflare's two-letter country for this request, or "??" if unavailable.
+
+    This function returned "??" for **every request the service has ever served** --
+    3,414 of 3,414 rows -- and not because Cloudflare withheld the field.
+
+    `request.cf` is a **JsProxy of a plain JS object**, not a dict. The vendored SDK says
+    so in as many words (`workers/request.py`: "access fields via attribute notation, for
+    example ``request.cf.colo``"). A JsProxy over a plain object exposes no `.get`, so
+    `(cf or {}).get("country")` raised AttributeError on every call, the bare `except`
+    swallowed it, and "??" went into the blob.
+
+    The cost was not cosmetic. STRATEGY §8 reasons about the gate from the premise that
+    "the country filter has never excluded a single row ... it has been inert since it
+    was written", and `bench/usage.py` prints "do not read it as protection." The
+    discriminator that separates the owner's clicks from a stranger's was in the schema,
+    already judged acceptable to record, and available the whole time. This is the third
+    time in this project that the answer was already on disk.
+
+    Attribute first, `.get` second, so a dict from a test and a JsProxy from production
+    both work -- and so this never silently degrades to "??" again without saying why.
+    """
     try:
-        return (getattr(request, "cf", None) or {}).get("country") or "??"
+        cf = getattr(request, "cf", None)
+        if cf is None:
+            return "??"
+        country = getattr(cf, "country", None)
+        if country is None and hasattr(cf, "get"):
+            country = cf.get("country")
+        return str(country)[:2].upper() if country else "??"
     except Exception:  # noqa: BLE001
         return "??"
 
@@ -418,6 +466,12 @@ class Default(WorkerEntrypoint):
                          "id": (item.get("id") if isinstance(item, dict) else None),
                          "error": {"code": mcp_server.INTERNAL_ERROR,
                                    "message": "Internal error"}}
+                # A batched tools/call is still a tool call. This loop returned before
+                # reaching the recording block below, so every message inside a batch was
+                # invisible to the gate -- the same defect as /assess, in the one code
+                # path a real integration is most likely to use once it has more than one
+                # token to check.
+                self._record_message(request, item, r)
                 if r is not None:
                     responses.append(r)
             if not responses:
@@ -434,22 +488,32 @@ class Default(WorkerEntrypoint):
                            "message": "Internal error"}},
                 extra_headers=headers)
 
-        # Record one usage point: which tool was called, what the verdict was, and
-        # what kind of client it came from. No addresses, no IPs.
+        self._record_message(request, body, result)
+
+        if result is None:
+            return Response("", headers=_CORS, status=202)  # notification: no response body
+        return _json_response(result, extra_headers=headers)
+
+    def _record_message(self, request, message, result):
+        """Record one JSON-RPC message: which tool, what verdict, what kind of client.
+
+        No addresses, no IPs, no token queries -- the same invariant as everywhere else.
+
+        `tool` used to be recorded as "?" when `tools/call` arrived without a name. That
+        is a malformed request, and it was landing in the gate's evidence as a tool call
+        indistinguishable from a real one. An unnamed tool is not tool use, so it records
+        as empty and `tool_callers()` skips it like any other non-call.
+        """
         try:
-            method = body.get("method") or "?"
+            method = message.get("method") or "?"
             tool, verdict = "", ""
             if method == "tools/call":
-                tool = (body.get("params") or {}).get("name") or "?"
+                tool = (message.get("params") or {}).get("name") or ""
                 sc = ((result or {}).get("result") or {}).get("structuredContent") or {}
                 verdict = sc.get("risk_level") or sc.get("status") or ""
             self._record_call(request, method, tool, verdict, result)
         except Exception:  # noqa: BLE001
             pass
-
-        if result is None:
-            return Response("", headers=_CORS, status=202)  # notification: no response body
-        return _json_response(result, extra_headers=headers)
 
     def _record_http(self, request, tool, result):
         """Record an HTTP call the same way an MCP call is recorded.

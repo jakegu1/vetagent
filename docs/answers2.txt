@@ -1,0 +1,103 @@
+Findings, ranked by what they cost the gate
+[HIGH] Rule 4's printed verdict is YES today, on one self-test call and two scanners
+  bench/usage.py main(), the `clear` branch
+  observed  run 34079802441 at 03:29Z prints:
+              YES: sasame-mcp-audit    13 calls, verdicts "(none) x13"
+              YES: rokmcp-collector     3 calls, 1 per day, find_new_hot_pools only
+              YES: vetagent-r16-verify  1 call
+            -> STRATEGY: keep following the roadmap.
+  why       SELF_CLIENTS is two exact strings, so the dev agent's own verification
+            call, named vetagent-r16-verify, is "external". sasame's verdict is empty
+            on all 13 calls: it fuzzes arguments, gets isError, never a verdict. That
+            is a scanner fingerprint already in the data and unused by the rule.
+  so        the commit says UNRESOLVED; the instrument says YES. Rule 4 is rule 3
+            with a dashboard under it, and it is already wrong on its first day.
+  action    fix now: startswith("vetagent-") is self; a client whose verdicts are
+            all empty is not a user; freeze the decision function in the test.
+[HIGH] "mozilla" is your own landing-page demo widget
+  src/landing.html:305, shipped in 388086f on 2026-09-04
+  evidence  the widget POSTs a raw tools/call to https://vetagent.dev/mcp, same-origin,
+            no initialize. The input has no default value, so run() on load returns
+            early: every call is a button click or a typed address. Three preset
+            buttons; production verdicts today: RETAIL -> high, ALIGN -> unknown,
+            WETH -> low. mozilla's 42 calls: high x29, unknown x13, low x0, medium x0,
+            across 4 days -- the widget's age. The rest of the traffic yields low or
+            medium 44% of the time; 42 arbitrary lookups landing on exactly the two
+            honeypot presets and never the safe one is ~3e-11.
+  so        not an integrated agent. Whether the clickers are strangers from the
+            registry page or the owner checking after six deploys is unknowable from
+            this data, because the widget carries no marker.
+  the falsifier  OPTIONS preflight is dead by construction: same-origin fetch never
+            preflights. If a visitor loads the workers.dev URL instead, it does, so
+            the count would be inconsistent in both directions.
+  action    fix now: the widget sends a header or a distinct JSON-RPC id prefix so it
+            is its own bucket. One line each side.
+[HIGH] Country has been "??" on 3,414 of 3,414 rows because of one line, not Cloudflare
+  src/entry.py _country()
+  evidence  .venv/lib/python3.13/site-packages/workers/request.py:68-79 returns cf as
+            a JsProxy and documents "access fields via attribute notation, for
+            example request.cf.colo". entry.py does (cf or {}).get("country"); a
+            JsProxy of a plain object has no .get, the AttributeError hits the bare
+            except, and "??" is returned for every request ever recorded.
+  so        the discriminator the gate wrote off as inert has been available the
+            whole time, is coarse, is already in the schema, and was already judged
+            acceptable to record. It would separate CN clicks from foreign clicks
+            tomorrow. Same shape as "the oracle was already on disk."
+  action    fix now: request.cf.country. Nothing else changes.
+[HIGH] clientInfo cannot label a tool-call row
+  src/mcp_server.py declared_client(), src/entry.py _caller_id()
+  proof     declared_client() on the initialize row  : 'acme-trading-agent 3.1'
+            declared_client() on the tools/call row  : ''
+            the server issues no Mcp-Session-Id, so each POST is its own context and
+            the contextvar set on initialize is never present on the request the
+            gate counts.
+  so        "de-mushes 370 requests" is true of handshake rows only. Tool-call rows
+            still fall back to the User-Agent.
+  action    issue a session id on initialize, or accept clientInfo in tools/call
+            _meta. Until then this field is decorative for the gate.
+[MEDIUM] claude-code is us, proven
+  run diff  03:29Z -> 03:37Z after one get_token_liquidity from this desktop session:
+            claude-code 43 -> 44, ok x4 -> x5, days 3 -> 4. The Claude desktop app
+            and the Claude Code CLI share the bucket. Owner, dev agent, and both my
+            audit sessions all had .mcp.json loaded.
+  also      curl went 20 -> 21 in those same eight minutes, while the dev agent was
+            committing 6fa467c. curl is whoever is at a terminal on a working day.
+[MEDIUM] Still silently dropped
+  a. batch JSON-RPC arrays never reach _record_call (src/entry.py list branch)
+  b. external_callers LIMIT 50 on 78 clients: "merely connected: 50" is the cap,
+     not a count; the 28 cut are the lowest-volume, where a person would sit
+  c. tool_callers uses count(), reconciliation uses sum(_sample_interval): a
+     phantom UNATTRIBUTED gap the moment Analytics Engine samples
+  d. "a single genuine adopter sits exactly there" is now false: the 2 unattributed
+     are the two self-tools by construction
+  e. tool = params.name or "?" records "?" as a tool call
+[MEDIUM] The window slides, and the gate was read on day 3 of 14
+  the query is now() - 14 days. Registry listing 09-04, widget 09-04, read 09-07.
+  "Wait 7 days" lands 09-14, still before the date. Every read before 09-18 is a
+  rule fitted to a partial window, and there have now been four.
+Your six questions
+
+1. Readable or fitted? Fitted, and already falsified: its printed YES rests on a self-test and two scanners. The profile section is the right instinct but it is printed for a human to override, which means the rule is whatever the human decides after seeing the data. Make the profile the rule: non-empty verdict, ≥2 distinct verdicts, ≥2 days, not self-tagged, not the widget, country ≠ CN. Freeze it in test_usage_gate.py today, read it once on 09-18.
+
+2. mozilla. The widget. Preflight is unsound. What settles it without identities, in order of cost: fix _country (one token); tag the widget (two lines); run this once against Analytics Engine to see whether clicks fall on days and hours nobody on the project was working:
+
+SELECT toDate(timestamp) AS day, toHour(timestamp) AS hour, blob3 AS verdict, count() AS n
+FROM vetagent_calls
+WHERE blob4 = 'mozilla' AND blob2 = 'assess_token_risk' AND timestamp > now() - INTERVAL '14' DAY
+GROUP BY day, hour, verdict ORDER BY day, hour
+
+Cloudflare zone analytics already hold GET / page views by country with no code change; if page views over those four days are in the tens, the clicks are yours.
+
+3. Reconciliation. The 19 are correctly surfaced. New drops are in the MEDIUM block above; the batch path and LIMIT 50 are the two that can hide a person.
+
+4. /assess. Instrumented at 03:27Z today and deployed; zero days of data. It inherits the UA fallback, so its rows will land in curl and mozilla too until tagged. The larger discount is the one you did not ask about: the third interface, the landing page, was recorded the whole time and was read as a user.
+
+5. The plan. Running C is sound: it is in both branches. Re-reading the gate seven days after C is not: C sends curious humans to the page whose clicks land in exactly the bucket you cannot attribute, so you would be measuring C's click-through and calling it adoption. Do the three one-line fixes above today (they are telemetry, not engine features), read the gate once on 09-18 with a frozen rule, then run C and measure it with its own metric.
+
+6. Your fixes. M-2 reproduces exactly and the script is honest about what it cannot settle. But all 250 contracts are Base, the commit does not say so, and the positives are 3, 7, 16 and 73. "Effectively blind on two of four powers" rests on n=3 and n=7; the 95% interval on 0 of 3 reaches 71%. Fetch the 19, 19 and 38 flagged contracts across all three chains instead of the first 250 in file order. The disclosure caveat is present and correct; "about a third" is mint-dominated and understates for pause, blacklist and tax. M-1 catches the fabricated 99.9% false positive rate you tested and misses four mutations I tried: a percentage on a line without one of nine keywords, a percentage phrased "flags 12.3% of healthy tokens", a stale count with no %, and anything on a line containing "Rejected." Only files with a TARGET are scanned; HANDOFF.md:368 still says 11.3%.
+
+Which this is
+
+No real user yet. Every bucket resolves: mozilla is the widget, claude-code is us by direct test, curl moved while your dev agent was committing, r16-verify is self, sasame and rokmcp are scanners by name and by empty verdicts. I am confident in that reading and I hold it loosely, because the widget clicks could be strangers arriving from the registry page, which would be interest rather than adoption, and I cannot tell the two apart from what is recorded.
+
+The single observation that would change my mind: after _country is fixed, one assess_token_risk call with a non-empty verdict from a country other than CN, from a client that is not the widget and not claude-code or curl on a day someone was committing. Until country works, the SQL above is the nearest substitute: mozilla clicks at hours when no one on the project was awake.

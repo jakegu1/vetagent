@@ -363,6 +363,55 @@ Skipping one silently isn't allowed.
 > forbids, which is why it is dated, argued and left in place rather than quietly edited.
 > It moves the bar **up**, not down.
 
+> **Corrected a fourth time on 2026-09-07, and then frozen in code.** An external audit
+> read the instrument's own output rather than its prose and found it printing:
+>
+>     YES: sasame-mcp-audit    13 calls, verdicts "(none) x13"
+>     YES: rokmcp-collector     3 calls, 1 per day, find_new_hot_pools only
+>     YES: vetagent-r16-verify  1 call
+>     -> STRATEGY: keep following the roadmap.
+>
+> The third line is the developer's own verification call, made eight minutes earlier
+> while deploying. `SELF_CLIENTS` was an exact-match set of two strings and this name was
+> not in it. The gate built to detect strangers recommended another round of building on
+> the strength of our own test traffic, a scanner that never received a verdict, and a
+> collector on a daily timer.
+>
+> Three further premises in the paragraphs above were false:
+>
+> - **`mozilla` is our own landing page.** Its 42 calls — read for four days as the one
+>   candidate that might be real use — come from the demo button in `src/landing.html`,
+>   which POSTs `tools/call` from the browser and therefore arrives under the browser's
+>   User-Agent. A click on our own page is interest, not adoption. It now names itself
+>   and has its own bucket, where it serves as Experiment C's metric instead.
+> - **Country was never unavailable.** "Analytics Engine reports every request as country
+>   `??`" is written twice above and it is not what happened. `request.cf` is a JsProxy of
+>   a plain JS object — attribute access, no `.get` — so `(cf or {}).get("country")` threw
+>   `AttributeError` on every request ever served and a bare `except` returned `??`. The
+>   discriminator that separates the owner's own traffic from a stranger's was in the
+>   schema, already judged acceptable to record, and available the whole time. This is the
+>   third occasion in this project where the answer was already on disk.
+> - **`clientInfo` labels the handshake, not the call.** No `Mcp-Session-Id` is issued, so
+>   the `tools/call` POST is a different request in a different context and the contextvar
+>   set during `initialize` is gone. R15's claim that this "de-mushes 370 requests" holds
+>   only for rows `tool_callers()` discards. Callers now name themselves with an
+>   `X-MCP-Client` header, which travels on every request and needs no session.
+>
+> **This is the fourth counting rule for one gate, and each was written after seeing what
+> the previous one produced, on a 14-day window that slides under the reader's feet.** A
+> rule chosen after seeing the answer is not a test, however honest the intent. So this
+> one is not prose: it is `gate_verdict()` in `bench/usage.py`, five conditions, pinned by
+> `tests/test_usage_gate.py` against every bucket the real traffic has produced — and
+> against a synthetic caller that must still pass, because a gate that cannot pass is a
+> decision already made rather than a test. It is read **once, on 2026-09-18**, and it is
+> not adjusted after a run. If it is wrong, it is wrong on the record.
+>
+> It moves the bar up again. Not ours; named a tool; received at least one real verdict;
+> came back on a second day; asked about more than one thing; and — for a client whose
+> name cannot be told from ours — one request from a country that is not the owner's. The
+> accepted cost is stated rather than hidden: a genuine user who only ever checks scam
+> tokens sees `high` every time and this rule says no.
+
 **The maintenance commitment.** We will never leave a risk tool running unmaintained.
 A risk tool whose upstreams have drifted doesn't go quiet — it keeps answering, exactly
 as confidently as before, and it is wrong precisely when someone is trusting it. That is
