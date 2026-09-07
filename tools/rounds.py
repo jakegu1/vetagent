@@ -126,7 +126,7 @@ ROUNDS = [
      "every other published number -- including the 10% dead-token recall it is built "
      "around, which was quoted in three places and computed in none. No engine "
      "features: every branch of the 09-18 gate says do Experiment C."),
-    ("R17", "Fix the instrument, then freeze it", None,
+    ("R17", "Fix the instrument, then freeze it", "b078d65",
      "An external audit read the gate's own output and found it printing YES on the "
      "developer's verification call made eight minutes earlier: SELF_CLIENTS was an "
      "exact-match set and `vetagent-r16-verify` was not in it. Three more of the same "
@@ -139,7 +139,29 @@ ROUNDS = [
      "all four, plus the batch path and the LIMIT that printed a cap as a count, then "
      "froze the decision in `gate_verdict()` with the five conditions pinned in a test. "
      "Four counting rules have now been written for one gate, each after seeing what "
-     "the last one produced. This is the last."),
+     "the last one produced. This is the last. Then the gate printed YES anyway -- on "
+     "our own deploy pipeline, because CI smoke-tests production five times per deploy "
+     "from a US runner under no client name. Fixed by naming our tooling rather than by "
+     "moving the bar, and the landing page is now attributed by Origin so a cached copy "
+     "of its JavaScript cannot hide browser clicks in `mozilla`. Also docs/OWNER.md, "
+     "generated: the owner said they could not tell what needed them or by when, which "
+     "was a fair complaint about eleven documents and nineteen W-numbers that answer "
+     "everything except that."),
+    ("R18", "Make the archive worth waiting for", None,
+     "Listed the server where it can be found -- GitHub topics, mcp.so, Docker's MCP "
+     "registry, two awesome lists -- then reviewed the daily collector across seven "
+     "dimensions. It was discarding 14 of the 18 time-resolution buckets every response "
+     "already carried, storing 5 of honeypot.is's 13 branches, recording an empty "
+     "`flags` list because the real ones live under `summary`, blacklisting tokens it "
+     "had never received an answer about, and letting an optional probe run between the "
+     "irreplaceable pool rows being written and their commit. E11 again in two more "
+     "places, one written the day before. W20 was rejected on a bad measurement, then "
+     "the rejection was corrected on three of its own numbers. The archive's ceiling was "
+     "measured and it is lower than claimed: 69% of new pools never trade $50k in a "
+     "week, so they can never be labelled dead however long we wait. And the review "
+     "itself cost 233 agents and the account's session limit, which produced "
+     "`.claude/workflows/budgeted-review.js` and the rule that an agent count must never "
+     "be a function of model output."),
 ]
 
 

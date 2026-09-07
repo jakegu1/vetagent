@@ -86,16 +86,16 @@ next -- including stopping.
 | False positives | 4.3% -- we called a healthy token dangerous |
 | Answers we refuse | 15.3% -- `unknown`, on purpose |
 | Dead tokens we rated high | 10.0% -- our worst number, published first |
-| Round in progress | R17: Fix the instrument, then freeze it |
+| Round in progress | R18: Make the archive worth waiting for |
 
 The score's ceiling for engineering alone is about 70. The missing points are
 distribution and users, which is why more building cannot move it.
 
 ## What I am doing right now
 
-**R17 -- Fix the instrument, then freeze it**
+**R18 -- Make the archive worth waiting for**
 
-An external audit read the gate's own output and found it printing YES on the developer's verification call made eight minutes earlier: SELF_CLIENTS was an exact-match set and `vetagent-r16-verify` was not in it. Three more of the same shape. `mozilla`, read for four days as a possible first adopter, is this project's own landing-page demo button. `request.cf` is a JsProxy, so `(cf or {}).get('country')` threw on every request ever served and STRATEGY reasoned three times from the premise that Cloudflare withheld the field. And `clientInfo` labels the handshake, not the tool call, because no session id is issued -- so R15's de-mushing applied only to the rows the gate discards. Fixed all four, plus the batch path and the LIMIT that printed a cap as a count, then froze the decision in `gate_verdict()` with the five conditions pinned in a test. Four counting rules have now been written for one gate, each after seeing what the last one produced. This is the last.
+Listed the server where it can be found -- GitHub topics, mcp.so, Docker's MCP registry, two awesome lists -- then reviewed the daily collector across seven dimensions. It was discarding 14 of the 18 time-resolution buckets every response already carried, storing 5 of honeypot.is's 13 branches, recording an empty `flags` list because the real ones live under `summary`, blacklisting tokens it had never received an answer about, and letting an optional probe run between the irreplaceable pool rows being written and their commit. E11 again in two more places, one written the day before. W20 was rejected on a bad measurement, then the rejection was corrected on three of its own numbers. The archive's ceiling was measured and it is lower than claimed: 69% of new pools never trade $50k in a week, so they can never be labelled dead however long we wait. And the review itself cost 233 agents and the account's session limit, which produced `.claude/workflows/budgeted-review.js` and the rule that an agent count must never be a function of model output.
 
 ## How to check on me without reading any code
 

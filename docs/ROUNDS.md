@@ -28,11 +28,12 @@ The maturity score for each round is read from `docs/SCORECARD.md` **as it stood
 | **R14** | Stop the token from writing inside our verdict | 20 | 2026-09-06 | 53/100 (+0) |
 | **R15** | Guards that guard, and numbers that are watched | 20 | 2026-09-06 to 2026-09-07 | 53/100 (+0) |
 | **R16** | Make the gate readable, then stop | 10 | 2026-09-07 | 53/100 (+0) |
+| **R17** | Fix the instrument, then freeze it | 6 | 2026-09-07 | 53/100 (+0) |
 
-11 snapshot-job commits are excluded up to the last closed round: they are data collection, not development, and would bury the rounds. The job commits daily, so counting them past that point would date this file every morning.
+12 snapshot-job commits are excluded up to the last closed round: they are data collection, not development, and would bury the rounds. The job commits daily, so counting them past that point would date this file every morning.
 
 
-**R17 -- Fix the instrument, then freeze it** is open: An external audit read the gate's own output and found it printing YES on the developer's verification call made eight minutes earlier: SELF_CLIENTS was an exact-match set and `vetagent-r16-verify` was not in it. Three more of the same shape. `mozilla`, read for four days as a possible first adopter, is this project's own landing-page demo button. `request.cf` is a JsProxy, so `(cf or {}).get('country')` threw on every request ever served and STRATEGY reasoned three times from the premise that Cloudflare withheld the field. And `clientInfo` labels the handshake, not the tool call, because no session id is issued -- so R15's de-mushing applied only to the rows the gate discards. Fixed all four, plus the batch path and the LIMIT that printed a cap as a count, then froze the decision in `gate_verdict()` with the five conditions pinned in a test. Four counting rules have now been written for one gate, each after seeing what the last one produced. This is the last. Its commits are listed here once it closes.
+**R18 -- Make the archive worth waiting for** is open: Listed the server where it can be found -- GitHub topics, mcp.so, Docker's MCP registry, two awesome lists -- then reviewed the daily collector across seven dimensions. It was discarding 14 of the 18 time-resolution buckets every response already carried, storing 5 of honeypot.is's 13 branches, recording an empty `flags` list because the real ones live under `summary`, blacklisting tokens it had never received an answer about, and letting an optional probe run between the irreplaceable pool rows being written and their commit. E11 again in two more places, one written the day before. W20 was rejected on a bad measurement, then the rejection was corrected on three of its own numbers. The archive's ceiling was measured and it is lower than claimed: 69% of new pools never trade $50k in a week, so they can never be labelled dead however long we wait. And the review itself cost 233 agents and the account's session limit, which produced `.claude/workflows/budgeted-review.js` and the rule that an agent count must never be a function of model output. Its commits are listed here once it closes.
 
 ---
 
@@ -389,6 +390,27 @@ Instrumented /assess. `_record_call` was reachable only from `_handle_mcp`, so e
 | `64930ff` | 2026-09-07 | CLAUDE.md: the traps that each cost time more than once |
 | `6fa467c` | 2026-09-07 | R16: /assess was invisible to the gate that decides whether to keep building |
 | `49d7548` | 2026-09-07 | Experiment C: the post, with the numbers that make it look bad |
+
+Full reasoning for any line above: `git show <hash>`. The commit messages carry the measurement that motivated each change, and several admissions of error.
+
+
+---
+
+
+## R17 -- Fix the instrument, then freeze it
+
+
+An external audit read the gate's own output and found it printing YES on the developer's verification call made eight minutes earlier: SELF_CLIENTS was an exact-match set and `vetagent-r16-verify` was not in it. Three more of the same shape. `mozilla`, read for four days as a possible first adopter, is this project's own landing-page demo button. `request.cf` is a JsProxy, so `(cf or {}).get('country')` threw on every request ever served and STRATEGY reasoned three times from the premise that Cloudflare withheld the field. And `clientInfo` labels the handshake, not the tool call, because no session id is issued -- so R15's de-mushing applied only to the rows the gate discards. Fixed all four, plus the batch path and the LIMIT that printed a cap as a count, then froze the decision in `gate_verdict()` with the five conditions pinned in a test. Four counting rules have now been written for one gate, each after seeing what the last one produced. This is the last. Then the gate printed YES anyway -- on our own deploy pipeline, because CI smoke-tests production five times per deploy from a US runner under no client name. Fixed by naming our tooling rather than by moving the bar, and the landing page is now attributed by Origin so a cached copy of its JavaScript cannot hide browser clicks in `mozilla`. Also docs/OWNER.md, generated: the owner said they could not tell what needed them or by when, which was a fair complaint about eleven documents and nineteen W-numbers that answer everything except that.
+
+
+| Commit | Date | Change |
+|---|---|---|
+| `e223139` | 2026-09-07 | Close R16: pin the round to its commit |
+| `587ab73` | 2026-09-07 | R17: the gate was answering YES on our own verification call |
+| `0a30632` | 2026-09-07 | R17: the owner-power recall table was measured on the wrong 250 contracts |
+| `1590f10` | 2026-09-07 | R17: record that Experiment C runs inside the gate's own window |
+| `a03f430` | 2026-09-07 | R17: our own CI was in the gate's numerator, and a page for the owner |
+| `b078d65` | 2026-09-07 | R17: attribute the landing page by Origin, not by its own JavaScript |
 
 Full reasoning for any line above: `git show <hash>`. The commit messages carry the measurement that motivated each change, and several admissions of error.
 
