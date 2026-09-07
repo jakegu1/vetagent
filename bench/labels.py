@@ -84,6 +84,29 @@ def outcome_label(ohlcv_list):
 
     dead != scam. Honest projects die too. What this label answers is whether you can still
     get out of the position safely, and that is exactly the scope VetAgent claims to cover.
+
+    **Do not relax the 30-day gate to catch fast rugs. It was measured on 2026-09-08 and
+    the yield is zero.** The idea is obvious and wrong: the snapshot collector captures
+    brand-new pools, 211 of 576 dataset tokens are rejected here for having under 30 days
+    of history, and a token that launches and rugs in six hours can never accumulate 30
+    days -- so the labeller appears to be structurally blind to exactly the population the
+    archive collects. Running the same dead rule over the 126 of those 211 whose OHLCV was
+    already cached, with the day gate removed entirely:
+
+        would be labelled dead    0   (0%)
+        never traded at all      87   (69%)  peak 7-day volume under $50k
+        still trading            29   (23%)  volume collapse under 50%
+        middle ground            10   (8%)
+
+    Not one. The binding constraint is not the day count, it is the $50k peak-volume bar
+    in the `dead` branch, and that bar is right: 69% of brand-new pools never build a
+    market at all, and a token nobody bought has no death to detect. The refusal is the
+    rule working.
+
+    What follows for the archive is a real limit, and it should be stated rather than
+    discovered in 2027: **the snapshot archive's eventual `dead` yield is bounded by the
+    ~31% of new pools that ever trade $50k in a week**, not by how long we wait. Waiting
+    longer does not rescue a token that never had a market.
     """
     rows = [r for r in (ohlcv_list or []) if r and len(r) >= 6]
 

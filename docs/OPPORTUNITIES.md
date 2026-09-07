@@ -38,6 +38,50 @@ redirecting the current project instead of parking it**.
 
 ## Parked
 
+### O6 · Holders who actually failed to sell, as a label the engine cannot see
+
+**Blocked until: gate 2026-09-18** (is anyone using it) — the data trigger lands well
+before it: the experiment needs 500 answered sellability rows, which is about five days
+at 100/day, against 14 as of 2026-09-08. Reviewing it at the gate rather than the moment
+the rows exist is deliberate; a measurement is compatible with that gate's failing branch
+("Experiment C only, no new features"), but changing what counts as a bad token is not
+something to slip in between checkpoints.
+
+W3 -- the adversarial cohort is 17 tokens and every headline rests on it -- has one real
+blocker: confirmed-bad tokens are found by looking backwards, and by then they cannot be
+tested. Two escapes were considered on 2026-09-08 and one of them died on contact.
+
+**The escape that failed.** Wait for the archive's own tokens to die and label them from
+market outcome. Measured: of the 126 currently-unlabellable tokens whose OHLCV was
+cached, **zero** would be labelled dead even with the day gate removed -- 69% never
+traded $50k in a week, so they never had a market to lose. Waiting does not fix that. See
+the note in `bench/labels.py`.
+
+**The escape that might work.** honeypot.is returns a `holderAnalysis` branch carrying
+`failed` and `siphoned`: counts of **real holders who attempted a sell and it did not
+complete**. That is an observation of third-party on-chain behaviour, not a simulator's
+opinion, and it needs no market and no waiting -- the first honeypot this archive caught
+had almost no volume and will never be labellable from OHLCV, yet it is definitively bad.
+
+`grep -c holderAnalysis src/risk.py` returns **0**. The engine has never read this field.
+It reads `summary`, `simulationSuccess`, `honeypotResult`, `simulationResult`,
+`simulationError`, `contractCode` and `token.totalHolders` -- and nothing else.
+
+**Why it is parked and not adopted.** Independence here is narrower than B2's. The field
+is unread by the engine, which is the property B2 actually protects, but it comes from the
+same vendor whose simulation the engine does read, so a vendor-level data fault could move
+both together. GoPlus is the held-out oracle precisely to avoid that class of correlation.
+Changing what counts as a bad token is the most consequential edit available in this
+repository, and it would move every published number -- ten days before a gate, and with
+Experiment C about to publish those numbers to an audience invited to check them.
+
+**The experiment that settles it**, to run at 500 rows: on tokens carrying both, does
+`holderAnalysis.failed > 0` agree with the outcome label, and does it fire on tokens the
+engine rates `low` or `medium`? If it only ever agrees with honeypot.is's own
+`isHoneypot`, it is that verdict wearing a different hat and must be dropped. If it fires
+independently, it is a label source and gets a `DECISIONS.md` entry of its own, plus a
+test pinning that `src/` never reads it.
+
 ### O1 · Become the category's referee rather than its 18th scanner
 
 **Blocked until: gate 2026-12-04** (is further investment in VetAgent worth it)
