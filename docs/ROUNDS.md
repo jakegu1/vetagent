@@ -27,11 +27,12 @@ The maturity score for each round is read from `docs/SCORECARD.md` **as it stood
 | **R13** | Withdraw a conclusion, and double the cohort it rested on | 12 | 2026-09-06 | 53/100 (+0) |
 | **R14** | Stop the token from writing inside our verdict | 20 | 2026-09-06 | 53/100 (+0) |
 | **R15** | Guards that guard, and numbers that are watched | 20 | 2026-09-06 to 2026-09-07 | 53/100 (+0) |
+| **R16** | Make the gate readable, then stop | 10 | 2026-09-07 | 53/100 (+0) |
 
-10 snapshot-job commits are excluded up to the last closed round: they are data collection, not development, and would bury the rounds. The job commits daily, so counting them past that point would date this file every morning.
+11 snapshot-job commits are excluded up to the last closed round: they are data collection, not development, and would bury the rounds. The job commits daily, so counting them past that point would date this file every morning.
 
 
-**R16 -- Make the gate readable, then stop** is open: Instrumented /assess. `_record_call` was reachable only from `_handle_mcp`, so every HTTP request was invisible and the gate deciding whether to keep building had been reading one of the two interfaces the product exposes -- and the one an integrator reaches for first. Pinned the invariant that made adding telemetry safe: the token address is still never recorded. Then wrote Experiment C, the post that publishes the benchmark, and put its figures under the same guard as every other published number -- including the 10% dead-token recall it is built around, which was quoted in three places and computed in none. No engine features: every branch of the 09-18 gate says do Experiment C. Its commits are listed here once it closes.
+**R17 -- Next** is open: Open. Its commits are listed here once it closes.
 
 ---
 
@@ -363,6 +364,31 @@ Cleared the audit's twelve M and G findings. Four published figures were guarded
 | `b565afc` | 2026-09-07 | M-4: the adversarial cohort is 16 empty pools and a testability gate |
 | `1bfebfa` | 2026-09-07 | M-6: the label and the verdict describe the same pool 57% of the time |
 | `83e34a6` | 2026-09-07 | M-2: reopen W1, because the measurement that closed it cannot be re-run |
+
+Full reasoning for any line above: `git show <hash>`. The commit messages carry the measurement that motivated each change, and several admissions of error.
+
+
+---
+
+
+## R16 -- Make the gate readable, then stop
+
+
+Instrumented /assess. `_record_call` was reachable only from `_handle_mcp`, so every HTTP request was invisible and the gate deciding whether to keep building had been reading one of the two interfaces the product exposes -- and the one an integrator reaches for first. Pinned the invariant that made adding telemetry safe: the token address is still never recorded. Then wrote Experiment C, the post that publishes the benchmark, and put its figures under the same guard as every other published number -- including the 10% dead-token recall it is built around, which was quoted in three places and computed in none. No engine features: every branch of the 09-18 gate says do Experiment C.
+
+
+| Commit | Date | Change |
+|---|---|---|
+| `748879b` | 2026-09-07 | R15: guards that guard, and numbers that are watched |
+| `542bf48` | 2026-09-07 | Retract the BUY_FAILED claim, and make the gate readable from a button |
+| `90250bf` | 2026-09-07 | Retry the simulator on our pool, and only after its own choice failed |
+| `6f75deb` | 2026-09-07 | The gate answered YES on 3,193 handshakes and 118 tool calls |
+| `dd96c56` | 2026-09-07 | The gate excluded by name the client a real user most likely arrives as |
+| `613c753` | 2026-09-07 | Two discriminators that were already in the telemetry and never queried |
+| `bfde98f` | 2026-09-07 | The gate is UNRESOLVED, and 19 tool calls were filtered out as "ours" |
+| `64930ff` | 2026-09-07 | CLAUDE.md: the traps that each cost time more than once |
+| `6fa467c` | 2026-09-07 | R16: /assess was invisible to the gate that decides whether to keep building |
+| `49d7548` | 2026-09-07 | Experiment C: the post, with the numbers that make it look bad |
 
 Full reasoning for any line above: `git show <hash>`. The commit messages carry the measurement that motivated each change, and several admissions of error.
 

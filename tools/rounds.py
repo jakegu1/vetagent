@@ -116,7 +116,7 @@ ROUNDS = [
      "250 contracts of bytecode are now committed -- measured against GoPlus's per-flag "
      "fields the scan finds 0% of pausable and 6% of mutable-tax, and the selectors that "
      "would reproduce the original table detect a launch gate, not a pause switch."),
-    ("R16", "Make the gate readable, then stop", None,
+    ("R16", "Make the gate readable, then stop", "49d7548",
      "Instrumented /assess. `_record_call` was reachable only from `_handle_mcp`, so "
      "every HTTP request was invisible and the gate deciding whether to keep building "
      "had been reading one of the two interfaces the product exposes -- and the one an "
