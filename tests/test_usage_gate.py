@@ -101,7 +101,20 @@ def test_connecting_is_not_using():
           "rootz-mcp-registry-prober" not in names, str(names))
     check("an auth probe is not tool use", "io.verifymcp" not in names, str(names))
     check("our own benchmark never counts", "vetagent-bench" not in names, str(names))
-    check("our own editor session never counts", "claude-code" not in names, str(names))
+    # claude-code is NOT dropped. `_client_name` reads the User-Agent, so it is any
+    # Claude Code instance -- the owner's editor and a stranger's, indistinguishable.
+    # Excluding it by name meant the gate excluded the single most likely client for a
+    # real user of an MCP server: a false negative exactly mirroring the crawler false
+    # positive. It is surfaced and marked ambiguous so a human resolves it, rather than
+    # silently deciding it either way.
+    check("an ambiguous client is surfaced, not dropped",
+          "claude-code" in names, str(names))
+    check("and it is marked ambiguous",
+          real.get("claude-code", {}).get("ambiguous") is True,
+          str(real.get("claude-code")))
+    check("a genuinely external caller is not marked ambiguous",
+          real.get("somebodys-trading-bot", {}).get("ambiguous") is False,
+          str(real.get("somebodys-trading-bot")))
     check("a real caller that used a tool does count",
           "somebodys-trading-bot" in names, str(names))
     if "somebodys-trading-bot" in real:

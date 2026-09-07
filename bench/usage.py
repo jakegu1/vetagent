@@ -53,8 +53,25 @@ def rows_of(resp):
 
 # Our own traffic, excluded from the external-caller count. Add to this list rather than
 # reasoning about it later: the whole value of the gate is that it can come back "no".
-SELF_CLIENTS = {"claude-code", "curl", "python-requests", "vetagent-bench",
+SELF_CLIENTS = {"curl", "python-requests", "vetagent-bench",
                 "vetagent-contract-test", "unknown"}
+
+# Clients that are OURS and also the most likely shape of a real user, so they can be
+# neither counted nor silently dropped.
+#
+# `_client_name` reads the User-Agent, so "claude-code" is any Claude Code instance --
+# the owner's editor and a stranger's, indistinguishable. It sat in SELF_CLIENTS, which
+# means the gate excluded by name the single most likely client for a real user of an MCP
+# server. That is a false negative exactly mirroring the crawler false positive: one rule
+# counted robots as users, the same rule counted users as the owner.
+#
+# There is no honest way to separate them from what is recorded. The engine deliberately
+# logs no address and no token, `request.cf.country` comes back "??" for every row, and
+# adding an identifier to tell the owner apart from a customer would be tracking the
+# customer. So the number is reported on its own line, with the ambiguity stated, and the
+# owner can settle it in one move: remove vetagent from the owner's own MCP config, after
+# which any claude-code traffic is external by construction.
+AMBIGUOUS_CLIENTS = {"claude-code"}
 OWNER_COUNTRIES = {"CN"}
 
 
@@ -116,7 +133,8 @@ def tool_callers(account, token, since):
             continue
         if not tool or tool.startswith("__"):
             continue                     # auth probes are not tool use
-        rec = by_client.setdefault(client, {"n": 0, "days": 0, "tools": set()})
+        rec = by_client.setdefault(client, {"n": 0, "days": 0, "tools": set(),
+                                            "ambiguous": client in AMBIGUOUS_CLIENTS})
         rec["n"] += int(float(row.get("n") or 0))
         rec["days"] = max(rec["days"], int(float(row.get("days") or 0)))
         rec["tools"].add(tool)
@@ -206,10 +224,25 @@ def main():
         print("  -> STRATEGY: distribution problem, not product. Experiment C only, "
               "no new features.")
     else:
-        for client, rec in tools:
+        clear = [(c, r) for c, r in tools if not r["ambiguous"]]
+        murky = [(c, r) for c, r in tools if r["ambiguous"]]
+
+        for client, rec in clear:
             print("  YES: %-28s %d calls on %d day(s): %s"
                   % (client, rec["n"], rec["days"], ", ".join(sorted(rec["tools"]))))
-        print("  -> STRATEGY: keep following the roadmap.")
+        for client, rec in murky:
+            print("  MAYBE: %-26s %d calls on %d day(s): %s"
+                  % (client, rec["n"], rec["days"], ", ".join(sorted(rec["tools"]))))
+            print("         Cannot be told from the owner's own editor. `_client_name`")
+            print("         reads the User-Agent, and this project deliberately records")
+            print("         no address. Settle it by removing vetagent from the owner's")
+            print("         own MCP config -- then this line is external by construction.")
+
+        if clear:
+            print("  -> STRATEGY: keep following the roadmap.")
+        else:
+            print("  -> NOT SETTLED. Every tool call came from a client that cannot be")
+            print("     distinguished from us. Resolve the ambiguity above, then re-run.")
 
     print("\n  for context, clients that merely connected: %d" % len(ext or []))
     if ext:
