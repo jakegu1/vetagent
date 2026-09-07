@@ -294,7 +294,11 @@ def probe_sellability(rows, seen_at, limit):
         # the provenance accounting that keeps the benchmark honest depends on that
         # staying true. use_cache=False for the same reason the pool rows are live -- a
         # cached body would record one moment under two timestamps.
-        hp = fetch_json(url, role="engine", use_cache=False)
+        # write_cache=False as well as use_cache=False. Reading live is only half of it:
+        # this probe deliberately asks about tokens minutes old, and depositing that
+        # answer in the shared cache would let a benchmark run days later score the
+        # engine against a birth-moment response.
+        hp = fetch_json(url, role="engine", use_cache=False, write_cache=False)
         sim = (hp or {}).get("simulationResult") or {}
         res = (hp or {}).get("honeypotResult") or {}
         hold = (hp or {}).get("holderAnalysis") or {}
@@ -334,6 +338,12 @@ def probe_sellability(rows, seen_at, limit):
             "buyGas": sim.get("buyGas"),
             "sellGas": sim.get("sellGas"),
             "pair": (hp or {}).get("pair"),
+            # Top-level `flags` is [] on every response checked -- the real ones live in
+            # `summary`, together with honeypot.is's own risk and riskLevel. The first
+            # version recorded the empty list and dropped all three.
+            "summary": (hp or {}).get("summary"),
+            "pairAddress": (hp or {}).get("pairAddress"),
+            "router": (hp or {}).get("router"),
             "unsimulatable_venue": bool(_unsimulatable(r)),
             "schema": 2,
         })

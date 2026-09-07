@@ -84,7 +84,7 @@ def _throttle(url):
 
 
 def fetch_json(url, role, retries=2, timeout=25, use_cache=True,
-               mark_missing=False):
+               mark_missing=False, write_cache=True):
     """Fetch JSON. role must be "engine" or "label", for provenance accounting.
 
     Returns a dict/list on success, None on a failed fetch — the same contract as
@@ -131,7 +131,13 @@ def fetch_json(url, role, retries=2, timeout=25, use_cache=True,
             time.sleep(0.8 * (2 ** attempt))
 
     # Only cache successes: a cached failure turns one network blip into permanent "no data"
-    if data is not None:
+    #
+    # `use_cache=False` gated the READ and not the write, so a caller asking for live
+    # state still deposited that response for everyone else. The snapshot's day-one
+    # sellability probe does exactly that: it asks honeypot.is about a token minutes
+    # after launch, and the benchmark's engine then reads the same URL with the cache
+    # ON. A birth-moment answer would be served to a run measuring the engine today.
+    if data is not None and write_cache:
         try:
             with open(path, "w", encoding="utf-8") as f:
                 json.dump({"url": url, "data": data}, f, ensure_ascii=False)
