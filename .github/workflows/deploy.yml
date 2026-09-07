@@ -92,29 +92,34 @@ jobs:
         if: steps.creds.outputs.ready == 'true'
         run: |
           set -e
+          # Name ourselves on every call. GitHub's runners are in the US and these curls
+          # carry no client name, so five production calls per deploy were landing in the
+          # usage gate's `curl` bucket as external traffic from a foreign country -- the
+          # same defect as `vetagent-r16-verify`, and it put a YES on the 09-18 gate.
+          CI_TAG="-H x-mcp-client:vetagent-ci-smoke"
           echo "--- /health ---"
-          curl -sS --max-time 30 https://vetagent.dev/health | tee /tmp/health.json
+          curl -sS $CI_TAG --max-time 30 https://vetagent.dev/health | tee /tmp/health.json
           grep -q '"status": "ok"' /tmp/health.json
 
           echo ""
           echo "--- JSON-RPC errors must be top-level ---"
-          curl -sS --max-time 30 -X POST https://vetagent.dev/mcp \
+          curl -sS $CI_TAG --max-time 30 -X POST https://vetagent.dev/mcp \
             -H 'Content-Type: application/json' \
             -d '{"jsonrpc":"2.0","id":1,"method":"resources/list"}' | tee /tmp/err.json
           python -c "import json;d=json.load(open('/tmp/err.json'));assert 'error' in d and 'result' not in d, d"
 
           echo ""
           echo "--- GET /mcp must be 405, not 200 ---"
-          test "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 https://vetagent.dev/mcp)" = "405"
+          test "$(curl -sS $CI_TAG -o /dev/null -w '%{http_code}' --max-time 30 https://vetagent.dev/mcp)" = "405"
 
           echo ""
           echo "--- CORS preflight must not 400 ---"
-          test "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -X OPTIONS \
+          test "$(curl -sS $CI_TAG -o /dev/null -w '%{http_code}' --max-time 30 -X OPTIONS \
             https://vetagent.dev/mcp -H 'Origin: https://example.com')" = "204"
 
           echo ""
           echo "--- a failed sell simulation must NOT come back as a pass ---"
-          curl -sS --max-time 90 -X POST https://vetagent.dev/mcp \
+          curl -sS $CI_TAG --max-time 90 -X POST https://vetagent.dev/mcp \
             -H 'Content-Type: application/json' \
             -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"assess_token_risk","arguments":{"address":"0x50614cc8e44f7814549c223aa31db9296e58057c","chain_hint":"ethereum"}}}' \
             > /tmp/hp.json

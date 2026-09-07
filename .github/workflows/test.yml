@@ -92,6 +92,12 @@ jobs:
       - name: HTTP calls are recorded, and addresses are not
         run: python tests/test_http_telemetry.py
 
+      # docs/OWNER.md is the only page here written for someone who will not read the
+      # code, and it carries the deadlines. A stale deadline on the page whose job is
+      # deadlines is worse than no page.
+      - name: The owner's page is current and its numbers are the measured ones
+        run: python tests/test_owner_page.py
+
   # Upstream contract monitor: real API calls that check the fields we depend on still exist.
   # Separate from the unit tests: a third-party outage turns it red, which is the signal.
   upstream-contract:

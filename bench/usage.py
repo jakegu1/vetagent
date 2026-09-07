@@ -216,13 +216,15 @@ def caller_profile(account, token, since, clients):
     for row in rows:
         c = str(row.get("client") or "").strip().lower()
         p = prof.setdefault(c, {"verdicts": {}, "hours": set(), "days": set(),
-                                "countries": set(), "n": 0})
+                                "countries": set(), "country_n": {}, "n": 0})
         v = str(row.get("verdict") or "").strip() or "(none)"
         n = int(float(row.get("n") or 0))
         p["verdicts"][v] = p["verdicts"].get(v, 0) + n
         p["hours"].add(int(float(row.get("hour") or 0)))
         p["days"].add(str(row.get("day")))
-        p["countries"].add(str(row.get("country") or "??").strip().upper() or "??")
+        c = str(row.get("country") or "??").strip().upper() or "??"
+        p["countries"].add(c)
+        p["country_n"][c] = p["country_n"].get(c, 0) + n
         p["n"] += n
     return prof
 
@@ -317,9 +319,19 @@ def gate_verdict(tools, prof):
 
         if not fails:
             passed.append(client)
-            lines.append("  YES:  %-26s %d calls, %d days, verdicts %s, country %s"
-                         % (client, rec.get("n") or 0, days, "/".join(verdicts),
-                            "/".join(sorted(known)) or "??"))
+            # How much of the evidence actually carries a country, spelled out. A YES
+            # resting on three rows out of forty-seven is still a YES under this rule --
+            # the rule is frozen and is not moved after a run -- but a reader is entitled
+            # to see that it rests on three. Country only started working on 2026-09-07,
+            # so every row older than that says "??" and can support nothing.
+            cn = p.get("country_n") or {}
+            known_rows = sum(v for k, v in cn.items() if k and k != "??")
+            all_rows = sum(cn.values()) or (rec.get("n") or 0)
+            lines.append(
+                "  YES:  %-26s %d calls, %d days, verdicts %s, country %s "
+                "(on %d of %d rows)"
+                % (client, rec.get("n") or 0, days, "/".join(verdicts),
+                   "/".join(sorted(known)) or "??", known_rows, all_rows))
         elif not is_self(client) and real_tools and verdicts:
             near.append(client)
             lines.append("  NEAR: %-26s %s" % (client, "; ".join(fails)))

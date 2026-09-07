@@ -347,7 +347,15 @@ class Default(WorkerEntrypoint):
         if path == "/":
             try:
                 with open(_LANDING_PATH, "r", encoding="utf-8") as f:
-                    return Response(f.read(), headers={"content-type": "text/html"}, status=200)
+                    # no-cache, because this page's JavaScript identifies itself to our
+                    # own telemetry. A visitor holding a cached copy from before the
+                    # `X-MCP-Client` tag shipped keeps arriving as an anonymous browser,
+                    # which is the one bucket the usage gate cannot attribute. Correctness
+                    # of the measurement beats one round trip on a 19 KiB page.
+                    return Response(f.read(),
+                                    headers={"content-type": "text/html",
+                                             "cache-control": "no-cache"},
+                                    status=200)
             except OSError:
                 return Response(
                     "VetAgent - token risk intelligence for AI agents.\n"

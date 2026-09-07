@@ -148,7 +148,8 @@ def _caller(name, n=6, days=2, tools=("assess_token_risk",),
            "ambiguous": name in usage.AMBIGUOUS_CLIENTS}
     prof = {"verdicts": {v: 1 for v in verdicts if v}, "hours": {3, 4},
             "days": {"2026-09-0%d" % (i + 1) for i in range(days)},
-            "countries": set(countries), "n": n}
+            "countries": set(countries),
+            "country_n": {c: 1 for c in countries}, "n": n}
     return (name, rec), prof
 
 
@@ -235,6 +236,50 @@ def test_the_frozen_rule_can_still_say_yes():
     mixed, mxp = _caller("claude-code", n=9, days=3, countries=("CN", "SG"))
     check("one foreign row is enough -- the owner cannot be in two places",
           _decide((mixed, mxp)) == "YES")
+
+
+def test_our_own_ci_names_itself():
+    """CI curls production five times per deploy, from a US GitHub runner.
+
+    Those calls carried no client name, so they arrived as `curl` from a foreign country
+    and the 2026-09-07 run of this gate printed YES on them. It is the same defect as
+    `vetagent-r16-verify` -- our own tooling that does not say it is ours -- and it is
+    fixed the same way: by naming the tooling, not by changing what the gate counts.
+
+    The distinction matters, because fixing attribution after a run looks exactly like
+    moving the goalposts. The test is whether the fix would have been made had the gate
+    said NO, and it would: our own deploy traffic in the gate's evidence is a defect
+    whichever way the gate points.
+    """
+    print("\n[gate] our own smoke test is not an external caller")
+    wf = open(os.path.join(ROOT, ".github", "workflows", "deploy.yml"),
+              encoding="utf-8").read()
+    smoke = wf.split("Smoke test production")[-1]
+    calls = [ln for ln in smoke.splitlines()
+             if "curl" in ln and "vetagent.dev" in ln]
+    check("the smoke test still calls production", len(calls) >= 4, str(len(calls)))
+    check("and every one of those calls names itself",
+          all("$CI_TAG" in ln for ln in calls),
+          str([ln.strip()[:60] for ln in calls if "$CI_TAG" not in ln]))
+    check("under a name the gate counts as ours",
+          usage.is_self("vetagent-ci-smoke"))
+
+
+def test_a_yes_says_how_much_evidence_it_rests_on():
+    """A YES on three rows out of forty-seven is still a YES. It must say "three".
+
+    `_country` only started working on 2026-09-07, so every older row carries "??" and
+    can support nothing. The rule is frozen and is not moved after a run -- but a reader
+    deciding whether to spend another month on this is entitled to see the denominator.
+    """
+    print("\n[gate] the verdict line carries its own evidence density")
+    caller, prof = _caller("acme-trading-agent", n=47, days=3,
+                           verdicts=("high", "low"), countries=("US",))
+    prof["country_n"] = {"US": 3, "??": 44}
+    verdict, lines = usage.gate_verdict([caller], {"acme-trading-agent": prof})
+    check("it still passes", verdict == "YES", verdict)
+    check("and it shows 3 of 47", "on 3 of 47 rows" in " ".join(lines),
+          " ".join(lines))
 
 
 def test_the_rule_is_frozen_and_the_date_says_so():
