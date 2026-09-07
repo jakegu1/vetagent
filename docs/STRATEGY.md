@@ -411,6 +411,27 @@ Skipping one silently isn't allowed.
 > name cannot be told from ours — one request from a country that is not the owner's. The
 > accepted cost is stated rather than hidden: a genuine user who only ever checks scam
 > tokens sees `high` every time and this rule says no.
+>
+> **Experiment C runs inside this gate's window, on purpose, and here is why that is not
+> cheating.** The audit argued C should wait until after 09-18, because it sends curious
+> people to the landing page and their clicks would be read as adoption. That was correct
+> about the instrument as it stood and is no longer possible: the demo button names itself
+> `vetagent-landing-demo`, which is `vetagent-*`, which is ours by construction. C's
+> click-through cannot enter this gate's numerator; it is reported on its own line as C's
+> own metric.
+>
+> The deeper reason is that this gate does not decide whether to run C. Read the action
+> column: **no** means "run only Experiment C, add no features". C happens either way. The
+> gate decides whether to add features, and running C early changes nothing about that —
+> no features are added before 09-18 in either branch. Delaying C by eleven days would buy
+> no information and cost eleven days of the only activity that could produce a user.
+>
+> What would be cheating is reading a promoted week as an organic one, so it is recorded
+> here instead: **the 14-day window ending 2026-09-18 contains Experiment C.** If the gate
+> comes back yes, that yes is from a promoted week, and it says people who were told about
+> the tool came back on a second day and asked it about more than one token. That is a
+> real answer to a real question. It is not the same answer as "strangers found it", and
+> the difference belongs in the record rather than in a footnote afterwards.
 
 **The maintenance commitment.** We will never leave a risk tool running unmaintained.
 A risk tool whose upstreams have drifted doesn't go quiet — it keeps answering, exactly
