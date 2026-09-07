@@ -74,45 +74,53 @@ def external_callers(account, token, since):
     return sorted(out.items(), key=lambda kv: -kv[1])
 
 
-# The 2026-09-18 gate's bar. See STRATEGY.md §8.
-GATE_MIN_CALLS = 3
-GATE_MIN_DAYS = 2
+def tool_callers(account, token, since):
+    """Clients that actually invoked a tool, not clients that merely connected.
 
+    This is the discriminator the first two versions of this gate were missing, and the
+    data made it obvious the moment it existed. Over 14 days: 3,314 requests, of which
+    **3,193 carry no tool name at all** -- 96.3%. Those are `initialize` and `tools/list`
+    handshakes. Only 118 requests called a tool.
 
-def qualifying_callers(account, token, since):
-    """Callers that clear the gate: >= GATE_MIN_CALLS on >= GATE_MIN_DAYS distinct days.
+    The client names say the same thing out loud. sentineloracle, mcpbeat,
+    rokmcp-collector, mcpscan, sasame-mcp-audit, mcpwatch, mcpwitness, mcp-observatory,
+    endpointaudit, teppi-probe, wellknownbot, aisec-registry, lastseen-schema-probe,
+    rootz-mcp-registry-prober, mcp-schema-archive, mcpgrade-probe, x402-observatory,
+    mcp-stats-prober, mcplookup.com-probe, pod-directory-probe. Twenty of the forty-seven
+    "external callers" have prober, scan, audit, watch, witness, observatory, index,
+    archive, registry, census or stats in their own name. Registering in the official MCP
+    registry buys an audience of directory crawlers, and they arrive first.
 
-    "At least one external caller" is satisfiable by noise. The endpoint is public,
-    unauthenticated and listed in the official MCP registry, so directory health-checkers
-    and crawlers reach it from foreign IPs -- and a crawler is neither a self-client nor in
-    the owner's country, so every existing filter waves it through. A gate that a crawler
-    passes cannot answer the question it was written to ask, and it fails in the expensive
-    direction: it says "someone is using this" and buys another round of building.
+    "At least three calls on at least two days" -- the previous tightening -- does not
+    help: sentineloracle made 1,259 requests. Volume is the one thing a crawler has in
+    abundance. Calling a tool is the thing it has no reason to do.
 
-    Repeat use is the cheapest thing a crawler does not do. One client, three calls, two
-    different days is still a very low bar -- it is one person trying the tool, coming
-    back, and trying it again -- but it is a bar noise does not clear by accident.
+    Note also that the country filter has never excluded anything: Analytics Engine
+    reports every one of these as "??", so `OWNER_COUNTRIES` has been inert since the day
+    it was written. A filter that has never removed a row is not protecting the gate.
     """
     resp = query(
-        "SELECT %s AS client, %s AS country, count() AS n, "
+        "SELECT %s AS client, %s AS tool, count() AS n, "
         "count(DISTINCT toDate(timestamp)) AS days FROM %s "
-        "WHERE timestamp > now() - %s GROUP BY client, country "
-        "ORDER BY n DESC LIMIT 50"
-        % (BLOB["client"], BLOB["country"], DATASET, since), account, token)
+        "WHERE timestamp > now() - %s AND %s != '' "
+        "GROUP BY client, tool ORDER BY n DESC LIMIT 200"
+        % (BLOB["client"], BLOB["tool"], DATASET, since, BLOB["tool"]), account, token)
     rows = rows_of(resp)
     if rows is None:
-        return None                      # query failed; not the same as "nobody qualified"
-    out = []
+        return None                      # query failed; not the same as "nobody called"
+    by_client = {}
     for row in rows:
         client = str(row.get("client") or "").strip().lower()
-        country = str(row.get("country") or "").strip().upper()
-        if not client or client in SELF_CLIENTS or country in OWNER_COUNTRIES:
+        tool = str(row.get("tool") or "").strip()
+        if not client or client in SELF_CLIENTS:
             continue
-        n = int(float(row.get("n") or 0))
-        days = int(float(row.get("days") or 0))
-        if n >= GATE_MIN_CALLS and days >= GATE_MIN_DAYS:
-            out.append((client, n, days))
-    return sorted(out, key=lambda r: -r[1])
+        if not tool or tool.startswith("__"):
+            continue                     # auth probes are not tool use
+        rec = by_client.setdefault(client, {"n": 0, "days": 0, "tools": set()})
+        rec["n"] += int(float(row.get("n") or 0))
+        rec["days"] = max(rec["days"], int(float(row.get("days") or 0)))
+        rec["tools"].add(tool)
+    return sorted(by_client.items(), key=lambda kv: -kv[1]["n"])
 
 
 def main():
@@ -182,19 +190,34 @@ def main():
     # not the owner's. Written here, in code, ahead of the date, so it cannot be adjusted
     # once the answer is visible.
     ext = external_callers(account, token, since)
+    tools = tool_callers(account, token, since)
+
     print("\n--- Gate 2026-09-18: is anyone outside this project using it? ---")
-    print("  counting rule: distinct client names excluding %s, from countries "
-          "excluding %s" % (", ".join(sorted(SELF_CLIENTS)) or "(none)",
-                            ", ".join(sorted(OWNER_COUNTRIES)) or "(none)"))
-    if not ext:
-        print("  NO. Nothing that is not us.")
+    print("  counting rule: a client that is not ours AND actually called a tool.")
+    print("  Connecting is not using. A first run of this gate answered YES on 47")
+    print("  'external callers' of whom 20 have prober/scan/audit/registry in their own")
+    print("  name, across 3,314 requests of which 3,193 carried no tool name at all.")
+
+    if tools is None:
+        print("  QUERY FAILED -- this is not the same as nobody calling.")
+    elif not tools:
+        print("  NO. %d clients connected and none of them called a tool."
+              % len(ext or []))
         print("  -> STRATEGY: distribution problem, not product. Experiment C only, "
               "no new features.")
     else:
-        print("  YES: %s" % ", ".join("%s (%s)" % (c, n) for c, n in ext))
+        for client, rec in tools:
+            print("  YES: %-28s %d calls on %d day(s): %s"
+                  % (client, rec["n"], rec["days"], ", ".join(sorted(rec["tools"]))))
         print("  -> STRATEGY: keep following the roadmap.")
-    print("  raw totals for context: %d clients / %d countries (includes us)"
+
+    print("\n  for context, clients that merely connected: %d" % len(ext or []))
+    if ext:
+        print("    %s" % ", ".join("%s (%s)" % (c, n) for c, n in ext[:12]))
+    print("  raw totals: %d clients / %d countries (includes us)"
           % (clients, countries))
+    print("  NOTE: every row reports country '??', so the owner-country filter has")
+    print("  never excluded anything. Do not read it as protection.")
 
     for title, col in (("By tool", BLOB["tool"]), ("By client", BLOB["client"]),
                        ("By country", BLOB["country"]), ("By verdict", BLOB["verdict"])):

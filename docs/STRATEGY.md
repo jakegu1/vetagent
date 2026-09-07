@@ -312,7 +312,7 @@ Skipping one silently isn't allowed.
 
 | Date | Gate | Test | Action |
 |---|---|---|---|
-| 2026-09-18 | Is anyone using it | ≥1 external client with ≥3 calls on ≥2 distinct days, within 14 days | Yes → continue; no → run only Experiment C, add no features |
+| 2026-09-18 | Is anyone using it | ≥1 external client that actually **called a tool**, within 14 days | Yes → continue; no → run only Experiment C, add no features |
 | 2026-10-16 | Does anyone want to pay | ≥3 trial commitments in Experiment D | Yes → build payments; no → pick a different customer segment and run D again |
 | 2026-12-04 | Is further investment worth it | MRR >$0 or >500 calls/day | Yes → continue per §7; no → move to low-maintenance mode |
 | 2027-03-04 | Does the data asset hold up | Snapshot archive ≥6 months and trains a signal better than the current rules | Yes → that becomes the main product; no → keep the tool, drop the data narrative |
@@ -331,6 +331,34 @@ Skipping one silently isn't allowed.
 > is not one a crawler clears by accident. `qualifying_callers()` in `bench/usage.py`
 > measures exactly this, so the gate and its instrument agree.
 >
+> **Corrected a second time on 2026-09-07, after running it.** The first tightening --
+> three calls on two days -- was written from the armchair and the data killed it
+> immediately. The first real run reported **47 external callers** and printed "keep
+> following the roadmap". Reading the same output properly:
+>
+> - 3,314 requests, of which **3,193 carry no tool name at all** (96.3%). Those are
+>   `initialize` and `tools/list` handshakes. Only 118 requests called a tool.
+> - Twenty of the forty-seven "callers" have prober, scan, audit, watch, witness,
+>   observatory, index, archive, registry, census or stats **in their own names**:
+>   sentineloracle, mcpbeat, rokmcp-collector, mcpscan, sasame-mcp-audit, mcpwatch,
+>   mcpwitness, mcp-observatory, endpointaudit, teppi-probe, wellknownbot,
+>   rootz-mcp-registry-prober, mcp-schema-archive, mcpgrade-probe, x402-observatory,
+>   mcp-stats-prober, mcplookup.com-probe, pod-directory-probe, and others.
+> - The volume rule would not have caught any of them. sentineloracle made **1,259
+>   requests**. Volume is the one thing a crawler has in abundance.
+> - The country filter has never excluded a single row: Analytics Engine reports every
+>   request as country `??`, so it has been inert since it was written.
+>
+> Registering in the official MCP registry buys an audience of directory crawlers, and
+> they arrive first. The discriminator that survives contact with them is not how often a
+> client connects but **whether it ever asked the tool a question**. Connecting is not
+> using.
+>
+> This is the third counting rule for one gate. The first two were both wrong in the same
+> direction -- too easy to pass -- and each was written before any data existed. The rule
+> is still being tightened rather than loosened, and it is still being changed before the
+> date rather than after seeing whether it would have said yes.
+
 > Changing a pre-registered test before it falls due is exactly the drift this document
 > forbids, which is why it is dated, argued and left in place rather than quietly edited.
 > It moves the bar **up**, not down.

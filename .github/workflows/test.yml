@@ -79,6 +79,13 @@ jobs:
       - name: Decisions name real tests, and every test runs here
         run: python tests/test_decisions_enforcement.py
 
+      # The 2026-09-18 gate decides whether feature work continues, and its first two
+      # counting rules were both wrong: one counted crawlers as users, the next was
+      # written and never called. This pins that the rule which prints the verdict is
+      # the rule that ran, and that it counts tool use rather than connections.
+      - name: The usage gate counts the right thing
+        run: python tests/test_usage_gate.py
+
   # Upstream contract monitor: real API calls that check the fields we depend on still exist.
   # Separate from the unit tests: a third-party outage turns it red, which is the signal.
   upstream-contract:
