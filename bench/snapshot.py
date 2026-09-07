@@ -24,6 +24,7 @@ any store later.
 """
 
 import argparse
+import io
 import json
 import os
 import sys
@@ -130,11 +131,123 @@ def collect(chains, pages=5):
     return rows, seen_at
 
 
+# honeypot.is covers three chains, under GeckoTerminal's names for them. Verified in
+# src/risk.py against the API; every other chain answers HTTP 400 "Invalid chain".
+_SIM_CHAIN_ID = {"eth": 1, "bsc": 56, "base": 8453}
+
+
+def _address_of(token_id, chain):
+    """GeckoTerminal ids are chain-prefixed: `base_0x1313...`, not `0x1313...`.
+
+    The first run of this probe passed the whole id to honeypot.is as an address and got
+    six nulls back, which is the shape of a data-collection bug that would have looked
+    like "brand-new tokens are not indexed yet" for four months before anyone checked.
+    """
+    t = str(token_id or "").strip().lower()
+    if t.startswith(chain + "_"):
+        t = t[len(chain) + 1:]
+    return t if t.startswith("0x") and len(t) == 42 else ""
+
+
+def _probed_already():
+    """Every (chain, token) this archive has already asked about."""
+    done = set()
+    for fn in sorted(os.listdir(OUT_DIR)) if os.path.isdir(OUT_DIR) else []:
+        if not (fn.startswith("sellability-") and fn.endswith(".ndjson")):
+            continue
+        with io.open(os.path.join(OUT_DIR, fn), encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    o = json.loads(line)
+                except ValueError:
+                    continue
+                done.add((o.get("chain"), str(o.get("token") or "").lower()))
+    return done
+
+
+def probe_sellability(rows, seen_at, limit):
+    """Ask, of the newest tokens seen this pass, whether they can be sold *today*.
+
+    This is the one thing in the archive that cannot be recovered later, and it is the
+    exact thing the product claims to detect.
+
+    Price, reserves and trade counts at time t are irrecoverable too, and they are
+    already recorded. Contract bytecode is not: it stays on chain and can be fetched in
+    six months. But a **sell simulation** needs a live pool with liquidity in it. Once a
+    token is dead there is nothing to simulate against, so "could you have got out on day
+    one" is answerable only by having asked on day one.
+
+    Why that matters more than more pool rows: every headline this project publishes
+    rests on an adversarial cohort of 17 tokens, and the reason it is 17 is that
+    confirmed-bad tokens are found by looking backwards, at which point they can no
+    longer be tested. Asking on the day, every day, is the only way that cohort grows
+    without bound -- and in four months it produces something the benchmark cannot
+    currently answer at all: *does a day-one sellability verdict predict death?*
+
+    Raw upstream fields only, never our score (DECISIONS P4). Scoring rules change; the
+    simulator's own answer does not, and a future rule can be replayed over it.
+    """
+    if limit <= 0:
+        return []
+    done = _probed_already()
+    # Youngest pools first: a token that launched an hour ago is the scarce sample, and
+    # the one most likely to be gone before anyone thinks to look for it.
+    fresh = [r for r in rows
+             if r.get("kind") == "new" and r.get("chain") in _SIM_CHAIN_ID
+             and r.get("base_token")]
+    fresh.sort(key=lambda r: str(r.get("pool_created_at") or ""), reverse=True)
+
+    out, asked = [], set()
+    for r in fresh:
+        if len(out) >= limit:
+            break
+        chain = r["chain"]
+        token = _address_of(r["base_token"], chain)
+        if not token or (chain, token) in done or (chain, token) in asked:
+            continue
+        asked.add((chain, token))
+        url = ("https://api.honeypot.is/v2/IsHoneypot?address=%s&chainID=%d"
+               % (token, _SIM_CHAIN_ID[chain]))
+        # role="engine": honeypot.is is an engine upstream, not a labelling oracle, and
+        # the provenance accounting that keeps the benchmark honest depends on that
+        # staying true. use_cache=False for the same reason the pool rows are live -- a
+        # cached body would record one moment under two timestamps.
+        hp = fetch_json(url, role="engine", use_cache=False)
+        sim = (hp or {}).get("simulationResult") or {}
+        res = (hp or {}).get("honeypotResult") or {}
+        out.append({
+            "seen_at": seen_at,
+            "chain": chain,
+            "token": token,
+            "pool_address": r.get("pool_address"),
+            "pool_created_at": r.get("pool_created_at"),
+            "reserve_usd": r.get("reserve_usd"),
+            "answered": hp is not None,
+            # Raw upstream fields, spelled as honeypot.is spells them.
+            "simulationSuccess": (hp or {}).get("simulationSuccess"),
+            "simulationError": (hp or {}).get("simulationError"),
+            "isHoneypot": res.get("isHoneypot"),
+            "honeypotReason": res.get("honeypotReason"),
+            "buyTax": sim.get("buyTax"),
+            "sellTax": sim.get("sellTax"),
+            "transferTax": sim.get("transferTax"),
+            "flags": (hp or {}).get("flags"),
+        })
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--chains", default=",".join(DEFAULT_CHAINS))
     ap.add_argument("--pages", type=int, default=5,
                     help="pages of new_pools per chain (10 is the API maximum)")
+    ap.add_argument("--sellability", type=int, default=25,
+                    help="how many brand-new tokens to sell-simulate this pass "
+                         "(0 disables). The only observable here that cannot be "
+                         "recovered later: a dead token cannot be simulated.")
     args = ap.parse_args()
     chains = [c.strip() for c in args.chains.split(",") if c.strip()]
 
@@ -150,6 +263,17 @@ def main():
     with open(path, "a", encoding="utf-8") as f:
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
+
+    sell = probe_sellability(rows, seen_at, args.sellability)
+    if sell:
+        sp = os.path.join(OUT_DIR, "sellability-%s.ndjson" % day)
+        with io.open(sp, "a", encoding="utf-8", newline="") as f:
+            for r in sell:
+                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+        answered = sum(1 for r in sell if r.get("answered"))
+        hp = sum(1 for r in sell if r.get("isHoneypot"))
+        print("sellability: asked %d, answered %d, honeypot %d -> %s"
+              % (len(sell), answered, hp, os.path.basename(sp)))
 
     total_days = len({fn[6:16] for fn in os.listdir(OUT_DIR)
                       if fn.startswith("pools-") and fn.endswith(".ndjson")})

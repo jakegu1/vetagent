@@ -98,6 +98,12 @@ jobs:
       - name: The owner's page is current and its numbers are the measured ones
         run: python tests/test_owner_page.py
 
+      # A daily collector that silently records nothing is the worst kind of bug here:
+      # invisible, and the loss is permanent. The first run of this probe sent a
+      # chain-prefixed id as an address and got six nulls back.
+      - name: The day-one sellability archive collects something real
+        run: python tests/test_sellability_archive.py
+
   # Upstream contract monitor: real API calls that check the fields we depend on still exist.
   # Separate from the unit tests: a third-party outage turns it red, which is the signal.
   upstream-contract:

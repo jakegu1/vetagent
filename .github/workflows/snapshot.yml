@@ -37,8 +37,13 @@ jobs:
         with:
           python-version: "3.12"
 
+      # --sellability: for 25 of the newest tokens each pass, ask honeypot.is whether
+      # they can be sold RIGHT NOW. It is the only observable here that cannot be
+      # recovered later -- a sell simulation needs a live pool, and a dead token has
+      # none. 100 a day; by the time the archive matures it is the adversarial cohort
+      # the benchmark has never been able to grow.
       - name: Collect
-        run: python bench/snapshot.py --pages 5
+        run: python bench/snapshot.py --pages 5 --sellability 25
 
       - name: Commit
         run: |
