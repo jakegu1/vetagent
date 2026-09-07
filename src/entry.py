@@ -237,6 +237,37 @@ def _client_name(request):
 
 
 CLIENT_HEADER = "x-mcp-client"
+LANDING_CLIENT = "vetagent-landing-demo"
+
+# Hosts whose pages are ours. A call whose Origin or Referer is one of these came from
+# the demo button on our own landing page.
+_OUR_HOSTS = ("vetagent.dev", "www.vetagent.dev", "vetagent.jake-gu95.workers.dev")
+
+
+def _from_our_own_page(request):
+    """Is this the demo button on our own landing page?
+
+    The button sends `X-MCP-Client`, which would be enough if every visitor loaded fresh
+    HTML. They do not: the worker sets `Cache-Control: no-cache` and the custom domain
+    strips it, so a visitor can hold a copy of the page from before the tag existed and
+    keep arriving as an anonymous browser -- the one bucket the usage gate cannot
+    attribute, and the bucket that put a YES on the 09-18 gate.
+
+    `Origin` and `Referer` are set by the browser, not by our JavaScript, so they are
+    true of a cached page too. This is deliberately narrow: only OUR hosts count. An
+    integrator calling from their own web app carries their own Origin and is unaffected.
+    """
+    for name in ("origin", "referer"):
+        try:
+            value = (request.headers.get(name) or "").strip().lower()
+        except Exception:                                    # noqa: BLE001
+            continue
+        if not value:
+            continue
+        host = value.split("://", 1)[-1].split("/", 1)[0].split(":", 1)[0]
+        if host in _OUR_HOSTS:
+            return True
+    return False
 
 
 def _caller_id(request):
@@ -265,6 +296,8 @@ def _caller_id(request):
         header = ""
     if header:
         return header
+    if _from_our_own_page(request):
+        return LANDING_CLIENT
     declared = ""
     try:
         declared = mcp_server.declared_client()

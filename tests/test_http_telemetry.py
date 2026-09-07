@@ -226,6 +226,49 @@ def test_a_caller_can_name_itself_on_every_request():
           "X-MCP-Client" in landing and "vetagent-landing-demo" in landing)
 
 
+def test_a_call_from_our_own_page_is_ours_even_with_stale_javascript():
+    """The demo button's own header is not enough, because the page can be cached.
+
+    The worker sets Cache-Control: no-cache on the landing page and the custom domain
+    strips it -- verified against vetagent.dev and vetagent.jake-gu95.workers.dev on
+    2026-09-07, where only the workers.dev origin returns the header. So a visitor can
+    hold a copy of the page from before the tag shipped and keep arriving as an anonymous
+    browser. That bucket is what put a YES on the 09-18 gate.
+
+    Origin and Referer are set by the browser, not by our JavaScript, so they are true of
+    a cached page too.
+    """
+    print("\n[http] a click on our own page is ours however old the page is")
+    for name in ("origin", "referer"):
+        for host in ("https://vetagent.dev", "https://www.vetagent.dev/",
+                     "https://vetagent.jake-gu95.workers.dev/index.html"):
+            r = FakeRequest("https://vetagent.dev/mcp", method="POST",
+                            headers={"user-agent": "Mozilla/5.0", name: host})
+            check("%s %s -> the landing demo" % (name, host),
+                  entry._caller_id(r) == entry.LANDING_CLIENT, entry._caller_id(r))
+
+    # Narrow on purpose: an integrator's own web app must not be mislabelled as ours.
+    other = FakeRequest("https://vetagent.dev/mcp", method="POST",
+                        headers={"user-agent": "Mozilla/5.0",
+                                 "origin": "https://someones-trading-app.example"})
+    check("somebody else's page is not ours", entry._caller_id(other) == "mozilla",
+          entry._caller_id(other))
+
+    lookalike = FakeRequest("https://vetagent.dev/mcp", method="POST",
+                            headers={"user-agent": "Mozilla/5.0",
+                                     "origin": "https://vetagent.dev.evil.example"})
+    check("and neither is a host that merely starts the same",
+          entry._caller_id(lookalike) == "mozilla", entry._caller_id(lookalike))
+
+    # An explicit header still wins, so a real client can always name itself.
+    named = FakeRequest("https://vetagent.dev/mcp", method="POST",
+                        headers={"user-agent": "Mozilla/5.0",
+                                 "origin": "https://vetagent.dev",
+                                 "x-mcp-client": "acme-bot"})
+    check("an explicit name still wins over the origin guess",
+          entry._caller_id(named) == "acme-bot", entry._caller_id(named))
+
+
 def _mcp(body, recorded, result=None):
     """Drive _handle_mcp with the MCP layer stubbed, collecting what got recorded."""
     original_record = entry._record
