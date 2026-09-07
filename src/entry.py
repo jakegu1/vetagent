@@ -343,25 +343,29 @@ class Default(WorkerEntrypoint):
                     return _json_response({"error": "POST /assess needs "
                                                     "{\"address\": \"0x...\"}"},
                                           status=400)
-                return _json_response(await risk.assess(
-                    body.get("address", ""),
-                    body.get("chain_hint") or body.get("chain"),
-                    _truthy(body.get("verbose"))))
+                return _json_response(self._record_http(
+                    request, "assess_token_risk", await risk.assess(
+                        body.get("address", ""),
+                        body.get("chain_hint") or body.get("chain"),
+                        _truthy(body.get("verbose")))))
 
             if path.startswith("/assess/"):
-                return _json_response(await risk.assess(
-                    path[len("/assess/"):],
-                    query.get("chain_hint") or query.get("chain"),
-                    _truthy(query.get("verbose"))))
+                return _json_response(self._record_http(
+                    request, "assess_token_risk", await risk.assess(
+                        path[len("/assess/"):],
+                        query.get("chain_hint") or query.get("chain"),
+                        _truthy(query.get("verbose")))))
 
             if path.startswith("/liquidity/"):
-                return _json_response(await risk.liquidity(
-                    path[len("/liquidity/"):],
-                    query.get("chain_hint") or query.get("chain")))
+                return _json_response(self._record_http(
+                    request, "get_token_liquidity", await risk.liquidity(
+                        path[len("/liquidity/"):],
+                        query.get("chain_hint") or query.get("chain"))))
 
             if path == "/new-pools":
-                return _json_response(await risk.new_pools(
-                    query.get("chain", "solana"), query.get("limit", 10)))
+                return _json_response(self._record_http(
+                    request, "find_new_hot_pools", await risk.new_pools(
+                        query.get("chain", "solana"), query.get("limit", 10))))
         except ValueError as e:
             return _json_response({"error": "invalid_request", "detail": str(e)}, status=400)
         except Exception as e:  # noqa: BLE001
@@ -446,6 +450,33 @@ class Default(WorkerEntrypoint):
         if result is None:
             return Response("", headers=_CORS, status=202)  # notification: no response body
         return _json_response(result, extra_headers=headers)
+
+    def _record_http(self, request, tool, result):
+        """Record an HTTP call the same way an MCP call is recorded.
+
+        `_record_call` was reachable only from `_handle_mcp`, so every /assess,
+        /liquidity and /new-pools request was invisible. The 2026-09-18 gate asks whether
+        anyone outside this project uses the tool, and it has been answering that
+        question from one of the two interfaces the product actually exposes.
+
+        The distinction is not academic. An integrator wiring this into a bot reaches for
+        curl or requests against /assess long before they configure an MCP client, so the
+        surface most likely to carry a first real user was the surface with no telemetry
+        on it at all.
+
+        Same blob layout as the MCP path, so `bench/usage.py` needs no special case, with
+        `method` set to "http" so the two can still be told apart. The token address is
+        NOT recorded, here or anywhere -- that invariant is why this server cannot
+        identify its callers, and it stands.
+        """
+        verdict = ""
+        if isinstance(result, dict):
+            verdict = str(result.get("risk_level") or result.get("status") or "")[:24]
+        is_error = isinstance(result, dict) and bool(result.get("error"))
+        _record(self.env,
+                ["http", tool, verdict, _caller_id(request), _country(request)],
+                [1.0, 1.0 if is_error else 0.0])
+        return result
 
     def _record_call(self, request, method, tool, verdict, result):
         is_error = bool((result or {}).get("error")

@@ -86,6 +86,12 @@ jobs:
       - name: The usage gate counts the right thing
         run: python tests/test_usage_gate.py
 
+      # /assess and /liquidity were invisible to the telemetry, so the gate that
+      # decides whether feature work continues was reading one of two interfaces.
+      # This also pins that adding telemetry did not start recording token addresses.
+      - name: HTTP calls are recorded, and addresses are not
+        run: python tests/test_http_telemetry.py
+
   # Upstream contract monitor: real API calls that check the fields we depend on still exist.
   # Separate from the unit tests: a third-party outage turns it red, which is the signal.
   upstream-contract:
