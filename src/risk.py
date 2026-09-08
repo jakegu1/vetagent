@@ -2224,6 +2224,12 @@ async def new_pools(chain="solana", limit=10):
 
     merged = {}
     reachable = False
+    # Which of the two sources actually answered. `reachable` goes true if EITHER does,
+    # so a run with trending down returned a smaller `scanned`, no error, and nothing to
+    # say the scan was half a scan -- the caller could not tell "the market was quiet"
+    # from "we only looked in one place". That is E11, in the field added hours earlier
+    # to disclose a truncation. A disclosure needs its own disclosure.
+    sources_ok, sources_failed = [], []
     for kind, path in (("new", "new_pools"), ("trending", "trending_pools")):
         data = await _fetch_json(
             "https://api.geckoterminal.com/api/v2/networks/%s/%s" % (net, path))
@@ -2232,7 +2238,9 @@ async def new_pools(chain="solana", limit=10):
         # decides whether the tool says "nothing found", and that sentence is worth
         # guarding twice.
         if data is None or _is_error_body(data):
+            sources_failed.append(kind)
             continue  # this endpoint failed
+        sources_ok.append(kind)
         reachable = True
         for p in (data.get("data") or []):
             pid = p.get("id")
@@ -2280,4 +2288,5 @@ async def new_pools(chain="solana", limit=10):
     # the cap, so neither number can stand in for the other.
     shown = list(merged.values())[:limit]
     return _disclosed({"chain": chain, "network": net, "count": len(shown),
-                       "scanned": len(merged), "pools": shown})
+                       "scanned": len(merged), "sources_ok": sources_ok,
+                       "sources_failed": sources_failed, "pools": shown})

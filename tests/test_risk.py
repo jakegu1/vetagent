@@ -2362,6 +2362,42 @@ def test_new_pools_count_describes_what_was_returned():
           "count=%r scanned=%r" % (out.get("count"), out.get("scanned")))
 
 
+def test_new_pools_says_when_half_the_scan_did_not_happen():
+    """`scanned` from one surviving endpoint looked identical to a complete scan.
+
+    `new_pools` reads two GeckoTerminal endpoints, new and trending, and `reachable` goes
+    true if *either* answers. So when one was down or rate-limited, the tool returned a
+    smaller `scanned`, no error, and nothing at all to say the scan was half a scan. The
+    caller cannot tell "the market was quiet" from "we only looked in one place".
+
+    Which is E11, introduced this morning in the field added this morning to fix E11 in
+    the field beside it. `scanned` was the disclosure; it needed its own.
+    """
+    print("\n[disclosure] a partial scan must not read as a complete one")
+    rows = [{"id": "base_p%d" % i,
+             "attributes": {"name": "P%d" % i, "base_token_price_usd": "1",
+                            "reserve_in_usd": "10", "volume_usd": {"h24": "5"},
+                            "pool_created_at": "2026-09-07T00:00:00Z"},
+             "relationships": {"base_token": {"data": {"id": "base_0xabc%d" % i}}}}
+            for i in range(4)]
+
+    install_stub([], default={"data": rows})
+    both = run(risk.new_pools("base", 50))
+    check("a complete scan says both sources answered",
+          both.get("sources_failed") == [], repr(both.get("sources_failed")))
+    check("and names what it read", sorted(both.get("sources_ok") or []) == ["new", "trending"],
+          repr(both.get("sources_ok")))
+
+    # Trending down, new fine. Same shape as a rate limit.
+    install_stub([("trending_pools", None)], default={"data": rows})
+    half = run(risk.new_pools("base", 50))
+    check("a half scan still returns what it has", len(half.get("pools") or []) == 4)
+    check("but says which source did not answer",
+          half.get("sources_failed") == ["trending"], repr(half.get("sources_failed")))
+    check("and it is distinguishable from the complete scan",
+          half.get("sources_failed") != both.get("sources_failed"))
+
+
 def test_new_pools_input_guarding():
     print("\n[input] new_pools argument guarding")
     install_stub([], default={"data": []})
