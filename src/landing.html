@@ -7,7 +7,7 @@
 <meta name="description" content="An MCP server that checks a crypto token for honeypots, extraction taxes, thin liquidity and same-ticker impersonation before an AI agent buys it. Free, no auth, remote endpoint at https://vetagent.dev/mcp. Publishes its own measured false-positive rate.">
 <link rel="canonical" href="https://vetagent.dev/">
 <meta property="og:title" content="VetAgent — Pre-trade token risk check for AI agents">
-<meta property="og:description" content="Your agent reads an address and buys. This is the brake. Honeypot simulation, extraction taxes, liquidity depth and impersonation checks over MCP — and the only one in its category that publishes its own accuracy.">
+<meta property="og:description" content="Your agent reads an address and buys. This is the brake. Honeypot simulation, extraction taxes, liquidity depth and impersonation checks over MCP — with a published, reproducible error rate.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://vetagent.dev/">
 
@@ -37,7 +37,7 @@
     {"@type":"Question","name":"What does a risk_level of unknown mean?",
      "acceptedAnswer":{"@type":"Answer","text":"It means a critical check could not be completed — usually an upstream data source failed. It is not a low-risk result and must not be used to justify a trade. evidence.data_gaps lists exactly which checks were missing."}},
     {"@type":"Question","name":"How accurate is VetAgent?",
-     "acceptedAnswer":{"@type":"Answer","text":"Measured on 576 tokens: 4.3% of healthy tokens were flagged high (false positives), 15.3% of answers were unknown, and 22.9% of legitimate centralised assets such as USDT and WBTC were flagged high. 26 of 30 confirmed-dead tokens were not rated low, though only 2 were rated high, because a dead project whose pool still holds liquidity can still be sold. Recall against deliberately adversarial contracts is measured on about five tokens so far and is not yet a number worth quoting. The full method and the raw numbers are published in the repository."}},
+     "acceptedAnswer":{"@type":"Answer","text":"Measured on 576 tokens: 4.3% of healthy tokens were flagged high (false positives), 15.3% of answers were unknown, and 22.9% of legitimate centralised assets such as USDT and WBTC were flagged high. 26 of 30 confirmed-dead tokens were not rated low, though only 3 of 30 were rated high, because a dead project whose pool still holds liquidity can still be sold. Recall against deliberately adversarial contracts is measured on 17 tokens so far, 16 of which hold under a dollar, and is not yet a number worth quoting. The full method and the raw numbers are published in the repository."}},
     {"@type":"Question","name":"Is VetAgent free?",
      "acceptedAnswer":{"@type":"Answer","text":"Yes. The remote MCP endpoint and the HTTP API are free and require no account or key."}},
     {"@type":"Question","name":"Does VetAgent log the tokens I look up?",

@@ -110,6 +110,10 @@ TARGETS = [
     ("src/landing.html", r"(\d+) of \d+\. Our worst number", "dead_high_n"),
     ("src/landing.html", r"\d+ of (\d+)\. Our worst number", "dead_n"),
     ("src/landing.html", r"a cohort of (\d+) confirmed-dead tokens", "dead_n"),
+    # The JSON-LD FAQ block. Structured data, read by search engines and by models, and
+    # it carried "only 2 were rated high" for as long as the visible copy did.
+    ("src/landing.html", r"though only (\d+) of \d+ were rated high", "dead_high_n"),
+    ("src/landing.html", r"though only \d+ of (\d+) were rated high", "dead_n"),
     ("src/landing.html", r"Only (\d+) of those \d+ are rated", "dead_high_n"),
     ("src/landing.html", r"Only \d+ of those (\d+) are rated", "dead_n"),
     ("docs/AUDIT_BRIEF.md", r"false positives ([\d.]+)%", "fp_pct"),
