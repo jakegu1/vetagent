@@ -334,6 +334,57 @@ def test_an_unnamed_tool_call_is_not_tool_use():
               repr(recorded[0][1]))
 
 
+def test_the_pages_a_directory_asks_for_exist():
+    """Directories want a privacy URL and a terms URL. Both have to actually resolve.
+
+    A submission is rejected on a 404 as surely as on a bad answer, and there is no way
+    to notice a missing static route from inside the code that does not serve it.
+    """
+    print("\n[pages] /privacy and /terms answer")
+    w = entry.Default()
+    for path, must_contain in (("/privacy", "Privacy"), ("/terms", "Terms of use")):
+        r = asyncio.run(w.fetch(FakeRequest("https://vetagent.dev" + path)))
+        check("%s returns 200" % path, r.status == 200, str(r.status))
+        check("%s says what it is" % path, must_contain in r.body, r.body[:80])
+    r = asyncio.run(w.fetch(FakeRequest("https://vetagent.dev/terms")))
+    check("terms states the liability limit", "no warranty" in r.body.lower())
+    check("terms repeats that unknown is not low",
+          "not a low-risk result" in r.body)
+    check("terms does not claim to be advice",
+          "not financial advice" in r.body.lower())
+
+
+def test_an_unissued_verification_token_is_absent_not_wrong():
+    """The OpenAI challenge path 404s until a real token exists, and never guesses one.
+
+    Their requirement is that the endpoint return *only* that plugin's token. Serving a
+    placeholder, an empty 200, or the string "TODO" would all be a wrong answer where the
+    honest answer is no answer -- the same distinction the engine makes between `unknown`
+    and `low`, applied to our own plumbing.
+    """
+    print("\n[pages] the OpenAI challenge answers nothing rather than something wrong")
+    w = entry.Default()
+    path = "https://vetagent.dev/.well-known/openai-apps-challenge"
+
+    check("no token configured in the repo", entry._OPENAI_CHALLENGE == "",
+          repr(entry._OPENAI_CHALLENGE))
+    r = asyncio.run(w.fetch(FakeRequest(path)))
+    check("unset means 404, not an empty 200", r.status == 404, str(r.status))
+    check("and no placeholder body", r.body == "", repr(r.body))
+
+    original = entry._OPENAI_CHALLENGE
+    entry._OPENAI_CHALLENGE = "openai-apps-challenge-abc123"
+    try:
+        r = asyncio.run(w.fetch(FakeRequest(path)))
+        check("a set token is served verbatim", r.body == "openai-apps-challenge-abc123",
+              repr(r.body))
+        check("with nothing wrapped around it",
+              r.headers.get("content-type") == "text/plain" and r.status == 200,
+              repr(r.headers))
+    finally:
+        entry._OPENAI_CHALLENGE = original
+
+
 def main():
     print("=" * 68)
     print("HTTP telemetry: the interface the gate could not see")

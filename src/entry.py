@@ -41,6 +41,7 @@ MCP endpoint: https://vetagent.dev/mcp  (streamable-http, no auth, no API key)
 HTTP API:     https://vetagent.dev/assess/{address}?chain_hint={chain}
 Source:       https://github.com/jakegu1/vetagent  (MIT)
 Contact:      hello@vetagent.dev  (no signup; the maintainer answers)
+Terms:        https://vetagent.dev/terms  ·  Privacy: https://vetagent.dev/privacy
 Registry:     dev.vetagent/vetagent on registry.modelcontextprotocol.io
 
 ## What it does
@@ -198,6 +199,80 @@ none, and this page explains why): <a href="mailto:hello@vetagent.dev">hello@vet
 Anything public &mdash; bugs, a verdict you disagree with &mdash; is better as an issue at
 <a href="https://github.com/jakegu1/vetagent">github.com/jakegu1/vetagent</a>.</p>
 """
+
+# Directories that list a service ask for a terms URL alongside the privacy URL, and
+# until now there was nothing to give them. Writing one is also the honest thing: this
+# endpoint tells people whether to risk money, so the limits of what it claims should be
+# stated somewhere they can point at, not only in a README section.
+_TERMS_HTML = """<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VetAgent - Terms</title>
+<style>
+ body{max-width:44rem;margin:0 auto;padding:3rem 1.25rem;line-height:1.7;
+   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+   background:#0d1117;color:#c9d1d9}
+ h1{color:#e6edf3;font-size:1.9rem;margin:0 0 .4rem}
+ h2{color:#e6edf3;font-size:1.05rem;margin:2rem 0 .5rem}
+ a{color:#58a6ff} code{background:#161b22;padding:.1rem .35rem;border-radius:4px}
+ .sub{color:#8b949e;margin:0 0 2rem}
+</style>
+<h1>Terms of use</h1>
+<p class="sub">VetAgent &middot; last updated 2026-09-08</p>
+
+<h2>What this is</h2>
+<p>VetAgent reports <strong>observable on-chain risk</strong> about a token. It is a
+measurement tool. It is <strong>not financial advice</strong>, it does not size positions,
+and nothing it returns is a recommendation to buy, hold or sell anything.</p>
+
+<h2>What a verdict means, and what it does not</h2>
+<p><code>low</code> means <em>no fatal signal fired in the checks that actually ran</em>.
+It does not mean safe. <code>unknown</code> means a critical check could not run at all;
+it is not a low-risk result and must never be used to justify a trade.</p>
+<p>There is risk this service cannot see: team behaviour, social engineering, off-chain
+agreements, and rugs executed through governance. A token can pass every check here and
+still take your money.</p>
+
+<h2>Accuracy, stated rather than promised</h2>
+<p>The service publishes its own measured error rates and the benchmark that produces
+them, including the parts that do not work yet, at
+<a href="https://github.com/jakegu1/vetagent/blob/master/bench/results.md">bench/results.md</a>.
+Those numbers are the claim. Anything beyond them is not claimed. Upstream data sources
+can be wrong, stale or unavailable, and when they are, the answer is
+<code>unknown</code>.</p>
+
+<h2>No warranty, and the liability limit</h2>
+<p>The service is provided free, as is, with no warranty of any kind and no service level.
+It may change, break or be withdrawn at any time. To the maximum extent permitted by law,
+the maintainer is not liable for any loss arising from use of this service or reliance on
+its output. <strong>You are responsible for your own trading decisions.</strong></p>
+<p>The source code is MIT licensed; the licence governs the code, these terms govern the
+hosted service.</p>
+
+<h2>Acceptable use</h2>
+<p>No authentication, no account, no rate limit you need to negotiate. In return: do not
+attempt to disrupt the service for others, and do not present its output as a guarantee of
+safety to anyone else. If the traffic ever threatens availability, rate limiting will be
+added and said so on this page.</p>
+
+<h2>Maintenance commitment</h2>
+<p>A risk tool whose upstreams have drifted does not go quiet &mdash; it keeps answering,
+just as confidently, and it is wrong precisely when someone is trusting it. So: as long as
+this service is online it is maintained, and if it is ever no longer maintained it will be
+taken offline rather than left to rot.</p>
+
+<h2>Contact</h2>
+<p><a href="mailto:hello@vetagent.dev">hello@vetagent.dev</a>, or an issue at
+<a href="https://github.com/jakegu1/vetagent">github.com/jakegu1/vetagent</a>.
+See also the <a href="/privacy">privacy page</a>.</p>
+"""
+
+# OpenAI's plugin directory verifies domain ownership by fetching a token from this path,
+# and requires that the endpoint return **only** that plugin's token. The token is issued
+# by their submission portal, which needs a verified identity, so it cannot be filled in
+# from here. Until it is, the path 404s: serving a placeholder would be a wrong answer
+# rather than no answer, and those are not the same thing.
+_OPENAI_CHALLENGE = ""
 
 _JSON = "application/json"
 _CORS = {
@@ -414,6 +489,19 @@ class Default(WorkerEntrypoint):
 
         if path == "/privacy":
             return Response(_PRIVACY_HTML, headers={"content-type": "text/html"}, status=200)
+
+        if path == "/terms":
+            return Response(_TERMS_HTML, headers={"content-type": "text/html"}, status=200)
+
+        # Domain verification for the OpenAI plugin directory. Their requirement is that
+        # this returns only the token, so it is served as bare text with nothing around
+        # it -- and 404s while no token has been issued, because "we have not been given
+        # one" and "here is a token" must not look the same to their checker.
+        if path == "/.well-known/openai-apps-challenge":
+            if not _OPENAI_CHALLENGE:
+                return Response("", headers={"content-type": "text/plain"}, status=404)
+            return Response(_OPENAI_CHALLENGE,
+                            headers={"content-type": "text/plain"}, status=200)
 
         # Site summary written for LLMs. Our users don't Google — they ask a model
         # "how do I do a token safety check inside an agent". Being cited beats being

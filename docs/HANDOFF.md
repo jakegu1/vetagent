@@ -303,15 +303,34 @@ The Worker serves the public key at `/.well-known/mcp-registry-auth` (see `src/e
 **Lose the private key and you can never publish another version under that namespace** — keep a copy in the password manager,
 and as a GitHub Secret (`MCP_REGISTRY_KEY`) so CI can publish automatically.
 
-### ⬜ Needs Jake in person (all require signing up, which I cannot do for him)
+### Channel status, 2026-09-08
+
+Everything that can be submitted without an account of Jake's has been submitted. What is
+left needs a signup, which is the one thing that cannot be delegated.
+
+| Channel | State | Where it stands |
+|---|---|---|
+| **Official MCP registry** | ✅ live | `dev.vetagent/vetagent` |
+| **PulseMCP** | ✅ live | auto-synced from the registry, nothing to do |
+| **Glama** | ✅ live | connector `dev.vetagent/vetagent`, ownership verified, endpoint health-checked, support contact `hello@vetagent.dev` |
+| **Smithery** | ✅ live | `jake-gu95/vetagent`, domain TXT + backlink verified |
+| **mcpservers.org** | ⏳ submitted 09-08 | free queue, reviewed within 12h, result emailed to `hello@vetagent.dev` |
+| **awesome-mcp-servers** | ⏳ PR [#13873](https://github.com/punkpeye/awesome-mcp-servers/pull/13873) | was blocked by their bot on a Glama listing; badge added and the check answered 09-08 |
+| **mcp.so** | ⏳ issue [#3987](https://github.com/chatmcp/mcpso/issues/3987) | awaiting review, no blocker raised |
+| **Docker MCP registry** | ⏳ PR [#4954](https://github.com/docker/mcp-registry/pull/4954) | mergeable, awaiting a required review |
+| **awesome-remote-mcp-servers** | ⏳ PR [#733](https://github.com/jaw9c/awesome-remote-mcp-servers/pull/733) | mergeable and clean |
+| **Cline marketplace** | ⏳ issue [#2471](https://github.com/cline/mcp-marketplace/issues/2471) | awaiting review. Their process applies extra scrutiny to crypto tools, which is correct of them |
+
+#### ⬜ Still needs Jake in person
 
 | Channel | Entry point | What it needs |
 |---|---|---|
-| **Claude plugin directory** | https://platform.claude.com/plugins/submit | A Console account (free, whoever signs up is Owner), then the repo URL `github.com/jakegu1/vetagent`. Everything on the repo side is ready: `.claude-plugin/plugin.json`, `.mcp.json`, LICENSE, public repo |
-| **Glama** | https://glama.ai/mcp/servers | GitHub OAuth, needs write access to this repo |
-| **Smithery** | https://smithery.ai/new | Smithery account + API key (once the key is in hand, publishing is a command away) |
-| **mcp.so** | https://mcp.so/submit?type=remote-server | Site email/password account (note: **that site has password reset turned off**, so put it in the password manager) |
-| **awesome-mcp-servers** | https://github.com/punkpeye/awesome-mcp-servers | GitHub PR. ⚠️ Their bot will not pass the check until you are **listed on Glama**, so do Glama first, then open the PR |
+| **Claude plugin directory** | https://platform.claude.com/plugins/submit | A free Console account (whoever signs up is Owner), then repo `github.com/jakegu1/vetagent` with plugin path **`plugin/`**. The review pipeline runs `claude plugin validate`; ours passes clean, including `--strict`. The [claude.ai form](https://claude.ai/admin-settings/directory/submissions/plugins/new) is the alternative but needs a Team or Enterprise org |
+| **OpenAI plugin directory** | https://platform.openai.com → Plugins → Submit | A **verified** individual or business identity on the OpenAI platform, which needs ID and cannot be delegated. Everything on our side is prepared — see `docs/OPENAI_SUBMISSION.md` |
+
+The plugin lives in [`plugin/`](../plugin), not at the repository root, so installing it
+does not drag down `bench/snapshots/`. That archive grows every day and has nothing to do
+with using the tool; the community catalog supports a `path` field for exactly this.
 
 ### Every candidate channel (exhaustive, ordered by "will an agent actually find us here")
 
