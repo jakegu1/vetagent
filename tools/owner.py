@@ -263,15 +263,24 @@ def changed_recently(days=7, cap=8):
 
     Returns (subjects, total). The cap is reported rather than applied silently: a
     truncated list that does not say it was truncated reads as a complete week.
+
+    The snapshot job's commits are excluded, for the same reason `rounds.py` excludes
+    them: they are data collection, not development, and two of them land every day. With
+    them in, this section changed twice a day on its own and the currency test went red
+    without anybody touching the project -- a test that reddens by itself teaches people
+    to ignore a red build, which is worse than not having the test.
     """
     import subprocess
+    sys.path.insert(0, HERE)
+    import rounds
     try:
         out = subprocess.check_output(
             ["git", "log", "--since=%d.days" % days, "--no-merges", "--format=%s"],
             cwd=ROOT, stderr=subprocess.DEVNULL).decode("utf-8", "replace")
     except (OSError, subprocess.CalledProcessError):
         return None, 0                      # no git here; not the same as a quiet week
-    subjects = [s.strip() for s in out.splitlines() if s.strip()]
+    subjects = [s.strip() for s in out.splitlines() if s.strip()
+                and not s.strip().startswith(rounds.BOT_PREFIX)]
     return subjects[:cap], len(subjects)
 
 

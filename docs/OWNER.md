@@ -108,16 +108,16 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- A caller whose HTTP calls all failed was invisible to the gate
+- E11 inside the line whose own comment says "say what was dropped"
+- The workflow written to prevent the 233-agent run had never been run
+- Regenerate the round log over the snapshot commits the rebase brought in
 - Close R18, open R19 — and state what R18's own review never covered
-- Snapshot 2026-09-08 (sellability): 6 days, 9740 rows total
-- Snapshot 2026-09-08 (pools): 6 days, 9740 rows total
-- Snapshot 2026-09-08 (sellability): 6 days, 9062 rows total
-- Snapshot 2026-09-08 (pools): 6 days, 9062 rows total
 - The owner page told the owner what to do and not how much to believe it
 - Park the two channels that need an account, without moving the bar
 - The channel list was eight names picked before the landscape was known
 
-_177 more not shown (185 commits in total)._
+_154 more not shown (162 commits in total)._
 
 ## What I got wrong
 

@@ -59,9 +59,27 @@ def test_the_page_is_current():
     if have is None:
         return
     want = owner.render()
-    strip = lambda t: re.sub(r"^> Generated .*$", "", t, flags=re.M)   # noqa: E731
+
+    # Two blocks are a view of *now* rather than a claim derived from a file, so they
+    # cannot be compared: the generation date, and the recent-commit list. The commit
+    # list in particular cannot ever match at HEAD, because regenerating the page is
+    # itself a commit that changes it -- the check would demand a state it destroys by
+    # reaching. Everything else, which is every number and every date the owner acts on,
+    # is compared exactly.
+    def strip(t):
+        t = re.sub(r"^> Generated .*$", "", t, flags=re.M)
+        return re.sub(r"^## What changed in the last .*?(?=^## )", "", t,
+                      flags=re.M | re.S)
+
     check("it is current", strip(have).strip() == strip(want).strip(),
           "regenerate it: python tools/owner.py --write")
+
+    # The mask has to stay narrow, or the currency check quietly stops checking.
+    masked = len(want) - len(strip(want))
+    check("the exemption is a small part of the page, not most of it",
+          masked < len(want) * 0.25, "%d of %d characters masked" % (masked, len(want)))
+    check("only the two intended blocks are masked",
+          "## Needs you" in strip(want) and "## What I got wrong" in strip(want))
 
 
 def test_every_number_on_it_is_the_measured_one():
