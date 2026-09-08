@@ -534,8 +534,15 @@ def main():
     if tools is None:
         print("  QUERY FAILED -- this is not the same as nobody calling.")
     elif not tools:
-        print("  NO. %d clients connected and none of them called a tool."
-              % len(ext or []))
+        # `ext` spans the raw window and `tools` only the attributable one, so the two
+        # cannot be put in one sentence. "N connected and none called a tool" was false
+        # whenever somebody called a tool before the floor: that call exists, it is
+        # simply unreadable. Two clauses, each true of its own window.
+        print("  NO. No attributable client called a tool since %s."
+              % ATTRIBUTION_FIXED)
+        print("  %d client(s) connected across the full %d-day window, which includes"
+              % (len(ext or []), args.days))
+        print("  rows too old to attribute -- some of those may have called a tool.")
         print("  -> STRATEGY: distribution problem, not product. Experiment C only, "
               "no new features.")
     else:

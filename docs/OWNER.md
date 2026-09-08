@@ -108,6 +108,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- One gate, four written bars, and every one of them easier than the code
 - The field added to disclose a truncation could not disclose a half scan
 - Three outward pages said things that are not true
 - The owner-page test I added this morning reddens by itself, twice a day
@@ -115,9 +116,8 @@ problem looked like before it was fixed.
 - E11 inside the line whose own comment says "say what was dropped"
 - The workflow written to prevent the 233-agent run had never been run
 - Regenerate the round log over the snapshot commits the rebase brought in
-- Close R18, open R19 — and state what R18's own review never covered
 
-_157 more not shown (165 commits in total)._
+_158 more not shown (166 commits in total)._
 
 ## What I got wrong
 
