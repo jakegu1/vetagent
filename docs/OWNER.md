@@ -92,22 +92,23 @@ next -- including stopping.
 | False positives | 4.3% -- we called a healthy token dangerous |
 | Answers we refuse | 15.3% -- `unknown`, on purpose |
 | Dead tokens we rated high | 10.0% -- our worst number, published first |
-| Round in progress | R18: Make the archive worth waiting for |
+| Round in progress | R19: Point it outward, and correct what would be found |
 
 The score's ceiling for engineering alone is about 70. The missing points are
 distribution and users, which is why more building cannot move it.
 
 ## What I am doing right now
 
-**R18 -- Make the archive worth waiting for**
+**R19 -- Point it outward, and correct what would be found**
 
-Listed the server where it can be found -- GitHub topics, mcp.so, Docker's MCP registry, two awesome lists -- then reviewed the daily collector across seven dimensions. It was discarding 14 of the 18 time-resolution buckets every response already carried, storing 5 of honeypot.is's 13 branches, recording an empty `flags` list because the real ones live under `summary`, blacklisting tokens it had never received an answer about, and letting an optional probe run between the irreplaceable pool rows being written and their commit. E11 again in two more places, one written the day before. W20 was rejected on a bad measurement, then the rejection was corrected on three of its own numbers. The archive's ceiling was measured and it is lower than claimed: 69% of new pools never trade $50k in a week, so they can never be labelled dead however long we wait. And the review itself cost 233 agents and the account's session limit, which produced `.claude/workflows/budgeted-review.js` and the rule that an agent count must never be a function of model output.
+The gate's failing branch says distribution, so the server was pointed at the places an agent might find it -- and everything it was pointed at turned out to need correcting first. The landing page carried a claim a commenter disproves in one minute, in three surfaces. The README asserted a directory grade as a frozen string. `find_new_hot_pools` answered `count: 20` beside three pools. There was no way to reach a person and no terms page. And the gate itself said YES on `mozilla` and `curl` -- our own homepage demo and our own deploy pipeline -- because thirteen of its fourteen days were written before the attribution fix; floored to rows the fixed instrument wrote, it reads no. Glama and Smithery went live, six more submissions are queued, and two were parked at a signup. The owner page gained the sections that let someone who cannot read the code decide whether to believe it.
 
 ## What changed in the last 7 days
 
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- The owner page told the owner what to do and not how much to believe it
 - Park the two channels that need an account, without moving the bar
 - The channel list was eight names picked before the landscape was known
 - The OpenAI submission, written out so only the identity step is left
@@ -115,9 +116,8 @@ problem looked like before it was fixed.
 - A terms page, and the plugin moved out of the repository root
 - W10 still told the owner to do the two things that are done
 - Read the corrected gate, and it says no
-- The gate said YES on the two buckets our own traffic used to land in
 
-_171 more not shown (179 commits in total)._
+_172 more not shown (180 commits in total)._
 
 ## What I got wrong
 

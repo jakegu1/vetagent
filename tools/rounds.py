@@ -147,7 +147,7 @@ ROUNDS = [
      "generated: the owner said they could not tell what needed them or by when, which "
      "was a fair complaint about eleven documents and nineteen W-numbers that answer "
      "everything except that."),
-    ("R18", "Make the archive worth waiting for", None,
+    ("R18", "Make the archive worth waiting for", "a3c52ad",
      "Listed the server where it can be found -- GitHub topics, mcp.so, Docker's MCP "
      "registry, two awesome lists -- then reviewed the daily collector across seven "
      "dimensions. It was discarding 14 of the 18 time-resolution buckets every response "
@@ -161,7 +161,26 @@ ROUNDS = [
      "week, so they can never be labelled dead however long we wait. And the review "
      "itself cost 233 agents and the account's session limit, which produced "
      "`.claude/workflows/budgeted-review.js` and the rule that an agent count must never "
-     "be a function of model output."),
+     "be a function of model output. **What that run did not cover was never written "
+     "down, and is now:** its verify stage died with the session limit, so five of the "
+     "seven dimensions were never adversarially checked at all. The findings were acted "
+     "on anyway -- so some of the fixes above rest on findings nothing challenged, and "
+     "whatever those five dimensions would have caught is still there. A review that "
+     "reports its conclusions without its coverage is the same defect as a scan that "
+     "says 'nothing found' without saying where it looked, and it was committed by the "
+     "round that fixed that defect in two other places."),
+    ("R19", "Point it outward, and correct what would be found", None,
+     "The gate's failing branch says distribution, so the server was pointed at the "
+     "places an agent might find it -- and everything it was pointed at turned out to "
+     "need correcting first. The landing page carried a claim a commenter disproves in "
+     "one minute, in three surfaces. The README asserted a directory grade as a frozen "
+     "string. `find_new_hot_pools` answered `count: 20` beside three pools. There was no "
+     "way to reach a person and no terms page. And the gate itself said YES on `mozilla` "
+     "and `curl` -- our own homepage demo and our own deploy pipeline -- because thirteen "
+     "of its fourteen days were written before the attribution fix; floored to rows the "
+     "fixed instrument wrote, it reads no. Glama and Smithery went live, six more "
+     "submissions are queued, and two were parked at a signup. The owner page gained the "
+     "sections that let someone who cannot read the code decide whether to believe it."),
 ]
 
 

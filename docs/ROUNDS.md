@@ -29,11 +29,12 @@ The maturity score for each round is read from `docs/SCORECARD.md` **as it stood
 | **R15** | Guards that guard, and numbers that are watched | 20 | 2026-09-06 to 2026-09-07 | 53/100 (+0) |
 | **R16** | Make the gate readable, then stop | 10 | 2026-09-07 | 53/100 (+0) |
 | **R17** | Fix the instrument, then freeze it | 6 | 2026-09-07 | 53/100 (+0) |
+| **R18** | Make the archive worth waiting for | 15 | 2026-09-07 to 2026-09-08 | 53/100 (+0) |
 
-12 snapshot-job commits are excluded up to the last closed round: they are data collection, not development, and would bury the rounds. The job commits daily, so counting them past that point would date this file every morning.
+17 snapshot-job commits are excluded up to the last closed round: they are data collection, not development, and would bury the rounds. The job commits daily, so counting them past that point would date this file every morning.
 
 
-**R18 -- Make the archive worth waiting for** is open: Listed the server where it can be found -- GitHub topics, mcp.so, Docker's MCP registry, two awesome lists -- then reviewed the daily collector across seven dimensions. It was discarding 14 of the 18 time-resolution buckets every response already carried, storing 5 of honeypot.is's 13 branches, recording an empty `flags` list because the real ones live under `summary`, blacklisting tokens it had never received an answer about, and letting an optional probe run between the irreplaceable pool rows being written and their commit. E11 again in two more places, one written the day before. W20 was rejected on a bad measurement, then the rejection was corrected on three of its own numbers. The archive's ceiling was measured and it is lower than claimed: 69% of new pools never trade $50k in a week, so they can never be labelled dead however long we wait. And the review itself cost 233 agents and the account's session limit, which produced `.claude/workflows/budgeted-review.js` and the rule that an agent count must never be a function of model output. Its commits are listed here once it closes.
+**R19 -- Point it outward, and correct what would be found** is open: The gate's failing branch says distribution, so the server was pointed at the places an agent might find it -- and everything it was pointed at turned out to need correcting first. The landing page carried a claim a commenter disproves in one minute, in three surfaces. The README asserted a directory grade as a frozen string. `find_new_hot_pools` answered `count: 20` beside three pools. There was no way to reach a person and no terms page. And the gate itself said YES on `mozilla` and `curl` -- our own homepage demo and our own deploy pipeline -- because thirteen of its fourteen days were written before the attribution fix; floored to rows the fixed instrument wrote, it reads no. Glama and Smithery went live, six more submissions are queued, and two were parked at a signup. The owner page gained the sections that let someone who cannot read the code decide whether to believe it. Its commits are listed here once it closes.
 
 ---
 
@@ -411,6 +412,36 @@ An external audit read the gate's own output and found it printing YES on the de
 | `1590f10` | 2026-09-07 | R17: record that Experiment C runs inside the gate's own window |
 | `a03f430` | 2026-09-07 | R17: our own CI was in the gate's numerator, and a page for the owner |
 | `b078d65` | 2026-09-07 | R17: attribute the landing page by Origin, not by its own JavaScript |
+
+Full reasoning for any line above: `git show <hash>`. The commit messages carry the measurement that motivated each change, and several admissions of error.
+
+
+---
+
+
+## R18 -- Make the archive worth waiting for
+
+
+Listed the server where it can be found -- GitHub topics, mcp.so, Docker's MCP registry, two awesome lists -- then reviewed the daily collector across seven dimensions. It was discarding 14 of the 18 time-resolution buckets every response already carried, storing 5 of honeypot.is's 13 branches, recording an empty `flags` list because the real ones live under `summary`, blacklisting tokens it had never received an answer about, and letting an optional probe run between the irreplaceable pool rows being written and their commit. E11 again in two more places, one written the day before. W20 was rejected on a bad measurement, then the rejection was corrected on three of its own numbers. The archive's ceiling was measured and it is lower than claimed: 69% of new pools never trade $50k in a week, so they can never be labelled dead however long we wait. And the review itself cost 233 agents and the account's session limit, which produced `.claude/workflows/budgeted-review.js` and the rule that an agent count must never be a function of model output. **What that run did not cover was never written down, and is now:** its verify stage died with the session limit, so five of the seven dimensions were never adversarially checked at all. The findings were acted on anyway -- so some of the fixes above rest on findings nothing challenged, and whatever those five dimensions would have caught is still there. A review that reports its conclusions without its coverage is the same defect as a scan that says 'nothing found' without saying where it looked, and it was committed by the round that fixed that defect in two other places.
+
+
+| Commit | Date | Change |
+|---|---|---|
+| `1fe6885` | 2026-09-07 | W10: an icon, generated rather than downloaded |
+| `7a835cd` | 2026-09-07 | W10: llms-install.md, and the integration guide was missing a verdict |
+| `b00c0fd` | 2026-09-07 | W20: the snapshot archive will outgrow the repo in about a year |
+| `8a0d66b` | 2026-09-07 | W10: the README had no install instructions |
+| `f274c64` | 2026-09-07 | Ask on the day: record day-one sellability, the one thing that expires |
+| `62aadce` | 2026-09-07 | W20 rejected: I filed it off the wrong number |
+| `d823e11` | 2026-09-08 | Snapshot review: keep what the response already paid for, and stop the add-on eating the archive |
+| `0fc3243` | 2026-09-08 | W20: the rejection was right, and three of its numbers were not |
+| `f552b5b` | 2026-09-08 | The sellability probe was poisoning the engine's cache, and recording an empty list |
+| `ff6655a` | 2026-09-08 | Never let a workflow's agent count depend on model output |
+| `7fd082f` | 2026-09-08 | E11 in the archive's own storage layer, written by me the day before |
+| `0758a35` | 2026-09-08 | The labeller cannot label most of what the collector collects, and relaxing it does not help |
+| `cb740bf` | 2026-09-08 | Close R17, open R18 |
+| `aa5d3ee` | 2026-09-08 | The manifest earned itself on its first run: a quarter of page fetches are failing |
+| `a3c52ad` | 2026-09-08 | The probe was spending 48 of 53 requests on the one chain that never answers |
 
 Full reasoning for any line above: `git show <hash>`. The commit messages carry the measurement that motivated each change, and several admissions of error.
 
