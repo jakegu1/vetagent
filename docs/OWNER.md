@@ -21,14 +21,14 @@ These are the things I cannot do. Everything else in this project is mine.
 
 | When | Due | # | What you do | Blocked? |
 |---|---|---|---|---|
-| **in 10 days** | 2026-09-18 | W10 | List on Glama, then Smithery, mcp.so, the Claude plugin directory | no |
+| **in 10 days** | 2026-09-18 | W10 | List on mcp.so, the Claude plugin directory, awesome-mcp-servers, mcpservers.org | no |
 | **in 10 days** | 2026-09-18 | W11 | Answer the 2026-09-18 gate | no |
 | **in 10 days** | 2026-09-18 | -- | Post Experiment C | no |
 | in 38 days | 2026-10-16 | W5 | A second, independent sell-simulation source | **yes -- see below** |
 | in 38 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
 | no date | -- | W13 | Move the Cloudflare account and zone ids out of the public repo | no |
 
-### W10 List on Glama, then Smithery, mcp.so, the Claude plugin directory
+### W10 List on mcp.so, the Claude plugin directory, awesome-mcp-servers, mcpservers.org
 
 - **When:** 2026-09-18 (**in 10 days**)
 - **Why then:** distribution is the whole of the gate's failing branch
