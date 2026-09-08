@@ -152,9 +152,14 @@ CHANNELS = [
     ("awesome-remote-mcp-servers", False),      # jaw9c#733
     ("Docker MCP registry", False),             # docker/mcp-registry#4954
     ("Cline marketplace", False),               # cline/mcp-marketplace#2471
-    # Blocked on an account only Jake can create.
+    # Parked by the owner on 2026-09-08: both need an account only he can create, and he
+    # has decided not to. They stay in the denominator on the same rule that governs
+    # RISK_VECTORS -- a row leaves it when it has been **measured** to be worthless (see
+    # LP lock / burn, `None`), never because we chose not to try. Dropping these two
+    # would raise the score for giving up, which is the one direction a metric must
+    # never move on its own. The work is done and waiting if that changes.
     ("Claude plugin directory", False),         # needs a free Console account
-    ("OpenAI plugin directory", False),         # needs a verified identity
+    ("OpenAI plugin directory", False),         # needs a verified identity (ID)
 ]
 
 

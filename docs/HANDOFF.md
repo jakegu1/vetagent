@@ -321,7 +321,10 @@ left needs a signup, which is the one thing that cannot be delegated.
 | **awesome-remote-mcp-servers** | ⏳ PR [#733](https://github.com/jaw9c/awesome-remote-mcp-servers/pull/733) | mergeable and clean |
 | **Cline marketplace** | ⏳ issue [#2471](https://github.com/cline/mcp-marketplace/issues/2471) | awaiting review. Their process applies extra scrutiny to crypto tools, which is correct of them |
 
-#### ⬜ Still needs Jake in person
+#### ⏸ Parked by the owner, 2026-09-08 — both need an account only he can create
+
+Prepared to the last click and then stopped, deliberately. Nothing here is wasted: each is
+one signup away, and the preparation does not rot.
 
 | Channel | Entry point | What it needs |
 |---|---|---|
