@@ -59,7 +59,7 @@ We sell three things, in order of importance:
 |---|---|
 | **Judgement** | Not "here are 40 fields" but "should you touch this, and why". Four sources that contradict each other, collapsed into one actionable verdict |
 | **Reliability** | Upstreams go down, rename fields, rate-limit. The customer is buying "I never have to deal with that" |
-| **Credibility** | We publish our own recall and false-positive rates. **Nobody else in this category does** |
+| **Credibility** | We publish our own error rates **including the unflattering ones**, with the harness that reproduces them. Several tools in this category publish a headline number &mdash; Hypernative 99.8% detection, Forta >99% recall, Blockaid <0.002% false positives &mdash; and **none of them publishes a method you can re-run**. That is the claim. "Nobody else publishes a rate" is not, and stood here for two days after it was retracted from three other surfaces |
 
 > Something I got wrong, on the record: I used to think "the underlying data is free and
 > public, so there is no moat". That filter kills BuiltWith (read the page source, it's

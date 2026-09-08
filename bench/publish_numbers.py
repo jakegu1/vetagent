@@ -264,6 +264,45 @@ FROZEN_LOG_FILES = ("docs/ROUNDS.md", "docs/DECISIONS.md", "docs/HANDOFF.md",
 # (file, exact substring that must appear on the line) -- scoped to one file each, so an
 # exemption written for one sentence cannot silently cover a new number somewhere else.
 # "Rejected." as a bare global substring exempted every line that happened to contain it.
+# Claims that were measured, published, and then RETRACTED. A number is not the only
+# thing that drifts: "Nobody else in this category does" was corrected on the landing
+# page, in the og:description and in the JSON-LD on 2026-09-06, and was still sitting in
+# docs/STRATEGY.md and docs/HANDOFF.md two days later -- where HANDOFF was prescribing it
+# as the "one fixed angle" for the Experiment C launch post. A retracted claim that still
+# steers the launch is worse than one nobody reads.
+#
+# An adversarial review raised exactly this and its verifier refuted it. The verifier was
+# wrong. So the check is a grep now, not a judgement.
+#
+# Each entry: the retracted phrase, and the substring that marks a line as the *record* of
+# the retraction rather than a repetition of it.
+# A pattern, not a string. The claim survived in FOUR places after being "corrected in
+# three surfaces", and each survivor phrased it differently: "nobody else in this category
+# does", "nobody else does it", "nobody else publishes a rate". Grepping the exact sentence
+# would have found one of them.
+RETRACTED_CLAIMS = (
+    # (pattern, what a line saying it is WRONG looks like)
+    (r"nobody else (?:does|publishes|in this category)",
+     r"not\s|retracted|several (?:do|publish)|is false"),
+)
+
+
+def retracted(files):
+    """Occurrences of a retracted claim that are not the record of its retraction."""
+    out = []
+    for rel in files:
+        path = os.path.join(ROOT, rel)
+        if not os.path.exists(path):
+            continue
+        with io.open(path, encoding="utf-8") as f:
+            for i, line in enumerate(f, 1):
+                low = line.lower()
+                for pattern, corrective in RETRACTED_CLAIMS:
+                    if re.search(pattern, low) and not re.search(corrective, low):
+                        out.append((rel, i, line.strip()[:88]))
+    return out
+
+
 _EXEMPT_LINES = (
     ("docs/AUDIT_BRIEF.md", "Rejected."),
     # Other vendors' published claims, quoted on our own landing page so that we are the
@@ -347,6 +386,19 @@ def main():
     print("Measured: n=%s, false positives %s%% on %s healthy tokens, unknown %s%%"
           % (vals["n"], vals["fp_pct"], vals["healthy_n"], vals["unknown_pct"]))
 
+    # A retracted claim is a stale number that happens to be made of words. This scans
+    # the planning documents too, which the number guard deliberately does not: those
+    # files are allowed to record a figure that was later withdrawn, but not to keep
+    # asserting a claim that was.
+    dead = retracted(LIVE_CLAIM_FILES + FROZEN_LOG_FILES +
+                     ("llms-install.md", "plugin/README.md", "docs/AGENT-INTEGRATION.md"))
+    if dead:
+        print("\n%d line(s) still assert a RETRACTED claim:" % len(dead))
+        for rel, lineno, line in dead:
+            print("  %s:%d  %s" % (rel, lineno, line))
+        print("\nIt was corrected on three surfaces on 2026-09-06 and survived in four")
+        print("others for two days -- one of them prescribing it as the launch angle.")
+
     loose = unclaimed_percentages()
     if loose:
         print("\n%d published percentage(s) on accuracy lines that NO target claims:"
@@ -356,9 +408,12 @@ def main():
         print("\nAdd a TARGETS entry, or stop publishing the number. An unguarded figure")
         print("is how the previous four drifted, all of them in the flattering direction.")
 
-    if not stale and not loose:
+    if not stale and not loose and not dead:
         print("Everything published matches the benchmark.")
         return 0
+
+    if dead and not stale and not loose:
+        return 1
 
     print("\n%d published figure(s) disagree with bench/results.json:" % len(stale))
     for rel, pattern, found, want in stale:

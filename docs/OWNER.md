@@ -108,6 +108,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- The no-tool-calls branch put two windows in one sentence, and file the rest
 - One gate, four written bars, and every one of them easier than the code
 - The field added to disclose a truncation could not disclose a half scan
 - Three outward pages said things that are not true
@@ -115,9 +116,8 @@ problem looked like before it was fixed.
 - A caller whose HTTP calls all failed was invisible to the gate
 - E11 inside the line whose own comment says "say what was dropped"
 - The workflow written to prevent the 233-agent run had never been run
-- Regenerate the round log over the snapshot commits the rebase brought in
 
-_158 more not shown (166 commits in total)._
+_159 more not shown (167 commits in total)._
 
 ## What I got wrong
 

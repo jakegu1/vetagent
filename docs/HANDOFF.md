@@ -134,7 +134,7 @@ negotiation / structuredContent / annotations), the full suite in CI, and positi
 
 Run a batch of known rugs and known-good tokens through it and publish **recall and false-positive rate**.
 
-The reasons have not changed (it is the only way a risk product earns trust, and nobody else does it), but there is a harder one now:
+The reasons have not changed (it is the only way a risk product earns trust, and none of the tools in this category publishes a method you can re-run &mdash; several publish a headline number), but there is a harder one now:
 **we just proved we can let an entire detection dimension fail silently for six months while everything looked fine.**
 Without a benchmark, the next one is again found by accident. The benchmark is this product's regression test.
 
@@ -371,7 +371,10 @@ doing it now means writing integration docs nobody reads for a product with zero
 **Tier 4 — content and community (experiment C)**
 
 Show HN, r/ethdev, r/mcp, r/LocalLLaMA, the crypto dev crowd on X, a long Dev.to post.
-One fixed angle: **"we published our own false-positive rate, and nobody else in this category does"**.
+One fixed angle: **"we published our own error rates, including the ones that make us look bad, with the harness that reproduces them"**.
+Not "nobody else publishes a rate" &mdash; several do, and a commenter disproves it in one minute. This line
+said the false version for two days after it was corrected on the landing page, in the share card and in the
+structured data, which is how a retracted claim reaches an audience invited specifically to check it.
 No feature lists — nobody shares a feature list, people share a counterintuitive number.
 
 ### Three routes that are not on the standard list but may be worth more
