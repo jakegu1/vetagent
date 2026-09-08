@@ -2,7 +2,7 @@
 
 [![smithery badge](https://smithery.ai/badge/jake-gu95/vetagent)](https://smithery.ai/servers/jake-gu95/vetagent)
 [![MCP registry](https://img.shields.io/badge/MCP%20registry-dev.vetagent%2Fvetagent-3FBFAA)](https://registry.modelcontextprotocol.io/)
-[![Glama](https://img.shields.io/badge/Glama-grade%20A-3FBFAA)](https://glama.ai/mcp/connectors/dev.vetagent/vetagent)
+[![vetagent MCP connector – tool definition quality and endpoint health on Glama](https://glama.ai/mcp/connectors/dev.vetagent/vetagent/badges/score.svg)](https://glama.ai/mcp/connectors/dev.vetagent/vetagent)
 [![License: MIT](https://img.shields.io/badge/License-MIT-3FBFAA)](LICENSE)
 
 **A pre-trade safety check for AI agents.** Before an agent buys, holds, or recommends
