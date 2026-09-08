@@ -312,7 +312,7 @@ Skipping one silently isn't allowed.
 
 | Date | Gate | Test | Action |
 |---|---|---|---|
-| 2026-09-18 | Is anyone using it | ≥1 external client that actually **called a tool**, within 14 days | Yes → continue; no → run only Experiment C, add no features |
+| 2026-09-18 | Is anyone using it | `gate_verdict()` in `bench/usage.py`, frozen 2026-09-07: not ours; named a tool; **received a real verdict**; **came back on a second day**; **asked about more than one thing**; and one non-owner country if the name could be ours | Yes → continue; no → run only Experiment C, add no features |
 | 2026-10-16 | Does anyone want to pay | ≥3 trial commitments in Experiment D | Yes → build payments; no → pick a different customer segment and run D again |
 | 2026-12-04 | Is further investment worth it | MRR >$0 or >500 calls/day | Yes → continue per §7; no → move to low-maintenance mode |
 | 2027-03-04 | Does the data asset hold up | Snapshot archive ≥6 months and trains a signal better than the current rules | Yes → that becomes the main product; no → keep the tool, drop the data narrative |

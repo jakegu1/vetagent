@@ -128,6 +128,20 @@ OWNER_COUNTRIES = {"CN"}
 ATTRIBUTION_FIXED = "2026-09-07 12:35:00"
 
 
+def _wrap(text, width):
+    """Wrap without importing textwrap, which Pyodide does not always carry."""
+    out, line = [], ""
+    for word in text.split():
+        if line and len(line) + 1 + len(word) > width:
+            out.append(line)
+            line = word
+        else:
+            line = (line + " " + word).strip()
+    if line:
+        out.append(line)
+    return out
+
+
 def gate_window(since):
     """WHERE clause for gate evidence: inside the window AND written by the fixed instrument."""
     return ("timestamp > now() - %s AND timestamp >= toDateTime('%s')"
@@ -360,6 +374,19 @@ def print_profile(prof, clients):
 # one -- buying another month of building on a robot.
 GATE_FROZEN = "2026-09-07"
 
+# The rule, in one place, in the file that decides it. Three documents restated it from
+# memory and all three were weaker than the code: STRATEGY's table row dropped "two
+# distinct days" and "two distinct verdicts"; BACKLOG W11 still said "one external
+# caller", which is the FIRST of the four rules and was superseded on 2026-09-07; and the
+# usage workflow's summary described the SECOND. On 2026-09-18 the owner reads one of
+# those, and each of them says the gate passes on evidence the code refuses. Anything
+# that states the bar quotes this now.
+RULE_TEXT = (
+    "not ours; named a tool; received a real verdict; came back on a second day; "
+    "asked about more than one thing; and, for a client whose name cannot be told "
+    "from ours, one request from a country that is not the owner's."
+)
+
 
 def gate_verdict(tools, prof):
     """Decide the 2026-09-18 gate. Returns (verdict, lines) with verdict in
@@ -493,8 +520,8 @@ def main():
     print("\n--- Gate 2026-09-18: is anyone outside this project using it? ---")
     print("  rule frozen %s, in gate_verdict(), pinned by tests/test_usage_gate.py:" %
           GATE_FROZEN)
-    print("  not ours; named a tool; got a verdict; two distinct days; two distinct")
-    print("  verdicts; and if the name could be ours, one non-owner country.")
+    for chunk in _wrap(RULE_TEXT, 72):
+        print("  %s" % chunk)
     print("  Four rules have been written for this gate, each after seeing the data the")
     print("  last one produced. This is the last. It is not adjusted after a run.")
 

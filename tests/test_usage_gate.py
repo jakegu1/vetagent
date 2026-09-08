@@ -341,6 +341,44 @@ def test_rows_older_than_the_attribution_fix_are_not_gate_evidence():
           "reconciliation still spans the raw window")
 
 
+def test_only_one_document_states_the_bar():
+    """Three documents restated the gate's rule from memory and all three were weaker.
+
+    - docs/STRATEGY.md's table row said "at least one external client that called a
+      tool", dropping "came back on a second day" and "asked about more than one thing".
+    - docs/BACKLOG.md W11 said "at least one external caller" -- the FIRST of the four
+      rules, superseded on 2026-09-07 and still sitting there.
+    - .github/workflows/usage.yml's job summary described the SECOND.
+
+    On 2026-09-18 the owner reads one of those. Each said the gate passes on evidence
+    `gate_verdict()` refuses, and every one of them drifted in the same direction: easier.
+    A rule restated in four places is a rule with three chances to be quietly loosened.
+
+    `RULE_TEXT` in bench/usage.py is the only statement now. Anything else points at it.
+    """
+    print("\n[gate] the bar is stated once, in the file that decides it")
+
+    check("the canonical text exists and is not empty", bool(usage.RULE_TEXT.strip()))
+    for clause in ("second day", "more than one thing", "real verdict", "not ours"):
+        check("it carries '%s'" % clause, clause in usage.RULE_TEXT, usage.RULE_TEXT)
+
+    src = open(os.path.join(ROOT, "bench", "usage.py"), encoding="utf-8").read()
+    check("main() prints it rather than retyping it", "RULE_TEXT" in src.split("def main(")[-1])
+
+    # The superseded wording must not survive anywhere except the historical record in
+    # STRATEGY section 8, which exists precisely to show how the rule was tightened.
+    dead = "≥1 external caller"
+    for rel in ("docs/BACKLOG.md", "docs/OWNER.md", "README.md",
+                ".github/workflows/usage.yml"):
+        path = os.path.join(ROOT, rel)
+        if not os.path.exists(path):
+            continue
+        text = open(path, encoding="utf-8").read()
+        check("%s does not restate the superseded bar" % rel,
+              dead not in text or "superseded" in text,
+              "carries the first of four counting rules as if it were current")
+
+
 def test_the_evidence_base_is_never_silent():
     """Three states, three outputs. The first version had three states and one silence.
 

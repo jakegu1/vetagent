@@ -70,10 +70,11 @@ jobs:
             cat usage.txt
             echo '```'
             echo ""
-            echo "The 2026-09-18 gate needs at least one client with 3 or more calls"
-            echo "across 2 or more distinct days. Repeat use, not first contact --"
-            echo "a public unauthenticated endpoint in the MCP registry gets crawled,"
-            echo "and a crawler is neither a self-client nor in the owner's country."
+            echo "The bar is printed inside the run above, quoted from RULE_TEXT in"
+            echo "bench/usage.py -- it is not restated here. This summary used to"
+            echo "describe the SECOND of four counting rules, which was superseded on"
+            echo "2026-09-07, so on the day of the gate it would have told the reader"
+            echo "the gate passes on evidence the code refuses."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Keep the answer
