@@ -122,7 +122,25 @@ TARGETS = [
     ("src/entry.py", r"## Measured accuracy \(n=(\d+), published\)", "n"),
     ("src/entry.py", r"False positives \(healthy tokens flagged high\) \.+ ([\d.]+)%", "fp_pct"),
     ("src/entry.py", r"Answers returned as unknown \.+ ([\d.]+)%", "unknown_pct"),
+    # The maturity total. docs/SCORECARD.md generates it, and then three documents
+    # hand-copied it and all three went stale together the moment two directory
+    # listings went live: the score moved 53 -> 56 and nothing noticed, including
+    # docs/OWNER.md, which is generated and simply had not been re-run. A number
+    # that three files copy is a number that needs a guard, generated or not.
+    ("CLAUDE.md", r"Score (\d+)/100 by `docs/SCORECARD\.md`", "maturity"),
+    ("docs/AUDIT_BRIEF.md", r"Maturity \*\*(\d+) / 100\*\*", "maturity"),
+    ("docs/OWNER.md", r"\| Maturity score \| (\d+) / 100", "maturity"),
 ]
+
+
+def _maturity():
+    """The maturity total, read from the generated scorecard, never from memory."""
+    path = os.path.join(ROOT, "docs", "SCORECARD.md")
+    if not os.path.exists(path):
+        return None
+    with io.open(path, encoding="utf-8") as f:
+        m = re.search(r"## Total: \*\*(\d+) / \d+\*\*", f.read())
+    return m.group(1) if m else None
 
 
 def figures():
@@ -180,6 +198,7 @@ def figures():
         "bad_n": "%d" % bad.get("n", 0),
         "pool_match_pct": ("%.0f" % (100.0 * len(pool_same) / len(pool_both))
                            if pool_both else "0"),
+        "maturity": _maturity() or "0",
     }
 
 

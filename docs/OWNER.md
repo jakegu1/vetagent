@@ -81,7 +81,7 @@ next -- including stopping.
 
 | | |
 |---|---|
-| Maturity score | 53 / 100 (`docs/SCORECARD.md`) |
+| Maturity score | 56 / 100 (`docs/SCORECARD.md`) |
 | Tokens measured | 576 |
 | False positives | 4.3% -- we called a healthy token dangerous |
 | Answers we refuse | 15.3% -- `unknown`, on purpose |

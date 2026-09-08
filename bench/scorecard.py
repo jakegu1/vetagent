@@ -134,8 +134,10 @@ CHANNELS = [
     ("Official MCP Registry", True),
     ("PulseMCP (auto-synced from registry)", True),
     ("Claude plugin directory", False),
-    ("Glama", False),
-    ("Smithery", False),
+    # Checked 2026-09-08 by opening both listings: Glama says "Ownership verified"
+    # and health-checks the endpoint hourly; Smithery says "Published Sep 7, 2026".
+    ("Glama", True),
+    ("Smithery", True),
     ("mcp.so", False),
     ("awesome-mcp-servers", False),
     ("mcpservers.org", False),
