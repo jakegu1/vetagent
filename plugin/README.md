@@ -14,12 +14,15 @@ plugin/
 
 ## Install
 
+**Not in a marketplace yet**, so there is no `/plugin install` line to give you: the
+community directory needs an account the maintainer has not created. Until then, load it
+from a clone:
+
 ```bash
-/plugin marketplace add anthropics/claude-plugins-community
-/plugin install vetagent@claude-community
+claude --plugin-dir ./plugin
 ```
 
-Or, without the plugin at all — it is a remote server, so one URL is the whole install:
+Or skip the plugin entirely — it is a remote server, so one URL is the whole install:
 
 ```bash
 claude mcp add --transport http vetagent https://vetagent.dev/mcp
