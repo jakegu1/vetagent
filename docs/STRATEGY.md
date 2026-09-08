@@ -454,13 +454,17 @@ Skipping one silently isn't allowed.
 > pre-fix row can hide a real caller inside our own traffic exactly as easily as it can
 > invent one. The change would have been made on a NO just as fast.
 >
-> **What the fixed instrument does see**, run the same day over one post-fix day: `mozilla`
-> 5 calls in 3 hours (unknown ×3, low ×2) and `curl` 3 calls in 2 hours (low ×2,
-> unknown ×1) — real tool calls, real verdicts, and neither of them us. Both were marked
-> NEAR, failing on "came back on a second day", which a one-day window cannot supply by
-> construction. So the honest position on 09-08 is neither the YES the contaminated window
-> printed nor a NO: **there are two candidates the fixed instrument has seen once each,
-> and 09-18 asks whether they came back.**
+> **What the fixed instrument sees, measured the same day over the full 14 days: NO.**
+> Of the window's 170 tool calls, **138 predate the fix and are set aside**; 32 are
+> attributable and 8 of those belong to a client that is not ours. `mozilla` disappears
+> completely — every one of its 47 calls was written before 09-07 12:35, which settles
+> what it was. `curl` survives at 2 calls on one day with a single verdict, so it is
+> marked NEAR: something real, and not a pass.
+>
+> So the contaminated window's YES is withdrawn and **the standing answer is NO —
+> Experiment C only, no new features.** The gate is still read once on 09-18; this is the
+> reading it would give today, recorded now so that a later YES has something to be
+> different from.
 
 **The maintenance commitment.** We will never leave a risk tool running unmaintained.
 A risk tool whose upstreams have drifted doesn't go quiet — it keeps answering, exactly
