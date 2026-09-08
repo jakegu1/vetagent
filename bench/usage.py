@@ -105,6 +105,49 @@ AMBIGUOUS_CLIENTS = {"claude-code", "curl", "python-requests", "unknown",
 OWNER_COUNTRIES = {"CN"}
 
 
+# Client attribution changed on 2026-09-07, and everything written before it is unable
+# to say who called.
+#
+#   a03f430  named our own CI on every smoke-test curl. Before it, five calls per deploy
+#            landed in the `curl` bucket, from US runners, with the verdict spread of a
+#            full smoke-test sequence.
+#   b078d65  attributed the landing page by Origin. Before it, every click of the demo
+#            button on our own homepage landed in the `mozilla` bucket, because the
+#            fallback was the browser's user agent.
+#
+# Both were deployed by 12:35 UTC that day. On 2026-09-08 the 14-day window returned YES
+# on exactly two clients -- `mozilla` and `curl` -- which are exactly the two buckets
+# those commits emptied. That is not proof the callers were ours. It is proof the run
+# could not tell, and the gate's entire question is who.
+#
+# So the gate reads only rows written after the fix, and prints how many it set aside.
+# Note the direction: this makes the gate HARDER to pass, and it would have been made
+# either way -- a pre-fix row is equally capable of hiding a real caller inside our own
+# traffic as of inventing one. An unattributable row is a gap, not a finding, and it is
+# not allowed to impersonate either answer.
+ATTRIBUTION_FIXED = "2026-09-07 12:35:00"
+
+
+def gate_window(since):
+    """WHERE clause for gate evidence: inside the window AND written by the fixed instrument."""
+    return ("timestamp > now() - %s AND timestamp >= toDateTime('%s')"
+            % (since, ATTRIBUTION_FIXED))
+
+
+def unattributable_calls(account, token, since):
+    """Tool calls inside the window that predate the fix. Set aside, never counted."""
+    resp = query(
+        "SELECT sum(_sample_interval) AS n FROM %s WHERE timestamp > now() - %s "
+        "AND timestamp < toDateTime('%s') AND %s != '' AND %s != '?' "
+        "AND NOT startsWith(%s, '__')"
+        % (DATASET, since, ATTRIBUTION_FIXED, BLOB["tool"], BLOB["tool"], BLOB["tool"]),
+        account, token)
+    rows = rows_of(resp)
+    if not rows:
+        return None
+    return int(float(rows[0].get("n") or 0))
+
+
 def external_callers(account, token, since):
     """Distinct (client, calls) that are neither our tooling nor the owner's country."""
     resp = query(
@@ -153,9 +196,10 @@ def tool_callers(account, token, since):
     resp = query(
         "SELECT %s AS client, %s AS tool, sum(_sample_interval) AS n, "
         "count(DISTINCT toDate(timestamp)) AS days FROM %s "
-        "WHERE timestamp > now() - %s AND %s != '' "
+        "WHERE %s AND %s != '' "
         "GROUP BY client, tool ORDER BY n DESC LIMIT 200"
-        % (BLOB["client"], BLOB["tool"], DATASET, since, BLOB["tool"]), account, token)
+        % (BLOB["client"], BLOB["tool"], DATASET, gate_window(since), BLOB["tool"]),
+        account, token)
     rows = rows_of(resp)
     if rows is None:
         return None                      # query failed; not the same as "nobody called"
@@ -205,9 +249,9 @@ def caller_profile(account, token, since, clients):
     resp = query(
         "SELECT %s AS client, %s AS verdict, %s AS country, toDate(timestamp) AS day, "
         "toHour(timestamp) AS hour, sum(_sample_interval) AS n FROM %s "
-        "WHERE timestamp > now() - %s AND %s != '' AND %s IN (%s) "
+        "WHERE %s AND %s != '' AND %s IN (%s) "
         "GROUP BY client, verdict, country, day, hour ORDER BY client LIMIT 1000"
-        % (BLOB["client"], BLOB["verdict"], BLOB["country"], DATASET, since,
+        % (BLOB["client"], BLOB["verdict"], BLOB["country"], DATASET, gate_window(since),
            BLOB["tool"], BLOB["client"], names), account, token)
     rows = rows_of(resp)
     if rows is None:
@@ -424,6 +468,15 @@ def main():
     print("  Four rules have been written for this gate, each after seeing the data the")
     print("  last one produced. This is the last. It is not adjusted after a run.")
 
+    # Say what was dropped. A silent floor reads as full coverage.
+    set_aside = unattributable_calls(account, token, since)
+    if set_aside:
+        print("  evidence base: rows from %s UTC onward only. %d tool call(s) in this"
+              % (ATTRIBUTION_FIXED, set_aside))
+        print("  window predate that and are set aside -- before it our own CI was")
+        print("  recorded as `curl` and our own landing page as `mozilla`, so those")
+        print("  rows cannot say who called. They count neither for nor against.")
+
     if tools is None:
         print("  QUERY FAILED -- this is not the same as nobody calling.")
     elif not tools:
@@ -457,15 +510,22 @@ def main():
     # nothing noticed: 120 calls by tool against 101 attributed, so 19 belonged to
     # clients the gate had filtered out as "ours". A gate that silently drops a sixth of
     # its own evidence is not measuring what it claims to.
+    #
+    # It counts over the gate's own window, not the raw one. Applying the attribution
+    # floor to `tools` and not to this line would have made the reconciliation gap read
+    # as "our own traffic" when most of it was simply older than the fix -- two different
+    # reasons for a row to be missing, collapsed into one number, which is the same
+    # mistake one level up.
     by_tool = query(
-        "SELECT sum(_sample_interval) AS n FROM %s WHERE timestamp > now() - %s "
+        "SELECT sum(_sample_interval) AS n FROM %s WHERE %s "
         "AND %s != '' AND %s != '?' AND NOT startsWith(%s, '__')"
-        % (DATASET, since, BLOB["tool"], BLOB["tool"], BLOB["tool"]), account, token)
+        % (DATASET, gate_window(since), BLOB["tool"], BLOB["tool"], BLOB["tool"]),
+        account, token)
     tot_rows = rows_of(by_tool)
     if tot_rows:
         total_tool_calls = int(float(tot_rows[0].get("n") or 0))
         attributed = sum(r["n"] for _, r in (tools or []))
-        print("\n  reconciliation: %d tool calls recorded, %d attributed above"
+        print("\n  reconciliation: %d attributable tool calls recorded, %d attributed above"
               % (total_tool_calls, attributed))
         if total_tool_calls != attributed:
             print("  %d UNATTRIBUTED -- these belong to clients filtered out as ours."

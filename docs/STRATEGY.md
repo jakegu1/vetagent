@@ -433,6 +433,35 @@ Skipping one silently isn't allowed.
 > real answer to a real question. It is not the same answer as "strangers found it", and
 > the difference belongs in the record rather than in a footnote afterwards.
 
+> **2026-09-08: the rule was not touched, the evidence base was.** The frozen rule ran on
+> the full 14-day window and returned **YES** on exactly two clients — `mozilla` (47 calls,
+> 4 days) and `curl` (26 calls, 3 days, verdicts high/low/medium/ok/unavailable/unknown,
+> which is the shape of our own smoke-test sequence). Those are precisely the two buckets
+> that `a03f430` and `b078d65` emptied the previous afternoon: until 12:35 UTC on 09-07,
+> our CI was recorded as `curl` and our own landing page as `mozilla`. Thirteen of the
+> window's fourteen days were written by the unfixed instrument.
+>
+> That is not a finding that the callers were ours. It is a finding that the run **cannot
+> say**, which is this project's oldest defect appearing for the fifth time: an
+> unattributable row is a gap, and it is not allowed to impersonate either answer. So
+> `gate_window()` floors gate evidence at the fix, and the run now prints how many tool
+> calls it set aside. The rule itself — `gate_verdict()`, frozen 2026-09-07 — is
+> unchanged and untouched.
+>
+> **Which way it cuts, stated before the next run:** the floor removes rows, so it makes
+> YES harder, and it discards any genuine caller from 09-04 to 09-07 along with our own
+> traffic. That cost is accepted because the alternative is worse in both directions — a
+> pre-fix row can hide a real caller inside our own traffic exactly as easily as it can
+> invent one. The change would have been made on a NO just as fast.
+>
+> **What the fixed instrument does see**, run the same day over one post-fix day: `mozilla`
+> 5 calls in 3 hours (unknown ×3, low ×2) and `curl` 3 calls in 2 hours (low ×2,
+> unknown ×1) — real tool calls, real verdicts, and neither of them us. Both were marked
+> NEAR, failing on "came back on a second day", which a one-day window cannot supply by
+> construction. So the honest position on 09-08 is neither the YES the contaminated window
+> printed nor a NO: **there are two candidates the fixed instrument has seen once each,
+> and 09-18 asks whether they came back.**
+
 **The maintenance commitment.** We will never leave a risk tool running unmaintained.
 A risk tool whose upstreams have drifted doesn't go quiet — it keeps answering, exactly
 as confidently as before, and it is wrong precisely when someone is trusting it. That is

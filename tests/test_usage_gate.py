@@ -297,6 +297,50 @@ def test_the_rule_is_frozen_and_the_date_says_so():
               for fn in ("gate_verdict", "tool_callers", "external_callers")))
 
 
+def test_rows_older_than_the_attribution_fix_are_not_gate_evidence():
+    """The gate reads only rows the fixed instrument wrote, and says how many it dropped.
+
+    On 2026-09-08 the 14-day window returned YES on exactly two clients, `mozilla` and
+    `curl`. Those are precisely the two buckets that a03f430 and b078d65 emptied the
+    day before: before them our own CI smoke tests were recorded as `curl` and our own
+    landing-page demo as `mozilla`. The run was not wrong that calls happened. It was
+    unable to say who made them, and that is the only thing the gate asks.
+
+    So gate evidence carries a floor. Note which way it cuts: the floor removes rows and
+    makes YES harder, and it would have been added on a NO just as fast -- a pre-fix row
+    can hide a real caller inside our own traffic exactly as easily as it can invent one.
+    """
+    print("\n[gate] pre-fix rows are a gap, not evidence")
+    seen = []
+    original = usage.query, usage.rows_of
+    usage.query = lambda sql, *a, **k: (seen.append(sql), {"data": []})[1]
+    usage.rows_of = lambda resp: (resp or {}).get("data")
+    try:
+        usage.tool_callers("acct", "tok", "INTERVAL '14' DAY")
+        usage.caller_profile("acct", "tok", "INTERVAL '14' DAY",
+                             [("somebodys-trading-bot", {"n": 7})])
+        usage.unattributable_calls("acct", "tok", "INTERVAL '14' DAY")
+    finally:
+        usage.query, usage.rows_of = original
+
+    check("the gate's evidence queries ran", len(seen) == 3, "%d queries" % len(seen))
+    check("every gate query carries the attribution floor",
+          all(usage.ATTRIBUTION_FIXED in sql for sql in seen[:2]),
+          "; ".join(s[:70] for s in seen[:2] if usage.ATTRIBUTION_FIXED not in s))
+    check("the floor is the day the two attribution commits deployed",
+          usage.ATTRIBUTION_FIXED.startswith("2026-09-07"), usage.ATTRIBUTION_FIXED)
+    check("the set-aside count asks for the complement, not the same rows again",
+          "timestamp < toDateTime" in seen[2], seen[2][:120])
+
+    src = open(os.path.join(ROOT, "bench", "usage.py"), encoding="utf-8").read()
+    body = src.split("def main(")[-1]
+    check("main() reports what it set aside rather than dropping it silently",
+          "unattributable_calls(" in body and "set aside" in body)
+    check("the reconciliation counts over the same window the gate reads",
+          "gate_window(since)" in body,
+          "reconciliation still spans the raw window")
+
+
 def main():
     print("=" * 68)
     print("Usage gate: does the counting rule count the right thing?")
