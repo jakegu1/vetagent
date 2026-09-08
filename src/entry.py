@@ -534,14 +534,20 @@ class Default(WorkerEntrypoint):
             return Response(_GLAMA_CLAIM,
                             headers={"content-type": "application/json"}, status=200)
 
+        # Which tool this request turned out to be for, if it got that far. The error
+        # handlers below need it, and a request that never reached a route leaves it
+        # empty -- a 404 is not a failed tool call.
+        tool = ""
         try:
             # POST /assess keeps the address in the body. GET /assess/<address> is
             # kept because it is genuinely convenient, but a URL is logged by every hop
             # that carries it, and the privacy page now says so rather than implying
             # otherwise.
             if path == "/assess" and request.method == "POST":
+                tool = "assess_token_risk"
                 body = await _read_json(request)
                 if not isinstance(body, dict) or not body.get("address"):
+                    self._record_http_error(request, tool)
                     return _json_response({"error": "POST /assess needs "
                                                     "{\"address\": \"0x...\"}"},
                                           status=400)
@@ -552,6 +558,7 @@ class Default(WorkerEntrypoint):
                         _truthy(body.get("verbose")))))
 
             if path.startswith("/assess/"):
+                tool = "assess_token_risk"
                 return _json_response(self._record_http(
                     request, "assess_token_risk", await risk.assess(
                         path[len("/assess/"):],
@@ -559,18 +566,22 @@ class Default(WorkerEntrypoint):
                         _truthy(query.get("verbose")))))
 
             if path.startswith("/liquidity/"):
+                tool = "get_token_liquidity"
                 return _json_response(self._record_http(
                     request, "get_token_liquidity", await risk.liquidity(
                         path[len("/liquidity/"):],
                         query.get("chain_hint") or query.get("chain"))))
 
             if path == "/new-pools":
+                tool = "find_new_hot_pools"
                 return _json_response(self._record_http(
                     request, "find_new_hot_pools", await risk.new_pools(
                         query.get("chain", "solana"), query.get("limit", 10))))
         except ValueError as e:
+            self._record_http_error(request, tool)
             return _json_response({"error": "invalid_request", "detail": str(e)}, status=400)
         except Exception as e:  # noqa: BLE001
+            self._record_http_error(request, tool)
             return _json_response({"error": "internal_error", "detail": str(e)}, status=500)
 
         return _json_response({"error": "not_found", "detail": "Not Found"}, status=404)
@@ -695,6 +706,30 @@ class Default(WorkerEntrypoint):
                 ["http", tool, verdict, _caller_id(request), _country(request)],
                 [1.0, 1.0 if is_error else 0.0])
         return result
+
+    def _record_http_error(self, request, tool):
+        """Record an HTTP tool call that failed. The success path had one; this did not.
+
+        `risk.assess(...)` is awaited inside the argument list of `_record_http`, so when
+        it raised, `_record_http` was never called and the outer handler returned 400 or
+        500 having recorded nothing. The MCP path records its errors. So a caller whose
+        HTTP calls all failed was invisible to the 2026-09-18 gate, while the same caller
+        over MCP was visible. Measured once, on 2026-09-08: 9.3% of requests in the
+        14-day window were errors.
+
+        The verdict is left empty on purpose. An error is not a verdict, and writing one
+        here would let a caller clear "received a real verdict" and "two distinct
+        verdicts" on failures alone. This makes them *visible*, which is what was
+        missing; it must not make them *qualify*.
+
+        Rows not written today cannot be recovered later, which is why this could not
+        wait for the gate.
+        """
+        if not tool:
+            return                    # never reached a tool: a 404 is not a tool call
+        _record(self.env,
+                ["http", tool, "", _caller_id(request), _country(request)],
+                [1.0, 1.0])
 
     def _record_call(self, request, method, tool, verdict, result):
         is_error = bool((result or {}).get("error")

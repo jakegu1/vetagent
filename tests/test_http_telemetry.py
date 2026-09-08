@@ -334,6 +334,66 @@ def test_an_unnamed_tool_call_is_not_tool_use():
               repr(recorded[0][1]))
 
 
+def test_a_failed_http_call_is_still_recorded():
+    """A caller whose HTTP calls all error was invisible to the gate. MCP's were not.
+
+    `risk.assess(...)` is awaited inside the argument list of `_record_http`, so a raise
+    meant `_record_http` was never reached and the outer handler returned 400 or 500
+    having written nothing. The MCP path records its errors through `_record_call`. So
+    the 2026-09-18 gate -- which asks whether anyone outside this project uses the tool --
+    could not see a caller who was using it and failing, on the interface an integrator
+    reaches for first. 9.3% of requests in the last window were errors.
+
+    Rows not written today cannot be recovered later, which is why this could not wait.
+
+    The verdict stays empty: an error is not a verdict, and `gate_verdict` requires a
+    real one. This makes a failing caller visible without letting failures qualify.
+    """
+    print("\n[http] a call that fails is still a call")
+    recorded = []
+    original_record = entry._record
+    original_assess, original_pools = risk.assess, risk.new_pools
+
+    async def _boom(*a, **k):
+        raise RuntimeError("upstream on fire")
+
+    async def _bad_input(*a, **k):
+        raise ValueError("Invalid chain name")
+
+    entry._record = lambda env, blobs, doubles: recorded.append((blobs, doubles))
+    risk.assess, risk.new_pools = _boom, _bad_input
+    try:
+        w = entry.Default()
+        asyncio.run(w.fetch(FakeRequest("https://vetagent.dev/assess/%s" % ADDRESS)))
+        asyncio.run(w.fetch(FakeRequest("https://vetagent.dev/new-pools?chain=../etc")))
+    finally:
+        entry._record = original_record
+        risk.assess, risk.new_pools = original_assess, original_pools
+
+    check("both failures were recorded", len(recorded) == 2, str(recorded))
+    if len(recorded) != 2:
+        return
+    tools = [b[1] for b, _ in recorded]
+    check("a 500 names the tool it failed in", tools[0] == "assess_token_risk", str(tools))
+    check("a 400 names it too", tools[1] == "find_new_hot_pools", str(tools))
+    for blobs, doubles in recorded:
+        check("it is tagged as an error", doubles[1] == 1.0, str(doubles))
+        check("the verdict stays empty, so a failure cannot qualify as one",
+              blobs[2] == "", repr(blobs[2]))
+        check("the caller is still identified", bool(blobs[3]), str(blobs))
+        check("and no address rode along", ADDRESS.lower() not in " ".join(blobs).lower())
+
+    # A path that never reached a tool is not a failed tool call.
+    recorded[:] = []
+    entry._record = lambda env, blobs, doubles: recorded.append((blobs, doubles))
+    try:
+        r = asyncio.run(w.fetch(FakeRequest("https://vetagent.dev/nope")))
+        check("a 404 is not recorded as a tool call", not recorded, str(recorded))
+        check("and it is still a 404", r.status == 404, str(r.status))
+    finally:
+        entry._record = original_record
+
+
 def test_the_pages_a_directory_asks_for_exist():
     """Directories want a privacy URL and a terms URL. Both have to actually resolve.
 

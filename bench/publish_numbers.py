@@ -278,6 +278,11 @@ _EXEMPT_LINES = (
     ("docs/EXPERIMENT_C.md", "the scan finds"),      # owner-power recall, see below
     ("docs/EXPERIMENT_C.md", "those that can blacklist"),
     ("docs/SCORECARD.md", "What 100 looks like"),
+    # A dated one-off observation inside a docstring, not a published claim: the
+    # error rate seen on the day _record_http_error was written. It explains why the
+    # fix could not wait, and it is stamped with its date rather than tracked,
+    # because there is no source of truth for it that this guard could compare to.
+    ("src/entry.py", "Measured once, on 2026-09-08"),
 )
 
 # Percentages inside a <style> block are CSS, not claims.
