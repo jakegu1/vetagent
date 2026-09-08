@@ -163,10 +163,14 @@
 </div>
 
 <div class="panel" style="border-color:var(--accent-dim)">
-  <h2>We publish our error rates. Nobody else in this category does.</h2>
+  <h2>We publish our error rates, including the ones that look bad.</h2>
   <p style="color:var(--dim);font-size:14px;margin-bottom:12px">
-    A risk tool asking for your trust should show its work. Measured over 576 tokens,
-    labelled from data sources the engine itself never reads:</p>
+    Several tools in this category publish a number — Hypernative 99.8% detection,
+    Forta &gt;99% recall, Blockaid &lt;0.002% false positives. What none of them publishes
+    is a <strong style="color:var(--txt)">method</strong>: no dataset, no denominator, no
+    definition of a positive, nothing anyone can re-run. Ours is measured over 576 tokens,
+    labelled from data sources the engine itself never reads, and the harness is in the
+    repository.</p>
   <table>
     <thead><tr><th>Metric</th><th class="num">Value</th><th>Read it as</th></tr></thead>
     <tbody>
@@ -178,6 +182,8 @@
           <td>We do <em>not</em> blanket-flag legitimate assets that hold admin powers.</td></tr>
       <tr><td>Dead tokens not rated low</td><td class="num low">86.7%</td>
           <td>26 of 30. Read the caveat below before quoting this one.</td></tr>
+      <tr><td>Dead tokens rated <em>high</em></td><td class="num high">10.0%</td>
+          <td>3 of 30. Our worst number, and the one a vendor would leave out.</td></tr>
     </tbody>
   </table>
   <p style="color:var(--dim);font-size:13.5px;margin-top:12px">
@@ -185,9 +191,9 @@
     Recall was unmeasurable here until recently, because every public source ranks by
     liquidity and rugged pools fall off the list. We now recover pools from chain history
     — every past day is readable from the logs of the contract that created the pool — and
-    that produced a cohort of 20 confirmed-dead tokens where sampling had produced none.
+    that produced a cohort of 30 confirmed-dead tokens where sampling had produced none.
     <br><br>
-    The honest reading is not flattering. Only 2 of those 20 are rated <em>high</em>;
+    The honest reading is not flattering. Only 3 of those 30 are rated <em>high</em>;
     most land at <em>medium</em>. That is close to correct rather than a miss: half the
     dead cohort still holds over $5,000 of liquidity, so those positions can still be sold.
     <em>Dead</em> means the project died, which is a market outcome; this tool scores
@@ -195,7 +201,8 @@
     <em>high</em> would be an investment judgement we refuse to make.
     <br><br>
     The number we would most like to publish — recall against deliberately adversarial
-    contracts — is still measured on about five tokens, because the oracle that labels
+    contracts — is still measured on 17 tokens, and 16 of those hold under a dollar,
+    because the oracle that labels
     them raises its honeypot flag whenever its own sell simulation fails, and a sell
     simulation fails against an empty pool whatever the contract does. Until that cohort
     is larger, treat this tool as answering "can I still get out of this" and not "is this

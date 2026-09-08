@@ -51,7 +51,7 @@ TARGETS = [
     ("src/landing.html", r"were flagged high\. \d+ of (\d+) confirmed-dead", "dead_n"),
     ("src/landing.html", r"tokens: ([\d.]+)% of healthy tokens were flagged high", "fp_pct"),
     ("src/landing.html", r"\(false positives\), ([\d.]+)% of answers were unknown", "unknown_pct"),
-    ("src/landing.html", r"Measured over (\d+) tokens,", "n"),
+    ("src/landing.html", r"[Mm]easured over (\d+) tokens,", "n"),
     ("src/landing.html", r'<td>Healthy tokens flagged high</td><td class="num high">([\d.]+)%',
      "fp_pct"),
     ("src/landing.html",
@@ -101,6 +101,17 @@ TARGETS = [
      "base_share_pct"),
     ("docs/EXPERIMENT_C.md", r"adversarial cohort is ([\d.]+)% Base", "bad_base_share_pct"),
     ("docs/EXPERIMENT_C.md", r"dataset is ([\d.]+)% Base\" and", "base_share_pct"),
+    # The landing page carried three stale counts in PROSE -- "20 confirmed-dead
+    # tokens", "2 of those 20", "about five tokens" -- while the percentages beside them
+    # were current, because the guard only checked percentages. A bare integer drifts
+    # exactly as easily and reads exactly as authoritative.
+    ("src/landing.html", r"<td>Dead tokens rated <em>high</em></td><td class=\"num high\">([\d.]+)%",
+     "dead_high_pct"),
+    ("src/landing.html", r"(\d+) of \d+\. Our worst number", "dead_high_n"),
+    ("src/landing.html", r"\d+ of (\d+)\. Our worst number", "dead_n"),
+    ("src/landing.html", r"a cohort of (\d+) confirmed-dead tokens", "dead_n"),
+    ("src/landing.html", r"Only (\d+) of those \d+ are rated", "dead_high_n"),
+    ("src/landing.html", r"Only \d+ of those (\d+) are rated", "dead_n"),
     ("docs/AUDIT_BRIEF.md", r"false positives ([\d.]+)%", "fp_pct"),
     ("docs/AUDIT_BRIEF.md", r"unknown ([\d.]+)%", "unknown_pct"),
     ("docs/AUDIT_BRIEF.md", r"(\d+) dead samples", "dead_n"),
@@ -151,6 +162,7 @@ def figures():
         "dead_not_low_pct": ("%.1f" % (100.0 * len([r for r in dead if r["verdict"] != "low"])
                                        / len(dead)) if dead else "0.0"),
         "dead_not_low_n": "%d" % len([r for r in dead if r["verdict"] != "low"]),
+        "dead_high_n": "%d" % len([r for r in dead if r["verdict"] == "high"]),
         # Everything below was quoted in the Experiment C post and computed nowhere. The
         # exercise of making them computable found one of them wrong: the post said
         # "83% of the dataset is Base" twice. The dataset is 58% Base. 83% is the
@@ -231,6 +243,11 @@ FROZEN_LOG_FILES = ("docs/ROUNDS.md", "docs/DECISIONS.md", "docs/HANDOFF.md",
 # "Rejected." as a bare global substring exempted every line that happened to contain it.
 _EXEMPT_LINES = (
     ("docs/AUDIT_BRIEF.md", "Rejected."),
+    # Other vendors' published claims, quoted on our own landing page so that we are the
+    # ones who already know the counterexamples. The page used to say "nobody else in
+    # this category does", which is false and takes a commenter one minute to disprove.
+    ("src/landing.html", "Hypernative"),
+    ("src/landing.html", "Forta"),
     ("docs/EXPERIMENT_C.md", "Hypernative"),
     ("docs/EXPERIMENT_C.md", "Blockaid"),
     ("docs/EXPERIMENT_C.md", "sensitivity /"),
