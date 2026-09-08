@@ -1,10 +1,7 @@
 export const meta = {
   name: 'budgeted-review',
   description: 'Multi-dimension adversarial review with a hard agent ceiling',
-  whenToUse:
-    'Any fan-out review, audit or design critique in this repo. Use this INSTEAD of ' +
-    'writing a fresh fan-out script: it caps the agent count before the run instead of ' +
-    'letting model output decide it.',
+  whenToUse: 'Any fan-out review, audit or design critique in this repo. Use this INSTEAD of writing a fresh fan-out script: it caps the agent count before the run instead of letting model output decide it.',
   phases: [
     { title: 'Review', detail: 'one agent per dimension, findings capped at the schema' },
     { title: 'Verify', detail: 'top findings only, verifier count scaled by severity' },
