@@ -108,16 +108,16 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Close R18, open R19 — and state what R18's own review never covered
+- Snapshot 2026-09-08 (sellability): 6 days, 9740 rows total
+- Snapshot 2026-09-08 (pools): 6 days, 9740 rows total
+- Snapshot 2026-09-08 (sellability): 6 days, 9062 rows total
+- Snapshot 2026-09-08 (pools): 6 days, 9062 rows total
 - The owner page told the owner what to do and not how much to believe it
 - Park the two channels that need an account, without moving the bar
 - The channel list was eight names picked before the landscape was known
-- The OpenAI submission, written out so only the identity step is left
-- find_new_hot_pools reported a count of 20 next to three pools
-- A terms page, and the plugin moved out of the repository root
-- W10 still told the owner to do the two things that are done
-- Read the corrected gate, and it says no
 
-_172 more not shown (180 commits in total)._
+_177 more not shown (185 commits in total)._
 
 ## What I got wrong
 
