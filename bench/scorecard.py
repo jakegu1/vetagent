@@ -130,17 +130,31 @@ RISK_VECTORS = [
 # comment used to say they were checked against the registry, which was never true
 # and is exactly the sort of claim this file exists to stop other people making.
 # Anyone changing one is asserting they went and looked.
+# The list was eight names picked early on. It is now twelve, because four more real
+# channels exist and three of them have had a submission sitting in them since 09-07 --
+# leaving them out kept the denominator flattering by accident. Widening it drops the
+# score, which is the direction that cannot be self-serving; it would have been widened
+# just the same if it had raised it.
+#
+# Binary on purpose: **submitted is not listed.** Six of these have an open submission
+# and none of the six is reachable by a user yet, so all six are False. A pending queue
+# is not distribution.
 CHANNELS = [
-    ("Official MCP Registry", True),
+    # Live, verified 2026-09-08 by opening each listing.
+    ("Official MCP Registry", True),            # dev.vetagent/vetagent
     ("PulseMCP (auto-synced from registry)", True),
-    ("Claude plugin directory", False),
-    # Checked 2026-09-08 by opening both listings: Glama says "Ownership verified"
-    # and health-checks the endpoint hourly; Smithery says "Published Sep 7, 2026".
-    ("Glama", True),
-    ("Smithery", True),
-    ("mcp.so", False),
-    ("awesome-mcp-servers", False),
-    ("mcpservers.org", False),
+    ("Glama", True),                            # connector, "Ownership verified"
+    ("Smithery", True),                         # "Published Sep 7, 2026"
+    # Submitted and waiting. See docs/HANDOFF.md for the issue and PR numbers.
+    ("mcp.so", False),                          # chatmcp/mcpso#3987
+    ("mcpservers.org", False),                  # submitted 09-08, 12h review queue
+    ("awesome-mcp-servers", False),             # punkpeye#13873, bot check answered
+    ("awesome-remote-mcp-servers", False),      # jaw9c#733
+    ("Docker MCP registry", False),             # docker/mcp-registry#4954
+    ("Cline marketplace", False),               # cline/mcp-marketplace#2471
+    # Blocked on an account only Jake can create.
+    ("Claude plugin directory", False),         # needs a free Console account
+    ("OpenAI plugin directory", False),         # needs a verified identity
 ]
 
 

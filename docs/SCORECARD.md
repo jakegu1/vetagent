@@ -4,14 +4,14 @@
 > It moves with every commit, so `git diff` tells you what the change was worth.
 
 
-## Total: **56 / 100**
+## Total: **54 / 100**
 
 | Dimension | Score | Max |
 |---|---|---|
 | Correctness | 24.0 | 30 |
 | Coverage | 16.4 | 20 |
 | Credibility | 10.3 | 20 |
-| Distribution | 5.0 ⚠️ | 15 |
+| Distribution | 3.3 ⚠️ | 15 |
 | Demand | 0.0 | 15 |
 
 ⚠️ = this dimension has line items nothing can measure automatically. The score is low for lack of data, not for lack of work.
@@ -21,13 +21,13 @@
 
 | Dimension | Item | Score | Max | Evidence |
 |---|---|---|---|---|
-| Correctness | tests all green | 10.0 | 10 | test_risk.py 263 passed, 0 failed All passed; test_mcp.py 73 passed, 0 failed All passed |
+| Correctness | tests all green | 10.0 | 10 | test_risk.py 267 passed, 0 failed All passed; test_mcp.py 73 passed, 0 failed All passed |
 | Correctness | false positive rate (healthy rated high) | 8.0 | 10 | 4.3% |
 | Correctness | unknown rate | 6.0 | 10 | 15.3% |
 | Coverage | risk dimensions covered | 16.4 | 20 | 9 / 11 |
 | Credibility | recall is measurable | 10.0 | 10 | dead samples: 30 (need ≥20) |
 | Credibility | days of snapshots | 0.3 | 10 | 5 of 180 days |
-| Distribution | channels listed on | 5.0 | 10 | 4 / 8 |
+| Distribution | channels listed on | 3.3 | 10 | 4 / 12 |
 | Distribution | external callers | — | 5 | not measured (needs CLOUDFLARE_API_TOKEN, see bench/usage.py) |
 | Demand | paying users | 0.0 | 10 | 0 |
 | Demand | trial intent / inbound asks | 0.0 | 5 | 0 |
@@ -72,12 +72,16 @@ Every unchecked line is a real blind spot, and the roadmap itself.
 |---|---|
 | Official MCP Registry | ✅ |
 | PulseMCP (auto-synced from registry) | ✅ |
-| Claude plugin directory | ⬜ |
 | Glama | ✅ |
 | Smithery | ✅ |
 | mcp.so | ⬜ |
-| awesome-mcp-servers | ⬜ |
 | mcpservers.org | ⬜ |
+| awesome-mcp-servers | ⬜ |
+| awesome-remote-mcp-servers | ⬜ |
+| Docker MCP registry | ⬜ |
+| Cline marketplace | ⬜ |
+| Claude plugin directory | ⬜ |
+| OpenAI plugin directory | ⬜ |
 
 ---
 
@@ -86,7 +90,7 @@ with false positives <2%, unknown <5%, every applicable dimension covered, a yea
 outcome data, the benchmark methodology cited as a standard by peers, the default
 choice at every agent entry point, and paying users who would complain if it disappeared.
 
-**The current 56 is not a failure** — it says precisely that the
+**The current 54 is not a failure** — it says precisely that the
 engineering is decent, proof and demand are both still zero, and writing more code
 cannot solve those last two.
 
