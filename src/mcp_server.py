@@ -153,9 +153,10 @@ TOOLS = [
         "title": "Find New Hot Pools",
         "description": (
             "Scan a chain for the newest and most active trading pools, returning name, "
-            "price, liquidity, 24h volume and pool age.\n"
+            "token_address, price, liquidity, 24h volume and pool age.\n"
             "Discovery only. New pools carry inherently high risk and appearing here is NOT "
-            "a safety endorsement — call assess_token_risk on anything you intend to act on."
+            "a safety endorsement — pass token_address straight to assess_token_risk for "
+            "anything you intend to act on."
         ),
         "inputSchema": {
             "type": "object",

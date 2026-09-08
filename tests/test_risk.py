@@ -2277,6 +2277,52 @@ def test_new_pools_is_fail_closed():
     check("count is 0", out.get("count") == 0, str(out.get("count")))
 
 
+def test_new_pools_returns_an_address_assess_can_use():
+    """The two tools have to connect, and for months they did not.
+
+    `find_new_hot_pools` returned `pool_id` -- a GeckoTerminal identifier like
+    `base_0xe2e1...` -- and `assess_token_risk` takes a token address. So the advertised
+    discovery-to-vetting flow was broken end to end: an agent that found a hot pool had
+    no way to ask whether it was safe, which is the one question this server exists to
+    answer. The tool description told it to "call assess_token_risk on anything you
+    intend to act on" while withholding the argument that call needs.
+
+    Found by Glama's automated grader, which scored the server 3/5 on completeness for
+    exactly this and quoted the reason. Not caught by any test here, because every test
+    checked what the tool returned rather than whether the answer was usable.
+    """
+    print("\n[chaining] a discovered pool must be assessable")
+    install_stub([], default={"data": [{
+        "id": "base_0xe2e1fa9003e815ee89fceb1b09c58195ae329777",
+        "attributes": {"name": "Basecat / ETH 1%", "base_token_price_usd": "0.0000001",
+                       "reserve_in_usd": "1234", "volume_usd": {"h24": "999"},
+                       "pool_created_at": "2026-09-07T00:00:00Z"},
+        "relationships": {"base_token": {
+            "data": {"id": "base_0x18a140a2fd7c57b1048e60e654c2f7635acb2b07"}}},
+    }]})
+    out = run(risk.new_pools("base", 3))
+    pools = out.get("pools") or []
+    check("a pool came back", len(pools) == 1, str(out))
+    if not pools:
+        return
+    addr = pools[0].get("token_address")
+    check("it carries a token_address", bool(addr), str(sorted(pools[0])))
+    check("chain-prefixed upstream ids are stripped",
+          addr == "0x18a140a2fd7c57b1048e60e654c2f7635acb2b07", str(addr))
+    check("and it is the shape assess_token_risk accepts",
+          bool(addr) and addr.startswith("0x") and len(addr) == 42, str(addr))
+
+    # Upstream text, same sink as every other field here.
+    install_stub([], default={"data": [{
+        "id": "base_0xdead", "attributes": {"name": "x"},
+        "relationships": {"base_token": {"data": {"id": "base_0x" + "\u4e2d" * 30}}},
+    }]})
+    out = run(risk.new_pools("base", 3))
+    got = (out.get("pools") or [{}])[0].get("token_address") or ""
+    check("a hostile address is escaped like everything else",
+          all(ord(c) < 128 for c in got), repr(got))
+
+
 def test_new_pools_input_guarding():
     print("\n[input] new_pools argument guarding")
     install_stub([], default={"data": []})

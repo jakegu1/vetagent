@@ -21,6 +21,16 @@ _LANDING_PATH = os.path.join(os.path.dirname(__file__), "landing.html")
 # should not be in any repo.
 _REGISTRY_AUTH = "v=MCPv1; k=ed25519; p=748fDl4SJZZt9TWfmYNDC3Xy1OIbfSjhf72vo8j8ZgI=\n"
 
+# Domain-ownership proof for the Glama directory. Public by design, like the key above:
+# the challenge only works if anyone can fetch it. It identifies the listing, not a
+# person, and it must stay served -- Glama re-verifies, and ownership lapses if it 404s.
+_GLAMA_CLAIM = (
+    '{\n'
+    '  "$schema": "https://glama.ai/mcp/schemas/connector.json",\n'
+    '  "claim": "glama_claim_AmFi89yHEn61PWt8oMtitwH-xbAejCJ4"\n'
+    '}\n'
+)
+
 _LLMS_TXT = """# VetAgent
 
 > A pre-trade safety check for AI agents. Before an agent buys, holds or
@@ -420,6 +430,18 @@ class Default(WorkerEntrypoint):
         if path == "/.well-known/mcp-registry-auth":
             return Response(_REGISTRY_AUTH,
                             headers={"content-type": "text/plain"}, status=200)
+
+        # Glama's directory listing was created by auto-indexing the official MCP
+        # registry, not by us, so the entry existed before we knew about it. Serving this
+        # proves we control the domain and lets the listing be corrected rather than left
+        # as whatever the registry happened to say.
+        #
+        # Being publicly readable is the point, exactly as with the registry key above.
+        # The token identifies the listing, not a person, and it has to stay in place --
+        # Glama re-checks it, and ownership lapses if it disappears.
+        if path == "/.well-known/glama.json":
+            return Response(_GLAMA_CLAIM,
+                            headers={"content-type": "application/json"}, status=200)
 
         try:
             # POST /assess keeps the address in the body. GET /assess/<address> is
