@@ -2272,5 +2272,12 @@ async def new_pools(chain="solana", limit=10):
         # Fail closed: a failed fetch is not the same as no new pools. Returning an
         # empty array would tell the caller "we scanned, there was nothing there".
         raise RuntimeError("GeckoTerminal request failed; could not scan new pools on %s" % chain)
-    return _disclosed({"chain": chain, "network": net, "count": len(merged),
-                       "pools": list(merged.values())[:limit]})
+    # `count` used to be len(merged) -- everything both endpoints returned, before the
+    # cap -- while `pools` was truncated to `limit`. Live with limit=3 that answered
+    # "count": 20 next to a three-element array, so a caller reading the field it was
+    # handed believed it had seen twenty pools. A silent cap reads as full coverage.
+    # count now describes the array beside it, and scanned says what there was before
+    # the cap, so neither number can stand in for the other.
+    shown = list(merged.values())[:limit]
+    return _disclosed({"chain": chain, "network": net, "count": len(shown),
+                       "scanned": len(merged), "pools": shown})

@@ -2323,6 +2323,45 @@ def test_new_pools_returns_an_address_assess_can_use():
           all(ord(c) < 128 for c in got), repr(got))
 
 
+def test_new_pools_count_describes_what_was_returned():
+    """`count` counted what was fetched, not what was sent, and the cap was silent.
+
+    Live against production with `limit: 3`, the tool answered `count: 20` alongside a
+    three-element `pools` array. `count` was `len(merged)` -- everything the two
+    GeckoTerminal endpoints returned before truncation -- so an agent reading the field
+    it was given believed it had seen twenty pools and had seen three.
+
+    A silent cap reads as complete coverage, which is the same defect as a verdict that
+    says "nothing found" without saying where it looked. So `count` now describes the
+    array it sits next to, and `scanned` says how many there were before the cap. Both
+    numbers, never one standing for the other.
+    """
+    print("\n[disclosure] new_pools must not report a count it did not return")
+    rows = []
+    for i in range(9):
+        rows.append({
+            "id": "base_pool%d" % i,
+            "attributes": {"name": "P%d / ETH" % i, "base_token_price_usd": "1",
+                           "reserve_in_usd": "10", "volume_usd": {"h24": "5"},
+                           "pool_created_at": "2026-09-07T00:00:00Z"},
+            "relationships": {"base_token": {"data": {"id": "base_0xabc%d" % i}}},
+        })
+    install_stub([], default={"data": rows})
+
+    out = run(risk.new_pools("base", 3))
+    pools = out.get("pools") or []
+    check("the cap is applied", len(pools) == 3, str(len(pools)))
+    check("count equals what came back", out.get("count") == len(pools),
+          "count=%r pools=%d" % (out.get("count"), len(pools)))
+    check("and the truncation is disclosed, not hidden",
+          out.get("scanned") == 9, "scanned=%r" % out.get("scanned"))
+
+    out = run(risk.new_pools("base", 50))
+    check("with no truncation the two agree",
+          out.get("count") == out.get("scanned") == 9,
+          "count=%r scanned=%r" % (out.get("count"), out.get("scanned")))
+
+
 def test_new_pools_input_guarding():
     print("\n[input] new_pools argument guarding")
     install_stub([], default={"data": []})
