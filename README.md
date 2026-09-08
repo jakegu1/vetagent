@@ -5,6 +5,7 @@ a token, it calls VetAgent and gets an actionable verdict — `low` / `medium` /
 `unknown` — plus the specific signals behind it, instead of a wall of numbers to interpret.
 
 Remote MCP endpoint: **`https://vetagent.dev/mcp`** · Landing page: **https://vetagent.dev**
+Using it, or think it got a token wrong? **hello@vetagent.dev** — or open an issue.
 
 ```jsonc
 // assess_token_risk("0x…", chain_hint="ethereum")

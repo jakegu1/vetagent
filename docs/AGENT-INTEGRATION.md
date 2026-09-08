@@ -10,6 +10,8 @@ VetAgent is a **token risk intelligence MCP server** for AI agents. Before an ag
 
 ## 🔌 Remote MCP Endpoint (no local install)
 
+> Building on this? **hello@vetagent.dev** reaches a person, and the maintainer will tell you before anything changes under you. The server records no identities, so it genuinely cannot tell it is being used unless you say.
+
 Connect directly over MCP-over-HTTP to the endpoint:
 
 ```

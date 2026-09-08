@@ -69,3 +69,7 @@ privacy and nothing to revoke.
 
 Free, MIT, one maintainer, no SLA. Source and the benchmark that measures its error rate:
 <https://github.com/jakegu1/vetagent>
+
+If you are installing this for something real, <hello@vetagent.dev> reaches a person. The
+server cannot tell it is being used, so that is the only way the maintainer finds out --
+and the only way you get told before something changes under you.

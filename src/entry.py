@@ -40,6 +40,7 @@ _LLMS_TXT = """# VetAgent
 MCP endpoint: https://vetagent.dev/mcp  (streamable-http, no auth, no API key)
 HTTP API:     https://vetagent.dev/assess/{address}?chain_hint={chain}
 Source:       https://github.com/jakegu1/vetagent  (MIT)
+Contact:      hello@vetagent.dev  (no signup; the maintainer answers)
 Registry:     dev.vetagent/vetagent on registry.modelcontextprotocol.io
 
 ## What it does
@@ -192,7 +193,9 @@ of <code>unknown</code> means a critical check could not be completed and must n
 read as low risk.</p>
 
 <h2>Contact</h2>
-<p>Open an issue at
+<p>Questions about any of the above, or about data this service holds on you (it holds
+none, and this page explains why): <a href="mailto:hello@vetagent.dev">hello@vetagent.dev</a>.
+Anything public &mdash; bugs, a verdict you disagree with &mdash; is better as an issue at
 <a href="https://github.com/jakegu1/vetagent">github.com/jakegu1/vetagent</a>.</p>
 """
 

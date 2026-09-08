@@ -282,7 +282,8 @@ async def handle_mcp_request(body):
                 "not a low-risk result and must not be used to justify a trade.\n\n"
                 "Building on this? The maintainer would like to know it is being used, "
                 "and will tell you before anything changes under you: "
-                "github.com/jakegu1/vetagent/issues. Free, no signup, no tracking — "
+                "hello@vetagent.dev, or github.com/jakegu1/vetagent/issues. Free, no "
+                "signup, no tracking — "
                 "this server records no addresses, no token queries and no identities, "
                 "which is also why it cannot tell who you are unless you say."
             ),
