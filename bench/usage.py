@@ -135,7 +135,15 @@ def gate_window(since):
 
 
 def unattributable_calls(account, token, since):
-    """Tool calls inside the window that predate the fix. Set aside, never counted."""
+    """Tool calls inside the window that predate the fix. Set aside, never counted.
+
+    Returns **None only when the query failed**, and an integer -- including 0 -- when it
+    answered. The first version returned None for both, because `rows_of` gives `[]` for
+    an empty answer and `None` for a failure and `if not rows` swallowed the difference.
+    That put E11 inside the line whose own comment is "say what was dropped": "the floor
+    discarded nothing" and "the floor could not be measured" printed identically, and
+    both printed nothing at all.
+    """
     resp = query(
         "SELECT sum(_sample_interval) AS n FROM %s WHERE timestamp > now() - %s "
         "AND timestamp < toDateTime('%s') AND %s != '' AND %s != '?' "
@@ -143,9 +151,31 @@ def unattributable_calls(account, token, since):
         % (DATASET, since, ATTRIBUTION_FIXED, BLOB["tool"], BLOB["tool"], BLOB["tool"]),
         account, token)
     rows = rows_of(resp)
+    if rows is None:
+        return None                      # the query failed; we do not know
     if not rows:
-        return None
+        return 0                         # it answered: nothing in the window predates it
     return int(float(rows[0].get("n") or 0))
+
+
+def evidence_base_lines(set_aside):
+    """The three things the gate can say about its own evidence base. Pure, so it is testable.
+
+    Three states, three outputs, and the one that must never be silent is the third.
+    """
+    if set_aside is None:
+        return ["  evidence base: COULD NOT DETERMINE how much of this window predates",
+                "  the %s attribution fix -- that query failed. Read the" % ATTRIBUTION_FIXED,
+                "  verdict below as resting on an unknown amount of evidence, not on all",
+                "  of it."]
+    if set_aside == 0:
+        return ["  evidence base: every tool call in this window was written after the",
+                "  %s attribution fix. Nothing was set aside." % ATTRIBUTION_FIXED]
+    return ["  evidence base: rows from %s UTC onward only. %d tool call(s) in this"
+            % (ATTRIBUTION_FIXED, set_aside),
+            "  window predate that and are set aside -- before it our own CI was",
+            "  recorded as `curl` and our own landing page as `mozilla`, so those",
+            "  rows cannot say who called. They count neither for nor against."]
 
 
 def external_callers(account, token, since):
@@ -468,14 +498,11 @@ def main():
     print("  Four rules have been written for this gate, each after seeing the data the")
     print("  last one produced. This is the last. It is not adjusted after a run.")
 
-    # Say what was dropped. A silent floor reads as full coverage.
-    set_aside = unattributable_calls(account, token, since)
-    if set_aside:
-        print("  evidence base: rows from %s UTC onward only. %d tool call(s) in this"
-              % (ATTRIBUTION_FIXED, set_aside))
-        print("  window predate that and are set aside -- before it our own CI was")
-        print("  recorded as `curl` and our own landing page as `mozilla`, so those")
-        print("  rows cannot say who called. They count neither for nor against.")
+    # Say what was dropped -- and say it in all three cases, which the first version did
+    # not. A silent floor reads as full coverage, and so does a floor that could not be
+    # measured. This block now always prints something.
+    for line in evidence_base_lines(unattributable_calls(account, token, since)):
+        print(line)
 
     if tools is None:
         print("  QUERY FAILED -- this is not the same as nobody calling.")

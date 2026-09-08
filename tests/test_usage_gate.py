@@ -335,10 +335,62 @@ def test_rows_older_than_the_attribution_fix_are_not_gate_evidence():
     src = open(os.path.join(ROOT, "bench", "usage.py"), encoding="utf-8").read()
     body = src.split("def main(")[-1]
     check("main() reports what it set aside rather than dropping it silently",
-          "unattributable_calls(" in body and "set aside" in body)
+          "evidence_base_lines(" in body)
     check("the reconciliation counts over the same window the gate reads",
           "gate_window(since)" in body,
           "reconciliation still spans the raw window")
+
+
+def test_the_evidence_base_is_never_silent():
+    """Three states, three outputs. The first version had three states and one silence.
+
+    `unattributable_calls()` returned None both when the floor query failed and when it
+    answered zero, because `rows_of` gives `[]` for empty and `None` for failure and
+    `if not rows` swallowed the difference. `main()` then guarded the notice with
+    `if set_aside:`, which also swallowed a legitimate 0. So on 2026-09-18 the owner could
+    read a verdict with no mention that the evidence was floored at all -- and would
+    reasonably assume the full fourteen days -- either because nothing was dropped or
+    because the run could not find out. That is E11, in the block whose own comment reads
+    "say what was dropped".
+
+    Caught by an adversarial review, not by the test above it, which grepped main()'s
+    source for two substrings and never executed anything. `set_aside = None` with those
+    substrings in a trailing comment would have kept it green.
+    """
+    print("\n[gate] the evidence base speaks in all three states")
+
+    original = usage.query, usage.rows_of
+    try:
+        # A failed query is not zero.
+        usage.query = lambda *a, **k: {"_raw": "<html>gateway timeout</html>"}
+        usage.rows_of = original[1]
+        got = usage.unattributable_calls("acct", "tok", "INTERVAL '14' DAY")
+        check("a failed floor query returns None, not 0", got is None, repr(got))
+
+        # An answer of "nothing" is a measurement.
+        usage.query = lambda *a, **k: {"data": []}
+        got = usage.unattributable_calls("acct", "tok", "INTERVAL '14' DAY")
+        check("an empty answer returns 0, not None", got == 0, repr(got))
+
+        usage.query = lambda *a, **k: {"data": [{"n": 260}]}
+        got = usage.unattributable_calls("acct", "tok", "INTERVAL '14' DAY")
+        check("a real count comes back as itself", got == 260, repr(got))
+    finally:
+        usage.query, usage.rows_of = original
+
+    unknown = "\n".join(usage.evidence_base_lines(None))
+    none_set = "\n".join(usage.evidence_base_lines(0))
+    some = "\n".join(usage.evidence_base_lines(260))
+
+    check("all three say something", all(s.strip() for s in (unknown, none_set, some)))
+    check("and all three say something different",
+          len({unknown, none_set, some}) == 3)
+    check("'could not determine' is unmistakable in the failure case",
+          "COULD NOT DETERMINE" in unknown, unknown)
+    check("zero is stated as a measurement, not as silence",
+          "Nothing was set aside" in none_set, none_set)
+    check("a real count names the number and the cutoff",
+          "260" in some and usage.ATTRIBUTION_FIXED in some, some)
 
 
 def main():
