@@ -1,5 +1,10 @@
 # VetAgent
 
+[![smithery badge](https://smithery.ai/badge/jake-gu95/vetagent)](https://smithery.ai/servers/jake-gu95/vetagent)
+[![MCP registry](https://img.shields.io/badge/MCP%20registry-dev.vetagent%2Fvetagent-3FBFAA)](https://registry.modelcontextprotocol.io/)
+[![Glama](https://img.shields.io/badge/Glama-grade%20A-3FBFAA)](https://glama.ai/mcp/connectors/dev.vetagent/vetagent)
+[![License: MIT](https://img.shields.io/badge/License-MIT-3FBFAA)](LICENSE)
+
 **A pre-trade safety check for AI agents.** Before an agent buys, holds, or recommends
 a token, it calls VetAgent and gets an actionable verdict — `low` / `medium` / `high` /
 `unknown` — plus the specific signals behind it, instead of a wall of numbers to interpret.
