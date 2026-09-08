@@ -61,6 +61,26 @@ OWNER_DUE = {
     "W13": ("", "no deadline -- do it when convenient"),
 }
 
+# What it costs to do nothing. An owner reading a task list reads "when" and "what", and
+# then has to guess the only thing that actually decides their week: what happens if this
+# slips. Guessing that needs the domain knowledge they do not have, which is the whole
+# reason this page exists. So it is stated, per item, in the same place as the deadline.
+COST_OF_WAITING = {
+    "W11": "A gate that passes its date in silence teaches everyone that gates are "
+           "decoration, and this is the first one that can stop the project.",
+    "W10": "Nothing. Six submissions are already queued and the two parked ones are one "
+           "signup away; waiting costs reach, not work.",
+    "W5": "Every accuracy claim keeps resting on a single sell simulator. If it is wrong, "
+          "we cannot tell, and neither can anyone reading the benchmark.",
+    "W12": "The 10-16 gate arrives with the measurement question still open, so that "
+           "gate answers a smaller question than it was meant to.",
+    "W13": "Two identifiers stay public that are useful for a targeted phishing attempt "
+           "on you. Not urgent, not nothing.",
+    "Post Experiment C": "This is the one action that can change the 09-18 answer. Not "
+                         "doing it does not delay the gate -- the gate still fires, and "
+                         "it fires on no.",
+}
+
 # Not a backlog item, because it is not engineering. It is the single action that decides
 # what the 09-18 gate can even see.
 EXTRA_ACTIONS = [
@@ -69,6 +89,47 @@ EXTRA_ACTIONS = [
      "Drafts are written and every number in them is checked by the build: "
      "docs/EXPERIMENT_C.md. Nothing is posted without you -- it is your name on it.",
      "a post exists on at least one of HN, r/ethdev, X or the MCP Discord"),
+]
+
+# What I told the owner that turned out to be wrong.
+#
+# An owner who cannot audit the work has exactly one way to calibrate how much of it to
+# believe: whether the person doing it reports their own errors before being caught. A
+# status page that only ever contains good news is marketing, and should be read as
+# marketing.
+#
+# `tests/test_owner_page.py` requires an entry inside CORRECTION_WINDOW days. Silence is
+# not an option -- if there is genuinely nothing, that has to be written down as a dated
+# claim, which is itself a thing that can turn out to be false.
+CORRECTION_WINDOW = 14
+CORRECTIONS = [
+    ("2026-09-08",
+     "'Nobody outside the project is calling it' was answered YES by the usage gate.",
+     "Both callers were us: `mozilla` was the demo button on our own homepage and `curl` "
+     "was our own deploy pipeline, because until 09-07 the telemetry could not tell them "
+     "apart from a stranger. The corrected reading is **no**.",
+     "Caught by re-reading the instrument after fixing it, not by the instrument."),
+    ("2026-09-08",
+     "`find_new_hot_pools` told callers it had found 20 pools.",
+     "It returned three. `count` was counting what it fetched, not what it sent.",
+     "Caught by calling the tool while writing an app-store submission. 263 tests had "
+     "passed over it."),
+    ("2026-09-08",
+     "'The daily archive will reach about 1 GB of git history within a year.'",
+     "The whole repository is 4.10 MiB. I had measured the temporary local copy instead "
+     "of what the server actually stores -- off by roughly 18x, and a storage ticket was "
+     "filed on it.",
+     "Caught by one command, `git gc`, run a day too late."),
+    ("2026-09-07",
+     "'83% of the benchmark data is one chain, which is a real weakness.'",
+     "58%. The 83% was a 47-token subset, quoted for a set twelve times larger. The "
+     "weakness is real and smaller than I said.",
+     "Caught by making the number computable instead of typed."),
+    ("2026-09-07",
+     "'The sell simulator has not indexed these tokens yet.'",
+     "It had. I was sending it an identifier with the chain name glued to the front "
+     "instead of an address, and six empty answers looked exactly like 'not indexed'.",
+     "Caught by printing what was actually sent."),
 ]
 
 # The glossary is prose, but three of its lines carry a measured number, and a number
@@ -197,6 +258,23 @@ def _when(days):
     return "in %d days" % days
 
 
+def changed_recently(days=7, cap=8):
+    """Commit subjects from the last `days`, so a weekly reader gets the diff not the state.
+
+    Returns (subjects, total). The cap is reported rather than applied silently: a
+    truncated list that does not say it was truncated reads as a complete week.
+    """
+    import subprocess
+    try:
+        out = subprocess.check_output(
+            ["git", "log", "--since=%d.days" % days, "--no-merges", "--format=%s"],
+            cwd=ROOT, stderr=subprocess.DEVNULL).decode("utf-8", "replace")
+    except (OSError, subprocess.CalledProcessError):
+        return None, 0                      # no git here; not the same as a quiet week
+    subjects = [s.strip() for s in out.splitlines() if s.strip()]
+    return subjects[:cap], len(subjects)
+
+
 def render(today=None):
     today = today or datetime.date.today()
     n = numbers()
@@ -256,6 +334,8 @@ def render(today=None):
                                 " (%s)" % _when(t["days"]) if t["days"] is not None else ""))
         w("- **Why then:** %s" % t["why"])
         w("- **You know it is done when:** %s" % t["done"])
+        cost = COST_OF_WAITING.get(t["id"]) or COST_OF_WAITING.get(t["what"])
+        w("- **If you do nothing:** %s" % (cost or "_not stated -- ask me, that is a gap_"))
         w("")
 
     # ---------------------------------------------------------------- the dates
@@ -296,6 +376,55 @@ def render(today=None):
     w("**%s -- %s**" % (rid, rname))
     w("")
     w(rblurb)
+    w("")
+
+    # ---------------------------------------------------------------- the week's diff
+    #
+    # Somebody who reads this page weekly wants what changed, not the whole state. The
+    # state is above and it is long; this is the part that answers "has anything moved".
+    subjects, total = changed_recently()
+    w("## What changed in the last 7 days")
+    w("")
+    if subjects is None:
+        w("_Could not read the commit history from here._ That is not the same as a quiet")
+        w("week, and it should not be read as one.")
+    elif not subjects:
+        w("Nothing was committed. If that is a surprise, it is worth asking why.")
+    else:
+        w("Every line is one commit, newest first. The full message says what the")
+        w("problem looked like before it was fixed.")
+        w("")
+        for s in subjects:
+            w("- %s" % s)
+        if total > len(subjects):
+            w("")
+            w("_%d more not shown (%d commits in total)._" % (total - len(subjects), total))
+    w("")
+
+    # ---------------------------------------------------------------- what I got wrong
+    #
+    # The section that decides how much of the rest of this page is worth believing. It
+    # goes above "how to check on me" on purpose: an owner who cannot audit the work has
+    # one honest signal, and it is whether the errors arrive before they are caught.
+    w("## What I got wrong")
+    w("")
+    w("I am the one measuring my own work, so this section is the part of the page that")
+    w("costs me something. A build check requires an entry here every %d days: if there"
+      % CORRECTION_WINDOW)
+    w("were genuinely no mistakes, saying so is itself a dated claim on the record.")
+    w("")
+    w("Newest first.")
+    w("")
+    for when, claimed, truth, caught in CORRECTIONS:
+        w("**%s** &mdash; I said: *%s*" % (when, claimed))
+        w("")
+        w("> %s" % truth)
+        w("")
+        w("> How it surfaced: %s" % caught)
+        w("")
+    w("The pattern worth noticing: **most of these made things look worse than they")
+    w("were, not better.** Being wrong in the pessimistic direction is still being wrong,")
+    w("and it is the direction that quietly kills good work.")
     w("")
 
     # ---------------------------------------------------------------- how to check

@@ -106,6 +106,89 @@ def test_it_reads_the_real_gate_table():
     check("it is parsed out of STRATEGY.md", "docs/STRATEGY.md" in body)
 
 
+def test_the_page_admits_recent_mistakes():
+    """A status page that only ever carries good news should be read as marketing.
+
+    The owner cannot audit this work. The one honest signal available to them is whether
+    the errors arrive before someone else finds them, so the section reporting them is
+    not optional and silence is not allowed to be free: if there were genuinely no
+    mistakes in the window, that has to be written down as a dated claim, which is itself
+    a thing that can turn out to be false.
+    """
+    print("\n[owner] recent mistakes are reported, and silence is not free")
+    import datetime
+    today = datetime.date.today()
+
+    check("there is a corrections list at all", len(owner.CORRECTIONS) > 0)
+    dates = []
+    for row in owner.CORRECTIONS:
+        check("every entry has date / claim / truth / how it surfaced", len(row) == 4,
+              str(row)[:80])
+        try:
+            dates.append(datetime.date(*[int(x) for x in row[0].split("-")]))
+        except (ValueError, TypeError):
+            check("the date parses", False, row[0])
+
+    if dates:
+        newest = max(dates)
+        age = (today - newest).days
+        check("an entry inside the window, or the silence is on the record",
+              age <= owner.CORRECTION_WINDOW,
+              "newest is %s, %d days old, window is %d -- add an entry, or add a dated "
+              "'nothing to report'" % (newest, age, owner.CORRECTION_WINDOW))
+        check("nothing is dated in the future", newest <= today, str(newest))
+
+    page = owner.render()
+    check("the section reaches the page", "## What I got wrong" in page)
+    check("and the freeze window is stated in it, not just in code",
+          "every %d days" % owner.CORRECTION_WINDOW in page)
+
+
+def test_every_owner_item_says_what_waiting_costs():
+    """"When" and "what" are not enough to plan a week; "what if it slips" is.
+
+    Judging that needs the domain knowledge the owner does not have, which is the reason
+    this page exists at all. An item with no stated cost of waiting renders a visible
+    placeholder rather than nothing, so the gap is legible on the page.
+    """
+    print("\n[owner] the cost of doing nothing is stated per item")
+    page = owner.render()
+    check("no item is silently missing its cost", "_not stated" not in page,
+          "an owner item has no COST_OF_WAITING entry")
+    check("the line is actually rendered", "**If you do nothing:**" in page)
+
+    ids = set(owner.COST_OF_WAITING)
+    live = set(t["id"] for t in owner.yours()) | set(a[0] for a in owner.EXTRA_ACTIONS)
+    orphans = ids - live
+    check("no cost is written for an item that no longer exists", not orphans,
+          str(sorted(orphans)))
+
+
+def test_no_jargon_reaches_the_owner_undefined():
+    """Every specialist word on the page has an entry in the page's own glossary.
+
+    This checks one direction only, on purpose. The first version also asserted the
+    reverse -- that every glossary entry appears in the body -- and it went red on seven
+    correct entries, which is how it was found to be wrong: `fail-closed`, `recall` and
+    `held-out` are words the owner meets in the backlog, in commit messages and in
+    conversation, not only here. A glossary is allowed to be a reference for terms
+    encountered elsewhere. It is not allowed to be missing one that is used here.
+    """
+    print("\n[owner] no specialist word reaches the owner undefined")
+    page = owner.render()
+    body = page.split("## The words I keep using")[0]
+    defined = " ".join(t for t, _ in owner.GLOSSARY).lower()
+
+    # Each of these was a word the owner had to ask about, or one that carries a meaning
+    # in this project which is not its ordinary English meaning.
+    jargon = ("gate", "fail-closed", "recall", "held-out", "oracle", "mcp",
+              "unknown", "false positive", "telemetry")
+    for word in jargon:
+        if word in body.lower():
+            check("'%s' is used, so it must be defined" % word, word in defined,
+                  "used on the page, missing from the glossary")
+
+
 def main():
     print("=" * 68)
     print("Owner page: the one document written for someone not reading code")

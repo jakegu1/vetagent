@@ -33,36 +33,42 @@ These are the things I cannot do. Everything else in this project is mine.
 - **When:** 2026-09-18 (**in 10 days**)
 - **Why then:** distribution is the whole of the gate's failing branch
 - **You know it is done when:** `CHANNELS` in `bench/scorecard.py`, updated only by someone who went and looked
+- **If you do nothing:** Nothing. Six submissions are already queued and the two parked ones are one signup away; waiting costs reach, not work.
 
 ### W11 Answer the 2026-09-18 gate
 
 - **When:** 2026-09-18 (**in 10 days**)
 - **Why then:** this IS the gate -- it has to be answered on the day
 - **You know it is done when:** `python bench/usage.py`, counting rule already fixed in code; then a `Resolved:` line in `STRATEGY.md` §8, which `test_gates_get_reviewed.py` requires once due
+- **If you do nothing:** A gate that passes its date in silence teaches everyone that gates are decoration, and this is the first one that can stop the project.
 
 ###  Post Experiment C
 
 - **When:** 2026-09-18 (**in 10 days**)
 - **Why then:** The gate's failing branch prescribes exactly this, so it happens either way. Drafts are written and every number in them is checked by the build: docs/EXPERIMENT_C.md. Nothing is posted without you -- it is your name on it.
 - **You know it is done when:** a post exists on at least one of HN, r/ethdev, X or the MCP Discord
+- **If you do nothing:** This is the one action that can change the 09-18 answer. Not doing it does not delay the gate -- the gate still fires, and it fires on no.
 
 ### W5 A second, independent sell-simulation source
 
 - **When:** 2026-10-16 (in 38 days)
 - **Why then:** needed for W3, which every accuracy claim rests on
 - **You know it is done when:** **Blocked** on a credential, not on engineering. Probed 2026-09-06: staysafu unreachable (SSL), quickintel 401, tokensniffer 401, de.fi public endpoint 404. Every candidate needs a paid key — this is a W9-shaped item that belongs to whoever holds the budget
+- **If you do nothing:** Every accuracy claim keeps resting on a single sell simulator. If it is wrong, we cannot tell, and neither can anyone reading the benchmark.
 
 ### W12 Decide the price-history trade-off
 
 - **When:** 2026-10-16 (in 38 days)
 - **Why then:** changes what the benchmark can measure, so before the D gate
 - **You know it is done when:** A decision recorded in `DECISIONS.md`, either way
+- **If you do nothing:** The 10-16 gate arrives with the measurement question still open, so that gate answers a smaller question than it was meant to.
 
 ### W13 Move the Cloudflare account and zone ids out of the public repo
 
 - **When:** no deadline
 - **Why then:** no deadline -- do it when convenient
 - **You know it is done when:** They are gone from `HANDOFF.md` §2 and a private note has them
+- **If you do nothing:** Two identifiers stay public that are useful for a targeted phishing attempt on you. Not urgent, not nothing.
 
 ## The dates that decide things
 
@@ -96,6 +102,64 @@ distribution and users, which is why more building cannot move it.
 **R18 -- Make the archive worth waiting for**
 
 Listed the server where it can be found -- GitHub topics, mcp.so, Docker's MCP registry, two awesome lists -- then reviewed the daily collector across seven dimensions. It was discarding 14 of the 18 time-resolution buckets every response already carried, storing 5 of honeypot.is's 13 branches, recording an empty `flags` list because the real ones live under `summary`, blacklisting tokens it had never received an answer about, and letting an optional probe run between the irreplaceable pool rows being written and their commit. E11 again in two more places, one written the day before. W20 was rejected on a bad measurement, then the rejection was corrected on three of its own numbers. The archive's ceiling was measured and it is lower than claimed: 69% of new pools never trade $50k in a week, so they can never be labelled dead however long we wait. And the review itself cost 233 agents and the account's session limit, which produced `.claude/workflows/budgeted-review.js` and the rule that an agent count must never be a function of model output.
+
+## What changed in the last 7 days
+
+Every line is one commit, newest first. The full message says what the
+problem looked like before it was fixed.
+
+- Park the two channels that need an account, without moving the bar
+- The channel list was eight names picked before the landscape was known
+- The OpenAI submission, written out so only the identity step is left
+- find_new_hot_pools reported a count of 20 next to three pools
+- A terms page, and the plugin moved out of the repository root
+- W10 still told the owner to do the two things that are done
+- Read the corrected gate, and it says no
+- The gate said YES on the two buckets our own traffic used to land in
+
+_171 more not shown (179 commits in total)._
+
+## What I got wrong
+
+I am the one measuring my own work, so this section is the part of the page that
+costs me something. A build check requires an entry here every 14 days: if there
+were genuinely no mistakes, saying so is itself a dated claim on the record.
+
+Newest first.
+
+**2026-09-08** &mdash; I said: *'Nobody outside the project is calling it' was answered YES by the usage gate.*
+
+> Both callers were us: `mozilla` was the demo button on our own homepage and `curl` was our own deploy pipeline, because until 09-07 the telemetry could not tell them apart from a stranger. The corrected reading is **no**.
+
+> How it surfaced: Caught by re-reading the instrument after fixing it, not by the instrument.
+
+**2026-09-08** &mdash; I said: *`find_new_hot_pools` told callers it had found 20 pools.*
+
+> It returned three. `count` was counting what it fetched, not what it sent.
+
+> How it surfaced: Caught by calling the tool while writing an app-store submission. 263 tests had passed over it.
+
+**2026-09-08** &mdash; I said: *'The daily archive will reach about 1 GB of git history within a year.'*
+
+> The whole repository is 4.10 MiB. I had measured the temporary local copy instead of what the server actually stores -- off by roughly 18x, and a storage ticket was filed on it.
+
+> How it surfaced: Caught by one command, `git gc`, run a day too late.
+
+**2026-09-07** &mdash; I said: *'83% of the benchmark data is one chain, which is a real weakness.'*
+
+> 58%. The 83% was a 47-token subset, quoted for a set twelve times larger. The weakness is real and smaller than I said.
+
+> How it surfaced: Caught by making the number computable instead of typed.
+
+**2026-09-07** &mdash; I said: *'The sell simulator has not indexed these tokens yet.'*
+
+> It had. I was sending it an identifier with the chain name glued to the front instead of an address, and six empty answers looked exactly like 'not indexed'.
+
+> How it surfaced: Caught by printing what was actually sent.
+
+The pattern worth noticing: **most of these made things look worse than they
+were, not better.** Being wrong in the pessimistic direction is still being wrong,
+and it is the direction that quietly kills good work.
 
 ## How to check on me without reading any code
 
