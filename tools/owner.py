@@ -58,6 +58,9 @@ OWNER_DUE = {
     "W10": ("2026-09-18", "distribution is the whole of the gate's failing branch"),
     "W5": ("2026-10-16", "needed for W3, which every accuracy claim rests on"),
     "W12": ("2026-10-16", "changes what the benchmark can measure, so before the D gate"),
+    "W25": ("2026-09-18", "the gate's failing branch is distribution, and publishing the "
+                          "archive is either a distribution asset or a leak -- it cannot "
+                          "be both, and the gate is when that stops being academic"),
     "W13": ("", "no deadline -- do it when convenient"),
 }
 
@@ -74,6 +77,9 @@ COST_OF_WAITING = {
           "we cannot tell, and neither can anyone reading the benchmark.",
     "W12": "The 10-16 gate arrives with the measurement question still open, so that "
            "gate answers a smaller question than it was meant to.",
+    "W25": "Every day adds another day of a supposedly exclusive data series to anyone "
+           "who has forked the repository. That part cannot be undone later. The "
+           "decision itself can wait; the accumulation cannot.",
     "Post Experiment C": "This is the one action that can change the 09-18 answer. Not "
                          "doing it does not delay the gate -- the gate still fires, and "
                          "it fires on no.",

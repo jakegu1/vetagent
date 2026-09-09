@@ -23,6 +23,7 @@ These are the things I cannot do. Everything else in this project is mine.
 |---|---|---|---|---|
 | **in 9 days** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
 | **in 9 days** | 2026-09-18 | W11 | Answer the 2026-09-18 gate | no |
+| **in 9 days** | 2026-09-18 | W25 | Decide whether the snapshot archive is a moat or a public good | no |
 | **in 9 days** | 2026-09-18 | -- | Post Experiment C | no |
 | in 37 days | 2026-10-16 | W5 | A second, independent sell-simulation source | **yes -- see below** |
 | in 37 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
@@ -40,6 +41,13 @@ These are the things I cannot do. Everything else in this project is mine.
 - **Why then:** this IS the gate -- it has to be answered on the day
 - **You know it is done when:** `python bench/usage.py`, counting rule already fixed in code; then a `Resolved:` line in `STRATEGY.md` §8, which `test_gates_get_reviewed.py` requires once due
 - **If you do nothing:** A gate that passes its date in silence teaches everyone that gates are decoration, and this is the first one that can stop the project.
+
+### W25 Decide whether the snapshot archive is a moat or a public good
+
+- **When:** 2026-09-18 (**in 9 days**)
+- **Why then:** the gate's failing branch is distribution, and publishing the archive is either a distribution asset or a leak -- it cannot be both, and the gate is when that stops being academic
+- **You know it is done when:** Either (a) keep publishing and delete the exclusivity claim — the archive becomes a reproducibility asset, defensible and arguably better for a product selling checkability — or (b) move it to R2, which §4.1 already budgets at under $1/month, and publish the collector plus a rolling sample. Recorded either way as a `DECISIONS.md` row
+- **If you do nothing:** Every day adds another day of a supposedly exclusive data series to anyone who has forked the repository. That part cannot be undone later. The decision itself can wait; the accumulation cannot.
 
 ###  Post Experiment C
 
@@ -100,6 +108,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Blockaid's false-positive rate was wrong by 10x on the live homepage
 - /privacy named four recipients of the token address. There are seven.
 - mcpservers.org is live, and I reported the opposite
 - W13 is done, so its cost-of-waiting line is an orphan
@@ -107,9 +116,8 @@ problem looked like before it was fixed.
 - Regenerate over the snapshot commits the rebase brought in
 - Two emails, and neither said what it appeared to say
 - "Corrected in three surfaces" had survived in four more
-- The no-tool-calls branch put two windows in one sentence, and file the rest
 
-_166 more not shown (174 commits in total)._
+_167 more not shown (175 commits in total)._
 
 ## What I got wrong
 

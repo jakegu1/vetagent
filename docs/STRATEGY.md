@@ -123,8 +123,25 @@ to be **collected live** — upstream APIs give you the current snapshot only, n
 historical state.
 
 This is what moves VetAgent from restating other people's judgement to having its own.
-It is also the only thing here where **a competitor who decides to build it today still
-has to wait six months to catch up**.
+
+> **Corrected 2026-09-09.** This paragraph claimed that "a competitor who decides to build
+> it today still has to wait six months to catch up", and §4.2 called the archive "the only
+> part of this product that cannot be copied". **We publish it.** `snapshot.yml` commits
+> `bench/snapshots/*.ndjson` to the public repository four times a day: 10 tracked files,
+> 12 MB, 10,938 rows, already cloneable in thirty seconds and still arriving.
+>
+> The half that survives is the one that matters technically: **nobody can backfill it.**
+> Upstream APIs return the current snapshot only, so a competitor starting today gets
+> today onward and can never reconstruct 2026-09-03. The half that is false is
+> *exclusivity* — they do not have to start their own clock, they can fork ours.
+>
+> That is a real decision, not a wording problem, and it is the owner's: **W25**. Either
+> keep publishing and drop the exclusivity claim entirely — the archive becomes a
+> credibility and reproducibility asset, which is a defensible position and arguably the
+> better one for a product whose pitch is checkability — or move it to R2, which §4.1
+> already budgets, and publish the collector plus a rolling sample. Every day of delay
+> adds another day of a supposedly exclusive series to forks and archives permanently, so
+> the cost of not deciding is the one cost here that cannot be undone.
 
 > **Every day we delay is a day of data lost permanently.** It is the only item in this
 > plan that can never be made up later.
@@ -153,8 +170,13 @@ So:
 Two things follow. Our accuracy benchmark is **currently unmeasurable** on the
 "catches rugs" dimension (see §9 metrics, where it is honestly marked as not
 measurable). And — **the snapshot archive isn't a nice-to-have; it is the only part of
-this product that cannot be copied.** Any competitor deciding to build it today still
-waits 6 months for the same thing.
+this product that cannot be *backfilled*.** A competitor starting today gets today
+onward and can never reconstruct 2026-09-03, because upstream returns the current
+snapshot only.
+
+It *can* be copied, though, because we publish it four times a day — see the correction
+in §4.1 and the decision waiting in **W25**. This sentence read "cannot be copied" for
+six days while the workflow that falsifies it ran on schedule beneath it.
 
 ### 4.2 Published accuracy (medium strength, but the only differentiator we can cash today)
 
