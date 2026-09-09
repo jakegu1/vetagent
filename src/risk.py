@@ -263,12 +263,28 @@ def _looks_solana(address):
 
 
 def validate_address(address):
-    """Validate first. An invalid address raises ValueError, never a hopeful verdict."""
+    """Validate first. An invalid address raises ValueError, never a hopeful verdict.
+
+    EVM addresses are lowercased here; Solana addresses are not. `_fetch_json` keys its
+    cache on the raw upstream URL, so before this every case-permutation of one EVM
+    address was a distinct cache entry -- and there are 2^40 of them for a single token.
+    Each miss costs two to four upstream calls against a service that has no rate limiter
+    anywhere in `src/` and advertises itself as free and unlimited, so one address was
+    enough to exhaust our upstream quotas and our Cloudflare budget.
+
+    Safe because EIP-55's mixed case is a display checksum, not part of the address:
+    verified 2026-09-09 that the live API returns the identical verdict and score for the
+    checksummed and lowercase forms of the same token, and the bytecode path has always
+    keyed on `address.lower()`.
+
+    Never Solana: base58 is case-significant and lowercasing one would be a different
+    address, or no address at all.
+    """
     address = (address or "").strip().split("?")[0]
     if not address or (not _looks_evm(address) and not _looks_solana(address)):
         raise ValueError(
             "Invalid token address: %r (EVM needs 0x + 40 hex chars, Solana needs base58 32-44 chars)" % address)
-    return address
+    return address.lower() if _looks_evm(address) else address
 
 
 # Printable ASCII, minus the characters that mean something structural to a reader.

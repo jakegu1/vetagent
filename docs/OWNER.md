@@ -132,7 +132,7 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **6 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **5 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -159,6 +159,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- CLAUDE.md: the quoting trap has two mechanisms, not one
 - Repair the W22 row that bash ate
 - W22: the tool that has misled callers twice now declares its shape
 - W21: the number guard checked matching, never coverage
@@ -166,9 +167,8 @@ problem looked like before it was fixed.
 - The archive strip on the visual owner page too
 - W25 decided: the archive stays public, with a threshold instead of an argument
 - I got the adversarial cohort wrong, then pointed a guard at the error
-- The live /llms.txt carried three stale counts the guard never covered
 
-_180 more not shown (188 commits in total)._
+_181 more not shown (189 commits in total)._
 
 ## What I got wrong
 

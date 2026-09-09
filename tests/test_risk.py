@@ -10,6 +10,7 @@ import asyncio
 import datetime
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src"))
@@ -2360,6 +2361,65 @@ def test_new_pools_count_describes_what_was_returned():
     check("with no truncation the two agree",
           out.get("count") == out.get("scanned") == 9,
           "count=%r scanned=%r" % (out.get("count"), out.get("scanned")))
+
+
+def test_case_permutations_do_not_multiply_upstream_calls():
+    """W24. `_fetch_json` keys its cache on the raw URL, so case was a cache-buster.
+
+    An EVM address has 40 hex characters, so one token has up to 2^40 spellings that a
+    checksum-agnostic upstream treats as identical and our cache treated as distinct.
+    Every one was a miss costing two to four upstream calls, against a service with no
+    rate limiter anywhere in `src/` that advertises itself as free and unlimited. One
+    address was enough to exhaust our upstream quotas and run up the Cloudflare bill.
+
+    Solana is deliberately excluded: base58 is case-significant, and lowercasing one
+    would be a different address or none at all.
+
+    Safe to normalise because EIP-55 mixed case is a display checksum. Two independent
+    confirmations: all 576 EVM addresses in bench/results.json are already lowercase, so
+    the benchmark cannot move; and on 2026-09-09 the live API returned the identical
+    verdict and score for both spellings of the same token.
+    """
+    print("\n[W24] case-permuting an address is not a cache-buster")
+
+    checksummed = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+    lowered = checksummed.lower()
+    weird = "0xDAC17f958d2EE523A2206206994597c13d831Ec7"
+
+    seen = set(risk.validate_address(a) for a in (checksummed, lowered, weird))
+    check("three spellings collapse to one address", len(seen) == 1, str(seen))
+    check("and it is the lowercase form", seen == {lowered}, str(seen))
+
+    # Solana must be untouched: base58 encodes case.
+    sol = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    check("a Solana address is returned unchanged",
+          risk.validate_address(sol) == sol, risk.validate_address(sol))
+
+    # The point of the fix: one upstream URL, not three.
+    urls = []
+    original = risk._fetch_json
+
+    async def _record(url, *a, **k):
+        urls.append(url)
+        return None
+
+    risk._fetch_json = _record
+    try:
+        for spelling in (checksummed, lowered, weird):
+            try:
+                run(risk.liquidity(spelling, "ethereum"))
+            except Exception:      # noqa: BLE001 - upstreams are stubbed to fail
+                pass
+    finally:
+        risk._fetch_json = original
+
+    distinct = set(urls)
+    check("the three spellings produce one set of URLs, not three",
+          len(distinct) == len(urls) // 3 if urls else False,
+          "%d calls, %d distinct" % (len(urls), len(distinct)))
+    check("no URL carries an uppercase hex address",
+          not [u for u in distinct if re.search(r"0x[0-9a-fA-F]*[A-F]", u)],
+          str([u for u in distinct if re.search(r"0x[0-9a-fA-F]*[A-F]", u)])[:90])
 
 
 def test_new_pools_says_when_half_the_scan_did_not_happen():
