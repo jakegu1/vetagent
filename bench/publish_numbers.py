@@ -128,7 +128,10 @@ TARGETS = [
     ("src/entry.py", r"which produced a cohort of (\d+)\s+confirmed-dead", "dead_n"),
     ("src/entry.py", r"Only (\d+) of those \d+ are rated high", "dead_high_n"),
     ("src/entry.py", r"Only \d+ of those (\d+) are rated high", "dead_n"),
-    ("src/entry.py", r"is still measured on (\d+) tokens, because the", "bad_n"),
+    ("src/entry.py", r"is still measured on (\d+) tokens, because the", "adversarial_n"),
+    ("src/landing.html", r"is still measured on (\d+) tokens, of which", "adversarial_n"),
+    ("src/landing.html", r"of which (\d+) have a liquidity figure", "adversarial_priced_n"),
+    ("src/landing.html", r"and (\d+) hold under a dollar", "adversarial_sub_dollar_n"),
     ("src/entry.py", r"False positives \(healthy tokens flagged high\) \.+ ([\d.]+)%", "fp_pct"),
     ("src/entry.py", r"Answers returned as unknown \.+ ([\d.]+)%", "unknown_pct"),
     # The maturity total. docs/SCORECARD.md generates it, and then three documents
@@ -166,6 +169,11 @@ def figures():
 
     alive = [r for r in rows if r.get("outcome_label") == "alive"]
     dead = [r for r in rows if r.get("outcome_label") == "dead"]
+    # The ADVERSARIAL cohort -- the oracle's `unsafe` label, n=17, reported at
+    # bench/results.md:112. Distinct from `bad`, which is the OUTCOME-label composition
+    # bucket. Conflating the two is how /llms.txt came to say "47 tokens" for a cohort of
+    # seventeen, with a guard pointed at the wrong key holding it in place.
+    unsafe_rows = [r for r in rows if r.get("goplus_label") == "unsafe"]
     unknown = [r for r in rows if r["verdict"] == "unknown"]
     fp = [r for r in alive if r["verdict"] == "high"]
 
@@ -205,6 +213,17 @@ def figures():
         "bad_base_share_pct": ("%.0f" % (100.0 * bad["chain"].get("base", 0) / bad["n"])
                                if bad.get("n") else "0"),
         "bad_n": "%d" % bad.get("n", 0),
+        # The ADVERSARIAL cohort: GoPlus label "unsafe". It had no key, so a surface
+        # quoting it had nothing to bind to, and a guard written for it reached for
+        # `bad_n` -- an outcome-label composition count -- and enforced 47 where the
+        # benchmark reports 17 (bench/results.md:112). A number with no source of
+        # truth is worse than an unguarded one: the guard makes the error look checked.
+        "adversarial_n": "%d" % len(unsafe_rows),
+        "adversarial_sub_dollar_n": "%d" % len([r for r in unsafe_rows
+                                                if (r.get("liquidity_usd") or 0) < 1
+                                                and r.get("liquidity_usd") is not None]),
+        "adversarial_priced_n": "%d" % len([r for r in unsafe_rows
+                                            if r.get("liquidity_usd") is not None]),
         "pool_match_pct": ("%.0f" % (100.0 * len(pool_same) / len(pool_both))
                            if pool_both else "0"),
         "maturity": _maturity() or "0",

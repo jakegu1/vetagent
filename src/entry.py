@@ -96,7 +96,7 @@ sold. "Dead" means the project died, a market outcome, while this tool scores
 whether you can get out, a safety property.
 
 The number we would most like to publish -- recall against deliberately
-adversarial contracts -- is still measured on 47 tokens, because the
+adversarial contracts -- is still measured on 17 tokens, because the
 oracle that labels them raises its honeypot flag whenever its own sell
 simulation fails, and that happens against any empty pool whatever the contract
 does. Until that cohort grows, read this tool as answering "can I still get out

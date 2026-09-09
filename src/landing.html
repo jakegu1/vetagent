@@ -187,7 +187,7 @@
       <tr><td>Answers returned as <code>unknown</code></td><td class="num unk">15.3%</td>
           <td>Refusals when a check could not run. Honest, still too many.</td></tr>
       <tr><td>GoPlus-tagged centralised tokens rated high</td><td class="num low">22.9%</td>
-          <td>We do <em>not</em> blanket-flag legitimate assets that hold admin powers.</td></tr>
+          <td>Almost all are abandoned pools holding cents, caught by the liquidity checks. Owner powers drive <em>none</em> of them &mdash; the engine never scores those. USDT is rated low.</td></tr>
       <tr><td>Dead tokens not rated low</td><td class="num low">86.7%</td>
           <td>26 of 30. Read the caveat below before quoting this one.</td></tr>
       <tr><td>Dead tokens rated <em>high</em></td><td class="num high">10.0%</td>
@@ -209,7 +209,7 @@
     <em>high</em> would be an investment judgement we refuse to make.
     <br><br>
     The number we would most like to publish — recall against deliberately adversarial
-    contracts — is still measured on 17 tokens, and 16 of those hold under a dollar,
+    contracts — is still measured on 17 tokens, of which 16 have a liquidity figure and 15 hold under a dollar (the largest holds $4,813),
     because the oracle that labels
     them raises its honeypot flag whenever its own sell simulation fails, and a sell
     simulation fails against an empty pool whatever the contract does. Until that cohort
