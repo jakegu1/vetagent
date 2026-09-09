@@ -159,6 +159,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Repair the W22 row that bash ate
 - W22: the tool that has misled callers twice now declares its shape
 - W21: the number guard checked matching, never coverage
 - W26: the launch post rewritten against the comment that would have sunk it
@@ -166,9 +167,8 @@ problem looked like before it was fixed.
 - W25 decided: the archive stays public, with a threshold instead of an argument
 - I got the adversarial cohort wrong, then pointed a guard at the error
 - The live /llms.txt carried three stale counts the guard never covered
-- Two FATAL findings from the hostile review of the launch post
 
-_179 more not shown (187 commits in total)._
+_180 more not shown (188 commits in total)._
 
 ## What I got wrong
 

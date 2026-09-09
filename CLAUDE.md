@@ -5,11 +5,20 @@ only the things that cost time when nobody wrote them down.
 
 ## Traps that have each bitten more than once
 
-**Never write a Python script through a bash heredoc.** `<<'EOF'` mangles backslashes in
+**Never pass text through the shell when it contains backslashes or backticks.** `<<'EOF'` mangles backslashes in
 this environment, so `"\n"` arrives as a real newline and the file is left syntactically
-broken *after* being written but *before* `ast.parse` catches it. This happened five
-times in one session. Use the **Write tool** for any script containing escapes, then run
-it. If a file is already mangled, `git checkout <file>` and start over.
+broken *after* being written but *before* `ast.parse` catches it. This happened **eight**
+times in one session.
+
+The second mechanism is backticks. Inside a double-quoted `python -c "..."`, bash performs
+command substitution, so a backlog row containing `` `count` `` and `` `scanned` `` was
+written with those words replaced by nothing -- and the commit in the same command was
+fine, because its heredoc was quoted `<<'MSG'`. Same command, two mechanisms, opposite
+outcomes.
+
+Use the **Write tool** for any text containing a backslash or a backtick, then run it.
+A quoted heredoc `<<'EOF'` is safe for prose; nothing is safe for scripts with escapes.
+If a file is already mangled, `git checkout <file>` and start over.
 
 **Deploy from WSL, and clear the venv first.** `.venv-workers` is platform-specific:
 built on Windows it has `Scripts/`, and a WSL run wants `bin/`.
