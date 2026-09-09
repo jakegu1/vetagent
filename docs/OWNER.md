@@ -100,6 +100,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W13 closed, and its acceptance test was wrong
 - Regenerate over the snapshot commits the rebase brought in
 - Two emails, and neither said what it appeared to say
 - "Corrected in three surfaces" had survived in four more
@@ -107,9 +108,8 @@ problem looked like before it was fixed.
 - One gate, four written bars, and every one of them easier than the code
 - The field added to disclose a truncation could not disclose a half scan
 - Three outward pages said things that are not true
-- The owner-page test I added this morning reddens by itself, twice a day
 
-_162 more not shown (170 commits in total)._
+_163 more not shown (171 commits in total)._
 
 ## What I got wrong
 
