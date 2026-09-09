@@ -253,6 +253,74 @@ def test_minimal_and_slot_proxies_are_recognised():
           repr(r5))
 
 
+def test_a_forwarder_with_no_dispatcher_is_never_called_clean():
+    """The same bug as EIP-1167, one variant down, found the same way.
+
+    `test_minimal_and_slot_proxies_are_recognised` above fixed 53 EIP-1167 proxies that
+    read `is_proxy=False` and then got the silent empty-powers treatment. It fixed them by
+    pinning EIP-1167's exact 45 bytes. W18 mined PUSH4 selectors out of all 559 cached
+    contracts and found **12 more** that dispatch no functions at all and still read
+    `is_proxy=False` -- every one of them exactly 44 bytes:
+
+        3d3d3d3d363d3d37363d73<20-byte address>5af43d3d93803e602a57fd5bf3
+
+    That is the Solady/0age optimised clone: the same delegatecall forwarder as EIP-1167
+    with the stack shuffling rewritten a byte shorter. `_EIP1167_PREFIX` and
+    `_EIP1167_SUFFIX` are both full-body constants, so neither matched, and 12 contracts
+    whose behaviour lives entirely at another address were reported as ordinary tokens
+    with nothing found.
+
+    So the fix here is deliberately NOT a third pinned constant. Two things:
+
+    1. `is_proxy` keys on the delegatecall CORE both variants share -- a PUSH20 of an
+       address followed by GAS DELEGATECALL -- rather than on the surrounding stack
+       shuffling, which is the part that varies between forwarder generations.
+
+    2. `found_none` additionally requires that a dispatcher was actually seen. A contract
+       that dispatches no function selectors cannot be said to lack owner powers, whatever
+       shape of forwarder it turns out to be. That is the structural half: the next variant
+       nobody has written yet fails check 1 and still cannot produce a false clean bill.
+    """
+    print(chr(10) + "[proxy] a 44-byte forwarder is not a clean token")
+
+    # A real one, from bench/cache_bytecode: base 0x020eaeee24bcad37cb9a01aa1f8c591c47341ba3
+    clone = ("0x3d3d3d3d363d3d37363d73"
+             "db7b520bb5c3a2c5d4871198081911359f93be87"
+             "5af43d3d93803e602a57fd5bf3")
+    r = risk._powers_from_code(clone)
+    check("the 44-byte clone is recognised as a proxy", r and r["is_proxy"] is True,
+          repr(r))
+    check("and it is not reported as a contract with no powers",
+          r and r["found_none"] is False, repr(r))
+
+    # The structural half, tested independently of any proxy pattern: a contract that
+    # dispatches nothing must not claim an absence, even when it is a shape nobody has a
+    # name for.
+    nondescript = "0x" + "60016002" * 8          # valid opcodes, no PUSH4, no delegatecall
+    r2 = risk._powers_from_code(nondescript)
+    check("a contract that dispatches no selectors is not called clean",
+          r2 and r2["found_none"] is False, repr(r2))
+    check("and it reports how many it dispatched, so the reason is visible",
+          r2 and r2.get("selectors_dispatched") == 0, repr(r2))
+
+    # And the guarantee runs the other way too: an ordinary token that DOES dispatch
+    # functions, has none of the powers and is not a proxy still gets its clean reading.
+    plain = "0x" + "63a9059cbb" + "6370a08231" + "6318160ddd" + "00"
+    r3 = risk._powers_from_code(plain)
+    check("a real token with no powers still reads found_none",
+          r3 and r3["found_none"] is True, repr(r3))
+    check("and its dispatched count is real", r3 and r3.get("selectors_dispatched") == 3,
+          repr(r3))
+
+    # The walk must not be fooled by a selector sitting inside another PUSH's immediate.
+    # 0x7f is PUSH32: the 32 bytes after it are data, and the 0x63 inside them is not an
+    # opcode. A naive scan for "63" reads a selector here; the walk must not.
+    buried = "0x7f" + "63a9059cbb" + "00" * 27 + "00"
+    r4 = risk._powers_from_code(buried)
+    check("a selector buried in PUSH32 data is not counted as dispatched",
+          r4 and r4.get("selectors_dispatched") == 0, repr(r4))
+
+
 def test_bytecode_is_cached_as_advertised():
     """"cached hard and costs almost nothing after the first look" -- it was neither.
 

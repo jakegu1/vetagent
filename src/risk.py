@@ -1333,6 +1333,77 @@ _EIP1167_SUFFIX = "5af43d82803e903d91602b57fd5bf3"
 # every upgradeable proxy that follows the standard.
 _ERC1967_SLOT = "360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
 
+# The delegatecall core every minimal forwarder shares: PUSH20 <address>, GAS,
+# DELEGATECALL. Both _EIP1167_PREFIX and _EIP1167_SUFFIX are full-body constants, and W18
+# found what that costs -- 12 contracts of exactly 44 bytes, the Solady/0age optimised
+# clone, which is the same forwarder with the stack shuffling rewritten a byte shorter.
+# They read is_proxy=False and then found_none=True: "no owner powers found" about a
+# contract with no functions at all.
+#
+# Keyed on the core rather than the shuffling because the shuffling is the part that
+# varies between forwarder generations, and a third pinned constant would just wait for
+# the fourth variant. Scoped to small bodies: the pattern fixes six hex characters out of
+# forty-eight, which over a 24 kB contract's ~49,000 offsets would match by chance about
+# once per three hundred contracts. A forwarder is under a hundred bytes, so the bound
+# costs nothing and removes the coincidence entirely -- larger proxies are caught by
+# _ERC1967_SLOT and implementation() above.
+_FORWARDER_CORE = re.compile(r"73[0-9a-f]{40}5af4")
+_FORWARDER_MAX_BYTES = 100
+
+
+def _strip_metadata(body):
+    """Drop solc's CBOR trailer, which is data and not code.
+
+    The last two bytes hold the trailer's length. It is ~50 bytes of high-entropy data per
+    contract, so walking into it invents opcodes; stripping it is what makes the dispatched
+    count below a number rather than an estimate. Refuses to strip unless what it is about
+    to cut starts with a CBOR map header, because a guess that removed real code would be
+    worse than not stripping at all.
+    """
+    if len(body) < 8:
+        return body
+    try:
+        n = int(body[-4:], 16)
+        end = len(body) - 4 - n * 2
+        if n <= 0 or end <= 0:
+            return body
+        head = int(body[end:end + 2], 16)
+    except ValueError:
+        return body
+    return body[:end] if 0xa1 <= head <= 0xaf else body
+
+
+def _dispatched_selectors(body):
+    """Every PUSH4 immediate, walking the opcode stream. Lowercase 8-char hex.
+
+    A Solidity dispatcher compares calldata's first four bytes against each selector it
+    handles, pushing each as a PUSH4. So this is very nearly the set of functions the
+    contract answers to -- and, deliberately noted rather than hidden, it also picks up
+    selectors the contract CALLS on other contracts, which are pushed the same way.
+
+    Why a walk and not a substring search: 0x63 is a byte like any other inside the
+    thirty-two arbitrary bytes of every PUSH32, and every contract is full of PUSH32. The
+    walk skips each PUSH's immediate, so only real opcodes are read. `_powers_from_code`
+    below still matches powers by substring, which has this same weakness -- that is
+    measured in bench/selector_mine.py rather than assumed either way, and the count here
+    is used only for the question it can answer exactly: did we see a dispatcher at all.
+    """
+    body = _strip_metadata(body)
+    out = set()
+    i, n = 0, len(body)
+    while i + 2 <= n:
+        try:
+            op = int(body[i:i + 2], 16)
+        except ValueError:
+            break
+        i += 2
+        if 0x60 <= op <= 0x7f:                       # PUSH1 .. PUSH32
+            width = (op - 0x5f) * 2
+            if op == 0x63 and i + width <= n:        # PUSH4
+                out.add(body[i:i + width])
+            i += width
+    return out
+
 
 def _is_proxy_code(body):
     """Whether this bytecode delegates its behaviour to another address.
@@ -1348,6 +1419,10 @@ def _is_proxy_code(body):
     an unobserved dimension reported as an observed absence, on the one field whose whole
     job was to prevent that reading.
     """
+    # A small body whose whole content is a delegatecall to a hardcoded address. Checked
+    # first because it is the shape that has now slipped through twice.
+    if len(body) <= _FORWARDER_MAX_BYTES * 2 and _FORWARDER_CORE.search(body):
+        return True
     if _PROXY_SELECTOR in body or _ERC1967_SLOT in body:
         return True
     return _EIP1167_PREFIX in body and _EIP1167_SUFFIX in body
@@ -1435,6 +1510,7 @@ def _powers_from_code(code):
     body = code[2:].lower()
     powers = sorted(name for name, sels in _OWNER_POWERS.items()
                     if any(sel in body for sel in sels))
+    dispatched = _dispatched_selectors(body)
     return {
         "powers": powers,
         # Measured against the labelling oracle: this scan finds 31% of the powers it
@@ -1446,7 +1522,16 @@ def _powers_from_code(code):
         # proxy this bytecode is a forwarder, so "found none" would be a statement about
         # the wrong contract -- and it is the exact statement a caller is most likely to
         # misread as reassurance.
-        "found_none": not powers and not _is_proxy_code(body),
+        #
+        # `dispatched` is the structural half of the W18 fix, and it is the half that does
+        # not depend on recognising any particular forwarder. A contract that dispatches no
+        # function selectors cannot be said to lack owner powers, whatever shape it is: the
+        # question was never asked of it. The proxy patterns above will miss a variant
+        # again; this line means the miss produces silence instead of a clean bill.
+        "found_none": bool(dispatched) and not powers and not _is_proxy_code(body),
+        # Reported so the reason for a silent verdict is visible to a caller rather than
+        # inferable. Zero here is why found_none is false.
+        "selectors_dispatched": len(dispatched),
         # A proxy's logic lives at another address, so the absence of a power here means
         # nothing at all. Saying so beats an empty list that reads as "none found".
         "is_proxy": _is_proxy_code(body),
