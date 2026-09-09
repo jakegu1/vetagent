@@ -104,6 +104,15 @@ jobs:
       - name: The day-one sellability archive collects something real
         run: python tests/test_sellability_archive.py
 
+      # W13. The Cloudflare account and zone ids were in docs/HANDOFF.md in plain text for
+      # six days. Neither is a secret and neither can be rotated, so this does not protect
+      # a credential -- it protects against the phishing message that quotes your account
+      # id to sound like it already has access. Both values are still in public commit
+      # 5a16721 and always will be; what this stops is the next time somebody pastes them
+      # back in while writing a deploy note, which is exactly how they arrived.
+      - name: Private identifiers have not come back into the public repo
+        run: python tests/test_no_private_identifiers.py
+
   # Upstream contract monitor: real API calls that check the fields we depend on still exist.
   # Separate from the unit tests: a third-party outage turns it red, which is the signal.
   upstream-contract:

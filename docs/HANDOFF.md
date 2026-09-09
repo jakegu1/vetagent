@@ -41,8 +41,8 @@ This is not a tool for trading yourself, it **sells shovels** — keeping people
 | Landing page | https://vetagent.dev/ (VetAgent branding, SEO/GEO, JSON-LD)|
 | Source repo | **github.com/jakegu1/vetagent** (Worker version, main line of development)|
 | Docs repo | github.com/jakegu1/crypto-agent-risk (China-server version + ops docs)|
-| Cloudflare domain | vetagent.dev (zone id 371490a6e5d239a023df9667bfe811b7)|
-| Account ID | 3976e6f6f8237d5aa08543efa0e78887 |
+| Cloudflare domain | vetagent.dev (zone id: see the private note, W13) |
+| Account ID | see the private note, W13 |
 
 > ⚠️ **Credential safety**: the Cloudflare API token lives in `.git-credentials` or comes from Jake, and **must never be committed to GitHub**. Deploy with the env vars `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` (see §6).
 
@@ -166,9 +166,25 @@ cd ~/projects/vetagent-worker
 .venv/bin/pywrangler dev --port 8787            # local test
 # deploy (credentials via env vars, never written into git)
 export CLOUDFLARE_API_TOKEN=<from Jake>
-export CLOUDFLARE_ACCOUNT_ID=3976e6f6f8237d5aa08543efa0e78887
+export CLOUDFLARE_ACCOUNT_ID=<from the private note, W13>
 .venv/bin/pywrangler deploy
 ```
+
+> **W13, and what removing them does and does not achieve.** The Cloudflare account id
+> and zone id were in this file in plain text from 2026-09-03 to 2026-09-09. Neither is a
+> secret — Cloudflare treats both as public identifiers and neither can be rotated — but
+> together with the maintainer's name, email and the `jake-gu95.workers.dev` subdomain
+> above, they are exactly what a convincing "Cloudflare security team" phishing message
+> needs. That is the threat, not account takeover.
+>
+> **They are still in commit `5a16721`**, which is public and cannot be un-published.
+> Removing them here lowers casual discoverability and nothing more. The controls that
+> actually matter are the ones outside this repo: the API token has never been committed
+> (`.wrangler/` is gitignored and untracked, verified), and the real protection is 2FA on
+> the Cloudflare and GitHub accounts plus the knowledge that no genuine Cloudflare email
+> will ever ask for a token. Rewriting history to erase one commit would break every
+> clone and every pinned SHA in `tools/rounds.py` to buy something obscurity was never
+> going to provide.
 - In local dev, dexscreener may return nothing because the proxy is flaky (**the production edge connects fine**, so verify against production).
 - Watch call volume: `npx wrangler tail vetagent --format json`
 

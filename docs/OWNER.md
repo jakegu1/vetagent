@@ -26,7 +26,6 @@ These are the things I cannot do. Everything else in this project is mine.
 | **in 9 days** | 2026-09-18 | -- | Post Experiment C | no |
 | in 37 days | 2026-10-16 | W5 | A second, independent sell-simulation source | **yes -- see below** |
 | in 37 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
-| no date | -- | W13 | Move the Cloudflare account and zone ids out of the public repo | no |
 
 ### W10 Create the two accounts the remaining directories need
 
@@ -62,13 +61,6 @@ These are the things I cannot do. Everything else in this project is mine.
 - **Why then:** changes what the benchmark can measure, so before the D gate
 - **You know it is done when:** A decision recorded in `DECISIONS.md`, either way
 - **If you do nothing:** The 10-16 gate arrives with the measurement question still open, so that gate answers a smaller question than it was meant to.
-
-### W13 Move the Cloudflare account and zone ids out of the public repo
-
-- **When:** no deadline
-- **Why then:** no deadline -- do it when convenient
-- **You know it is done when:** They are gone from `HANDOFF.md` §2 and a private note has them
-- **If you do nothing:** Two identifiers stay public that are useful for a targeted phishing attempt on you. Not urgent, not nothing.
 
 ## The dates that decide things
 
@@ -108,6 +100,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Regenerate over the snapshot commits the rebase brought in
 - Two emails, and neither said what it appeared to say
 - "Corrected in three surfaces" had survived in four more
 - The no-tool-calls branch put two windows in one sentence, and file the rest
@@ -115,9 +108,8 @@ problem looked like before it was fixed.
 - The field added to disclose a truncation could not disclose a half scan
 - Three outward pages said things that are not true
 - The owner-page test I added this morning reddens by itself, twice a day
-- A caller whose HTTP calls all failed was invisible to the gate
 
-_161 more not shown (169 commits in total)._
+_162 more not shown (170 commits in total)._
 
 ## What I got wrong
 
