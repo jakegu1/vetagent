@@ -159,6 +159,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W24: one address had 2^40 spellings and every one was a cache miss
 - CLAUDE.md: the quoting trap has two mechanisms, not one
 - Repair the W22 row that bash ate
 - W22: the tool that has misled callers twice now declares its shape
@@ -166,9 +167,8 @@ problem looked like before it was fixed.
 - W26: the launch post rewritten against the comment that would have sunk it
 - The archive strip on the visual owner page too
 - W25 decided: the archive stays public, with a threshold instead of an argument
-- I got the adversarial cohort wrong, then pointed a guard at the error
 
-_181 more not shown (189 commits in total)._
+_182 more not shown (190 commits in total)._
 
 ## What I got wrong
 
