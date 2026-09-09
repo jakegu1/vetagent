@@ -86,17 +86,17 @@ What that last line does and does not say. Recall was unmeasurable here
 until recently: every public data source ranks by liquidity, so rugged pools
 drop off the list and sampling produced no dead tokens at all. Pools are now
 recovered from chain history instead -- any past day is readable from the logs
-of the contract that created the pool -- which produced a cohort of 20
+of the contract that created the pool -- which produced a cohort of 30
 confirmed-dead tokens.
 
-The honest reading is not flattering. Only 2 of those 20 are rated high; most
+The honest reading is not flattering. Only 3 of those 30 are rated high; most
 land at medium. That is close to correct rather than a miss: half the dead
 cohort still holds over $5,000 of liquidity, so those positions can still be
 sold. "Dead" means the project died, a market outcome, while this tool scores
 whether you can get out, a safety property.
 
 The number we would most like to publish -- recall against deliberately
-adversarial contracts -- is still measured on about five tokens, because the
+adversarial contracts -- is still measured on 47 tokens, because the
 oracle that labels them raises its honeypot flag whenever its own sell
 simulation fails, and that happens against any empty pool whatever the contract
 does. Until that cohort grows, read this tool as answering "can I still get out

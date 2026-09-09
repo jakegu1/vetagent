@@ -130,7 +130,7 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **8 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **9 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -157,6 +157,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Two FATAL findings from the hostile review of the launch post
 - The test I added yesterday turned the build red on eight commits
 - An HTML view of the owner's page, generated from the same one file
 - Two generated diagrams on the owner page, and not a diagramming pipeline
@@ -164,9 +165,8 @@ problem looked like before it was fixed.
 - Blockaid's false-positive rate was wrong by 10x on the live homepage
 - /privacy named four recipients of the token address. There are seven.
 - mcpservers.org is live, and I reported the opposite
-- W13 is done, so its cost-of-waiting line is an orphan
 
-_171 more not shown (179 commits in total)._
+_172 more not shown (180 commits in total)._
 
 ## What I got wrong
 

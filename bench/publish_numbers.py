@@ -120,6 +120,15 @@ TARGETS = [
     ("docs/AUDIT_BRIEF.md", r"unknown ([\d.]+)%", "unknown_pct"),
     ("docs/AUDIT_BRIEF.md", r"(\d+) dead samples", "dead_n"),
     ("src/entry.py", r"## Measured accuracy \(n=(\d+), published\)", "n"),
+    # Bare integers in the /llms.txt PROSE. The landing page had exactly this bug --
+    # current percentages sitting beside stale counts, because the guard only checked
+    # percentages -- and it was fixed there and never here. A hostile review of the
+    # launch post found "a cohort of 20", "Only 2 of those 20" and "about five tokens"
+    # live on the served file, against a measured 30, 3 and 47.
+    ("src/entry.py", r"which produced a cohort of (\d+)\s+confirmed-dead", "dead_n"),
+    ("src/entry.py", r"Only (\d+) of those \d+ are rated high", "dead_high_n"),
+    ("src/entry.py", r"Only \d+ of those (\d+) are rated high", "dead_n"),
+    ("src/entry.py", r"is still measured on (\d+) tokens, because the", "bad_n"),
     ("src/entry.py", r"False positives \(healthy tokens flagged high\) \.+ ([\d.]+)%", "fp_pct"),
     ("src/entry.py", r"Answers returned as unknown \.+ ([\d.]+)%", "unknown_pct"),
     # The maturity total. docs/SCORECARD.md generates it, and then three documents
