@@ -7,7 +7,9 @@
 > **What changed from the plan.** STRATEGY §7 says the headline is *"we published our own
 > miss rate — nobody in this category does."* Competitive research found the second half
 > is false: Hypernative publishes 99.8% detection with <0.001% false positives, Forta
-> >99% recall, Blockaid <0.002% FP, ChainAware 90.1% accuracy, HoneypotScan 98%
+> >99% recall, Blockaid <0.0002% FP (their own figure, checked 2026-09-09; this read
+> <0.002% for three days, ten times worse than they claim), ChainAware 90.1% accuracy,
+> HoneypotScan 98%
 > sensitivity / 97% specificity. What none of them publishes is a **method** — no
 > dataset, no denominator, no definition of a positive, nothing anyone can re-run. So the
 > claim is narrower and survives checking: *the numbers are reproducible, and the
@@ -41,7 +43,8 @@ Every token-safety scanner tells you a token is risky. None of them tells you ho
 they are wrong, in a way you can check.
 
 A few publish a number. Hypernative says 99.8% of hacks detected with under 0.001% false
-positives. Forta says >99% recall. Blockaid says <0.002% FP. None of them publishes a
+positives. Forta says >99% recall. Blockaid says <0.0002% FP. (Each is that vendor's
+own published figure, checked 2026-09-09.) None of them publishes a
 dataset, a denominator, a definition of what counts as a positive, or a method anyone can
 re-run. I went looking specifically for one and did not find it. Solsniffer's own pricing
 FAQ asks "How accurate is the analysis?" and answers "battle-tested" — on a product with

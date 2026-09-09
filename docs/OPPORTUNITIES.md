@@ -89,7 +89,7 @@ test pinning that `src/` never reads it.
 Build and publish a head-to-head benchmark of the commercial token-risk tools —
 rugcheck.xyz, GoPlus, TokenSniffer, honeypot.is, ChainAware — on a common labelled set,
 the way AV-Comparatives does for antivirus. Nobody has done this; searching turns up only
-listicles and vendor pages. ChainAware advertises 90.1% accuracy and the methodology page
+listicles and vendor pages. ChainAware advertises 90.1% accuracy (their own figure, checked 2026-09-09) and the methodology page
 it cites returns 404.
 
 Why it is parked rather than adopted: it is a **different product** with a different

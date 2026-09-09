@@ -100,16 +100,16 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- /privacy named four recipients of the token address. There are seven.
+- mcpservers.org is live, and I reported the opposite
 - W13 is done, so its cost-of-waiting line is an orphan
 - W13 closed, and its acceptance test was wrong
 - Regenerate over the snapshot commits the rebase brought in
 - Two emails, and neither said what it appeared to say
 - "Corrected in three surfaces" had survived in four more
 - The no-tool-calls branch put two windows in one sentence, and file the rest
-- One gate, four written bars, and every one of them easier than the code
-- The field added to disclose a truncation could not disclose a half scan
 
-_164 more not shown (172 commits in total)._
+_166 more not shown (174 commits in total)._
 
 ## What I got wrong
 

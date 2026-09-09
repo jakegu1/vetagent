@@ -299,6 +299,52 @@ RETRACTED_CLAIMS = (
 )
 
 
+# The vendors whose own published figures we quote. A number beside one of these names is
+# theirs, not ours, so TARGETS cannot guard it and a retrieval date has to.
+COMPETITORS = ("Hypernative", "Forta", "Blockaid", "ChainAware", "HoneypotScan",
+               "Solsniffer")
+
+
+def unsourced_competitor_figures(files):
+    """A competitor's number on our surface must carry the date we checked it.
+
+    `_EXEMPT_LINES` had `("src/landing.html", "Forta")`, and that one line carries TWO
+    vendors' figures -- so an exemption written for Forta silently covered Blockaid's,
+    which sat at <0.002% against the <0.0002% Blockaid publishes. Ten times worse than
+    they claim, on the live homepage, inside the paragraph arguing that we are the honest
+    one. That is the same "an exemption written for one sentence covers a new number"
+    failure the comment above `_EXEMPT_LINES` says was already scoped out once.
+
+    A vendor name plus a percentage is now only allowed on a line that also says when the
+    figure was checked, so the exemption cannot be what makes an unsourced number legal.
+    Our own numbers are guarded by TARGETS; theirs cannot be, because there is no local
+    source of truth for them -- a date is the honest substitute.
+    """
+    # The citation is checked over a WINDOW, not the line: prose wraps, so "Blockaid
+    # <0.0002% FP" and "(checked 2026-09-09)" land on different physical lines and a
+    # per-line check reported eight false positives on text that was correctly sourced.
+    # Two lines either side covers a wrapped sentence without spanning a paragraph.
+    WINDOW = 2
+    out = []
+    for rel in files:
+        path = os.path.join(ROOT, rel)
+        if not os.path.exists(path):
+            continue
+        with io.open(path, encoding="utf-8") as f:
+            lines = f.read().splitlines()
+        for i, line in enumerate(lines, 1):
+            if not re.search(r"\d+(?:\.\d+)?%", line):
+                continue
+            named = [v for v in COMPETITORS if v.lower() in line.lower()]
+            if not named:
+                continue
+            near = "\n".join(lines[max(0, i - 1 - WINDOW):i + WINDOW])
+            if re.search(r"checked \d{4}-\d{2}-\d{2}|https?://", near):
+                continue
+            out.append((rel, i, ", ".join(named), line.strip()[:76]))
+    return out
+
+
 def retracted(files):
     """Occurrences of a retracted claim that are not the record of its retraction."""
     out = []
@@ -371,7 +417,15 @@ def unclaimed_percentages():
             for m in re.finditer(pat, text):
                 claimed.add(m.group(1))
         exempt = tuple(sub for f, sub in _EXEMPT_LINES if f == rel)
-        for line in text.splitlines():
+        # A competitor's figure is not ours and cannot track results.json, so it is exempt
+        # HERE on one condition: that `unsourced_competitor_figures` is guarding it, which
+        # means it carries a date it was checked. That replaces four `_EXEMPT_LINES` rows
+        # keyed on vendor names, which broke twice for the same reason -- one of them
+        # covered two vendors' numbers on one line and let Blockaid's sit wrong by 10x, and
+        # then re-flowing that sentence moved two other numbers off their exempted lines.
+        # An exemption that moves when prose re-wraps is not an exemption.
+        all_lines = text.splitlines()
+        for line in all_lines:
             for m in re.finditer(r"([<>\u2264\u2265~]?\s*)(\d+(?:\.\d+)?)%", line):
                 # "recall >90%" is what we aim at; it must not track results.json.
                 if m.group(1).strip():
@@ -380,8 +434,19 @@ def unclaimed_percentages():
                     continue
                 if any(sub in line for sub in exempt):
                     continue
+                if _is_cited_competitor_figure(line, all_lines):
+                    continue
                 out.append((rel, m.group(2), line.strip()[:88]))
     return out
+
+
+def _is_cited_competitor_figure(line, all_lines, window=2):
+    """True when this line's number belongs to a named competitor AND is dated."""
+    if not any(v.lower() in line.lower() for v in COMPETITORS):
+        return False
+    i = all_lines.index(line)
+    near = "\n".join(all_lines[max(0, i - window):i + window + 1])
+    return bool(re.search(r"checked \d{4}-\d{2}-\d{2}|https?://", near))
 
 
 def main():
@@ -411,6 +476,17 @@ def main():
         print("\nIt was corrected on three surfaces on 2026-09-06 and survived in four")
         print("others for two days -- one of them prescribing it as the launch angle.")
 
+    unsourced = unsourced_competitor_figures(
+        LIVE_CLAIM_FILES + FROZEN_LOG_FILES + ("README.md",))
+    if unsourced:
+        print("\n%d line(s) quote a competitor's figure with no date it was checked:"
+              % len(unsourced))
+        for rel, lineno, vendors, line in unsourced:
+            print("  %s:%d  [%s]  %s" % (rel, lineno, vendors, line))
+        print("\nAdd `checked YYYY-MM-DD` or a source URL, or drop the number. Blockaid's")
+        print("was wrong by 10x on the live homepage for three days behind an exemption")
+        print("written for Forta on the same line.")
+
     loose = unclaimed_percentages()
     if loose:
         print("\n%d published percentage(s) on accuracy lines that NO target claims:"
@@ -420,11 +496,11 @@ def main():
         print("\nAdd a TARGETS entry, or stop publishing the number. An unguarded figure")
         print("is how the previous four drifted, all of them in the flattering direction.")
 
-    if not stale and not loose and not dead:
+    if not stale and not loose and not dead and not unsourced:
         print("Everything published matches the benchmark.")
         return 0
 
-    if dead and not stale and not loose:
+    if (dead or unsourced) and not stale and not loose:
         return 1
 
     print("\n%d published figure(s) disagree with bench/results.json:" % len(stale))
