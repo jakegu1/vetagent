@@ -5,7 +5,7 @@
 > page cannot quietly drift out of date. `tests/test_owner_page.py` fails the
 > build if it does.
 >
-> Generated 2026-09-08.
+> Generated 2026-09-09.
 
 ## The project in one paragraph
 
@@ -21,44 +21,44 @@ These are the things I cannot do. Everything else in this project is mine.
 
 | When | Due | # | What you do | Blocked? |
 |---|---|---|---|---|
-| **in 10 days** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
-| **in 10 days** | 2026-09-18 | W11 | Answer the 2026-09-18 gate | no |
-| **in 10 days** | 2026-09-18 | -- | Post Experiment C | no |
-| in 38 days | 2026-10-16 | W5 | A second, independent sell-simulation source | **yes -- see below** |
-| in 38 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
+| **in 9 days** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
+| **in 9 days** | 2026-09-18 | W11 | Answer the 2026-09-18 gate | no |
+| **in 9 days** | 2026-09-18 | -- | Post Experiment C | no |
+| in 37 days | 2026-10-16 | W5 | A second, independent sell-simulation source | **yes -- see below** |
+| in 37 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
 | no date | -- | W13 | Move the Cloudflare account and zone ids out of the public repo | no |
 
 ### W10 Create the two accounts the remaining directories need
 
-- **When:** 2026-09-18 (**in 10 days**)
+- **When:** 2026-09-18 (**in 9 days**)
 - **Why then:** distribution is the whole of the gate's failing branch
 - **You know it is done when:** `CHANNELS` in `bench/scorecard.py`, updated only by someone who went and looked
 - **If you do nothing:** Nothing. Six submissions are already queued and the two parked ones are one signup away; waiting costs reach, not work.
 
 ### W11 Answer the 2026-09-18 gate
 
-- **When:** 2026-09-18 (**in 10 days**)
+- **When:** 2026-09-18 (**in 9 days**)
 - **Why then:** this IS the gate -- it has to be answered on the day
 - **You know it is done when:** `python bench/usage.py`, counting rule already fixed in code; then a `Resolved:` line in `STRATEGY.md` §8, which `test_gates_get_reviewed.py` requires once due
 - **If you do nothing:** A gate that passes its date in silence teaches everyone that gates are decoration, and this is the first one that can stop the project.
 
 ###  Post Experiment C
 
-- **When:** 2026-09-18 (**in 10 days**)
+- **When:** 2026-09-18 (**in 9 days**)
 - **Why then:** The gate's failing branch prescribes exactly this, so it happens either way. Drafts are written and every number in them is checked by the build: docs/EXPERIMENT_C.md. Nothing is posted without you -- it is your name on it.
 - **You know it is done when:** a post exists on at least one of HN, r/ethdev, X or the MCP Discord
 - **If you do nothing:** This is the one action that can change the 09-18 answer. Not doing it does not delay the gate -- the gate still fires, and it fires on no.
 
 ### W5 A second, independent sell-simulation source
 
-- **When:** 2026-10-16 (in 38 days)
+- **When:** 2026-10-16 (in 37 days)
 - **Why then:** needed for W3, which every accuracy claim rests on
 - **You know it is done when:** **Blocked** on a credential, not on engineering. Probed 2026-09-06: staysafu unreachable (SSL), quickintel 401, tokensniffer 401, de.fi public endpoint 404. Every candidate needs a paid key — this is a W9-shaped item that belongs to whoever holds the budget
 - **If you do nothing:** Every accuracy claim keeps resting on a single sell simulator. If it is wrong, we cannot tell, and neither can anyone reading the benchmark.
 
 ### W12 Decide the price-history trade-off
 
-- **When:** 2026-10-16 (in 38 days)
+- **When:** 2026-10-16 (in 37 days)
 - **Why then:** changes what the benchmark can measure, so before the D gate
 - **You know it is done when:** A decision recorded in `DECISIONS.md`, either way
 - **If you do nothing:** The 10-16 gate arrives with the measurement question still open, so that gate answers a smaller question than it was meant to.
@@ -78,10 +78,10 @@ next -- including stopping.
 
 | Date | When | The question | What happens |
 |---|---|---|---|
-| 2026-09-18 | **in 10 days** | Is anyone using it | Yes → continue; no → run only Experiment C, add no features |
-| 2026-10-16 | in 38 days | Does anyone want to pay | Yes → build payments; no → pick a different customer segment and run D again |
-| 2026-12-04 | in 87 days | Is further investment worth it | Yes → continue per §7; no → move to low-maintenance mode |
-| 2027-03-04 | in 177 days | Does the data asset hold up | Yes → that becomes the main product; no → keep the tool, drop the data narrative |
+| 2026-09-18 | **in 9 days** | Is anyone using it | Yes → continue; no → run only Experiment C, add no features |
+| 2026-10-16 | in 37 days | Does anyone want to pay | Yes → build payments; no → pick a different customer segment and run D again |
+| 2026-12-04 | in 86 days | Is further investment worth it | Yes → continue per §7; no → move to low-maintenance mode |
+| 2027-03-04 | in 176 days | Does the data asset hold up | Yes → that becomes the main product; no → keep the tool, drop the data narrative |
 
 ## Where it stands today
 
@@ -108,6 +108,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- "Corrected in three surfaces" had survived in four more
 - The no-tool-calls branch put two windows in one sentence, and file the rest
 - One gate, four written bars, and every one of them easier than the code
 - The field added to disclose a truncation could not disclose a half scan
@@ -115,9 +116,8 @@ problem looked like before it was fixed.
 - The owner-page test I added this morning reddens by itself, twice a day
 - A caller whose HTTP calls all failed was invisible to the gate
 - E11 inside the line whose own comment says "say what was dropped"
-- The workflow written to prevent the 233-agent run had never been run
 
-_159 more not shown (167 commits in total)._
+_160 more not shown (168 commits in total)._
 
 ## What I got wrong
 

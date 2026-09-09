@@ -147,9 +147,35 @@ CHANNELS = [
     ("Smithery", True),                         # "Published Sep 7, 2026"
     # Submitted and waiting. See docs/HANDOFF.md for the issue and PR numbers.
     ("mcp.so", False),                          # chatmcp/mcpso#3987
-    ("mcpservers.org", False),                  # submitted 09-08, 12h review queue
-    ("awesome-mcp-servers", False),             # punkpeye#13873, bot check answered
-    ("awesome-remote-mcp-servers", False),      # jaw9c#733
+    # Approved by email on 2026-09-09 ("now live on mcpservers.org") and NOT VISIBLE on
+    # the site. Checked the same day in a browser, not with curl, because curl gets 403
+    # from their bot protection and a 403 is not an absence: the rendered page, the
+    # 494 KB /en/remote-mcp-servers listing of 320 entries, __NEXT_DATA__, every inline
+    # payload, the loaded bundle and their own search all contain no "vetagent".
+    # An approval email is not a listing. Stays False until a reader can reach it.
+    ("mcpservers.org", False),
+    # None = measured inapplicable, excluded from the denominator. Same treatment, and the
+    # same standard of evidence, as LP lock / burn above.
+    #
+    # PR #13873 was CLOSED on 2026-09-08 and the maintainer said why: remote servers are
+    # being split out of this list into punkpeye/awesome-remote-mcp-servers, so this list
+    # is now local/stdio servers by definition. VetAgent is a remote server. There is no
+    # future in which this row can be True, and that is the maintainer's stated fact, not
+    # our preference -- which is the exact line that separates this from the two rows
+    # parked below.
+    #
+    # The restructure is deliberately score-neutral so it cannot be self-serving: this row
+    # leaves the denominator and the remote row below splits into the two independent lists
+    # it was wrongly collapsing, so the denominator stays at twelve and the score stays at
+    # 4/12. It would have been done the same way if the arithmetic had gone the other way.
+    ("awesome-mcp-servers (local/stdio only)", None),
+    # Two different lists with nearly the same name, run by different people, each needing
+    # its own PR -- one row for both was double-counting one opportunity and hiding the
+    # other. punkpeye's is the one that matters: it is the split-out half of a 60k-star
+    # list, and its CI independently verified our endpoint's `initialize` handshake and our
+    # Glama connector before going green.
+    ("awesome-remote-mcp-servers (jaw9c)", False),      # jaw9c#733, opened 09-07, mergeable
+    ("awesome-remote-mcp-servers (punkpeye)", False),   # punkpeye#131, opened 09-09, CI pass
     ("Docker MCP registry", False),             # docker/mcp-registry#4954
     ("Cline marketplace", False),               # cline/mcp-marketplace#2471
     # Parked by the owner on 2026-09-08: both need an account only he can create, and he
@@ -182,7 +208,12 @@ def score():
     applicable = [(n, ok) for n, ok in RISK_VECTORS if ok is not None]
     rejected = [n for n, ok in RISK_VECTORS if ok is None]
     covered = sum(1 for _, ok in applicable if ok)
-    listed = sum(1 for _, ok in CHANNELS if ok)
+    # A channel with `ok is None` has been measured inapplicable and leaves the denominator,
+    # exactly as a rejected risk vector does. `if ok` alone would have counted None as a
+    # miss and kept it in the denominator, which is the same as False -- so the exclusion
+    # has to be filtered here, not just annotated in the table.
+    channels = [(n, ok) for n, ok in CHANNELS if ok is not None]
+    listed = sum(1 for _, ok in channels if ok)
 
     # Demand and external callers cannot be read automatically yet (needs a
     # Cloudflare token), so they are recorded as "not measured" rather than 0 —
@@ -222,8 +253,8 @@ def score():
 
     # --- Distribution 15 ---
     items.append(("Distribution", "channels listed on", 10,
-                  round(10.0 * listed / len(CHANNELS), 1),
-                  "%d / %d" % (listed, len(CHANNELS))))
+                  round(10.0 * listed / len(channels), 1),
+                  "%d / %d" % (listed, len(channels))))
     items.append(("Distribution", "external callers", 5,
                   None if external_callers is None else min(5, external_callers),
                   UNMEASURED + " (needs CLOUDFLARE_API_TOKEN, see bench/usage.py)"))
@@ -291,16 +322,33 @@ def render(items, facts):
 
     A("\n## Risk dimension coverage\n")
     A("Every unchecked line is a real blind spot, and the roadmap itself.\n")
+    # Three states, three glyphs. `None` means measured inapplicable and excluded from the
+    # denominator, and it rendered as the same empty box as "not covered" -- so this
+    # document showed LP lock / burn as an open gap for four days while the code was
+    # excluding it, and would have shown a channel we can never be listed on as a channel
+    # we simply have not reached. A row the arithmetic treats differently has to read
+    # differently, or the page contradicts the score it is reporting.
+    def cell(ok):
+        if ok is None:
+            return "➖ n/a"
+        return "✅" if ok else "⬜"
+
     A("\n| Dimension | Covered |")
     A("|---|---|")
     for name, ok in RISK_VECTORS:
-        A("| %s | %s |" % (name, "✅" if ok else "⬜"))
+        A("| %s | %s |" % (name, cell(ok)))
+    A("\n`➖ n/a` = measured and found not to be a dimension. Excluded from the "
+      "denominator rather than counted as a gap, with the measurement in "
+      "`bench/scorecard.py`.")
 
     A("\n## Distribution channels\n")
     A("| Channel | Listed |")
     A("|---|---|")
     for name, ok in CHANNELS:
-        A("| %s | %s |" % (name, "✅" if ok else "⬜"))
+        A("| %s | %s |" % (name, cell(ok)))
+    A("\n`⬜` = not listed, and for six of these a submission is already open: **submitted "
+      "is not listed.** `➖ n/a` = the channel cannot apply to this product, on the "
+      "maintainer's own statement, so it leaves the denominator.")
 
     A("\n---\n")
     A("**What 100 looks like** (deliberately not trimmed to what we can reach): recall >90%")

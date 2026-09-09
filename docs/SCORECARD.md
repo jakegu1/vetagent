@@ -21,12 +21,12 @@
 
 | Dimension | Item | Score | Max | Evidence |
 |---|---|---|---|---|
-| Correctness | tests all green | 10.0 | 10 | test_risk.py 267 passed, 0 failed All passed; test_mcp.py 73 passed, 0 failed All passed |
+| Correctness | tests all green | 10.0 | 10 | test_risk.py 272 passed, 0 failed All passed; test_mcp.py 73 passed, 0 failed All passed |
 | Correctness | false positive rate (healthy rated high) | 8.0 | 10 | 4.3% |
 | Correctness | unknown rate | 6.0 | 10 | 15.3% |
 | Coverage | risk dimensions covered | 16.4 | 20 | 9 / 11 |
 | Credibility | recall is measurable | 10.0 | 10 | dead samples: 30 (need ≥20) |
-| Credibility | days of snapshots | 0.3 | 10 | 5 of 180 days |
+| Credibility | days of snapshots | 0.3 | 10 | 6 of 180 days |
 | Distribution | channels listed on | 3.3 | 10 | 4 / 12 |
 | Distribution | external callers | — | 5 | not measured (needs CLOUDFLARE_API_TOKEN, see bench/usage.py) |
 | Demand | paying users | 0.0 | 10 | 0 |
@@ -62,9 +62,11 @@ Every unchecked line is a real blind spot, and the roadmap itself.
 | holder concentration (Solana) | ✅ |
 | mint / freeze authority (Solana) | ✅ |
 | holder concentration (EVM) | ⬜ |
-| LP lock / burn | ⬜ |
+| LP lock / burn | ➖ n/a |
 | same-name token impersonation | ✅ |
 | deployer history | ⬜ |
+
+`➖ n/a` = measured and found not to be a dimension. Excluded from the denominator rather than counted as a gap, with the measurement in `bench/scorecard.py`.
 
 ## Distribution channels
 
@@ -76,12 +78,15 @@ Every unchecked line is a real blind spot, and the roadmap itself.
 | Smithery | ✅ |
 | mcp.so | ⬜ |
 | mcpservers.org | ⬜ |
-| awesome-mcp-servers | ⬜ |
-| awesome-remote-mcp-servers | ⬜ |
+| awesome-mcp-servers (local/stdio only) | ➖ n/a |
+| awesome-remote-mcp-servers (jaw9c) | ⬜ |
+| awesome-remote-mcp-servers (punkpeye) | ⬜ |
 | Docker MCP registry | ⬜ |
 | Cline marketplace | ⬜ |
 | Claude plugin directory | ⬜ |
 | OpenAI plugin directory | ⬜ |
+
+`⬜` = not listed, and for six of these a submission is already open: **submitted is not listed.** `➖ n/a` = the channel cannot apply to this product, on the maintainer's own statement, so it leaves the denominator.
 
 ---
 
