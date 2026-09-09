@@ -159,6 +159,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W23: the self-report guards proved presence, never substance
 - Repair W21's row, damaged by the same backtick substitution
 - W24: one address had 2^40 spellings and every one was a cache miss
 - CLAUDE.md: the quoting trap has two mechanisms, not one
@@ -166,9 +167,8 @@ problem looked like before it was fixed.
 - W22: the tool that has misled callers twice now declares its shape
 - W21: the number guard checked matching, never coverage
 - W26: the launch post rewritten against the comment that would have sunk it
-- The archive strip on the visual owner page too
 
-_183 more not shown (191 commits in total)._
+_184 more not shown (192 commits in total)._
 
 ## What I got wrong
 

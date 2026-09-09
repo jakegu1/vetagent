@@ -261,8 +261,17 @@ def goplus_label(payload, address, recent_volume_7d=None):
     # rather than being called safe -- we cannot tell, and saying so is the point.
     adversarial = []
     honeypot_flag = _flag(d, "is_honeypot")
-    honeypot_testable = (recent_volume_7d is None
-                         or recent_volume_7d >= HONEYPOT_TESTABLE_VOL_7D)
+    # `is None` means the 7-day volume could NOT be established, and the first version of
+    # this line read it as testable -- an unobserved dimension treated as an observed one,
+    # inside the calibration whose own comment three paragraphs up calls that E1 and says
+    # the token should leave the labelled set instead. The code contradicted its comment.
+    #
+    # Latent rather than active: all 17 tokens in the current cohort have a known volume,
+    # and 16 of them cleared the $1,000 bar with $6.5k-$13.7k of real 7-day trade, so no
+    # row changes today. It would have fired the first time an outcome lookup failed --
+    # which is exactly when an unfalsifiable honeypot flag is most likely to be wrong.
+    honeypot_testable = (recent_volume_7d is not None
+                         and recent_volume_7d >= HONEYPOT_TESTABLE_VOL_7D)
     if honeypot_flag and honeypot_testable:
         adversarial.append("honeypot")
     if _flag(d, "cannot_sell_all"):
@@ -294,12 +303,23 @@ def goplus_label(payload, address, recent_volume_7d=None):
         privileged.append("mintable and owner has not renounced")
 
 
+    # Every field this function reads, so a stranger can re-derive the label from the
+    # frozen dataset. It could not before: the subset stored 18 keys, this function reads
+    # 15, and `cannot_buy`, `cannot_sell_all` and `personal_slippage_modifiable` were
+    # missing -- three of the five adversarial traits, which is the half that decides the
+    # cohort the headline recall is computed on.
+    #
+    # "Labels are frozen in the tracked bench/dataset.json" was true. "You can check how
+    # they were derived" was not, in the project whose one differentiator is that its
+    # method can be re-run. Found by trying to replay the labeller against the committed
+    # dataset and getting `None` for all 576 rows.
     subset = {k: d.get(k) for k in (
         "is_honeypot", "honeypot_with_same_creator", "is_mintable", "transfer_pausable",
         "is_blacklisted", "slippage_modifiable", "can_take_back_ownership",
         "owner_change_balance", "hidden_owner", "selfdestruct", "is_open_source",
         "is_proxy", "buy_tax", "sell_tax", "holder_count", "trust_list",
-        "owner_address") if k in d}
+        "owner_address",
+        "cannot_buy", "cannot_sell_all", "personal_slippage_modifiable") if k in d}
     subset["reputable"] = reputable
     subset["cex_listed"] = list(cex.get("cex_list") or [])[:3]
 

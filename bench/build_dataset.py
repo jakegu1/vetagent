@@ -48,9 +48,27 @@ HEAD_CHAINS = ["ethereum", "base", "bsc"]
 #
 # A source that cannot fill its quota gives the remainder back to the others, so a day
 # with no backfill on disk still produces a full set.
+# Rebalanced 2026-09-09 on measured yield rather than intuition. W3 needs the adversarial
+# cohort past 17, and the row said the lever was "more recent days, or a deeper sample per
+# day". Measuring first said something more specific:
+#
+#     source      sampled   adversarial   yield
+#     snapshot        104             7    6.7%
+#     backfill        285             9    3.2%
+#     head            187             1    0.5%
+#
+# The archive is twice as productive as backfill and thirteen times the head pages, and it
+# is the only source that grows on its own. It also UNDERFILLED its 30% quota -- it took
+# 104 of an allowed 173 -- which read like a depth problem and was not: the archive was
+# three days old the day the dataset was built. It now holds 4,631 distinct base tokens
+# across seven days, twenty-six times the quota it could not fill.
+#
+# So the shift comes out of backfill, not out of head. Head is the control group the
+# false-positive rate is measured against, and B8 exists because truncation once starved
+# it; that mistake is not worth repeating in the opposite direction.
 SOURCE_QUOTA = {
-    "backfill": 0.40,   # resolved outcomes, in quantity, from chain history
-    "snapshot": 0.30,   # the contemporaneous archive -- where the bad ones came from
+    "backfill": 0.25,   # resolved outcomes from chain history; 3.2% adversarial
+    "snapshot": 0.45,   # the contemporaneous archive; 6.7% adversarial, and it compounds
     "head": 0.30,       # established tokens; the control group, deliberately boring
 }
 

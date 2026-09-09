@@ -135,6 +135,13 @@ jobs:
       - name: Every published number is covered by something
         run: python tests/test_number_coverage.py
 
+      # The launch post's central claim is that the METHOD is reproducible. The frozen
+      # dataset stored 18 oracle fields where the labeller reads 15, and four of those --
+      # three of them adversarial traits -- were not among them, so a stranger could not
+      # re-derive a single label. "Frozen" was true; "checkable" was not.
+      - name: The frozen dataset can re-derive its own labels
+        run: python tests/test_dataset_replayable.py
+
   # Upstream contract monitor: real API calls that check the fields we depend on still exist.
   # Separate from the unit tests: a third-party outage turns it red, which is the signal.
   upstream-contract:
