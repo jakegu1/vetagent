@@ -132,7 +132,7 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **9 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **8 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -159,16 +159,16 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- The archive strip on the visual owner page too
+- W25 decided: the archive stays public, with a threshold instead of an argument
 - I got the adversarial cohort wrong, then pointed a guard at the error
 - The live /llms.txt carried three stale counts the guard never covered
 - Two FATAL findings from the hostile review of the launch post
 - The test I added yesterday turned the build red on eight commits
 - An HTML view of the owner's page, generated from the same one file
 - Two generated diagrams on the owner page, and not a diagramming pipeline
-- "The only part of this product that cannot be copied" — we publish it, 4x a day
-- Blockaid's false-positive rate was wrong by 10x on the live homepage
 
-_174 more not shown (182 commits in total)._
+_176 more not shown (184 commits in total)._
 
 ## What I got wrong
 

@@ -95,12 +95,45 @@ TARGETS = [
     ("docs/EXPERIMENT_C.md", r"\| \*\*([\d.]+)%\*\* \(3 of \d+\) \|", "dead_high_pct"),
     ("docs/EXPERIMENT_C.md", r"we rate only ([\d.]+)%", "dead_high_pct_round"),
     ("docs/EXPERIMENT_C.md", r"([\d.]+)% dead-token recall", "dead_high_pct_round"),
-    ("docs/EXPERIMENT_C.md", r"GoPlus's labels it is ([\d.]+)%", "goplus_fp_pct"),
     ("docs/EXPERIMENT_C.md", r"same pool only ([\d.]+)% of the time", "pool_match_pct"),
     ("docs/EXPERIMENT_C.md", r"\*\*([\d.]+)% of the dataset is Base",
      "base_share_pct"),
     ("docs/EXPERIMENT_C.md", r"adversarial cohort is ([\d.]+)% Base", "bad_base_share_pct"),
     ("docs/EXPERIMENT_C.md", r"dataset is ([\d.]+)% Base\" and", "base_share_pct"),
+    # The rewritten post leads with the number the old one never printed: recall on the
+    # adversarial cohort, in both columns. A review found the post described four of its
+    # five figures wrongly, so every figure it now carries is bound to the benchmark
+    # rather than typed -- including, deliberately, the ablated ones, because publishing
+    # 64.7% without 17.6% beside it is the flattering half of a pair.
+    ("docs/EXPERIMENT_C.md", r"the engine rates \*\*([\d.]+)%\*\* \(\d+ of \d+\) high risk",
+     "adversarial_high_pct"),
+    ("docs/EXPERIMENT_C.md", r"the engine rates \*\*[\d.]+%\*\* \((\d+) of \d+\) high risk",
+     "adversarial_high_n"),
+    ("docs/EXPERIMENT_C.md", r"the engine rates \*\*[\d.]+%\*\* \(\d+ of (\d+)\) high risk",
+     "adversarial_n"),
+    ("docs/EXPERIMENT_C.md", r"liquidity signals and it is \*\*([\d.]+)%\*\*",
+     "adversarial_high_ablated_pct"),
+    ("docs/EXPERIMENT_C.md", r"with \*\*([\d.]+)%\*\* rated \*low\*",
+     "adversarial_low_ablated_pct"),
+    ("docs/EXPERIMENT_C.md",
+     r"Adversarial contracts rated high \(n=\d+\) \| \*\*([\d.]+)%\*\*",
+     "adversarial_high_pct"),
+    ("docs/EXPERIMENT_C.md",
+     r"Adversarial contracts rated high \(n=\d+\) \| \*\*[\d.]+%\*\* \(\d+ of \d+\) \| \*\*([\d.]+)%\*\*",
+     "adversarial_high_ablated_pct"),
+    ("docs/EXPERIMENT_C.md",
+     r"not rated low \(n=\d+\) \| [\d.]+% \(\d+ of \d+\) \| \*\*([\d.]+)%\*\*",
+     "dead_not_low_ablated_pct"),
+    ("docs/EXPERIMENT_C.md", r"([\d.]+)% becoming [\d.]+% is the clearest case",
+     "dead_not_low_pct"),
+    ("docs/EXPERIMENT_C.md", r"[\d.]+% becoming ([\d.]+)% is the clearest case",
+     "dead_not_low_ablated_pct"),
+    ("docs/EXPERIMENT_C.md", r"a median of \$([\d,]+) in the pool", "alive_median_liq"),
+    ("docs/EXPERIMENT_C.md", r"Of the (\d+) tokens where the engine saw", "alive_deep_n"),
+    ("docs/EXPERIMENT_C.md", r"All (\d+) false positives are among", "fp_n"),
+    ("docs/EXPERIMENT_C.md", r"are among the (\d+)\s+thin ones", "alive_thin_n"),
+    ("docs/EXPERIMENT_C.md", r"held-out contract oracle it is ([\d.]+)%", "goplus_fp_pct"),
+    ("docs/EXPERIMENT_C.md", r"pushes that\s+([\d.]+)% \*\*down\*\*", "goplus_fp_pct"),
     # The landing page carried three stale counts in PROSE -- "20 confirmed-dead
     # tokens", "2 of those 20", "about five tokens" -- while the percentages beside them
     # were current, because the guard only checked percentages. A bare integer drifts
@@ -153,6 +186,18 @@ def _maturity():
     with io.open(path, encoding="utf-8") as f:
         m = re.search(r"## Total: \*\*(\d+) / \d+\*\*", f.read())
     return m.group(1) if m else None
+
+
+def _pct(a, b):
+    return "%.1f" % (100.0 * a / b) if b else "0.0"
+
+
+def _median(xs):
+    xs = sorted(xs)
+    if not xs:
+        return 0
+    mid = len(xs) // 2
+    return xs[mid] if len(xs) % 2 else (xs[mid - 1] + xs[mid]) / 2.0
 
 
 def figures():
@@ -218,7 +263,41 @@ def figures():
         # `bad_n` -- an outcome-label composition count -- and enforced 47 where the
         # benchmark reports 17 (bench/results.md:112). A number with no source of
         # truth is worse than an unguarded one: the guard makes the error look checked.
+        "fp_n": "%d" % len([r for r in alive if r.get("verdict") == "high"]),
         "adversarial_n": "%d" % len(unsafe_rows),
+        # The number the post's own title promises and never printed: how often the engine
+        # rates an actually-adversarial contract high. Both columns, because the full one
+        # leans on the liquidity check and 15 of these 17 hold under a dollar -- publishing
+        # 64.7% without 17.6% beside it is the flattering half of a pair.
+        "adversarial_high_pct": _pct(
+            len([r for r in unsafe_rows if r.get("verdict") == "high"]), len(unsafe_rows)),
+        "adversarial_high_ablated_pct": _pct(
+            len([r for r in unsafe_rows if r.get("verdict_ablated") == "high"]),
+            len(unsafe_rows)),
+        "adversarial_low_ablated_pct": _pct(
+            len([r for r in unsafe_rows if r.get("verdict_ablated") == "low"]),
+            len(unsafe_rows)),
+        "adversarial_high_n": "%d" % len([r for r in unsafe_rows
+                                          if r.get("verdict") == "high"]),
+        # Same pairing for the dead cohort. 86.7% is the liquidity check noticing an empty
+        # pool, which bench/results.md calls "close to a tautology"; ablated it is 20%.
+        "dead_not_low_ablated_pct": _pct(
+            len([r for r in dead if r.get("verdict_ablated") != "low"]), len(dead)),
+        # The population the false-positive rate is measured on. Every one of the 7 misses
+        # sits in the thin tail; the 150 deep-pool tokens produced none.
+        "alive_median_liq": "{:,}".format(int(_median(
+            [r.get("liquidity_usd") for r in alive
+             if r.get("liquidity_usd") is not None]))),
+        "alive_deep_n": "%d" % len([r for r in alive
+                                    if (r.get("liquidity_usd") or 0) >= 10000]),
+        "alive_deep_high_n": "%d" % len([r for r in alive
+                                         if (r.get("liquidity_usd") or 0) >= 10000
+                                         and r.get("verdict") == "high"]),
+        "alive_thin_n": "%d" % len([r for r in alive
+                                    if (r.get("liquidity_usd") or 0) < 10000]),
+        "alive_thin_high_n": "%d" % len([r for r in alive
+                                         if (r.get("liquidity_usd") or 0) < 10000
+                                         and r.get("verdict") == "high"]),
         "adversarial_sub_dollar_n": "%d" % len([r for r in unsafe_rows
                                                 if (r.get("liquidity_usd") or 0) < 1
                                                 and r.get("liquidity_usd") is not None]),
@@ -342,7 +421,7 @@ RETRACTED_CLAIMS = (
 # The vendors whose own published figures we quote. A number beside one of these names is
 # theirs, not ours, so TARGETS cannot guard it and a retrieval date has to.
 COMPETITORS = ("Hypernative", "Forta", "Blockaid", "ChainAware", "HoneypotScan",
-               "Solsniffer")
+               "Solsniffer", "Mindjack", "Rug Munch")
 
 
 def unsourced_competitor_figures(files):
@@ -379,7 +458,7 @@ def unsourced_competitor_figures(files):
             if not named:
                 continue
             near = "\n".join(lines[max(0, i - 1 - WINDOW):i + WINDOW])
-            if re.search(r"checked \d{4}-\d{2}-\d{2}|https?://", near):
+            if re.search(r"checked\s+\d{4}-\d{2}-\d{2}|https?://|arXiv \d{4}\.\d{4,5}", near):
                 continue
             out.append((rel, i, ", ".join(named), line.strip()[:76]))
     return out
@@ -493,12 +572,25 @@ def unclaimed_percentages():
 
 
 def _is_cited_competitor_figure(line, all_lines, window=2):
-    """True when this line's number belongs to a named competitor AND is dated."""
-    if not any(v.lower() in line.lower() for v in COMPETITORS):
-        return False
+    """True when this number belongs to somebody else AND carries a source.
+
+    Both halves are checked over a WINDOW, not the line. The first version required the
+    vendor's name on the same physical line as its percentage, and prose wraps -- "Among
+    MCP servers, **Mindjack** publishes ..." and "about 35% of the time" are one sentence
+    and two lines. That was the third time in one day that a rule about a sentence was
+    being evaluated one line at a time.
+
+    An arXiv identifier counts as a source on its own, without a vendor name: a published
+    paper with a released dataset is a stronger citation than a vendor page, and permanent.
+    """
     i = all_lines.index(line)
     near = "\n".join(all_lines[max(0, i - window):i + window + 1])
-    return bool(re.search(r"checked \d{4}-\d{2}-\d{2}|https?://", near))
+    cite = r"checked\s+\d{4}-\d{2}-\d{2}|https?://|arXiv \d{4}\.\d{4,5}"
+    if re.search(r"arXiv \d{4}\.\d{4,5}", near):
+        return True
+    if not any(v.lower() in near.lower() for v in COMPETITORS):
+        return False
+    return bool(re.search(cite, near))
 
 
 def main():

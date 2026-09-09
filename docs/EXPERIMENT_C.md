@@ -37,66 +37,110 @@
 
 ## Hacker News
 
-**Title:** I published the error rate of my crypto risk API, including the bad numbers
+**Title:** I published my crypto risk API's error rate, including the number that makes it look worst
 
-Every token-safety scanner tells you a token is risky. None of them tells you how often
-they are wrong, in a way you can check.
+**The number the title is actually about, first.** On 17 contracts an independent oracle
+labels adversarial, the engine rates **64.7%** (11 of 17) high risk. Strip out the
+liquidity signals and it is **17.6%**, with **35.3%** rated *low*. Fifteen of those 17
+hold under a dollar of liquidity, so the full column is substantially measuring "is this
+pool empty" rather than "is this contract hostile". Seventeen is a small cohort and I will
+say so before you do; growing it is the top open item in the backlog.
 
-A few publish a number. Hypernative says 99.8% of hacks detected with under 0.001% false
-positives. Forta says >99% recall. Blockaid says <0.0002% FP. (Each is that vendor's
-own published figure, checked 2026-09-09.) None of them publishes a
-dataset, a denominator, a definition of what counts as a positive, or a method anyone can
-re-run. I went looking specifically for one and did not find it. Solsniffer's own pricing
-FAQ asks "How accurate is the analysis?" and answers "battle-tested" — on a product with
-a $997/month tier.
+That is the honest headline for a tool that claims to spot bad tokens, and it is not
+flattering.
 
-So here is mine, measured on 576 tokens across Ethereum, BSC and Base, with the harness
-in the repo:
+**On what other people publish, corrected.** An earlier draft of this post said nobody in
+this category publishes an error rate. That is false and I got it wrong repeatedly before
+a pre-publication review caught it:
 
-| | |
-|---|---|
-| False positives (healthy tokens rated high) | **4.3%** (7 of 162) |
-| Answers returned as `unknown` | **15.3%** (88 of 576) |
-| Tokens GoPlus tags centralised, rated high (mostly dust pools, not USDT) | **22.9%** (41 of 179) |
-| Confirmed-dead tokens NOT rated low | 86.7% (26 of 30) |
-| Confirmed-dead tokens rated **high** | **10.0%** (3 of 30) |
+- **Forta** ships labelled datasets on HuggingFace and a starter-kit README printing
+  **59.4% average recall beside 88.6% average precision**, on 15,443 benign and 174
+  malicious contracts with stated cross-validation (Forta's own figures, checked
+  2026-09-09). That is the exact thing I claimed nobody does.
+- **ChainAware** publishes a denominator — 45,904 of 50,948 — defines its positive, and
+  states its own **9.9% miss rate**. (Forta's and ChainAware's figures are their own, on
+  their own pages, checked 2026-09-09.)
+- **Two academic groups** have already benchmarked these scanners on released datasets:
+  arXiv 2309.04700 scores GoPlus at 60% detection on 11,943 labelled trapdoor tokens, and
+  the ISSTA 2025 SoK (arXiv 2403.16082) puts 14 scanners against a public 2,360-instance
+  set.
+- Among MCP servers, **Mindjack** publishes per-band sample sizes and a measured rate, and
+  says its safest band still rugged about 35% of the time (its own published scorecard,
+  checked 2026-09-09).
 
-That last row is the one I would leave out if I were selling something. A tool for
-spotting bad tokens rates 10% of the tokens that actually died as high risk.
+Hypernative (99.8% detection, <0.001% FP), Forta (>99% recall) and Blockaid (<0.0002% FP)
+publish headline numbers with no method attached — those are each vendor's own figures,
+checked 2026-09-09. So the surviving claim is narrower and I will state only that one:
+**I do not know of another vendor that self-publishes its rates together with the harness
+that produces them.** If you know of one, say so and I will link it.
 
-**Things in the report that argue against the tool:**
+Measured on 576 tokens across Ethereum, BSC and Base, 2026-09-07:
 
-- **The false-positive rate depends on who you ask.** Measured against realised market
-  outcome — an oracle causally independent of any contract scanner — it is 4.3%. Measured
-  against GoPlus's labels it is 7.4%, and that number is *circular*, because GoPlus is
-  also this benchmark's labeller. Both are printed, with the circular one named as
-  circular.
-- **The label and the verdict describe the same pool only 57% of the time.** The dataset
-  labels one sampled pool; the engine independently picks its own. So some share of those
-  "false positives" are two answers to two different questions.
-- **The adversarial cohort is 17 tokens, and 16 of them hold under a dollar.** Any recall
-  figure computed on it is measuring whether we flag empty pools.
-- **One feature was measured and deleted.** LP lock/burn detection fires on 58% of good
-  tokens — worse than chance — so it was removed from our own coverage denominator rather
-  than shipped as a checkbox.
-- **58% of the dataset is Base, and the adversarial cohort is 83% Base.** Sampling reaches
-  what three sources could reach, not the market — and the skew is worst exactly where the
-  set is smallest.
+| | full | signals stripped |
+|---|---|---|
+| Adversarial contracts rated high (n=17) | **64.7%** (11 of 17) | **17.6%** |
+| Confirmed-dead tokens not rated low (n=30) | 86.7% (26 of 30) | **20.0%** |
+| Confirmed-dead tokens rated high (n=30) | **10.0%** (3 of 30) | |
+| Healthy tokens rated high — false positives (n=162) | **4.3%** (7 of 162) | |
+| Answers returned as `unknown` (n=576) | **15.3%** (88 of 576) | |
+| Tokens the oracle tags centralised, rated high (n=179) | **22.9%** (41 of 179) | |
 
-The design decision underneath all of it: when a critical check cannot run, the answer is
-`unknown`, never "low risk". That is why 15.3% of answers are a refusal. For a human
-that is an annoyance; for an agent about to spend money it is the only safe default, and
-it is the number a vendor optimising for a demo would bury.
+**Read the second column before the first.** "Signals stripped" removes the liquidity and
+market-depth checks. Where a number collapses under it, the number was substantially
+detecting an empty pool. 86.7% becoming 20.0% is the clearest case, and my own report
+calls the full figure "close to a tautology". I publish both because publishing only the
+first would be the flattering half of a pair.
+
+**The things in the report that argue against the tool:**
+
+- **The false-positive rate is measured where the engine can barely fail.** The healthy
+  control has a median of $636,653 in the pool. Of the 150 tokens where the engine saw
+  $10k or more of depth, **0** were rated high. All 7 false positives are among the 12
+  thin ones — and for four of those the engine found no costable pool at all, which for
+  two became `high` rather than `unknown`. That last part is an engine bug, not a
+  labelling artefact, and it is mine.
+- **22.9% of centralised-tagged tokens rated high is not about USDT.** Almost all 41 are
+  abandoned pools holding cents, median $0.023, caught by the liquidity checks. Owner
+  powers drive none of them — the engine is forbidden from scoring dormant capabilities.
+  USDT itself comes back `low`. An earlier draft explained this row with a mechanism my
+  own code forbids.
+- **The two false-positive rates are not independent in the way I implied.** Against
+  realised market outcome it is 4.3%; against the held-out contract oracle it is 7.4%.
+  I previously called the second "circular". That was the wrong word: the oracle is held
+  out and the build fails if the engine ever reads it. What is true is subtler and worse
+  for me — both it and one of my upstreams simulate sells, so the correlation pushes that
+  7.4% **down**, not up. At this sample size my own report calls the two indistinguishable.
+- **The label and the verdict describe the same pool only 57% of the time.**
+- **`unknown` is a design choice and also a dependency.** Fail-closed is real: a check that
+  cannot run must never read as low risk. But 85 of the 88 unknowns are one free upstream
+  either not having indexed the token or its simulation reverting, on tokens with a median
+  of $225k in the pool. That is my supply chain, not the market's ambiguity.
+- **Zero Solana rows in the benchmark.** The product answers Solana, and the discovery tool
+  defaults to it. The advertised flow — discover, then assess — defaults to the one chain
+  with no measured error rate.
+- **58% of the dataset is Base, and the adversarial cohort is 83% Base.** The skew is worst
+  exactly where the set is smallest.
+- **One feature was measured and deleted.** LP lock/burn fired on 22 of 38 good tokens in a
+  one-off check — worse than chance — so it was removed from the coverage denominator
+  rather than shipped. That check was a spot measurement, not a benchmark run.
 
 Free, no signup, MIT. `https://vetagent.dev/mcp` for MCP, or `GET /assess/<address>`.
-Repo: github.com/jakegu1/vetagent. The **method** is reproducible: labels are frozen in
-the tracked `bench/dataset.json`, the harness is `bench/run_benchmark.py`, and it exits
-non-zero if the engine's endpoints and the labelling endpoints ever intersect. The
-**figures** are a snapshot measured on 2026-09-07 against live upstreams, so a re-run
-today will not land on the same decimals -- expect drift, and tell me if it is large.
 
-I would genuinely like the method attacked. The report names its own weakest points
-because I would rather find them than have a user find them.
+**On reproducing it.** Labels are frozen in the tracked `bench/dataset.json`, the harness
+is `bench/run_benchmark.py`, and it exits non-zero if the engine's endpoints and the
+labelling endpoints ever intersect. Until 2026-09-09 that command did not work on a fresh
+clone — it evaluated for twenty minutes and exited "Benchmark void" because a required
+file was gitignored. That is fixed. The **figures** are a snapshot against live upstreams
+on 2026-09-07, so a re-run today will not land on the same decimals; tell me if the drift
+is large.
+
+What "independent" does and does not mean here: the labels use none of the endpoints the
+engine reads, and the build enforces that. The outcome oracle is independent of every
+contract scanner. It is not independent of the market data the engine also reads — same
+provider, different time slice.
+
+I would rather have the method attacked than have a user find the hole. The weakest points
+are listed above because I would rather be the one who found them.
 
 ---
 
