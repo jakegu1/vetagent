@@ -108,6 +108,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Two emails, and neither said what it appeared to say
 - "Corrected in three surfaces" had survived in four more
 - The no-tool-calls branch put two windows in one sentence, and file the rest
 - One gate, four written bars, and every one of them easier than the code
@@ -115,9 +116,8 @@ problem looked like before it was fixed.
 - Three outward pages said things that are not true
 - The owner-page test I added this morning reddens by itself, twice a day
 - A caller whose HTTP calls all failed was invisible to the gate
-- E11 inside the line whose own comment says "say what was dropped"
 
-_160 more not shown (168 commits in total)._
+_161 more not shown (169 commits in total)._
 
 ## What I got wrong
 
