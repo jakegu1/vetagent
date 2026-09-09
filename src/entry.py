@@ -79,7 +79,7 @@ token is.
 
 False positives (healthy tokens flagged high) ....... 4.3%
 Answers returned as unknown ......................... 15.3%
-Legitimate centralised assets flagged high .......... 22.9%
+Centralised tokens (oracle-tagged) rated high ....... 22.9%
 Dead tokens not rated low ........................... 86.7% (26 of 30)
 
 What that last line does and does not say. Recall was unmeasurable here

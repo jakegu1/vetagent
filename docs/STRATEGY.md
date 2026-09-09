@@ -304,8 +304,16 @@ skipping today loses something permanently.
 
 ### Experiment C — turn accuracy into a talking point (next week, ~1 day, $0)
 Post the benchmark results to r/ethdev, Hacker News, X, and the MCP community.
-The headline is the differentiator: **"we published our own miss rate — nobody in this
-category does"**.
+The headline is the differentiator: **"we published our own miss rate, with the harness
+that reproduces it"**.
+
+> **Corrected 2026-09-09 — sixth survivor.** This line prescribed "nobody in this category
+> does" as the launch headline, which is the claim retracted on 09-06 and corrected five
+> times since. It survived the widened guard because the guard requires "publish" in the
+> sentence and this one says "does". A hostile pre-publication review of the post found it.
+> Several vendors publish a rate, and two academic groups have published re-runnable
+> head-to-head evaluations of these very scanners with released datasets, so the surviving
+> claim is narrower: we are the only vendor that self-publishes one with the harness.
 
 **Signal to read**: discussion volume, calls originating from the posts, whether anyone
 asks "can we use this".

@@ -1,0 +1,14 @@
+{
+ "engine": [],
+ "label": [
+  "api.geckoterminal.com/api/v2/networks/base/pools",
+  "api.geckoterminal.com/api/v2/networks/base/pools/multi/{id}",
+  "api.geckoterminal.com/api/v2/networks/base/pools/{id}/ohlcv/day",
+  "api.geckoterminal.com/api/v2/networks/bsc/pools",
+  "api.geckoterminal.com/api/v2/networks/bsc/pools/{id}/ohlcv/day",
+  "api.geckoterminal.com/api/v2/networks/eth/pools",
+  "api.geckoterminal.com/api/v2/networks/eth/pools/multi/{id}",
+  "api.geckoterminal.com/api/v2/networks/eth/pools/{id}/ohlcv/day",
+  "api.gopluslabs.io/api/v1/token_security/{id}"
+ ]
+}

@@ -39,7 +39,6 @@ bench/cache/
 # mistake this directory exists to prevent.
 bench/build.log
 bench/run.log
-bench/access_log.json
 
 # Backfilled pool history. Deliberately NOT committed, unlike bench/snapshots.
 # The distinction is whether the data can be recovered later: a snapshot records what a

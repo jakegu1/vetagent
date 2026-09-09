@@ -57,7 +57,7 @@ in the repo:
 |---|---|
 | False positives (healthy tokens rated high) | **4.3%** (7 of 162) |
 | Answers returned as `unknown` | **15.3%** (88 of 576) |
-| Legitimate centralised assets (USDT, WBTC…) rated high | **22.9%** (41 of 179) |
+| Tokens GoPlus tags centralised, rated high (mostly dust pools, not USDT) | **22.9%** (41 of 179) |
 | Confirmed-dead tokens NOT rated low | 86.7% (26 of 30) |
 | Confirmed-dead tokens rated **high** | **10.0%** (3 of 30) |
 
@@ -89,8 +89,11 @@ that is an annoyance; for an agent about to spend money it is the only safe defa
 it is the number a vendor optimising for a demo would bury.
 
 Free, no signup, MIT. `https://vetagent.dev/mcp` for MCP, or `GET /assess/<address>`.
-Repo: github.com/jakegu1/vetagent — `bench/run_benchmark.py` reproduces every figure
-above.
+Repo: github.com/jakegu1/vetagent. The **method** is reproducible: labels are frozen in
+the tracked `bench/dataset.json`, the harness is `bench/run_benchmark.py`, and it exits
+non-zero if the engine's endpoints and the labelling endpoints ever intersect. The
+**figures** are a snapshot measured on 2026-09-07 against live upstreams, so a re-run
+today will not land on the same decimals -- expect drift, and tell me if it is large.
 
 I would genuinely like the method attacked. The report names its own weakest points
 because I would rather find them than have a user find them.
@@ -110,8 +113,11 @@ HTTP), and I published the benchmark instead of a marketing number.
 - 4.3% false positives on healthy tokens
 - 15.3% of answers are `unknown` — a critical check could not run, so it refuses rather
   than guessing
-- 22.9% of legitimate centralised tokens (USDT, WBTC) get flagged high, because they
-  genuinely can pause transfers and blacklist addresses
+- 22.9% of the tokens GoPlus tags as centralised are rated high. Almost all of those
+  are abandoned pools holding cents -- 17 of the 22 with a liquidity figure are under a
+  dollar, median $0.023 -- and the drivers are liquidity, drained and honeypot checks,
+  never owner powers, which `_owner_power_signal` is forbidden from scoring. USDT itself
+  is rated low on Base and BSC and medium on Ethereum; WBTC is medium
 - only 10% of tokens that actually died are rated high
 
 The last two are the honest failure modes. Centralised stablecoins really do hold the
@@ -125,8 +131,9 @@ independent oracle the scan finds 37% of the contracts that can pause transfers,
 those that can blacklist and 8% of those that can change the tax. Scoring a check that
 misses most of what it looks for is how false positives get in.
 
-Everything is reproducible — `python bench/run_benchmark.py` regenerates every number,
-and the disagreements are listed by token so you can check them one at a time.
+The method is reproducible and the numbers are a dated snapshot (2026-09-07, live
+upstreams), not a constant — `python bench/run_benchmark.py` re-measures rather than
+replays, and the disagreements are listed by token so you can check them one at a time.
 
 github.com/jakegu1/vetagent
 

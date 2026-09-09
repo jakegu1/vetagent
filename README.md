@@ -109,7 +109,7 @@ method behind them** — including the parts that do not work yet — against la
 produced by data sources **the engine does not read**.
 
 What is measured today: a **4.3% false positive rate** on 162 healthy tokens, a
-**15.3% unknown rate**, and **22.9%** of legitimate centralised assets flagged high.
+**15.3% unknown rate**, and **22.9%** of GoPlus-tagged centralised tokens rated high -- almost all abandoned pools holding cents, not USDT, which is rated low.
 
 What is **not** measured today: **recall**. Sampling has turned up 30 dead tokens in 576,
 because every public source ranks by liquidity and rugged pools fall off the listing

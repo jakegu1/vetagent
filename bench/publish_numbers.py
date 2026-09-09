@@ -62,17 +62,17 @@ TARGETS = [
     # auditor's attention pointed at numbers that had moved -- and it was an auditor who
     # noticed. Bringing it under the same guard as everything else is the only version of
     # this fix that survives the next re-measurement.
-    ("README.md", r"\*\*([\d.]+)%\*\* of legitimate centralised assets flagged high",
+    ("README.md", r"\*\*([\d.]+)%\*\* of GoPlus-tagged centralised tokens rated high",
      "centralized_high_pct"),
     ("src/landing.html",
-     r"<td>Centralised assets \(USDT, WBTC\u2026\) flagged high</td><td class=\"num low\">([\d.]+)%",
+     r"<td>GoPlus-tagged centralised tokens rated high</td><td class=\"num low\">([\d.]+)%",
      "centralized_high_pct"),
     ("src/landing.html", r"<td>Dead tokens not rated low</td><td class=\"num low\">([\d.]+)%",
      "dead_not_low_pct"),
     ("src/landing.html", r"([\d.]+)% of legitimate centralised assets", "centralized_high_pct"),
     ("src/landing.html", r"(\d+) of \d+ confirmed-dead tokens were not rated low",
      "dead_not_low_n"),
-    ("src/entry.py", r"Legitimate centralised assets flagged high \.+ ([\d.]+)%",
+    ("src/entry.py", r"Centralised tokens \(oracle-tagged\) rated high \.+ ([\d.]+)%",
      "centralized_high_pct"),
     ("src/entry.py", r"Dead tokens not rated low \.+ ([\d.]+)%", "dead_not_low_pct"),
     # The "N of M" pairs, which drifted furthest of all: "95% (19 of 20)" was sitting four
@@ -293,8 +293,20 @@ RETRACTED_CLAIMS = (
     # The distinction it has to preserve: "none of them publishes a METHOD you can re-run"
     # is the accurate claim and appears on the landing page and in the launch draft. Only
     # the version denying that anyone publishes a rate is false.
+    # SIXTH survivor, 2026-09-09, at docs/STRATEGY.md:307 -- the line that prescribed the
+    # launch headline: "we published our own miss rate -- nobody in this category does".
+    # The pattern above required "publish" in the sentence and this one says "does", so it
+    # passed. That is three misses from three attempts to describe the predicate.
+    #
+    # Matching the predicate was the mistake. What is invariant across all six survivors is
+    # the SUBJECT -- a universal negative -- sitting next to either "this category" or a
+    # denial about rates. `test_retracted_claim.py` pins every historical phrasing so the
+    # next variant fails a test rather than reaching a reader.
     (r"(?:nobody|no ?one|none of them)\b[^.]{0,80}publish(?:es)?\b"
      r"[^.]{0,60}(?:rate|recall|false.positive)",
+     r"\bnot\b|retracted|several (?:do|publish)|is false|do not claim"),
+    (r"(?:nobody|no ?one|none of them)\b[^.]{0,40}"
+     r"(?:in this category|does it\b|do it\b)",
      r"\bnot\b|retracted|several (?:do|publish)|is false|do not claim"),
 )
 
@@ -345,19 +357,31 @@ def unsourced_competitor_figures(files):
     return out
 
 
-def retracted(files):
-    """Occurrences of a retracted claim that are not the record of its retraction."""
+def retracted(files, window=2):
+    """Occurrences of a retracted claim that are not the record of its retraction.
+
+    The corrective marker is looked for over a WINDOW, not the line, for the same reason
+    `unsourced_competitor_figures` needs one: prose wraps. Both places where this claim is
+    legitimately quoted in order to retract it -- docs/EXPERIMENT_C.md:8 and the correction
+    at docs/STRATEGY.md:310 -- put the claim on one line and "is false" or "retracted" on
+    the next, and a per-line check called both of them violations.
+
+    Second time today that a per-line check failed on wrapped prose. The lesson is the
+    cheap one: a rule about a *sentence* cannot be evaluated one *line* at a time.
+    """
     out = []
     for rel in files:
         path = os.path.join(ROOT, rel)
         if not os.path.exists(path):
             continue
         with io.open(path, encoding="utf-8") as f:
-            for i, line in enumerate(f, 1):
-                low = line.lower()
-                for pattern, corrective in RETRACTED_CLAIMS:
-                    if re.search(pattern, low) and not re.search(corrective, low):
-                        out.append((rel, i, line.strip()[:88]))
+            lines = f.read().splitlines()
+        for i, line in enumerate(lines, 1):
+            low = line.lower()
+            near = "\n".join(lines[max(0, i - 1 - window):i + window]).lower()
+            for pattern, corrective in RETRACTED_CLAIMS:
+                if re.search(pattern, low) and not re.search(corrective, near):
+                    out.append((rel, i, line.strip()[:88]))
     return out
 
 
