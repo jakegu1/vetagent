@@ -40,6 +40,7 @@ HEX32 = re.compile(r"\b[0-9a-f]{32}\b")
 
 _PASSED = 0
 _FAILURES = []
+_UNCHECKED = []
 
 
 def check(name, ok, detail=""):
@@ -50,6 +51,30 @@ def check(name, ok, detail=""):
     else:
         _FAILURES.append((name, detail))
         print("  FAIL  %s  %s" % (name, detail))
+
+
+def unchecked(name, why):
+    """Report a dimension this environment cannot observe. Not a pass, not a failure.
+
+    The first version of this file asserted that the private note exists, which is true on
+    the maintainer's machine and false on a CI runner that checks out only the repository.
+    It turned the build red on eight consecutive commits.
+
+    Deleting the assertion would have been the wrong repair: "we could not look" would
+    then have been indistinguishable from "we looked and it was fine", which is the single
+    most repeated serious bug in this project. So it is reported as its own third state and
+    printed in the summary.
+    """
+    _UNCHECKED.append((name, why))
+    print("  ----  %s  (not checked here: %s)" % (name, why))
+
+
+def _scan_text(text, forbidden):
+    """Every 32-hex token in `text` whose digest is in `forbidden`. One place, so the
+    self-test below exercises exactly the code the real scan runs."""
+    return [forbidden[hashlib.sha256(t.encode()).hexdigest()]
+            for t in HEX32.findall(text)
+            if hashlib.sha256(t.encode()).hexdigest() in forbidden]
 
 
 def tracked_files():
@@ -73,10 +98,8 @@ def test_the_identifiers_are_not_in_any_tracked_file():
         try:
             with io.open(path, encoding="utf-8", errors="ignore") as f:
                 for lineno, line in enumerate(f, 1):
-                    for token in HEX32.findall(line):
-                        digest = hashlib.sha256(token.encode()).hexdigest()
-                        if digest in FORBIDDEN:
-                            hits.append((rel, lineno, FORBIDDEN[digest]))
+                    for what in _scan_text(line, FORBIDDEN):
+                        hits.append((rel, lineno, what))
         except OSError:
             continue
 
@@ -85,36 +108,56 @@ def test_the_identifiers_are_not_in_any_tracked_file():
 
 
 def test_the_private_note_exists_and_is_outside_the_repo():
-    """The values have to live somewhere, and that somewhere must not be here."""
+    """The values have to live somewhere, and that somewhere must not be here.
+
+    Only observable where the note is: on a CI runner the repository is checked out alone,
+    so its parent directory is the runner's workspace and the note is legitimately absent.
+    That is reported as unchecked rather than asserted either way.
+    """
     print("\n[W13] the private note is outside the repository")
     note = os.path.join(os.path.dirname(ROOT), "vetagent-private-notes.md")
-    check("the note exists", os.path.exists(note), note)
+
+    # This half is checkable everywhere and is the one that matters: whatever else is
+    # true, the note must never be a tracked file.
+    check("git does not track a private note",
+          "vetagent-private-notes.md" not in tracked_files())
+
     if not os.path.exists(note):
+        unchecked("the note exists and holds the values",
+                  "no note beside the repo -- expected on a CI runner, "
+                  "a real problem on the maintainer's machine")
         return
     inside = os.path.abspath(note).startswith(os.path.abspath(ROOT) + os.sep)
     check("and it is not inside the repo", not inside, note)
-    check("so git does not track it",
-          "vetagent-private-notes.md" not in tracked_files())
 
 
 def test_the_guard_actually_catches_the_thing():
-    """A guard nobody has watched fail is not a guard. Watch it here, every run."""
+    """A guard nobody has watched fail is not a guard. Watch it here, on every run.
+
+    The fixture is synthesised rather than read from the private note. Using the note was
+    the original design and it was wrong twice over: it could not run in CI, and it tested
+    the *data* rather than the *machinery*. This plants a value that exists only inside
+    this function, so the regex, the hashing and the lookup are exercised everywhere the
+    suite runs -- including on a runner that has never seen the real identifiers.
+    """
     print("\n[W13] the guard fires on a planted value")
-    note = os.path.join(os.path.dirname(ROOT), "vetagent-private-notes.md")
-    if not os.path.exists(note):
-        check("cannot self-test without the note", False, "note missing")
-        return
-    with io.open(note, encoding="utf-8", errors="ignore") as f:
-        text = f.read()
-    found = set()
-    for token in HEX32.findall(text):
-        digest = hashlib.sha256(token.encode()).hexdigest()
-        if digest in FORBIDDEN:
-            found.add(FORBIDDEN[digest])
-    # The note is the one place both values are supposed to be, so it doubles as the
-    # fixture: if the detector cannot find them there, it would not find them anywhere.
-    check("the detector finds both values where they legitimately are",
-          len(found) == 2, "found %s" % (sorted(found) or "nothing"))
+    planted = "0123456789abcdef0123456789abcdef"
+    digest = hashlib.sha256(planted.encode()).hexdigest()
+    fixture = {digest: "a synthetic control value"}
+
+    hits = _scan_text("deploy with account %s today" % planted, fixture)
+    check("the detector finds a planted identifier", len(hits) == 1, str(hits))
+
+    check("and does not fire on an unrelated 32-hex token",
+          not _scan_text("md5 was ffffffffffffffffffffffffffffffff", fixture))
+
+    check("and does not fire on a 40-char git sha",
+          not _scan_text("commit 5a16721" + "a" * 33, fixture))
+
+    # The real digests must still be the ones the real scan uses.
+    check("the real forbidden list is non-empty and hashed",
+          len(FORBIDDEN) == 2 and all(len(d) == 64 for d in FORBIDDEN),
+          str(list(FORBIDDEN)[:1]))
 
 
 def main():
@@ -124,7 +167,10 @@ def main():
     for _, fn in sorted((k, v) for k, v in globals().items() if k.startswith("test_")):
         fn()
     print("\n" + "=" * 68)
-    print("%d passed, %d failed" % (_PASSED, len(_FAILURES)))
+    print("%d passed, %d failed, %d not checked here"
+          % (_PASSED, len(_FAILURES), len(_UNCHECKED)))
+    for name, why in _UNCHECKED:
+        print("  ----  %s  (%s)" % (name, why))
     if _FAILURES:
         print("\nFailures:")
         for name, detail in _FAILURES:

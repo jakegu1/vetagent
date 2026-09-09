@@ -72,6 +72,20 @@ for f in tests/test_*.py; do python "$f"; done   # ~56s
 Then commit, then deploy. Publishing before re-measuring puts a stale number on a live
 page, and `test_published_numbers.py` will fail the build for it.
 
+**Check every workflow, not the one you were thinking about.** There are four —
+`deploy.yml`, `test.yml`, `snapshot.yml`, `usage.yml` — and only `deploy.yml` gates the
+deploy. On 2026-09-09 `test.yml` was red for **eight consecutive commits** while every
+report said the build was green, because each check ran
+`gh run list --workflow=deploy.yml` and stopped there. The owner found it in his email.
+
+```bash
+gh run list --limit 12 --json workflowName,conclusion,headSha \
+  -q '.[]|.conclusion+"  "+.workflowName+"  "+.headSha[0:7]' | sort -u
+```
+
+Same failure shape as reading one page of a directory and reporting the listing absent:
+*checked one place, found green, reported green.*
+
 **Never run two benchmarks at once.** They share `bench/cache/` and race.
 
 ## How work is done here

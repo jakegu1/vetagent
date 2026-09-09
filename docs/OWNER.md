@@ -157,16 +157,16 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- An HTML view of the owner's page, generated from the same one file
+- Two generated diagrams on the owner page, and not a diagramming pipeline
 - "The only part of this product that cannot be copied" — we publish it, 4x a day
 - Blockaid's false-positive rate was wrong by 10x on the live homepage
 - /privacy named four recipients of the token address. There are seven.
 - mcpservers.org is live, and I reported the opposite
 - W13 is done, so its cost-of-waiting line is an orphan
 - W13 closed, and its acceptance test was wrong
-- Regenerate over the snapshot commits the rebase brought in
-- Two emails, and neither said what it appeared to say
 
-_168 more not shown (176 commits in total)._
+_170 more not shown (178 commits in total)._
 
 ## What I got wrong
 
