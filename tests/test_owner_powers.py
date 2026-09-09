@@ -33,20 +33,312 @@ from keccak import selector  # noqa: E402
 _FAILURES = []
 _PASSED = 0
 
-# The signatures each pinned selector is supposed to be. Written out so the test can
-# recompute rather than trust.
+# The signature each pinned selector is supposed to be. GENERATED beside the list itself by
+# `python bench/selector_mine.py --emit`, so the two halves of the guard cannot drift -- a
+# guard whose halves are typed separately is a guard waiting to disagree with itself.
+#
+# The comparison below is by SET, not by tuple. It was by tuple when both sides were typed
+# by hand and twenty-three selectors long; the list is generated and two hundred and
+# ninety-six long now, and ordering carries no meaning, so an order comparison would fail on
+# a re-emit that changed nothing. The strength is unchanged -- every selector still has to
+# recompute from its signature -- and a length check is added beside it, because a set
+# comparison alone would not notice a duplicate.
 SIGNATURES = {
     "can pause transfers": [
-        "pause()", "unpause()", "setPause(bool)", "setPaused(bool)", "pauseTrading()",
-        "setTradingEnabled(bool)", "setTradingStatus(bool)"],
+        "pauseTrading()",
+        "setPaused(bool)",
+        "setBuyRates(uint256)",
+        "MODE_TRANSFER_RESTRICTED()",
+        "areTransfersAllowed()",
+        "transferAllowed()",
+        "setTransferState(bool)",
+        "unpause()",
+        "isPauser(address)",
+        "setPauseRole(address,bool)",
+        "paused()",
+        "setTx(uint256)",
+        "removePauser(address)",
+        "renouncePauser()",
+        "setSellRates(uint256)",
+        "addPauser(address)",
+        "pause()",
+        "allowTransfersFor(address[])",
+        "ExpectedPause()",
+        "nodeBuyEnabled()",
+        "setPreMigrationTransferable(address,bool)",
+        "enableTransfers()",
+        "setPause(bool)",
+        "transfersEnabled()",
+        "updateTransferEnabled(bool)",
+        "transferableBalanceOf(address)",
+        "pauseRoles(address)",
+        "isTransferEnabled()",
+        "TransferPaused()",
+        "TransferRestricted(address,address)",
+        "EnforcedPause()",
+        "PAUSER_ROLE()",
+        "restrictionPeriod()",
+        "pauseSendTokens(bool)",
+        "enableTransfer()",
+        "enableTransfers(bool)",
+        "transferStatus()",
+    ],
+    "can halt trading": [
+        "launch()",
+        "TradingOpen()",
+        "FirstLaunch__AlreadyLaunched()",
+        "TradingAlreadyActive()",
+        "launcher()",
+        "launchContract()",
+        "launch(address)",
+        "startTrading()",
+        "enableTradingStatus(bool)",
+        "setTradingStatus(bool)",
+        "tradingEnabled()",
+        "tradingStarted()",
+        "launchPublic()",
+        "launched()",
+        "setLaunch(address)",
+        "enableTrading()",
+        "launching()",
+        "openTrading(uint256,uint256,uint256,address)",
+        "NotLaunched()",
+        "launchedAtCoefficient()",
+        "finishLaunch()",
+        "NotLauncher()",
+        "marketBuyOpen()",
+        "tradingActive()",
+        "launchedAt()",
+        "setTradingEnabled(bool)",
+        "openTrading()",
+        "launchBlock()",
+        "setMarketOpen(bool,bool)",
+        "TradingNotOpen()",
+        "updateLaunchedAtCoefficient(uint256)",
+        "trading()",
+        "tradingActiveBlock()",
+        "tradingStart()",
+        "openTrade()",
+        "closeTrade()",
+        "launch(uint160,int24,int24)",
+        "tradingStopped()",
+        "tradingOpen()",
+    ],
     "can blacklist addresses": [
-        "blacklist(address)", "addBlackList(address)", "setBlacklist(address,bool)",
-        "isBlackListed(address)", "setBots(address[],bool)", "setBlackList(address,bool)"],
+        "isNotRestricted()",
+        "checkBlacklist()",
+        "addBlackList(address)",
+        "freezeParameters()",
+        "setBlacklist(address,bool)",
+        "blacklists(address)",
+        "FULL_RESTRICTED_STAKER_ROLE()",
+        "blacklistAccount(address,bool)",
+        "delBots(address[])",
+        "isBot(address)",
+        "blacklistRenounced()",
+        "blacklist(address,bool)",
+        "BLACKLIST_MANAGER_ROLE()",
+        "tokenLockAddress()",
+        "BulkisBot(address[],bool)",
+        "getBlackListStatus(address)",
+        "withdrawStuckUnibot()",
+        "renounceBlacklist()",
+        "setBlackList(address,bool)",
+        "unblacklist(address)",
+        "blackListAddress(address,bool)",
+        "isAddressBlacklisted(address)",
+        "setBots(address[],bool)",
+        "deny(address)",
+        "setCheckBlacklist(bool)",
+        "blacklistUpdate(address,bool)",
+        "SOFT_RESTRICTED_STAKER_ROLE()",
+        "removeFromBlacklist(address,bool)",
+        "blacklist(address[],bool)",
+        "BlackListAddress(address,bool)",
+        "setProtectionBot()",
+        "setBlacklisted(address,bool)",
+        "addBots(address[])",
+        "blacklisted(address)",
+        "isBlackListed(address)",
+        "removeBlackList(address)",
+        "parametersFrozen()",
+        "addToBlacklist(address,bool)",
+        "destroyBlackFunds(address)",
+        "blacklist(address)",
+        "isBlacklisted(address)",
+    ],
     "can change the tax": [
-        "setFee(uint256)", "setFees(uint256,uint256)", "setTaxes(uint256,uint256,uint256)",
-        "setBuyTax(uint256)", "setSellTax(uint256)", "setTaxFeePercent(uint256)",
-        "setSellFee(uint256)", "setBuyFee(uint256)"],
-    "can mint new supply": ["mint(address,uint256)", "mint(uint256)"],
+        "updateSellFees(uint256,uint256)",
+        "SetFee(uint256,uint256)",
+        "setTaxFeePercent(uint256)",
+        "changeFeeSell(uint256)",
+        "setFees(uint256,uint256)",
+        "_reduceBuyTaxAt()",
+        "setBuyFee(uint256)",
+        "setBuyFees(uint256,uint256,uint256)",
+        "setExtraSellTax(uint256)",
+        "setSellFees(uint256,uint256,uint256)",
+        "removeTransferTax()",
+        "setBuyFeeLeverage(uint16)",
+        "initialBuyTaxBps()",
+        "setFeeSetting(uint256,uint256,uint256,uint256)",
+        "_initialSellLPFee()",
+        "setFeeOwner(address)",
+        "setFees(uint8,uint8)",
+        "setFeesBuy(uint256,uint256)",
+        "setTokenRoyalty()",
+        "setFeePerMillion(uint256)",
+        "setDefaultFeeBp(uint16)",
+        "updateTaxInfo(address,uint256)",
+        "setTax(uint256,uint256)",
+        "updateBuyFees(uint256,uint256)",
+        "setFee(uint256)",
+        "setBuyFee(uint16)",
+        "setFeeBp(uint16,bool,uint16)",
+        "changeFeeBuy(uint256)",
+        "_initialSellMarketingFee()",
+        "updateBuyFees(uint256,uint256,uint256)",
+        "removeTaxesAndLimits()",
+        "updateFee(uint256,uint256,address)",
+        "setChargeFee(address,bool)",
+        "updateFeeCalculationData(uint256)",
+        "setSellFee(uint256)",
+        "setSellTax(uint256)",
+        "setLiquidityFeePercent(uint256)",
+        "setSellFees(uint256)",
+        "setSwapFee(address,uint256)",
+        "setBuyFeeRatio(uint256)",
+        "setFeesSell(uint256,uint256)",
+        "setEarlySellTax(bool)",
+        "enableEarlySellTax()",
+        "reduceFee()",
+        "changeFeeTransfer(uint256)",
+        "setParams(uint256,uint256)",
+        "updateSellFees(uint256,uint256,uint256)",
+        "_reduceSellTaxAt()",
+        "setTaxEnabled(bool)",
+        "setFeesPercentage(uint256)",
+        "setFeeSplit(uint256)",
+        "initialSellTaxBps()",
+        "setBuyTax(uint256)",
+        "setBuyFees(uint256)",
+        "setSellFee(uint16)",
+        "setSellFeeRatio(uint256)",
+        "setTradeFees(uint256,uint256)",
+        "setTaxes(uint256,uint256,uint256)",
+        "reduceFee(uint256)",
+        "setFeesBps(uint256)",
+        "setFinalTax()",
+        "setTaxes(uint16,uint16,uint16,uint16)",
+        "setTaxConfig(address,uint256)",
+        "setProfitTax(bool,uint256)",
+        "ForceTaxCooldown(uint256)",
+        "updateSellFees(uint256,uint256,uint256,uint256,uint256)",
+    ],
+    "can mint new supply": [
+        "getMinterLength()",
+        "InvalidMinterZeroAddress()",
+        "mintingFinished()",
+        "minter()",
+        "minterTimelock()",
+        "mintingMaxLimitOf(address)",
+        "MaxYearlyMintRateExceeded(uint256,uint256)",
+        "applyMinter()",
+        "MINIMUM_TIME_BETWEEN_MINTS()",
+        "lastestMinting()",
+        "YEARLY_MINTABLE_AMOUNT()",
+        "mint()",
+        "mint(uint256,address,uint256,uint256,bool)",
+        "set_minter(address)",
+        "crosschainMint(address,uint256)",
+        "mint(address,uint96)",
+        "mint(address,uint256,bytes32)",
+        "yearlyMintRate()",
+        "ERC4626ExceededMaxMint(address,uint256,uint256)",
+        "removeMinter(address)",
+        "mintingAllowedAfter()",
+        "MINT_WAIT_PERIOD()",
+        "MinterNotSet()",
+        "maxMintOfYears(uint256)",
+        "MINT()",
+        "totalStakingMinted()",
+        "mint(address,uint256)",
+        "MINT_DELAY()",
+        "NoPendingMinterChange()",
+        "proposeMinter(address)",
+        "addAdminAndMinterAndBurner(address)",
+        "renounceAdminAndMinterAndBurner()",
+        "setIssuer(address)",
+        "getMinter(uint256)",
+        "minimumTimeBetweenMints()",
+        "mintInitialSupply(address)",
+        "totalMintedSupply()",
+        "changeMinter()",
+        "minterApprove(address,uint256)",
+        "mintingCurrentLimitOf(address)",
+        "revokeMinterRole(address)",
+        "getMinters()",
+        "mint(uint256,address,uint256,uint256,bool,uint256,uint256,uint256)",
+        "MINTER_BURNER_ROLE()",
+        "mintRemaining()",
+        "mintCap()",
+        "minterChangeEffectiveAt()",
+        "notifyMintingDone()",
+        "finishMinting()",
+        "MINT_BASE()",
+        "generateTokens(address,uint256)",
+        "acceptMinterAdmin()",
+        "MINT_INTERVAL()",
+        "minterAllowance(address)",
+        "lastMintTimestamp()",
+        "pendingMinter()",
+        "mint(uint256,address)",
+        "setUpMinter()",
+        "addMinter(address)",
+        "renounceMinter()",
+        "MINT_CAP()",
+        "updateMintRate(uint256)",
+        "mint(uint256)",
+        "decreaseMinterAllowance(address,uint256)",
+        "minterAdmin()",
+        "MintingClosed()",
+        "isMinter(address)",
+        "unpauseMinting()",
+        "assignMinterRole(address)",
+        "previewMint(uint256)",
+        "nextMinting()",
+        "NoMintableAmount()",
+        "issueLockedTokens(address,uint256,uint256)",
+        "increaseMinterAllowance(address,uint256)",
+        "cancelMinter()",
+        "initialMint(address)",
+        "grantMintRole(address)",
+        "mintInflation()",
+        "grantMintAndBurnRoles(address)",
+        "maxMint(address)",
+        "selfMint(address,uint256,bytes)",
+        "initialMinted()",
+        "INITIAL_MINT()",
+        "MINTING_PAUSER_ROLE()",
+        "issue(uint256)",
+        "pendingMinterAdmin()",
+        "MINTER_ROLE()",
+        "batchMint(address[],uint256[],uint256[])",
+        "mintable_in_timeframe(uint256,uint256)",
+        "pauseMinting()",
+        "transferMinterAdmin(address)",
+        "yearMint()",
+        "mintAllocations((address,uint256,bytes32,bytes32)[])",
+        "getMinterMembers()",
+        "NotMinterAdmin()",
+        "MINTING_INTERVAL()",
+        "maxTotalMintedSupply()",
+        "getMinter()",
+        "minters(address)",
+        "revokeMintRole(address)",
+        "initialSupplyMinted()",
+        "setMinter(address)",
+    ],
 }
 
 
@@ -70,7 +362,10 @@ def test_selectors_are_real():
     for group, sigs in SIGNATURES.items():
         want = tuple(selector(s) for s in sigs)
         have = risk._OWNER_POWERS.get(group)
-        check("%s: %d selectors match" % (group, len(sigs)), have == want,
+        check("%s: no duplicate selector is pinned" % group,
+              have is not None and len(set(have)) == len(have),
+              "%d pinned, %d distinct" % (len(have or ()), len(set(have or ()))))
+        check("%s: %d selectors match" % (group, len(sigs)), set(have or ()) == set(want),
               "pinned %s vs computed %s" % (have, want))
 
     check("the proxy selector is implementation()",
@@ -123,10 +418,14 @@ def test_disclosure_never_moves_the_verdict():
           signals2 and signals2[0]["severity"] == "info",
           signals2[0]["severity"] if signals2 else "none")
 
-    # Finding nothing must not read as finding nothing there. Measured against the
-    # labelling oracle over 120 contracts it says hold at least one of these powers, the
-    # bytecode scan finds 31% of them -- 5% for a mutable tax. So an empty list is a
-    # statement about the scan, and the payload has to say which.
+    # Finding nothing must not read as finding nothing there. Measured against the labelling
+    # oracle's own per-flag fields over 232 (contract, power) pairs drawn from 559 cached
+    # contracts, the scan finds 62.5% of them as of W18 -- and its worst power is pause at
+    # 52.6%, not mint at 55.1%. Both of those were wrong in this comment an hour after
+    # tests/test_owner_power_recall.py was written to catch exactly that error in
+    # src/risk.py: that test read one file, so the same mistake one file over was invisible.
+    # It reads both now. So an empty list is a statement about the scan, and the payload has
+    # to say which.
     signals5, evidence5 = [], {}
     risk._owner_power_signal({"powers": [], "is_proxy": False, "found_none": True,
                               "scan_is_incomplete": True, "bytecode_bytes": 9000},
@@ -251,6 +550,59 @@ def test_minimal_and_slot_proxies_are_recognised():
     r5 = risk._powers_from_code(eip1167.upper().replace("0X", "0x"))
     check("uppercase bytecode is read the same way", r5 and r5["is_proxy"] is True,
           repr(r5))
+
+
+def test_a_power_is_matched_on_what_the_contract_dispatches():
+    """A selector inside PUSH32 data is not a function the contract has.
+
+    `powers` matched by substring over the whole bytecode: `"40c10f19" in body`. Four bytes
+    is eight hex characters, and a 24 kB contract offers about 49,000 eight-character
+    windows, none of which has to fall on an instruction boundary.
+
+    Measured rather than assumed, twice, and the answer changed between the two runs -- which
+    is the point of measuring after as well as before. With the old 23-selector list,
+    substring and the opcode walk disagreed on **0 of 559** cached contracts, so switching
+    would have been a fix for a problem that did not exist. With W18's 285-selector list they
+    disagree on **1**: base 0x03587953... matches `c68d4283` inside code that is not a PUSH4,
+    and the oracle does not confirm that power either. Recall is identical on all four flags,
+    so the walk costs nothing and removes one false claim.
+
+    It is also free. `_dispatched_selectors` is already called in `_powers_from_code` for
+    `found_none`, so matching on its result rather than on the raw hex adds no work -- and it
+    makes the two halves of that function agree about what "the contract has a function"
+    means, which they did not before.
+
+    The residual gap, stated because it is real: a compiler may push a selector whose leading
+    bytes are zero as PUSH3 or PUSH2, and a binary-search dispatcher may not push it at all.
+    Neither cost anything on this corpus -- the walk lost no hit the substring found -- but
+    neither is impossible, and the direction of that failure is a MISS, which the disclosure
+    already says nothing can be read into.
+    """
+    print(chr(10) + "[powers] matched on dispatch, not on any eight characters in the file")
+
+    mint = "40c10f19"                                    # mint(address,uint256)
+    assert mint in risk._OWNER_POWERS["can mint new supply"]
+
+    # 0x7f is PUSH32: the next 32 bytes are data. A selector buried there is not a function.
+    buried = "0x7f" + mint + "00" * 28 + "6318160ddd" + "00"   # 8+56 hex = PUSH32's 32 bytes
+    r = risk._powers_from_code(buried)
+    check("a selector inside PUSH32 data is not reported as a power",
+          r and "can mint new supply" not in r["powers"], repr(r))
+    check("and the real PUSH4 beside it is still seen",
+          r and r["selectors_dispatched"] == 1, repr(r))
+
+    # The same selector as an actual PUSH4 must still be found.
+    real = "0x63" + mint + "00"
+    r2 = risk._powers_from_code(real)
+    check("the same selector dispatched IS reported as a power",
+          r2 and r2["powers"] == ["can mint new supply"], repr(r2))
+
+    # And in solc's CBOR trailer, which is data appended after the code.
+    trailer = "a165" + "6276" + mint + "0033"            # a CBOR map holding the bytes
+    body = "63" + "18160ddd" + "00" + trailer
+    r3 = risk._powers_from_code("0x" + body + "%04x" % (len(trailer) // 2))
+    check("a selector in the metadata trailer is not reported as a power",
+          r3 and "can mint new supply" not in r3["powers"], repr(r3))
 
 
 def test_a_forwarder_with_no_dispatcher_is_never_called_clean():

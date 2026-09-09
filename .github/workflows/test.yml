@@ -72,6 +72,13 @@ jobs:
       - name: Owner-power selectors are real, and disclosure never scores
         run: python tests/test_owner_powers.py
 
+      # The recall figures describing that scan's blindness were hand-copied, and three
+      # copies of a superseded one sat in src/risk.py for nine days -- in the file doing the
+      # scanning, including the comment on the field whose job is to say how blind it is.
+      # W21's coverage test could not see it: that test defines a surface as .md or .html.
+      - name: The owner-power recall figures match what was measured
+        run: python tests/test_owner_power_recall.py
+
       # DECISIONS.md calls a named test "the strongest kind" of enforcement. Three of the
       # names it gave pointed at tests that do not exist, and one of those was drift
       # introduced by a rename in this very round. This step also fails if a test file

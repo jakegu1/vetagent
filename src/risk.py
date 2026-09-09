@@ -389,8 +389,8 @@ def _low_recommendation(evidence):
 
     if not isinstance(info, dict):
         # No bytecode scan applies here at all (non-EVM, or an unsupported chain).
-        return base + ("Owner powers -- switchable tax, pausable transfers, blacklist, "
-                       "removable liquidity -- were not checked on this chain.")
+        return base + ("Owner powers -- %s -- were not checked on this chain."
+                       % _power_list())
 
     if info.get("unavailable"):
         return base + ("**Owner powers unchecked**: bytecode unreadable (%s). A gap on "
@@ -409,9 +409,10 @@ def _low_recommendation(evidence):
                        "are not readable here. Whoever can upgrade it can change the "
                        "token's behaviour after you buy.")
 
-    return base + ("A scan for pause, blacklist, mutable-tax and mint functions found "
-                   "none here. Read that as 'nothing found', not 'nothing there': it "
-                   "catches about a third of the powers that exist.")
+    return base + ("A scan for functions that let an owner %s found none here. Read that "
+                   "as 'nothing found', not 'nothing there': measured against an "
+                   "independent oracle it catches %s%% of the powers that exist."
+                   % (_power_list(), _SCAN_RECALL_PCT))
 
 
 def _sig(severity, name, message, category):
@@ -1304,22 +1305,94 @@ _CHAIN_RPC = {
     "bsc": "https://bsc-dataseed.bnbchain.org",
 }
 
-# Four-byte selectors for functions that let an owner close the exit after you are in.
-# Computed with `python bench/keccak.py`-style hashing and pinned here so the Worker does
-# not carry a Keccak implementation; `test_owner_power_selectors_are_real` recomputes them
-# and fails if any drifts. Hashlib's sha3_256 is NOT Keccak-256 and would produce four
-# plausible bytes that match nothing on any chain.
+# Four-byte selectors for the powers that let an owner close the exit after you are in.
+#
+# GENERATED, not typed. `python bench/selector_mine.py --emit` produces this block and the
+# mirror in tests/test_owner_powers.py from one source, and the test recomputes every
+# selector from its signature -- hashlib's sha3_256 is NOT Keccak-256 and would produce
+# four plausible bytes that match nothing on any chain.
+#
+# Where they come from, W18: every PUSH4 immediate in the 559 cached contracts of
+# bench/cache_bytecode, resolved to a Solidity signature through the public directory at
+# openchain.xyz, then classified by a rule three independent drafts wrote from Solidity
+# naming BEFORE any recall was measured. Not from the oracle's labels -- widening the list
+# from those would lift recall and void the benchmark (DECISIONS B2).
+#
+# What it bought, measured against the oracle's own per-flag fields over the same 559
+# contracts and reproducible offline via `python bench/selector_mine.py`:
+#
+#     oracle flag           n   before    after
+#     slippage_modifiable  38     7.9%    89.5%
+#     is_blacklisted       19    26.3%    78.9%
+#     transfer_pausable    19    36.8%    52.6%   (73.7% counting trading gates)
+#     is_mintable         156    51.9%    55.1%
+#     pooled              232    41.4%    62.5%
+#
+# Recall on a held-out half of the contracts matched or beat the half the rule could have
+# been influenced by, on all four flags, which is the check that the rule was not fitted.
+#
+# Two things a reader of this list should know. A match is no longer only a FUNCTION: the
+# directory also names public state-variable getters, custom errors and role constants, and
+# `EnforcedPause()` or `MINTER_ROLE()` is evidence the contract inherits the power just as
+# surely as a setter is. And "can halt trading" is new here -- a trading gate is not a pause
+# switch, and calling one the other was a false sentence to a caller, not a bucketing
+# nicety. The oracle has no field for it, so its recall is unmeasured rather than zero.
 _OWNER_POWERS = {
     "can pause transfers": (
-        "8456cb59", "3f4ba83a", "bedb86fb", "16c38b3c", "1031e36e", "c2e5ec04",
-        "379ba1d9"),
+        "1031e36e", "16c38b3c", "18330eef", "1c8fc2c0", "2639d10f", "34fec467", "3ecb51c0",
+        "3f4ba83a", "46fbf68e", "5905d23c", "5c975abb", "620cc86c", "6b2c0f55", "6ef8d66d",
+        "74c6bf41", "82dc1ec4", "8456cb59", "86b30a33", "8dfc202b", "a35034c1", "aa0e4388",
+        "af35c6c7", "bedb86fb", "bef97c87", "c77b5f68", "c7d9f4d1", "c900140b", "cca5dcb6",
+        "cd1fda9f", "cede7487", "d93c0665", "e63ab1e9", "e7348001", "f1878922", "f1b50c1d",
+        "f41e60c5", "f4880b22"
+    ),
+    "can halt trading": (
+        "01339c21", "08fd3d05", "0f324453", "14bcbf63", "16eebd1e", "19d45a08", "214013ca",
+        "293230b8", "3758e399", "379ba1d9", "4ada218b", "5b4f472a", "721bb530", "8091f3bf",
+        "86325e21", "8a8c523c", "8c498e4c", "8d6d01eb", "8dda39df", "90498eaa", "9e516505",
+        "9e6ff739", "a4e6d687", "bbc0c742", "bf56b371", "c2e5ec04", "c9567bf9", "d00efb2f",
+        "d6e4567c", "e09f0331", "e4e513c4", "ec44acf2", "ee40166e", "f11743f6", "fb201b1d",
+        "fcdb89ce", "fd217053", "fd62bcd7", "ffb54a99"
+    ),
     "can blacklist addresses": (
-        "f9f92be4", "0ecb93c0", "153b0d1e", "e47d6060", "9c0db5f3", "68092bd9"),
+        "01ab6ee5", "021dddc7", "0ecb93c0", "13318982", "153b0d1e", "16c02129", "2638f09f",
+        "2d5a5d34", "31c2d847", "3bbac579", "3dc599ff", "404e5129", "410b2424", "4cc930d2",
+        "567fef5b", "59bf1abe", "5ea92ddd", "5f189361", "68092bd9", "75e3661e", "794be707",
+        "90683e8c", "9c0db5f3", "9c52a7f1", "b14607ea", "b351dfe8", "b8d08b2c", "c336a084",
+        "c997eb8d", "ce11e50c", "cf83b334", "d01dd6d2", "d34628cc", "dbac26e9", "e47d6060",
+        "e4997dc5", "e85e0134", "f298f42c", "f3bdc228", "f9f92be4", "fe575a87"
+    ),
     "can change the tax": (
-        "69fe0e2d", "0b78f9c0", "e9dae5ed", "dc1052e2", "8cd09d50", "061c82d0",
-        "8b4cee08", "0cc835a3"),
-    "can mint new supply": ("40c10f19", "a0712d68"),
+        "02dbd8f8", "032dc6a2", "061c82d0", "09cf7c70", "0b78f9c0", "0c193045", "0cc835a3",
+        "0d075d9c", "0f619d69", "0f683e90", "109daa99", "17a5a97e", "349f91f0", "3a91a700",
+        "4150a79d", "4b104eff", "4fcd2446", "52d65858", "572ce727", "58d415f4", "5a359dc5",
+        "5a708bd8", "667f6526", "66ca9b83", "69fe0e2d", "70c47671", "79c0ad4b", "7a942f8e",
+        "7f6438df", "8095d564", "860dc1d6", "875ae990", "88700798", "8ad30c91", "8b4cee08",
+        "8cd09d50", "8ee88c53", "95927c25", "991991c7", "9da39df9", "9fe64094", "a2657778",
+        "a4d15b64", "a70419d2", "a9612176", "c0324c77", "c17b5b8c", "c36956a0", "c6af580b",
+        "c9cb1405", "cd962a06", "d25c14bc", "dc1052e2", "dcf7aef3", "e064648a", "e3ac03f3",
+        "e6c11885", "e9dae5ed", "ec1f3f63", "ec2cbbf4", "ec6c1290", "ecfc021f", "f19c4e3b",
+        "fb82d29c", "fbc18b6c", "ff935af6"
+    ),
+    "can mint new supply": (
+        "0323aac7", "04a208c7", "05d2035b", "07546172", "07eca1cd", "0c05f82c", "0ca514df",
+        "0d707df8", "0d8c0205", "0de5d1d9", "0ffa1015", "1249c58b", "1402dcf2", "1652e9fc",
+        "18bf5077", "1b025a40", "1e458bee", "20720df7", "284ff667", "3092afd5", "30b36cef",
+        "3544fd2b", "361b9957", "376fcb6d", "3e36f4c7", "40161cc9", "40c10f19", "44439244",
+        "4b87f7b5", "50d2fcc4", "55783c8f", "55aa8127", "55cc4e57", "5b7121f8", "5c11d62f",
+        "5db53202", "601e2603", "60b6fd33", "643edef9", "651fd268", "69e2f0fb", "6b32810b",
+        "729c4113", "72c32860", "76185f39", "76c71ca1", "78af27ea", "7986eb0b", "7d64bcb4",
+        "81ea3cc7", "827f32c0", "8374f533", "84e7e3d3", "8a6db9c3", "8e80ff5d", "91c5df49",
+        "94bf804d", "956fe235", "983b2d56", "98650275", "98f1312e", "9ccb5175", "a0712d68",
+        "a2ded115", "a754d48f", "a7e4d9bd", "aa271e1a", "ae200322", "b366d613", "b3d7f6b9",
+        "b4eddb81", "bbb80c2b", "bd3c43b7", "be76ebe5", "c22db274", "c268f9ba", "c2e3273d",
+        "c551a2f9", "c630948d", "c63d75b6", "c68d4283", "ca1c4de9", "ca7df92c", "cae773a9",
+        "cc872b66", "ce1d82f5", "d5391393", "d559f05b", "d725a9ca", "da8fbf2a", "dba03d81",
+        "df557bc0", "e084e744", "ea889a89", "f04a481b", "f0e0ae3e", "f236ceb4", "f3667517",
+        "f46eccc4", "f81094f3", "fc2ab6f2", "fca3b5aa"
+    ),
 }
+
 _PROXY_SELECTOR = "5c60da1b"   # implementation()
 
 # EIP-1167 minimal proxy: 45 bytes of delegatecall around a hardcoded address, with no
@@ -1405,6 +1478,29 @@ def _dispatched_selectors(body):
     return out
 
 
+# Pooled recall of the scan against the labelling oracle's own per-flag fields, as a literal
+# because the Worker cannot read bench/owner_powers.json -- and pinned to that file by
+# `tests/test_owner_power_recall.py`, which fails the build when the two disagree.
+#
+# It is a NUMBER on purpose. The two strings the product emits to a caller used to say "about
+# a third", which was 41.4% arithmetic and survived the W18 re-measure untouched: the guard
+# written that same afternoon looks for percentages, and a claim spelled out in words carries
+# none, so it walked straight through. A figure a guard cannot read is a figure that drifts.
+_SCAN_RECALL_PCT = "62.5"
+
+
+def _power_list():
+    """The shipped power names, as prose. Generated so it cannot fall behind the list.
+
+    Three caller-facing strings enumerated "pause, blacklist, mutable-tax and mint" by hand.
+    W18 added a fifth power and every one of them still said four -- and a fourth enumeration
+    listed "removable liquidity", which this scan has never looked for at all. A hand-typed
+    list of what the code contains is a comment that only happens to be true.
+    """
+    names = [p[4:] if p.startswith("can ") else p for p in sorted(_OWNER_POWERS)]
+    return ", ".join(names[:-1]) + " and " + names[-1] if len(names) > 1 else names[0]
+
+
 def _is_proxy_code(body):
     """Whether this bytecode delegates its behaviour to another address.
 
@@ -1437,25 +1533,47 @@ async def _owner_powers(address, chain):
     switched on. Nothing fires, because those are powers a contract holds rather than
     behaviour it has shown.
 
-    **This scan is incomplete, and by a lot.** Checked against the labelling oracle's own
-    flags for the same four powers over 120 contracts that it says hold at least one: the
-    bytecode scan finds 41 of 133, or 31%. Per power it is worse -- 5% for a mutable tax,
-    20% for a blacklist, 25% for a pause switch, 38% for mint. Contracts name these
-    functions in more ways than any hand-written list will hold.
+    **This scan is still incomplete, and the figure is generated rather than typed.** The
+    per-power table lives in `bench/owner_powers.json`, written by
+    `python bench/selector_mine.py --write` and reproducible offline from the committed
+    caches. Pooled over the four flags the oracle publishes, it finds 62.5% of the powers
+    the oracle asserts, up from 41.4% before W18 widened the list. The worst power is no
+    longer the tax -- that one went from 7.9% to 89.5%. What the widening barely moved is
+    mint, at 55.1%, and the lowest figure in the table is pause at 52.6% -- though most of
+    a pause's real recall now sits under `can halt trading`, which the oracle cannot score.
 
-    Two consequences, and the second is the one that matters.
+    A number is deliberately NOT repeated here per power. Three copies of a superseded
+    "31%" sat in this file for nine days after the measurement changed, including inside
+    the payload comment below, in the file that does the scanning. One pointer at a
+    generated source cannot do that, and `tests/test_owner_power_recall.py` fails the build
+    if the sentence above stops matching the file it names.
 
-    A power reported here is real: a selector match is a function that exists. But
-    **silence means nothing at all**, and a caller must not read an empty list as "this
-    contract has no owner powers". The evidence says so explicitly rather than leaving an
-    empty array to be misread.
+    Three consequences, and the last is the one that matters.
+
+    **A match is no longer only a function.** The signature directory the list was mined
+    from also names public state-variable getters, custom errors and role constants, and
+    that is a feature rather than slippage: `EnforcedPause()` is OpenZeppelin's own revert,
+    and `MINTER_ROLE()` an AccessControl constant, and each is evidence the contract
+    inherits the power as surely as a setter is. What a match asserts is that this
+    contract's code names the thing -- not that anyone has used it, and not that an owner
+    still exists who could.
+
+    **`can halt trading` is a separate power now, because calling it a pause was false.**
+    A trading gate -- `enableTrading()`, `launch()`, `tradingActive()` -- is the commonest
+    way a Base token closes the exit, and it is almost never named `pause`. Reporting it as
+    "the owner can pause transfers" was a wrong sentence to a caller. The oracle has no
+    field for a trading gate, so that power's recall is **unmeasured**, which is not zero.
+
+    **Silence still means nothing at all**, and a caller must not read an empty list as
+    "this contract has no owner powers". The evidence says so explicitly rather than
+    leaving an empty array to be misread. 62.5% is a better floor than 41.4% and it is not
+    a ceiling on anything.
 
     And the measurement that rejected scoring this in R12 -- pausable in 11% of the unsafe
-    cohort against 5% of the safe one, mintable running the wrong way -- was taken with
-    this same blind instrument, so it does not establish what it was taken to establish.
-    Scoring is still off, but now for want of an instrument rather than for want of a
-    signal. Widening the list from the oracle's own labels would fix the recall and void
-    the benchmark (B2), so it needs a source that is not the oracle.
+    cohort against 5% of the safe one, mintable running the wrong way -- was taken with the
+    older, blinder instrument, so it does not establish what it was taken to establish.
+    Scoring (W17) is still off, and the reason has changed: the instrument is no longer the
+    binding constraint on three of the four powers, the adversarial cohort of 17 is.
     """
     rpc = _CHAIN_RPC.get((chain or "").lower())
     if not rpc or not _looks_evm(address):
@@ -1508,15 +1626,23 @@ def _powers_from_code(code):
     if not code or len(code) < 10:
         return None
     body = code[2:].lower()
-    powers = sorted(name for name, sels in _OWNER_POWERS.items()
-                    if any(sel in body for sel in sels))
+    # Matched against what the contract DISPATCHES, not against any eight hex characters
+    # that happen to appear in the file. The substring version was measured twice: with the
+    # old 23-selector list it disagreed with this on 0 of 559 cached contracts, and with
+    # W18's 285-selector list on 1, where a selector sat inside code that is not a PUSH4.
+    # Recall was identical on all four oracle flags both times, so this costs nothing --
+    # and `dispatched` is computed anyway for `found_none` below, so it is also free.
     dispatched = _dispatched_selectors(body)
+    powers = sorted(name for name, sels in _OWNER_POWERS.items()
+                    if any(sel in dispatched for sel in sels))
     return {
         "powers": powers,
-        # Measured against the labelling oracle: this scan finds 31% of the powers it
-        # asserts. So a hit is real and a miss says nothing, and an empty list must not be
-        # read as a clean contract. Stated in the payload because an empty array is
-        # exactly the kind of thing a caller reads as reassurance.
+        # Still true at 62.5% pooled recall against the oracle's flags -- a hit is real,
+        # a miss says nothing, and an empty list must not be read as a clean contract.
+        # Stated in the payload because an empty array is exactly the kind of thing a
+        # caller reads as reassurance. The figure is not repeated here: it lives in
+        # bench/owner_powers.json, and this comment carried a superseded 31% for nine days
+        # precisely because it was a second copy.
         "scan_is_incomplete": True,
         # Only claimed when we actually read the contract that holds the behaviour. For a
         # proxy this bytecode is a forwarder, so "found none" would be a statement about
@@ -1603,9 +1729,9 @@ def _owner_power_signal(info, signals, evidence):
     elif info.get("found_none"):
         signals.append(_sig(
             "info", "No owner powers found, which is weaker than it sounds",
-            "The scan for pause, blacklist, mutable-tax and mint functions found none. "
-            "It is known to find only about a third of the ones that exist, because "
-            "contracts name these functions in more ways than a fixed list can hold. "
+            "The scan for functions that let an owner %s found none. It is known to find "
+            "%s%% of the ones that exist, because contracts name these functions in more "
+            "ways than a fixed list can hold. " % (_power_list(), _SCAN_RECALL_PCT) +
             "Read this as 'nothing found', not 'nothing there'.", "contract"))
 
 

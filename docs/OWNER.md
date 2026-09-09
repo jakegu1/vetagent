@@ -109,12 +109,9 @@ The collector is scheduled four times a day and GitHub runs it late every time -
 
 ```mermaid
 flowchart LR
-    W3[W3 Grow the genuine adversarial cohort...]
     W4[W4 Cut the unknown rate below 10%]
     W6[W6 EVM holder concentration]
     W7[W7 Point-in-time evaluation from the...]
-    W17[W17 Score owner powers, rather than only...]
-    W18[W18 A selector source that is not the...]
     W5[W5 A second, independent sell-simulation...]
     W10([W10 Create the two accounts the remaining...])
     W11[W11 Answer the 2026-09-18 gate]
@@ -125,14 +122,12 @@ flowchart LR
     W5 -->|blocks| W4
     E1 -->|blocks| W6
     E2 -->|blocks| W7
-    W18 -->|blocks| W17
-    W3 -->|blocks| W17
     E3 -->|blocks| W5
     W11 -->|answers| GATE
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **4 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **5 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -159,16 +154,16 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W18: the EIP-1167 fix pinned a body, so the next forwarder walked through it
+- W3: measured the lever before pulling it, and the measurement changed the plan
 - W23: the self-report guards proved presence, never substance
 - Repair W21's row, damaged by the same backtick substitution
 - W24: one address had 2^40 spellings and every one was a cache miss
 - CLAUDE.md: the quoting trap has two mechanisms, not one
 - Repair the W22 row that bash ate
 - W22: the tool that has misled callers twice now declares its shape
-- W21: the number guard checked matching, never coverage
-- W26: the launch post rewritten against the comment that would have sunk it
 
-_184 more not shown (192 commits in total)._
+_186 more not shown (194 commits in total)._
 
 ## What I got wrong
 

@@ -1,0 +1,62 @@
+{
+ "contracts": 559,
+ "generated_by": "python bench/selector_mine.py --write",
+ "measured": "2026-09-09",
+ "note": "Recall against the benchmark's held-out oracle is not recall against reality. It bounds the scan's blindness from one side: a power the oracle sees and we miss is definitely a miss.",
+ "pooled": {
+  "mined_hits": 145,
+  "mined_pct": "62.5",
+  "n": 232,
+  "pausable_pause_only_pct": "52.6",
+  "pausable_with_gates_pct": "73.7",
+  "shipped_hits": 96,
+  "shipped_pct": "41.4"
+ },
+ "powers": {
+  "can blacklist addresses": {
+   "mined_finds": 15,
+   "mined_pct": "78.9",
+   "oracle_flag": "is_blacklisted",
+   "oracle_says": 19,
+   "selectors_pinned": 41,
+   "shipped_finds": 5,
+   "shipped_pct": "26.3"
+  },
+  "can change the tax": {
+   "mined_finds": 34,
+   "mined_pct": "89.5",
+   "oracle_flag": "slippage_modifiable",
+   "oracle_says": 38,
+   "selectors_pinned": 66,
+   "shipped_finds": 3,
+   "shipped_pct": "7.9"
+  },
+  "can halt trading": {
+   "contracts_naming_one": 43,
+   "mined_pct": null,
+   "oracle_flag": null,
+   "oracle_says": null,
+   "selectors_pinned": 39
+  },
+  "can mint new supply": {
+   "mined_finds": 86,
+   "mined_pct": "55.1",
+   "oracle_flag": "is_mintable",
+   "oracle_says": 156,
+   "selectors_pinned": 102,
+   "shipped_finds": 81,
+   "shipped_pct": "51.9"
+  },
+  "can pause transfers": {
+   "mined_finds": 10,
+   "mined_pct": "52.6",
+   "oracle_flag": "transfer_pausable",
+   "oracle_says": 19,
+   "selectors_pinned": 37,
+   "shipped_finds": 7,
+   "shipped_pct": "36.8"
+  }
+ },
+ "selectors_dispatched": 2230,
+ "selectors_named": 1940
+}

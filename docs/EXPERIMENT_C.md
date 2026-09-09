@@ -175,10 +175,15 @@ safety property — they overlap and are not the same thing.
 
 What it actually checks: sell simulation (can you get out), buy/sell tax, liquidity
 depth, pair age, same-ticker impersonation, and owner powers read from bytecode. What it
-deliberately does not do: score dormant owner powers, because measured against an
-independent oracle the scan finds 37% of the contracts that can pause transfers, 26% of
-those that can blacklist and 8% of those that can change the tax. Scoring a check that
-misses most of what it looks for is how false positives get in.
+deliberately does not do: score dormant owner powers — and the reason changed on
+2026-09-09, so here is the old one and the new one. Measured against an independent
+oracle, the bytecode scan finds 89.5% of the contracts that can change the tax, 78.9% of
+those that can blacklist and 52.6% of those that can pause transfers, up from 7.9%, 26.3%
+and 36.8% a day earlier. The old list was hand-typed; the new one is every function
+selector the contracts actually dispatch, resolved through a public signature directory
+and classified by a rule written before the recall was measured. So "the instrument misses
+most of what it looks for" is no longer why we withhold a score. What is: the adversarial
+cohort here is 17 tokens, and a discrimination claim on 17 is not a claim.
 
 The method is reproducible and the numbers are a dated snapshot (2026-09-07, live
 upstreams), not a constant — `python bench/run_benchmark.py` re-measures rather than

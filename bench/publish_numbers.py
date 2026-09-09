@@ -46,6 +46,30 @@ TARGETS = [
     ("README.md", r"a \*\*([\d.]+)% false positive rate\*\*", "fp_pct"),
     ("README.md", r"false positive rate\*\* on (\d+) healthy tokens", "healthy_n"),
     ("README.md", r"\*\*([\d.]+)% unknown rate\*\*", "unknown_pct"),
+    # Owner-power recall, formerly two _EXEMPT_LINES rows reading "there is no source of
+    # truth to track". There is one now -- bench/owner_powers.json, written by
+    # `python bench/selector_mine.py --write` -- so the exemption came out and these went
+    # in. The before-figures are tracked as well as the after-figures: "up from 7.9%" is a
+    # claim about the same measurement and drifts the same way.
+    # Every space in these six is `\s+`, not a literal space. The first draft used literal
+    # spaces and four of the six failed on the same run, because the paragraph wraps between
+    # "78.9% of" and "those that can blacklist" -- so the pattern was looking for a sentence
+    # that exists only after the line breaks are removed. This is the same fragility W21
+    # recorded for exemptions ("an exemption that moves when prose re-wraps is not an
+    # exemption"), and a target is no different. Caught by the guard on its own first run.
+    ("docs/EXPERIMENT_C.md",
+     r"finds\s+([\d.]+)%\s+of\s+the\s+contracts\s+that\s+can\s+change\s+the\s+tax",
+     "power_tax_pct"),
+    ("docs/EXPERIMENT_C.md", r"([\d.]+)%\s+of\s+those\s+that\s+can\s+blacklist",
+     "power_blacklist_pct"),
+    ("docs/EXPERIMENT_C.md", r"([\d.]+)%\s+of\s+those\s+that\s+can\s+pause\s+transfers",
+     "power_pause_pct"),
+    ("docs/EXPERIMENT_C.md", r"up\s+from\s+([\d.]+)%,\s+[\d.]+%\s+and\s+[\d.]+%",
+     "power_tax_before_pct"),
+    ("docs/EXPERIMENT_C.md", r"up\s+from\s+[\d.]+%,\s+([\d.]+)%\s+and\s+[\d.]+%",
+     "power_blacklist_before_pct"),
+    ("docs/EXPERIMENT_C.md", r"up\s+from\s+[\d.]+%,\s+[\d.]+%\s+and\s+([\d.]+)%",
+     "power_pause_before_pct"),
     ("src/landing.html", r"Measured on (\d+) tokens:", "n"),
     ("src/landing.html", r"were flagged high\. (\d+) of \d+ confirmed-dead", "dead_not_low_n"),
     ("src/landing.html", r"were flagged high\. \d+ of (\d+) confirmed-dead", "dead_n"),
@@ -201,6 +225,37 @@ def _median(xs):
     return xs[mid] if len(xs) % 2 else (xs[mid - 1] + xs[mid]) / 2.0
 
 
+def _owner_power_figures():
+    """Per-power bytecode-scan recall, from bench/owner_powers.json.
+
+    A separate file from results.json because it is a separate measurement with a separate
+    cost: results.json needs live upstreams and twenty minutes, this needs only the
+    committed bytecode cache and runs offline in a second. Merging them would make the
+    cheap one wait for the expensive one, which is how a figure goes nine days stale.
+
+    Returns an empty dict if the file is absent, and the caller then has no key to match --
+    so an unguarded number is reported as unguarded rather than silently passing.
+    """
+    path = os.path.join(ROOT, "bench", "owner_powers.json")
+    if not os.path.exists(path):
+        return {}
+    with io.open(path, encoding="utf-8") as f:
+        d = json.load(f)
+    out = {}
+    short = {"transfer_pausable": "pause", "is_blacklisted": "blacklist",
+             "slippage_modifiable": "tax", "is_mintable": "mint"}
+    for power, row in (d.get("powers") or {}).items():
+        key = short.get(row.get("oracle_flag"))
+        if not key:
+            continue                    # can halt trading: no oracle field, nothing to track
+        out["power_%s_pct" % key] = row.get("mined_pct")
+        out["power_%s_before_pct" % key] = row.get("shipped_pct")
+    pooled = d.get("pooled") or {}
+    out["power_pooled_pct"] = pooled.get("mined_pct")
+    out["power_pooled_before_pct"] = pooled.get("shipped_pct")
+    return out
+
+
 def figures():
     """The numbers a reader is entitled to, straight from the last benchmark run."""
     with io.open(RESULTS, encoding="utf-8") as f:
@@ -225,7 +280,7 @@ def figures():
 
     centralized = [r for r in rows if r.get("goplus_label") == "centralized"]
     centralized_high = [r for r in centralized if r["verdict"] == "high"]
-    return {
+    out = {
         "n": "%d" % len(rows),
         "healthy_n": "%d" % len(alive),
         "fp_pct": "%.1f" % (100.0 * len(fp) / len(alive)) if alive else "0.0",
@@ -308,6 +363,11 @@ def figures():
                            if pool_both else "0"),
         "maturity": _maturity() or "0",
     }
+    # A separate, cheaper measurement, merged rather than recomputed here. Keys whose value
+    # is None are dropped: a missing owner_powers.json must leave the figure UNGUARDED and
+    # visibly so, not guarded against the string "None".
+    out.update({k: v for k, v in _owner_power_figures().items() if v is not None})
+    return out
 
 
 def scan(write):
@@ -523,8 +583,6 @@ _EXEMPT_LINES = (
     ("docs/EXPERIMENT_C.md", "Blockaid"),
     ("docs/EXPERIMENT_C.md", "sensitivity /"),
     ("docs/EXPERIMENT_C.md", "LP lock/burn detection fires on"),
-    ("docs/EXPERIMENT_C.md", "the scan finds"),      # owner-power recall, see below
-    ("docs/EXPERIMENT_C.md", "those that can blacklist"),
     ("docs/SCORECARD.md", "What 100 looks like"),
     # A dated incident number: 80% of one runaway workflow spend bought nothing on
     # 2026-09-07. No source of truth to track, and it must not be rewritten by --write.

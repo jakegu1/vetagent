@@ -79,8 +79,24 @@ FLAG_TO_POWER = {
     "is_mintable": "can mint new supply",
 }
 
-# Selectors the audit found missing, computed rather than pinned. Reported separately so
-# the effect of adding them is visible instead of silently folded into the headline.
+# SUPERSEDED by W18, kept because the comparison it prints is now the before-and-after of
+# that work rather than a proposal. These were the selectors one audit noticed by hand; the
+# shipped list is now mined from every PUSH4 immediate in the corpus and resolved through a
+# public signature directory (bench/selector_mine.py), which found 262 more. Every entry
+# below is in the shipped list already, so the second table this script prints should differ
+# from the first by nothing -- and if it ever does, one of the two is wrong.
+#
+# This script remains the CROSS-CHECK rather than the source: it computes recall through
+# `risk._powers_from_code` end to end, where selector_mine.py intersects sets directly. Two
+# paths, one answer. They disagreed by one contract on 2026-09-09 and that disagreement was
+# the finding -- substring matching over the whole bytecode claimed a mint power for
+# base 0x03587953 off eight hex characters that are not a PUSH4, and the engine moved onto
+# the walk because of it.
+#
+# NOTE on the fifth power: `can halt trading` ships in src/risk.py and has NO entry in
+# FLAG_TO_POWER above, because the oracle publishes no field for a trading gate. Its recall
+# is therefore unmeasurable here, which is not the same as zero, and this script says nothing
+# about it rather than printing a row of dashes that would read as a measurement.
 CANDIDATE_EXTRA = {
     "can blacklist addresses": [
         "isBlacklisted(address)",        # the OpenZeppelin-style getter
