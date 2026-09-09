@@ -147,13 +147,23 @@ CHANNELS = [
     ("Smithery", True),                         # "Published Sep 7, 2026"
     # Submitted and waiting. See docs/HANDOFF.md for the issue and PR numbers.
     ("mcp.so", False),                          # chatmcp/mcpso#3987
-    # Approved by email on 2026-09-09 ("now live on mcpservers.org") and NOT VISIBLE on
-    # the site. Checked the same day in a browser, not with curl, because curl gets 403
-    # from their bot protection and a 403 is not an absence: the rendered page, the
-    # 494 KB /en/remote-mcp-servers listing of 320 entries, __NEXT_DATA__, every inline
-    # payload, the loaded bundle and their own search all contain no "vetagent".
-    # An approval email is not a listing. Stays False until a reader can reach it.
-    ("mcpservers.org", False),
+    # Live, verified 2026-09-09 by opening it: https://mcpservers.org/en/servers/vetagent-dev
+    # (200, full description and endpoint), breadcrumb Home > Servers > Finance > VetAgent,
+    # and findable by searching "vetagent" on their homepage.
+    #
+    # I first recorded this as NOT listed, and that was wrong. I guessed the slug from the
+    # product name (/servers/vetagent), got a 404, checked /en/remote-mcp-servers, did not
+    # find us, and reported an absence. The slug is derived from the DOMAIN --
+    # `vetagent-dev` -- and /en/remote-mcp-servers turns out to be a curated subset rather
+    # than the index of every remote server, which is what I assumed it was.
+    #
+    # So: I checked four places, found nothing, and reported "not on the site" instead of
+    # "not where I looked". That is E11 -- an unobserved dimension impersonating an
+    # observed absence -- committed by me, in a session spent fixing it in five other
+    # places, and it took the owner to catch it. The lesson is the boring one: when
+    # something is missing, the next question is whether I actually looked, and a guessed
+    # URL is not looking.
+    ("mcpservers.org", True),
     # None = measured inapplicable, excluded from the denominator. Same treatment, and the
     # same standard of evidence, as LP lock / burn above.
     #

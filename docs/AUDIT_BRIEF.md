@@ -93,7 +93,7 @@ nobody questions its motive when it calls a token dangerous (`DECISIONS.md` P1).
 
 ## 3. Where it actually stands
 
-Maturity **54 / 100** by its own scorecard, which is designed so that pure engineering
+Maturity **55 / 100** by its own scorecard, which is designed so that pure engineering
 caps out around 70 — the remaining 30 requires users, who do not exist yet.
 
 | Dimension | Score | The honest reading |

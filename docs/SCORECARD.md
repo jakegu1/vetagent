@@ -4,14 +4,14 @@
 > It moves with every commit, so `git diff` tells you what the change was worth.
 
 
-## Total: **54 / 100**
+## Total: **55 / 100**
 
 | Dimension | Score | Max |
 |---|---|---|
 | Correctness | 24.0 | 30 |
 | Coverage | 16.4 | 20 |
 | Credibility | 10.3 | 20 |
-| Distribution | 3.3 ⚠️ | 15 |
+| Distribution | 4.2 ⚠️ | 15 |
 | Demand | 0.0 | 15 |
 
 ⚠️ = this dimension has line items nothing can measure automatically. The score is low for lack of data, not for lack of work.
@@ -27,7 +27,7 @@
 | Coverage | risk dimensions covered | 16.4 | 20 | 9 / 11 |
 | Credibility | recall is measurable | 10.0 | 10 | dead samples: 30 (need ≥20) |
 | Credibility | days of snapshots | 0.3 | 10 | 6 of 180 days |
-| Distribution | channels listed on | 3.3 | 10 | 4 / 12 |
+| Distribution | channels listed on | 4.2 | 10 | 5 / 12 |
 | Distribution | external callers | — | 5 | not measured (needs CLOUDFLARE_API_TOKEN, see bench/usage.py) |
 | Demand | paying users | 0.0 | 10 | 0 |
 | Demand | trial intent / inbound asks | 0.0 | 5 | 0 |
@@ -77,7 +77,7 @@ Every unchecked line is a real blind spot, and the roadmap itself.
 | Glama | ✅ |
 | Smithery | ✅ |
 | mcp.so | ⬜ |
-| mcpservers.org | ⬜ |
+| mcpservers.org | ✅ |
 | awesome-mcp-servers (local/stdio only) | ➖ n/a |
 | awesome-remote-mcp-servers (jaw9c) | ⬜ |
 | awesome-remote-mcp-servers (punkpeye) | ⬜ |
@@ -95,7 +95,7 @@ with false positives <2%, unknown <5%, every applicable dimension covered, a yea
 outcome data, the benchmark methodology cited as a standard by peers, the default
 choice at every agent entry point, and paying users who would complain if it disappeared.
 
-**The current 54 is not a failure** — it says precisely that the
+**The current 55 is not a failure** — it says precisely that the
 engineering is decent, proof and demand are both still zero, and writing more code
 cannot solve those last two.
 

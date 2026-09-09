@@ -106,6 +106,6 @@ a day.
 
 Started 2026-09-03. Rounds and commit counts live in `docs/ROUNDS.md`, which is where
 they stay current; copying them here is how they went two rounds stale before anyone
-looked. Score 54/100 by `docs/SCORECARD.md`, whose
+looked. Score 55/100 by `docs/SCORECARD.md`, whose
 ceiling for pure engineering is about 70 — the rest needs users, who do not exist yet.
 The live question is the 2026-09-18 gate in `docs/STRATEGY.md` §8.

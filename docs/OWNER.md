@@ -79,7 +79,7 @@ next -- including stopping.
 
 | | |
 |---|---|
-| Maturity score | 54 / 100 (`docs/SCORECARD.md`) |
+| Maturity score | 55 / 100 (`docs/SCORECARD.md`) |
 | Tokens measured | 576 |
 | False positives | 4.3% -- we called a healthy token dangerous |
 | Answers we refuse | 15.3% -- `unknown`, on purpose |
@@ -100,6 +100,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W13 is done, so its cost-of-waiting line is an orphan
 - W13 closed, and its acceptance test was wrong
 - Regenerate over the snapshot commits the rebase brought in
 - Two emails, and neither said what it appeared to say
@@ -107,9 +108,8 @@ problem looked like before it was fixed.
 - The no-tool-calls branch put two windows in one sentence, and file the rest
 - One gate, four written bars, and every one of them easier than the code
 - The field added to disclose a truncation could not disclose a half scan
-- Three outward pages said things that are not true
 
-_163 more not shown (171 commits in total)._
+_164 more not shown (172 commits in total)._
 
 ## What I got wrong
 
@@ -118,6 +118,12 @@ costs me something. A build check requires an entry here every 14 days: if there
 were genuinely no mistakes, saying so is itself a dated claim on the record.
 
 Newest first.
+
+**2026-09-09** &mdash; I said: *'mcpservers.org emailed to say we are live, and the listing is not on the site.'*
+
+> It is live, at mcpservers.org/en/servers/vetagent-dev, findable by searching their homepage. Their slug comes from the domain (`vetagent-dev`), I guessed it from the product name, got a 404, and reported an absence. The page I treated as the index of every remote server is a curated subset.
+
+> How it surfaced: You caught it. I had checked four places, found nothing, and said 'not on the site' instead of 'not where I looked' -- in a session spent fixing that exact error in five other places.
 
 **2026-09-08** &mdash; I said: *'Nobody outside the project is calling it' was answered YES by the usage gate.*
 

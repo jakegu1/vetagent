@@ -101,6 +101,15 @@ EXTRA_ACTIONS = [
 # claim, which is itself a thing that can turn out to be false.
 CORRECTION_WINDOW = 14
 CORRECTIONS = [
+    ("2026-09-09",
+     "'mcpservers.org emailed to say we are live, and the listing is not on the site.'",
+     "It is live, at mcpservers.org/en/servers/vetagent-dev, findable by searching their "
+     "homepage. Their slug comes from the domain (`vetagent-dev`), I guessed it from the "
+     "product name, got a 404, and reported an absence. The page I treated as the index "
+     "of every remote server is a curated subset.",
+     "You caught it. I had checked four places, found nothing, and said 'not on the "
+     "site' instead of 'not where I looked' -- in a session spent fixing that exact "
+     "error in five other places."),
     ("2026-09-08",
      "'Nobody outside the project is calling it' was answered YES by the usage gate.",
      "Both callers were us: `mozilla` was the demo button on our own homepage and `curl` "
