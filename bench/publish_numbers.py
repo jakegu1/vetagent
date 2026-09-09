@@ -93,13 +93,14 @@ TARGETS = [
      "centralized_high_pct"),
     ("docs/EXPERIMENT_C.md", r"\| ([\d.]+)% \(26 of \d+\) \|", "dead_not_low_pct"),
     ("docs/EXPERIMENT_C.md", r"\| \*\*([\d.]+)%\*\* \(3 of \d+\) \|", "dead_high_pct"),
-    ("docs/EXPERIMENT_C.md", r"we rate only ([\d.]+)%", "dead_high_pct_round"),
-    ("docs/EXPERIMENT_C.md", r"([\d.]+)% dead-token recall", "dead_high_pct_round"),
     ("docs/EXPERIMENT_C.md", r"same pool only ([\d.]+)% of the time", "pool_match_pct"),
+    ("docs/EXPERIMENT_C.md", r"only ([\d.]+)% of tokens that actually died", "dead_high_pct_round"),
+    ("docs/EXPERIMENT_C.md", r"and the ([\d.]+)% \"not rated low\"", "dead_not_low_pct"),
+    ("docs/EXPERIMENT_C.md", r"falls to ([\d.]+)% once the liquidity", "dead_not_low_ablated_pct"),
     ("docs/EXPERIMENT_C.md", r"\*\*([\d.]+)% of the dataset is Base",
      "base_share_pct"),
     ("docs/EXPERIMENT_C.md", r"adversarial cohort is ([\d.]+)% Base", "bad_base_share_pct"),
-    ("docs/EXPERIMENT_C.md", r"dataset is ([\d.]+)% Base\" and", "base_share_pct"),
+    ("docs/EXPERIMENT_C.md", r"dataset is ([\d.]+)% Base\"\. True", "base_share_pct"),
     # The rewritten post leads with the number the old one never printed: recall on the
     # adversarial cohort, in both columns. A review found the post described four of its
     # five figures wrongly, so every figure it now carries is bound to the benchmark
@@ -358,8 +359,27 @@ _EXEMPT_CONTEXT = (
 # mutations -- a percentage on a line without a keyword, "flags 12.3% of healthy tokens",
 # a stale count with no percent sign, and anything on a line containing "Rejected."
 # A guard with a keyword list is a guard with a documented bypass.
+# Every surface where a stranger meets a number of ours. W21: the list was the six files
+# that existed when the guard was written, and R19 created five more outward surfaces --
+# an app-store submission, a plugin skill, an install guide -- none of which it scanned.
+# A guard whose file list is a snapshot of the day it was written stops covering the
+# project the moment the project grows.
 LIVE_CLAIM_FILES = ("README.md", "src/landing.html", "src/entry.py",
-                    "docs/AUDIT_BRIEF.md", "docs/EXPERIMENT_C.md", "docs/SCORECARD.md")
+                    "docs/AUDIT_BRIEF.md", "docs/EXPERIMENT_C.md", "docs/SCORECARD.md",
+                    "docs/OPENAI_SUBMISSION.md", "docs/AGENT-INTEGRATION.md",
+                    "llms-install.md", "plugin/README.md",
+                    "plugin/skills/vet-token/SKILL.md",
+                    "CLAUDE.md")
+
+# Generated files. Their guard is regeneration, not a regex: tools/owner.py builds
+# docs/OWNER.md from figures() and tests/test_owner_page.py fails if the committed file
+# differs from what the generator produces, so a number in it cannot drift without a red
+# build. Writing a TARGETS pattern for each would be a second, weaker copy of that.
+#
+# Named explicitly rather than left out, because the W21 coverage test asks whether every
+# surface a reader meets is covered by SOMETHING, and silence would have read as an
+# oversight -- which is exactly how five surfaces went unscanned in the first place.
+GENERATED_FILES = ("docs/OWNER.md", "docs/ROUNDS.md", "docs/SCORECARD.md")
 
 # Logs are frozen ON PURPOSE and are excluded ON PURPOSE, not by oversight. ROUNDS.md is
 # generated from commit messages; DECISIONS, HANDOFF, BACKLOG, OPPORTUNITIES and STRATEGY
@@ -506,6 +526,17 @@ _EXEMPT_LINES = (
     ("docs/EXPERIMENT_C.md", "the scan finds"),      # owner-power recall, see below
     ("docs/EXPERIMENT_C.md", "those that can blacklist"),
     ("docs/SCORECARD.md", "What 100 looks like"),
+    # A dated incident number: 80% of one runaway workflow spend bought nothing on
+    # 2026-09-07. No source of truth to track, and it must not be rewritten by --write.
+    ("CLAUDE.md", "About 80% of the spend"),
+    # An illustrative number inside an example sentence, not a measurement: the skill
+    # tells an agent to quote a signal rather than a score, and "12% sell tax" is what
+    # such a quote looks like. Scoped to the one line, because the file is otherwise
+    # a live surface and its next number will be a real one.
+    ("plugin/skills/vet-token/SKILL.md", "is actionable"),
+    # Measured once over 126 cached pools and stamped with its date in the text,
+    # because it cannot be recomputed: peak 7-day volume needs seven days per pool.
+    ("docs/OPENAI_SUBMISSION.md", "measured once on 2026-09-08"),
     # A dated one-off observation inside a docstring, not a published claim: the
     # error rate seen on the day _record_http_error was written. It explains why the
     # fix could not wait, and it is stamped with its date rather than tracked,
@@ -556,22 +587,46 @@ def unclaimed_percentages():
         # then re-flowing that sentence moved two other numbers off their exempted lines.
         # An exemption that moves when prose re-wraps is not an exemption.
         all_lines = text.splitlines()
-        for line in all_lines:
+        for i, raw in enumerate(all_lines):
+            # A leading ">" is a markdown blockquote marker, not a comparison. Stripping it
+            # before the scan closes a hole this check had from the day it was written:
+            # "recall >90%" is an aim and must not track the benchmark, but "> 4.3% false
+            # positives" is the SAME number inside a quoted block, and the operator test
+            # could not tell them apart -- so every figure in the X / Mastodon draft, which
+            # is one long blockquote, was silently unguarded. Found by mutating all 87
+            # percentages on the live surfaces one at a time and seeing which survived.
+            line = re.sub(r"^\s*>+\s*", "", raw)
             for m in re.finditer(r"([<>\u2264\u2265~]?\s*)(\d+(?:\.\d+)?)%", line):
                 # "recall >90%" is what we aim at; it must not track results.json.
                 if m.group(1).strip():
                     continue
                 if m.group(2) in claimed:
                     continue
-                if any(sub in line for sub in exempt):
+                if any(sub in _near(all_lines, i) for sub in exempt):
                     continue
-                if _is_cited_competitor_figure(line, all_lines):
+                if _is_cited_competitor_figure(line, all_lines, i):
                     continue
                 out.append((rel, m.group(2), line.strip()[:88]))
     return out
 
 
-def _is_cited_competitor_figure(line, all_lines, window=2):
+def _near(all_lines, i, window=2):
+    """The sentence around a line, because prose wraps and rules are about sentences.
+
+    Written once, after the same defect appeared five times in one day: a vendor name and
+    its percentage on different lines; "checked" and its date on different lines; a
+    TARGETS pattern spanning a wrap; a retraction marker one line below the claim it
+    retracts; and an exemption one line below the number it exempts. Every one of those was
+    a rule about a *sentence* being evaluated one *line* at a time.
+
+    Takes the index, not the line. The first version did `all_lines.index(line)`, which
+    returns the FIRST occurrence -- so every repeated line in a file, a table separator or
+    a blank one, was given somebody else's window.
+    """
+    return "\n".join(all_lines[max(0, i - window):i + window + 1])
+
+
+def _is_cited_competitor_figure(line, all_lines, i, window=2):
     """True when this number belongs to somebody else AND carries a source.
 
     Both halves are checked over a WINDOW, not the line. The first version required the
@@ -583,8 +638,7 @@ def _is_cited_competitor_figure(line, all_lines, window=2):
     An arXiv identifier counts as a source on its own, without a vendor name: a published
     paper with a released dataset is a stronger citation than a vendor page, and permanent.
     """
-    i = all_lines.index(line)
-    near = "\n".join(all_lines[max(0, i - window):i + window + 1])
+    near = _near(all_lines, i, window)
     cite = r"checked\s+\d{4}-\d{2}-\d{2}|https?://|arXiv \d{4}\.\d{4,5}"
     if re.search(r"arXiv \d{4}\.\d{4,5}", near):
         return True

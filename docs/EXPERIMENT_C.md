@@ -24,14 +24,17 @@
 
 ## The short version (X / Mastodon)
 
-> I built a token-risk API for AI agents and published its error rate. Including the
-> parts that look bad.
+> I built a token-risk API for AI agents and published its error rate, including the
+> number that makes it look worst.
 >
-> 4.3% false positives. 15.3% of answers are "unknown". 22.9% of legitimate centralised
-> assets like USDT get flagged high. On the tokens that actually died, we rate only 10%
-> as high risk.
+> On contracts an independent oracle calls adversarial, we rate 64.7% high. Strip the
+> liquidity signals and it is 17.6%. The cohort is 17 tokens and 15 of them hold under a
+> dollar, so read both columns.
 >
-> Full method, dataset and harness — run it yourself: github.com/jakegu1/vetagent
+> 4.3% false positives, on a control with a median of $636,653 in the pool. 15.3% of
+> answers are a refusal.
+>
+> Method, dataset and harness — run it yourself: github.com/jakegu1/vetagent
 
 ---
 
@@ -162,7 +165,9 @@ HTTP), and I published the benchmark instead of a marketing number.
   dollar, median $0.023 -- and the drivers are liquidity, drained and honeypot checks,
   never owner powers, which `_owner_power_signal` is forbidden from scoring. USDT itself
   is rated low on Base and BSC and medium on Ethereum; WBTC is medium
-- only 10% of tokens that actually died are rated high
+- only 10% of tokens that actually died are rated high, and the 86.7% "not rated low"
+  beside it falls to 20.0% once the liquidity signals are stripped — that row was
+  largely detecting an empty pool rather than a bad contract
 
 The last two are the honest failure modes. Centralised stablecoins really do hold the
 powers we flag, and "this project died" is a market outcome while the engine scores a
@@ -207,15 +212,20 @@ github.com/jakegu1/vetagent
 
 ## Notes for whoever posts this
 
-- **Lead with the unflattering number**, not the flattering one. 10% dead-token recall
-  and 22.9% on centralised assets are the credibility, and burying them is the one move
-  that makes the whole post worthless.
+- **Lead with the number the title promises.** That is recall on the adversarial cohort —
+  64.7% full, 17.6% ablated, n=17 — and an earlier draft did not contain it at all, which
+  a hostile pre-publication review called the sharpest single omission. Leading with a
+  different unflattering number is not the same as leading with the relevant one.
 - **Do not claim "nobody publishes error rates."** Several do. Claim reproducibility, and
   be ready to name Hypernative, Forta and Blockaid if challenged — being the person who
   already knows the counterexamples is stronger than being corrected.
 - **Do not use the GoPlus comparison.** Withdrawn, see the header.
-- Expect "your dataset is 58% Base" and "n=576 is small". Both are true, both are in the
-  report, and agreeing immediately is the right response. An earlier draft of this post
+- **Expect the attack on n=17 and n=30, not on n=576.** These notes used to rehearse a
+  defence of 576, which nobody will attack. The operative sample sizes are the dead cohort
+  (30) and the adversarial cohort (17), small enough to be the first thing a careful
+  reader questions. The post raises both before a reader can.
+- Expect "your dataset is 58% Base". True, in the report, and agreeing immediately is the
+  right response. An earlier draft of this post
   said 83%, which is the adversarial cohort's Base share — 47 tokens, not 576. Do not
   quote a number for a set twelve times larger than the one it was measured on, in a post
   whose entire argument is that our numbers can be checked.

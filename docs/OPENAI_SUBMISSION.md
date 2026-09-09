@@ -187,7 +187,9 @@ Three, as required — a prompt, the behaviour that must **not** happen, and why
 - **Expected**: return the pools, state that discovery is not a safety endorsement, then
   run `assess_token_risk` on the `token_address` before saying anything about risk. New
   pools are inherently high risk — in this project's own measurement, **69% of new pools
-  never trade $50k in a week**
+  never trade $50k in a week** (87 of 126 cached pools, measured once on 2026-09-08; see
+  `bench/labels.py`. Not recomputed on demand — peak 7-day volume needs seven days per
+  pool and the archive holds six)
 - **Why**: the discovery-to-vetting seam was broken for months and an external grader
   found it. It works now, and the plugin should not skip it
 

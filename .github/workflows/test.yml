@@ -127,6 +127,14 @@ jobs:
       - name: The public archive is inside its size budget
         run: python tests/test_archive_budget.py
 
+      # W21. The number guard checked that guarded figures still MATCH; it never checked
+      # that it covered anything. Five outward surfaces created in R19 were never scanned,
+      # and every figure inside a markdown blockquote was invisible to it because ">" is
+      # both a blockquote marker and a comparison. Found by mutating all 87 percentages on
+      # the live surfaces one at a time.
+      - name: Every published number is covered by something
+        run: python tests/test_number_coverage.py
+
   # Upstream contract monitor: real API calls that check the fields we depend on still exist.
   # Separate from the unit tests: a third-party outage turns it red, which is the signal.
   upstream-contract:

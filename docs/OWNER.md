@@ -132,7 +132,7 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **8 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **7 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -159,6 +159,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W26: the launch post rewritten against the comment that would have sunk it
 - The archive strip on the visual owner page too
 - W25 decided: the archive stays public, with a threshold instead of an argument
 - I got the adversarial cohort wrong, then pointed a guard at the error
@@ -166,9 +167,8 @@ problem looked like before it was fixed.
 - Two FATAL findings from the hostile review of the launch post
 - The test I added yesterday turned the build red on eight commits
 - An HTML view of the owner's page, generated from the same one file
-- Two generated diagrams on the owner page, and not a diagramming pipeline
 
-_176 more not shown (184 commits in total)._
+_177 more not shown (185 commits in total)._
 
 ## What I got wrong
 
