@@ -164,6 +164,56 @@ def build(today=None):
     A('</section>')
 
     # ---------------------------------------------------------------- blockers
+    # ---------------------------------------------------------------- the archive
+    #
+    # The owner said he had no sense of whether the collector was running, and he was
+    # right that nothing said so. A missed day cannot be recovered -- upstream serves the
+    # current state only -- so this is the one strip on the page where a gap is not a
+    # cosmetic problem.
+    days, missing = owner.snapshot_days()
+    A('<section id="archive">')
+    A('  <h2>Is the archive still collecting?</h2>')
+    if days:
+        last = days[-1]
+        have = set(days)
+        first = datetime.date(*[int(x) for x in days[0].split("-")])
+        end = datetime.date(*[int(x) for x in last.split("-")])
+        start = end - datetime.timedelta(days=20)
+        cells, d = [], start
+        while d <= end:
+            iso = d.isoformat()
+            if iso < days[0]:
+                cells.append('<span class="c pre" title="%s: before collection started">'
+                             '</span>' % iso)
+            elif iso in have:
+                cells.append('<span class="c on" title="%s: collected"></span>' % iso)
+            else:
+                cells.append('<span class="c off" title="%s: MISSING, permanently">'
+                             '</span>' % iso)
+            d += datetime.timedelta(days=1)
+        A('  <div class="strip">%s</div>' % "".join(cells))
+        A('  <p class="strip-key"><span class="c on"></span> collected &nbsp; '
+          '<span class="c off"></span> missing, permanently &nbsp; '
+          '<span class="c pre"></span> before it started</p>')
+        age = (today - end).days
+        if missing:
+            A('  <p class="note bad-note"><strong>%d day(s) missing: %s.</strong> '
+              'Upstream serves only the current state, so these cannot be filled in '
+              'later.</p>' % (len(missing), ", ".join(missing)))
+        else:
+            A('  <p class="note"><strong>%d days, no gaps</strong>, %s to %s. Newest is %s.'
+              '</p>' % (len(days), first.isoformat(), last,
+                        "today" if age == 0 else "yesterday" if age == 1
+                        else "%d days ago" % age))
+        A('  <p class="note">Scheduled four times a day. GitHub has run it four to five '
+          'hours late on every occurrence, so the newest mark being yesterday is normal '
+          'and a hole is not. A build check fails on a hole, and on a collector that has '
+          'stopped, so this does not rely on anyone looking.</p>')
+    else:
+        A('  <p class="note">No snapshots on disk. That is either a fresh clone or a real '
+          'failure, and this page cannot tell which.</p>')
+    A('</section>')
+
     A('<section id="stuck">')
     A('  <h2>Why is something stuck?</h2>')
     A('  <p class="note">Hexagons are not work items &mdash; they are what a row is '
@@ -399,6 +449,18 @@ pre.mermaid{overflow-x:auto;margin:0;font-family:var(--mono);font-size:.8rem;
   text-decoration:underline;text-decoration-style:dotted;text-underline-offset:.3em}
 .round{margin:.2rem 0 .3rem;font-weight:600;color:var(--ink)}
 .rid{font-family:var(--mono);font-size:.85rem;color:var(--teal);margin-right:.5rem}
+
+/* The archive strip. One cell per day, sized to be countable rather than decorative. */
+.strip{display:flex;gap:3px;flex-wrap:wrap;margin:.2rem 0 .9rem}
+.c{width:18px;height:26px;border-radius:2px;display:inline-block;
+  background:var(--sunk);border:1px solid var(--rule)}
+.c.on{background:var(--teal);border-color:var(--teal)}
+.c.off{background:var(--bad);border-color:var(--bad)}
+.c.pre{background:transparent;border-style:dashed}
+.strip-key{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;
+  font-size:.86rem;color:var(--dim);margin:0 0 1.1rem}
+.strip-key .c{width:12px;height:12px}
+.bad-note{color:var(--bad)}
 
 .corrections{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;
   gap:1.35rem;counter-reset:none}
