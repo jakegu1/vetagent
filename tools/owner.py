@@ -297,6 +297,126 @@ def changed_recently(days=7, cap=8):
     return subjects[:cap], len(subjects)
 
 
+def backlog_items():
+    """Every backlog row, both tables, with the ids each one is blocked on.
+
+    `yours()` reads only the owner's table. A blocking graph needs both, because the
+    chains that matter cross them: W5 is the owner's and W3 is mine, and W3 is what every
+    accuracy claim rests on.
+    """
+    text = _read("docs/BACKLOG.md")
+    items = []
+    for line in text.splitlines():
+        m = re.match(r"\|\s*(W\d+)\s*\|([^|]*)\|([^|]*)\|(.*)\|([^|]*)\|\s*$", line)
+        if not m:
+            continue
+        wid, item, why, verify, state = (g.strip() for g in m.groups())
+        blob = why + " " + verify
+        # "Blocked on W18 and W3", "Blocked by `DECISIONS.md` B2", "Blocked on a credential"
+        blocked_on, external = [], []
+        for bm in re.finditer(r"\*\*Blocked\*\*\s+(?:on|by)\s+((?:[^.;|]|\.(?=\S))+)", blob):
+            clause = bm.group(1)
+            ids = re.findall(r"W\d+", clause)
+            if ids:
+                blocked_on.extend(ids)
+            else:
+                external.append(re.sub(r"[`*]", "", clause).strip()[:38])
+        items.append({"id": wid, "item": item, "state": state,
+                      "blocked_on": [b for b in blocked_on if b != wid],
+                      "external": external})
+    return items
+
+
+def _label(text, width=44):
+    """Mermaid-safe label: no markdown, no bracket characters, cut on a word boundary.
+
+    The first version passed the backlog cells through untouched, so labels arrived
+    carrying `**Score**`, backticks and half-words ("adversarial cohort be"). A diagram
+    that renders its own source markup is worse than no diagram: it looks broken, and a
+    reader who distrusts the rendering distrusts the content.
+    """
+    t = re.sub(r"[`*_]", "", text)
+    t = re.sub(r"[\[\]{}()|<>\"#;:]", " ", t)
+    t = re.sub(r"\s+", " ", t).strip()
+    if len(t) <= width:
+        return t
+    cut = t[:width].rsplit(" ", 1)[0]
+    return (cut or t[:width]) + "..."
+
+
+def mermaid_gate_timeline(today):
+    """The four dated gates on an axis, so "how much room is left" is one glance.
+
+    The table above already lists them. What a table cannot show is the spacing -- that
+    the first one is close and the rest are not, which is the whole shape of the plan.
+    """
+    L = ["```mermaid", "gantt", "    dateFormat YYYY-MM-DD",
+         "    axisFormat %b %d",
+         "    todayMarker stroke-width:3px,stroke:#d33,stroke-dasharray:0",
+         "    title The dates that decide things (red line is today)",
+         "    section Decisions"]
+    for g in gates():
+        L.append("    %s :milestone, %s, 0d"
+                 % (_label("%s - %s" % (g["gate"], _when(_days(g["date"], today))), 52),
+                    g["date"]))
+    L.append("```")
+    return L
+
+
+def mermaid_blockers(today):
+    """What blocks what -- the one question the tables on this page genuinely cannot answer.
+
+    Only rows that participate in a chain are drawn. The first version drew all eighteen
+    open items, fifteen of them with no edges at all, which is strictly worse than the
+    table it was meant to complement: same information, less order, more ink. A node earns
+    its place here by being connected to something.
+    """
+    items = [i for i in backlog_items()
+             if not i["state"].lower().startswith(("done", "rejected"))]
+    by_id = {i["id"]: i for i in items}
+    known = set(by_id)
+
+    # Rows that answer the nearest gate are part of the chain even with no blocker.
+    answers_gate = [w for w in ("W11", "W25", "W10") if w in known]
+
+    edges, ext = [], {}
+    for i in items:
+        for b in i["blocked_on"]:
+            if b in known:
+                edges.append((b, i["id"], "blocks"))
+        for e in i["external"]:
+            key = ext.setdefault(e, "E%d" % (len(ext) + 1))
+            edges.append((key, i["id"], "blocks"))
+    for w in answers_gate:
+        edges.append((w, "GATE", "answers"))
+
+    drawn = {n for a, b, _ in edges for n in (a, b)}
+
+    L = ["```mermaid", "flowchart LR"]
+    for i in items:
+        if i["id"] not in drawn:
+            continue
+        shape = "([%s])" if i["state"].lower().startswith("parked") else "[%s]"
+        L.append("    %s%s" % (i["id"], shape % _label(i["id"] + ": " + i["item"])))
+    for text, key in ext.items():
+        L.append("    %s{{%s}}" % (key, _label("not a work item - " + text, 46)))
+    if "GATE" in drawn:
+        L.append("    GATE{{2026-09-18 gate - is anyone using it}}")
+    for a, b, verb in edges:
+        L.append("    %s -->|%s| %s" % (a, verb, b))
+    L.append("```")
+    L.append("")
+    n_hidden = len([i for i in items if i["id"] not in drawn])
+    L.append("Rounded = parked by you. Hexagons are not work items -- they are what a row "
+             "is waiting on from outside this backlog. **%d other open item%s %s no chain "
+             "and %s drawn**, which is the honest reason the picture is small: most of the "
+             "backlog is not blocked, it is just not done."
+             % (n_hidden, "" if n_hidden == 1 else "s",
+                "has" if n_hidden == 1 else "have",
+                "is not" if n_hidden == 1 else "are not"))
+    return L
+
+
 def render(today=None):
     today = today or datetime.date.today()
     n = numbers()
@@ -372,6 +492,30 @@ def render(today=None):
     for g in gates():
         w("| %s | %s | %s | %s |"
           % (g["date"], _when(_days(g["date"], today)), g["gate"], g["action"]))
+    w("")
+
+    # ------------------------------------------------------------------- the pictures
+    #
+    # Two, not a gallery. An architecture diagram of a three-file Worker would be
+    # decoration, and the scorecard table already carries the score better than a bar
+    # chart would. These two answer questions the tables on this page genuinely cannot:
+    # how much room is left before each decision, and why a given thing is stuck.
+    #
+    # Generated from the same files as everything else here, so they cannot go stale
+    # while looking authoritative -- which is the specific danger of a diagram, because
+    # it is more persuasive than the prose it contradicts.
+    w("## The same thing as a picture")
+    w("")
+    w("If a diagram below disagrees with a table above, the diagram is the bug -- both")
+    w("are generated from the same files, so they cannot disagree without a defect.")
+    w("")
+    for line in mermaid_gate_timeline(today):
+        w(line)
+    w("")
+    w("### Why something is stuck")
+    w("")
+    for line in mermaid_blockers(today):
+        w(line)
     w("")
 
     # ---------------------------------------------------------------- where it stands

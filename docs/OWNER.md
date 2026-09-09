@@ -83,6 +83,55 @@ next -- including stopping.
 | 2026-12-04 | in 86 days | Is further investment worth it | Yes → continue per §7; no → move to low-maintenance mode |
 | 2027-03-04 | in 176 days | Does the data asset hold up | Yes → that becomes the main product; no → keep the tool, drop the data narrative |
 
+## The same thing as a picture
+
+If a diagram below disagrees with a table above, the diagram is the bug -- both
+are generated from the same files, so they cannot disagree without a defect.
+
+```mermaid
+gantt
+    dateFormat YYYY-MM-DD
+    axisFormat %b %d
+    todayMarker stroke-width:3px,stroke:#d33,stroke-dasharray:0
+    title The dates that decide things (red line is today)
+    section Decisions
+    Is anyone using it - in 9 days :milestone, 2026-09-18, 0d
+    Does anyone want to pay - in 37 days :milestone, 2026-10-16, 0d
+    Is further investment worth it - in 86 days :milestone, 2026-12-04, 0d
+    Does the data asset hold up - in 176 days :milestone, 2027-03-04, 0d
+```
+
+### Why something is stuck
+
+```mermaid
+flowchart LR
+    W3[W3 Grow the genuine adversarial cohort...]
+    W4[W4 Cut the unknown rate below 10%]
+    W6[W6 EVM holder concentration]
+    W7[W7 Point-in-time evaluation from the...]
+    W17[W17 Score owner powers, rather than only...]
+    W18[W18 A selector source that is not the...]
+    W5[W5 A second, independent sell-simulation...]
+    W10([W10 Create the two accounts the remaining...])
+    W11[W11 Answer the 2026-09-18 gate]
+    W25[W25 Decide whether the snapshot archive is...]
+    E1{{not a work item - DECISIONS.md B2 — the field...}}
+    E2{{not a work item - archive depth needs ≥60...}}
+    E3{{not a work item - a credential, not on...}}
+    GATE{{2026-09-18 gate - is anyone using it}}
+    W5 -->|blocks| W4
+    E1 -->|blocks| W6
+    E2 -->|blocks| W7
+    W18 -->|blocks| W17
+    W3 -->|blocks| W17
+    E3 -->|blocks| W5
+    W11 -->|answers| GATE
+    W25 -->|answers| GATE
+    W10 -->|answers| GATE
+```
+
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **8 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+
 ## Where it stands today
 
 | | |
@@ -108,6 +157,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- "The only part of this product that cannot be copied" — we publish it, 4x a day
 - Blockaid's false-positive rate was wrong by 10x on the live homepage
 - /privacy named four recipients of the token address. There are seven.
 - mcpservers.org is live, and I reported the opposite
@@ -115,9 +165,8 @@ problem looked like before it was fixed.
 - W13 closed, and its acceptance test was wrong
 - Regenerate over the snapshot commits the rebase brought in
 - Two emails, and neither said what it appeared to say
-- "Corrected in three surfaces" had survived in four more
 
-_167 more not shown (175 commits in total)._
+_168 more not shown (176 commits in total)._
 
 ## What I got wrong
 

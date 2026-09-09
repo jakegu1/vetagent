@@ -124,6 +124,65 @@ def test_it_reads_the_real_gate_table():
     check("it is parsed out of STRATEGY.md", "docs/STRATEGY.md" in body)
 
 
+def test_the_diagrams_are_generated_and_cannot_drift():
+    """A diagram is more persuasive than the prose it contradicts, so it must be generated.
+
+    That is the whole reason these are emitted from `backlog_items()` and `gates()` rather
+    than drawn. A hand-drawn architecture picture is the most dangerous document in a repo
+    like this one: nobody re-reads it, everybody believes it, and no test can fail on it.
+
+    This checks the three things that would make the pictures lie: a node for a closed
+    item, a date the gate table does not have, and a chain the backlog does not state.
+    """
+    print("\n[owner] the pictures come from the same files as the tables")
+    page = owner.render()
+
+    check("both diagrams reach the page", page.count("```mermaid") == 2,
+          "%d mermaid blocks" % page.count("```mermaid"))
+    check("the gantt is there", "gantt" in page)
+    check("the blocker graph is there", "flowchart LR" in page)
+
+    items = owner.backlog_items()
+    closed = {i["id"] for i in items
+              if i["state"].lower().startswith(("done", "rejected"))}
+    check("something is actually closed, or this proves nothing", bool(closed),
+          str(sorted(closed)))
+
+    graph = page.split("flowchart LR")[1].split("```")[0]
+    for wid in sorted(closed):
+        # Word-boundary match: W1 must not match inside W17.
+        check("%s is closed, so it is not in the graph" % wid,
+              not re.search(r"\b%s\b" % wid, graph), wid)
+
+    # Every arrow the graph draws must be a chain the backlog states.
+    stated = set()
+    for i in items:
+        for b in i["blocked_on"]:
+            stated.add((b, i["id"]))
+    for a, b in re.findall(r"(W\d+) -->\|blocks\| (W\d+)", graph):
+        check("the backlog states that %s blocks %s" % (a, b), (a, b) in stated,
+              "the picture invented an edge")
+
+    # Every gate date on the timeline comes from STRATEGY, not from a second list.
+    gantt = page.split("gantt")[1].split("```")[0]
+    gate_dates = {g["date"] for g in owner.gates()}
+    for d in re.findall(r"(\d{4}-\d{2}-\d{2}), 0d", gantt):
+        check("%s is a real gate date" % d, d in gate_dates, "not in STRATEGY's table")
+    check("every gate is on the timeline",
+          len(re.findall(r", 0d", gantt)) == len(gate_dates),
+          "%d drawn, %d gates" % (len(re.findall(r", 0d", gantt)), len(gate_dates)))
+
+    # A label carrying markdown means the renderer will show the markup. It happened.
+    for label in re.findall(r"\[([^\]]*)\]", graph) + re.findall(r"\{\{([^}]*)\}\}", graph):
+        check("label is mermaid-safe: %r" % label[:34],
+              not re.search(r"[`*_|]", label), label)
+
+    # Hiding unconnected rows is correct; hiding them silently is not.
+    check("the count of items left out of the picture is stated",
+          re.search(r"\*\*\d+ other open item", page) is not None,
+          "a diagram that drops rows without saying so reads as complete")
+
+
 def test_the_page_admits_recent_mistakes():
     """A status page that only ever carries good news should be read as marketing.
 
