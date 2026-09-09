@@ -24,6 +24,7 @@ Run:  python tests/test_http_telemetry.py
 import asyncio
 import io
 import os
+import re
 import sys
 import types
 
@@ -332,6 +333,37 @@ def test_an_unnamed_tool_call_is_not_tool_use():
     if recorded:
         check("the tool is empty, not '?'", recorded[0][1] == "",
               repr(recorded[0][1]))
+
+
+def test_privacy_names_every_third_party_that_receives_the_address():
+    """The privacy page lists who gets the token address. The list has to be the real one.
+
+    It named four recipients -- DexScreener, GeckoTerminal, honeypot.is, RugCheck -- and
+    read as exhaustive. It was not: `_CHAIN_RPC` in src/risk.py sends `eth_getCode` to
+    rpc.mevblocker.io, mainnet.base.org or bsc-dataseed.bnbchain.org on every EVM
+    assessment, so three third parties had been receiving the most sensitive field this
+    service handles, undisclosed, since the owner-powers check shipped.
+
+    A privacy page is a promise, and this one was quietly incomplete rather than wrong in
+    a way anyone would notice. So the list is generated-adjacent now: every host the engine
+    can contact must appear on the page, and adding an upstream without disclosing it fails
+    the build.
+    """
+    print("\n[privacy] the disclosed recipients are the actual recipients")
+    risk_src = io.open(os.path.join(ROOT, "src", "risk.py"), encoding="utf-8").read()
+    hosts = set(re.findall(r"https://([a-zA-Z0-9.-]+)", risk_src))
+    # Not a real destination: the internal marker for the bytecode cache namespace.
+    hosts = {h for h in hosts if not h.endswith(".vetagent.internal")}
+    check("found the engine's outbound hosts", len(hosts) >= 4, str(sorted(hosts)))
+
+    privacy = entry._PRIVACY_HTML
+    for host in sorted(hosts):
+        # The page may name the vendor rather than the hostname, so accept either the
+        # host itself or its second-level label (dexscreener, geckoterminal, rugcheck).
+        label = host.split(".")[-2] if host.count(".") >= 2 else host.split(".")[0]
+        named = host in privacy or label.lower() in privacy.lower()
+        check("privacy names %s" % host, named,
+              "the engine sends the token address here and the page does not say so")
 
 
 def test_a_failed_http_call_is_still_recorded():

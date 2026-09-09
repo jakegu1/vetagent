@@ -158,9 +158,18 @@ waits 6 months for the same thing.
 
 ### 4.2 Published accuracy (medium strength, but the only differentiator we can cash today)
 
-Nobody in this category publishes their own recall and false-positive rates. We publish
-both, and the methodology with them (independent labelling + ablation + runtime
-disjointness assertion).
+Several tools in this category publish a headline accuracy number. **What none of them
+publishes is a method you can re-run** — we publish both the rates and the harness that
+produces them (independent labelling + ablation + runtime disjointness assertion), so the
+numbers can be checked rather than believed.
+
+> **Corrected 2026-09-09, and this is the fifth time.** This line read "Nobody in this
+> category publishes their own recall and false-positive rates" — false, and disproved by
+> §1 of this same file ninety-nine lines above, which names three vendors that do. It
+> survived the guard added the same morning because that guard's pattern required the word
+> "else" and this phrasing omits it. Fixed the line and widened the pattern; the guard now
+> keys on the claim's two false halves — a universal subject plus a denial about *rates* —
+> instead of one wording, while still allowing the accurate "no method you can re-run".
 
 For a B2B customer this is the **only citable material** they have to justify the choice
 to their boss. It can be copied — but whoever goes first keeps the authority of having

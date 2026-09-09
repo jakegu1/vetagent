@@ -176,7 +176,16 @@ for the same reason. Same answer, same code path.</p>
   <li>GeckoTerminal &mdash; liquidity fallback, new and trending pools</li>
   <li>honeypot.is &mdash; EVM buy/sell simulation</li>
   <li>RugCheck &mdash; Solana contract risk</li>
+  <li>rpc.mevblocker.io (Ethereum), mainnet.base.org (Base),
+      bsc-dataseed.bnbchain.org (BSC) &mdash; public RPC nodes, read-only
+      <code>eth_getCode</code> to read the contract's own bytecode and see which
+      powers it holds</li>
 </ul>
+<p>That last line was missing until 2026-09-09. The three RPC endpoints have received
+the token address on every EVM assessment since the owner-powers check shipped, and this
+page listed four recipients as though the list were complete. It is corrected here rather
+than quietly, and <code>tests/test_http_telemetry.py</code> now fails the build if the
+engine gains an outbound host this list does not name.</p>
 <p>These are third-party services with their own privacy policies. We never send
 them wallet addresses, identities, or anything about who is asking.</p>
 

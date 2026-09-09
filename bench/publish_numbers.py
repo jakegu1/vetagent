@@ -282,8 +282,20 @@ FROZEN_LOG_FILES = ("docs/ROUNDS.md", "docs/DECISIONS.md", "docs/HANDOFF.md",
 # would have found one of them.
 RETRACTED_CLAIMS = (
     # (pattern, what a line saying it is WRONG looks like)
-    (r"nobody else (?:does|publishes|in this category)",
-     r"not\s|retracted|several (?:do|publish)|is false"),
+    #
+    # FIFTH survivor, found 2026-09-09 at docs/STRATEGY.md:161 -- ninety-nine lines below
+    # its own retraction, and invisible to the first version of this pattern because it
+    # omits the word "else": "Nobody in this category publishes their own recall and
+    # false-positive rates." So the pattern now keys on the two halves that make the claim
+    # false -- a universal subject, and the thing being denied is a RATE -- rather than on
+    # any particular phrasing of the subject.
+    #
+    # The distinction it has to preserve: "none of them publishes a METHOD you can re-run"
+    # is the accurate claim and appears on the landing page and in the launch draft. Only
+    # the version denying that anyone publishes a rate is false.
+    (r"(?:nobody|no ?one|none of them)\b[^.]{0,80}publish(?:es)?\b"
+     r"[^.]{0,60}(?:rate|recall|false.positive)",
+     r"\bnot\b|retracted|several (?:do|publish)|is false|do not claim"),
 )
 
 
