@@ -58,9 +58,6 @@ OWNER_DUE = {
     "W10": ("2026-09-18", "distribution is the whole of the gate's failing branch"),
     "W5": ("2026-10-16", "needed for W3, which every accuracy claim rests on"),
     "W12": ("2026-10-16", "changes what the benchmark can measure, so before the D gate"),
-    "W25": ("2026-09-18", "the gate's failing branch is distribution, and publishing the "
-                          "archive is either a distribution asset or a leak -- it cannot "
-                          "be both, and the gate is when that stops being academic"),
     "W13": ("", "no deadline -- do it when convenient"),
 }
 
@@ -77,9 +74,6 @@ COST_OF_WAITING = {
           "we cannot tell, and neither can anyone reading the benchmark.",
     "W12": "The 10-16 gate arrives with the measurement question still open, so that "
            "gate answers a smaller question than it was meant to.",
-    "W25": "Every day adds another day of a supposedly exclusive data series to anyone "
-           "who has forked the repository. That part cannot be undone later. The "
-           "decision itself can wait; the accumulation cannot.",
     "Post Experiment C": "This is the one action that can change the 09-18 answer. Not "
                          "doing it does not delay the gate -- the gate still fires, and "
                          "it fires on no.",
@@ -417,6 +411,76 @@ def mermaid_blockers(today):
     return L
 
 
+def snapshot_days():
+    """Every day the archive actually holds, newest last, plus any gap between them.
+
+    Reads the filenames. The archive is the one thing in this project that cannot be
+    repaired later -- upstream returns the current snapshot only, so a day not collected
+    on the day is gone -- and until now nothing anywhere said whether it was running.
+    """
+    d = os.path.join(ROOT, "bench", "snapshots")
+    if not os.path.isdir(d):
+        return [], []
+    days = sorted(f[len("pools-"):-len(".ndjson")]
+                  for f in os.listdir(d)
+                  if f.startswith("pools-") and f.endswith(".ndjson"))
+    if not days:
+        return [], []
+    first = datetime.date(*[int(x) for x in days[0].split("-")])
+    last = datetime.date(*[int(x) for x in days[-1].split("-")])
+    have = set(days)
+    missing = []
+    day = first
+    while day <= last:
+        if day.isoformat() not in have:
+            missing.append(day.isoformat())
+        day += datetime.timedelta(days=1)
+    return days, missing
+
+
+def snapshot_strip(today, width=21):
+    """A row of marks, one per day, so a gap is visible without reading a date."""
+    days, missing = snapshot_days()
+    if not days:
+        return ["**The archive is empty.** That is either a new clone or a real failure, "
+                "and this page cannot tell which."]
+    last = datetime.date(*[int(x) for x in days[-1].split("-")])
+    have = set(days)
+
+    marks, start = [], last - datetime.timedelta(days=width - 1)
+    day = start
+    while day <= last:
+        iso = day.isoformat()
+        # Before collection began is not a gap. Only a hole inside the run is.
+        if iso < days[0]:
+            marks.append("·")
+        else:
+            marks.append("█" if iso in have else "○")
+        day += datetime.timedelta(days=1)
+
+    age = (today - last).days
+    L = ["```text",
+         "%s   %s -> %s" % ("".join(marks), start.isoformat(), last.isoformat()),
+         "```", ""]
+    L.append("`█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; "
+             "`·` before collection started.")
+    L.append("")
+    if missing:
+        L.append("**%d day(s) missing: %s.** Upstream serves only the current state, so "
+                 "these cannot be filled in later -- they are holes in the one asset that "
+                 "compounds." % (len(missing), ", ".join(missing)))
+    else:
+        L.append("**%d days, no gaps.** Newest is %s, %s."
+                 % (len(days), days[-1],
+                    "today" if age == 0 else
+                    "yesterday" if age == 1 else "%d days ago" % age))
+    L.append("")
+    L.append("The collector is scheduled four times a day and GitHub runs it late every "
+             "time -- typically four to five hours -- so the newest mark being yesterday "
+             "is normal and a hole is not.")
+    return L
+
+
 def render(today=None):
     today = today or datetime.date.today()
     n = numbers()
@@ -512,6 +576,12 @@ def render(today=None):
     for line in mermaid_gate_timeline(today):
         w(line)
     w("")
+    w("### Is the archive still collecting?")
+    w("")
+    for line in snapshot_strip(today):
+        w(line)
+    w("")
+
     w("### Why something is stuck")
     w("")
     for line in mermaid_blockers(today):

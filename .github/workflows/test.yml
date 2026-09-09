@@ -120,6 +120,13 @@ jobs:
       - name: No phrasing of the retracted claim has come back
         run: python tests/test_retracted_claim.py
 
+      # DECISIONS B15. The archive is public in git until the packed repository passes
+      # 200 MB, then days older than 90 move to R2. A plan to act "when the repo gets
+      # big" is a wish; this is the date. It warns at 80% so the move can be scheduled
+      # rather than arriving as a red build.
+      - name: The public archive is inside its size budget
+        run: python tests/test_archive_budget.py
+
   # Upstream contract monitor: real API calls that check the fields we depend on still exist.
   # Separate from the unit tests: a third-party outage turns it red, which is the signal.
   upstream-contract:

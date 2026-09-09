@@ -23,7 +23,6 @@ These are the things I cannot do. Everything else in this project is mine.
 |---|---|---|---|---|
 | **in 9 days** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
 | **in 9 days** | 2026-09-18 | W11 | Answer the 2026-09-18 gate | no |
-| **in 9 days** | 2026-09-18 | W25 | Decide whether the snapshot archive is a moat or a public good | no |
 | **in 9 days** | 2026-09-18 | -- | Post Experiment C | no |
 | in 37 days | 2026-10-16 | W5 | A second, independent sell-simulation source | **yes -- see below** |
 | in 37 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
@@ -41,13 +40,6 @@ These are the things I cannot do. Everything else in this project is mine.
 - **Why then:** this IS the gate -- it has to be answered on the day
 - **You know it is done when:** `python bench/usage.py`, counting rule already fixed in code; then a `Resolved:` line in `STRATEGY.md` §8, which `test_gates_get_reviewed.py` requires once due
 - **If you do nothing:** A gate that passes its date in silence teaches everyone that gates are decoration, and this is the first one that can stop the project.
-
-### W25 Decide whether the snapshot archive is a moat or a public good
-
-- **When:** 2026-09-18 (**in 9 days**)
-- **Why then:** the gate's failing branch is distribution, and publishing the archive is either a distribution asset or a leak -- it cannot be both, and the gate is when that stops being academic
-- **You know it is done when:** Either (a) keep publishing and delete the exclusivity claim — the archive becomes a reproducibility asset, defensible and arguably better for a product selling checkability — or (b) move it to R2, which §4.1 already budgets at under $1/month, and publish the collector plus a rolling sample. Recorded either way as a `DECISIONS.md` row
-- **If you do nothing:** Every day adds another day of a supposedly exclusive data series to anyone who has forked the repository. That part cannot be undone later. The decision itself can wait; the accumulation cannot.
 
 ###  Post Experiment C
 
@@ -101,6 +93,18 @@ gantt
     Does the data asset hold up - in 176 days :milestone, 2027-03-04, 0d
 ```
 
+### Is the archive still collecting?
+
+```text
+···············██████   2026-08-19 -> 2026-09-08
+```
+
+`█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
+
+**6 days, no gaps.** Newest is 2026-09-08, yesterday.
+
+The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
+
 ### Why something is stuck
 
 ```mermaid
@@ -114,7 +118,6 @@ flowchart LR
     W5[W5 A second, independent sell-simulation...]
     W10([W10 Create the two accounts the remaining...])
     W11[W11 Answer the 2026-09-18 gate]
-    W25[W25 Decide whether the snapshot archive is...]
     E1{{not a work item - DECISIONS.md B2 — the field...}}
     E2{{not a work item - archive depth needs ≥60...}}
     E3{{not a work item - a credential, not on...}}
@@ -126,7 +129,6 @@ flowchart LR
     W3 -->|blocks| W17
     E3 -->|blocks| W5
     W11 -->|answers| GATE
-    W25 -->|answers| GATE
     W10 -->|answers| GATE
 ```
 
@@ -157,16 +159,16 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- I got the adversarial cohort wrong, then pointed a guard at the error
+- The live /llms.txt carried three stale counts the guard never covered
 - Two FATAL findings from the hostile review of the launch post
 - The test I added yesterday turned the build red on eight commits
 - An HTML view of the owner's page, generated from the same one file
 - Two generated diagrams on the owner page, and not a diagramming pipeline
 - "The only part of this product that cannot be copied" — we publish it, 4x a day
 - Blockaid's false-positive rate was wrong by 10x on the live homepage
-- /privacy named four recipients of the token address. There are seven.
-- mcpservers.org is live, and I reported the opposite
 
-_172 more not shown (180 commits in total)._
+_174 more not shown (182 commits in total)._
 
 ## What I got wrong
 

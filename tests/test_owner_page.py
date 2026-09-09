@@ -124,6 +124,40 @@ def test_it_reads_the_real_gate_table():
     check("it is parsed out of STRATEGY.md", "docs/STRATEGY.md" in body)
 
 
+def test_the_archive_is_still_collecting():
+    """A missed day is permanently unrecoverable, so it must fail a build, not a glance.
+
+    The owner said he had no sense of whether the collector was running. The strip on the
+    page answers that when someone looks; this answers it when nobody does. Upstream
+    serves the current state only -- a day not collected on the day cannot be filled in --
+    which makes this the one failure in the project that no later work can repair.
+
+    Tolerance is deliberately two days, not one: the job is scheduled four times daily and
+    GitHub has run it four to five hours late on every single occurrence, so "newest is
+    yesterday" is the normal state and failing on it would be a test that cries wolf.
+    """
+    print("\n[owner] the archive has no holes and is not stalled")
+    import datetime
+    days, missing = owner.snapshot_days()
+
+    check("the archive has days in it at all", bool(days), "no pools-*.ndjson found")
+    if not days:
+        return
+
+    check("no day is missing between the first and the last", not missing,
+          "GONE FOREVER: %s" % ", ".join(missing))
+
+    last = datetime.date(*[int(x) for x in days[-1].split("-")])
+    age = (datetime.date.today() - last).days
+    check("the newest snapshot is not stale", age <= 2,
+          "newest is %s, %d days old -- the collector has stopped" % (days[-1], age))
+
+    page = owner.render()
+    check("the strip reaches the owner page", "Is the archive still collecting?" in page)
+    check("and a hole would be legible on it, not just counted",
+          "permanently" in page.split("Is the archive still collecting?")[1][:900])
+
+
 def test_the_diagrams_are_generated_and_cannot_drift():
     """A diagram is more persuasive than the prose it contradicts, so it must be generated.
 
