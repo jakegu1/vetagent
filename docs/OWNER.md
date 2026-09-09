@@ -159,6 +159,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W22: the tool that has misled callers twice now declares its shape
 - W21: the number guard checked matching, never coverage
 - W26: the launch post rewritten against the comment that would have sunk it
 - The archive strip on the visual owner page too
@@ -166,9 +167,8 @@ problem looked like before it was fixed.
 - I got the adversarial cohort wrong, then pointed a guard at the error
 - The live /llms.txt carried three stale counts the guard never covered
 - Two FATAL findings from the hostile review of the launch post
-- The test I added yesterday turned the build red on eight commits
 
-_178 more not shown (186 commits in total)._
+_179 more not shown (187 commits in total)._
 
 ## What I got wrong
 
