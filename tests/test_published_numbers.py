@@ -14,12 +14,14 @@ they can verify.
 Run:  python tests/test_published_numbers.py
 """
 
+import io
 import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "bench"))
 
 import publish_numbers  # noqa: E402
+
 
 
 def main():
@@ -30,6 +32,33 @@ def main():
     if not os.path.exists(publish_numbers.RESULTS):
         print("bench/results.json missing -- run bench/run_benchmark.py first")
         return 1
+
+    # W23. The maturity total's only source is docs/SCORECARD.md, which is generated and
+    # was guarded by nobody -- so a stale scorecard made every copy of the total agree on
+    # a number that had stopped being true, and this very script reported success.
+    #
+    # Not hypothetical: when this check was added the committed file said "test_risk.py
+    # 272 passed" against a real 277, "test_mcp.py 73" against 80, and "6 of 180 days" of
+    # archive against 7. The total still rounded to 55, which is luck, not design.
+    #
+    # tests/test_rounds.py has applied exactly this to docs/ROUNDS.md for weeks. The
+    # scorecard, the more load-bearing of the two, never got it.
+    #
+    # Text mode on both sides: the committed file is CRLF under git autocrlf and the
+    # generator writes LF, so a bytes comparison would fail everywhere and get deleted.
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "bench"))
+    import scorecard
+    want = scorecard.render(*scorecard.score())
+    with io.open(os.path.join(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))), "docs", "SCORECARD.md"), encoding="utf-8") as f:
+        have = f.read()
+    scorecard_stale = have.strip() != want.strip()
+    if scorecard_stale:
+        print("\ndocs/SCORECARD.md is NOT what bench/scorecard.py produces.")
+        print("The maturity total is read from that file, so every copy of it is")
+        print("currently agreeing with a number the generator no longer computes.")
+        print("Regenerate: python bench/scorecard.py --write")
 
     vals, stale, _ = publish_numbers.scan(write=False)
     print("benchmark says: n=%s, false positives %s%% on %s healthy tokens, "
@@ -44,7 +73,7 @@ def main():
     # four and leaves the fifth wide open -- which is how these four got there.
     loose = publish_numbers.unclaimed_percentages()
 
-    if not stale and not loose:
+    if not stale and not loose and not scorecard_stale:
         print("\nevery published figure matches, and every published figure is guarded")
         print("PASS")
         return 0

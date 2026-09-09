@@ -96,12 +96,12 @@ gantt
 ### Is the archive still collecting?
 
 ```text
-···············██████   2026-08-19 -> 2026-09-08
+··············███████   2026-08-20 -> 2026-09-09
 ```
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**6 days, no gaps.** Newest is 2026-09-08, yesterday.
+**7 days, no gaps.** Newest is 2026-09-09, today.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -132,7 +132,7 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **5 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **4 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -159,6 +159,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Repair W21's row, damaged by the same backtick substitution
 - W24: one address had 2^40 spellings and every one was a cache miss
 - CLAUDE.md: the quoting trap has two mechanisms, not one
 - Repair the W22 row that bash ate
@@ -166,9 +167,8 @@ problem looked like before it was fixed.
 - W21: the number guard checked matching, never coverage
 - W26: the launch post rewritten against the comment that would have sunk it
 - The archive strip on the visual owner page too
-- W25 decided: the archive stays public, with a threshold instead of an argument
 
-_182 more not shown (190 commits in total)._
+_183 more not shown (191 commits in total)._
 
 ## What I got wrong
 
@@ -210,7 +210,7 @@ Newest first.
 
 **2026-09-07** &mdash; I said: *'The sell simulator has not indexed these tokens yet.'*
 
-> It had. I was sending it an identifier with the chain name glued to the front instead of an address, and six empty answers looked exactly like 'not indexed'.
+> It had. I was sending `base_0x1234...` -- GeckoTerminal's pool id, with the chain name glued to the front -- where honeypot.is wanted the bare `0x1234...` address. 6 empty answers looked exactly like 'not indexed', because a wrong question and an unindexed token return the same nothing.
 
 > How it surfaced: Caught by printing what was actually sent.
 

@@ -134,8 +134,10 @@ CORRECTIONS = [
      "Caught by making the number computable instead of typed."),
     ("2026-09-07",
      "'The sell simulator has not indexed these tokens yet.'",
-     "It had. I was sending it an identifier with the chain name glued to the front "
-     "instead of an address, and six empty answers looked exactly like 'not indexed'.",
+     "It had. I was sending `base_0x1234...` -- GeckoTerminal's pool id, with the chain "
+     "name glued to the front -- where honeypot.is wanted the bare `0x1234...` address. "
+     "6 empty answers looked exactly like 'not indexed', because a wrong question and an "
+     "unindexed token return the same nothing.",
      "Caught by printing what was actually sent."),
 ]
 

@@ -217,6 +217,99 @@ def test_the_diagrams_are_generated_and_cannot_drift():
           "a diagram that drops rows without saying so reads as complete")
 
 
+def test_a_correction_says_something_checkable():
+    """W23. The staleness window proves an entry EXISTS. Nothing proved it SAID anything.
+
+    A dated one-word entry satisfied the 14-day check, which means the section that exists
+    to show the owner how much of the page to believe could be kept green by typing
+    nothing. That is the same defect as a scan reporting "no findings" without saying where
+    it looked, in the one place on the page whose job is to be uncomfortable.
+
+    **What this cannot do, stated plainly rather than implied: it cannot tell whether a
+    correction is true, or whether the important one was left out.** No test can. It sets
+    a floor -- each entry must name a claim, a correction, and how it surfaced, and the
+    correction must point at something concrete -- and above that floor the section is
+    still worth exactly as much as the honesty of whoever wrote it. Publishing that
+    limitation is more useful than a check that implies it was covered.
+    """
+    print("\n[W23] each correction names a claim, a truth, and a concrete anchor")
+    import datetime
+
+    seen_truths = set()
+    for row in owner.CORRECTIONS:
+        when, claimed, truth, caught = row
+        tag = when
+
+        # A real correction has three distinct parts, each of them a sentence.
+        check("%s: the claim is stated, not gestured at" % tag, len(claimed.strip()) >= 30,
+              repr(claimed[:40]))
+        check("%s: the correction is stated" % tag, len(truth.strip()) >= 40,
+              repr(truth[:40]))
+        check("%s: how it surfaced is stated" % tag, len(caught.strip()) >= 25,
+              repr(caught[:40]))
+
+        # "I said X, and actually X" is not a correction.
+        check("%s: the correction differs from the claim" % tag,
+              claimed.strip().lower() != truth.strip().lower())
+
+        # A correction with no referent is a gesture. Require the truth to point at
+        # something a reader could go and check: a number, a path, an identifier, a date.
+        anchored = bool(re.search(r"\d", truth) or "`" in truth or "/" in truth
+                        or ".py" in truth or ".md" in truth)
+        check("%s: the correction points at something checkable" % tag, anchored,
+              repr(truth[:60]))
+
+        # Two entries that say the same thing are one entry and a filler.
+        key = truth.strip().lower()[:80]
+        check("%s: it is not a repeat of another entry" % tag, key not in seen_truths,
+              repr(truth[:50]))
+        seen_truths.add(key)
+
+        # "noticed it" is not a mechanism.
+        vacuous = ("noticed", "found it", "by accident", "saw it", "realised")
+        bare = caught.strip().lower().rstrip(".")
+        check("%s: the mechanism is named, not waved at" % tag,
+              bare not in vacuous and len(bare.split()) >= 4, repr(caught[:40]))
+
+    # The list claims to be newest first, and a reader trusts the top entry is recent.
+    dates = [datetime.date(*[int(x) for x in r[0].split("-")]) for r in owner.CORRECTIONS]
+    check("the list is ordered newest first", dates == sorted(dates, reverse=True),
+          str([d.isoformat() for d in dates]))
+
+
+def test_a_cost_of_waiting_is_a_consequence_not_a_restatement():
+    """W23. The orphan check proved a line EXISTS for every item. Not that it said anything.
+
+    The cost line is the one an owner actually plans around, and it is the hardest thing
+    on the page to write, so it is the likeliest to decay into a restatement of the task.
+    This checks the two failures that would make it useless -- too short to carry a
+    consequence, or merely echoing the item it belongs to -- and cannot check the third,
+    which is being wrong.
+    """
+    print("\n[W23] the cost of waiting is its own sentence")
+    items = {i["id"]: i["item"] for i in owner.yours()}
+    items.update({a[0]: a[0] for a in owner.EXTRA_ACTIONS})
+
+    seen = set()
+    for key, cost in owner.COST_OF_WAITING.items():
+        c = cost.strip()
+        check("%s: the cost is a sentence, not a label" % key, len(c) >= 45, repr(c[:40]))
+        check("%s: it ends as a sentence" % key, c.endswith("."), repr(c[-30:]))
+
+        # A restatement of the task tells the owner nothing they did not already read.
+        title = items.get(key, "")
+        if title:
+            tw = set(re.findall(r"[a-z]{4,}", title.lower()))
+            cw = set(re.findall(r"[a-z]{4,}", c.lower()))
+            overlap = len(tw & cw) / float(len(tw)) if tw else 0.0
+            check("%s: it is not an echo of the item title" % key, overlap < 0.6,
+                  "%.0f%% of the title's words reappear" % (overlap * 100))
+
+        check("%s: it is not a copy of another item's cost" % key, c[:60] not in seen,
+              repr(c[:50]))
+        seen.add(c[:60])
+
+
 def test_the_page_admits_recent_mistakes():
     """A status page that only ever carries good news should be read as marketing.
 
