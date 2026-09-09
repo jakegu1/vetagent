@@ -168,6 +168,80 @@ TOOLS = [
         },
         "annotations": {"readOnlyHint": True, "openWorldHint": True,
                         "destructiveHint": False, "idempotentHint": False},
+        "outputSchema": {
+            "type": "object",
+            "description":
+                "Discovery only, never an endorsement. Call assess_token_risk on "
+                "token_address before saying anything about a pool's risk.",
+            "properties": {
+                "chain": {"type": "string"},
+                "network": {"type": "string",
+                            "description": "The upstream's own name for the chain, "
+                                           "which differs from `chain` (eth vs ethereum)."},
+                "count": {
+                    "type": "integer",
+                    "description":
+                        "How many pools are in `pools`. NOT how many were examined -- "
+                        "that is `scanned`. This field reported the fetched total beside "
+                        "a shorter list until 2026-09-08, so a caller reading it believed "
+                        "it had seen twenty pools when it had three.",
+                },
+                "scanned": {
+                    "type": "integer",
+                    "description":
+                        "How many distinct pools were examined before the limit was "
+                        "applied. Always >= count.",
+                },
+                "sources_ok": {
+                    "type": "array",
+                    "items": {"type": "string", "enum": ["new", "trending"]},
+                    "description":
+                        "Which of the two upstream listings answered. Both means a full "
+                        "scan.",
+                },
+                "sources_failed": {
+                    "type": "array",
+                    "items": {"type": "string", "enum": ["new", "trending"]},
+                    "description":
+                        "Which listings did NOT answer. A non-empty array means this is a "
+                        "PARTIAL scan: a smaller `scanned` here is a coverage gap, not a "
+                        "quiet market. Treat it as missing information, not as absence.",
+                },
+                "served_stale": {
+                    "type": "array",
+                    "items": {"type": "object"},
+                    "description":
+                        "Present only when an upstream was unreachable and cached data "
+                        "was used. Each entry names the source and its age in seconds.",
+                },
+                "pools": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "pool_id": {"type": "string"},
+                            "name": {"type": "string"},
+                            "token_address": {
+                                "type": "string",
+                                "description":
+                                    "The base token. This is the field to hand to "
+                                    "assess_token_risk -- pool_id is not an address, and "
+                                    "passing it produced six empty answers before the "
+                                    "discovery-to-vetting seam was fixed.",
+                            },
+                            "kind": {"type": "string", "enum": ["new", "trending"]},
+                            "price_usd": {"type": ["number", "null"]},
+                            "liquidity_usd": {"type": ["number", "null"]},
+                            "volume_24h_usd": {"type": ["number", "null"]},
+                            "pool_age_days": {"type": ["integer", "null"]},
+                        },
+                        "required": ["pool_id", "name", "token_address", "kind"],
+                    },
+                },
+            },
+            "required": ["chain", "network", "count", "scanned",
+                         "sources_ok", "sources_failed", "pools"],
+        },
     },
 ]
 

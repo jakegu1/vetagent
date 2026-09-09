@@ -143,6 +143,63 @@ def test_tools_list_shape():
         check("%s has title" % t["name"], bool(t.get("title")), str(t.get("title")))
 
 
+def test_every_tool_declares_its_output_shape():
+    """W22. A field a caller reads must be declared where a caller looks.
+
+    `find_new_hot_pools` was the only tool without an `outputSchema`, so `count`'s meaning
+    -- which changed on 2026-09-08 from "fetched" to "returned" -- and the three fields
+    added the same week were announced nowhere. That tool has now shipped two defects of
+    exactly this shape: `count` said 20 beside three pools, and `scanned` could not tell a
+    half scan from a complete one. Both were a caller reading a field name and guessing.
+
+    The check is not "is there a schema" but "does the schema cover what the tool
+    actually returns", because a schema written once and left behind is how the field
+    names drifted from their meanings in the first place.
+    """
+    print("\n[MCP] every tool declares the shape it returns")
+    tools = call({"jsonrpc": "2.0", "id": 9, "method": "tools/list"})["result"]["tools"]
+    for t in tools:
+        check("%s declares an outputSchema" % t["name"], "outputSchema" in t)
+
+    pools = [t for t in tools if t["name"] == "find_new_hot_pools"][0]
+    declared = set(pools["outputSchema"]["properties"])
+
+    # Drive the real function with a stub so the comparison is against what it returns
+    # today, not against what the schema's author remembered.
+    rows = [{"id": "eth_0xabc%d" % i,
+             "attributes": {"name": "T%d / WETH" % i, "base_token_price_usd": "1",
+                            "reserve_in_usd": "10", "volume_usd": {"h24": "5"},
+                            "pool_created_at": "2026-09-07T00:00:00Z"},
+             "relationships": {"base_token": {"data": {"id": "eth_0xdef%d" % i}}}}
+            for i in range(3)]
+    original = risk._fetch_json
+
+    async def _stub(url, *a, **k):
+        return {"data": rows}
+
+    risk._fetch_json = _stub
+    try:
+        got = asyncio.run(risk.new_pools("ethereum", 2))
+    finally:
+        risk._fetch_json = original
+
+    missing = sorted(set(got) - declared)
+    check("every key the tool returns is declared", not missing,
+          "undeclared: %s" % ", ".join(missing))
+
+    pool_props = set(pools["outputSchema"]["properties"]["pools"]["items"]["properties"])
+    missing_pool = sorted(set(got["pools"][0]) - pool_props) if got.get("pools") else []
+    check("every key inside a pool row is declared", not missing_pool,
+          "undeclared: %s" % ", ".join(missing_pool))
+
+    # The two fields whose meaning has already been misread once each.
+    for field, needle in (("count", "NOT how many were examined"),
+                          ("sources_failed", "PARTIAL")):
+        desc = pools["outputSchema"]["properties"][field].get("description", "")
+        check("%s says what it is not, as well as what it is" % field, needle in desc,
+              desc[:70])
+
+
 def test_tools_call_returns_structured_content():
     print("\n[MCP] tools/call returns structured content")
     stub_upstream()
