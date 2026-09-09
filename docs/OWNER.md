@@ -154,6 +154,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W18: the selector list is mined and measured now, not typed and hoped
 - W18: the EIP-1167 fix pinned a body, so the next forwarder walked through it
 - W3: measured the lever before pulling it, and the measurement changed the plan
 - W23: the self-report guards proved presence, never substance
@@ -161,9 +162,8 @@ problem looked like before it was fixed.
 - W24: one address had 2^40 spellings and every one was a cache miss
 - CLAUDE.md: the quoting trap has two mechanisms, not one
 - Repair the W22 row that bash ate
-- W22: the tool that has misled callers twice now declares its shape
 
-_186 more not shown (194 commits in total)._
+_187 more not shown (195 commits in total)._
 
 ## What I got wrong
 

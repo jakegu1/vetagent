@@ -393,24 +393,26 @@ def scan(write):
     return vals, stale, changed
 
 
-# Lines that are making an accuracy claim. Any percentage on one of these has to be
-# owned by a TARGET, or it is a number nobody is checking.
-# Numbers that are deliberately not tracked, each with a reason. An exemption list with
-# reasons is honest; a looser regex would just hide the same thing.
-_EXEMPT_CONTEXT = (
-    "Rejected.",           # a historical measurement of a signal we removed (LP lock/burn)
-    "What 100 looks like",  # the scorecard's aspiration block, not a measurement
-    # Other vendors' published claims, quoted in the Experiment C post so that we are the
-    # ones who already know the counterexamples rather than the ones corrected by a
-    # commenter. They are their numbers, not ours, and must not track our benchmark.
-    "Hypernative", "Forta", "Blockaid", "ChainAware", "HoneypotScan", "Solsniffer",
-    # Measurements of things we chose NOT to ship, quoted as evidence against ourselves.
-    "worse than chance",
-    "37% of the contracts",   # owner-power recall, measured by bench/owner_powers_measure.py
-    # The pool-match rate, which is computed in run_benchmark and not by this script.
-    "same pool only",
-)
-
+# TWO orphaned comments and a dead tuple used to sit here. `_EXEMPT_CONTEXT` was a tuple of
+# substrings that exempted a percentage anywhere in any live-claim file, and above it sat a
+# second comment -- "Lines that are making an accuracy claim. Any percentage on one of these
+# has to be owned by a TARGET" -- describing a constant that had already been removed without
+# it. It was DELETED on 2026-09-09, and the reason is worth a
+# comment rather than a silent removal.
+#
+# It was dead. Defined, committed, carrying eight carefully reasoned entries with a comment
+# explaining that "an exemption list with reasons is honest", and **referenced from nowhere
+# in the repository** -- found by an audit grepping for its own name. `_EXEMPT_LINES` below
+# had superseded it, scoped per file, which is strictly better; nobody removed the loser.
+#
+# This is the project's signature failure written down again: a counting rule defined,
+# committed, described as the instrument, and never called. The thing that makes it worse
+# than useless is that it read as coverage. One of its entries, "37% of the contracts", was
+# a stale owner-power recall figure that a reader would reasonably believe was being
+# deliberately and knowingly exempted by a working guard.
+#
+# `tests/test_number_coverage.py` now fails if any exemption container in this module is
+# defined and never used, so the next one cannot sit here looking like a guard.
 # Files a reader takes as this tool's CURRENT accuracy claim. Every percentage in one of
 # these must be computed from results.json, exempt by name, or written as a target (<, >).
 #

@@ -2,12 +2,16 @@
 
 WHY THIS FILE EXISTS
 
-W18. `src/risk.py` pins a hand-written list of four-byte selectors for the four powers that
-let an owner close the exit after you are in. Measured against the labelling oracle's own
-per-flag fields by `bench/owner_powers_measure.py`, that list finds 37% of the contracts
-that can pause, 26% of those that can blacklist, 52% of those that can mint and **8%** of
-those that can change the tax. Contracts name these functions in more ways than any list
-somebody typed will hold.
+W18. `src/risk.py` USED TO pin a hand-written list of 23 four-byte selectors for the four
+powers that let an owner close the exit after you are in. Measured against the labelling
+oracle's own per-flag fields, **that list** found 37% of the contracts that can pause, 26%
+of those that can blacklist, 52% of those that can mint and **8%** of those that can change
+the tax. Contracts name these functions in more ways than any list somebody typed will hold.
+
+Those four figures are the BEFORE picture, said in the past tense because an audit pointed
+out that they were not: a reader who ran this script saw 52.6 / 78.9 / 55.1 / 89.5 and had
+no way to tell which set the header was describing. The current table is written by
+`--write` into `bench/owner_powers.json` and printed by every run below.
 
 The obvious fix is forbidden. Taking the contracts GoPlus flags, reading what functions
 they have, and keeping the ones that correlate would lift recall immediately and **void the

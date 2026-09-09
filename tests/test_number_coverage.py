@@ -78,6 +78,31 @@ def test_every_outward_surface_is_scanned():
           "add to LIVE_CLAIM_FILES or FROZEN_LOG_FILES: %s" % ", ".join(unscanned))
 
 
+def test_no_exemption_list_is_defined_and_never_used():
+    """An exemption nobody consults reads exactly like an exemption that works.
+
+    `_EXEMPT_CONTEXT` sat in bench/publish_numbers.py with eight reasoned entries and a
+    comment about how honest an exemption list with reasons is, and nothing anywhere called
+    it. `_EXEMPT_LINES` had superseded it and the loser stayed. One of its entries was a
+    stale owner-power recall figure, so a reader checking why that number was allowed found
+    a deliberate-looking answer from a guard that did not run.
+
+    Same shape as the four hand-maintained test runners that were silently skipping tests,
+    and as the counting rule that was committed, described as the instrument, and never
+    called. So: any module-level name in publish_numbers.py that looks like an exemption or
+    a target list must appear somewhere other than its own definition.
+    """
+    print(chr(10) + "[W21] every exemption list is actually consulted")
+    src = io.open(os.path.join(ROOT, "bench", "publish_numbers.py"),
+                  encoding="utf-8").read()
+    names = re.findall(r"^([A-Z_]*(?:EXEMPT|TARGET|CLAIM|RETRACT)[A-Z_]*)\s*=", src, re.M)
+    check("exemption-shaped names were found", len(names) >= 3, str(names))
+    for name in sorted(set(names)):
+        uses = len(re.findall(r"\b%s\b" % re.escape(name), src)) - 1
+        check("%s is used %d time(s) after being defined" % (name, uses), uses >= 1,
+              "defined and never referenced -- wire it up or delete it")
+
+
 def test_a_blockquote_does_not_hide_a_number():
     """`> 4.3%` is a quoted measurement; `>90%` is an aim. The guard must tell them apart."""
     print("\n[W21] a markdown blockquote is not a comparison operator")

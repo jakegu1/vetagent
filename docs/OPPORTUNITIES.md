@@ -130,9 +130,18 @@ Experiment A; no gate required.
 decision already on the backlog (W1). It needs no gate; it needs someone to widen the
 selector list from a source that is not the labelling oracle (W18).
 
-`bench/owner_powers_measure.py` is committed and re-runnable, and on 250 contracts with
-cached bytecode it measures recall against GoPlus's **per-flag fields** rather than the
-derived cohort labels:
+**Closed 2026-09-09 by W18. The table below is the BEFORE picture and is kept as one.**
+Pooled recall went 41.4% -> 62.5%: tax 7.9% -> 89.5%, blacklist 26.3% -> 78.9%, pause
+36.8% -> 52.6%, mint 51.9% -> 55.1%. The current table is generated into
+`bench/owner_powers.json` and guarded by `tests/test_owner_power_recall.py`; read that
+rather than this. Two corrections to the text below while it is being labelled: "250
+contracts" was already wrong when it was written -- the cache holds **559**, and these four
+rows are that full cache -- and this row said the measurement "needs someone to widen the
+selector list", which is now done.
+
+`bench/owner_powers_measure.py` is committed and re-runnable, and over the cached bytecode
+it measures recall against GoPlus's **per-flag fields** rather than the derived cohort
+labels:
 
 | GoPlus flag | it says | we find | recall | 95% CI |
 |---|---|---|---|---|
