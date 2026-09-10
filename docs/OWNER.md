@@ -127,7 +127,7 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **6 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **5 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -154,6 +154,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W8: consolidate DECISIONS.md, 56 rows to 44, and correct the rule that does it
 - E5 was filed as test-enforced and its test could not fail
 - Regenerate the scorecard: I pushed a red commit by skipping my own checklist
 - Park W27: does a fresh deploy hand the first callers `unknown`?
@@ -161,9 +162,8 @@ problem looked like before it was fixed.
 - A test file was silently skipping one of its own tests, again
 - The number guard's second exemption list was never called
 - W18: the selector list is mined and measured now, not typed and hoped
-- W18: the EIP-1167 fix pinned a body, so the next forwarder walked through it
 
-_181 more not shown (189 commits in total)._
+_182 more not shown (190 commits in total)._
 
 ## What I got wrong
 
