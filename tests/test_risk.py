@@ -144,7 +144,18 @@ def test_tax_and_closed_source():
 
 
 def test_liquidity_picks_the_right_pool():
-    """Regression P0-C: liquidity() never called _pick_best and priced USDC at $0.00097."""
+    """Regression P0-C: liquidity() never called _pick_best and priced USDC at $0.00097.
+
+    The defence here is chain rank, not a price vote. Ethereum forks like pulsechain
+    inherit the same contract address, so USDC's address has pools on them too, quoted
+    at $0.00097. Of the 30 pools DexScreener returns for USDC, 29 are on pulsechain, and
+    their price is the median -- so any rule that decides by pool count or by price
+    consensus is guaranteed to be dragged to the fork. With no chain_hint, _home_scope
+    ranks chains by how canonical they are and keeps only the best tier, which is how
+    the single ethereum pool survives 29 pulsechain ones. That is what the second half
+    of this test pins: if selection ever went back to voting, the no-hint price would
+    come back as $0.00096 and this check would go red.
+    """
     print("\n[P0-C] liquidity() pool selection")
     install_stub([("dexscreener", _load("ds_usdc.json"))])
     r = run(risk.liquidity(USDC, chain_hint="ethereum"))
@@ -296,7 +307,15 @@ def test_benchmark_oracle_stays_out_of_the_engine():
 
 
 def test_upstream_failure_yields_unknown():
-    """Hard rule: no data on a critical dimension -> unknown, never low."""
+    """Hard rule: no data on a critical dimension -> unknown, never low.
+
+    `unknown` is a separate answer, not a softer `low`. A tool that guesses wrong costs
+    the caller their position; one that says it cannot see costs them a second look.
+    That asymmetry decides it: with no data behind a critical dimension -- liquidity or
+    sellability -- the verdict is `unknown`, the missing dimension is named in
+    `data_gaps`, and no combination of the remaining signals is allowed to add up to
+    `low` in its place.
+    """
     print("\n[hard rule] upstream failure must yield unknown")
     # Every data source fails
     install_stub([], default=None)
@@ -1741,6 +1760,15 @@ def test_impersonation_only_compares_within_one_chain():
 
     Measured before the fix, over the 207-token benchmark: warn-or-critical on 81 tokens
     labelled safe or alive.
+
+    Recorded in DECISIONS.md E13 and moved here when that row was consolidated, so it is
+    a dated figure rather than one this test recomputes. Measured after the fix on the
+    same 207-token benchmark: `high` or `medium` on tokens labelled clean fell from
+    57.4% to 34.9%. That pair of numbers is the only evidence the filter bought an
+    improvement rather than merely quietening one alarm, and it is quoted as the
+    combined `high|medium` rate on purpose -- the `high` rate alone can fall while
+    `medium` absorbs the same tokens, which is how a scoring change in this engine has
+    already once been reported as an improvement it was not.
     """
     print("\n[impersonation] rivals are compared on their own chain")
 
@@ -1981,6 +2009,16 @@ def test_overturning_a_honeypot_verdict_needs_distinct_sellers():
     Applied only where the count exists, because DexScreener does not report it and
     requiring data that 79% of tokens cannot supply would reinstate by omission the false
     positives this override exists to remove.
+
+    The asymmetry is the whole point, and it is why the bar sits above the one the same
+    evidence needs to be merely reported. A live pool with real two-sided trading is
+    free to state next to an open question: the reader sees it and can weigh it.
+    Switching an alarm off is not free, because nobody downstream ever sees the
+    detection that was cancelled. So the override is written to downgrade rather than
+    clear -- the verdict goes to unclear, not to low, the evidence records what it was
+    downgraded from, and the note says a contract that blocks specific holders can
+    produce this same pattern on purpose. Raising the price of silencing was right;
+    charging it in flat sell counts was not.
     """
     print("\n[honeypot] the chain may contradict the simulator, at the right price")
 
@@ -2240,7 +2278,18 @@ def test_the_score_is_not_a_sum_and_the_corroboration_is_capped():
 
 
 def test_output_is_compact():
-    """Slim evidence by default; verbose gets it all. Floats cut to 6 significant digits."""
+    """Slim evidence by default; verbose gets it all. Floats cut to 6 significant digits.
+
+    Why there is a byte budget at all: an MCP response goes straight into the calling
+    model's context window, and the caller pays for every byte of it on every call.
+    Evidence is where the bytes were. Upstream `reserves0` and `taxDistribution` blocks
+    were passed through untouched, and full-precision floats carried twenty digits where
+    six carry the same meaning, so a routine assessment spent the caller's context on
+    numbers no one reads. Trimming by default keeps the common call small and `verbose`
+    exists so that nothing is actually unavailable. Note the split: this test only
+    drives the default path. That the verbose payload is the larger one is checked in
+    test_verbose_flag_changes_payload_size in tests/test_mcp.py, not here.
+    """
     print("\n[size] compact output")
     install_stub([
         ("dexscreener", _load("ds_matic.json")),

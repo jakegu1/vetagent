@@ -98,6 +98,17 @@ def test_strategy_gates_are_answered_when_they_fall_due():
 
     A gate that is due must carry a "Resolved:" line in the same table row, stating what
     the measurement said and what was decided. Undecided is allowed; silent is not.
+
+    The counting rule that would answer this gate was broken at the other end. It read
+    "more than one client or more than one country", and this repository ships a
+    .mcp.json pointing the owner's own editor at production, so one editor session plus
+    one curl from anywhere came to two "clients": two self-generated data points about
+    to answer "is anyone using it" with yes. Forcing a written conclusion is only half
+    of the fix. The instrument that produces the conclusion is pinned separately, in
+    tests/test_usage_gate.py.  This check was watched failing before it was trusted.
+    With today forced to 2026-09-19 in a scratch copy, an overdue gate carrying no
+    Resolved line turned it red, so did a bare "Resolved:", and so did "Resolved: no" --
+    the three escapes listed against PINNED_GATES above.
     """
     print("\n[gates] STRATEGY decision gates are answered on time")
     whole = io.open(STRATEGY, encoding="utf-8").read()

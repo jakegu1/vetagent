@@ -64,7 +64,15 @@ def test_jsonrpc_envelope():
 
 def test_errors_are_top_level():
     """Regression: unknown methods used to come back wrapped in result.error, which
-    violates JSON-RPC 2.0."""
+    violates JSON-RPC 2.0.
+
+    What makes this more than spec pedantry: to a compliant client, a response carrying
+    a `result` key is a success. It reads `result` and never looks for `error`, so an
+    error nested at `result.error` is not a reported failure -- it is invisible. For a
+    risk tool that means a check which never ran comes back looking like a check that
+    passed, which is the same fail-open shape the engine's own upstream handling is
+    built to avoid.
+    """
     print("\n[JSON-RPC] errors must be top-level")
     r = call({"jsonrpc": "2.0", "id": 7, "method": "does/not/exist"})
     check("error is top-level", "error" in r, str(r))
@@ -108,6 +116,43 @@ def test_protocol_negotiation():
 
 
 def test_tools_list_shape():
+    """The tool list is the only manual the calling model ever reads.
+
+    This test enforces two decisions and, until 2026-09-10, carried no docstring at all --
+    which is how the consolidation check found it: DECISIONS.md rates a named test as the
+    strongest enforcement there is, and the retirement rule offers to delete a row "because
+    the test is the documentation". Here there was no documentation to be.
+
+    **`unknown` is not a low-risk result, and the description has to say so** (DECISIONS
+    M4). An MCP client sees the tool description and nothing else -- no README, no landing
+    page. A model that reads `unknown` as a softer `low` will buy on it, which is the most
+    dangerous single misreading this product allows, and it is the reason the phrase "NOT a
+    low-risk result" is asserted literally rather than by paraphrase.
+
+    **The interface is English-only, and every tool carries a `title`** (DECISIONS M3).
+    These tools go to an international agent ecosystem; a Chinese description blocks
+    adoption outright. The check is for CJK code points specifically rather than for
+    non-ASCII, because dashes and curly quotes are legitimate and a blanket ASCII rule would
+    have to be worked around rather than obeyed.
+
+    The rest is shape a caller depends on: three tools, each with an `inputSchema`, each
+    annotated read-only so an agent framework knows it is safe to call speculatively, and
+    `assess_token_risk` carrying an `outputSchema` -- the field whose absence on
+    `find_new_hot_pools` let `count` mean two different things for a day (W22).
+
+    This is the guard for the tool manifest, and for two decisions recorded about it.  A
+    calling model never sees this repository, the README or the site. tools/list is the
+    whole manual, which is why rules that look cosmetic are asserted here: every
+    description has to be English, because Chinese blocks adoption outside China
+    outright, and the assess description has to say in words that `unknown` is not a
+    low-risk result.  `unknown` is a verdict the engine really returns -- fail-closed,
+    whenever a critical check could not complete -- so it reaches callers whether or not
+    anyone explained it. The check matches the literal sentence "NOT a low-risk result"
+    in src/mcp_server.py. Rewording that line is meant to turn this test red; the
+    wording is the guarantee, not an implementation detail.  Several separate rules are
+    asserted inside this one function. Splitting or trimming it drops whichever of them
+    nobody remembers.
+    """
     print("\n[MCP] tools/list shape")
     r = call({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
     tools = r["result"]["tools"]
