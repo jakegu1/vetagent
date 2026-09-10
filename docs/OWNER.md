@@ -154,6 +154,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- A test file was silently skipping one of its own tests, again
 - The number guard's second exemption list was never called
 - W18: the selector list is mined and measured now, not typed and hoped
 - W18: the EIP-1167 fix pinned a body, so the next forwarder walked through it
@@ -161,9 +162,8 @@ problem looked like before it was fixed.
 - W23: the self-report guards proved presence, never substance
 - Repair W21's row, damaged by the same backtick substitution
 - W24: one address had 2^40 spellings and every one was a cache miss
-- CLAUDE.md: the quoting trap has two mechanisms, not one
 
-_188 more not shown (196 commits in total)._
+_189 more not shown (197 commits in total)._
 
 ## What I got wrong
 

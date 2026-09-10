@@ -523,6 +523,77 @@ def test_the_glama_ownership_proof_is_still_served():
               and len(parsed.get("claim", "")) > 20, repr(parsed.get("claim"))[:60])
 
 
+def test_an_unsupported_protocol_version_header_is_refused():
+    """Streamable HTTP: "If the server receives a request with an invalid or unsupported
+    `MCP-Protocol-Version`, it MUST respond with `400 Bad Request`."
+
+    We answered 200. Measured against production on 2026-09-10: `MCP-Protocol-Version:
+    banana` and `1999-01-01` both returned a full `tools/list` result. `SUPPORTED_PROTOCOLS`
+    already existed in mcp_server.py and was already the right list -- it negotiated
+    `initialize` and was never consulted for the header. The allowlist was there; nothing
+    read it.
+
+    Found while checking why an automated triage bot on a directory PR read our Glama
+    connector as unhealthy. It was not the cause -- the connector reports Healthy and their
+    check POSTs -- but looking for one conformance gap is how you find another.
+
+    Three behaviours, and the third is the one worth being careful about:
+
+    - A known version passes: all three the project already claims.
+    - An ABSENT header passes. The spec says the server SHOULD then assume 2025-03-26, and
+      refusing would break every client that predates the header. Fail open here, because
+      absence is a client that never negotiated, not a client asking for something we
+      cannot do.
+    - `initialize` is exempt even with a bad header, because a client cannot know the
+      negotiated version before it has negotiated. Refusing there would turn a rule about
+      subsequent requests into a lockout on the first one.
+    """
+    print(chr(10) + "[protocol] an unsupported version header is a 400, not a 200")
+
+    listed = {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
+    init = {"jsonrpc": "2.0", "id": 1, "method": "initialize",
+            "params": {"protocolVersion": "2025-06-18", "capabilities": {},
+                       "clientInfo": {"name": "t", "version": "1"}}}
+
+    def post(body, version=None):
+        hdrs = {"user-agent": "probe/1.0"}
+        if version is not None:
+            hdrs["mcp-protocol-version"] = version
+
+        class Req(FakeRequest):
+            async def json(self):
+                return body
+
+        original = mcp_server.handle_mcp_request
+
+        async def _handle(msg):
+            return {"jsonrpc": "2.0", "id": msg.get("id"), "result": {}}
+
+        mcp_server.handle_mcp_request = _handle
+        try:
+            w = entry.Default()
+            return asyncio.run(w.fetch(Req("https://vetagent.dev/mcp", method="POST",
+                                           headers=hdrs)))
+        finally:
+            mcp_server.handle_mcp_request = original
+
+    for good in mcp_server.SUPPORTED_PROTOCOLS:
+        r = post(listed, good)
+        check("a supported version passes: %s" % good, r.status == 200, str(r.status))
+
+    r = post(listed, None)
+    check("an absent header still passes", r.status == 200, str(r.status))
+
+    for bad in ("banana", "1999-01-01", "2026-13-45", "2025-06-18, 2025-03-26"):
+        r = post(listed, bad)
+        check("an unsupported version is refused: %r" % bad, r.status == 400, str(r.status))
+        check("  and the answer names what we do support: %r" % bad,
+              "2025-06-18" in (r.body or ""), (r.body or "")[:100])
+
+    r = post(init, "banana")
+    check("initialize stays reachable with a bad header", r.status == 200, str(r.status))
+
+
 def main():
     print("=" * 68)
     print("HTTP telemetry: the interface the gate could not see")

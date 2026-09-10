@@ -620,6 +620,47 @@ class Default(WorkerEntrypoint):
 
         headers = {"mcp-protocol-version": mcp_server.PROTOCOL_VERSION}
 
+        # Streamable HTTP: "If the server receives a request with an invalid or unsupported
+        # `MCP-Protocol-Version`, it MUST respond with `400 Bad Request`." We answered 200 to
+        # anything, including the string "banana", until 2026-09-10.
+        #
+        # `SUPPORTED_PROTOCOLS` was already the right list and was already correct -- it
+        # negotiated `initialize` and nothing ever consulted it for the header. The allowlist
+        # existed and no code read it, which is the same shape as a guard that is defined and
+        # never called.
+        #
+        # Two deliberate exemptions, both fail-open, because the failure mode of getting this
+        # wrong is refusing a client that would have worked:
+        #
+        # - An ABSENT header passes. The spec says the server SHOULD then assume 2025-03-26,
+        #   and every client older than the header sends nothing. Absence here is a client
+        #   that never negotiated, not a client asking for something we cannot do -- the same
+        #   distinction the engine makes between `unknown` and a finding.
+        # - `initialize` passes whatever it carries. A client cannot know the negotiated
+        #   version before it has negotiated, so enforcing there would turn a rule about
+        #   subsequent requests into a lockout on the first one.
+        #
+        # THE OBLIGATION THIS CREATES, written here because it is the cost of the fix rather
+        # than a footnote to it: when the next protocol version is published, it has to go
+        # into `SUPPORTED_PROTOCOLS` or clients using it will get a 400 from us. Before this
+        # change a new version cost nothing; now it costs one line, and the failure mode of
+        # forgetting is a refusal rather than a warning. `tests/test_upstream_contract.py`
+        # is where a check on the published version list would belong if this ever bites.
+        asked = request.headers.get("mcp-protocol-version")
+        if asked is not None and asked not in mcp_server.SUPPORTED_PROTOCOLS:
+            method = None
+            if isinstance(body, dict):
+                method = body.get("method")
+            if method != "initialize":
+                return _json_response(
+                    {"jsonrpc": "2.0", "id": (body.get("id")
+                                              if isinstance(body, dict) else None),
+                     "error": {"code": mcp_server.INVALID_REQUEST,
+                               "message": "Unsupported MCP-Protocol-Version",
+                               "data": {"requested": str(asked)[:40],
+                                        "supported": list(mcp_server.SUPPORTED_PROTOCOLS)}}},
+                    status=400, extra_headers=headers)
+
         # Batch request — JSON-RPC allows an array
         if isinstance(body, list):
             if not body:
