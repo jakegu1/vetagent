@@ -2180,6 +2180,65 @@ def test_clean_token_stays_low():
     check("fatal must be >= 70", risk._score(fatal) >= 70, str(risk._score(fatal)))
 
 
+def test_the_score_is_not_a_sum_and_the_corroboration_is_capped():
+    """DECISIONS E5, which was filed as test-enforced and was not enforced at all.
+
+    E5 says the score is max(weighted signal) plus 10 for each additional independent
+    warn-or-worse category, capped at 30 -- explicitly **not** a sum. The reason is in
+    `_score`'s own docstring: under a sum, every dimension added to the engine raises every
+    token's score, so ordinary tokens drift into `high` as coverage grows. The scale moves
+    rather than the tokens.
+
+    `test_clean_token_stays_low` was named as the enforcement, and DECISIONS.md calls a
+    test name "the strongest kind -- the rule alarms on its own". Measured on 2026-09-10 by
+    replacing `_score` with the exact naive sum E5 forbids: **it passed 4 of 4.** The rule
+    it was recorded as enforcing could be deleted from the engine without turning anything
+    red, on the scoring path, which is the product.
+
+    Why it could not fail. Both of its direct `_score` cases carry a single warn-or-worse
+    category -- one `cross_chain` warn, one lone `fatal` -- and with one category the sum
+    and the max are the same number. Its end-to-end case is WETH, clean enough to stay under
+    35 either way. Nothing anywhere exercised the 30-point cap.
+
+    So the cases here are chosen for where the two rules diverge, and the third one exists
+    because a half-fix would pass the first two:
+
+        five ordinary warns   E5: 54    naive sum: 90    uncapped corroboration: 64
+        six ordinary warns    E5: 54    naive sum: 96    uncapped corroboration: 74
+
+    Five warnings, none of them fatal, none of them about sellability -- a token with thin
+    liquidity on a young pair with a closed-source contract and concentrated holders. A sum
+    calls that 90 and rates it `high`. E5 calls it 54.
+    """
+    print(chr(10) + "[scoring] the score is not a sum, and corroboration is capped")
+
+    def warns(*categories):
+        return [risk._sig("warn", "n", "", c) for c in categories]
+
+    five = warns("liquidity", "contract", "freshness", "lifecycle", "concentration")
+    six = five + warns("cross_chain")
+
+    # The naive sum reaches 90 and 96 here. Anything at or above 70 is `high`.
+    check("five ordinary warns do not add up to high", risk._score(five) < 70,
+          "score %d -- a sum would say 90" % risk._score(five))
+    check("six ordinary warns do not add up to high", risk._score(six) < 70,
+          "score %d -- a sum would say 96" % risk._score(six))
+
+    # The cap, which nothing exercised. Without it the sixth category takes this to 74.
+    check("a sixth bad category adds nothing once the cap is reached",
+          risk._score(six) == risk._score(five),
+          "five=%d six=%d" % (risk._score(five), risk._score(six)))
+    check("and the capped total is the documented 54", risk._score(five) == 54,
+          str(risk._score(five)))
+
+    # The half of the rule the old test did cover, kept so this one stands alone.
+    check("the worst signal still dominates: one fatal is high",
+          risk._score([risk._sig("fatal", "hp", "", "honeypot")]) >= 70,
+          str(risk._score([risk._sig("fatal", "hp", "", "honeypot")])))
+    check("and a single low-weight warn is not high",
+          risk._score(warns("cross_chain")) < 70, str(risk._score(warns("cross_chain"))))
+
+
 def test_output_is_compact():
     """Slim evidence by default; verbose gets it all. Floats cut to 6 significant digits."""
     print("\n[size] compact output")

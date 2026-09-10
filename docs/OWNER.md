@@ -154,6 +154,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Regenerate the scorecard: I pushed a red commit by skipping my own checklist
 - Park W27: does a fresh deploy hand the first callers `unknown`?
 - A spec MUST we were answering 200 to: MCP-Protocol-Version: banana
 - A test file was silently skipping one of its own tests, again
@@ -161,9 +162,8 @@ problem looked like before it was fixed.
 - W18: the selector list is mined and measured now, not typed and hoped
 - W18: the EIP-1167 fix pinned a body, so the next forwarder walked through it
 - W3: measured the lever before pulling it, and the measurement changed the plan
-- W23: the self-report guards proved presence, never substance
 
-_179 more not shown (187 commits in total)._
+_180 more not shown (188 commits in total)._
 
 ## What I got wrong
 
