@@ -26,6 +26,7 @@ Run:  python tests/test_backfill.py
 
 import os
 import sys
+import urllib.error
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "bench"))
 
@@ -113,12 +114,18 @@ def test_decoded_pools_are_real_pools():
     cfg = backfill.CHAINS[chain]
     urls = cfg["rpc"]
 
+    # Through `logs_in_range`, which is what harvest() uses. This asked for a fixed
+    # 5,000-block range with a hand-rolled `rpc_any` until 2026-09-10, when Base's public
+    # RPC began answering 413 to exactly that -- so the test went red while the collector
+    # carried on, because the collector narrows the window and the test did not. Measured
+    # that morning: 5,000 blocks 413, 2,000 blocks fine. A test that does not drive the
+    # shipped path fails for reasons the product does not have.
     try:
         head = int(backfill.rpc_any(urls, "eth_blockNumber", [])["result"], 16)
-        r = backfill.rpc_any(urls, "eth_getLogs", [{
-            "fromBlock": hex(head - 25000), "toBlock": hex(head - 20000),
-            "address": cfg["factories"],
-            "topics": [[backfill.V2_TOPIC, backfill.V3_TOPIC]]}])
+        logs = backfill.logs_in_range(
+            urls, head - 25000, head - 20000, [[backfill.V2_TOPIC, backfill.V3_TOPIC]],
+            address=cfg["factories"], step=5000, floor=200, what="pool creations")
+        r = {"result": logs}
     except Exception as e:  # noqa: BLE001
         check("base RPC reachable", False, str(e)[:90])
         return
@@ -205,14 +212,107 @@ def test_a_day_is_bracketed_by_its_own_boundaries():
           "%ds early" % (start - t0))
 
 
+def test_a_refused_range_narrows_the_window_and_skips_no_blocks():
+    """The narrowing is load-bearing and had no test until the day it started earning its keep.
+
+    On 2026-09-10 Base's public RPC began refusing a 5,000-block factory query with HTTP
+    413. The collector absorbed it -- that is what this loop is for -- but nothing in the
+    repo checked that it absorbs it correctly, and "correctly" here has a specific meaning
+    that was got wrong once: **narrowing the window must not shorten the range**. The swap
+    sampler's first version broke out after one successful smaller request, so a busy window
+    contributed a fraction of its blocks and the sample thinned exactly where trading was
+    heaviest -- a rate limit recorded as a quiet market.
+
+    Offline, with a stub node, because the invariant is about our loop and not about any
+    node's current ceiling. The stub refuses anything wider than 1,000 blocks, which is the
+    shape of what the real node started doing.
+    """
+    print(chr(10) + "[narrowing] a refused range costs a window, never a block")
+
+    for mode in ("http_413", "http_429", "json_error"):
+        seen_ranges = []
+
+        def fake_rpc(urls, method, params, timeout=30):
+            flt = params[0]
+            lo, hi = int(flt["fromBlock"], 16), int(flt["toBlock"], 16)
+            seen_ranges.append((lo, hi))
+            if hi - lo > 1000:
+                if mode == "http_413":
+                    raise urllib.error.HTTPError(urls[0], 413, "Payload Too Large", {}, None)
+                if mode == "http_429":
+                    raise urllib.error.HTTPError(urls[0], 429, "Too Many Requests", {}, None)
+                return {"error": {"code": -32005, "message": "query returned too many"}}
+            # One log per block, so coverage is countable rather than inferred.
+            return {"result": [{"address": "0x%040x" % b, "blockNumber": hex(b)}
+                               for b in range(lo, hi + 1)]}
+
+        original = backfill.rpc_any
+        backfill.rpc_any = fake_rpc
+        try:
+            logs = backfill.logs_in_range(["http://stub"], 100000, 108000, [["0xtopic"]],
+                                          step=5000, floor=200, what="test")
+        finally:
+            backfill.rpc_any = original
+
+        blocks = [int(l["blockNumber"], 16) for l in logs]
+        want = list(range(100000, 108001))
+        check("%s: every block in the range is read" % mode, sorted(blocks) == want,
+              "got %d blocks, wanted %d; first gap near %s"
+              % (len(blocks), len(want),
+                 next((b for a, b in zip(sorted(blocks), sorted(blocks)[1:])
+                       if b - a != 1), "none")))
+        check("%s: no block is read twice" % mode, len(blocks) == len(set(blocks)),
+              "%d logs, %d distinct" % (len(blocks), len(set(blocks))))
+        accepted = [(a, b) for a, b in seen_ranges if b - a <= 1000]
+        check("%s: it retried the same offset rather than skipping ahead" % mode,
+              bool(accepted) and accepted[0][0] == 100000,
+              "first accepted range was %s" % (str(accepted[0]) if accepted else "none"))
+
+    # And a refusal it must NOT absorb: a 500 is not "too much data", so swallowing it
+    # would turn a broken node into an empty day -- the substitution this project keeps
+    # paying for.
+    def always_500(urls, method, params, timeout=30):
+        raise urllib.error.HTTPError(urls[0], 500, "Internal Server Error", {}, None)
+
+    original = backfill.rpc_any
+    backfill.rpc_any = always_500
+    raised = None
+    try:
+        backfill.logs_in_range(["http://stub"], 0, 8000, [["0xt"]], step=5000)
+    except urllib.error.HTTPError as e:
+        raised = e.code
+    except Exception as e:                                   # noqa: BLE001
+        raised = type(e).__name__
+    finally:
+        backfill.rpc_any = original
+    check("a 500 is raised, not absorbed as an empty range", raised == 500, repr(raised))
+
+    # And a genuine refusal at the floor must raise rather than return a partial range.
+    def always_413(urls, method, params, timeout=30):
+        raise urllib.error.HTTPError(urls[0], 413, "Payload Too Large", {}, None)
+
+    backfill.rpc_any = always_413
+    raised = None
+    try:
+        backfill.logs_in_range(["http://stub"], 0, 8000, [["0xt"]], step=5000, floor=200)
+    except urllib.error.HTTPError as e:
+        raised = e.code
+    finally:
+        backfill.rpc_any = original
+    check("refusal all the way down to the floor raises", raised == 413, repr(raised))
+
+
 def main():
     print("=" * 66)
     print("Backfill decoder tests")
     print("=" * 66)
-    for fn in (test_decode_offsets_offline,
-               test_pairs_of_quote_assets_are_not_launches,
-               test_decoded_pools_are_real_pools,
-               test_a_day_is_bracketed_by_its_own_boundaries):
+    # Discovered, not listed. This was a hand-written tuple of four function names, and on
+    # 2026-09-10 a fifth test was added to the file and silently did not run -- the file
+    # reported "12 passed" with eleven of its own checks never executed. That is the exact
+    # incident this repo already records: four hand-maintained runners skipping tests,
+    # including CI's own step list. `tests/test_decisions_enforcement.py` now fails when any
+    # test file's runner cannot reach one of its own test functions.
+    for _, fn in sorted((k, v) for k, v in globals().items() if k.startswith("test_")):
         fn()
     print("\n" + "=" * 66)
     print("%d passed, %d failed" % (_PASSED, len(_FAILURES)))

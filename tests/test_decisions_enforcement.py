@@ -20,6 +20,7 @@ one unguarded -- the file whose entire point is enforcement was the file with no
 Run:  python tests/test_decisions_enforcement.py
 """
 
+import io
 import os
 import re
 import sys
@@ -128,6 +129,45 @@ def test_the_row_count_is_honest():
         check("and the count is right",
               int(stated.group(1)) == len(rows),
               "states %s, actual %d" % (stated.group(1), len(rows)))
+
+
+def test_no_test_function_is_unreachable_by_its_own_runner():
+    """A test defined and never called is worse than no test: it reads as coverage.
+
+    Every file here is its own runner -- `python tests/test_x.py` -- and a runner that names
+    its tests by hand goes stale the moment somebody adds one. On 2026-09-10 a new test was
+    added to `tests/test_backfill.py`, whose `main()` held a hand-written tuple of four
+    function names. The file printed "12 passed, 0 failed" with eleven of its own checks
+    never executed, and it was green in CI.
+
+    This repo already records that incident once -- "four hand-maintained test runners were
+    silently skipping tests, including CI's own step list" -- and the fix at the time was to
+    repair the four. Repairing instances is not closing a class.
+
+    So: a test file either uses the discovery idiom, or names every one of its own test
+    functions inside `main()`. Static, because running twenty files to find out costs a
+    minute and the answer is in the source.
+    """
+    print(chr(10) + "[enforcement] every test a file defines is a test that runs")
+    tests_dir = os.path.join(ROOT, "tests")
+    checked = 0
+    for name in sorted(os.listdir(tests_dir)):
+        if not (name.startswith("test_") and name.endswith(".py")):
+            continue
+        src = io.open(os.path.join(tests_dir, name), encoding="utf-8").read()
+        defined = set(re.findall(r"^def (test_[A-Za-z0-9_]+)", src, re.M))
+        if not defined:
+            continue                       # script-style file with no test functions
+        checked += 1
+        if re.search(r"startswith\(['\"]test_['\"]\)", src):
+            continue                       # discovers its own tests
+        body = src[src.index("def main("):] if "def main(" in src else src
+        missing = sorted(f for f in defined if f not in body)
+        check("%s: runner reaches all %d of its tests" % (name, len(defined)),
+              not missing,
+              "hand-listed runner is missing %s -- switch to the discovery idiom"
+              % ", ".join(missing))
+    check("test files with test functions were found", checked >= 15, str(checked))
 
 
 def main():

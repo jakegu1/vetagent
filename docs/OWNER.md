@@ -5,7 +5,7 @@
 > page cannot quietly drift out of date. `tests/test_owner_page.py` fails the
 > build if it does.
 >
-> Generated 2026-09-09.
+> Generated 2026-09-10.
 
 ## The project in one paragraph
 
@@ -21,43 +21,43 @@ These are the things I cannot do. Everything else in this project is mine.
 
 | When | Due | # | What you do | Blocked? |
 |---|---|---|---|---|
-| **in 9 days** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
-| **in 9 days** | 2026-09-18 | W11 | Answer the 2026-09-18 gate | no |
-| **in 9 days** | 2026-09-18 | -- | Post Experiment C | no |
-| in 37 days | 2026-10-16 | W5 | A second, independent sell-simulation source | **yes -- see below** |
-| in 37 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
+| **in 8 days** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
+| **in 8 days** | 2026-09-18 | W11 | Answer the 2026-09-18 gate | no |
+| **in 8 days** | 2026-09-18 | -- | Post Experiment C | no |
+| in 36 days | 2026-10-16 | W5 | A second, independent sell-simulation source | **yes -- see below** |
+| in 36 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
 
 ### W10 Create the two accounts the remaining directories need
 
-- **When:** 2026-09-18 (**in 9 days**)
+- **When:** 2026-09-18 (**in 8 days**)
 - **Why then:** distribution is the whole of the gate's failing branch
 - **You know it is done when:** `CHANNELS` in `bench/scorecard.py`, updated only by someone who went and looked
 - **If you do nothing:** Nothing. Six submissions are already queued and the two parked ones are one signup away; waiting costs reach, not work.
 
 ### W11 Answer the 2026-09-18 gate
 
-- **When:** 2026-09-18 (**in 9 days**)
+- **When:** 2026-09-18 (**in 8 days**)
 - **Why then:** this IS the gate -- it has to be answered on the day
 - **You know it is done when:** `python bench/usage.py`, counting rule already fixed in code; then a `Resolved:` line in `STRATEGY.md` §8, which `test_gates_get_reviewed.py` requires once due
 - **If you do nothing:** A gate that passes its date in silence teaches everyone that gates are decoration, and this is the first one that can stop the project.
 
 ###  Post Experiment C
 
-- **When:** 2026-09-18 (**in 9 days**)
+- **When:** 2026-09-18 (**in 8 days**)
 - **Why then:** The gate's failing branch prescribes exactly this, so it happens either way. Drafts are written and every number in them is checked by the build: docs/EXPERIMENT_C.md. Nothing is posted without you -- it is your name on it.
 - **You know it is done when:** a post exists on at least one of HN, r/ethdev, X or the MCP Discord
 - **If you do nothing:** This is the one action that can change the 09-18 answer. Not doing it does not delay the gate -- the gate still fires, and it fires on no.
 
 ### W5 A second, independent sell-simulation source
 
-- **When:** 2026-10-16 (in 37 days)
+- **When:** 2026-10-16 (in 36 days)
 - **Why then:** needed for W3, which every accuracy claim rests on
 - **You know it is done when:** **Blocked** on a credential, not on engineering. Probed 2026-09-06: staysafu unreachable (SSL), quickintel 401, tokensniffer 401, de.fi public endpoint 404. Every candidate needs a paid key — this is a W9-shaped item that belongs to whoever holds the budget
 - **If you do nothing:** Every accuracy claim keeps resting on a single sell simulator. If it is wrong, we cannot tell, and neither can anyone reading the benchmark.
 
 ### W12 Decide the price-history trade-off
 
-- **When:** 2026-10-16 (in 37 days)
+- **When:** 2026-10-16 (in 36 days)
 - **Why then:** changes what the benchmark can measure, so before the D gate
 - **You know it is done when:** A decision recorded in `DECISIONS.md`, either way
 - **If you do nothing:** The 10-16 gate arrives with the measurement question still open, so that gate answers a smaller question than it was meant to.
@@ -70,10 +70,10 @@ next -- including stopping.
 
 | Date | When | The question | What happens |
 |---|---|---|---|
-| 2026-09-18 | **in 9 days** | Is anyone using it | Yes → continue; no → run only Experiment C, add no features |
-| 2026-10-16 | in 37 days | Does anyone want to pay | Yes → build payments; no → pick a different customer segment and run D again |
-| 2026-12-04 | in 86 days | Is further investment worth it | Yes → continue per §7; no → move to low-maintenance mode |
-| 2027-03-04 | in 176 days | Does the data asset hold up | Yes → that becomes the main product; no → keep the tool, drop the data narrative |
+| 2026-09-18 | **in 8 days** | Is anyone using it | Yes → continue; no → run only Experiment C, add no features |
+| 2026-10-16 | in 36 days | Does anyone want to pay | Yes → build payments; no → pick a different customer segment and run D again |
+| 2026-12-04 | in 85 days | Is further investment worth it | Yes → continue per §7; no → move to low-maintenance mode |
+| 2027-03-04 | in 175 days | Does the data asset hold up | Yes → that becomes the main product; no → keep the tool, drop the data narrative |
 
 ## The same thing as a picture
 
@@ -87,10 +87,10 @@ gantt
     todayMarker stroke-width:3px,stroke:#d33,stroke-dasharray:0
     title The dates that decide things (red line is today)
     section Decisions
-    Is anyone using it - in 9 days :milestone, 2026-09-18, 0d
-    Does anyone want to pay - in 37 days :milestone, 2026-10-16, 0d
-    Is further investment worth it - in 86 days :milestone, 2026-12-04, 0d
-    Does the data asset hold up - in 176 days :milestone, 2027-03-04, 0d
+    Is anyone using it - in 8 days :milestone, 2026-09-18, 0d
+    Does anyone want to pay - in 36 days :milestone, 2026-10-16, 0d
+    Is further investment worth it - in 85 days :milestone, 2026-12-04, 0d
+    Does the data asset hold up - in 175 days :milestone, 2027-03-04, 0d
 ```
 
 ### Is the archive still collecting?
@@ -101,7 +101,7 @@ gantt
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**7 days, no gaps.** Newest is 2026-09-09, today.
+**7 days, no gaps.** Newest is 2026-09-09, yesterday.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -154,6 +154,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- The number guard's second exemption list was never called
 - W18: the selector list is mined and measured now, not typed and hoped
 - W18: the EIP-1167 fix pinned a body, so the next forwarder walked through it
 - W3: measured the lever before pulling it, and the measurement changed the plan
@@ -161,9 +162,8 @@ problem looked like before it was fixed.
 - Repair W21's row, damaged by the same backtick substitution
 - W24: one address had 2^40 spellings and every one was a cache miss
 - CLAUDE.md: the quoting trap has two mechanisms, not one
-- Repair the W22 row that bash ate
 
-_187 more not shown (195 commits in total)._
+_188 more not shown (196 commits in total)._
 
 ## What I got wrong
 

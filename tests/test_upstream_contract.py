@@ -205,8 +205,10 @@ def main():
     print("=" * 68)
     print("VetAgent upstream contract tests (live network)")
     print("=" * 68)
-    for fn in (test_dexscreener, test_honeypot_is, test_geckoterminal, test_rugcheck,
-               test_simulator_chain_coverage):
+    # Discovered rather than listed. It named all five of its tests correctly on
+    # 2026-09-10 -- and so did tests/test_backfill.py until somebody added a sixth.
+    for _, fn in sorted((k, v) for k, v in globals().items()
+                        if k.startswith("test_")):
         fn()
     print("\n" + "=" * 68)
     print("%d passed, %d failed" % (_PASSED, len(_FAILURES)))

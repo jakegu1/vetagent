@@ -477,6 +477,52 @@ def test_an_unissued_verification_token_is_absent_not_wrong():
         entry._OPENAI_CHALLENGE = original
 
 
+def test_the_glama_ownership_proof_is_still_served():
+    """`docs/SCORECARD.md` claims a Glama listing. That claim rests on this route.
+
+    `src/entry.py`'s own comment says it: the claim file "must stay served -- Glama
+    re-verifies, and ownership lapses if it 404s". Nothing checked that it was served, and
+    the scorecard scores the Glama channel `True` with the note "Ownership verified", so a
+    refactor that dropped this route would silently turn a published claim false. The
+    scorecard's own rule is that a channel row changes only when somebody went and looked;
+    this is the part a test can look at.
+
+    Why it earned a test on 2026-09-10: punkpeye/awesome-remote-mcp-servers#131 was held by
+    an automated triage check reading the Glama connector as unknown/unhealthy. The
+    connector turned out to be Healthy, tested 2026-09-10T05:40:19Z, and this route serving
+    200 is a precondition of that -- so the question "is our half of it still true" got
+    asked, and had no answer in the repo.
+
+    Offline, and deliberately: the realistic regression is a refactor deleting the route,
+    not Cloudflare going down. A live fetch would also make CI depend on a third party.
+    """
+    print(chr(10) + "[pages] the Glama ownership proof is still routed")
+    w = entry.Default()
+    r = asyncio.run(w.fetch(FakeRequest("https://vetagent.dev/.well-known/glama.json")))
+    check("the route answers 200", r.status == 200, str(r.status))
+    check("as JSON", (r.headers.get("content-type") or "").startswith("application/json"),
+          repr(r.headers.get("content-type")))
+    check("carrying a claim token", '"claim"' in r.body and "glama_claim_" in r.body,
+          r.body[:80])
+    # It is a bare claim and nothing else: Glama parses it, and an extra field or a
+    # placeholder would be the same class of wrong answer the OpenAI challenge test above
+    # refuses -- something served where nothing is the honest answer.
+    import json as _json
+    try:
+        parsed = _json.loads(r.body)
+    except ValueError as e:
+        parsed = None
+        check("the body is valid JSON", False, str(e))
+    if parsed is not None:
+        check("the body is valid JSON", True)
+        check("it carries exactly $schema and claim",
+              set(parsed) == {"$schema", "claim"}, str(sorted(parsed)))
+        check("and the claim is not a placeholder",
+              parsed.get("claim", "").startswith("glama_claim_")
+              and "TODO" not in parsed.get("claim", "")
+              and len(parsed.get("claim", "")) > 20, repr(parsed.get("claim"))[:60])
+
+
 def main():
     print("=" * 68)
     print("HTTP telemetry: the interface the gate could not see")

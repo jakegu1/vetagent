@@ -340,6 +340,58 @@ def _symbols(urls, addresses):
     return out
 
 
+def logs_in_range(urls, lo, hi, topics, address=None, step=None, floor=200,
+                  what="logs"):
+    """Every matching log in [lo, hi], narrowing the window when a node refuses the range.
+
+    Extracted 2026-09-10 from the two copies that had it inline, because Base's public RPC
+    started answering 413 to a 5,000-block factory query that morning and the collector
+    absorbed it silently and correctly -- while `tests/test_backfill.py` went red, because
+    the test hand-rolled its own fixed 5,000-block request instead of calling this. A test
+    that does not drive the shipped path is a test that fails for reasons the product does
+    not have, and passes for reasons it does not either.
+
+    Measured that morning: 5,000 blocks -> 413, 2,000 blocks -> 27 logs. `eth_getCode`, the
+    only RPC method the live engine uses, was unaffected.
+
+    Two invariants, and the second is the one that was got wrong once already:
+
+    - A refusal means a smaller window, not fewer blocks. 413 and 429 at the HTTP layer and
+      -32005 in the JSON body all mean the same thing, and all three used to escape as an
+      exception that failed a whole day. A busy day produces more logs per block, so this
+      fired precisely on the days worth harvesting.
+
+    - Narrowing must not also shorten the range. The swap sampler's first version broke out
+      of the loop after one successful smaller request, so a busy window -- the only kind
+      that ever gets refused -- contributed a fraction of its blocks, and the sample thinned
+      exactly where trading was heaviest. `cur` advances only past blocks actually read.
+    """
+    out = []
+    step = (hi - lo) if step is None else step
+    cur = lo
+    while cur < hi:
+        end = min(cur + step, hi)
+        flt = {"fromBlock": hex(cur), "toBlock": hex(end), "topics": topics}
+        if address is not None:
+            flt["address"] = address
+        try:
+            r = rpc_any(urls, "eth_getLogs", [flt])
+        except urllib.error.HTTPError as e:
+            if e.code not in (413, 429) or step <= floor:
+                raise
+            step //= 2
+            continue
+        if "error" in r:
+            if step <= floor:
+                raise RuntimeError("%s refused a %d-block range of %s: %s"
+                                   % (urls[0], step, what, r["error"]))
+            step //= 2
+            continue
+        out.extend(r["result"])
+        cur = end + 1
+    return out
+
+
 def harvest(chain, day, want_symbols=True):
     """Every token launch the tracked factories recorded on one UTC day."""
     cfg = CHAINS[chain]
@@ -350,34 +402,13 @@ def harvest(chain, day, want_symbols=True):
     b0 = block_at(urls, start, head, cfg["block_seconds"])
     b1 = block_at(urls, start + 86400, head, cfg["block_seconds"])
 
-    rows, cur, step = [], b0, 5000
-    while cur < b1:
-        end = min(cur + step, b1)
-        try:
-            r = rpc_any(urls, "eth_getLogs", [{"fromBlock": hex(cur), "toBlock": hex(end),
-                                              "address": cfg["factories"],
-                                              "topics": [[V2_TOPIC, V3_TOPIC]]}])
-        except urllib.error.HTTPError as e:
-            # A node can refuse a range at the HTTP layer instead of the JSON-RPC one:
-            # 413 when the response would be too large, 429 when we are asking too fast.
-            # Both mean "smaller window", the same as the -32005 below, and both used to
-            # escape as an exception that failed the whole day. A busy day produces more
-            # logs per block, so this fired precisely on the days worth harvesting.
-            if e.code not in (413, 429) or step <= 200:
-                raise
-            step //= 2
-            continue
-        if "error" in r:
-            if step <= 200:
-                raise RuntimeError("%s refused a %d-block range: %s"
-                                   % (urls[0], step, r["error"]))
-            step //= 2          # narrow the window, never skip the blocks
-            continue
-        for log in r["result"]:
-            d = _decode(log, cfg["quotes"])
-            if d:
-                rows.append(d)
-        cur = end + 1
+    rows = []
+    for log in logs_in_range(urls, b0, b1, [[V2_TOPIC, V3_TOPIC]],
+                             address=cfg["factories"], step=5000, floor=200,
+                             what="pool creations"):
+        d = _decode(log, cfg["quotes"])
+        if d:
+            rows.append(d)
 
     syms = _symbols(urls, [r["base"] for r in rows]) if want_symbols and rows else {}
     stamp = day.isoformat()
@@ -474,33 +505,13 @@ def harvest_traded(chain, day, windows=4, window_blocks=None, max_pools=250,
         hi = min(lo + window_blocks, b1)
         if lo >= b1:
             break
-        # Narrowing on refusal must not also shorten the window. The first version broke
-        # out of the loop after one successful smaller request, so a busy window -- the
-        # only kind that ever gets refused -- silently contributed a fraction of its
-        # blocks, and the sample quietly thinned exactly where trading was heaviest.
-        step, cur = hi - lo, lo
-        while cur < hi:
-            end = min(cur + step, hi)
-            try:
-                r = rpc_any(urls, "eth_getLogs", [{"fromBlock": hex(cur),
-                                                   "toBlock": hex(end),
-                                                   "topics": [[V2_SWAP, V3_SWAP]]}])
-            except urllib.error.HTTPError as e:
-                if e.code not in (413, 429) or step <= 20:
-                    raise
-                step //= 2
-                continue
-            if "error" in r:
-                if step <= 20:
-                    raise RuntimeError("%s refused %d blocks of swaps: %s"
-                                       % (urls[0], step, r["error"]))
-                step //= 2
-                continue
-            for log in r["result"]:
-                addr = (log.get("address") or "").lower()
-                if addr:
-                    seen[addr] = seen.get(addr, 0) + 1
-            cur = end + 1
+        # The narrowing lives in logs_in_range, including the invariant this loop got wrong
+        # once: narrowing on refusal must not also shorten the window.
+        for log in logs_in_range(urls, lo, hi, [[V2_SWAP, V3_SWAP]], floor=20,
+                                 what="swaps"):
+            addr = (log.get("address") or "").lower()
+            if addr:
+                seen[addr] = seen.get(addr, 0) + 1
 
     # Cap the work. Six windows of Base turn up several thousand distinct pools, and
     # each one costs two eth_calls to resolve plus one for its symbol -- so an uncapped
