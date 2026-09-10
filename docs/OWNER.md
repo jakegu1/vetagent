@@ -127,7 +127,7 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **5 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **6 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -154,6 +154,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- A spec MUST we were answering 200 to: MCP-Protocol-Version: banana
 - A test file was silently skipping one of its own tests, again
 - The number guard's second exemption list was never called
 - W18: the selector list is mined and measured now, not typed and hoped
@@ -161,9 +162,8 @@ problem looked like before it was fixed.
 - W3: measured the lever before pulling it, and the measurement changed the plan
 - W23: the self-report guards proved presence, never substance
 - Repair W21's row, damaged by the same backtick substitution
-- W24: one address had 2^40 spellings and every one was a cache miss
 
-_189 more not shown (197 commits in total)._
+_178 more not shown (186 commits in total)._
 
 ## What I got wrong
 
