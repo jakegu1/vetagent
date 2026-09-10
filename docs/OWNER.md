@@ -96,12 +96,12 @@ gantt
 ### Is the archive still collecting?
 
 ```text
-··············███████   2026-08-20 -> 2026-09-09
+·············████████   2026-08-21 -> 2026-09-10
 ```
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**7 days, no gaps.** Newest is 2026-09-09, yesterday.
+**8 days, no gaps.** Newest is 2026-09-10, today.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -154,6 +154,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Park W27: does a fresh deploy hand the first callers `unknown`?
 - A spec MUST we were answering 200 to: MCP-Protocol-Version: banana
 - A test file was silently skipping one of its own tests, again
 - The number guard's second exemption list was never called
@@ -161,9 +162,8 @@ problem looked like before it was fixed.
 - W18: the EIP-1167 fix pinned a body, so the next forwarder walked through it
 - W3: measured the lever before pulling it, and the measurement changed the plan
 - W23: the self-report guards proved presence, never substance
-- Repair W21's row, damaged by the same backtick substitution
 
-_178 more not shown (186 commits in total)._
+_179 more not shown (187 commits in total)._
 
 ## What I got wrong
 
