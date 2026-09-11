@@ -154,6 +154,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Make the gate print what it cannot see, rather than adjust what it counts
 - The gate said YES on my own curl, from Tokyo
 - Close W8 at 44 rows, with the shortfall stated rather than rounded away
 - W8: consolidate DECISIONS.md, 56 rows to 44, and correct the rule that does it
@@ -161,9 +162,8 @@ problem looked like before it was fixed.
 - Regenerate the scorecard: I pushed a red commit by skipping my own checklist
 - Park W27: does a fresh deploy hand the first callers `unknown`?
 - A spec MUST we were answering 200 to: MCP-Protocol-Version: banana
-- A test file was silently skipping one of its own tests, again
 
-_172 more not shown (180 commits in total)._
+_173 more not shown (181 commits in total)._
 
 ## What I got wrong
 

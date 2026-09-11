@@ -79,6 +79,14 @@ jobs:
       - name: The owner-power recall figures match what was measured
         run: python tests/test_owner_power_recall.py
 
+      # The PreToolUse hook that refuses an untagged probe at vetagent.dev. It exists
+      # because an untagged curl from the owner's machine reads as client `curl` from JP and
+      # the usage gate counted 14 of them as an external caller. A hook that silently stops
+      # matching is worse than no hook, so its behaviour is pinned here -- both the shapes it
+      # must refuse and the ones it must leave alone.
+      - name: An untagged probe cannot reach production
+        run: python tests/test_probe_guard.py
+
       # DECISIONS.md calls a named test "the strongest kind" of enforcement. Three of the
       # names it gave pointed at tests that do not exist, and one of those was drift
       # introduced by a rename in this very round. This step also fails if a test file
