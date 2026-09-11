@@ -96,12 +96,12 @@ gantt
 ### Is the archive still collecting?
 
 ```text
-·············████████   2026-08-21 -> 2026-09-10
+············█████████   2026-08-22 -> 2026-09-11
 ```
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**8 days, no gaps.** Newest is 2026-09-10, yesterday.
+**9 days, no gaps.** Newest is 2026-09-11, today.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -127,7 +127,7 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **5 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **6 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -154,6 +154,7 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- The gate said YES on my own curl, from Tokyo
 - Close W8 at 44 rows, with the shortfall stated rather than rounded away
 - W8: consolidate DECISIONS.md, 56 rows to 44, and correct the rule that does it
 - E5 was filed as test-enforced and its test could not fail
@@ -161,9 +162,8 @@ problem looked like before it was fixed.
 - Park W27: does a fresh deploy hand the first callers `unknown`?
 - A spec MUST we were answering 200 to: MCP-Protocol-Version: banana
 - A test file was silently skipping one of its own tests, again
-- The number guard's second exemption list was never called
 
-_171 more not shown (179 commits in total)._
+_172 more not shown (180 commits in total)._
 
 ## What I got wrong
 

@@ -388,6 +388,86 @@ RULE_TEXT = (
 )
 
 
+# Tools whose response carries neither `risk_level` nor `status`. `_record_call` derives the
+# verdict as `risk_level or status or ""` (src/entry.py:728), so for these it writes an empty
+# string no matter how real the caller is.
+#
+# Verified against production on 2026-09-11: `find_new_hot_pools` answers with `count` and
+# `scanned` and no verdict field; `get_token_liquidity` answers `status: ok`;
+# `assess_token_risk` answers `risk_level`.
+#
+# The consequence is a blind spot in a frozen rule, not a bug in it. Two of the gate's six
+# clauses are "received a real verdict" and "asked about more than one thing", the second
+# counting DISTINCT verdicts. A caller whose use of this product is pool discovery cannot
+# satisfy either, on any number of days, from any country, however plainly external its name.
+# On 2026-09-11 the two clients in the data that named themselves something unmistakably not
+# ours -- `sasame-mcp-audit`, 15 calls over 3 days, and `rokmcp-collector`, 3 over 3 -- were
+# both filed under `no:` for exactly this reason, while the YES rested on untagged `curl`
+# from the owner's own Tokyo egress.
+VERDICTLESS_TOOLS = {"find_new_hot_pools"}
+
+
+def unjudgeable_callers(tools, prof):
+    """Callers that fail ONLY the verdict clauses. Pure; changes no verdict.
+
+    Deliberately narrow. A client is listed only if it would otherwise have passed: not
+    ours, named a real tool, came back on two or more days. If it fails anything else it is
+    already reported by `gate_verdict` on that ground and does not belong here.
+
+    This is E11 applied to the gate itself. "We could not judge this caller" and "this
+    caller is not a user" are different statements, and the rule can only print the second.
+    """
+    out = []
+    for client, rec in (tools or []):
+        if is_self(client):
+            continue
+        p = (prof or {}).get(client) or {}
+        real_tools = sorted(t for t in rec.get("tools") or ()
+                            if t and t != "?" and not t.startswith("__"))
+        verdicts = sorted(v for v in (p.get("verdicts") or {}) if v and v != "(none)")
+        days = max(int(rec.get("days") or 0), len(p.get("days") or ()))
+        if not real_tools or verdicts or days < 2:
+            continue                     # passes, or fails on a ground already reported
+        out.append({
+            "client": client,
+            "calls": rec.get("n") or 0,
+            "days": days,
+            "tools": real_tools,
+            # Whether the tools it used can produce a verdict at all. If every one of them
+            # is verdictless, the silence is the instrument's; if not, it is the caller's.
+            "all_verdictless": bool(real_tools) and all(t in VERDICTLESS_TOOLS
+                                                        for t in real_tools),
+        })
+    return out
+
+
+def blind_spot_lines(tools, prof):
+    """The report half. Returns lines; never a verdict."""
+    rows = unjudgeable_callers(tools, prof)
+    if not rows:
+        return ["  --- what this rule cannot see ---",
+                "  Nothing: every caller that named a tool and returned on a second day",
+                "  also received a verdict, so the rule could judge all of them."]
+    lines = ["  --- what this rule cannot see ---"]
+    for r in rows:
+        lines.append("  %-26s %d calls, %d days, tools: %s%s"
+                     % (r["client"], r["calls"], r["days"], ", ".join(r["tools"]),
+                        "  <- no verdict is POSSIBLE for these tools"
+                        if r["all_verdictless"] else ""))
+    lines += [
+        "  These fail only the verdict clauses. `find_new_hot_pools` returns `count` and",
+        "  `scanned` and no verdict field, so a caller using it can never satisfy \"received",
+        "  a real verdict\" or \"more than one distinct verdict\" -- on any number of days,",
+        "  from any country, under any name.",
+        "  **The rule is frozen and this changes nothing.** It is printed because \"we could",
+        "  not judge this caller\" and \"this caller is not a user\" are different statements,",
+        "  and the rule can only print the second. Giving that tool a `status` field is the",
+        "  fix; doing it before 2026-09-18 would change the gate's own inputs in the",
+        "  direction of YES, so it is deferred to after the date on purpose (BACKLOG W28).",
+    ]
+    return lines
+
+
 def gate_verdict(tools, prof):
     """Decide the 2026-09-18 gate. Returns (verdict, lines) with verdict in
     YES / NEAR / NO. Pure -- takes what the queries returned, touches no network."""
@@ -557,6 +637,12 @@ def main():
             print("     admit them. STRATEGY: Experiment C only, no new features.")
         else:
             print("  -> NO. STRATEGY: Experiment C only, no new features.")
+
+        # Printed after the verdict, never before it, and it changes nothing. The verdict is
+        # the frozen rule's answer; this is the part of the question the rule cannot reach.
+        print()
+        for line in blind_spot_lines(tools, prof):
+            print(line)
 
     if tools:
         print_profile(prof, tools)

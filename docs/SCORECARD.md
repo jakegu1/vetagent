@@ -10,7 +10,7 @@
 |---|---|---|
 | Correctness | 24.0 | 30 |
 | Coverage | 16.4 | 20 |
-| Credibility | 10.4 | 20 |
+| Credibility | 10.5 | 20 |
 | Distribution | 4.2 ⚠️ | 15 |
 | Demand | 0.0 | 15 |
 
@@ -26,7 +26,7 @@
 | Correctness | unknown rate | 6.0 | 10 | 15.3% |
 | Coverage | risk dimensions covered | 16.4 | 20 | 9 / 11 |
 | Credibility | recall is measurable | 10.0 | 10 | dead samples: 30 (need ≥20) |
-| Credibility | days of snapshots | 0.4 | 10 | 8 of 180 days |
+| Credibility | days of snapshots | 0.5 | 10 | 9 of 180 days |
 | Distribution | channels listed on | 4.2 | 10 | 5 / 12 |
 | Distribution | external callers | — | 5 | not measured (needs CLOUDFLARE_API_TOKEN, see bench/usage.py) |
 | Demand | paying users | 0.0 | 10 | 0 |

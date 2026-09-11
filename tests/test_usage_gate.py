@@ -55,10 +55,30 @@ def test_the_deciding_rule_is_actually_called():
     """
     print("\n[gate] the rule that prints the verdict is the rule that ran")
     src = open(os.path.join(ROOT, "bench", "usage.py"), encoding="utf-8").read()
-    body = src.split("def main(")[-1]
     defined = set(re.findall(r"^def ([a-z_]+_callers)\(", src, re.M))
     check("the file defines at least one counting rule", bool(defined), str(defined))
-    dead = [fn for fn in defined if fn + "(" not in body]
+
+    # REACHABLE from main(), not merely called by it. The first version searched only
+    # main()'s own body, so a counting rule invoked one level down read as dead -- which it
+    # is not. `unjudgeable_callers` is called by `blind_spot_lines`, which main() calls, and
+    # the guard failed it on 2026-09-11. Renaming the function to dodge the pattern would
+    # have been the dishonest fix available; this is the honest one, and it still catches
+    # what the guard exists for, because a function nothing reaches is still unreachable.
+    bodies = {}
+    for m in re.finditer(r"^def ([a-z_0-9]+)\(", src, re.M):
+        start = m.start()
+        nxt = re.search(r"^def ", src[m.end():], re.M)
+        bodies[m.group(1)] = src[start:m.end() + (nxt.start() if nxt else len(src))]
+    reachable, frontier = set(), ["main"]
+    while frontier:
+        fn = frontier.pop()
+        if fn in reachable or fn not in bodies:
+            continue
+        reachable.add(fn)
+        for called in set(re.findall(r"\b([a-z_0-9]+)\(", bodies[fn])):
+            if called in bodies and called not in reachable:
+                frontier.append(called)
+    dead = [fn for fn in defined if fn not in reachable]
     check("no counting rule is dead code", not dead,
           "%s defined but never called from main()" % ", ".join(sorted(dead)))
 
@@ -429,6 +449,58 @@ def test_the_evidence_base_is_never_silent():
           "Nothing was set aside" in none_set, none_set)
     check("a real count names the number and the cutoff",
           "260" in some and usage.ATTRIBUTION_FIXED in some, some)
+
+
+def test_the_blind_spot_report_never_moves_the_verdict():
+    """The gate may print what it cannot see. It may not decide differently because of it.
+
+    On 2026-09-11 the gate read YES on `curl` -- untagged probes from the owner's own
+    machine, which egresses through Tokyo, so `OWNER_COUNTRIES = {"CN"}` did not catch them.
+    Looking into that turned up a second thing: `find_new_hot_pools` returns `count` and
+    `scanned` and no verdict field, so `_record_call` writes "" for it, and a caller whose
+    use of this product is pool discovery can never satisfy "received a real verdict".
+    The two clients in the data that named themselves something unmistakably not ours were
+    both filed under `no:` for that reason.
+
+    Both of the edits that would make the gate read differently -- widening
+    `OWNER_COUNTRIES`, or counting a verdictless tool -- happen to favour YES. That is the
+    pressure a frozen rule exists to resist, so neither was made. The blind spot is
+    REPORTED instead, and this test is what keeps that honest: the same inputs must produce
+    the same verdict whether or not anything is reported beside it.
+    """
+    print(chr(10) + "[gate] reporting the blind spot changes no verdict")
+
+    tools = [("sasame-mcp-audit", {"n": 15, "days": 3, "tools": {"find_new_hot_pools"}}),
+             ("curl", {"n": 14, "days": 4, "tools": {"assess_token_risk"}})]
+    prof = {"sasame-mcp-audit": {"verdicts": {"(none)": 15}, "days": {"a", "b", "c"}},
+            "curl": {"verdicts": {"low": 12, "unknown": 2}, "days": set("abcd"),
+                     "countries": {"JP"}, "country_n": {"JP": 14}}}
+
+    before, _ = usage.gate_verdict(tools, prof)
+    lines = usage.blind_spot_lines(tools, prof)
+    after, _ = usage.gate_verdict(tools, prof)
+    check("the verdict is identical before and after reporting", before == after,
+          "%s then %s" % (before, after))
+    check("the unjudgeable caller is named", any("sasame-mcp-audit" in l for l in lines),
+          str(lines[:2]))
+    check("the caller that DID get a verdict is not named here",
+          not any(l.strip().startswith("curl") for l in lines), str(lines[:3]))
+    check("the report says it changes nothing",
+          any("changes nothing" in l for l in lines), str(lines[-3:]))
+
+    # A caller that is ours must never appear in the report, however unjudgeable.
+    ours = [("vetagent-ci-smoke", {"n": 9, "days": 5, "tools": {"find_new_hot_pools"}})]
+    ours_prof = {"vetagent-ci-smoke": {"verdicts": {"(none)": 9}, "days": {"a", "b"}}}
+    check("our own tooling is not reported as unjudgeable",
+          not usage.unjudgeable_callers(ours, ours_prof),
+          str(usage.unjudgeable_callers(ours, ours_prof)))
+
+    # And a caller failing on some OTHER ground belongs in gate_verdict's output, not here.
+    oneday = [("someone", {"n": 4, "days": 1, "tools": {"find_new_hot_pools"}})]
+    oneday_prof = {"someone": {"verdicts": {"(none)": 4}, "days": {"a"}}}
+    check("a one-day caller is left to the rule to report",
+          not usage.unjudgeable_callers(oneday, oneday_prof),
+          str(usage.unjudgeable_callers(oneday, oneday_prof)))
 
 
 def main():
