@@ -20,6 +20,41 @@ Use the **Write tool** for any text containing a backslash or a backtick, then r
 A quoted heredoc `<<'EOF'` is safe for prose; nothing is safe for scripts with escapes.
 If a file is already mangled, `git checkout <file>` and start over.
 
+**Never curl production bare. Name yourself, or you become the evidence.**
+
+Every hand-run probe against `vetagent.dev` is recorded by `_record_call`, and with no
+`x-mcp-client` header it is filed under its User-Agent -- `curl`. The gate's own list has
+`curl` in `AMBIGUOUS_CLIENTS`, so it is then judged by country, and **this machine egresses
+through Tokyo**: `curl https://vetagent.dev/cdn-cgi/trace` returns `loc=JP`, `colo=NRT`.
+`OWNER_COUNTRIES` is `{"CN"}`. So an untagged probe from here reads as a foreign caller.
+
+On 2026-09-11 the gate reported **YES** on `curl` -- 14 calls, 4 days, low x12 unknown x2,
+JP on 14 of 14 rows. Verifying W18 and W24 against production, and checking a deploy, is
+exactly that shape: a handful of `tools/call` requests returning `low` and `unknown`,
+spread over the days the work happened.
+
+The global notes already carried this incident once -- "the usage gate says YES, we have an
+external caller / the caller was a verification request I had sent myself an hour earlier".
+It did not prevent the repeat, because it recorded the wrong half: the conclusion rather
+than the mechanism. The mechanism is one missing header.
+
+```bash
+curl -sS -H 'x-mcp-client: vetagent-manual-probe' \
+     -H 'content-type: application/json' \
+     -X POST https://vetagent.dev/mcp -d '{...}'
+```
+
+`deploy.yml` learned this first and tags every smoke-test curl `vetagent-ci-smoke`; the
+landing page sends `vetagent-landing-demo`. Hand-run probes were the only untagged thing
+left, and they are the ones aimed at the endpoint most often. Anything `vetagent-*` is
+filtered as ours.
+
+Two more of ours that are not tagged and should be watched: `.mcp.json` points the owner's
+editor at production, so `claude-code` is the owner -- it is in `AMBIGUOUS_CLIENTS` too, and
+it is connect-only today, but one real `assess_token_risk` from the editor enters the gate's
+evidence as a stranger. And a browser opened on the landing page without the demo button
+arrives as `mozilla`.
+
 **Deploy from WSL, and clear the venv first.** `.venv-workers` is platform-specific:
 built on Windows it has `Scripts/`, and a WSL run wants `bin/`.
 
