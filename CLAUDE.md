@@ -55,6 +55,19 @@ it is connect-only today, but one real `assess_token_risk` from the editor enter
 evidence as a stranger. And a browser opened on the landing page without the demo button
 arrives as `mozilla`.
 
+**Clear `__pycache__` after restoring a file, or a mutation test lies to you.**
+
+Restoring `src/risk.py` from a backup with `cp` and immediately re-running left Python
+serving a **stale `.pyc`**: the file on disk read `_SCAN_RECALL_PCT = "50.0"` and the test
+reported 62.5, on 2026-09-12. Harmless when it makes a green run look red. Dangerous in the
+other direction, which is the direction this repo's whole discipline runs in -- break the
+thing, watch the guard go red, restore. A stale cache turns "I watched it fail" into a
+sentence about a file that was not loaded.
+
+```bash
+find . -name __pycache__ -type d -not -path "./.git/*" -exec rm -rf {} + 2>/dev/null
+```
+
 **Deploy from WSL, and clear the venv first.** `.venv-workers` is platform-specific:
 built on Windows it has `Scripts/`, and a WSL run wants `bin/`.
 

@@ -131,6 +131,7 @@ decision already on the backlog (W1). It needs no gate; it needs someone to wide
 selector list from a source that is not the labelling oracle (W18).
 
 **Closed 2026-09-09 by W18. The table below is the BEFORE picture and is kept as one.**
+**And the AFTER figures quoted in this paragraph are in-sample -- corrected 2026-09-12 (R20-1).** Out of sample the same pipeline gets pooled 50.0% and tax 31.6%, against the 62.5% and 89.5% below. The gap is 193 of 285 selectors occurring in exactly one corpus contract. `bench/owner_powers.json` carries both.
 Pooled recall went 41.4% -> 62.5%: tax 7.9% -> 89.5%, blacklist 26.3% -> 78.9%, pause
 36.8% -> 52.6%, mint 51.9% -> 55.1%. The current table is generated into
 `bench/owner_powers.json` and guarded by `tests/test_owner_power_recall.py`; read that

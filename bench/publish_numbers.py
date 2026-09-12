@@ -57,19 +57,19 @@ TARGETS = [
     # that exists only after the line breaks are removed. This is the same fragility W21
     # recorded for exemptions ("an exemption that moves when prose re-wraps is not an
     # exemption"), and a target is no different. Caught by the guard on its own first run.
-    ("docs/EXPERIMENT_C.md",
-     r"finds\s+([\d.]+)%\s+of\s+the\s+contracts\s+that\s+can\s+change\s+the\s+tax",
-     "power_tax_pct"),
-    ("docs/EXPERIMENT_C.md", r"([\d.]+)%\s+of\s+those\s+that\s+can\s+blacklist",
-     "power_blacklist_pct"),
-    ("docs/EXPERIMENT_C.md", r"([\d.]+)%\s+of\s+those\s+that\s+can\s+pause\s+transfers",
-     "power_pause_pct"),
-    ("docs/EXPERIMENT_C.md", r"up\s+from\s+([\d.]+)%,\s+[\d.]+%\s+and\s+[\d.]+%",
-     "power_tax_before_pct"),
-    ("docs/EXPERIMENT_C.md", r"up\s+from\s+[\d.]+%,\s+([\d.]+)%\s+and\s+[\d.]+%",
-     "power_blacklist_before_pct"),
-    ("docs/EXPERIMENT_C.md", r"up\s+from\s+[\d.]+%,\s+[\d.]+%\s+and\s+([\d.]+)%",
-     "power_pause_before_pct"),
+    # Re-pointed 2026-09-12: the post now leads with the OUT-OF-SAMPLE figures, because the
+    # ones it led with before were in-sample and described the corpus rather than the reader's
+    # token. Both sets are tracked, so neither can drift and the pair cannot be quietly
+    # reduced to whichever is flattering.
+    ("docs/EXPERIMENT_C.md", r"finds\s+([\d.]+)%\s+of\s+the\s+ones\s+an\s+independent",
+     "power_pooled_oos_pct"),
+    ("docs/EXPERIMENT_C.md", r"([\d.]+)%\s+of\s+mutable\s+taxes", "power_tax_oos_pct"),
+    ("docs/EXPERIMENT_C.md", r"([\d.]+)%\s+of\s+pause\s+switches", "power_pause_oos_pct"),
+    ("docs/EXPERIMENT_C.md", r"([\d.]+)%\s+of\s+mint\s+functions", "power_mint_oos_pct"),
+    ("docs/EXPERIMENT_C.md", r"([\d.]+)%\s+of\s+blacklists", "power_blacklist_oos_pct"),
+    ("docs/EXPERIMENT_C.md", r"the\s+same\s+scan\s+reads\s+([\d.]+)%", "power_pooled_pct"),
+    ("docs/EXPERIMENT_C.md", r"the\s+tax\s+figure\s+reads\s+([\d.]+)%", "power_tax_pct"),
+    ("docs/EXPERIMENT_C.md", r"that\s+([\d.]+)%\s+is\s+memory", "power_tax_pct"),
     ("src/landing.html", r"Measured on (\d+) tokens:", "n"),
     ("src/landing.html", r"were flagged high\. (\d+) of \d+ confirmed-dead", "dead_not_low_n"),
     ("src/landing.html", r"were flagged high\. \d+ of (\d+) confirmed-dead", "dead_n"),
@@ -253,6 +253,13 @@ def _owner_power_figures():
     pooled = d.get("pooled") or {}
     out["power_pooled_pct"] = pooled.get("mined_pct")
     out["power_pooled_before_pct"] = pooled.get("shipped_pct")
+    # The out-of-sample set. Exposed under its own names so a surface can never quote an
+    # in-sample figure through a key whose name does not say so.
+    oos = d.get("out_of_sample") or {}
+    for flag, key in (("slippage_modifiable", "tax"), ("is_blacklisted", "blacklist"),
+                      ("transfer_pausable", "pause"), ("is_mintable", "mint")):
+        out["power_%s_oos_pct" % key] = (oos.get(flag) or {}).get("pct")
+    out["power_pooled_oos_pct"] = (oos.get("pooled") or {}).get("pct")
     return out
 
 

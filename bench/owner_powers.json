@@ -3,6 +3,33 @@
  "generated_by": "python bench/selector_mine.py --write",
  "measured": "2026-09-09",
  "note": "Recall against the benchmark's held-out oracle is not recall against reality. It bounds the scan's blindness from one side: a power the oracle sees and we miss is definitely a miss.",
+ "out_of_sample": {
+  "is_blacklisted": {
+   "hits": 12,
+   "n": 19,
+   "pct": "63.2"
+  },
+  "is_mintable": {
+   "hits": 83,
+   "n": 156,
+   "pct": "53.2"
+  },
+  "pooled": {
+   "hits": 116,
+   "n": 232,
+   "pct": "50.0"
+  },
+  "slippage_modifiable": {
+   "hits": 12,
+   "n": 38,
+   "pct": "31.6"
+  },
+  "transfer_pausable": {
+   "hits": 9,
+   "n": 19,
+   "pct": "47.4"
+  }
+ },
  "pooled": {
   "mined_hits": 145,
   "mined_pct": "62.5",
@@ -56,6 +83,11 @@
    "shipped_finds": 7,
    "shipped_pct": "36.8"
   }
+ },
+ "selector_concentration": {
+  "seen_in_none": 12,
+  "seen_in_one_contract": 193,
+  "shipped": 285
  },
  "selectors_dispatched": 2230,
  "selectors_named": 1940

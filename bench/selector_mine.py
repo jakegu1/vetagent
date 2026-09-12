@@ -928,7 +928,7 @@ def report_union_and_pool(per_contract, admitted, flags):
     hm = sum(r[5] for r in rows)
     print()
     print("POOLED over all four oracle flags: shipped %d of %d = %.1f%%, "
-          "mined %d of %d = %.1f%%"
+          "mined %d of %d = %.1f%% (IN-SAMPLE)"
           % (hs, n, 100.0 * hs / n if n else 0, hm, n, 100.0 * hm / n if n else 0))
     return {"n": n, "shipped_hits": hs, "mined_hits": hm,
             "shipped_pct": "%.1f" % (100.0 * hs / n if n else 0),
@@ -936,6 +936,89 @@ def report_union_and_pool(per_contract, admitted, flags):
             "pausable_pause_only_pct": "%.1f" % (100.0 * only_pause / len(have)
                                                  if have else 0),
             "pausable_with_gates_pct": "%.1f" % (100.0 * union / len(have) if have else 0)}
+
+
+def cross_fit(per_contract, cache, flags):
+    """Recall on contracts the miner has not seen. The number a caller's token deserves.
+
+    **The published 62.5% was in-sample and nobody noticed for three days.** The list is
+    mined from all 559 cached contracts and then scored on those same 559, so it has already
+    seen every contract it is graded on. 193 of the 285 shipped selectors occur in exactly
+    ONE corpus contract: they are not a rule about how Solidity names things, they are a
+    memory of a specific token.
+
+    The dev/holdout split above does not catch this and was never able to. It holds out
+    LABELS, so it can detect a name rule fitted to the oracle's answers -- and it correctly
+    reported none. It cannot hold out the BYTECODE the universe was built from, which is the
+    thing that leaks. `selector_mine.py` said "the split is the control on the rule", and
+    that was true and insufficient: the rule was controlled, the universe was not.
+
+    So: split the corpus in two by address hash, mine a list from each half using only that
+    half's bytecode, and score each half with the list mined from the other. Identical
+    pipeline, identical gates, identical name rule -- only the universe shrinks, which is
+    exactly what happens to a stranger's contract.
+
+    Measured 2026-09-12, and the tax figure is the one that matters:
+
+        flag                   n    in-sample    out-of-sample
+        slippage_modifiable   38        89.5%            31.6%
+        is_blacklisted        19        78.9%            63.2%
+        transfer_pausable     19        52.6%            47.4%
+        is_mintable          156        55.1%            53.2%
+        pooled               232        62.5%            50.0%
+
+    The residual biases run OPTIMISTIC, so 50.0% is a ceiling on the honest number rather
+    than a floor: `final_list()` still injects the full 23-selector baseline into every
+    cross-fit list, the prevalence ceiling removes nothing, and the ERC-20 denylist is a
+    fixed standard rather than something derived from the corpus. The one pessimistic
+    source -- training on about 280 contracts instead of 559 -- is worth under a point.
+    """
+    keys = sorted(per_contract)
+    halves = {"dev": [], "holdout": []}
+    for k in keys:
+        halves[split_of(k[1])].append(k)
+
+    mined = {}
+    for name, training in halves.items():
+        sub_prev = {}
+        for k in training:
+            for sel in per_contract[k]:
+                sub_prev[sel] = sub_prev.get(sel, 0) + 1
+        sub_cache = {sel: cache[sel] for sel in sub_prev if sel in cache}
+        admitted, _ = candidates(sub_cache, sub_prev, len(training))
+        mined[name] = final_list(admitted)
+
+    out = {}
+    tot_n = tot_hit = 0
+    for flag, power in sorted(FLAG_TO_POWER.items()):
+        hit = n = 0
+        for scored, trained_on in (("dev", "holdout"), ("holdout", "dev")):
+            sels = set(mined[trained_on].get(power) or {})
+            have = [k for k in halves[scored]
+                    if str((flags.get(k) or {}).get(flag) or "0") == "1"]
+            hit += sum(1 for k in have if per_contract[k] & sels)
+            n += len(have)
+        out[flag] = {"n": n, "hits": hit,
+                     "pct": "%.1f" % (100.0 * hit / n if n else 0)}
+        tot_n += n
+        tot_hit += hit
+    out["pooled"] = {"n": tot_n, "hits": tot_hit,
+                     "pct": "%.1f" % (100.0 * tot_hit / tot_n if tot_n else 0)}
+    return out
+
+
+def singleton_share(per_contract, final):
+    """How many shipped selectors were seen in exactly one contract. The mechanism."""
+    prev = {}
+    for sels in per_contract.values():
+        for sel in sels:
+            prev[sel] = prev.get(sel, 0) + 1
+    shipped = set()
+    for group in final.values():
+        shipped |= set(group)
+    return {"shipped": len(shipped),
+            "seen_in_one_contract": sum(1 for sel in shipped if prev.get(sel, 0) == 1),
+            "seen_in_none": sum(1 for sel in shipped if prev.get(sel, 0) == 0)}
 
 
 def write_json(per_contract, admitted, flags, pool, n_sel, n_named, today):
@@ -950,6 +1033,11 @@ def write_json(per_contract, admitted, flags, pool, n_sel, n_named, today):
     out = {
         "measured": today,
         "generated_by": "python bench/selector_mine.py --write",
+        # Both, always, and out-of-sample first in every sentence that quotes one. The
+        # in-sample figure describes this corpus; the out-of-sample figure describes the
+        # next contract a caller asks about, which is the only one they have.
+        "out_of_sample": cross_fit(per_contract, load_sig_cache(), flags),
+        "selector_concentration": singleton_share(per_contract, final_list(admitted)),
         "note": ("Recall against the benchmark's held-out oracle is not recall against "
                  "reality. It bounds the scan's blindness from one side: a power the "
                  "oracle sees and we miss is definitely a miss."),

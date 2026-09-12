@@ -119,6 +119,13 @@ def test_the_measurement_file_exists_and_is_dated():
     # zero into the artifact other files quote from is how an unobserved dimension becomes
     # an observed absence with a citation.
     gate = (d.get("powers") or {}).get("can halt trading") or {}
+    oos = d.get("out_of_sample") or {}
+    check("the artifact carries an out-of-sample figure",
+          bool((oos.get("pooled") or {}).get("pct")),
+          "regenerate: python bench/selector_mine.py --write")
+    check("and the concentration that explains the gap",
+          bool((d.get("selector_concentration") or {}).get("seen_in_one_contract")),
+          str(d.get("selector_concentration")))
     check("the trading gate's recall is null, not zero",
           "mined_pct" in gate and gate["mined_pct"] is None, repr(gate.get("mined_pct")))
 
@@ -160,10 +167,15 @@ def test_every_recall_figure_in_the_source_matches():
     src = io.open(RISK, encoding="utf-8").read()
 
     # The generated table: "#   slippage_modifiable  38   7.9%   89.5%"
-    rows = re.findall(r"^#\s+([a-z_]+)\s+(\d+)\s+([\d.]+)%\s+([\d.]+)%", src, re.M)
+    oos = d.get("out_of_sample") or {}
+    rows = re.findall(
+        r"^#\s+([a-z_]+)\s+(\d+)\s+([\d.]+)%\s+([\d.]+)%\s+([\d.]+)%", src, re.M)
     check("the recall table was found in src/risk.py", len(rows) >= 5,
           "found %d rows" % len(rows))
-    for flag, n, before, after in rows:
+    for flag, n, before, after, out in rows:
+        want_oos = (oos.get(flag) or {}).get("pct")
+        check("%s: out-of-sample=%s%%" % (flag, out), out == want_oos,
+              "measured %s" % want_oos)
         if flag == "pooled":
             want = pooled
             label = "pooled"
@@ -182,17 +194,26 @@ def test_every_recall_figure_in_the_source_matches():
               after == want.get("mined_pct"), "measured %s" % want.get("mined_pct"))
 
     # The prose. Each of these is a sentence a reader takes as the current claim.
+    # Every space in these patterns is `\s+`. The docstring they read is hard-wrapped,
+    # so a literal space matches only until someone re-flows a paragraph -- the same
+    # fragility that broke six TARGETS patterns in publish_numbers.py, and it broke two
+    # of these on their first run.
+    conc = d.get("selector_concentration") or {}
     prose = [
-        (r"finds ([\d.]+)% of the powers", pooled.get("mined_pct"), "pooled, after"),
-        (r"up from ([\d.]+)% before W18", pooled.get("shipped_pct"), "pooled, before"),
-        (r"went from ([\d.]+)% to [\d.]+%",
+        (r"never\s+seen,\s+it\s+finds\s+([\d.]+)%\s+of\s+the\s+powers",
+         (oos.get("pooled") or {}).get("pct"), "pooled, OUT-OF-SAMPLE"),
+        (r"it\s+reaches\s+([\d.]+)%,\s+up\s+from", pooled.get("mined_pct"), "pooled, in-sample"),
+        (r"up\s+from\s+([\d.]+)%\s+before\s+W18", pooled.get("shipped_pct"), "pooled, before"),
+        (r"appears\s+to\s+go\s+from\s+([\d.]+)%\s+to\s+[\d.]+%",
          (by_flag.get("slippage_modifiable") or {}).get("shipped_pct"), "tax, before"),
-        (r"went from [\d.]+% to ([\d.]+)%",
-         (by_flag.get("slippage_modifiable") or {}).get("mined_pct"), "tax, after"),
-        (r"mint, at ([\d.]+)%",
-         (by_flag.get("is_mintable") or {}).get("mined_pct"), "mint, after"),
-        (r"still true at ([\d.]+)% pooled recall", pooled.get("mined_pct"),
-         "the payload comment"),
+        (r"appears\s+to\s+go\s+from\s+[\d.]+%\s+to\s+([\d.]+)%",
+         (by_flag.get("slippage_modifiable") or {}).get("mined_pct"), "tax, in-sample"),
+        (r"Out\s+of\s+sample\s+the\s+tax\s+figure\s+is\s+([\d.]+)%",
+         (oos.get("slippage_modifiable") or {}).get("pct"), "tax, OUT-OF-SAMPLE"),
+        (r"still\s+true\s+at\s+([\d.]+)%\s+out-of-sample\s+pooled\s+recall",
+         (oos.get("pooled") or {}).get("pct"), "the payload comment"),
+        (r"(\d+)\s+of\s+the\s+285\s+shipped", str(conc.get("seen_in_one_contract")),
+         "the singleton count, which is the mechanism"),
     ]
     for pattern, want, label in prose:
         m = re.search(pattern, src, re.I)
@@ -226,19 +247,21 @@ def test_every_recall_figure_in_the_source_matches():
         check("%s: every recall percentage is one the measurement produced" % rel,
               not bad, " | ".join(sorted(set(bad))))
 
-    # The docstring calls one figure the lowest in the table. Which flag that is may move
-    # on the next re-measure, so the check is that whatever IS lowest is the figure quoted
-    # -- not that a particular power keeps the title. Written this way after the first run
-    # of this test caught the docstring naming mint at 55.1% as the worst while pause sat
-    # at 52.6%, which is the error this file exists to catch, made in the same edit.
-    scored = [r for r in by_flag.values() if r.get("mined_pct")]
-    worst = min(scored, key=lambda r: float(r["mined_pct"]))
-    m = re.search(r"lowest figure in the table is \w+ at ([\d.]+)%", src)
-    check("the docstring quotes the measured lowest figure",
-          bool(m) and m.group(1) == worst["mined_pct"],
-          "lowest is %s at %s%%, docstring says %s"
-          % (worst.get("oracle_flag"), worst.get("mined_pct"),
-             m.group(1) if m else "nothing"))
+    # THE LESSON, pinned so it cannot be undone by a regeneration: the number the product
+    # says out loud must be the out-of-sample one. `_SCAN_RECALL_PCT` was the in-sample
+    # 62.5% for three days, said about the contract in front of the caller -- which is by
+    # definition one the selector list has never seen. Quoting the corpus at a user is the
+    # specific error, and it survived a guard that checked the figure matched a file,
+    # because the file held the wrong figure too.
+    check("the emitted figure is the out-of-sample one, never the in-sample one",
+          risk._SCAN_RECALL_PCT == (oos.get("pooled") or {}).get("pct"),
+          "emits %s; out-of-sample %s, in-sample %s"
+          % (risk._SCAN_RECALL_PCT, (oos.get("pooled") or {}).get("pct"),
+             pooled.get("mined_pct")))
+    check("and they are genuinely different, so the check means something",
+          (oos.get("pooled") or {}).get("pct") != pooled.get("mined_pct"),
+          "both %s -- if a re-measure ever makes these equal, this check goes quiet"
+          % pooled.get("mined_pct"))
 
 
 def test_the_pinned_literal_matches_the_measurement():
@@ -252,9 +275,10 @@ def test_the_pinned_literal_matches_the_measurement():
     if not os.path.exists(MEASURED):
         unchecked("the pinned literal matches", "no measurement file")
         return
-    want = (_measured().get("pooled") or {}).get("mined_pct")
-    check("_SCAN_RECALL_PCT is %s" % want, risk._SCAN_RECALL_PCT == want,
-          "pinned %s, measured %s" % (risk._SCAN_RECALL_PCT, want))
+    want = ((_measured().get("out_of_sample") or {}).get("pooled") or {}).get("pct")
+    check("_SCAN_RECALL_PCT is the out-of-sample %s" % want,
+          risk._SCAN_RECALL_PCT == want,
+          "pinned %s, out-of-sample %s" % (risk._SCAN_RECALL_PCT, want))
 
     # And it has to reach the caller, not merely exist. Both emitted strings are checked by
     # driving the real functions rather than by grepping for the constant.
