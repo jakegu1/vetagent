@@ -17,6 +17,7 @@ stranger reads. This page is what the owner reads, and it is the page they would
 Run:  python tests/test_owner_page.py
 """
 
+import datetime
 import io
 import os
 import re
@@ -51,14 +52,43 @@ def _committed():
 
 
 def test_the_page_is_current():
-    """Generated and committed must agree, apart from the date it was generated on."""
+    """Generated and committed must agree, as of the day the page says it was generated.
+
+    **It used to redden by itself every midnight, and did, at HEAD on 2026-09-12.**
+    `tools/owner.py` renders "in N days" from `date.today()`, so a page generated yesterday
+    disagrees with a regeneration today on every deadline it carries -- a red build from the
+    clock, in the repository where CI was red for eight commits with nobody looking. A test
+    that cries wolf on a schedule is worse than no test: it trains the owner to skip the one
+    red that matters.
+
+    So the comparison uses the date the page stamps on itself. Every number and every
+    deadline is still compared exactly -- a wrong figure fails, a missed regeneration after
+    a real change fails -- and only the passage of time is excused. Staleness is checked
+    separately below, with slack, because "nobody has regenerated this in a week" and "this
+    page is wrong" are different problems and deserve different alarms.
+    """
     print("\n[owner] the page says what the sources say")
     have = _committed()
     check("docs/OWNER.md exists", have is not None,
           "run: python tools/owner.py --write")
     if have is None:
         return
-    want = owner.render()
+
+    stamped = re.search(r"^> Generated (\d{4})-(\d{2})-(\d{2})", have, re.M)
+    check("the page stamps the day it was generated", bool(stamped),
+          "no '> Generated YYYY-MM-DD' line -- the comparison below needs it")
+    if not stamped:
+        return
+    as_of = datetime.date(*(int(g) for g in stamped.groups()))
+
+    # The page is only allowed to be behind the clock, never behind the sources. A week of
+    # slack: the page is regenerated on essentially every commit, so seven quiet days means
+    # the project is idle rather than that the page is wrong.
+    age = (datetime.date.today() - as_of).days
+    check("it was generated within the last 7 days", age <= 7,
+          "stamped %s, %d days ago -- run: python tools/owner.py --write" % (as_of, age))
+
+    want = owner.render(today=as_of)
 
     # Two blocks are a view of *now* rather than a claim derived from a file, so they
     # cannot be compared: the generation date, and the recent-commit list. The commit
