@@ -291,12 +291,13 @@ def caller_profile(account, token, since, clients):
         return {}
     names = ", ".join("'%s'" % c.replace("'", "") for c, _ in clients)
     resp = query(
-        "SELECT %s AS client, %s AS verdict, %s AS country, toDate(timestamp) AS day, "
+        "SELECT %s AS client, %s AS verdict, %s AS country, %s AS method, "
+        "toDate(timestamp) AS day, "
         "toHour(timestamp) AS hour, sum(_sample_interval) AS n FROM %s "
         "WHERE %s AND %s != '' AND %s IN (%s) "
-        "GROUP BY client, verdict, country, day, hour ORDER BY client LIMIT 1000"
-        % (BLOB["client"], BLOB["verdict"], BLOB["country"], DATASET, gate_window(since),
-           BLOB["tool"], BLOB["client"], names), account, token)
+        "GROUP BY client, verdict, country, method, day, hour ORDER BY client LIMIT 1000"
+        % (BLOB["client"], BLOB["verdict"], BLOB["country"], BLOB["method"], DATASET,
+           gate_window(since), BLOB["tool"], BLOB["client"], names), account, token)
     rows = rows_of(resp)
     if rows is None:
         return {}
@@ -304,10 +305,16 @@ def caller_profile(account, token, since, clients):
     for row in rows:
         c = str(row.get("client") or "").strip().lower()
         p = prof.setdefault(c, {"verdicts": {}, "hours": set(), "days": set(),
-                                "countries": set(), "country_n": {}, "n": 0})
+                                "countries": set(), "country_n": {}, "methods": {},
+                                "n": 0})
         v = str(row.get("verdict") or "").strip() or "(none)"
         n = int(float(row.get("n") or 0))
         p["verdicts"][v] = p["verdicts"].get(v, 0) + n
+        # "http" is a REST call to the documented GET endpoint; anything else is the MCP
+        # method name. Absent rather than "http" when the artifact predates this column,
+        # so an old run reads as unknown instead of as all-REST.
+        m = str(row.get("method") or "").strip() or "?"
+        p["methods"][m] = p["methods"].get(m, 0) + n
         p["hours"].add(int(float(row.get("hour") or 0)))
         p["days"].add(str(row.get("day")))
         c = str(row.get("country") or "??").strip().upper() or "??"
@@ -464,6 +471,50 @@ def blind_spot_lines(tools, prof):
         "  and the rule can only print the second. Giving that tool a `status` field is the",
         "  fix; doing it before 2026-09-18 would change the gate's own inputs in the",
         "  direction of YES, so it is deferred to after the date on purpose (BACKLOG W28).",
+    ]
+    return lines
+
+
+def transport_lines(tools, prof, passed):
+    """How each passing caller reached us. Pure reporting; changes no verdict.
+
+    `GET /assess/<address>` is a documented public API and is meant to keep working, so the
+    engine has no method guard and should not grow one. The consequence lands here instead:
+    `_record_http` writes `tool=assess_token_risk` with a real verdict for a browser GET,
+    and `tool_callers()` groups on client and tool alone, so a pasted URL and an MCP
+    `tools/call` are the same row to this gate.
+
+    That is not hypothetical. The 2026-09-11 artifact's second passing client is `mozilla`,
+    which is what a browser is called, and the URL it would have opened is printed in
+    README.md, in the landing page and in llms.txt.
+
+    An older artifact has no method column at all. That prints as `?`, never as `http`:
+    "we did not record this" and "this was a REST call" are different statements.
+    """
+    if not passed:
+        return []
+    lines = ["  --- how each passing caller reached us ---"]
+    for client in passed:
+        methods = ((prof or {}).get(client) or {}).get("methods") or {}
+        if not methods:
+            lines.append("  %-26s transport not recorded for these rows" % client)
+            continue
+        parts = ", ".join("%s x%d" % (m, n)
+                          for m, n in sorted(methods.items(), key=lambda kv: -kv[1]))
+        rest = methods.get("http", 0)
+        note = ""
+        if rest and rest == sum(methods.values()):
+            note = "  <- every call was a REST GET, not an MCP client"
+        elif rest:
+            note = "  <- part REST GET"
+        lines.append("  %-26s %s%s" % (client, parts, note))
+    lines += [
+        "  `http` is the documented GET /assess/<address> endpoint (README, landing page,",
+        "  llms.txt). A person pasting that URL into a browser is recorded with a real",
+        "  verdict under whatever their User-Agent says -- `mozilla`, typically. The engine",
+        "  has no method guard on purpose: that endpoint is advertised and must keep",
+        "  working. **This changes no verdict.** It is printed so a YES can be read for",
+        "  what it is.",
     ]
     return lines
 
@@ -640,6 +691,13 @@ def main():
 
         # Printed after the verdict, never before it, and it changes nothing. The verdict is
         # the frozen rule's answer; this is the part of the question the rule cannot reach.
+        # Read out of gate_verdict's own output rather than recomputed, so this can never
+        # disagree with the verdict about who passed, and gate_verdict's signature is
+        # untouched.
+        passing = [ln.split()[1] for ln in lines if ln.strip().startswith("YES:")]
+        print()
+        for line in transport_lines(tools, prof, passing):
+            print(line)
         print()
         for line in blind_spot_lines(tools, prof):
             print(line)
