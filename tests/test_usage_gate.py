@@ -503,6 +503,84 @@ def test_the_blind_spot_report_never_moves_the_verdict():
           str(usage.unjudgeable_callers(oneday, oneday_prof)))
 
 
+def test_reporting_the_transport_never_moves_the_verdict():
+    """`GET /assess/<address>` is a documented API, so the engine has no method guard.
+
+    The cost lands in the gate: `_record_http` files a browser GET with
+    `tool=assess_token_risk` and a real verdict, and `tool_callers()` groups on client and
+    tool alone, so a pasted URL is the same row as an MCP `tools/call`. The 2026-09-11
+    artifact's second passing client is `mozilla`.
+
+    Reported rather than counted, for the third time in this file and for the same reason:
+    the rule is frozen, and every edit available here would move the answer.
+    """
+    print(chr(10) + "[gate] transport is reported, never counted")
+    tools = [("mozilla", {"n": 6, "days": 3, "tools": {"assess_token_risk"}})]
+    prof = {"mozilla": {"verdicts": {"low": 3, "unknown": 2}, "days": {"a", "b", "c"},
+                        "countries": {"US"}, "country_n": {"US": 6},
+                        "methods": {"http": 6}}}
+    before, lines = usage.gate_verdict(tools, prof)
+    passing = [ln.split()[1] for ln in lines if ln.strip().startswith("YES:")]
+    out = usage.transport_lines(tools, prof, passing)
+    after, _ = usage.gate_verdict(tools, prof)
+    check("the verdict is identical before and after", before == after,
+          "%s then %s" % (before, after))
+    check("an all-REST caller is named as one",
+          any("not an MCP client" in l for l in out), str(out[:3]))
+
+    # A row written before the method column existed must read as unrecorded, never as
+    # http. "We did not look" and "it was a REST call" are different statements.
+    silent = usage.transport_lines(tools, {"mozilla": {}}, ["mozilla"])
+    check("a missing method reads as unrecorded, not as REST",
+          any("not recorded" in l for l in silent)
+          and not any("REST GET" in l for l in silent[:2]), str(silent[:2]))
+
+
+def test_the_parameters_that_decide_the_answer_are_pinned():
+    """The rule's header says frozen. Three values it depends on were not.
+
+    Measured by an external audit on 2026-09-12, each mutation applied on its own and the
+    whole file re-run: `OWNER_COUNTRIES = {"CN"}` widened to `{"CN", "JP"}`, `curl` removed
+    from `AMBIGUOUS_CLIENTS`, and `ATTRIBUTION_FIXED`'s time of day moved to 23:59 -- **all
+    three left 61 passed, 0 failed.** The test asserted only the frozen DATE and the
+    attribution day, so "pinned by tests/test_usage_gate.py" was true of the calendar and
+    not of the arithmetic.
+
+    What that costs is specific, not theoretical. The 2026-09-11 artifact reads YES on
+    `curl` because JP is foreign to `{"CN"}`. Adding JP -- the edit 63c485b called "the
+    owner's to make", since the owner's own machine egresses through Tokyo -- flips the
+    gate to NO with CI green. Removing `curl` from the ambiguous list flips any untagged
+    curl, from anywhere, to YES with CI green. Both directions were reachable without a
+    single red check, which is the opposite of frozen.
+
+    **A pin is a tripwire, not an endorsement.** `OWNER_COUNTRIES = {"CN"}` is disputed:
+    the owner's traffic is observed leaving from JP, so the country clause may be looking
+    for the wrong country, and the gate may be reading the owner's own probes as a
+    stranger's. That argument belongs in a dated decision with the reasoning written down,
+    not in a one-character edit nobody notices. This test does not say the value is right.
+    It says changing it has to be on purpose.
+    """
+    print(chr(10) + "[gate] the parameters that decide the answer are pinned")
+
+    check("OWNER_COUNTRIES is exactly {'CN'}", usage.OWNER_COUNTRIES == {"CN"},
+          repr(usage.OWNER_COUNTRIES))
+    check("curl is judged by country, not by name",
+          "curl" in usage.AMBIGUOUS_CLIENTS, str(sorted(usage.AMBIGUOUS_CLIENTS)))
+    check("mozilla too, for the same reason",
+          "mozilla" in usage.AMBIGUOUS_CLIENTS, str(sorted(usage.AMBIGUOUS_CLIENTS)))
+    check("claude-code too -- the repo points the owner's editor at production",
+          "claude-code" in usage.AMBIGUOUS_CLIENTS, str(sorted(usage.AMBIGUOUS_CLIENTS)))
+    check("ATTRIBUTION_FIXED is the exact instant, not just the day",
+          usage.ATTRIBUTION_FIXED == "2026-09-07 12:35:00", usage.ATTRIBUTION_FIXED)
+
+    # The floor is what decides which rows the gate may read at all. Moving it later
+    # silently discards evidence; moving it earlier admits rows written before attribution
+    # worked, which is what it exists to exclude.
+    check("and it is not later than the gate's own frozen date",
+          usage.ATTRIBUTION_FIXED[:10] == usage.GATE_FROZEN,
+          "%s vs %s" % (usage.ATTRIBUTION_FIXED, usage.GATE_FROZEN))
+
+
 def main():
     print("=" * 68)
     print("Usage gate: does the counting rule count the right thing?")
