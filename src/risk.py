@@ -610,6 +610,7 @@ def _finalize(address, signals, evidence, data_gaps):
     if not signals:
         result.update(risk_level="unknown", risk_score=0, confidence="low",
                       recommendation="Not enough data to judge. Verify the address and retry; do not act on this result.")
+        _unknown_guidance(result, data_gaps)
         return result
 
     score = _score(signals)
@@ -721,7 +722,42 @@ def _finalize(address, signals, evidence, data_gaps):
             "low": _low_recommendation(evidence),
             "unknown": "Not assessed. A critical check could not be completed, so this is NOT a low-risk result and must not justify a trade. See evidence.data_gaps.",
         }[level])
+    if level == "unknown":
+        _unknown_guidance(result, data_gaps)
     return result
+
+
+# How long an infrastructure unknown should wait before asking again. Our upstreams answer
+# 429 and publish per-minute limits; the 2026-09-13 sweep re-asked after seven minutes and
+# got 8 of 10 answered, and nothing shorter than the window can help.
+_RETRY_AFTER_SECONDS = 60
+
+
+def _unknown_guidance(result, data_gaps):
+    """Say which kind of unknown this is, and what a caller should do about it.
+
+    Two unknowns read the same until now. In the 2026-09-13 live sweep, 32 of 45 were our
+    upstream failing -- re-asking later answered 8 of 10 -- and 13 were the token having no
+    pair or no simulator record, which no retry changes. A client that cannot tell them
+    apart learns to retry everything until an answer comes, and `unknown` stops meaning
+    anything. The gap reasons already carry the distinction; `_finalize` uses the same
+    prefix to decide the no-trace escalation. No new reason strings are invented here.
+    """
+    critical = [g for g in data_gaps if g.get("dimension") in _CRITICAL_DIMENSIONS] or \
+        list(data_gaps)
+    ours = [g for g in critical
+            if str(g.get("reason", "")).startswith("upstream request failed")]
+    if critical and len(ours) == len(critical):
+        result.update(unknown_kind="infrastructure", next_action="retry",
+                      retry_after_seconds=_RETRY_AFTER_SECONDS)
+        result["recommendation"] += (" This was our upstream, not the token: retry in "
+                                     "about a minute.")
+    else:
+        result.update(unknown_kind="mixed" if ours else "coverage", next_action="abstain")
+        result["recommendation"] += (" No source can see this token: do not retry into a "
+                                     "trade." if not ours else
+                                     " Part of this is the token itself: do not retry into "
+                                     "a trade.")
 
 
 # ---------------------------------------------------------------- pool selection

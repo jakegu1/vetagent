@@ -2466,6 +2466,68 @@ def test_an_upstream_failure_says_how_it_failed_and_is_not_made_worse():
         risk.cf_fetch, risk._fetch_json, risk._cache_get, risk.asyncio.sleep = saved
 
 
+def test_an_unknown_says_whether_to_retry_or_to_abstain():
+    """Two different unknowns read the same, so the rational client retried both.
+
+    In the 2026-09-13 live sweep 45 of 120 answers were `unknown`: 32 were our upstream
+    failing, 13 were the token having no pair or no simulator record. Re-asking seven
+    minutes later answered 8 of 10 of the first kind (DAI, $118M: unknown, then low) and
+    none of the second can be answered by asking again. `_finalize` already tells them
+    apart -- it has to, to decide the no-trace escalation -- and never told the caller. A
+    client that cannot tell "retry in a minute" from "do not trade this" learns to retry
+    everything until it gets an answer, which erodes what `unknown` means.
+
+    Source: the ChatGPT strategy evaluation (no code read), filtered against the sweep.
+    """
+    print("\n[unknown] the caller is told whether to retry or to abstain")
+
+    def finalize(gaps, signals=None):
+        sigs = signals if signals is not None else [
+            risk._sig("warn", "x", "x", "no_liquidity"), risk._sig("warn", "y", "y", "sellability")]
+        return risk._finalize(WETH, sigs, {"chain_searched": "ethereum"}, gaps)
+
+    ours = [{"dimension": "liquidity", "reason": "upstream request failed (dexscreener 429)"},
+            {"dimension": "sellability", "reason": "upstream request failed"}]
+    r = finalize(ours)
+    check("our outage is an infrastructure unknown", r.get("unknown_kind") == "infrastructure",
+          str(r.get("unknown_kind")))
+    check("  and says retry, with when", r.get("next_action") == "retry"
+          and r.get("retry_after_seconds") == 60, "%s %s" % (r.get("next_action"),
+                                                            r.get("retry_after_seconds")))
+    check("  and the sentence says it was not the token",
+          "retry" in r["recommendation"].lower() and "not the token" in r["recommendation"],
+          r["recommendation"])
+
+    theirs = [{"dimension": "liquidity", "reason": "no trading pair found"}]
+    r = finalize(theirs, [risk._sig("warn", "x", "x", "no_liquidity"),
+                          risk._sig("ok", "y", "y", "honeypot")])
+    check("a token nothing can see is a coverage unknown", r.get("unknown_kind") == "coverage",
+          str(r.get("unknown_kind")))
+    check("  and says abstain", r.get("next_action") == "abstain", str(r.get("next_action")))
+    check("  with no retry time", "retry_after_seconds" not in r, str(r))
+    check("  and the sentence says not to retry into a trade",
+          "do not retry" in r["recommendation"].lower(), r["recommendation"])
+
+    r = finalize([ours[0], {"dimension": "sellability",
+                            "reason": "the sell simulator has no record of this token"}])
+    check("half ours, half the token's is mixed, and abstains",
+          r.get("unknown_kind") == "mixed" and r.get("next_action") == "abstain",
+          "%s %s" % (r.get("unknown_kind"), r.get("next_action")))
+
+    r = finalize([], [risk._sig("ok", "a", "a", "liquidity"), risk._sig("ok", "b", "b", "honeypot")])
+    check("a verdict that is not unknown carries neither field",
+          "unknown_kind" not in r and "next_action" not in r, str(sorted(r)))
+
+    tool = [t for t in mcp_server_tools() if t["name"] == "assess_token_risk"][0]
+    check("the tool description tells a model the field exists",
+          "unknown_kind" in tool["description"], tool["description"][-200:])
+
+
+def mcp_server_tools():
+    import mcp_server
+    return mcp_server.TOOLS
+
+
 def test_the_simulator_is_asked_about_the_chain_we_settled_on():
     """A wrong hint must not send the sell simulator to the wrong chain.
 

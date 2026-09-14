@@ -57,6 +57,10 @@ _ASSESS_OUTPUT_SCHEMA = {
         "signals": {"type": "array", "items": _SIGNAL_SCHEMA},
         "recommendation": {"type": "string"},
         "evidence": {"type": "object"},
+        "unknown_kind": {"type": "string", "enum": ["infrastructure", "coverage", "mixed"],
+                         "description": "Present only when risk_level is unknown."},
+        "next_action": {"type": "string", "enum": ["retry", "abstain"]},
+        "retry_after_seconds": {"type": "integer"},
     },
     "required": ["address", "risk_level", "risk_score", "confidence", "signals"],
 }
@@ -75,7 +79,10 @@ TOOLS = [
             "concentration — plus the aggregate verdicts of upstream security scanners.\n"
             "IMPORTANT: risk_level 'unknown' means a critical check could not be completed. "
             "It is NOT a low-risk result and must not be used to justify a trade; "
-            "evidence.data_gaps lists exactly what was missing. 'confidence' measures how "
+            "evidence.data_gaps lists exactly what was missing, and unknown_kind says whose "
+            "gap it is: 'infrastructure' comes with next_action 'retry' and "
+            "retry_after_seconds; 'coverage' or 'mixed' come with next_action 'abstain'. "
+            "'confidence' measures how "
             "complete the input data was, not how safe the token is.\n"
             "Reports observable on-chain risk only. Not financial advice, does not size "
             "positions, and cannot see off-chain risk such as team behaviour, social "
