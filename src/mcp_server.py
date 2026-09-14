@@ -91,7 +91,9 @@ TOOLS = [
                                "description": "Optional chain name (ethereum / bsc / base / polygon / "
                                               "arbitrum / solana). Strongly recommended: Ethereum forks "
                                               "such as PulseChain inherit contract addresses, so the same "
-                                              "address exists on several chains at wildly different prices."},
+                                              "address exists on several chains at wildly different prices. "
+                                              "Without it, an answer covers one chain -- the one holding "
+                                              "the most depth -- and names it."},
                 "verbose": {"type": "boolean", "default": False,
                             "description": "Return full upstream evidence. Off by default to save tokens."},
             },

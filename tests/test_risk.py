@@ -2306,6 +2306,90 @@ def test_a_seller_count_nobody_took_cannot_overturn_a_honeypot():
     check("a clean simulation costs no extra request", not asked, str(asked))
 
 
+def test_one_assessment_is_about_one_chain():
+    """The sell simulation, the bytecode scan and `chain_searched` could name three chains.
+
+    `_CHAIN_RANK` ties bsc, base, arbitrum, polygon, optimism and avalanche at 1, so with no
+    hint `_home_scope` kept pools on several of them and `_pick_best` took the deepest. The
+    simulator followed that pool; `chain_searched` was read off whichever pool happened to
+    come first. Measured in production by the 2026-09-13 audit, three times: BIO
+    `0x226a2fa2...` has a $364k BSC pool and a $345k Base pool, and with no hint the answer
+    said `chain_searched=base` while its honeypot evidence carried holders=540 -- BSC's
+    count. honeypot.is calls the Base deployment a honeypot and the BSC one low. A caller
+    reading `chain_searched` was told the wrong chain had been checked.
+
+    And the bytecode scan took the caller's hint over the observed pool even when the hint
+    matched nothing, so a hint of "ethereum" on a Base-only token read Ethereum bytecode
+    next to a Base simulation.
+
+    One assessment, one chain: with no hint, the rank tier is narrowed to the chain holding
+    the most depth, and every check follows the pool that was picked. The answer says which
+    chain it covers and how to ask about another.
+    """
+    print("\n[chain] one assessment is about one chain")
+    TOKEN = "0x226a2fa2556c48245e57cd1cba4c6c9e67077dd2"
+
+    def p(chain, liq, addr):
+        return {"chainId": chain, "dexId": "uniswap", "pairAddress": addr,
+                "baseToken": {"address": TOKEN, "symbol": "BIO"},
+                "quoteToken": {"address": "0xq"}, "priceUsd": "0.05",
+                "liquidity": {"usd": liq}, "volume": {"h24": liq * 0.2},
+                "txns": {"h24": {"buys": 300, "sells": 280}},
+                "pairCreatedAt": 1589841515000}
+
+    seen_hp, seen_scan = [], []
+
+    def run_with(pairs, hint):
+        async def _stub(url, *a, **kw):
+            if "honeypot.is" in url:
+                seen_hp.append(url)
+                return _load("hp_matic.json")
+            if "dex/tokens" in url:
+                return {"pairs": pairs}
+            return None
+
+        async def _scan(address, chain):
+            seen_scan.append(chain)
+            return {"unavailable": "stubbed"}
+
+        risk._fetch_json = _stub
+        real = risk._owner_powers
+        risk._owner_powers = _scan
+        try:
+            return run(risk.assess(TOKEN, chain_hint=hint))
+        finally:
+            risk._owner_powers = real
+
+    # Base listed first, BSC deeper: the order the audit's production case came back in.
+    r = run_with([p("base", 345_000, "0x" + "ba" * 20), p("bsc", 364_000, "0x" + "b5" * 20)],
+                 None)
+    ev = r["evidence"]
+    picked = (ev.get("best_pair") or {}).get("chain")
+    check("chain_searched is the chain of the pool the verdict is about",
+          ev.get("chain_searched") == picked, "searched=%s picked=%s"
+          % (ev.get("chain_searched"), picked))
+    check("  which is the deeper one", picked == "bsc", str(picked))
+    check("the simulator was asked about that chain",
+          seen_hp and seen_hp[-1].endswith("chainID=56"), str(seen_hp[-1:]))
+    check("the bytecode was read on that chain", seen_scan[-1:] == ["bsc"], str(seen_scan))
+    multi = [s for s in r["signals"] if s["category"] == "cross_chain"]
+    check("the answer names the chain it covers",
+          multi and "bsc" in multi[0]["message"], str([s["message"] for s in multi]))
+    import mcp_server
+    hint = mcp_server.TOOLS[0]["inputSchema"]["properties"]["chain_hint"]["description"]
+    check("  and the tool description says one answer covers one chain",
+          "one chain" in hint, hint)
+
+    # A hint that matches nothing: every check follows the pool we actually saw.
+    seen_hp.clear()
+    seen_scan.clear()
+    r = run_with([p("base", 345_000, "0x" + "ba" * 20)], "ethereum")
+    check("an unmatched hint does not send the bytecode scan to another chain",
+          seen_scan[-1:] == ["base"], str(seen_scan))
+    check("  nor the simulator", seen_hp and seen_hp[-1].endswith("chainID=8453"),
+          str(seen_hp[-1:]))
+
+
 def test_the_simulator_is_asked_about_the_chain_we_settled_on():
     """A wrong hint must not send the sell simulator to the wrong chain.
 

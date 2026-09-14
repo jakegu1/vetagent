@@ -1018,9 +1018,30 @@ def _home_scope(pairs, chain_hint=None, target=None):
     # treated as more.
     best_rank = min(_CHAIN_RANK.get((p.get("chainId") or "").lower(),
                                     _UNKNOWN_CHAIN_RANK) for p in home)
-    return [p for p in home
+    tier = [p for p in home
             if _CHAIN_RANK.get((p.get("chainId") or "").lower(),
                                _UNKNOWN_CHAIN_RANK) == best_rank]
+    # One chain, not a tier. bsc, base, arbitrum, polygon, optimism and avalanche all rank
+    # 1, so the tier used to hold pools on several of them; the deepest pool then chose
+    # the simulator's chain while `chain_searched` was read off whichever pool came
+    # first. BIO in production (2026-09-13 audit): $364k on BSC, $345k on Base, answer
+    # said base, honeypot evidence carried BSC's holder count -- and honeypot.is calls
+    # one of those deployments a honeypot and the other low. The chain holding the most
+    # depth wins; ties go to the chain with more pools, then by name, so the answer is
+    # the same on every call.
+    depth, count = {}, {}
+    for p in tier:
+        c = (p.get("chainId") or "").lower()
+        depth[c] = depth.get(c, 0.0) + _pair_liquidity(p)
+        count[c] = count.get(c, 0) + 1
+    # Ranked tiers only. When every candidate is on a chain the table does not know,
+    # _unranked_price_conflict needs to see them side by side to disclose a disagreement,
+    # and that shape -- two unranked chains at once -- occurred 0 times in 1,136 cached
+    # responses, so there is no mismatch there to fix.
+    if len(depth) > 1 and best_rank != _UNKNOWN_CHAIN_RANK:
+        home_chain = sorted(depth, key=lambda c: (-depth[c], -count[c], c))[0]
+        tier = [p for p in tier if (p.get("chainId") or "").lower() == home_chain]
+    return tier
 
 
 def _pick_best(pairs, chain_hint=None, target=None):
@@ -1221,7 +1242,15 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
     chains = sorted({p.get("chainId") for p in pairs if p.get("chainId")})
     evidence["chains"] = chains
     if len(chains) > 1:
-        signals.append(_sig("ok", "Trades on multiple chains", "Found on %d chains." % len(chains), "cross_chain"))
+        # Says which chain this answer covers: the same address can be a different
+        # contract on each, and one assessment is about one of them.
+        # Short on purpose: it rides on every multi-chain answer, inside the output
+        # budget. How to ask about another chain is said once, in the tool description.
+        signals.append(_sig(
+            "ok", "Trades on multiple chains",
+            "Found on %d chains; this is %s." % (len(chains),
+                                                 _ascii_safe(best.get("chainId"), 24)),
+            "cross_chain"))
 
     age = _age_days(best.get("pairCreatedAt"))
     if age is not None:
@@ -2508,9 +2537,13 @@ async def assess(address, chain_hint=None, verbose=False):
                                          chain_hint=chain_hint)
 
     if _looks_evm(address):
+        # The pool we settled on, then a hint we recognise -- the same order the simulator
+        # uses below. The scan used to take the hint first, so "ethereum" on a Base-only
+        # token read Ethereum bytecode beside a Base simulation.
+        scan_claimed = _canonical_chain(chain_hint)
         _owner_power_signal(
-            await _owner_powers(address, _canonical_chain(chain_hint)
-                                or _chain_of(evidence)),
+            await _owner_powers(address, _chain_of(evidence)
+                                or (scan_claimed if scan_claimed in _KNOWN_CHAINS else "")),
             signals, evidence)
         # Pass the chain id when we know it, rather than letting the simulator guess.
         #
