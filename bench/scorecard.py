@@ -350,7 +350,7 @@ def score():
                       "429 after %s calls; batch of %s -> HTTP %s; service %s on %s"
                       % (flood.get("calls_until_429") or "none of 75",
                          cap.get("messages", "?"), cap.get("http_status", "not probed"),
-                         str(probe.get("deployed_sha", "?"))[:7],
+                         str(probe.get("checked_out_sha") or "?")[:7],
                          str(probe.get("probed_at", "?"))[:10])))
 
     # --- Coverage 20 ---

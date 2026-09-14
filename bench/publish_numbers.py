@@ -43,6 +43,9 @@ TARGETS = [
     ("docs/SCORECARD.md", r"false positive rate \(healthy rated high\) \| [\d.]+ \| 5 \| ([\d.]+)%",
      "fp_pct"),
     ("docs/SCORECARD.md",
+     r"unknown rate \(production, served answers\) \| [\d.]+ \| 5 \| ([\d.]+)% of",
+     "production_unknown_pct"),
+    ("docs/SCORECARD.md",
      r"false-block rate \(liquid healthy rated medium or high\) \| [\d.]+ \| 5 \| ([\d.]+)%",
      "false_block_pct"),
     ("docs/SCORECARD.md", r"unknown rate \(benchmark, cached upstreams\) \| [\d.]+ \| 5 \| ([\d.]+)%",
@@ -230,9 +233,8 @@ TARGETS = [
     ("src/landing.html", r"though only \d+ of (\d+) were rated high", "dead_n"),
     ("src/landing.html", r"Only (\d+) of those \d+ are rated", "dead_high_n"),
     ("src/landing.html", r"Only \d+ of those (\d+) are rated", "dead_n"),
-    ("docs/AUDIT_BRIEF.md", r"false positives ([\d.]+)%", "fp_pct"),
-    ("docs/AUDIT_BRIEF.md", r"unknown ([\d.]+)%", "unknown_pct"),
-    ("docs/AUDIT_BRIEF.md", r"(\d+) dead samples", "dead_n"),
+    # AUDIT_BRIEF.md's three figures went out with its hand-typed score table on 2026-09-14;
+    # the brief now points at docs/SCORECARD.md, where the same figures are guarded above.
     ("src/entry.py", r"## Measured accuracy \(n=(\d+), published\)", "n"),
     # Bare integers in the /llms.txt PROSE. The landing page had exactly this bug --
     # current percentages sitting beside stale counts, because the guard only checked
@@ -253,10 +255,22 @@ TARGETS = [
     # listings went live: the score moved 53 -> 56 and nothing noticed, including
     # docs/OWNER.md, which is generated and simply had not been re-run. A number
     # that three files copy is a number that needs a guard, generated or not.
-    ("CLAUDE.md", r"Score (\d+)/100 by `docs/SCORECARD\.md`", "maturity"),
-    ("docs/AUDIT_BRIEF.md", r"Maturity \*\*(\d+) / 100\*\*", "maturity"),
+    # CLAUDE.md and AUDIT_BRIEF.md no longer copy it (2026-09-14): a daily bot moves the
+    # score now, and a hand-written copy would be stale by the next morning.
     ("docs/OWNER.md", r"\| Maturity score \| (\d+) / 100", "maturity"),
 ]
+
+
+def _production_unknown_pct():
+    """The production unknown rate from the committed artifact the scorecard reads."""
+    path = os.path.join(HERE, "production", "verdicts.json")
+    try:
+        with io.open(path, encoding="utf-8") as f:
+            counts = json.load(f).get("counts") or {}
+    except (OSError, ValueError):
+        return None
+    n = sum(int(counts.get(k, 0)) for k in ("low", "medium", "high", "unknown"))
+    return ("%.1f" % (100.0 * int(counts.get("unknown", 0)) / n)) if n else None
 
 
 def _maturity():
@@ -460,11 +474,15 @@ def figures():
         "pool_match_pct": ("%.0f" % (100.0 * len(pool_same) / len(pool_both))
                            if pool_both else "0"),
         "maturity": _maturity() or "0",
+
     }
     # A separate, cheaper measurement, merged rather than recomputed here. Keys whose value
     # is None are dropped: a missing owner_powers.json must leave the figure UNGUARDED and
     # visibly so, not guarded against the string "None".
     out.update({k: v for k, v in _owner_power_figures().items() if v is not None})
+    # Same rule for the production artifact: absent means unguarded, not guarded against None.
+    if _production_unknown_pct() is not None:
+        out["production_unknown_pct"] = _production_unknown_pct()
     return out
 
 

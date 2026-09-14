@@ -93,18 +93,14 @@ nobody questions its motive when it calls a token dangerous (`DECISIONS.md` P1).
 
 ## 3. Where it actually stands
 
-Maturity **44 / 100** by its own scorecard, which is designed so that pure engineering
-caps out around 70 — the remaining 30 requires users, who do not exist yet.
+The maturity score is in `docs/SCORECARD.md`, generated, per line item. It is not copied
+here any more: this section carried a hand-typed dimension table that went stale on four of
+its five rows (channels "2 of 8", an adversarial cohort of 9) while the generated file stayed
+correct, and since 2026-09-14 a daily job moves two of its items from production readings.
+It is designed so that pure engineering caps out around 70 — the remaining 30 requires
+users, who do not exist yet. Demand is zero: **zero users, zero revenue, zero inbound.**
 
-| Dimension | Score | The honest reading |
-|---|---|---|
-| Correctness | 24.0 / 30 | all 11 test files green (`for f in tests/test_*.py; do python $f; done`); false positives 4.3%; unknown 18.2% |
-| Coverage | 16.4 / 20 | 9 of 11 risk dimensions; two measured and rejected on evidence |
-| Credibility | 10.2 / 20 | 30 dead samples; but the adversarial cohort is 9, and 4 of those are `low` when ablated |
-| Distribution | 2.5 / 15 | 2 of 8 channels; external-caller count not measurable yet |
-| Demand | 0.0 / 15 | **Zero users, zero revenue, zero inbound.** |
-
-That last row is the whole risk of the project and it is not hidden anywhere. A decision
+That is the whole risk of the project and it is not hidden anywhere. A decision
 gate on **2026-09-18** asks whether even one external caller exists; `docs/OPPORTUNITIES.md`
 and `tests/test_gates_get_reviewed.py` keep it live.
 
