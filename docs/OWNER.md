@@ -26,6 +26,7 @@ These are the things I cannot do. Everything else in this project is mine.
 | **in 4 days** | 2026-09-18 | -- | Post Experiment C | no |
 | in 32 days | 2026-10-16 | W5 | A second, independent sell-simulation source | **yes -- see below** |
 | in 32 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
+| in 32 days | 2026-10-16 | W29 | Get three free market-data API keys, so a two-hour probe can settle whether a key ends the | no |
 
 ### W10 Create the two accounts the remaining directories need
 
@@ -61,6 +62,13 @@ These are the things I cannot do. Everything else in this project is mine.
 - **Why then:** changes what the benchmark can measure, so before the D gate
 - **You know it is done when:** A decision recorded in `DECISIONS.md`, either way
 - **If you do nothing:** The 10-16 gate arrives with the measurement question still open, so that gate answers a smaller question than it was meant to.
+
+### W29 Get three free market-data API keys, so a two-hour probe can settle whether a key ends the `unknown` answers
+
+- **When:** 2026-10-16 (in 32 days)
+- **Why then:** the first decision that spends money, so settle it before the gate that asks whether anyone will pay
+- **You know it is done when:** Decision rule fixed before running: over 12 rounds in 2 hours from a throwaway Worker, **pass** if in rounds where the keyless control drew a 429 the keyed calls drew none and at most 1% non-2xx; **inconclusive** if the control never drew a 429 (re-run when production fails); **fail** for a provider answering 429/403/1020 under its documented limit. Pay only if a provider passes and projected volume exceeds its free allowance; the smallest paid step is CoinGecko Basic at $35 for one month
+- **If you do nothing:** About one live answer in three stays `unknown` whenever the upstreams throttle the shared egress, and the callers Experiment C brings in meet that rate first. The probe costs $1 and two hours; not running it keeps a measured cause without a tested fix.
 
 ## The dates that decide things
 
@@ -127,7 +135,7 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **6 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **7 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -154,6 +162,7 @@ The owner accepted the open recommendations: stale data caps confidence, the par
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- The maturity score could not see R21, so it now can -- and it went down, 55 -> 44
 - The owner page said R19 was in progress, and its corrections stopped at 09-09
 - Regenerate the scorecard: E22 added a test and its evidence cell counts them
 - O7-O11: the owner accepted the review dates; O8's prerequisite has shipped
@@ -161,9 +170,8 @@ problem looked like before it was fixed.
 - Publish the false-block rate beside the false-positive rate: 20.1%
 - Turnover is measured over the token, not its deepest pool
 - Every answer names what drove it, when it was made, and how old its evidence is
-- An unknown now says whether to retry or to abstain
 
-_101 more not shown (109 commits in total)._
+_102 more not shown (110 commits in total)._
 
 ## What I got wrong
 

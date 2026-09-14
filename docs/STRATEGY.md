@@ -197,6 +197,28 @@ For a B2B customer this is the **only citable material** they have to justify th
 to their boss. It can be copied — but whoever goes first keeps the authority of having
 set the standard.
 
+**Positioning, adopted by the owner 2026-09-14.** *The safety layer does not need to win
+the prediction; it only needs to veto high-cost mistakes reliably.* This is P8 said from
+the caller's side, not a repositioning: `low` means the exit was open when we looked, and
+the tool is judged on two errors side by side — how often it waves a trap through, and how
+often it blocks a good trade (the false-positive and false-block rates, both published).
+The sentence came from the ChatGPT strategy evaluation, which read no code; it is kept
+because it is the most accurate one-line description of what the engine already does.
+
+Three peers matter more than the ones a market survey names. Each was read on its own page
+on 2026-09-14:
+
+- **ChainAware** publishes a denominator: 45,904 of 50,948 rugpulls predicted (90.1%) on
+  BSC and Ethereum pools (their rugpull-verification page, checked 2026-09-14). Its
+  prediction MCP is free to test and needs an API key for production use.
+- **Mindjack** (Solana; MCP and x402) publishes per-band sample sizes and says its safest
+  band still rugged about 35% of the time, on 1,349 tokens in that band (its README and
+  live scorecard, checked 2026-09-14). Tools are priced per call, from $0.001 for
+  `check_token` to $0.07 for a full token report — not a flat $0.001.
+- **GoPlus `agentguard`** (460 stars, pushed 2026-09-10) is *not* a peer: it guards AI
+  agents against malicious skills and leaked secrets. Recorded because an audit relayed it
+  as a same-category move, and a wrong peer in this file would be argued with for months.
+
 ### 4.3 Distribution placement (weak, but pays off fastest)
 
 Be present everywhere an agent can discover tools: the official MCP registry,

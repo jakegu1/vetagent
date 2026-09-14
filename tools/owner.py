@@ -59,6 +59,8 @@ OWNER_DUE = {
     "W5": ("2026-10-16", "needed for W3, which every accuracy claim rests on"),
     "W12": ("2026-10-16", "changes what the benchmark can measure, so before the D gate"),
     "W13": ("", "no deadline -- do it when convenient"),
+    "W29": ("2026-10-16", "the first decision that spends money, so settle it before the "
+                          "gate that asks whether anyone will pay"),
 }
 
 # What it costs to do nothing. An owner reading a task list reads "when" and "what", and
@@ -74,6 +76,10 @@ COST_OF_WAITING = {
           "we cannot tell, and neither can anyone reading the benchmark.",
     "W12": "The 10-16 gate arrives with the measurement question still open, so that "
            "gate answers a smaller question than it was meant to.",
+    "W29": "About one live answer in three stays `unknown` whenever the upstreams throttle "
+           "the shared egress, and the callers Experiment C brings in meet that rate first. "
+           "The probe costs $1 and two hours; not running it keeps a measured cause without a "
+           "tested fix.",
     "Post Experiment C": "This is the one action that can change the 09-18 answer. Not "
                          "doing it does not delay the gate -- the gate still fires, and "
                          "it fires on no.",
