@@ -2657,8 +2657,18 @@ def test_freshness_is_in_the_answer_not_only_the_evidence():
     except ValueError:
         fresh = False
     check("every answer says when it was made", fresh, at)
-    check("confidence capping on stale data is off until the owner decides",
-          risk._STALE_CAPS_CONFIDENCE is False, str(getattr(risk, "_STALE_CAPS_CONFIDENCE", None)))
+    live_confidence = r.get("confidence")
+
+    # Decided by the owner 2026-09-14 (DECISIONS E22): an answer that leaned on stale data is
+    # at most `medium` confidence. `confidence` measures how complete the data was (E6), and
+    # data an upstream did not answer for this call is less complete than data it did.
+    r = run(go(True))
+    check("an answer served partly from stale cache is not high confidence",
+          r.get("confidence") != "high", "%s (live: %s)" % (r.get("confidence"), live_confidence))
+    check("  while the same answer live keeps its confidence", live_confidence == "high",
+          str(live_confidence))
+    check("  and the cap moves confidence only, never the verdict",
+          r.get("risk_level") == run(go(False)).get("risk_level"), r.get("risk_level"))
 
 
 def test_the_simulator_is_asked_about_the_chain_we_settled_on():

@@ -177,10 +177,11 @@ def _sig_round(x, digits=6):
 _FRESH_SECONDS = 60
 _STALE_OK_SECONDS = 900
 
-# Whether an answer served partly from stale cache is capped at confidence "medium". Off,
-# and deliberately not decided here: it is the owner's call (ChatGPT evaluation §8, audit
-# adv-liquidity.3), and until it is made the age is disclosed in the sentence instead.
-_STALE_CAPS_CONFIDENCE = False
+# Whether an answer served partly from stale cache is capped at confidence "medium". On,
+# by the owner's decision of 2026-09-14 (DECISIONS E22): `confidence` measures how complete
+# the data was, and data an upstream did not answer for this call is less complete than
+# data it did. It moves confidence only, never the verdict or the score.
+_STALE_CAPS_CONFIDENCE = True
 
 # Stale-cache disclosures for the request currently being served.
 #
@@ -2795,6 +2796,7 @@ async def assess(address, chain_hint=None, verbose=False):
                                      % result["evidence_max_age_seconds"])
         if _STALE_CAPS_CONFIDENCE and result.get("confidence") == "high":
             result["confidence"] = "medium"
+            result["evidence"]["confidence"] = "medium"   # the verbose copy must agree
     if not verbose:
         # Slim by default: an agent has no use for raw fields like reserves, txHash
         # or taxDistribution.
