@@ -503,7 +503,14 @@ async def _limit_state(env, request):
                    else getattr(outcome, "success", None))
         if success is None:
             return "open:no-success-%s" % type(outcome).__name__
-        return "limited" if success is False else "ok"
+        # TEMPORARY diagnostic, removed once the limiter is seen to trip.
+        try:
+            from js import JSON
+            seen = str(JSON.stringify(outcome))[:60]
+        except Exception:  # noqa: BLE001
+            seen = "?"
+        return ("limited" if success is False else "ok") + ";dbg=%s|%s|%s|%d|%s" % (
+            type(limiter).__name__, type(opts).__name__, type(success).__name__, len(key), seen)
     except Exception as e:  # noqa: BLE001
         return "open:%s" % type(e).__name__
 
@@ -798,7 +805,7 @@ class Default(WorkerEntrypoint):
 
         if _is_tool_call(body):
             headers["x-vetagent-ratelimit"] = await _limit_state(self.env, request)
-            if headers["x-vetagent-ratelimit"] == "limited":
+            if headers["x-vetagent-ratelimit"].split(";")[0] == "limited":
                 r = _rate_limit_error(body.get("id"))
                 self._record_message(request, body, r)
                 limited = dict(headers)
