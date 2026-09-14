@@ -2528,6 +2528,53 @@ def mcp_server_tools():
     return mcp_server.TOOLS
 
 
+def test_turnover_is_measured_over_the_token_not_one_pool():
+    """WBTC was "abandoned" because its deepest pool was quiet.
+
+    `Looks abandoned` divided the best pool's 24h volume by that pool's reserve. On a token
+    with many pools that is a statement about one venue: WBTC came back medium on a $42M
+    pool while GeckoTerminal showed $380M across twenty, PENDLE on "0.0% turnover" beside
+    $966M, and 8 of the 22 false alarms in the 2026-09-13 live sweep were this one signal
+    (WBTC, DIEM, VIRTUAL, MAI, BRETT, MORPHO, SNT, TABOSHI). Trading moves to whichever pool
+    is cheapest; the deepest is often not it.
+
+    Source: ChatGPT strategy evaluation §14.3, the narrow version. Peer-relative scoring is
+    parked as O8.
+    """
+    print("\n[liquidity] turnover is the token's, not one pool's")
+
+    def p(addr, liq, vol, quote_amt):
+        return {"chainId": "ethereum", "dexId": "uniswap", "pairAddress": addr,
+                "baseToken": {"address": WETH, "symbol": "TKN"},
+                "quoteToken": {"address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+                               "symbol": "USDC"},
+                "priceUsd": "1.0", "priceNative": "1.0",
+                "liquidity": {"usd": liq, "base": liq / 2, "quote": quote_amt},
+                "volume": {"h24": vol}, "txns": {"h24": {"buys": 50, "sells": 50}},
+                "pairCreatedAt": 1589841515000}
+
+    def assess(pairs):
+        install_stub([("dex/tokens", {"pairs": pairs}), ("dex/search", None),
+                      ("honeypot.is", _load("hp_matic.json"))])
+        return run(risk.assess(WETH, chain_hint="ethereum"))
+
+    quiet_deep = p("0x" + "11" * 20, 1_000_000.0, 1_000.0, 500_000)
+    busy = p("0x" + "22" * 20, 200_000.0, 100_000.0, 100_000)
+    r = assess([quiet_deep, busy])
+    names = [s["name"] for s in r["signals"]]
+    check("a quiet deepest pool beside an active one is not 'abandoned'",
+          "Looks abandoned" not in names and "Very little trading" not in names, str(names))
+    check("  the token-level figure is what evidence reports",
+          abs((r["evidence"].get("turnover_24h") or 0) - 101_000 / 1_200_000) < 0.001,
+          str(r["evidence"].get("turnover_24h")))
+
+    also_quiet = p("0x" + "33" * 20, 200_000.0, 500.0, 100_000)
+    r = assess([quiet_deep, also_quiet])
+    check("when every pool is quiet it still fires",
+          "Looks abandoned" in [s["name"] for s in r["signals"]],
+          str([s["name"] for s in r["signals"]]))
+
+
 def test_a_medium_names_what_fired():
     """Every `medium` said the same sentence, so none of them said anything.
 

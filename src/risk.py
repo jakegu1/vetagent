@@ -1405,13 +1405,33 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
                 % abs(_num(change_24h)), "lifecycle"))
 
     if liq > 0:
-        turnover = vol / liq
+        # Over the token's pools on this chain, not the one picked. Trading moves to the
+        # cheapest venue and the deepest is often not it: WBTC was "abandoned" on a $42M
+        # pool beside $380M across twenty, and 8 of 22 false alarms in the 2026-09-13 live
+        # sweep were this signal. Depth is the credited (anchored) figure, same as `liq`.
+        target_l = (target or "").lower()
+        chain = (best.get("chainId") or "").lower()
+        venues = [p for p in pairs
+                  if (p.get("chainId") or "").lower() == chain
+                  and (not target_l or target_l in (
+                      ((p.get("baseToken") or {}).get("address") or "").lower(),
+                      ((p.get("quoteToken") or {}).get("address") or "").lower()))
+                  and _pair_liquidity(p) > 0]
+        if best not in venues:
+            venues.append(best)
+        liq_all = sum(_pair_liquidity(p) for p in venues)
+        vol_all = sum(_num((p.get("volume") or {}).get("h24")) for p in venues)
+        turnover = vol_all / liq_all
         evidence["turnover_24h"] = _sig_round(turnover, 4)
+        evidence["turnover_24h_best_pool"] = _sig_round(vol / liq, 4)
         if turnover < 0.02 and (age or 0) > 180:
             signals.append(_sig("warn", "Looks abandoned",
-                                "$%s of liquidity but only $%s traded in 24h (%.1f%% turnover). "
-                                "An old pool this quiet usually means the token migrated or was abandoned."
-                                % (format(liq, ",.0f"), format(vol, ",.0f"), turnover * 100),
+                                "$%s of liquidity across %d pool%s but only $%s traded in 24h "
+                                "(%.1f%% turnover). A token this quiet for this long usually "
+                                "migrated or was abandoned."
+                                % (format(liq_all, ",.0f"), len(venues),
+                                   "" if len(venues) == 1 else "s",
+                                   format(vol_all, ",.0f"), turnover * 100),
                                 "lifecycle"))
         elif turnover < 0.02:
             signals.append(_sig("warn", "Very little trading",
