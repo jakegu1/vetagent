@@ -143,6 +143,24 @@ def evaluate(rows, label_key, bad_value, good_value):
     return out
 
 
+def false_blocks(rows):
+    """Liquid healthy tokens rated medium or high, by driving signal.
+
+    The false-positive rate counts only `high` on `alive`. An agent treats `medium` as
+    do-not-trade too, so that rate understates what a caller is refused. This counts it the
+    way a caller experiences it, on tokens whose health is not in doubt -- outcome `alive`
+    or oracle `centralized` -- and whose depth ($100k+) cannot be the reason. Printed beside
+    the FP rate, never folded into it (B3/B4). Source: ChatGPT evaluation §8.1.
+    """
+    pop = [r for r in rows
+           if (r.get("outcome_label") == "alive" or r.get("goplus_label") == "centralized")
+           and (r.get("liquidity_usd") or 0) >= 100_000]
+    blocked = [r for r in pop if r["verdict"] in ("medium", "high")]
+    return {"n": len(pop), "blocked": len(blocked),
+            "rate": (len(blocked) / len(pop)) if pop else None,
+            "by_driver": dict(Counter(r.get("driver") or "none" for r in blocked).most_common())}
+
+
 def centralized_view(rows):
     """The "privileged functions, no adversarial traits" bucket — USDT / WBTC / LDO.
 
@@ -308,6 +326,7 @@ def main():
         "outcome": evaluate(rows, "outcome_label", "dead", "alive"),
         "goplus": evaluate(rows, "goplus_label", "unsafe", "safe"),
         "centralized": centralized_view(rows),
+        "false_block": false_blocks(rows),
         "disagreements": collect_disagreements(rows),
         "composition": composition(rows),
         "rows": rows,
@@ -423,6 +442,16 @@ def write_markdown(rep):
               % (bad_name, ", ".join("`%s` %d" % kv for kv in drv.items())))
             A("\n> If this concentrates in `upstream_risk`, the engine is mostly "
               "paraphrasing honeypot.is and adds little of its own.\n")
+
+    fb = rep.get("false_block") or {}
+    if fb.get("n"):
+        A("\n## False blocks: liquid healthy tokens rated medium or high\n")
+        A("An agent refuses `medium` as well as `high`, so the false-positive rate above "
+          "understates what a caller is turned away from. Population: outcome `alive` or "
+          "oracle `centralized`, with $100,000 or more of depth.\n")
+        A("\n**%s** (%d of %d). By driving signal: %s\n"
+          % (_pct(fb["rate"]), fb["blocked"], fb["n"],
+             ", ".join("`%s` %d" % kv for kv in fb["by_driver"].items())))
 
     cen = rep.get("centralized") or {}
     if cen.get("n"):

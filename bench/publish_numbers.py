@@ -122,6 +122,19 @@ TARGETS = [
     ("docs/EXPERIMENT_C.md", r"\| ([\d.]+)% \(26 of \d+\) \|", "dead_not_low_pct"),
     ("docs/EXPERIMENT_C.md", r"\| \*\*([\d.]+)%\*\* \(3 of \d+\) \|", "dead_high_pct"),
     ("docs/EXPERIMENT_C.md", r"same pool only ([\d.]+)% of the time", "pool_match_pct"),
+    # The false-block rate: liquid healthy tokens rated medium or high. The FP rate counts
+    # only `high`, while an agent treats `medium` as do-not-trade, so the FP row alone
+    # understated what a caller is refused. Printed beside it, never folded into it.
+    ("docs/EXPERIMENT_C.md", r"false blocks \(n=\d+\) \| \*\*([\d.]+)%\*\* \(\d+ of",
+     "false_block_pct"),
+    ("docs/EXPERIMENT_C.md", r"false blocks \(n=\d+\) \| \*\*[\d.]+%\*\* \((\d+) of",
+     "false_block_n"),
+    ("docs/EXPERIMENT_C.md", r"false blocks \(n=(\d+)\)", "false_block_of"),
+    ("README.md", r"\*\*([\d.]+)% false-block rate\*\*", "false_block_pct"),
+    ("README.md", r"false-block rate\*\* \((\d+) of \d+", "false_block_n"),
+    ("README.md", r"false-block rate\*\* \(\d+ of (\d+)", "false_block_of"),
+    ("src/landing.html", r'<td>Liquid healthy tokens rated medium or high</td><td class="num high">([\d.]+)%',
+     "false_block_pct"),
     ("docs/EXPERIMENT_C.md", r"only ([\d.]+)% of tokens that actually died", "dead_high_pct_round"),
     ("docs/EXPERIMENT_C.md", r"and the ([\d.]+)% \"not rated low\"", "dead_not_low_pct"),
     ("docs/EXPERIMENT_C.md", r"falls to ([\d.]+)% once the liquidity", "dead_not_low_ablated_pct"),
@@ -302,6 +315,13 @@ def _owner_power_figures():
     return out
 
 
+def _false_block_population(rows):
+    """Healthy and liquid: outcome `alive` or oracle `centralized`, $100k+ of depth."""
+    return [r for r in rows
+            if (r.get("outcome_label") == "alive" or r.get("goplus_label") == "centralized")
+            and (r.get("liquidity_usd") or 0) >= 100_000]
+
+
 def _simulator_unknowns(unknown):
     return [r for r in unknown if any(
         "simulator has no record" in str(g) or str(g).startswith("simulation failed")
@@ -412,6 +432,12 @@ def figures():
         "adversarial_priced_n": "%d" % len([r for r in unsafe_rows
                                             if r.get("liquidity_usd") is not None]),
         "unknown_n": "%d" % len(unknown),
+        "false_block_of": "%d" % len(_false_block_population(rows)),
+        "false_block_n": "%d" % len([r for r in _false_block_population(rows)
+                                     if r["verdict"] in ("medium", "high")]),
+        "false_block_pct": _pct(len([r for r in _false_block_population(rows)
+                                     if r["verdict"] in ("medium", "high")]),
+                                len(_false_block_population(rows))),
         "centralized_high_n": "%d" % len(centralized_high),
         "centralized_high_priced_n": "%d" % len([r for r in centralized_high
                                                  if r.get("liquidity_usd") is not None]),

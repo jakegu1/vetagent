@@ -70,7 +70,7 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 
 | Metric | Value |
 |---|---|
-| Verdict distribution | high=80, low=148, medium=243, unknown=105 |
+| Verdict distribution | high=80, low=155, medium=236, unknown=105 |
 | unknown rate | 18.2% |
 | Share with a data gap | 21.7% |
 
@@ -86,7 +86,7 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **dead** | 30 | 10.0% | 63.3% | 13.3% | 23.3% | 39.3 |
-| **alive** | 162 | 4.3% | 29.0% | 58.0% | 13.0% | 14.3 |
+| **alive** | 162 | 4.3% | 27.8% | 59.3% | 13.0% | 14.1 |
 
 ### Contract-safety signals only (ablated)
 
@@ -113,7 +113,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 17 | 58.8% | 94.1% | 0.0% | 5.9% | 76.1 |
-| **safe** | 349 | 6.6% | 49.3% | 26.9% | 23.8% | 27.4 |
+| **safe** | 349 | 6.6% | 48.1% | 28.1% | 23.8% | 27.1 |
 
 ### Contract-safety signals only (ablated)
 
@@ -131,6 +131,14 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 > If this concentrates in `upstream_risk`, the engine is mostly paraphrasing honeypot.is and adds little of its own.
 
 
+## False blocks: liquid healthy tokens rated medium or high
+
+An agent refuses `medium` as well as `high`, so the false-positive rate above understates what a caller is turned away from. Population: outcome `alive` or oracle `centralized`, with $100,000 or more of depth.
+
+
+**20.1%** (31 of 154). By driving signal: `honeypot` 21, `lifecycle` 6, `upstream_risk` 3, `freshness` 1
+
+
 ## Centralized-asset control group (not scored)
 
 Tokens with privileged functions (pausable/blacklist/mintable) but **no adversarial traits** — USDT, WBTC and LDO all land here. Those privileges are how a centralized asset is designed, not a rug.
@@ -141,7 +149,7 @@ This bucket answers one question: **does the engine paint them all as high risk.
 
 | n | high rate | Verdict distribution |
 |---|---|---|
-| 179 | 24.0% | high=43, low=42, medium=79, unknown=15 |
+| 179 | 24.0% | high=43, low=45, medium=76, unknown=15 |
 
 Examples: HYDX(low), CP(unknown), TOSHE(medium), Onyxcoin XCN Kendu(high), SAGE Free(medium), Core Keeper Overnight(medium), VIRTUAL(low), Crypto Carbon Verse(high), ?(medium), BIO(medium)
 

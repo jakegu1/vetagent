@@ -85,6 +85,7 @@ Measured on 576 tokens across Ethereum, BSC and Base, 2026-09-14:
 | Confirmed-dead tokens not rated low (n=30) | 86.7% (26 of 30) | **20.0%** |
 | Confirmed-dead tokens rated high (n=30) | **10.0%** (3 of 30) | |
 | Healthy tokens rated high — false positives (n=162) | **4.3%** (7 of 162) | |
+| Liquid healthy tokens ($100k+) rated medium or high — false blocks (n=154) | **20.1%** (31 of 154) | |
 | Answers returned as `unknown` (n=576) | **18.2%** (105 of 576) | |
 | Tokens the oracle tags centralised, rated high (n=179) | **24.0%** (43 of 179) | |
 
@@ -96,6 +97,12 @@ first would be the flattering half of a pair.
 
 **The things in the report that argue against the tool:**
 
+- **One liquid, healthy token in five is refused.** The false-positive row counts only
+  `high`, but an agent treats `medium` as do-not-trade too. Counted that way, on tokens
+  that are alive or merely centralised and hold $100k or more, the rate is the false-block
+  row above -- and most of those are driven by the upstream simulator's honeypot flag,
+  which the engine downgrades to `medium` when the chain contradicts it rather than
+  dropping it.
 - **The false-positive rate is measured where the engine can barely fail.** The healthy
   control has a median of $460,180 in the pool. Of the 146 tokens where the engine saw
   $10k or more of depth, **1** was rated high: TRAC, held there by the wash-trading guard,

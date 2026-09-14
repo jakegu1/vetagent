@@ -154,16 +154,16 @@ The gate's failing branch says distribution, so the server was pointed at the pl
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- Re-measure after the 09-13 audit fixes, and guard every figure the post quotes
-- Audit 09-13: a third of answers were unknown, and nothing could say why
-- Audit 09-13: one answer could name three different chains
-- Audit 09-13: pool depth was whatever the pool's creator priced it at
-- Audit 09-13: the wash-trading guard never ran on the path most tokens take
-- Audit 09-13: one caller could spend the shared upstream budget without limit
-- Park the ChatGPT evaluation's product ideas with experiments, and adopt its metrics for W7
-- R20-1: the published owner-power recall was in-sample, and the product said it to callers
+- Turnover is measured over the token, not its deepest pool
+- Every answer names what drove it, when it was made, and how old its evidence is
+- An unknown now says whether to retry or to abstain
+- Count calls in the edge cache: the rate-limit binding never limited
+- Hand the rate-limit binding a plain dict
+- TEMPORARY: show the limiter's runtime types in its header
+- Report the limiter's answer on every tool call
+- Say why the rate limiter failed open
 
-_87 more not shown (95 commits in total)._
+_96 more not shown (104 commits in total)._
 
 ## What I got wrong
 
