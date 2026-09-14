@@ -188,8 +188,8 @@ support either conclusion, and W1 says so.
 ### O7 · Risk history from the snapshot archive
 
 **Blocked until: gate 2026-12-04** (is further investment worth it). The data trigger is
-earlier: W7 done and the archive holding at least 60 days, about 2026-11-03. Date proposed
-2026-09-14; the owner may move it.
+earlier: W7 done and the archive holding at least 60 days, about 2026-11-03. Date set
+2026-09-14 and accepted by the owner.
 
 Source: the ChatGPT strategy evaluation (September 2026, no code read), which proposed
 `get_token_risk_history` and `detect_risk_change` as a temporal moat. Parked, not adopted,
@@ -206,9 +206,10 @@ that changes.
 
 ### O8 · Peer-relative risk
 
-**Blocked until: gate 2026-10-16** (does anyone want to pay). Proposed date; the owner may
-move it. It also needs the narrow version -- turnover over the token rather than one pool --
-shipped and measured on the full set first.
+**Blocked until: gate 2026-10-16** (does anyone want to pay). Date accepted by the owner
+2026-09-14. The narrow version it waited on -- turnover over the token rather than one pool
+-- shipped the same day and was measured on the full set: 8 tokens medium -> low (WBTC,
+USDT on Ethereum, BRETT, CLANKER among them) and 1 low -> medium (YFI).
 
 Source: ChatGPT evaluation §14.3. Absolute thresholds mislead on multi-pool tokens: 8 of the
 22 false alarms in the 2026-09-13 live sweep were "Looks abandoned" computed from one pool.
@@ -219,8 +220,8 @@ and adopt only if it removes false alarms without adding a single dead-token mis
 
 ### O9 · Evidence-freshness budget as a caller parameter
 
-**Blocked until: gate 2026-10-16** (does anyone want to pay). Proposed date; the owner may
-move it.
+**Blocked until: gate 2026-10-16** (does anyone want to pay). Date accepted by the owner
+2026-09-14.
 
 Source: ChatGPT evaluation §14.4, `max_age_seconds`. Exposing freshness in every response is
 cheap and ships on its own; a parameter nobody has asked for is a feature with zero callers.
@@ -230,8 +231,8 @@ for it, in the gate evidence or an issue. If nobody has by the date, it closes.
 
 ### O10 · A policy enum (ALLOW / WARN / BLOCK / REVIEW)
 
-**Blocked until: gate 2026-12-04** (is further investment worth it). Proposed date; the owner
-may move it.
+**Blocked until: gate 2026-12-04** (is further investment worth it). Date accepted by the
+owner 2026-09-14.
 
 Source: ChatGPT evaluation §6.1. **Not adopted as a rename.** `low / medium / high / unknown`
 with `recommendation`, and the fields that name what fired and what kind of unknown it was,
