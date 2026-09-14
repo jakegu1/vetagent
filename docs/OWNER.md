@@ -141,7 +141,7 @@ Rounded = parked by you. Hexagons are not work items -- they are what a row is w
 
 | | |
 |---|---|
-| Maturity score | 44 / 100 (`docs/SCORECARD.md`) |
+| Maturity score | 50 / 100 (`docs/SCORECARD.md`) |
 | Tokens measured | 576 |
 | False positives | 4.3% -- we called a healthy token dangerous |
 | Answers we refuse | 18.2% -- `unknown`, on purpose |
@@ -162,6 +162,7 @@ The owner accepted the open recommendations: stale data caps confidence, the par
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Regenerate the owner page after rebasing onto the latest snapshots
 - Positioning sentence into STRATEGY, and the market-data key probe onto the owner's list
 - The maturity score could not see R21, so it now can -- and it went down, 55 -> 44
 - The owner page said R19 was in progress, and its corrections stopped at 09-09
@@ -169,9 +170,8 @@ problem looked like before it was fixed.
 - O7-O11: the owner accepted the review dates; O8's prerequisite has shipped
 - E22: an answer that used stale data is at most medium confidence
 - Publish the false-block rate beside the false-positive rate: 20.1%
-- Turnover is measured over the token, not its deepest pool
 
-_103 more not shown (111 commits in total)._
+_104 more not shown (112 commits in total)._
 
 ## What I got wrong
 

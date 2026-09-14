@@ -1,0 +1,18 @@
+{
+ "probed_at": "2026-09-14T10:17:07Z",
+ "checked_out_sha": "8e1e2cb5bd2e70fbb3a6c98804c2034d72e829c9",
+ "flood": {
+  "ran": true,
+  "calls": 67,
+  "calls_until_429": 67,
+  "statuses": {
+   "200": 66,
+   "429": 1
+  }
+ },
+ "batch_cap": {
+  "ran": true,
+  "messages": 11,
+  "http_status": 400
+ }
+}
