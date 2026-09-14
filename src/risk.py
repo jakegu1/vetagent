@@ -1772,6 +1772,32 @@ def _sim_failed(hp):
     return bool(hp.get("simulationError"))
 
 
+async def _distinct_sellers(hp, evidence):
+    """Fill in the picked pool's distinct-seller count, when a honeypot verdict is contested.
+
+    Only then: a simulator saying honeypot is the one case where the count decides
+    anything, and it is rare, so the extra GeckoTerminal request is paid by the few
+    tokens that need it rather than by every call against a rate-limited upstream.
+    """
+    if not isinstance(hp, dict) or (hp.get("honeypotResult") or {}).get("isHoneypot") is not True:
+        return
+    bp = evidence.get("best_pair") or {}
+    if bp.get("sellers_24h") is not None:
+        return
+    net = _GT_NETWORK.get((bp.get("chain") or "").lower())
+    pool = bp.get("pair_address") or ""
+    if not net or not pool:
+        return
+    gt = await _fetch_json("https://api.geckoterminal.com/api/v2/networks/%s/pools/%s"
+                           % (net, _urlq(pool)))
+    if not isinstance(gt, dict):
+        return
+    attrs = ((gt.get("data") or {}).get("attributes") or {})
+    sellers = ((attrs.get("transactions") or {}).get("h24") or {}).get("sellers")
+    if sellers is not None:
+        bp["sellers_24h"] = sellers
+
+
 def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
     """Read honeypot.is.
 
@@ -1885,16 +1911,48 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
         # $25,000 pool can produce a hundred. The bar was aimed at the wrong quantity.
         #
         # The honest discriminator is distinct sellers: wash trading is cheap in
-        # transactions and expensive in funded addresses. GeckoTerminal reports them and
-        # E-3 now carries them through. It is applied only where the number exists --
-        # DexScreener does not provide it, and demanding data 79% of tokens cannot supply
-        # would reinstate by omission the false positives this override exists to remove.
+        # transactions and expensive in funded addresses. GeckoTerminal reports them.
+        #
+        # This used to be applied "only where the number exists", on the argument that
+        # DexScreener does not provide it and demanding it would reinstate the false
+        # positives. The consequence was a guard that never ran on the path most tokens
+        # take: DexScreener answers first, the count is absent, and twenty self-sells on
+        # a $5,000 pool downgraded a confirmed honeypot (2026-09-13 adversarial audit;
+        # AKE and "O" in production). The number was not unavailable, it was unasked --
+        # _distinct_sellers now fetches it for the picked pool on exactly this path.
+        #
+        # When nobody can supply it, the verdict is contested and unsettled: `unknown`,
+        # filed as our gap. Not `high`. The first version kept the fatal, and the
+        # benchmark moved 12 tokens medium -> high, none of them unsafe or dead. Read live
+        # at the same moment, CVX had 363 sells from 18 distinct sellers, THQ 74 from 28,
+        # Surplus 215 from 80, AKE 16,197 from 789 -- genuine simulator false positives,
+        # condemned because GeckoTerminal answered 429 that minute. An attacker wants
+        # `low` or `medium`, and `unknown` denies both; `high` on our own outage would
+        # only smear the token.
         sellers = (bp.get("sellers_24h"))
         pool_alive = _num(bp.get("liquidity_usd")) >= 5_000
         sells_work = pool_alive and sells >= 20 and sells >= 0.15 * (buys + 1)
-        if sells_work and sellers is not None and _num(sellers) < 10:
+        if sells_work and sellers is None:
+            evidence["honeypot"]["contested_unsettled"] = {
+                "sells_24h": bp.get("sells_24h"), "buys_24h": bp.get("buys_24h"),
+                "note": "Distinct sellers could not be counted, and without that count "
+                        "real exits cannot be told apart from one wallet trading with "
+                        "itself."}
+            data_gaps.append({"dimension": "sellability", "source": "geckoterminal",
+                              "reason": "upstream request failed: no distinct-seller count "
+                                        "to settle a contested honeypot verdict"})
+            signals.append(_sig(
+                "warn", "Honeypot verdict contested, not settled",
+                "honeypot.is reports a honeypot, while %s sells completed against %s buys "
+                "in the last 24h. Whether those sells came from many holders or from one "
+                "wallet trading with itself could not be checked, so neither side is "
+                "taken. Retrying shortly may settle it."
+                % (format(sells, ",.0f"), format(buys, ",.0f")), "honeypot"))
+        elif sells_work and _num(sellers) < 10:
             sells_work = False      # many trades, few addresses: the wash-trading shape
-        if sells_work:
+        if sells_work and sellers is None:
+            pass                    # contested and unsettled: recorded just above
+        elif sells_work:
             signals.append(_sig(
                 "warn", "Upstream calls this a honeypot, the chain disagrees",
                 "honeypot.is reports a honeypot, but %s sells completed against %s buys "
@@ -2352,6 +2410,7 @@ async def assess(address, chain_hint=None, verbose=False):
             if retry is not None and retry is not NO_DATA and not _sim_failed(retry):
                 hp = retry
 
+        await _distinct_sellers(hp, evidence)
         _honeypot_signals(hp, signals, evidence, data_gaps, chain=hp_chain)
         if chain_hint and not observed and not claimed_is_known:
             # Worth a signal rather than a silent shrug: the caller believes they scoped

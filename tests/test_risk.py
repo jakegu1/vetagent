@@ -397,8 +397,12 @@ def test_chain_activity_overrules_a_honeypot_verdict():
             p["txns"] = {"h24": {"buys": buys, "sells": sells}}
         return d
 
-    # Thousands of completed sells: the flag is contradicted, not obeyed.
-    install_stub([("dexscreener", pairs_with(4134, 4228)), ("honeypot.is", hp_flagged)])
+    # Thousands of completed sells from thousands of addresses: the flag is contradicted,
+    # not obeyed. The seller count arrives the way it does in production for a
+    # DexScreener pool -- asked of GeckoTerminal, because DexScreener does not carry it.
+    many_sellers = {"data": {"attributes": {"transactions": {"h24": {"sellers": 1900}}}}}
+    install_stub([("geckoterminal.com/api/v2/networks/eth/pools/", many_sellers),
+                  ("dexscreener", pairs_with(4134, 4228)), ("honeypot.is", hp_flagged)])
     r = run(risk.assess(MATIC, chain_hint="ethereum"))
     hp_sigs = [x for x in r["signals"] if x["category"] == "honeypot"]
     check("active selling downgrades the fatal verdict",
@@ -2006,9 +2010,8 @@ def test_overturning_a_honeypot_verdict_needs_distinct_sellers():
 
     So the thresholds go back, and the cost is charged where wash trading is actually
     expensive: **distinct sellers**. Cheap in transactions, expensive in funded addresses.
-    Applied only where the count exists, because DexScreener does not report it and
-    requiring data that 79% of tokens cannot supply would reinstate by omission the false
-    positives this override exists to remove.
+    It was first applied only where the count already existed, which turned out to mean
+    almost nowhere; the next test says why, and the count is now fetched when missing.
 
     The asymmetry is the whole point, and it is why the bar sits above the one the same
     evidence needs to be merely reported. A live pool with real two-sided trading is
@@ -2024,7 +2027,7 @@ def test_overturning_a_honeypot_verdict_needs_distinct_sellers():
 
     def token(liq, buys, sells, sellers=None):
         pair = {
-            "chainId": "ethereum", "dexId": "uniswap",
+            "chainId": "ethereum", "dexId": "uniswap", "pairAddress": "0x" + "cd" * 20,
             "baseToken": {"address": WETH, "symbol": "TRAP"},
             "quoteToken": {"address": "0xq"}, "priceUsd": "1.0",
             "liquidity": {"usd": liq}, "volume": {"h24": liq},
@@ -2037,8 +2040,13 @@ def test_overturning_a_honeypot_verdict_needs_distinct_sellers():
     hp = json.loads(json.dumps(_load("hp_matic.json")))
     hp.setdefault("honeypotResult", {})["isHoneypot"] = True
 
-    def verdict(liq, buys, sells, sellers=None):
+    def verdict(liq, buys, sells, sellers=None, gt_sellers=None):
+        # `sellers` rides on the pair, as GeckoTerminal-sourced pairs carry it;
+        # `gt_sellers` is the count fetched for a DexScreener pair that does not.
+        gt = (None if gt_sellers is None else
+              {"data": {"attributes": {"transactions": {"h24": {"sellers": gt_sellers}}}}})
         install_stub([("dex/tokens", token(liq, buys, sells, sellers)),
+                      ("networks/eth/pools/", gt),
                       ("dex/search", None), ("honeypot.is", hp)])
         return run(risk.assess(WETH, chain_hint="ethereum"))
 
@@ -2051,10 +2059,10 @@ def test_overturning_a_honeypot_verdict_needs_distinct_sellers():
 
     # Real two-sided trading on a live pool: the false positive this exists for.
     check("a genuinely traded pool earns the downgrade",
-          overridden(verdict(400_000, 900, 800)), "not overridden")
+          overridden(verdict(400_000, 900, 800, gt_sellers=610)), "not overridden")
 
     # A deep, slow pool must not be punished for being deep -- the R10 regression.
-    deep = verdict(25_000_000, 60, 28)
+    deep = verdict(25_000_000, 60, 28, gt_sellers=24)
     check("a deep pool with few trades is not punished for depth",
           overridden(deep), "%s -- PONS was rated high for exactly this"
           % deep["risk_level"])
@@ -2070,6 +2078,96 @@ def test_overturning_a_honeypot_verdict_needs_distinct_sellers():
               verdict(30_000, 400, 300, sellers=3)):
         check("a flagged token is never rated low", r["risk_level"] != "low",
               r["risk_level"])
+
+
+def test_a_seller_count_nobody_took_cannot_overturn_a_honeypot():
+    """The wash-trading guard ran only where it had no work to do.
+
+    The override above is charged in distinct sellers, "applied only where the count
+    exists". DexScreener never reports the count, and _load_pairs uses DexScreener whenever
+    it answers, so on the path most tokens take the guard was `sellers is not None` --
+    false -- and twenty self-sells on a $5,000 pool downgraded a confirmed honeypot to
+    medium. Measured by the 2026-09-13 adversarial audit on 25 of 40 sampled tokens (62%),
+    with two production cases, AKE on BSC and "O" on Base, both `sellers_24h=None`,
+    `is_honeypot=True`, medium/30. The same AKE went to high/100 when DexScreener failed
+    and GeckoTerminal answered: the verdict depended on which upstream happened to reply.
+
+    The count is not missing, it was never asked for. GeckoTerminal reports distinct
+    sellers for the pool we already picked. So: ask, on the one path that needs it -- a
+    simulator saying honeypot while sells complete -- and if nobody can say how many
+    addresses sold, the downgrade is withheld. Switching an alarm off is the act that needs
+    evidence; keeping it on is not.
+    """
+    print("\n[honeypot] no distinct-seller count, no downgrade")
+
+    pool = "0x" + "ab" * 20
+    ds = {"pairs": [{
+        "chainId": "ethereum", "dexId": "uniswap", "pairAddress": pool,
+        "baseToken": {"address": WETH, "symbol": "TRAP"},
+        "quoteToken": {"address": "0xq"}, "priceUsd": "1.0",
+        "liquidity": {"usd": 60_000}, "volume": {"h24": 60_000},
+        "txns": {"h24": {"buys": 100, "sells": 20}},
+        "pairCreatedAt": 1589841515000}]}
+    hp = json.loads(json.dumps(_load("hp_matic.json")))
+    hp.setdefault("honeypotResult", {})["isHoneypot"] = True
+
+    def gt_pool(sellers):
+        return {"data": {"attributes": {"transactions": {"h24": {
+            "buys": 100, "sells": 20, "buyers": 90, "sellers": sellers}}}}}
+
+    asked = []
+
+    def verdict(gt_answer):
+        async def _stub(url, *a, **kw):
+            if "/pools/" in url and "geckoterminal" in url:
+                asked.append(url)
+                return gt_answer
+            if "dex/tokens" in url:
+                return ds
+            if "honeypot.is" in url:
+                return hp
+            return None
+        risk._fetch_json = _stub
+        return run(risk.assess(WETH, chain_hint="ethereum"))
+
+    def overridden(r):
+        return any("chain disagrees" in x["name"] for x in r["signals"])
+
+    r = verdict(None)
+    check("a count nobody could take buys no downgrade", not overridden(r),
+          "%s -- the AKE shape: 20 sells, no sellers field" % r["risk_level"])
+    check("  so the verdict cannot be low or medium", r["risk_level"] not in ("low", "medium"),
+          r["risk_level"])
+    # ...and it is not `high` either. The first version of this fix kept the fatal and
+    # the benchmark moved 12 tokens medium -> high, none unsafe or dead; read live, CVX
+    # had 18 distinct sellers, THQ 28, AKE 789. They were condemned because GeckoTerminal
+    # answered 429 that minute.
+    check("  nor high on our own outage: it is unknown", r["risk_level"] == "unknown",
+          r["risk_level"])
+    gaps = r["evidence"].get("data_gaps") or []
+    check("  filed as our gap, so it says retry rather than condemning the token",
+          any(g.get("dimension") == "sellability"
+              and g.get("reason", "").startswith("upstream request failed")
+              for g in gaps), str(gaps))
+    check("  and the reason is stated",
+          "distinct sellers" in json.dumps(r["evidence"].get("honeypot") or {}).lower(),
+          str(r["evidence"].get("honeypot")))
+    check("the count was asked of the pool we picked",
+          any(pool in u and "/networks/eth/" in u for u in asked), str(asked))
+
+    check("one funded address selling twenty times buys nothing",
+          not overridden(verdict(gt_pool(1))), "overridden")
+    r = verdict(gt_pool(18))
+    check("eighteen distinct sellers do earn it", overridden(r), r["risk_level"])
+    check("and the count used is the one fetched",
+          (r["evidence"].get("best_pair") or {}).get("sellers_24h") == 18,
+          str(r["evidence"].get("best_pair")))
+
+    # Only the contested path pays for the extra request.
+    asked.clear()
+    hp["honeypotResult"]["isHoneypot"] = False
+    verdict(gt_pool(18))
+    check("a clean simulation costs no extra request", not asked, str(asked))
 
 
 def test_the_simulator_is_asked_about_the_chain_we_settled_on():
