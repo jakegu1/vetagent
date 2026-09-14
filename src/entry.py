@@ -461,7 +461,7 @@ RATE_LIMIT_PERIOD_SECONDS = 60
 
 async def _rate_limited(env, request):
     """True when this caller has used up its tool calls for the current window."""
-    return (await _limit_state(env, request)) == "limited"
+    return (await _limit_state(env, request)).split(";")[0] == "limited"
 
 
 async def _limit_state(env, request):
@@ -492,12 +492,11 @@ async def _limit_state(env, request):
     if not key:
         return "open:no-ip"
     try:
-        try:
-            from js import Object
-            from pyodide.ffi import to_js
-            opts = to_js({"key": key}, dict_converter=Object.fromEntries)
-        except ImportError:
-            opts = {"key": key}
+        # A plain dict. The Python Workers SDK wraps bindings (`_BindingWrapper`) and
+        # converts arguments itself; handing it an object already converted with to_js
+        # produced an answer of success=true on every one of 313 calls in 100 s against a
+        # 60/60 s limit -- the key never reached the counter.
+        opts = {"key": key}
         outcome = await limiter.limit(opts)
         success = (outcome.get("success") if isinstance(outcome, dict)
                    else getattr(outcome, "success", None))
@@ -634,7 +633,7 @@ class Default(WorkerEntrypoint):
                         else "find_new_hot_pools" if path == "/new-pools" else "")
         if limited_tool:
             state = await _limit_state(self.env, request)
-            if state == "limited":
+            if state.split(";")[0] == "limited":
                 # Recorded as a failed call to the tool it was, so the gate sees it and a
                 # refusal never counts as a verdict.
                 self._record_http_error(request, limited_tool)
