@@ -99,16 +99,13 @@ def ablate(address, signals, data_gaps=None):
 
 
 def driving_category(signals):
-    """Category of the one signal that decided this verdict."""
-    if not signals:
-        return None
-    ranked = sorted(
-        signals,
-        key=lambda s: risk._SEVERITY_BASE.get(s["severity"], 0)
-        * risk._CATEGORY_WEIGHT.get(s["category"], 0.5),
-        reverse=True)
-    top = ranked[0]
-    return top["category"] if top["severity"] != "ok" else None
+    """Category of the one signal that decided this verdict.
+
+    The rule lives in the engine (`risk._driver`) since the API started exposing it, so the
+    report and the product cannot disagree about what drove the same verdict.
+    """
+    d = risk._driver(signals)
+    return d["category"] if d else None
 
 
 def evaluate(rows, label_key, bad_value, good_value):

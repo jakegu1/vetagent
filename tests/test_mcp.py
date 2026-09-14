@@ -294,7 +294,8 @@ def test_verbose_flag_changes_payload_size():
 
     slim, full = size(False), size(True)
     check("default no larger than verbose", slim <= full, "slim=%d full=%d" % (slim, full))
-    check("slim output < 1800 bytes", slim < 1800, "%d" % slim)
+    # 1,870 since 2026-09-14, for the same three fields; see test_output_is_compact.
+    check("slim output < 1870 bytes", slim < 1870, "%d" % slim)
 
 
 def test_array_params_are_rejected_not_fatal():

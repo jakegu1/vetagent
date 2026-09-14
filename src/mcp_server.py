@@ -39,6 +39,8 @@ _SIGNAL_SCHEMA = {
     },
 }
 
+_CHECKED_AT = {"type": "string", "description": "When this answer was made, ISO-8601 UTC."}
+
 _ASSESS_OUTPUT_SCHEMA = {
     "type": "object",
     "properties": {
@@ -57,6 +59,13 @@ _ASSESS_OUTPUT_SCHEMA = {
         "signals": {"type": "array", "items": _SIGNAL_SCHEMA},
         "recommendation": {"type": "string"},
         "evidence": {"type": "object"},
+        "driver": {"type": ["object", "null"],
+                   "description": "The signal that decided the verdict: {name, category}. "
+                                  "null when nothing above ok fired."},
+        "checked_at": _CHECKED_AT,
+        "evidence_max_age_seconds": {
+            "type": "integer",
+            "description": "Age of the oldest evidence used; 0 when every source answered live."},
         "unknown_kind": {"type": "string", "enum": ["infrastructure", "coverage", "mixed"],
                          "description": "Present only when risk_level is unknown."},
         "next_action": {"type": "string", "enum": ["retry", "abstain"]},
@@ -144,6 +153,7 @@ TOOLS = [
                 "liquidity_usd": {"type": ["number", "null"]},
                 "volume_24h_usd": {"type": "number"},
                 "pairs_total": {"type": "integer"},
+                "checked_at": _CHECKED_AT,
                 "served_stale": {
                     "type": "array",
                     "description": "Present only when an upstream was unreachable and "
@@ -216,6 +226,7 @@ TOOLS = [
                         "PARTIAL scan: a smaller `scanned` here is a coverage gap, not a "
                         "quiet market. Treat it as missing information, not as absence.",
                 },
+                "checked_at": _CHECKED_AT,
                 "served_stale": {
                     "type": "array",
                     "items": {"type": "object"},

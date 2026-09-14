@@ -2528,6 +2528,92 @@ def mcp_server_tools():
     return mcp_server.TOOLS
 
 
+def test_a_medium_names_what_fired():
+    """Every `medium` said the same sentence, so none of them said anything.
+
+    Measured 2026-09-13: the medium recommendation was byte-identical for USDT, LDO, PENDLE
+    and BONK -- "Real signals fired but none are fatal. Review liquidity, holder distribution
+    and contract permissions" -- while low, high and unknown each pointed at something. The
+    benchmark already computed which signal drove each verdict (`driving_category`) and the
+    API never exposed it. One rule now lives in the engine and the benchmark imports it, so
+    the report and the product cannot name different drivers for the same verdict.
+    """
+    print("\n[verdict] a medium names the signal that decided it")
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "bench"))
+    import run_benchmark
+
+    thin = [risk._sig("warn", "Thin liquidity", "Main pair holds $12,000.", "liquidity"),
+            risk._sig("ok", "Buys and sells normally", "ok", "honeypot"),
+            risk._sig("ok", "Established pair", "ok", "freshness")]
+    r = risk._finalize(WETH, thin, {}, [])
+    check("the fixture is a medium", r["risk_level"] == "medium", r["risk_level"])
+    check("the medium sentence names the driving signal",
+          "Thin liquidity" in r["recommendation"], r["recommendation"])
+    check("the driver is a top-level field",
+          r.get("driver") == {"name": "Thin liquidity", "category": "liquidity"},
+          str(r.get("driver")))
+    check("and it is the benchmark's driver, by the same rule",
+          run_benchmark.driving_category(thin) == r["driver"]["category"],
+          str(run_benchmark.driving_category(thin)))
+
+    fatal = thin + [risk._sig("fatal", "Honeypot", "you cannot sell", "honeypot")]
+    r = risk._finalize(WETH, fatal, {}, [])
+    check("a high names its fatal signal too", "Honeypot" in r["recommendation"],
+          r["recommendation"])
+
+    clean = [risk._sig("ok", "Liquidity is adequate", "ok", "liquidity"),
+             risk._sig("ok", "Buys and sells normally", "ok", "honeypot")]
+    r = risk._finalize(WETH, clean, {}, [])
+    check("a verdict nothing drove has a null driver", r.get("driver") is None,
+          str(r.get("driver")))
+
+
+def test_freshness_is_in_the_answer_not_only_the_evidence():
+    """A `low` from fifteen-minute-old data read exactly like a live one.
+
+    `served_stale` and its ages sat in `evidence`, with an info signal, while the sentence
+    an agent reads and `confidence` stayed the same: "Low risk: sellable and liquid when
+    checked" at confidence high, on data up to `_STALE_OK_SECONDS` old (2026-09-13 audit,
+    reproduced offline). And no response said when the assessment was made, so a caller
+    holding an answer could not tell how old it was either.
+    """
+    print("\n[freshness] the answer says how old its evidence is")
+    import datetime as _dt
+
+    async def go(stale):
+        risk._begin_request()
+        if stale:
+            risk._stale_hits().append(("https://api.dexscreener.com/latest/dex/tokens/x", 870))
+        install_stub([("dex/tokens", _load("ds_weth.json")), ("dex/search", None),
+                      ("honeypot.is", _load("hp_matic.json"))])
+        original = risk._begin_request
+        risk._begin_request = lambda: None
+        try:
+            return await risk.assess(WETH, chain_hint="ethereum")
+        finally:
+            risk._begin_request = original
+
+    r = run(go(True))
+    check("the largest evidence age is a top-level field",
+          r.get("evidence_max_age_seconds") == 870, str(r.get("evidence_max_age_seconds")))
+    check("and the recommendation says it", "870 seconds old" in r["recommendation"],
+          r["recommendation"])
+    r = run(go(False))
+    check("live evidence reports age 0", r.get("evidence_max_age_seconds") == 0,
+          str(r.get("evidence_max_age_seconds")))
+    check("  and adds no staleness sentence", "seconds old" not in r["recommendation"],
+          r["recommendation"])
+    at = r.get("checked_at") or ""
+    try:
+        when = _dt.datetime.fromisoformat(at.replace("Z", "+00:00"))
+        fresh = abs((_dt.datetime.now(_dt.timezone.utc) - when).total_seconds()) < 60
+    except ValueError:
+        fresh = False
+    check("every answer says when it was made", fresh, at)
+    check("confidence capping on stale data is off until the owner decides",
+          risk._STALE_CAPS_CONFIDENCE is False, str(getattr(risk, "_STALE_CAPS_CONFIDENCE", None)))
+
+
 def test_the_simulator_is_asked_about_the_chain_we_settled_on():
     """A wrong hint must not send the sell simulator to the wrong chain.
 
@@ -2753,7 +2839,12 @@ def test_output_is_compact():
     ])
     slim = run(risk.assess(MATIC, chain_hint="ethereum"))
     payload = json.dumps(slim, ensure_ascii=False)
-    check("default output < 1800 bytes", len(payload) < 1800, "%d bytes" % len(payload))
+    # 1,800 until 2026-09-14, then 1,870: checked_at, evidence_max_age_seconds and driver
+    # measured 85 bytes on this fixture (1,880 with them), and the duplicate
+    # evidence.confidence (22) was removed to pay part of it back -- 1,858. I first wrote
+    # 1,850 here without doing that subtraction, and this line caught it. New information a
+    # caller asked for has a price; waste like reserves0 does not get one.
+    check("default output < 1870 bytes", len(payload) < 1870, "%d bytes" % len(payload))
     check("must not leak raw reserves", "reserves0" not in payload, "")
     check("must not leak taxDistribution", "taxDistribution" not in payload, "")
     check("floats are truncated",

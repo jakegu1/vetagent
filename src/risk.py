@@ -177,6 +177,11 @@ def _sig_round(x, digits=6):
 _FRESH_SECONDS = 60
 _STALE_OK_SECONDS = 900
 
+# Whether an answer served partly from stale cache is capped at confidence "medium". Off,
+# and deliberately not decided here: it is the owner's call (ChatGPT evaluation §8, audit
+# adv-liquidity.3), and until it is made the age is disclosed in the sentence instead.
+_STALE_CAPS_CONFIDENCE = False
+
 # Stale-cache disclosures for the request currently being served.
 #
 # This was a module-level list, cleared at the top of assess() and drained at the bottom.
@@ -599,6 +604,28 @@ def _score(signals):
     return int(min(100, round(worst + corroboration)))
 
 
+def _driver(signals):
+    """The one signal that decided the verdict: highest severity x category weight.
+
+    None when the top signal is `ok` -- nothing drove anything. This is the rule
+    `bench/run_benchmark.py` has always used to attribute verdicts; it lives here now and the
+    benchmark imports it, so the report and the product cannot name different drivers for
+    the same answer. Ties go to the earlier signal, as the benchmark's stable sort did.
+    """
+    if not signals:
+        return None
+    ranked = sorted(signals, key=lambda s: _SEVERITY_BASE.get(s["severity"], 0)
+                    * _CATEGORY_WEIGHT.get(s["category"], 0.5), reverse=True)
+    top = ranked[0]
+    if top["severity"] == "ok":
+        return None
+    return {"name": top["name"], "category": top["category"]}
+
+
+def _driver_phrase(driver):
+    return '"%s" (%s)' % (_ascii_safe(driver["name"], 60), _ascii_safe(driver["category"], 24))
+
+
 def _finalize(address, signals, evidence, data_gaps):
     """Roll everything up. Fail closed: a missing critical dimension means unknown,
     never an optimistic default.
@@ -705,11 +732,20 @@ def _finalize(address, signals, evidence, data_gaps):
         confidence = "medium"
     evidence["confidence"] = confidence
 
+    driver = _driver(signals)
+    result["driver"] = driver
     result.update(
         risk_level=level, risk_score=score, confidence=confidence,
         recommendation={
-            "high": "High risk. A fatal or high-severity signal fired - see signals for the specific reason. Do not proceed without review.",
-            "medium": "Medium risk. Real signals fired but none are fatal. Review liquidity, holder distribution and contract permissions before deciding.",
+            "high": ("High risk: %s. Do not proceed without review." % _driver_phrase(driver)
+                     if driver else
+                     "High risk. A fatal or high-severity signal fired - see signals for the specific reason. Do not proceed without review."),
+            # Named, because an unnamed medium was byte-identical for USDT, LDO, PENDLE and
+            # BONK (2026-09-13) -- a sentence that fits every token tells a reader nothing.
+            "medium": ("Medium risk: %s fired; no fatal signal. Review it, and liquidity, "
+                       "holder distribution and contract permissions, before deciding."
+                       % _driver_phrase(driver) if driver else
+                       "Medium risk. Real signals fired but none are fatal. Review liquidity, holder distribution and contract permissions before deciding."),
             # Names the gap rather than gesturing at it. An external audit built the
             # token that beats every check here: switchable tax, pausable transfers,
             # a blacklist and unlocked LP, sitting on $50k of liquidity for a month
@@ -2507,7 +2543,9 @@ async def _load_pairs(address, chain_hint):
 # evidence fields kept in slim mode
 _SLIM_EVIDENCE_KEYS = (
     "best_pair", "chains", "pair_age_days", "turnover_24h", "honeypot",
-    "rugcheck", "liquidity_source", "confidence", "data_gaps", "served_stale",
+    # `confidence` is not here: it is a top-level field, and the copy in evidence was
+    # 22 duplicate bytes on every call. Verbose still carries it.
+    "rugcheck", "liquidity_source", "data_gaps", "served_stale",
     "owner_powers",
     "price_change_24h_pct",
     "sellability_from_chain",
@@ -2726,6 +2764,17 @@ async def assess(address, chain_hint=None, verbose=False):
             % max(a for _, a in stale), "freshness"))
 
     result = _finalize(address, signals, evidence, data_gaps)
+    # When the answer was made, and how old its oldest evidence is -- in the answer, not
+    # only in evidence. A low from fifteen-minute-old data read exactly like a live one:
+    # same sentence, same confidence (2026-09-13 audit, reproduced offline).
+    result["checked_at"] = _now_iso()
+    result["evidence_max_age_seconds"] = max((a for _, a in stale), default=0)
+    if stale:
+        result["recommendation"] += (" Some market data is up to %d seconds old because an "
+                                     "upstream did not answer."
+                                     % result["evidence_max_age_seconds"])
+        if _STALE_CAPS_CONFIDENCE and result.get("confidence") == "high":
+            result["confidence"] = "medium"
     if not verbose:
         # Slim by default: an agent has no use for raw fields like reserves, txHash
         # or taxDistribution.
@@ -2741,8 +2790,13 @@ async def assess(address, chain_hint=None, verbose=False):
     return result
 
 
+def _now_iso():
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def _disclosed(payload):
     """Attach the stale-cache disclosure to a tool response, if there is one."""
+    payload["checked_at"] = _now_iso()
     d = _stale_disclosure()
     if d:
         payload["served_stale"] = d
