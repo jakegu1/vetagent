@@ -162,6 +162,7 @@ The owner accepted the open recommendations: stale data caps confidence, the par
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Positioning sentence into STRATEGY, and the market-data key probe onto the owner's list
 - The maturity score could not see R21, so it now can -- and it went down, 55 -> 44
 - The owner page said R19 was in progress, and its corrections stopped at 09-09
 - Regenerate the scorecard: E22 added a test and its evidence cell counts them
@@ -169,9 +170,8 @@ problem looked like before it was fixed.
 - E22: an answer that used stale data is at most medium confidence
 - Publish the false-block rate beside the false-positive rate: 20.1%
 - Turnover is measured over the token, not its deepest pool
-- Every answer names what drove it, when it was made, and how old its evidence is
 
-_102 more not shown (110 commits in total)._
+_103 more not shown (111 commits in total)._
 
 ## What I got wrong
 
