@@ -30,11 +30,14 @@ The maturity score for each round is read from `docs/SCORECARD.md` **as it stood
 | **R16** | Make the gate readable, then stop | 10 | 2026-09-07 | 53/100 (+0) |
 | **R17** | Fix the instrument, then freeze it | 6 | 2026-09-07 | 53/100 (+0) |
 | **R18** | Make the archive worth waiting for | 15 | 2026-09-07 to 2026-09-08 | 53/100 (+0) |
+| **R19** | Point it outward, and correct what would be found | 67 | 2026-09-08 to 2026-09-11 | 55/100 (+2) |
+| **R20** | The fifth audit: the recall we published was in-sample | 4 | 2026-09-12 | 55/100 (+0) |
+| **R21** | Attacked on purpose | 17 | 2026-09-14 | 55/100 (+0) |
 
-17 snapshot-job commits are excluded up to the last closed round: they are data collection, not development, and would bury the rounds. The job commits daily, so counting them past that point would date this file every morning.
+73 snapshot-job commits are excluded up to the last closed round: they are data collection, not development, and would bury the rounds. The job commits daily, so counting them past that point would date this file every morning.
 
 
-**R19 -- Point it outward, and correct what would be found** is open: The gate's failing branch says distribution, so the server was pointed at the places an agent might find it -- and everything it was pointed at turned out to need correcting first. The landing page carried a claim a commenter disproves in one minute, in three surfaces. The README asserted a directory grade as a frozen string. `find_new_hot_pools` answered `count: 20` beside three pools. There was no way to reach a person and no terms page. And the gate itself said YES on `mozilla` and `curl` -- our own homepage demo and our own deploy pipeline -- because thirteen of its fourteen days were written before the attribution fix; floored to rows the fixed instrument wrote, it reads no. Glama and Smithery went live, six more submissions are queued, and two were parked at a signup. The owner page gained the sections that let someone who cannot read the code decide whether to believe it. Its commits are listed here once it closes.
+**R22 -- Owner decisions, and a score that can see an attack** is open: The owner accepted the open recommendations: stale data caps confidence, the parked ideas keep their review dates, the positioning sentence goes into STRATEGY, and a keyed market-data source gets priced. The maturity score had no line that could see any of R21, so it is being widened -- in both directions. Its commits are listed here once it closes.
 
 ---
 
@@ -442,6 +445,139 @@ Listed the server where it can be found -- GitHub topics, mcp.so, Docker's MCP r
 | `cb740bf` | 2026-09-08 | Close R17, open R18 |
 | `aa5d3ee` | 2026-09-08 | The manifest earned itself on its first run: a quarter of page fetches are failing |
 | `a3c52ad` | 2026-09-08 | The probe was spending 48 of 53 requests on the one chain that never answers |
+
+Full reasoning for any line above: `git show <hash>`. The commit messages carry the measurement that motivated each change, and several admissions of error.
+
+
+---
+
+
+## R19 -- Point it outward, and correct what would be found
+
+
+The gate's failing branch says distribution, so the server was pointed at the places an agent might find it -- and everything it was pointed at turned out to need correcting first. The landing page carried a claim a commenter disproves in one minute, in three surfaces. The README asserted a directory grade as a frozen string. `find_new_hot_pools` answered `count: 20` beside three pools. There was no way to reach a person and no terms page. And the gate itself said YES on `mozilla` and `curl` -- our own homepage demo and our own deploy pipeline -- because thirteen of its fourteen days were written before the attribution fix; floored to rows the fixed instrument wrote, it reads no. Glama and Smithery went live, six more submissions are queued, and two were parked at a signup. The owner page gained the sections that let someone who cannot read the code decide whether to believe it. Then a hostile review took the launch post apart before anyone else could, the owner-power selector list was mined from bytecode instead of typed, the decision log was consolidated, and after the gate said YES on my own probe from Tokyo, tagging a production probe became a hook rather than a note.
+
+
+| Commit | Date | Change |
+|---|---|---|
+| `6563e49` | 2026-09-08 | The two tools did not connect, and a directory grader found it before any test did |
+| `e3914df` | 2026-09-08 | The landing page made a claim a commenter disproves in one minute, and carried three stale counts |
+| `aeb48e9` | 2026-09-08 | The same false claim was in the social card and the structured data |
+| `03b6428` | 2026-09-08 | A page that asks to be trusted with no way to reach a human |
+| `21e7f7d` | 2026-09-08 | hello@vetagent.dev — a route to a person that needs no account |
+| `3eca660` | 2026-09-08 | Smithery domain verification and backlink |
+| `8e0a433` | 2026-09-08 | The Glama badge asserted a grade instead of showing one |
+| `4aa75d7` | 2026-09-08 | Two listings went live and the score that counts them stayed at 53 |
+| `86eaa77` | 2026-09-08 | The gate's window cannot be narrowed, and 13 of its 14 days predate the fix |
+| `f7640df` | 2026-09-08 | The gate said YES on the two buckets our own traffic used to land in |
+| `d338deb` | 2026-09-08 | Read the corrected gate, and it says no |
+| `c77b629` | 2026-09-08 | W10 still told the owner to do the two things that are done |
+| `cc85128` | 2026-09-08 | A terms page, and the plugin moved out of the repository root |
+| `e4089cb` | 2026-09-08 | find_new_hot_pools reported a count of 20 next to three pools |
+| `7b292ba` | 2026-09-08 | The OpenAI submission, written out so only the identity step is left |
+| `a1f85e9` | 2026-09-08 | The channel list was eight names picked before the landscape was known |
+| `95fe73d` | 2026-09-08 | Park the two channels that need an account, without moving the bar |
+| `6e6d5bc` | 2026-09-08 | The owner page told the owner what to do and not how much to believe it |
+| `f4f5633` | 2026-09-08 | Close R18, open R19 — and state what R18's own review never covered |
+| `d91a540` | 2026-09-08 | Regenerate the round log over the snapshot commits the rebase brought in |
+| `d35f996` | 2026-09-08 | The workflow written to prevent the 233-agent run had never been run |
+| `9f5c68b` | 2026-09-08 | E11 inside the line whose own comment says "say what was dropped" |
+| `2884c73` | 2026-09-08 | A caller whose HTTP calls all failed was invisible to the gate |
+| `5c8cb6c` | 2026-09-08 | The owner-page test I added this morning reddens by itself, twice a day |
+| `2fa9306` | 2026-09-08 | Three outward pages said things that are not true |
+| `2b4979a` | 2026-09-08 | The field added to disclose a truncation could not disclose a half scan |
+| `8adb35f` | 2026-09-08 | One gate, four written bars, and every one of them easier than the code |
+| `381db89` | 2026-09-08 | The no-tool-calls branch put two windows in one sentence, and file the rest |
+| `a9a1c66` | 2026-09-08 | "Corrected in three surfaces" had survived in four more |
+| `483b19b` | 2026-09-09 | Two emails, and neither said what it appeared to say |
+| `63a25e6` | 2026-09-09 | Regenerate over the snapshot commits the rebase brought in |
+| `9e057fd` | 2026-09-09 | W13 closed, and its acceptance test was wrong |
+| `6855faa` | 2026-09-09 | W13 is done, so its cost-of-waiting line is an orphan |
+| `2043a69` | 2026-09-09 | mcpservers.org is live, and I reported the opposite |
+| `02107aa` | 2026-09-09 | /privacy named four recipients of the token address. There are seven. |
+| `1c4f982` | 2026-09-09 | Blockaid's false-positive rate was wrong by 10x on the live homepage |
+| `2d1e20e` | 2026-09-09 | "The only part of this product that cannot be copied" — we publish it, 4x a day |
+| `eec7bbc` | 2026-09-09 | Two generated diagrams on the owner page, and not a diagramming pipeline |
+| `e389116` | 2026-09-09 | An HTML view of the owner's page, generated from the same one file |
+| `3ee7fa7` | 2026-09-09 | The test I added yesterday turned the build red on eight commits |
+| `cdede79` | 2026-09-09 | Two FATAL findings from the hostile review of the launch post |
+| `d0047fb` | 2026-09-09 | The live /llms.txt carried three stale counts the guard never covered |
+| `a9344c5` | 2026-09-09 | I got the adversarial cohort wrong, then pointed a guard at the error |
+| `b3243b4` | 2026-09-09 | W25 decided: the archive stays public, with a threshold instead of an argument |
+| `73f517f` | 2026-09-09 | The archive strip on the visual owner page too |
+| `3d195b6` | 2026-09-09 | W26: the launch post rewritten against the comment that would have sunk it |
+| `0ef91f1` | 2026-09-09 | W21: the number guard checked matching, never coverage |
+| `2b1f9e3` | 2026-09-09 | W22: the tool that has misled callers twice now declares its shape |
+| `ac6b35d` | 2026-09-09 | Repair the W22 row that bash ate |
+| `8b33e37` | 2026-09-09 | CLAUDE.md: the quoting trap has two mechanisms, not one |
+| `02456ad` | 2026-09-09 | W24: one address had 2^40 spellings and every one was a cache miss |
+| `7269bff` | 2026-09-09 | Repair W21's row, damaged by the same backtick substitution |
+| `f9a6aa1` | 2026-09-09 | W23: the self-report guards proved presence, never substance |
+| `9744c8b` | 2026-09-09 | W3: measured the lever before pulling it, and the measurement changed the plan |
+| `c02a83a` | 2026-09-09 | W18: the EIP-1167 fix pinned a body, so the next forwarder walked through it |
+| `04e00ec` | 2026-09-09 | W18: the selector list is mined and measured now, not typed and hoped |
+| `75f14ef` | 2026-09-09 | The number guard's second exemption list was never called |
+| `5c52e97` | 2026-09-10 | A test file was silently skipping one of its own tests, again |
+| `b9cac75` | 2026-09-10 | A spec MUST we were answering 200 to: MCP-Protocol-Version: banana |
+| `3ca73be` | 2026-09-10 | Park W27: does a fresh deploy hand the first callers `unknown`? |
+| `9d0df0c` | 2026-09-10 | Regenerate the scorecard: I pushed a red commit by skipping my own checklist |
+| `986e905` | 2026-09-10 | E5 was filed as test-enforced and its test could not fail |
+| `938b489` | 2026-09-10 | W8: consolidate DECISIONS.md, 56 rows to 44, and correct the rule that does it |
+| `2e90e52` | 2026-09-10 | Close W8 at 44 rows, with the shortfall stated rather than rounded away |
+| `63c485b` | 2026-09-11 | The gate said YES on my own curl, from Tokyo |
+| `82e2470` | 2026-09-11 | Make the gate print what it cannot see, rather than adjust what it counts |
+| `0e6b393` | 2026-09-11 | Probe tagging becomes a mechanism: a hook, not a note |
+
+Full reasoning for any line above: `git show <hash>`. The commit messages carry the measurement that motivated each change, and several admissions of error.
+
+
+---
+
+
+## R20 -- The fifth audit: the recall we published was in-sample
+
+
+An external audit found that the owner-power recall published as 62.5% -- and 89.5% for mutable taxes -- was scored on the same 559 contracts the selector list was mined from. Out of sample it is 50.0% and 31.6%, and the product had been quoting the in-sample figure to callers. A guard had checked that the emitted figure matched a file, and passed, because the file held the wrong figure too. Three more: the gate's frozen rule did not pin the parameters that decide it, it could not tell a browser GET from an MCP call, and the owner page reddened itself every midnight. The HTML owner page was retired.
+
+
+| Commit | Date | Change |
+|---|---|---|
+| `efe8487` | 2026-09-12 | R20-9: the owner page reddened by itself every midnight, and was red at HEAD today |
+| `a222cdc` | 2026-09-12 | R20-3: "frozen, pinned by tests/test_usage_gate.py" did not pin what decides the answer |
+| `fcb2c11` | 2026-09-12 | R20-2: the gate cannot tell a browser GET from an MCP tool call |
+| `48edc04` | 2026-09-12 | R20-1: the published owner-power recall was in-sample, and the product said it to callers |
+
+Full reasoning for any line above: `git show <hash>`. The commit messages carry the measurement that motivated each change, and several admissions of error.
+
+
+---
+
+
+## R21 -- Attacked on purpose
+
+
+The first audit to attack the tool rather than read it. Two dollars of fabricated depth bought a low verdict, a $2.21 pool made the real Wormhole WETH read as an impostor in production, and the wash-trading guard never ran on the data source most tokens resolve through. Fixed red-first: depth counts only a reserve held in an independently priced asset, a contested honeypot needs a distinct-seller count, one answer covers one chain, calls are rate-limited and batches capped, and a failed upstream says what it answered -- which put a measurement on the unknown rate's cause for the first time: DexScreener and GeckoTerminal both answering 429. Cloudflare's rate-limit binding was measured never to limit and replaced. From a ChatGPT strategy review: an unknown says retry or abstain, an answer names its driver and the age of its evidence, turnover is measured per token, and a false-block rate is published beside the false-positive rate. The unknown rate got worse, and recall on the adversarial cohort fell by one token.
+
+
+| Commit | Date | Change |
+|---|---|---|
+| `0220738` | 2026-09-14 | Park the ChatGPT evaluation's product ideas with experiments, and adopt its metrics for W7 |
+| `1a8d750` | 2026-09-14 | Audit 09-13: one caller could spend the shared upstream budget without limit |
+| `95c40a1` | 2026-09-14 | Audit 09-13: the wash-trading guard never ran on the path most tokens take |
+| `89eca4d` | 2026-09-14 | Audit 09-13: pool depth was whatever the pool's creator priced it at |
+| `06aecfd` | 2026-09-14 | Audit 09-13: one answer could name three different chains |
+| `cf7772a` | 2026-09-14 | Audit 09-13: a third of answers were unknown, and nothing could say why |
+| `8305d23` | 2026-09-14 | Re-measure after the 09-13 audit fixes, and guard every figure the post quotes |
+| `a6833fb` | 2026-09-14 | Regenerate the scorecard and owner page after rebasing onto the 09-14 snapshots |
+| `bac9b63` | 2026-09-14 | Say why the rate limiter failed open |
+| `f3cf4a8` | 2026-09-14 | Report the limiter's answer on every tool call |
+| `a898391` | 2026-09-14 | TEMPORARY: show the limiter's runtime types in its header |
+| `9cf3bee` | 2026-09-14 | Hand the rate-limit binding a plain dict |
+| `1916904` | 2026-09-14 | Count calls in the edge cache: the rate-limit binding never limited |
+| `6ce6639` | 2026-09-14 | An unknown now says whether to retry or to abstain |
+| `904a6c8` | 2026-09-14 | Every answer names what drove it, when it was made, and how old its evidence is |
+| `84a21a2` | 2026-09-14 | Turnover is measured over the token, not its deepest pool |
+| `0ad65b6` | 2026-09-14 | Publish the false-block rate beside the false-positive rate: 20.1% |
 
 Full reasoning for any line above: `git show <hash>`. The commit messages carry the measurement that motivated each change, and several admissions of error.
 

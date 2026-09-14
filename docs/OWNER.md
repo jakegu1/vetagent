@@ -138,32 +138,32 @@ Rounded = parked by you. Hexagons are not work items -- they are what a row is w
 | False positives | 4.3% -- we called a healthy token dangerous |
 | Answers we refuse | 18.2% -- `unknown`, on purpose |
 | Dead tokens we rated high | 10.0% -- our worst number, published first |
-| Round in progress | R19: Point it outward, and correct what would be found |
+| Round in progress | R22: Owner decisions, and a score that can see an attack |
 
 The score's ceiling for engineering alone is about 70. The missing points are
 distribution and users, which is why more building cannot move it.
 
 ## What I am doing right now
 
-**R19 -- Point it outward, and correct what would be found**
+**R22 -- Owner decisions, and a score that can see an attack**
 
-The gate's failing branch says distribution, so the server was pointed at the places an agent might find it -- and everything it was pointed at turned out to need correcting first. The landing page carried a claim a commenter disproves in one minute, in three surfaces. The README asserted a directory grade as a frozen string. `find_new_hot_pools` answered `count: 20` beside three pools. There was no way to reach a person and no terms page. And the gate itself said YES on `mozilla` and `curl` -- our own homepage demo and our own deploy pipeline -- because thirteen of its fourteen days were written before the attribution fix; floored to rows the fixed instrument wrote, it reads no. Glama and Smithery went live, six more submissions are queued, and two were parked at a signup. The owner page gained the sections that let someone who cannot read the code decide whether to believe it.
+The owner accepted the open recommendations: stale data caps confidence, the parked ideas keep their review dates, the positioning sentence goes into STRATEGY, and a keyed market-data source gets priced. The maturity score had no line that could see any of R21, so it is being widened -- in both directions.
 
 ## What changed in the last 7 days
 
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Regenerate the scorecard: E22 added a test and its evidence cell counts them
+- O7-O11: the owner accepted the review dates; O8's prerequisite has shipped
+- E22: an answer that used stale data is at most medium confidence
+- Publish the false-block rate beside the false-positive rate: 20.1%
 - Turnover is measured over the token, not its deepest pool
 - Every answer names what drove it, when it was made, and how old its evidence is
 - An unknown now says whether to retry or to abstain
 - Count calls in the edge cache: the rate-limit binding never limited
-- Hand the rate-limit binding a plain dict
-- TEMPORARY: show the limiter's runtime types in its header
-- Report the limiter's answer on every tool call
-- Say why the rate limiter failed open
 
-_96 more not shown (104 commits in total)._
+_100 more not shown (108 commits in total)._
 
 ## What I got wrong
 
@@ -172,6 +172,36 @@ costs me something. A build check requires an entry here every 14 days: if there
 were genuinely no mistakes, saying so is itself a dated claim on the record.
 
 Newest first.
+
+**2026-09-14** &mdash; I said: *'Rate limiting is live: 60 calls a minute per caller.'*
+
+> It never limited anything. From one IP, 313 calls in 100 seconds were all served. Cloudflare's rate-limit binding answered 'allowed' every time; it was replaced by a counter in the edge cache, which trips at about 64.
+
+> How it surfaced: Caught by the deploy check written in the same commit, which floods production and requires a 429. I had shipped the limiter before watching it limit.
+
+**2026-09-14** &mdash; I said: *'Of the 146 tokens with $10k or more of depth, 0 were rated high' -- in the launch post, after the benchmark had moved.*
+
+> One was: TRAC, held by the wash-trading guard. The number guard checked the 146 and not the 0, and 'All 7 false positives are among the thin ones' was false the same way.
+
+> How it surfaced: Caught by reading the post line by line after the guard reported green.
+
+**2026-09-14** &mdash; I said: *The first fix for the wash-trading hole: keep the honeypot verdict fatal whenever distinct sellers cannot be counted.*
+
+> It condemned real tokens for our own outage: 12 healthy tokens went medium to high. Read live, CVX had 18 distinct sellers, THQ 28, AKE 789 -- genuine simulator false positives, including AKE, which the audit had presented as the hole. Uncountable now means unknown, not high.
+
+> How it surfaced: Caught by the benchmark run on the fix, then one live read of both sources.
+
+**2026-09-14** &mdash; I said: *'GoPlus shipped agentguard three days ago -- a same-category move.' (relayed from the audit)*
+
+> agentguard guards AI agents against malicious skills and leaked secrets -- its own description at github.com/GoPlusSecurity/agentguard says so. It is not a token-risk tool.
+
+> How it surfaced: Caught by one `gh api` call while checking figures for the strategy paragraph.
+
+**2026-09-12** &mdash; I said: *'The owner-power scan catches 62.5% of the powers that exist, and 89.5% of mutable taxes' -- published for three days, and said to callers by the product.*
+
+> Both were in-sample: scored on the contracts the selector list was mined from. On a contract it has not seen it finds 50.0%, and 31.6% of mutable taxes.
+
+> How it surfaced: Caught by the R20 external audit. My own guard passed, because the file it checked held the wrong number too.
 
 **2026-09-09** &mdash; I said: *'mcpservers.org emailed to say we are live, and the listing is not on the site.'*
 

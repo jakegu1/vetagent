@@ -169,7 +169,7 @@ ROUNDS = [
      "reports its conclusions without its coverage is the same defect as a scan that "
      "says 'nothing found' without saying where it looked, and it was committed by the "
      "round that fixed that defect in two other places."),
-    ("R19", "Point it outward, and correct what would be found", None,
+    ("R19", "Point it outward, and correct what would be found", "0e6b393",
      "The gate's failing branch says distribution, so the server was pointed at the "
      "places an agent might find it -- and everything it was pointed at turned out to "
      "need correcting first. The landing page carried a claim a commenter disproves in "
@@ -180,7 +180,39 @@ ROUNDS = [
      "of its fourteen days were written before the attribution fix; floored to rows the "
      "fixed instrument wrote, it reads no. Glama and Smithery went live, six more "
      "submissions are queued, and two were parked at a signup. The owner page gained the "
-     "sections that let someone who cannot read the code decide whether to believe it."),
+     "sections that let someone who cannot read the code decide whether to believe it. "
+     "Then a hostile review took the launch post apart before anyone else could, the "
+     "owner-power selector list was mined from bytecode instead of typed, the decision "
+     "log was consolidated, and after the gate said YES on my own probe from Tokyo, "
+     "tagging a production probe became a hook rather than a note."),
+    ("R20", "The fifth audit: the recall we published was in-sample", "48edc04",
+     "An external audit found that the owner-power recall published as 62.5% -- and "
+     "89.5% for mutable taxes -- was scored on the same 559 contracts the selector list "
+     "was mined from. Out of sample it is 50.0% and 31.6%, and the product had been "
+     "quoting the in-sample figure to callers. A guard had checked that the emitted "
+     "figure matched a file, and passed, because the file held the wrong figure too. "
+     "Three more: the gate's frozen rule did not pin the parameters that decide it, it "
+     "could not tell a browser GET from an MCP call, and the owner page reddened itself "
+     "every midnight. The HTML owner page was retired."),
+    ("R21", "Attacked on purpose", "0ad65b6",
+     "The first audit to attack the tool rather than read it. Two dollars of fabricated "
+     "depth bought a low verdict, a $2.21 pool made the real Wormhole WETH read as an "
+     "impostor in production, and the wash-trading guard never ran on the data source "
+     "most tokens resolve through. Fixed red-first: depth counts only a reserve held in an "
+     "independently priced asset, a contested honeypot needs a distinct-seller count, one "
+     "answer covers one chain, calls are rate-limited and batches capped, and a failed "
+     "upstream says what it answered -- which put a measurement on the unknown rate's "
+     "cause for the first time: DexScreener and GeckoTerminal both answering 429. "
+     "Cloudflare's rate-limit binding was measured never to limit and replaced. From a "
+     "ChatGPT strategy review: an unknown says retry or abstain, an answer names its "
+     "driver and the age of its evidence, turnover is measured per token, and a false-block "
+     "rate is published beside the false-positive rate. The unknown rate got worse, and "
+     "recall on the adversarial cohort fell by one token."),
+    ("R22", "Owner decisions, and a score that can see an attack", None,
+     "The owner accepted the open recommendations: stale data caps confidence, the parked "
+     "ideas keep their review dates, the positioning sentence goes into STRATEGY, and a "
+     "keyed market-data source gets priced. The maturity score had no line that could see "
+     "any of R21, so it is being widened -- in both directions."),
 ]
 
 

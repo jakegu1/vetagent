@@ -101,6 +101,41 @@ EXTRA_ACTIONS = [
 # claim, which is itself a thing that can turn out to be false.
 CORRECTION_WINDOW = 14
 CORRECTIONS = [
+    ("2026-09-14",
+     "'Rate limiting is live: 60 calls a minute per caller.'",
+     "It never limited anything. From one IP, 313 calls in 100 seconds were all served. "
+     "Cloudflare's rate-limit binding answered 'allowed' every time; it was replaced by a "
+     "counter in the edge cache, which trips at about 64.",
+     "Caught by the deploy check written in the same commit, which floods production and "
+     "requires a 429. I had shipped the limiter before watching it limit."),
+    ("2026-09-14",
+     "'Of the 146 tokens with $10k or more of depth, 0 were rated high' -- in the launch "
+     "post, after the benchmark had moved.",
+     "One was: TRAC, held by the wash-trading guard. The number guard checked the 146 and "
+     "not the 0, and 'All 7 false positives are among the thin ones' was false the same way.",
+     "Caught by reading the post line by line after the guard reported green."),
+    ("2026-09-14",
+     "The first fix for the wash-trading hole: keep the honeypot verdict fatal whenever "
+     "distinct sellers cannot be counted.",
+     "It condemned real tokens for our own outage: 12 healthy tokens went medium to high. "
+     "Read live, CVX had 18 distinct sellers, THQ 28, AKE 789 -- genuine simulator false "
+     "positives, including AKE, which the audit had presented as the hole. Uncountable now "
+     "means unknown, not high.",
+     "Caught by the benchmark run on the fix, then one live read of both sources."),
+    ("2026-09-14",
+     "'GoPlus shipped agentguard three days ago -- a same-category move.' (relayed from "
+     "the audit)",
+     "agentguard guards AI agents against malicious skills and leaked secrets -- its own "
+     "description at github.com/GoPlusSecurity/agentguard says so. It is not a token-risk "
+     "tool.",
+     "Caught by one `gh api` call while checking figures for the strategy paragraph."),
+    ("2026-09-12",
+     "'The owner-power scan catches 62.5% of the powers that exist, and 89.5% of mutable "
+     "taxes' -- published for three days, and said to callers by the product.",
+     "Both were in-sample: scored on the contracts the selector list was mined from. On a "
+     "contract it has not seen it finds 50.0%, and 31.6% of mutable taxes.",
+     "Caught by the R20 external audit. My own guard passed, because the file it checked "
+     "held the wrong number too."),
     ("2026-09-09",
      "'mcpservers.org emailed to say we are live, and the listing is not on the site.'",
      "It is live, at mcpservers.org/en/servers/vetagent-dev, findable by searching their "
