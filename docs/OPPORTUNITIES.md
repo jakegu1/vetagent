@@ -185,6 +185,72 @@ widening the list from the oracle's own labels would fix the recall and void the
 benchmark (B2). Until then the honest position is that the instrument is too blind to
 support either conclusion, and W1 says so.
 
+### O7 · Risk history from the snapshot archive
+
+**Blocked until: gate 2026-12-04** (is further investment worth it). The data trigger is
+earlier: W7 done and the archive holding at least 60 days, about 2026-11-03. Date proposed
+2026-09-14; the owner may move it.
+
+Source: the ChatGPT strategy evaluation (September 2026, no code read), which proposed
+`get_token_risk_history` and `detect_risk_change` as a temporal moat. Parked, not adopted,
+because a second tool with zero callers is a feature under STRATEGY §8, and because the
+question it rests on -- does any change between snapshots precede death -- has not been
+asked of the data.
+
+**The experiment that settles it.** On the archive alone, for pools it contains, compute
+liquidity, holder and tax deltas between consecutive snapshots, and check whether any delta
+precedes the `dead` label by at least one snapshot on at least 10 of the 30 dead tokens.
+Fewer than 10 and this closes. **Constraint that binds either way:** read only the public
+archive, never query logs -- there are none, by design, and this idea must not be the reason
+that changes.
+
+### O8 · Peer-relative risk
+
+**Blocked until: gate 2026-10-16** (does anyone want to pay). Proposed date; the owner may
+move it. It also needs the narrow version -- turnover over the token rather than one pool --
+shipped and measured on the full set first.
+
+Source: ChatGPT evaluation §14.3. Absolute thresholds mislead on multi-pool tokens: 8 of the
+22 false alarms in the 2026-09-13 live sweep were "Looks abandoned" computed from one pool.
+
+**The experiment that settles it.** Define the peer group from the archive (chain, pool age
+within 30 days, reserve within 3x), recompute the 22 false alarms and the 30 dead tokens,
+and adopt only if it removes false alarms without adding a single dead-token miss.
+
+### O9 · Evidence-freshness budget as a caller parameter
+
+**Blocked until: gate 2026-10-16** (does anyone want to pay). Proposed date; the owner may
+move it.
+
+Source: ChatGPT evaluation §14.4, `max_age_seconds`. Exposing freshness in every response is
+cheap and ships on its own; a parameter nobody has asked for is a feature with zero callers.
+
+**The experiment that settles it.** None to run: it unblocks when one external caller asks
+for it, in the gate evidence or an issue. If nobody has by the date, it closes.
+
+### O10 · A policy enum (ALLOW / WARN / BLOCK / REVIEW)
+
+**Blocked until: gate 2026-12-04** (is further investment worth it). Proposed date; the owner
+may move it.
+
+Source: ChatGPT evaluation §6.1. **Not adopted as a rename.** `low / medium / high / unknown`
+with `recommendation`, and the fields that name what fired and what kind of unknown it was,
+carry the same information. Revisit only if a real integrator asks for an enum to branch on
+without parsing prose -- and then as a derived field, never a replacement, because renaming
+the verdict would break every caller that exists.
+
+### O11 · Monetization tiers
+
+**Blocked until: gate 2026-10-16** (does anyone want to pay).
+
+Source: ChatGPT evaluation §11. Consistent with STRATEGY pricing and needs no code;
+Experiments D and E decide it. Measured context for that decision, 2026-09-13: every pure
+token-risk service on x402 has earned **$11.70** in total, across 13 services and 1,194 paid
+calls, counted from on-chain settlement by x402-list.com. That is a floor on a pay-per-call
+market that barely exists, not evidence that nobody wants risk checks: the free version of
+the same data is used at very large volume (GoPlus's own published call counts, cited by the
+2026-09-13 audit and not re-checked here).
+
 ---
 
 ## Reviewed and closed
