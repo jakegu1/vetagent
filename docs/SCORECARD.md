@@ -21,9 +21,9 @@
 
 | Dimension | Item | Score | Max | Evidence |
 |---|---|---|---|---|
-| Correctness | tests all green | 10.0 | 10 | test_risk.py 283 passed, 0 failed All passed; test_mcp.py 80 passed, 0 failed All passed |
+| Correctness | tests all green | 10.0 | 10 | test_risk.py 320 passed, 0 failed All passed; test_mcp.py 80 passed, 0 failed All passed |
 | Correctness | false positive rate (healthy rated high) | 8.0 | 10 | 4.3% |
-| Correctness | unknown rate | 6.0 | 10 | 15.3% |
+| Correctness | unknown rate | 6.0 | 10 | 18.2% |
 | Coverage | risk dimensions covered | 16.4 | 20 | 9 / 11 |
 | Credibility | recall is measurable | 10.0 | 10 | dead samples: 30 (need ≥20) |
 | Credibility | days of snapshots | 0.5 | 10 | 9 of 180 days |

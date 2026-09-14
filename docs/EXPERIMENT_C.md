@@ -27,11 +27,11 @@
 > I built a token-risk API for AI agents and published its error rate, including the
 > number that makes it look worst.
 >
-> On contracts an independent oracle calls adversarial, we rate 64.7% high. Strip the
+> On contracts an independent oracle calls adversarial, we rate 58.8% high. Strip the
 > liquidity signals and it is 17.6%. The cohort is 17 tokens and 15 of them hold under a
 > dollar, so read both columns.
 >
-> 4.3% false positives, on a control with a median of $636,653 in the pool. 15.3% of
+> 4.3% false positives, on a control with a median of $460,180 in the pool. 18.2% of
 > answers are a refusal.
 >
 > Method, dataset and harness — run it yourself: github.com/jakegu1/vetagent
@@ -43,8 +43,8 @@
 **Title:** I published my crypto risk API's error rate, including the number that makes it look worst
 
 **The number the title is actually about, first.** On 17 contracts an independent oracle
-labels adversarial, the engine rates **64.7%** (11 of 17) high risk. Strip out the
-liquidity signals and it is **17.6%**, with **35.3%** rated *low*. Fifteen of those 17
+labels adversarial, the engine rates **58.8%** (10 of 17) high risk. Strip out the
+liquidity signals and it is **17.6%**, with **35.3%** rated *low*. 15 of those 17
 hold under a dollar of liquidity, so the full column is substantially measuring "is this
 pool empty" rather than "is this contract hostile". Seventeen is a small cohort and I will
 say so before you do; growing it is the top open item in the backlog.
@@ -77,16 +77,16 @@ checked 2026-09-09. So the surviving claim is narrower and I will state only tha
 **I do not know of another vendor that self-publishes its rates together with the harness
 that produces them.** If you know of one, say so and I will link it.
 
-Measured on 576 tokens across Ethereum, BSC and Base, 2026-09-07:
+Measured on 576 tokens across Ethereum, BSC and Base, 2026-09-14:
 
 | | full | signals stripped |
 |---|---|---|
-| Adversarial contracts rated high (n=17) | **64.7%** (11 of 17) | **17.6%** |
+| Adversarial contracts rated high (n=17) | **58.8%** (10 of 17) | **17.6%** |
 | Confirmed-dead tokens not rated low (n=30) | 86.7% (26 of 30) | **20.0%** |
 | Confirmed-dead tokens rated high (n=30) | **10.0%** (3 of 30) | |
 | Healthy tokens rated high — false positives (n=162) | **4.3%** (7 of 162) | |
-| Answers returned as `unknown` (n=576) | **15.3%** (88 of 576) | |
-| Tokens the oracle tags centralised, rated high (n=179) | **22.9%** (41 of 179) | |
+| Answers returned as `unknown` (n=576) | **18.2%** (105 of 576) | |
+| Tokens the oracle tags centralised, rated high (n=179) | **24.0%** (43 of 179) | |
 
 **Read the second column before the first.** "Signals stripped" removes the liquidity and
 market-depth checks. Where a number collapses under it, the number was substantially
@@ -97,27 +97,40 @@ first would be the flattering half of a pair.
 **The things in the report that argue against the tool:**
 
 - **The false-positive rate is measured where the engine can barely fail.** The healthy
-  control has a median of $636,653 in the pool. Of the 150 tokens where the engine saw
-  $10k or more of depth, **0** were rated high. All 7 false positives are among the 12
-  thin ones — and for four of those the engine found no costable pool at all, which for
-  two became `high` rather than `unknown`. That last part is an engine bug, not a
-  labelling artefact, and it is mine.
-- **22.9% of centralised-tagged tokens rated high is not about USDT.** Almost all 41 are
-  abandoned pools holding cents, median $0.023, caught by the liquidity checks. Owner
+  control has a median of $460,180 in the pool. Of the 146 tokens where the engine saw
+  $10k or more of depth, **1** was rated high: TRAC, held there by the wash-trading guard,
+  which counted fewer than ten distinct sellers behind its sells. The other 6 false
+  positives are among the 16 thin ones — and for four of those the engine found no
+  costable pool at all, which for two became `high` rather than `unknown`. That last part
+  is an engine bug, not a labelling artefact, and it is mine.
+- **24.0% of centralised-tagged tokens rated high is not about USDT.** Of those 43, the 24
+  with a liquidity figure are mostly abandoned pools holding cents -- 17 under a dollar,
+  median $0.023 -- caught by the liquidity checks. Owner
   powers drive none of them — the engine is forbidden from scoring dormant capabilities.
   USDT itself comes back `low`. An earlier draft explained this row with a mechanism my
   own code forbids.
 - **The two false-positive rates are not independent in the way I implied.** Against
-  realised market outcome it is 4.3%; against the held-out contract oracle it is 7.4%.
+  realised market outcome it is 4.3%; against the held-out contract oracle it is 6.6%.
   I previously called the second "circular". That was the wrong word: the oracle is held
   out and the build fails if the engine ever reads it. What is true is subtler and worse
   for me — both it and one of my upstreams simulate sells, so the correlation pushes that
-  7.4% **down**, not up. At this sample size my own report calls the two indistinguishable.
-- **The label and the verdict describe the same pool only 57% of the time.**
+  6.6% **down**, not up. At this sample size my own report calls the two indistinguishable.
+- **The label and the verdict describe the same pool only 56% of the time.**
 - **`unknown` is a design choice and also a dependency.** Fail-closed is real: a check that
-  cannot run must never read as low risk. But 85 of the 88 unknowns are one free upstream
+  cannot run must never read as low risk. But 86 of the 105 unknowns are one free upstream
   either not having indexed the token or its simulation reverting, on tokens with a median
-  of $225k in the pool. That is my supply chain, not the market's ambiguity.
+  of $150k in the pool. That is my supply chain, not the market's ambiguity. Another 16
+  are tokens whose every pool is priced in an asset no independent market prices: the
+  engine declines to believe a depth nobody can check.
+- **Until 2026-09-14 it could be fooled for about two dollars.** An adversarial audit found
+  three ways. A pool priced in a token its creator minted could claim any depth and buy a
+  `low`. The same arithmetic let a $2.21 pool outrank the real Wormhole WETH on Solana,
+  which the engine then called an impostor, in production. And twenty self-sells could
+  overrule a honeypot verdict, because the check that counts distinct sellers never ran
+  on the data source most tokens resolve through. All three are fixed, each with a test
+  that failed first, and the table above is measured after the fixes. They cost
+  something: 13 healthy tokens moved from low to medium on thinner verifiable depth, and
+  17 more of the 576 answers became `unknown`.
 - **Zero Solana rows in the benchmark.** The product answers Solana, and the discovery tool
   defaults to it. The advertised flow — discover, then assess — defaults to the one chain
   with no measured error rate.
@@ -134,7 +147,7 @@ is `bench/run_benchmark.py`, and it exits non-zero if the engine's endpoints and
 labelling endpoints ever intersect. Until 2026-09-09 that command did not work on a fresh
 clone — it evaluated for twenty minutes and exited "Benchmark void" because a required
 file was gitignored. That is fixed. The **figures** are a snapshot against live upstreams
-on 2026-09-07, so a re-run today will not land on the same decimals; tell me if the drift
+on 2026-09-14, so a re-run today will not land on the same decimals; tell me if the drift
 is large.
 
 What "independent" does and does not mean here: the labels use none of the endpoints the
@@ -158,10 +171,10 @@ HTTP), and I published the benchmark instead of a marketing number.
 576 tokens on Ethereum, BSC and Base:
 
 - 4.3% false positives on healthy tokens
-- 15.3% of answers are `unknown` — a critical check could not run, so it refuses rather
+- 18.2% of answers are `unknown` — a critical check could not run, so it refuses rather
   than guessing
-- 22.9% of the tokens GoPlus tags as centralised are rated high. Almost all of those
-  are abandoned pools holding cents -- 17 of the 22 with a liquidity figure are under a
+- 24.0% of the tokens GoPlus tags as centralised are rated high. Almost all of those
+  are abandoned pools holding cents -- 17 of the 24 with a liquidity figure are under a
   dollar, median $0.023 -- and the drivers are liquidity, drained and honeypot checks,
   never owner powers, which `_owner_power_signal` is forbidden from scoring. USDT itself
   is rated low on Base and BSC and medium on Ethereum; WBTC is medium
@@ -193,7 +206,7 @@ command, and the gap between them is the most useful thing in the file.
 So the scan is not scored, for two reasons rather than one: half is half, and the
 adversarial cohort here is 17 tokens — a discrimination claim on 17 is not a claim.
 
-The method is reproducible and the numbers are a dated snapshot (2026-09-07, live
+The method is reproducible and the numbers are a dated snapshot (2026-09-14, live
 upstreams), not a constant — `python bench/run_benchmark.py` re-measures rather than
 replays, and the disagreements are listed by token so you can check them one at a time.
 
@@ -208,14 +221,14 @@ auth, no signup. Three tools: `assess_token_risk`, `get_token_liquidity`,
 `find_new_hot_pools`.
 
 The thing that might interest this group is not the tool, it is the benchmark. It
-publishes its own false-positive rate (4.3%), unknown rate (15.3%) and the cases where it
+publishes its own false-positive rate (4.3%), unknown rate (18.2%) and the cases where it
 disagrees with the labelling oracle, with the harness in the repo so anyone can re-run
 it. I could not find another server in this category that publishes a reproducible error
 rate, and I looked.
 
 One design note relevant to anyone building agent-facing tools: when a check cannot run,
 it returns `unknown` and says so in the recommendation text, rather than defaulting to
-"low risk". 15.3% of answers are that refusal. An agent reading a confident wrong answer
+"low risk". 18.2% of answers are that refusal. An agent reading a confident wrong answer
 is worse than an agent reading "I could not tell", and most scanners in this space return
 a score no matter what.
 
@@ -226,7 +239,7 @@ github.com/jakegu1/vetagent
 ## Notes for whoever posts this
 
 - **Lead with the number the title promises.** That is recall on the adversarial cohort —
-  64.7% full, 17.6% ablated, n=17 — and an earlier draft did not contain it at all, which
+  58.8% full, 17.6% ablated, n=17 — and an earlier draft did not contain it at all, which
   a hostile pre-publication review called the sharpest single omission. Leading with a
   different unflattering number is not the same as leading with the relevant one.
 - **Do not claim "nobody publishes error rates."** Several do. Claim reproducibility, and

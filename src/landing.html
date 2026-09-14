@@ -37,7 +37,7 @@
     {"@type":"Question","name":"What does a risk_level of unknown mean?",
      "acceptedAnswer":{"@type":"Answer","text":"It means a critical check could not be completed — usually an upstream data source failed. It is not a low-risk result and must not be used to justify a trade. evidence.data_gaps lists exactly which checks were missing."}},
     {"@type":"Question","name":"How accurate is VetAgent?",
-     "acceptedAnswer":{"@type":"Answer","text":"Measured on 576 tokens: 4.3% of healthy tokens were flagged high (false positives), 15.3% of answers were unknown, and 22.9% of legitimate centralised assets such as USDT and WBTC were flagged high. 26 of 30 confirmed-dead tokens were not rated low, though only 3 of 30 were rated high, because a dead project whose pool still holds liquidity can still be sold. Recall against deliberately adversarial contracts is measured on 17 tokens so far, 16 of which hold under a dollar, and is not yet a number worth quoting. The full method and the raw numbers are published in the repository."}},
+     "acceptedAnswer":{"@type":"Answer","text":"Measured on 576 tokens: 4.3% of healthy tokens were flagged high (false positives), 18.2% of answers were unknown, and 24.0% of legitimate centralised assets such as USDT and WBTC were flagged high. 26 of 30 confirmed-dead tokens were not rated low, though only 3 of 30 were rated high, because a dead project whose pool still holds liquidity can still be sold. Recall against deliberately adversarial contracts is measured on 17 tokens so far, 16 of which hold under a dollar, and is not yet a number worth quoting. The full method and the raw numbers are published in the repository."}},
     {"@type":"Question","name":"Is VetAgent free?",
      "acceptedAnswer":{"@type":"Answer","text":"Yes. The remote MCP endpoint and the HTTP API are free and require no account or key."}},
     {"@type":"Question","name":"Does VetAgent log the tokens I look up?",
@@ -184,9 +184,9 @@
     <tbody>
       <tr><td>Healthy tokens flagged high</td><td class="num high">4.3%</td>
           <td>False positives. Too high; being worked on.</td></tr>
-      <tr><td>Answers returned as <code>unknown</code></td><td class="num unk">15.3%</td>
+      <tr><td>Answers returned as <code>unknown</code></td><td class="num unk">18.2%</td>
           <td>Refusals when a check could not run. Honest, still too many.</td></tr>
-      <tr><td>GoPlus-tagged centralised tokens rated high</td><td class="num low">22.9%</td>
+      <tr><td>GoPlus-tagged centralised tokens rated high</td><td class="num low">24.0%</td>
           <td>Almost all are abandoned pools holding cents, caught by the liquidity checks. Owner powers drive <em>none</em> of them &mdash; the engine never scores those. USDT is rated low.</td></tr>
       <tr><td>Dead tokens not rated low</td><td class="num low">86.7%</td>
           <td>26 of 30. Read the caveat below before quoting this one.</td></tr>

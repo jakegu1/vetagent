@@ -25,8 +25,11 @@ Engine:
 
 - `api.dexscreener.com/latest/dex/search`
 - `api.dexscreener.com/latest/dex/tokens/{id}`
+- `api.geckoterminal.com/api/v2/networks/base/pools/{id}`
 - `api.geckoterminal.com/api/v2/networks/base/tokens/{id}/pools`
+- `api.geckoterminal.com/api/v2/networks/bsc/pools/{id}`
 - `api.geckoterminal.com/api/v2/networks/bsc/tokens/{id}/pools`
+- `api.geckoterminal.com/api/v2/networks/eth/pools/{id}`
 - `api.honeypot.is/v2/IsHoneypot`
 
 Labeller:
@@ -67,9 +70,9 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 
 | Metric | Value |
 |---|---|
-| Verdict distribution | high=82, low=143, medium=263, unknown=88 |
-| unknown rate | 15.3% |
-| Share with a data gap | 18.9% |
+| Verdict distribution | high=80, low=148, medium=243, unknown=105 |
+| unknown rate | 18.2% |
+| Share with a data gap | 21.7% |
 
 > Read the unknown rate next to recall. A tool that answers unknown for everything has perfect recall and is useless.
 
@@ -82,8 +85,8 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
-| **dead** | 30 | 10.0% | 80.0% | 13.3% | 6.7% | 41.5 |
-| **alive** | 162 | 4.3% | 35.8% | 52.5% | 11.7% | 15.6 |
+| **dead** | 30 | 10.0% | 63.3% | 13.3% | 23.3% | 39.3 |
+| **alive** | 162 | 4.3% | 29.0% | 58.0% | 13.0% | 14.3 |
 
 ### Contract-safety signals only (ablated)
 
@@ -93,9 +96,9 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **dead** | 30 | 10.0% | 13.3% | 80.0% | 6.7% | 13.0 |
-| **alive** | 162 | 2.5% | 16.0% | 71.0% | 13.0% | 9.4 |
+| **alive** | 162 | 3.1% | 15.4% | 71.6% | 13.0% | 9.6 |
 
-**Which signal category made the call on dead samples:** `liquidity` 19, `honeypot` 4, `sellability` 2, `lifecycle` 1
+**Which signal category made the call on dead samples:** `liquidity` 15, `no_liquidity` 5, `honeypot` 4, `sellability` 1, `lifecycle` 1
 
 
 > If this concentrates in `upstream_risk`, the engine is mostly paraphrasing honeypot.is and adds little of its own.
@@ -109,8 +112,8 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
-| **unsafe** | 17 | 64.7% | 94.1% | 0.0% | 5.9% | 77.1 |
-| **safe** | 349 | 7.4% | 52.7% | 27.8% | 19.5% | 26.7 |
+| **unsafe** | 17 | 58.8% | 94.1% | 0.0% | 5.9% | 76.1 |
+| **safe** | 349 | 6.6% | 49.3% | 26.9% | 23.8% | 27.4 |
 
 ### Contract-safety signals only (ablated)
 
@@ -120,9 +123,9 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 17 | 17.6% | 41.2% | 35.3% | 23.5% | 32.7 |
-| **safe** | 349 | 4.6% | 14.0% | 63.9% | 22.1% | 11.2 |
+| **safe** | 349 | 4.3% | 12.3% | 64.5% | 23.2% | 11.3 |
 
-**Which signal category made the call on unsafe samples:** `liquidity` 11, `honeypot` 3, `impersonation` 3
+**Which signal category made the call on unsafe samples:** `liquidity` 12, `honeypot` 3, `impersonation` 2
 
 
 > If this concentrates in `upstream_risk`, the engine is mostly paraphrasing honeypot.is and adds little of its own.
@@ -138,14 +141,14 @@ This bucket answers one question: **does the engine paint them all as high risk.
 
 | n | high rate | Verdict distribution |
 |---|---|---|
-| 179 | 22.9% | high=41, low=37, medium=86, unknown=15 |
+| 179 | 24.0% | high=43, low=42, medium=79, unknown=15 |
 
 Examples: HYDX(low), CP(unknown), TOSHE(medium), Onyxcoin XCN Kendu(high), SAGE Free(medium), Core Keeper Overnight(medium), VIRTUAL(low), Crypto Carbon Verse(high), ?(medium), BIO(medium)
 
 
 ### Are the label and the verdict about the same pool?
 
-The label describes one sampled pool; the engine picks its own. The pool the engine actually **judged** is the labelled one on **312 of 549** rows where both are known (57%).
+The label describes one sampled pool; the engine picks its own. The pool the engine actually **judged** is the labelled one on **298 of 533** rows where both are known (56%).
 
 
 That is a stricter question than the one an external audit measured. It found the labelled pool was among the pairs the engine *loaded* 84% of the time. Loading it and choosing it are different: the engine ranks by chain canonicality and depth and then judges a single pool, so it can hold the labelled pool in hand and still return a verdict about another venue. Both numbers are true; this is the one that governs whether a disagreement is a like-for-like comparison.
@@ -163,10 +166,10 @@ The adversarial cohort is **n=17**, and it is not a sample of adversarial contra
 |---|---|
 | holds under $1 of liquidity | 15 of 17 |
 | no liquidity figure at all | 1 of 17 |
-| our engine rates them low or medium | 5 of 17 |
+| our engine rates them low or medium | 6 of 17 |
 | chain concentration | base 11, bsc 4, ethereum 2 |
 
-**Read the recall figure against that.** A cohort of 17 tokens of which 16 hold under a dollar is measuring whether we flag empty pools, which we do for reasons that have nothing to do with the contract being adversarial. And on 5 of them our own engine disagrees with the labeller outright -- `results.md` presents the oracle's verdict as ground truth, and on those rows two instruments contradict each other and we cannot say which is right.
+**Read the recall figure against that.** A cohort of 17 tokens of which 16 hold under a dollar is measuring whether we flag empty pools, which we do for reasons that have nothing to do with the contract being adversarial. And on 6 of them our own engine disagrees with the labeller outright -- `results.md` presents the oracle's verdict as ground truth, and on those rows two instruments contradict each other and we cannot say which is right.
 
 
 Cleaning this cohort needs a **third, engine-independent oracle** -- requiring honeypot.is corroboration would make the label circular under B1/B2, since the engine reads honeypot.is. That is BACKLOG W5, and it is a prerequisite for W3 rather than the coverage fix it was originally filed as.
@@ -180,8 +183,8 @@ The false-positive rate depends on who is asked what a 'healthy token' is, and t
 | Oracle | What it actually measures | Independent of us? | Cohort | FP rate |
 |---|---|---|---|---|
 | realized market outcome | what happened to the money | **yes** -- built from price/volume history, not from any contract scanner | `alive`, n=162 | **4.3%** (7) |
-| GoPlus | what the contract does under simulation | **no** -- GoPlus is this benchmark's own labeller, so this is a disagreement rate | `safe`, n=349 | 7.4% (26) |
-| both, intersected | passes on both instruments | strictest available | n=95 | 4.2% (4) |
+| GoPlus | what the contract does under simulation | **no** -- GoPlus is this benchmark's own labeller, so this is a disagreement rate | `safe`, n=349 | 6.6% (23) |
+| both, intersected | passes on both instruments | strictest available | n=95 | 3.2% (3) |
 
 **Read it this way.** The outcome-based rate is the one to trust on method: market outcome is causally independent of every contract scanner, so it cannot be circular. Its weakness is population -- `alive` requires 90 days of history and real weekly volume, so freshness signals cannot fire on those tokens and liquidity rarely does, while agents mostly ask about tokens younger than that.
 
@@ -199,8 +202,8 @@ An `unknown` because we could not reach an upstream is a different thing from an
 
 | | n | share of all 576 |
 |---|---|---|
-| unknown, our side (upstream unreachable or uncovered) | 2 | 0.3% |
-| unknown, token side (nothing verifiable about it) | 86 | 14.9% |
+| unknown, our side (upstream unreachable or uncovered) | 6 | 1.0% |
+| unknown, token side (nothing verifiable about it) | 99 | 17.2% |
 
 
 ## What the sample is made of
@@ -227,11 +230,8 @@ Samples where the label and the engine disagree. Read the **false negatives** (l
 | false negative | `SURGE` | base | outcome=dead | low | low | — |
 | false positive | `BSTER` | base | goplus=safe | high | high | honeypot |
 | false positive | `LIBRA` | base | outcome=alive | high | high | honeypot |
-| false positive | `ALLO` | base | outcome=alive | high | low | liquidity |
-| false positive | `ALLO` | base | goplus=safe | high | low | liquidity |
 | false positive | `TRUMP` | base | outcome=alive | high | high | honeypot |
-| false positive | `\u725b\u6765` | base | goplus=safe | high | unknown | impersonation |
-| false positive | `jEUR` | base | goplus=safe | high | high | honeypot |
+| false positive | `\u725b\u6765` | base | goplus=safe | high | unknown | liquidity |
 | false positive | `QuintondeKock_BASE` | base | goplus=safe | high | unknown | no_liquidity |
 | false positive | `$NVDAC` | base | goplus=safe | high | high | honeypot |
 | false positive | `ROBOTMONEY` | base | goplus=safe | high | high | honeypot |
@@ -239,15 +239,18 @@ Samples where the label and the engine disagree. Read the **false negatives** (l
 | false positive | `USI` | base | goplus=safe | high | high | honeypot |
 | false positive | `HYPER` | base | goplus=safe | high | high | honeypot |
 | false positive | `BONKO` | base | goplus=safe | high | high | honeypot |
+| false positive | `TRAC` | base | outcome=alive | high | high | honeypot |
 | false positive | `BURN` | base | goplus=safe | high | unknown | no_liquidity |
-| false positive | `USD+` | base | goplus=safe | high | high | honeypot |
+| false positive | `TORIVA` | base | goplus=safe | high | high | honeypot |
+| false positive | `TREB` | base | goplus=safe | high | high | honeypot |
+| false positive | `\u6211\u7684\u5973\u53cb\u666f\u751c` | base | goplus=safe | high | unknown | liquidity |
 
-(17 more in `results.json`)
+(14 more in `results.json`)
 
 
 ### Counted as false positives, but outside the labeller's reach
 
-4 of the false positives above were driven by `impersonation`. GoPlus reads bytecode and ownership; impersonation is a fact about identity, and an impostor's bytecode is usually perfectly ordinary. So GoPlus returns `safe` for a token it has no instrument to judge, and the disagreement is structural rather than evidence either way.
+3 of the false positives above were driven by `impersonation`. GoPlus reads bytecode and ownership; impersonation is a fact about identity, and an impostor's bytecode is usually perfectly ordinary. So GoPlus returns `safe` for a token it has no instrument to judge, and the disagreement is structural rather than evidence either way.
 
 
 They stay in the headline rate anyway. A tool that subtracts its disagreements whenever it can explain them is grading its own homework, and an explanation is only worth something if it costs something. What this section buys is auditability: they are named, so a reader can check them one at a time instead of taking the framing on trust.
@@ -255,7 +258,6 @@ They stay in the headline rate anyway. A tool that subtracts its disagreements w
 
 | Token | Chain | Verdict | Address |
 |---|---|---|---|
-| `\u725b\u6765` | base | high | `0x13ea5bb744b2710600dcf384d78f74e0cb39bb07` |
 | `CLAWD` | base | high | `0xca6d2e377218d2432d38b3272df66f7632eb427b` |
 | `BABY` | bsc | high | `0x0e15c2472ae5d7ba564215d38f7b4d968effe4ad` |
 | `CC` | bsc | high | `0x760f35eb9b535fa894d41ccdae4cbcd0f2d9b748` |
@@ -270,10 +272,10 @@ The label means a project died -- price collapsed, volume collapsed. It does **n
 
 | | n | min | p25 | median | p75 | max |
 |---|---|---|---|---|---|---|
-| liquidity, `dead` | 30 | $43 | $2,814 | $7,470 | $31,418 | $495,002 |
-| liquidity, `alive` | 158 | $12 | $194,321 | $649,717 | $2,595,120 | $671,966,000 |
+| liquidity, `dead` | 25 | $2 | $3,218 | $7,076 | $43,585 | $436,531 |
+| liquidity, `alive` | 156 | $1 | $152,764 | $474,465 | $1,884,670 | $113,320,000 |
 
-16 of the 30 dead tokens still hold $5,000 or more of liquidity. Those positions can be sold. An engine that rated them `high` would be calling a failed investment a safety hazard, which is a judgement this tool refuses to make (P1 in DECISIONS.md) -- so `medium` with an abandoned-pool warning is the intended answer, not a miss.
+14 of the 30 dead tokens still hold $5,000 or more of liquidity. Those positions can be sold. An engine that rated them `high` would be calling a failed investment a safety hazard, which is a judgement this tool refuses to make (P1 in DECISIONS.md) -- so `medium` with an abandoned-pool warning is the intended answer, not a miss.
 
 
 **What the number should be read against**: of 30 dead tokens, 26 are rated something other than `low`. The remainder is the real finding.

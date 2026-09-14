@@ -111,9 +111,13 @@ TARGETS = [
     # docs/EXPERIMENT_C.md is the text that goes to Hacker News and Reddit. A number
     # that drifts there is worse than one that drifts in the README: it is quoted in
     # public, by us, to an audience invited specifically to check it.
-    ("docs/EXPERIMENT_C.md", r"\| \*\*([\d.]+)%\*\* \(7 of \d+\) \|", "fp_pct"),
-    ("docs/EXPERIMENT_C.md", r"\| \*\*([\d.]+)%\*\* \(88 of \d+\) \|", "unknown_pct"),
-    ("docs/EXPERIMENT_C.md", r"\| \*\*([\d.]+)%\*\* \(41 of \d+\) \|",
+    ("docs/EXPERIMENT_C.md", r"false positives \(n=\d+\) \| \*\*([\d.]+)%\*\* \(\d+ of", "fp_pct"),
+    ("docs/EXPERIMENT_C.md", r"false positives \(n=\d+\) \| \*\*[\d.]+%\*\* \((\d+) of", "fp_n"),
+    ("docs/EXPERIMENT_C.md", r"`unknown` \(n=\d+\) \| \*\*([\d.]+)%\*\* \(\d+ of", "unknown_pct"),
+    ("docs/EXPERIMENT_C.md", r"`unknown` \(n=\d+\) \| \*\*[\d.]+%\*\* \((\d+) of", "unknown_n"),
+    ("docs/EXPERIMENT_C.md", r"centralised, rated high \(n=\d+\) \| \*\*[\d.]+%\*\* \((\d+) of",
+     "centralized_high_n"),
+    ("docs/EXPERIMENT_C.md", r"centralised, rated high \(n=\d+\) \| \*\*([\d.]+)%\*\* \(\d+ of",
      "centralized_high_pct"),
     ("docs/EXPERIMENT_C.md", r"\| ([\d.]+)% \(26 of \d+\) \|", "dead_not_low_pct"),
     ("docs/EXPERIMENT_C.md", r"\| \*\*([\d.]+)%\*\* \(3 of \d+\) \|", "dead_high_pct"),
@@ -155,7 +159,42 @@ TARGETS = [
      "dead_not_low_ablated_pct"),
     ("docs/EXPERIMENT_C.md", r"a median of \$([\d,]+) in the pool", "alive_median_liq"),
     ("docs/EXPERIMENT_C.md", r"Of the (\d+) tokens where the engine saw", "alive_deep_n"),
-    ("docs/EXPERIMENT_C.md", r"All (\d+) false positives are among", "fp_n"),
+    ("docs/EXPERIMENT_C.md", r"depth, \*\*(\d+)\*\* (?:was|were) rated high", "alive_deep_high_n"),
+    ("docs/EXPERIMENT_C.md", r"The other (\d+) false\s+positives are among", "alive_thin_high_n"),
+    ("docs/EXPERIMENT_C.md",
+     r"Adversarial contracts rated high \(n=\d+\) \| \*\*[\d.]+%\*\* \((\d+) of",
+     "adversarial_high_n"),
+    ("docs/EXPERIMENT_C.md", r"calls adversarial, we rate ([\d.]+)% high", "adversarial_high_pct"),
+    ("docs/EXPERIMENT_C.md", r"Strip the\s+>?\s*liquidity signals and it is ([\d.]+)%",
+     "adversarial_high_ablated_pct"),
+    ("docs/EXPERIMENT_C.md", r"17 tokens and (\d+) of them hold under a", "adversarial_sub_dollar_n"),
+    ("docs/EXPERIMENT_C.md", r"(\d+) of those 17\s+hold under a dollar", "adversarial_sub_dollar_n"),
+    ("docs/EXPERIMENT_C.md", r"([\d.]+)% of\s+>?\s*answers are a refusal", "unknown_pct"),
+    ("docs/EXPERIMENT_C.md", r"control has a median of \$([\d,]+)", "alive_median_liq"),
+    ("docs/EXPERIMENT_C.md", r"\*\*([\d.]+)% of centralised-tagged tokens rated high",
+     "centralized_high_pct"),
+    ("docs/EXPERIMENT_C.md", r"Of those (\d+), the \d+\s+with a liquidity figure", "centralized_high_n"),
+    ("docs/EXPERIMENT_C.md", r"Of those \d+, the (\d+)\s+with a liquidity figure",
+     "centralized_high_priced_n"),
+    ("docs/EXPERIMENT_C.md", r"(\d+) of the \d+ with a liquidity figure are under a",
+     "centralized_high_sub_dollar_n"),
+    ("docs/EXPERIMENT_C.md", r"\d+ of the (\d+) with a liquidity figure are under a",
+     "centralized_high_priced_n"),
+    ("docs/EXPERIMENT_C.md", r"-- (\d+) under a dollar,\s+median", "centralized_high_sub_dollar_n"),
+    ("docs/EXPERIMENT_C.md", r"But (\d+) of the \d+ unknowns are one free upstream",
+     "unknown_simulator_n"),
+    ("docs/EXPERIMENT_C.md", r"But \d+ of the (\d+) unknowns are one free upstream", "unknown_n"),
+    ("docs/EXPERIMENT_C.md", r"of \$(\d+)k in the pool\. That is my supply chain",
+     "unknown_simulator_median_k"),
+    ("docs/EXPERIMENT_C.md", r"Another (\d+)\s+are tokens whose every pool is priced",
+     "unknown_unbacked_n"),
+    ("docs/EXPERIMENT_C.md", r"- ([\d.]+)% of answers are `unknown`", "unknown_pct"),
+    ("docs/EXPERIMENT_C.md", r"- ([\d.]+)% of the tokens GoPlus tags as centralised", "centralized_high_pct"),
+    ("docs/EXPERIMENT_C.md", r"unknown rate \(([\d.]+)%\)", "unknown_pct"),
+    ("docs/EXPERIMENT_C.md", r"([\d.]+)% of answers are that refusal", "unknown_pct"),
+    ("docs/EXPERIMENT_C.md", r"cohort —\s+([\d.]+)% full, [\d.]+% ablated", "adversarial_high_pct"),
+    ("docs/EXPERIMENT_C.md", r"cohort —\s+[\d.]+% full, ([\d.]+)% ablated",
+     "adversarial_high_ablated_pct"),
     ("docs/EXPERIMENT_C.md", r"are among the (\d+)\s+thin ones", "alive_thin_n"),
     ("docs/EXPERIMENT_C.md", r"held-out contract oracle it is ([\d.]+)%", "goplus_fp_pct"),
     ("docs/EXPERIMENT_C.md", r"pushes that\s+([\d.]+)% \*\*down\*\*", "goplus_fp_pct"),
@@ -263,6 +302,12 @@ def _owner_power_figures():
     return out
 
 
+def _simulator_unknowns(unknown):
+    return [r for r in unknown if any(
+        "simulator has no record" in str(g) or str(g).startswith("simulation failed")
+        for g in (r.get("gap_reasons") or []))]
+
+
 def figures():
     """The numbers a reader is entitled to, straight from the last benchmark run."""
     with io.open(RESULTS, encoding="utf-8") as f:
@@ -366,6 +411,22 @@ def figures():
                                                 and r.get("liquidity_usd") is not None]),
         "adversarial_priced_n": "%d" % len([r for r in unsafe_rows
                                             if r.get("liquidity_usd") is not None]),
+        "unknown_n": "%d" % len(unknown),
+        "centralized_high_n": "%d" % len(centralized_high),
+        "centralized_high_priced_n": "%d" % len([r for r in centralized_high
+                                                 if r.get("liquidity_usd") is not None]),
+        "centralized_high_sub_dollar_n": "%d" % len([r for r in centralized_high
+                                                     if r.get("liquidity_usd") is not None
+                                                     and r["liquidity_usd"] < 1]),
+        # Why the unknowns are unknown, split the way the post splits them: the simulator
+        # never indexed the token or reverted on it, versus no pool priced in an asset an
+        # independent market prices (E21).
+        "unknown_simulator_n": "%d" % len(_simulator_unknowns(unknown)),
+        "unknown_simulator_median_k": "%d" % round(_median(
+            [r.get("liquidity_usd") for r in _simulator_unknowns(unknown)
+             if r.get("liquidity_usd") is not None]) / 1000.0),
+        "unknown_unbacked_n": "%d" % len([r for r in unknown if any(
+            "priced in an asset" in str(g) for g in (r.get("gap_reasons") or []))]),
         "pool_match_pct": ("%.0f" % (100.0 * len(pool_same) / len(pool_both))
                            if pool_both else "0"),
         "maturity": _maturity() or "0",
