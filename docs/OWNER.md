@@ -67,7 +67,7 @@ These are the things I cannot do. Everything else in this project is mine.
 
 - **When:** 2026-10-16 (in 32 days)
 - **Why then:** the first decision that spends money, so settle it before the gate that asks whether anyone will pay
-- **You know it is done when:** Decision rule fixed before running: over 12 rounds in 2 hours from a throwaway Worker, **pass** if in rounds where the keyless control drew a 429 the keyed calls drew none and at most 1% non-2xx; **inconclusive** if the control never drew a 429 (re-run when production fails); **fail** for a provider answering 429/403/1020 under its documented limit. Pay only if a provider passes and projected volume exceeds its free allowance; the smallest paid step is CoinGecko Basic at $35 for one month
+- **You know it is done when:** Decision rule fixed before running: over 12 rounds in 2 hours from a throwaway Worker, **pass** if in rounds where the keyless control drew a 429 the keyed calls drew none and at most 1% non-2xx; **inconclusive** if the control never drew a 429 (re-run when production fails); **fail** for a provider answering 429/403/1020 under its documented limit. Pay only if a provider passes and projected volume exceeds its free allowance; the smallest paid step is CoinGecko Basic at $35 for one month. **Ran 2026-09-14 14:00-15:52 UTC, 12 rounds, all four providers PASS.** Keys set by the owner as secrets on a throwaway Worker (vetagent-keyprobe, not in this repo). In all 12 rounds a keyless control drew a 429: GeckoTerminal 48 of 60 calls, DexPaprika 38 x 429 and 22 x 402 (its per-IP monthly allowance already spent by the shared egress). In the same rounds from the same Worker, keyed calls: CoinGecko 60/60 HTTP 200, DexPaprika 60/60 plus 60/60 pool details, Codex 60/60 -- zero 429s, zero non-2xx. Field check passed on every chain in every round for all four; the only misses were DAI's top pool on CoinGecko (no seller count) and DexPaprika detail (reserves), 3 rounds each. Median latency: Codex 186 ms, CoinGecko 401 ms, DexPaprika 844 ms. **What this does not show:** every round ran from one data centre (KIX) and one egress IP, and keyless DexScreener answered 200 on all 60 calls here although production logged `dexscreener 429` the same day -- so it settles that a key escapes the throttling, not which colos production is throttled in. Two drained tokens were used instead of three, stated in the probe before it ran. **Next, owner's call:** which provider VetAgent adopts, and whether its free-tier terms (CoinGecko Demo: attribution required; Codex: 'personal & hobby') allow a public free service
 - **If you do nothing:** About one live answer in three stays `unknown` whenever the upstreams throttle the shared egress, and the callers Experiment C brings in meet that rate first. The probe costs $1 and two hours; not running it keeps a measured cause without a tested fix.
 
 ## The dates that decide things
@@ -162,6 +162,7 @@ The owner accepted the open recommendations: stale data caps confidence, the par
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- First production reading: guards 5/5, production unknown 40.7% -- and stop copying the score
 - Regenerate the owner page after rebasing onto the latest snapshots
 - Positioning sentence into STRATEGY, and the market-data key probe onto the owner's list
 - The maturity score could not see R21, so it now can -- and it went down, 55 -> 44
@@ -169,9 +170,8 @@ problem looked like before it was fixed.
 - Regenerate the scorecard: E22 added a test and its evidence cell counts them
 - O7-O11: the owner accepted the review dates; O8's prerequisite has shipped
 - E22: an answer that used stale data is at most medium confidence
-- Publish the false-block rate beside the false-positive rate: 20.1%
 
-_104 more not shown (112 commits in total)._
+_97 more not shown (105 commits in total)._
 
 ## What I got wrong
 
