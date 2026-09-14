@@ -4,11 +4,11 @@
 > It moves with every commit, so `git diff` tells you what the change was worth.
 
 
-## Total: **55 / 100**
+## Total: **44 / 100**
 
 | Dimension | Score | Max |
 |---|---|---|
-| Correctness | 24.0 | 30 |
+| Correctness | 13.0 ⚠️ | 30 |
 | Coverage | 16.4 | 20 |
 | Credibility | 10.7 | 20 |
 | Distribution | 4.2 ⚠️ | 15 |
@@ -21,9 +21,12 @@
 
 | Dimension | Item | Score | Max | Evidence |
 |---|---|---|---|---|
-| Correctness | tests all green | 10.0 | 10 | test_risk.py 347 passed, 0 failed All passed; test_mcp.py 80 passed, 0 failed All passed |
-| Correctness | false positive rate (healthy rated high) | 8.0 | 10 | 4.3% |
-| Correctness | unknown rate | 6.0 | 10 | 18.2% |
+| Correctness | tests all green | 5.0 | 5 | test_risk.py 347 passed, 0 failed All passed; test_mcp.py 80 passed, 0 failed All passed; test_http_telemetry.py 102 passed, 0 failed All passed |
+| Correctness | false positive rate (healthy rated high) | 4.0 | 5 | 4.3% |
+| Correctness | false-block rate (liquid healthy rated medium or high) | 1.0 | 5 | 20.1% (31 of 154) |
+| Correctness | unknown rate (benchmark, cached upstreams) | 3.0 | 5 | 18.2% |
+| Correctness | unknown rate (production, served answers) | — | 5 | not measured (no bench/production/verdicts.json yet) |
+| Correctness | production guards observed live | — | 5 | not measured (no bench/production/guards-probe.json yet) |
 | Coverage | risk dimensions covered | 16.4 | 20 | 9 / 11 |
 | Credibility | recall is measurable | 10.0 | 10 | dead samples: 30 (need ≥20) |
 | Credibility | days of snapshots | 0.7 | 10 | 12 of 180 days |
@@ -91,11 +94,11 @@ Every unchecked line is a real blind spot, and the roadmap itself.
 ---
 
 **What 100 looks like** (deliberately not trimmed to what we can reach): recall >90%
-with false positives <2%, unknown <5%, every applicable dimension covered, a year or more of
+with false positives and false blocks <2%, unknown <5% in the benchmark and in production, the abuse guards seen working on the live service, every applicable dimension covered, a year or more of
 outcome data, the benchmark methodology cited as a standard by peers, the default
 choice at every agent entry point, and paying users who would complain if it disappeared.
 
-**The current 55 is not a failure** — it says precisely that the
+**The current 44 is not a failure** — it says precisely that the
 engineering is decent, proof and demand are both still zero, and writing more code
 cannot solve those last two.
 

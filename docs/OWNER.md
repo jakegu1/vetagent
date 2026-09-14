@@ -133,7 +133,7 @@ Rounded = parked by you. Hexagons are not work items -- they are what a row is w
 
 | | |
 |---|---|
-| Maturity score | 55 / 100 (`docs/SCORECARD.md`) |
+| Maturity score | 44 / 100 (`docs/SCORECARD.md`) |
 | Tokens measured | 576 |
 | False positives | 4.3% -- we called a healthy token dangerous |
 | Answers we refuse | 18.2% -- `unknown`, on purpose |
@@ -154,6 +154,7 @@ The owner accepted the open recommendations: stale data caps confidence, the par
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- The owner page said R19 was in progress, and its corrections stopped at 09-09
 - Regenerate the scorecard: E22 added a test and its evidence cell counts them
 - O7-O11: the owner accepted the review dates; O8's prerequisite has shipped
 - E22: an answer that used stale data is at most medium confidence
@@ -161,9 +162,8 @@ problem looked like before it was fixed.
 - Turnover is measured over the token, not its deepest pool
 - Every answer names what drove it, when it was made, and how old its evidence is
 - An unknown now says whether to retry or to abstain
-- Count calls in the edge cache: the rate-limit binding never limited
 
-_100 more not shown (108 commits in total)._
+_101 more not shown (109 commits in total)._
 
 ## What I got wrong
 

@@ -129,9 +129,10 @@ for f in tests/test_*.py; do python "$f"; done   # ~56s
 Then commit, then deploy. Publishing before re-measuring puts a stale number on a live
 page, and `test_published_numbers.py` will fail the build for it.
 
-**Check every workflow, not the one you were thinking about.** There are four —
-`deploy.yml`, `test.yml`, `snapshot.yml`, `usage.yml` — and only `deploy.yml` gates the
-deploy. On 2026-09-09 `test.yml` was red for **eight consecutive commits** while every
+**Check every workflow, not the one you were thinking about.** There are five —
+`deploy.yml`, `test.yml`, `snapshot.yml`, `usage.yml`, `production.yml` — and only
+`deploy.yml` gates the deploy. `production.yml` and `snapshot.yml` commit to master on a
+schedule, so pull before you push. On 2026-09-09 `test.yml` was red for **eight consecutive commits** while every
 report said the build was green, because each check ran
 `gh run list --workflow=deploy.yml` and stopped there. The owner found it in his email.
 
@@ -177,6 +178,6 @@ a day.
 
 Started 2026-09-03. Rounds and commit counts live in `docs/ROUNDS.md`, which is where
 they stay current; copying them here is how they went two rounds stale before anyone
-looked. Score 55/100 by `docs/SCORECARD.md`, whose
+looked. Score 44/100 by `docs/SCORECARD.md`, whose
 ceiling for pure engineering is about 70 — the rest needs users, who do not exist yet.
 The live question is the 2026-09-18 gate in `docs/STRATEGY.md` §8.

@@ -41,7 +41,7 @@ current progress and open work (→ HANDOFF.md), business judgement (→ STRATEG
 > **Consolidated 2026-09-10 (W8), and the rule above needed correcting to do it.**
 > The table stood at 56 rows against a stated ceiling of 40. Thirteen rows collapsed
 > into `C1`: this table was 44 rows after it. Rows added since are dated in their own text;
-> the table is at 47 rows now.
+> the table is at 48 rows now.
 >
 > **The ceiling is not reachable by the rule as written, and that is arithmetic rather
 > than reluctance.** 27 rows are test-enforced, but 10 of them are cited by id
@@ -82,6 +82,7 @@ current progress and open work (→ HANDOFF.md), business judgement (→ STRATEG
 | D3 | Every deploy is followed by a smoke test against production | "Deploy succeeded, product broken" has already happened to this project once | CI (`deploy.yml`) | Active |
 | D4 | MCP Registry uses **domain verification**, not a GitHub account | `io.github.<someone>/` ties the product's identity to a personal account, and a namespace can't be changed afterwards — only abandoned and redone | None | Active |
 | D6 | Tool calls are rate-limited per connecting IP at the edge, batches capped at 10, and the limiter **fails open** | The upstreams are free and rate-limit by IP through an egress the Worker shares, so one caller's burst becomes everyone else's `unknown`; measured 2026-09-13, a 50-message batch was served whole and ten rapid calls drew no 429. Counted in the edge cache under a SHA-256 of the IP for 70 s, never stored in the clear, which keeps "no identities logged" true. Not Cloudflare's rate-limit binding: deployed first, it answered success on 313 of 313 calls in 100 s against a limit of 60. Fail-open because a broken abuse control must not become an outage -- which is exactly why the deploy smoke test floods production and requires a 429, so an unbound limiter cannot stay silent | `test_a_caller_that_floods_is_slowed_not_served` + `test_one_request_cannot_carry_an_unbounded_batch` + CI (`deploy.yml`) | Active |
+| D7 | The maturity score reads production only through **committed artifacts** (`bench/production/`), written daily by `production.yml`, and scores them under rules fixed before the first reading | `test_published_numbers.py` regenerates the score and diffs it, so a live API read at score time would make the build flaky and unreproducible. Absent, older than 7 days, or under 100 answers is `not measured`, never a score; a guard seen failing earns nothing. Rebalanced 2026-09-14 to six items at 5 in Correctness, which lowered the score 55 -> 44 the day it landed | `test_scorecard_production.py` | Active |
 | D5 | MIT license | The landing page already claimed MIT; this makes the claim true. Plugin distribution requires open source anyway | None | Active |
 | **Benchmark** |
 | B1 | Labeller endpoints and engine endpoints **must not overlap** | Otherwise we measure whether the engine can restate its upstream — a high score that means nothing | Runtime (`run_benchmark.py` exits non-zero on any overlap) | Active |

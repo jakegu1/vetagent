@@ -107,6 +107,12 @@ jobs:
       - name: HTTP calls are recorded, and addresses are not
         run: python tests/test_http_telemetry.py
 
+      # Two score items read committed production artifacts. Their rules -- 7-day freshness,
+      # 100-answer floor, no credit for a guard seen failing -- were fixed before the first
+      # artifact existed, and this pins them against being moved after an unwelcome reading.
+      - name: The production score items keep their pre-registered rules
+        run: python tests/test_scorecard_production.py
+
       # docs/OWNER.md is the only page here written for someone who will not read the
       # code, and it carries the deadlines. A stale deadline on the page whose job is
       # deadlines is worse than no page.

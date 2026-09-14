@@ -577,9 +577,46 @@ def gate_verdict(tools, prof):
     return "NO", lines
 
 
+# The production unknown rate the scorecard reads. Pre-registered with that item
+# (2026-09-14) and not to be moved after its first reading: trailing 7 days, the
+# assessment tool only, the four verdicts only, and one client excluded -- the deploy smoke
+# test, whose probe token and flood are built to produce non-low or invalid answers. The
+# rest of our own traffic stays in, so the figure is reachable by engineering; the evidence
+# prints how many rows there were.
+PRODUCTION_WINDOW_DAYS = 7
+PRODUCTION_EXCLUDED_CLIENTS = ("vetagent-ci-smoke",)
+
+
+def production_verdicts(account, token):
+    """{"window_start", "window_end", "counts", "excluded_clients"}, or None on a failed query."""
+    import datetime
+    resp = query(
+        "SELECT %s AS verdict, sum(_sample_interval) AS n FROM %s "
+        "WHERE timestamp > now() - INTERVAL '%d' DAY AND %s = 'assess_token_risk' "
+        "AND %s NOT IN (%s) GROUP BY verdict"
+        % (BLOB["verdict"], DATASET, PRODUCTION_WINDOW_DAYS, BLOB["tool"], BLOB["client"],
+           ", ".join("'%s'" % c for c in PRODUCTION_EXCLUDED_CLIENTS)),
+        account, token)
+    rows = rows_of(resp)
+    if rows is None:
+        return None                      # the query failed: write nothing, claim nothing
+    counts = {v: 0 for v in ("low", "medium", "high", "unknown")}
+    for row in rows:
+        v = str(row.get("verdict") or "")
+        if v in counts:
+            counts[v] += int(float(row.get("n") or 0))
+    end = datetime.datetime.now(datetime.timezone.utc)
+    start = end - datetime.timedelta(days=PRODUCTION_WINDOW_DAYS)
+    return {"window_start": start.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "window_end": end.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "counts": counts, "excluded_clients": list(PRODUCTION_EXCLUDED_CLIENTS)}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=14)
+    ap.add_argument("--write-verdicts", metavar="PATH",
+                    help="write the production verdict counts the scorecard reads, and exit")
     args = ap.parse_args()
 
     token = os.environ.get("CLOUDFLARE_API_TOKEN")
@@ -588,6 +625,18 @@ def main():
         print("Missing CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID.")
         print("The token needs Account Analytics: Read (the deploy token will do).")
         return 2
+
+    if args.write_verdicts:
+        result = production_verdicts(account, token)
+        if result is None:
+            print("The verdict query failed; nothing written.")
+            return 1
+        os.makedirs(os.path.dirname(os.path.abspath(args.write_verdicts)), exist_ok=True)
+        with open(args.write_verdicts, "w", encoding="utf-8") as f:
+            json.dump(result, f, indent=1)
+            f.write("\n")
+        print(json.dumps(result, indent=1))
+        return 0
 
     since = "INTERVAL '%d' DAY" % args.days
     print("=" * 62)

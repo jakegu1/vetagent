@@ -46,6 +46,7 @@ ROOT = os.path.join(HERE, "..")
 RESULTS = os.path.join(HERE, "results.json")
 SNAPSHOTS = os.path.join(HERE, "snapshots")
 OUT_MD = os.path.join(ROOT, "docs", "SCORECARD.md")
+PRODUCTION = os.path.join(HERE, "production")
 
 UNMEASURED = "not measured"
 
@@ -55,7 +56,10 @@ UNMEASURED = "not measured"
 def tests_pass():
     """Run the offline test suites. Red is red, no partial credit."""
     ok, detail = True, []
-    for suite in ("test_risk.py", "test_mcp.py"):
+    # test_http_telemetry.py joined on 2026-09-14: it is where the rate limiter and the
+    # batch cap are tested. A fixed tuple, not test.yml's list -- test_published_numbers.py
+    # regenerates this score, so running it from here would recurse.
+    for suite in ("test_risk.py", "test_mcp.py", "test_http_telemetry.py"):
         p = os.path.join(ROOT, "tests", suite)
         if not os.path.exists(p):
             return False, ["%s missing" % suite]
@@ -81,10 +85,54 @@ def benchmark_facts():
     return {
         "n": r.get("n_evaluated"),
         "false_positive": good.get("high"),
+        "false_block": r.get("false_block") or {},
         "unknown_rate": (r.get("overall") or {}).get("unknown_rate"),
         "dead_cohort": bad.get("n") or 0,
         "recall_measurable": (bad.get("n") or 0) >= 20,
     }
+
+
+def newest_snapshot_date():
+    """The date of the newest archive file -- the clock production artifacts are judged by.
+
+    Not today's date: the scorecard is regenerated and diffed by a test, and a score that
+    moves with the wall clock reddens by itself (the owner page did, every midnight).
+    """
+    if not os.path.isdir(SNAPSHOTS):
+        return None
+    dates = sorted(f[len("pools-"):-len(".ndjson")] for f in os.listdir(SNAPSHOTS)
+                   if f.startswith("pools-") and f.endswith(".ndjson"))
+    return dates[-1] if dates else None
+
+
+# How old a committed production artifact may be, in days before the newest snapshot, and
+# still count. Pre-registered with the items that read it (2026-09-14): a production figure
+# nobody refreshed is not a measurement of production.
+PRODUCTION_MAX_AGE_DAYS = 7
+PRODUCTION_MIN_ROWS = 100
+
+
+def _production_artifact(name, date_field):
+    """(data, why_not) for bench/production/<name>. Never calls a network: the score is
+    regenerated inside a test, so it reads only what was committed."""
+    import datetime
+    path = os.path.join(PRODUCTION, name)
+    if not os.path.exists(path):
+        return None, "no bench/production/%s yet" % name
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return None, "bench/production/%s unreadable" % name
+    newest = newest_snapshot_date()
+    stamp = str(data.get(date_field) or "")[:10]
+    try:
+        age = (datetime.date.fromisoformat(newest) - datetime.date.fromisoformat(stamp)).days
+    except (TypeError, ValueError):
+        return None, "bench/production/%s has no usable %s" % (name, date_field)
+    if age > PRODUCTION_MAX_AGE_DAYS:
+        return None, "bench/production/%s is %d days older than the archive" % (name, age)
+    return data, None
 
 
 def snapshot_days():
@@ -235,15 +283,75 @@ def score():
     items = []
 
     # --- Correctness 30 ---
-    items.append(("Correctness", "tests all green", 10, 10 if tp else 0, "; ".join(tdetail)))
+    #
+    # Rebalanced 2026-09-14 after an adversarial audit and a judged redesign. Six items at 5
+    # each instead of three at 10, and every change lowered the score the day it landed
+    # (55 -> 44), with each rule fixed before its value was looked at:
+    #
+    # - tests 10 -> 5. The same day, every test was green while production served 313 calls
+    #   in 100 s past a limiter the tests said worked. Author-written tests are evidence,
+    #   and capped as evidence.
+    # - false blocks, new: liquid healthy tokens rated medium or high. A superset of the
+    #   false positive, so it is graded on the false-positive ladder -- never more leniently
+    #   than its subset.
+    # - unknown rate split in two. The benchmark reads cached upstreams and cannot see the
+    #   429s that make production answers unknown; production is read from a committed
+    #   artifact, on the benchmark's own bands.
+    # - production guards, new: the rate limiter and the batch cap observed working on the
+    #   deployed service, not in a test.
+    #
+    # The two production items are "not measured" until their artifacts exist -- the
+    # convention external callers already follows. The engineering ceiling stays 70.
+    items.append(("Correctness", "tests all green", 5, 5 if tp else 0, "; ".join(tdetail)))
     fp = b.get("false_positive")
-    items.append(("Correctness", "false positive rate (healthy rated high)", 10,
-                  band(fp, [0.02, 0.05, 0.10, 0.15], [10, 8, 6, 4, 2]),
+    fp_pts = band(fp, [0.02, 0.05, 0.10, 0.15], [10, 8, 6, 4, 2])
+    items.append(("Correctness", "false positive rate (healthy rated high)", 5,
+                  None if fp_pts is None else fp_pts * 0.5,
                   "%.1f%%" % (fp * 100) if fp is not None else UNMEASURED))
+    fb = b.get("false_block") or {}
+    fb_rate = fb.get("rate")
+    fb_pts = band(fb_rate, [0.02, 0.05, 0.10, 0.15], [10, 8, 6, 4, 2])
+    items.append(("Correctness", "false-block rate (liquid healthy rated medium or high)", 5,
+                  None if fb_pts is None else fb_pts * 0.5,
+                  ("%.1f%% (%d of %d)" % (fb_rate * 100, fb.get("blocked", 0), fb.get("n", 0))
+                   if fb_rate is not None else UNMEASURED)))
     ur = b.get("unknown_rate")
-    items.append(("Correctness", "unknown rate", 10,
-                  band(ur, [0.05, 0.10, 0.20, 0.30], [10, 8, 6, 4, 2]),
+    ur_pts = band(ur, [0.05, 0.10, 0.20, 0.30], [10, 8, 6, 4, 2])
+    items.append(("Correctness", "unknown rate (benchmark, cached upstreams)", 5,
+                  None if ur_pts is None else ur_pts * 0.5,
                   "%.1f%%" % (ur * 100) if ur is not None else UNMEASURED))
+
+    verdicts, why = _production_artifact("verdicts.json", "window_end")
+    counts = (verdicts or {}).get("counts") or {}
+    n_prod = sum(int(counts.get(k, 0)) for k in ("low", "medium", "high", "unknown"))
+    if verdicts is not None and n_prod < PRODUCTION_MIN_ROWS:
+        verdicts, why = None, "%d answers in the window, need %d" % (n_prod, PRODUCTION_MIN_ROWS)
+    if verdicts is None:
+        items.append(("Correctness", "unknown rate (production, served answers)", 5, None,
+                      UNMEASURED + " (%s)" % why))
+    else:
+        pur = int(counts.get("unknown", 0)) / float(n_prod)
+        items.append(("Correctness", "unknown rate (production, served answers)", 5,
+                      band(pur, [0.05, 0.10, 0.20, 0.30], [10, 8, 6, 4, 2]) * 0.5,
+                      "%.1f%% of %d, %s to %s" % (pur * 100, n_prod,
+                                                  verdicts.get("window_start", "?")[:10],
+                                                  verdicts.get("window_end", "?")[:10])))
+
+    probe, why = _production_artifact("guards-probe.json", "probed_at")
+    if probe is None or not ((probe.get("flood") or {}).get("ran")
+                             or (probe.get("batch_cap") or {}).get("ran")):
+        items.append(("Correctness", "production guards observed live", 5, None,
+                      UNMEASURED + " (%s)" % (why or "the probe did not run")))
+    else:
+        flood, cap = probe.get("flood") or {}, probe.get("batch_cap") or {}
+        got = ((2.5 if flood.get("ran") and flood.get("calls_until_429") else 0.0)
+               + (2.5 if cap.get("ran") and cap.get("http_status") == 400 else 0.0))
+        items.append(("Correctness", "production guards observed live", 5, got,
+                      "429 after %s calls; batch of %s -> HTTP %s; service %s on %s"
+                      % (flood.get("calls_until_429") or "none of 75",
+                         cap.get("messages", "?"), cap.get("http_status", "not probed"),
+                         str(probe.get("deployed_sha", "?"))[:7],
+                         str(probe.get("probed_at", "?"))[:10])))
 
     # --- Coverage 20 ---
     if rejected:
@@ -362,8 +470,9 @@ def render(items, facts):
 
     A("\n---\n")
     A("**What 100 looks like** (deliberately not trimmed to what we can reach): recall >90%")
-    A("with false positives <2%, unknown <5%, every applicable dimension covered, "
-      "a year or more of")
+    A("with false positives and false blocks <2%, unknown <5% in the benchmark and in "
+      "production, the abuse guards seen working on the live service, every applicable "
+      "dimension covered, a year or more of")
     A("outcome data, the benchmark methodology cited as a standard by peers, the default")
     A("choice at every agent entry point, and paying users who would complain if it "
       "disappeared.\n")

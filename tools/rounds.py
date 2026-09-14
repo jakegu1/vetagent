@@ -44,7 +44,9 @@ OUT = os.path.join(ROOT, "docs", "ROUNDS.md")
 
 # Commits made by the snapshot job. They are data collection, not development, and
 # grouping them into rounds would bury the rounds in them.
-BOT_PREFIX = "Snapshot 20"
+# The production probe (.github/workflows/production.yml) is the same kind of commit: it
+# records what the live service did, daily, and nobody develops anything in it.
+BOT_PREFIX = ("Snapshot 20", "Production probe 20")
 
 # (id, name, last commit of the round, one line on what it was for).
 # The last entry's `last` is None: the round still open.

@@ -40,9 +40,13 @@ TARGETS = [
     # its numbers can be checked is the worst possible place to have a drift, and an
     # external audit found it before any of our own guards did. Adding it here means the
     # guard fails instead of a reader noticing.
-    ("docs/SCORECARD.md", r"false positive rate \(healthy rated high\) \| [\d.]+ \| 10 \| ([\d.]+)%",
+    ("docs/SCORECARD.md", r"false positive rate \(healthy rated high\) \| [\d.]+ \| 5 \| ([\d.]+)%",
      "fp_pct"),
-    ("docs/SCORECARD.md", r"unknown rate \| [\d.]+ \| 10 \| ([\d.]+)%", "unknown_pct"),
+    ("docs/SCORECARD.md",
+     r"false-block rate \(liquid healthy rated medium or high\) \| [\d.]+ \| 5 \| ([\d.]+)%",
+     "false_block_pct"),
+    ("docs/SCORECARD.md", r"unknown rate \(benchmark, cached upstreams\) \| [\d.]+ \| 5 \| ([\d.]+)%",
+     "unknown_pct"),
     ("README.md", r"a \*\*([\d.]+)% false positive rate\*\*", "fp_pct"),
     ("README.md", r"false positive rate\*\* on (\d+) healthy tokens", "healthy_n"),
     ("README.md", r"\*\*([\d.]+)% unknown rate\*\*", "unknown_pct"),
