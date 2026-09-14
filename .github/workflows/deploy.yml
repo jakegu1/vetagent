@@ -134,6 +134,43 @@ jobs:
           PYCHECK
 
           echo ""
+          echo "--- blue-chip canary: the tokens agents ask about most must get an answer ---"
+          # Measured 2026-09-12: 33.8% of live answers over an hour were `unknown`, 57.1% on
+          # Ethereum majors, every one "upstream request failed". The benchmark reads a
+          # cache and cannot see it, so nothing in this repository did. This prints what
+          # production says about three assets nobody could call risky.
+          #
+          # It fails the deploy only on what the engine owns: a blue chip rated high, or
+          # an unknown blamed on the token. An unknown blamed on an upstream is annotated,
+          # not failed -- turning a third party's rate limit into a red deploy trains
+          # people to ignore red, which is the one thing this workflow must not do.
+          for spec in "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 ethereum WETH" \
+                      "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913 base USDC" \
+                      "0x55d398326f99059fF775485246999027B3197955 bsc USDT"; do
+            set -- $spec
+            curl -sS $CI_TAG --max-time 90 -X POST https://vetagent.dev/mcp \
+              -H 'Content-Type: application/json' \
+              -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"assess_token_risk\",\"arguments\":{\"address\":\"$1\",\"chain_hint\":\"$2\"}}}" \
+              > /tmp/canary.json
+            CANARY_NAME="$3" python - <<'PYCANARY'
+          import json, os
+          name = os.environ["CANARY_NAME"]
+          d = json.load(open("/tmp/canary.json"))
+          r = json.loads(d["result"]["content"][0]["text"])
+          level = r["risk_level"]
+          gaps = (r.get("evidence") or {}).get("data_gaps") or []
+          reasons = "; ".join("%s: %s" % (g.get("dimension"), g.get("reason")) for g in gaps)
+          print("%s -> %s %s" % (name, level, reasons))
+          assert level != "high", "%s rated high: %s" % (name, r["signals"])
+          if level == "unknown":
+              ours = all(str(g.get("reason", "")).startswith("upstream request failed")
+                         for g in gaps if g.get("dimension") in ("liquidity", "sellability"))
+              assert ours, "%s unknown for a reason that is not an upstream outage: %s" % (name, reasons)
+              print("::warning::blue-chip canary: %s came back unknown on an upstream failure (%s)" % (name, reasons))
+          PYCANARY
+          done
+
+          echo ""
           echo "--- a flooding caller must get 429 (the limiter fails open when unbound) ---"
           # _rate_limited fails open, so a missing or renamed binding would serve everyone
           # silently. This is the check that makes "absent" visible. Invalid addresses on

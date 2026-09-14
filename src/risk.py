@@ -195,6 +195,41 @@ def _stale_hits():
         return None
 
 
+_FETCH_FAILURES = contextvars.ContextVar("vetagent_fetch_failures")
+
+
+def _note_failure(url, what):
+    """Remember how a fetch failed, for the gap reason. Host and status only, never the URL:
+    the URL carries the token address, and that is not recorded anywhere."""
+    try:
+        failures = _FETCH_FAILURES.get()
+    except LookupError:
+        return
+    host = url.split("/")[2] if url.count("/") >= 2 else "?"
+    name = {"api.dexscreener.com": "dexscreener", "api.geckoterminal.com": "geckoterminal",
+            "api.honeypot.is": "honeypot.is", "api.rugcheck.xyz": "rugcheck"}.get(host, host)
+    failures.append((name, str(what)))
+
+
+def _failure_detail(*names):
+    """ "dexscreener 429, geckoterminal 429" for the named upstreams, last answer each."""
+    try:
+        failures = _FETCH_FAILURES.get()
+    except LookupError:
+        return ""
+    last = {}
+    for name, what in failures:
+        if name in names:
+            last[name] = what
+    return ", ".join("%s %s" % (n, last[n]) for n in names if n in last)
+
+
+def _failed(*names):
+    """The reason string for an upstream failure, naming what each upstream answered."""
+    detail = _failure_detail(*names)
+    return "upstream request failed" + (" (%s)" % detail if detail else "")
+
+
 def _begin_request():
     """Start collecting stale-cache disclosures for this request.
 
@@ -205,6 +240,7 @@ def _begin_request():
     is disclosed; the disclosure reached one caller in three.
     """
     _STALE_HITS.set([])
+    _FETCH_FAILURES.set([])
 
 
 def _stale_disclosure():
@@ -313,6 +349,13 @@ async def _fetch_json(url, retries=2, timeout=8, mark_missing=False):
                 cf_fetch(url, headers={"Accept": "application/json"}), timeout=timeout)
             if mark_missing and resp.status == 404:
                 return NO_DATA
+            if resp.status != 200:
+                _note_failure(url, resp.status)
+                if resp.status == 429:
+                    # DexScreener and GeckoTerminal publish their limits per minute.
+                    # Retrying at 0.3 s and 0.6 s cannot clear one and spends two more
+                    # requests of the budget that just ran out.
+                    break
             if resp.status == 200:
                 body = await asyncio.wait_for(resp.text(), timeout=timeout)
                 if body:
@@ -321,11 +364,13 @@ async def _fetch_json(url, retries=2, timeout=8, mark_missing=False):
                     # cached: caching it turns one rate-limited minute into fifteen
                     # minutes of confidently answering nothing.
                     if _is_error_body(data):
+                        _note_failure(url, "error body %s"
+                                      % ((data.get("status") or {}).get("error_code")))
                         return None
                     await _cache_put(url, data)
                     return data
-        except Exception:  # timeout, network, parse error: all count as a failed fetch
-            pass
+        except Exception as e:  # timeout, network, parse error: all count as a failed fetch
+            _note_failure(url, type(e).__name__)
         if attempt < retries:
             await asyncio.sleep(0.3 * (2 ** attempt))
 
@@ -2043,7 +2088,7 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
 
     if hp is None:
         data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
-                          "reason": "upstream request failed"})
+                          "reason": _failed("honeypot.is")})
         settled, sells, buys = _sells_demonstrated(evidence)
         if settled:
             _sells_answer(signals, evidence, sells, buys,
@@ -2258,7 +2303,7 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
     """
     if rc is None:
         data_gaps.append({"dimension": "sellability", "source": "rugcheck",
-                          "reason": "upstream request failed"})
+                          "reason": _failed("rugcheck")})
         signals.append(_sig("warn", "Contract safety unverified",
                             "RugCheck did not respond, so rug risk could not be assessed.", "sellability"))
         return
@@ -2411,6 +2456,9 @@ async def _load_pairs(address, chain_hint):
         gt = await _fetch_json(
             "https://api.geckoterminal.com/api/v2/networks/%s/tokens/%s/pools" % (net, address))
         if gt is None:
+            if _failure_detail("geckoterminal") in ("geckoterminal 429",
+                                                    "geckoterminal error body 429"):
+                break           # the host is refusing us; the next network is the same host
             continue
         pools = gt.get("data") or []
         if pools:
@@ -2457,7 +2505,7 @@ async def assess(address, chain_hint=None, verbose=False):
             claimed_chain if claimed_chain in _KNOWN_CHAINS else "")
     if pairs is None:
         data_gaps.append({"dimension": "liquidity", "source": "dexscreener+geckoterminal",
-                          "reason": "upstream request failed"})
+                          "reason": _failed("dexscreener", "geckoterminal")})
         signals.append(_sig("warn", "Liquidity data unavailable",
                             "Both market data sources failed, so liquidity could not be assessed.", "no_liquidity"))
     elif not pairs:

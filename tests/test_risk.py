@@ -17,6 +17,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 
 import risk  # noqa: E402
 
+# Kept before any test swaps it for a stub, for the one test that drives the real fetch path.
+_ORIGINAL_FETCH_JSON = risk._fetch_json
+
 FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
 
 # Known addresses -> fixture files
@@ -2388,6 +2391,79 @@ def test_one_assessment_is_about_one_chain():
           seen_scan[-1:] == ["base"], str(seen_scan))
     check("  nor the simulator", seen_hp and seen_hp[-1].endswith("chainID=8453"),
           str(seen_hp[-1:]))
+
+
+def test_an_upstream_failure_says_how_it_failed_and_is_not_made_worse():
+    """A third of live answers were `unknown`, and nothing said why.
+
+    Measured 2026-09-12 by the adversarial audit: 26 of 77 answers over an hour came back
+    `unknown`, 57% on Ethereum majors, every one reading "upstream request failed" and
+    nothing more. Re-asking seven minutes later answered 8 of 10. The status code that
+    would separate a rate limit from an outage from a timeout was discarded inside
+    `_fetch_json`, so the most important operational fact about the service was
+    unmeasurable from outside it -- and from inside it too.
+
+    Two things made it worse while hiding it. A 429 was retried at 0.3 s and 0.6 s against a
+    limit that counts per minute, spending two more requests of the budget that had just
+    run out. And with DexScreener down and no hint, the GeckoTerminal fallback walked four
+    networks, each with the same three attempts, against a host that had already refused:
+    up to twelve refused requests from one assessment, aimed at the limiter that caused
+    the failure. (GeckoTerminal answered 429 to a hand-run check on 2026-09-14 after five calls.)
+
+    The reason keeps its "upstream request failed" prefix -- `_finalize` and the benchmark
+    both key on it -- and says what the upstreams answered.
+    """
+    print("\n[upstream] a failure says how it failed, and is not retried into a limit")
+
+    calls = []
+
+    class Resp:
+        def __init__(self, status):
+            self.status = status
+
+        async def text(self):
+            return ""
+
+    async def fake_fetch(url, **kw):
+        calls.append(url)
+        return Resp(429)
+
+    async def no_sleep(*_a, **_k):
+        return None
+
+    async def no_cache(*_a, **_k):
+        return None, None
+
+    saved = (risk.cf_fetch, risk._fetch_json, risk._cache_get, risk.asyncio.sleep)
+    risk.cf_fetch, risk._cache_get, risk.asyncio.sleep = fake_fetch, no_cache, no_sleep
+    risk._fetch_json = _ORIGINAL_FETCH_JSON
+    try:
+        async def go():
+            risk._begin_request()
+            return await risk._load_pairs(WETH, None)
+        pairs, _ = run(go())
+        check("both sources failing is still a failure", pairs is None, str(pairs))
+        ds = [u for u in calls if "dexscreener" in u]
+        gt = [u for u in calls if "geckoterminal" in u]
+        check("a 429 is not retried into the same minute", len(ds) == 1, "%d calls" % len(ds))
+        check("a refusing GeckoTerminal is not asked about three more networks",
+              len(gt) == 1, "%d calls: %s" % (len(gt), gt))
+
+        calls.clear()
+        r = run(risk.assess(WETH, chain_hint="ethereum"))
+        gaps = r["evidence"].get("data_gaps") or []
+        liq = [g for g in gaps if g.get("dimension") == "liquidity"]
+        check("the liquidity gap keeps the prefix _finalize reads",
+              liq and liq[0]["reason"].startswith("upstream request failed"), str(liq))
+        check("  and says what the upstreams answered",
+              liq and "dexscreener 429" in liq[0]["reason"]
+              and "geckoterminal 429" in liq[0]["reason"], str(liq))
+        hp = [g for g in gaps if g.get("dimension") == "sellability"]
+        check("the simulator gap says it too",
+              hp and "honeypot.is 429" in hp[0]["reason"], str(hp))
+        check("still unknown, never an answer", r["risk_level"] == "unknown", r["risk_level"])
+    finally:
+        risk.cf_fetch, risk._fetch_json, risk._cache_get, risk.asyncio.sleep = saved
 
 
 def test_the_simulator_is_asked_about_the_chain_we_settled_on():
