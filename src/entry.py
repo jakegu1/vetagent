@@ -460,7 +460,17 @@ RATE_LIMIT_PERIOD_SECONDS = 60
 
 
 async def _rate_limited(env, request):
-    """True when this caller has used up its tool calls for the current window.
+    """True when this caller has used up its tool calls for the current window."""
+    return (await _limit_state(env, request)) == "limited"
+
+
+async def _limit_state(env, request):
+    """"limited", "ok", or "open:<why>" -- the limiter's answer for this tool call.
+
+    Returned in the `x-vetagent-ratelimit` response header on tool calls. The first
+    production deploy served 280 rapid calls from one IP without a 429, logged nothing, and
+    left no way to tell "the limiter said yes" from "the limiter never ran". The header
+    carries nothing about the caller; it tells them, and us, which of those happened.
 
     Keyed on the connecting IP, which Cloudflare already holds for every request; it is
     handed to the edge counter and never written anywhere by this code.
@@ -474,16 +484,13 @@ async def _rate_limited(env, request):
     # because each of these branches returned False in silence.
     limiter = getattr(env, "CALL_LIMITER", None) if env is not None else None
     if limiter is None:
-        print("rate limiter open: no CALL_LIMITER binding")
-        return False
+        return "open:no-binding"
     try:
         key = request.headers.get("cf-connecting-ip") or ""
     except Exception as e:  # noqa: BLE001
-        print("rate limiter open: headers %s" % type(e).__name__)
-        key = ""
+        return "open:headers-%s" % type(e).__name__
     if not key:
-        print("rate limiter open: no cf-connecting-ip")
-        return False
+        return "open:no-ip"
     try:
         try:
             from js import Object
@@ -495,11 +502,10 @@ async def _rate_limited(env, request):
         success = (outcome.get("success") if isinstance(outcome, dict)
                    else getattr(outcome, "success", None))
         if success is None:
-            print("rate limiter open: outcome without success (%s)" % type(outcome).__name__)
-        return success is False
+            return "open:no-success-%s" % type(outcome).__name__
+        return "limited" if success is False else "ok"
     except Exception as e:  # noqa: BLE001
-        print("rate limiter open: %s %s" % (type(e).__name__, str(e)[:160]))
-        return False
+        return "open:%s" % type(e).__name__
 
 
 def _rate_limit_error(message_id):
@@ -620,7 +626,8 @@ class Default(WorkerEntrypoint):
                         else "get_token_liquidity" if path.startswith("/liquidity/")
                         else "find_new_hot_pools" if path == "/new-pools" else "")
         if limited_tool:
-            if await _rate_limited(self.env, request):
+            state = await _limit_state(self.env, request)
+            if state == "limited":
                 # Recorded as a failed call to the tool it was, so the gate sees it and a
                 # refusal never counts as a verdict.
                 self._record_http_error(request, limited_tool)
@@ -629,7 +636,8 @@ class Default(WorkerEntrypoint):
                      "detail": "Too many calls; retry after %d seconds."
                                % RATE_LIMIT_PERIOD_SECONDS},
                     status=429,
-                    extra_headers={"retry-after": str(RATE_LIMIT_PERIOD_SECONDS)})
+                    extra_headers={"retry-after": str(RATE_LIMIT_PERIOD_SECONDS),
+                                   "x-vetagent-ratelimit": state})
         try:
             # POST /assess keeps the address in the body. GET /assess/<address> is
             # kept because it is genuinely convenient, but a URL is logged by every hop
@@ -788,12 +796,14 @@ class Default(WorkerEntrypoint):
                 return Response("", headers=_CORS, status=202)
             return _json_response(responses, extra_headers=headers)
 
-        if _is_tool_call(body) and await _rate_limited(self.env, request):
-            r = _rate_limit_error(body.get("id"))
-            self._record_message(request, body, r)
-            limited = dict(headers)
-            limited["retry-after"] = str(RATE_LIMIT_PERIOD_SECONDS)
-            return _json_response(r, status=429, extra_headers=limited)
+        if _is_tool_call(body):
+            headers["x-vetagent-ratelimit"] = await _limit_state(self.env, request)
+            if headers["x-vetagent-ratelimit"] == "limited":
+                r = _rate_limit_error(body.get("id"))
+                self._record_message(request, body, r)
+                limited = dict(headers)
+                limited["retry-after"] = str(RATE_LIMIT_PERIOD_SECONDS)
+                return _json_response(r, status=429, extra_headers=limited)
 
         try:
             result = await mcp_server.handle_mcp_request(body)
