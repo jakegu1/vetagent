@@ -194,6 +194,10 @@ them wallet addresses, identities, or anything about who is asking.</p>
 (IP, timestamp, path) for operational and abuse-prevention purposes under its own
 policy. We do not export, retain, sell, or analyse it, and we do not join it to
 anything else.</p>
+<p>The connecting IP is also handed to Cloudflare's rate limiter, which counts tool calls
+per minute at the edge so that one caller cannot use up the free upstream services every
+other caller depends on. We never see or store that count; a caller over the limit gets
+HTTP 429 and can retry after a minute.</p>
 
 <h2>Not financial advice</h2>
 <p>VetAgent reports observable on-chain risk. It is not investment advice, does not
@@ -444,6 +448,62 @@ def _truthy(v):
     return bool(v)
 
 
+# How many JSON-RPC messages one POST may carry, and the window the per-caller limit counts
+# over. Both exist because the upstreams this service reads are free, rate-limited by IP,
+# and reached through an egress address the Worker shares: one caller's burst is spent out
+# of every other caller's budget. Measured 2026-09-13: a 50-message batch returned 50
+# assessments (about 200 upstream requests) in 1.42 s, and ten back-to-back calls drew no
+# 429. The limit itself is configured on the binding in wrangler.jsonc; the period here
+# only has to match it, because it is what Retry-After tells the caller.
+MAX_BATCH = 10
+RATE_LIMIT_PERIOD_SECONDS = 60
+
+
+async def _rate_limited(env, request):
+    """True when this caller has used up its tool calls for the current window.
+
+    Keyed on the connecting IP, which Cloudflare already holds for every request; it is
+    handed to the edge counter and never written anywhere by this code.
+
+    Fails OPEN -- no binding, no IP, or a limiter that throws all mean "not limited". A
+    broken abuse control must not become an outage for everyone. The deploy smoke test is
+    what stops "absent" from being the silent permanent state.
+    """
+    limiter = getattr(env, "CALL_LIMITER", None) if env is not None else None
+    if limiter is None:
+        return False
+    try:
+        key = request.headers.get("cf-connecting-ip") or ""
+    except Exception:  # noqa: BLE001
+        key = ""
+    if not key:
+        return False
+    try:
+        try:
+            from js import Object
+            from pyodide.ffi import to_js
+            opts = to_js({"key": key}, dict_converter=Object.fromEntries)
+        except ImportError:
+            opts = {"key": key}
+        outcome = await limiter.limit(opts)
+        success = (outcome.get("success") if isinstance(outcome, dict)
+                   else getattr(outcome, "success", None))
+        return success is False
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _rate_limit_error(message_id):
+    return {"jsonrpc": "2.0", "id": message_id,
+            "error": {"code": -32000,
+                      "message": "Rate limit exceeded: retry after %d seconds"
+                                 % RATE_LIMIT_PERIOD_SECONDS}}
+
+
+def _is_tool_call(message):
+    return isinstance(message, dict) and message.get("method") == "tools/call"
+
+
 async def _read_json(request):
     """Parse a JSON request body, returning None rather than raising."""
     try:
@@ -547,6 +607,20 @@ class Default(WorkerEntrypoint):
         # handlers below need it, and a request that never reached a route leaves it
         # empty -- a 404 is not a failed tool call.
         tool = ""
+        limited_tool = ("assess_token_risk" if path == "/assess" or path.startswith("/assess/")
+                        else "get_token_liquidity" if path.startswith("/liquidity/")
+                        else "find_new_hot_pools" if path == "/new-pools" else "")
+        if limited_tool:
+            if await _rate_limited(self.env, request):
+                # Recorded as a failed call to the tool it was, so the gate sees it and a
+                # refusal never counts as a verdict.
+                self._record_http_error(request, limited_tool)
+                return _json_response(
+                    {"error": "rate_limited",
+                     "detail": "Too many calls; retry after %d seconds."
+                               % RATE_LIMIT_PERIOD_SECONDS},
+                    status=429,
+                    extra_headers={"retry-after": str(RATE_LIMIT_PERIOD_SECONDS)})
         try:
             # POST /assess keeps the address in the body. GET /assess/<address> is
             # kept because it is genuinely convenient, but a URL is logged by every hop
@@ -668,12 +742,24 @@ class Default(WorkerEntrypoint):
                     {"jsonrpc": "2.0", "id": None,
                      "error": {"code": mcp_server.INVALID_REQUEST, "message": "Empty batch"}},
                     status=400)
+            if len(body) > MAX_BATCH:
+                return _json_response(
+                    {"jsonrpc": "2.0", "id": None,
+                     "error": {"code": mcp_server.INVALID_REQUEST,
+                               "message": "Batch too large: at most %d messages per request"
+                                          % MAX_BATCH}},
+                    status=400, extra_headers=headers)
             # One bad message must not take the batch down with it. /mcp is routed
             # before the try/except that guards /assess and /liquidity, so an
             # unforeseen exception here meant no response at all -- for every message
             # in the batch, including the well-formed ones.
             responses = []
             for item in body:
+                if _is_tool_call(item) and await _rate_limited(self.env, request):
+                    r = _rate_limit_error(item.get("id"))
+                    self._record_message(request, item, r)
+                    responses.append(r)
+                    continue
                 try:
                     r = await mcp_server.handle_mcp_request(item)
                 except Exception:  # noqa: BLE001
@@ -692,6 +778,13 @@ class Default(WorkerEntrypoint):
             if not responses:
                 return Response("", headers=_CORS, status=202)
             return _json_response(responses, extra_headers=headers)
+
+        if _is_tool_call(body) and await _rate_limited(self.env, request):
+            r = _rate_limit_error(body.get("id"))
+            self._record_message(request, body, r)
+            limited = dict(headers)
+            limited["retry-after"] = str(RATE_LIMIT_PERIOD_SECONDS)
+            return _json_response(r, status=429, extra_headers=limited)
 
         try:
             result = await mcp_server.handle_mcp_request(body)

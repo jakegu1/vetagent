@@ -132,3 +132,18 @@ jobs:
           assert sigs.get('honeypot') != 'ok', f"failed simulation reported as a pass: {sigs}"
           print("sellability guard OK:", r['risk_level'], sigs)
           PYCHECK
+
+          echo ""
+          echo "--- a flooding caller must get 429 (the limiter fails open when unbound) ---"
+          # _rate_limited fails open, so a missing or renamed binding would serve everyone
+          # silently. This is the check that makes "absent" visible. Invalid addresses on
+          # purpose: they are rejected before any upstream request, so the flood costs the
+          # shared upstream budget nothing.
+          got429=0
+          for i in $(seq 1 75); do
+            code=$(curl -sS $CI_TAG -o /dev/null -w '%{http_code}' --max-time 30 -X POST \
+              https://vetagent.dev/mcp -H 'Content-Type: application/json' \
+              -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"assess_token_risk","arguments":{"address":"not-an-address"}}}')
+            if [ "$code" = "429" ]; then got429=1; echo "429 after $i calls"; break; fi
+          done
+          test "$got429" = "1"

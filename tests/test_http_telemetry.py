@@ -594,6 +594,119 @@ def test_an_unsupported_protocol_version_header_is_refused():
     check("initialize stays reachable with a bad header", r.status == 200, str(r.status))
 
 
+def _call(address="0xdAC17F958D2ee523a2206206994597C13D831ec7", i=1):
+    return {"jsonrpc": "2.0", "id": i, "method": "tools/call",
+            "params": {"name": "assess_token_risk", "arguments": {"address": address}}}
+
+
+class _Limiter:
+    """The Workers rate-limit binding's shape: limit({key}) -> {success}."""
+
+    def __init__(self, allow):
+        self.allow, self.keys = allow, []
+
+    async def limit(self, opts):
+        key = opts.get("key") if isinstance(opts, dict) else getattr(opts, "key", None)
+        self.keys.append(key)
+        return {"success": len(self.keys) <= self.allow}
+
+
+def _post(body, limiter=None, path="/mcp", method="POST", ip="203.0.113.7"):
+    """POST through the real fetch(), with the engine stubbed so nothing leaves."""
+    engine_calls = []
+
+    class Req(FakeRequest):
+        async def json(self):
+            return body
+
+    async def _assess(address, *a, **k):
+        engine_calls.append(address)
+        return {"address": address, "risk_level": "low", "risk_score": 0,
+                "confidence": "high", "signals": [], "evidence": {},
+                "recommendation": "x"}
+
+    saved = (risk.assess, entry._record)
+    risk.assess, entry._record = _assess, (lambda env, blobs, doubles: None)
+    try:
+        w = entry.Default()
+        w.env = types.SimpleNamespace(CALL_LIMITER=limiter) if limiter else None
+        hdrs = {"user-agent": "somebodys-bot/1.0", "cf-connecting-ip": ip}
+        return asyncio.run(w.fetch(Req("https://vetagent.dev" + path, method=method,
+                                       headers=hdrs))), engine_calls
+    finally:
+        risk.assess, entry._record = saved
+
+
+def test_one_request_cannot_carry_an_unbounded_batch():
+    """Fifty assessments rode in on one POST and were all served.
+
+    Measured by the 2026-09-13 adversarial audit against production: a JSON-RPC batch of
+    50 `tools/call` messages returned HTTP 200 and 50 assessments in 1.42 s. Each
+    assessment makes about four requests to free upstreams that rate-limit by IP, and a
+    Worker's egress IP is shared -- so one such POST spends roughly 200 upstream requests
+    of a budget every other caller also draws on, and pushes them into `unknown`. The
+    service is free; that makes it the one thing it cannot afford.
+    """
+    print("\n[abuse] a batch has a ceiling")
+    cap = entry.MAX_BATCH
+    r, ran = _post([_call(i=i) for i in range(cap + 1)])
+    check("a batch over the ceiling is refused", r.status == 400, str(r.status))
+    check("  before a single assessment runs", ran == [], "%d ran" % len(ran))
+    check("  and the refusal says what the ceiling is", str(cap) in (r.body or ""),
+          (r.body or "")[:160])
+    r, ran = _post([_call(i=i) for i in range(cap)])
+    check("a batch at the ceiling is served", r.status == 200 and len(ran) == cap,
+          "%s, %d ran" % (r.status, len(ran)))
+
+
+def test_a_caller_that_floods_is_slowed_not_served():
+    """Nothing limited how fast one caller could spend the shared upstream budget.
+
+    Same audit: ten back-to-back calls, no 429. The Workers rate-limit binding counts per
+    key at the edge; the key is the connecting IP, which Cloudflare already sees on every
+    request, and it is used to count and never written anywhere by us.
+
+    Fail-open when the binding is absent -- local runs, and a misconfigured deploy -- because
+    a limiter that refuses everyone when it breaks turns an abuse control into an outage.
+    That choice has a cost, paid in the deploy workflow: the smoke test checks that
+    production does answer 429, so "absent" cannot quietly become the permanent state.
+    """
+    print("\n[abuse] a flooding caller gets 429")
+    lim = _Limiter(allow=2)
+    for i in range(2):
+        r, ran = _post(_call(i=i), limiter=lim)
+        check("call %d under the limit is served" % (i + 1), r.status == 200, str(r.status))
+    r, ran = _post(_call(i=3), limiter=lim)
+    check("the call over the limit is a 429", r.status == 429, str(r.status))
+    check("  and runs no assessment", ran == [], str(ran))
+    check("  and says when to come back",
+          (r.headers or {}).get("retry-after") == str(entry.RATE_LIMIT_PERIOD_SECONDS),
+          str(r.headers))
+    check("the limiter is keyed by the connecting IP", lim.keys and lim.keys[0] == "203.0.113.7",
+          str(lim.keys))
+
+    lim = _Limiter(allow=0)
+    r, ran = _post({"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}},
+                   limiter=lim)
+    check("discovery is not rate limited -- it costs no upstream", r.status == 200,
+          str(r.status))
+
+    lim = _Limiter(allow=1)
+    r, ran = _post([_call(i=1), _call(i=2)], limiter=lim)
+    check("each tool call in a batch counts", len(lim.keys) == 2 and len(ran) == 1,
+          "keys=%s ran=%d" % (lim.keys, len(ran)))
+    check("  and the limited one gets its own error",
+          r.status == 200 and "Rate limit" in (r.body or ""), (r.body or "")[:200])
+
+    lim = _Limiter(allow=0)
+    r, ran = _post(None, limiter=lim, path="/assess/%s" % ADDRESS, method="GET")
+    check("the HTTP interface is limited too", r.status == 429 and ran == [],
+          "%s %s" % (r.status, ran))
+
+    r, ran = _post(_call(), limiter=None)
+    check("no binding: fail open, served", r.status == 200 and len(ran) == 1, str(r.status))
+
+
 def main():
     print("=" * 68)
     print("HTTP telemetry: the interface the gate could not see")
