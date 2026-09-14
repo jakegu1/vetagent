@@ -662,11 +662,12 @@ def test_one_request_cannot_carry_an_unbounded_batch():
 def test_a_caller_that_floods_is_slowed_not_served():
     """Nothing limited how fast one caller could spend the shared upstream budget.
 
-    Same audit: ten back-to-back calls, no 429. The Workers rate-limit binding counts per
-    key at the edge; the key is the connecting IP, which Cloudflare already sees on every
-    request, and it is used to count and never written anywhere by us.
+    Same audit: ten back-to-back calls, no 429. Calls are counted per minute in the edge
+    cache under a hash of the connecting IP. The counter is injected here as
+    `env.CALL_LIMITER`; in production it is `_EdgeCounter`, after Cloudflare's own binding
+    answered success on 313 calls in 100 s against a limit of 60.
 
-    Fail-open when the binding is absent -- local runs, and a misconfigured deploy -- because
+    Fail-open when there is no cache runtime -- local runs -- because
     a limiter that refuses everyone when it breaks turns an abuse control into an outage.
     That choice has a cost, paid in the deploy workflow: the smoke test checks that
     production does answer 429, so "absent" cannot quietly become the permanent state.
@@ -704,7 +705,8 @@ def test_a_caller_that_floods_is_slowed_not_served():
           "%s %s" % (r.status, ran))
 
     r, ran = _post(_call(), limiter=None)
-    check("no binding: fail open, served", r.status == 200 and len(ran) == 1, str(r.status))
+    check("no cache runtime: fail open, served", r.status == 200 and len(ran) == 1,
+          str(r.status))
 
 
 def main():

@@ -172,8 +172,9 @@ jobs:
 
           echo ""
           echo "--- a flooding caller must get 429 (the limiter fails open when unbound) ---"
-          # _rate_limited fails open, so a missing or renamed binding would serve everyone
-          # silently. This is the check that makes "absent" visible. Invalid addresses on
+          # _limit_state fails open, so a broken counter would serve everyone silently. This
+          # is the check that makes "open" visible -- and it went red on the first deploy,
+          # when Cloudflare's rate-limit binding answered success on all of 313 calls. Invalid addresses on
           # purpose: they are rejected before any upstream request, so the flood costs the
           # shared upstream budget nothing.
           got429=0

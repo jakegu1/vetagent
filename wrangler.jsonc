@@ -18,14 +18,5 @@
   // "we do not log what you look up" is a true statement.
   "analytics_engine_datasets": [
     { "binding": "ANALYTICS", "dataset": "vetagent_calls" }
-  ],
-  // Per-caller limit on tool calls, keyed by connecting IP at the edge and never stored by
-  // us. The upstreams are free and rate-limit by IP through an egress the Worker shares, so
-  // one caller's burst is paid for by everyone else's `unknown`. 60 per 60 s is a guess
-  // aimed well above one agent checking tokens before trading, not a measurement: the
-  // gate records no per-caller rates to measure it from. `period` must match
-  // RATE_LIMIT_PERIOD_SECONDS in src/entry.py, which is what Retry-After reports.
-  "ratelimits": [
-    { "name": "CALL_LIMITER", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } }
   ]
 }

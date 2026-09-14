@@ -194,9 +194,9 @@ them wallet addresses, identities, or anything about who is asking.</p>
 (IP, timestamp, path) for operational and abuse-prevention purposes under its own
 policy. We do not export, retain, sell, or analyse it, and we do not join it to
 anything else.</p>
-<p>The connecting IP is also handed to Cloudflare's rate limiter, which counts tool calls
-per minute at the edge so that one caller cannot use up the free upstream services every
-other caller depends on. We never see or store that count; a caller over the limit gets
+<p>To stop one caller using up the free upstream services every other caller depends on,
+tool calls are counted per minute at the edge under a one-way hash of the connecting IP,
+which expires after 70 seconds. The IP itself is not stored; a caller over the limit gets
 HTTP 429 and can retry after a minute.</p>
 
 <h2>Not financial advice</h2>
@@ -448,43 +448,78 @@ def _truthy(v):
     return bool(v)
 
 
-# How many JSON-RPC messages one POST may carry, and the window the per-caller limit counts
-# over. Both exist because the upstreams this service reads are free, rate-limited by IP,
-# and reached through an egress address the Worker shares: one caller's burst is spent out
-# of every other caller's budget. Measured 2026-09-13: a 50-message batch returned 50
+# How many JSON-RPC messages one POST may carry, and how many tool calls one caller may make
+# per window. Both exist because the upstreams this service reads are free, rate-limited by
+# IP, and reached through an egress address the Worker shares: one caller's burst is spent
+# out of every other caller's budget. Measured 2026-09-13: a 50-message batch returned 50
 # assessments (about 200 upstream requests) in 1.42 s, and ten back-to-back calls drew no
-# 429. The limit itself is configured on the binding in wrangler.jsonc; the period here
-# only has to match it, because it is what Retry-After tells the caller.
+# 429. 60 per minute is a guess aimed well above one agent checking tokens before a trade,
+# not a measurement: the gate records no per-caller rates to measure it from.
 MAX_BATCH = 10
+RATE_LIMIT_CALLS = 60
 RATE_LIMIT_PERIOD_SECONDS = 60
+
+
+class _EdgeCounter:
+    """Counts tool calls per caller per minute in the edge cache.
+
+    Why not Cloudflare's rate-limit binding: it was deployed first (2026-09-14) and measured
+    not enforcing. From one stable IP, 313 calls in 100 s against a 60-per-60-s binding were
+    all answered success=true -- with the SDK converting a plain-dict key, the binding
+    present, and the answer read back in a response header on every call. Cloudflare
+    documents that binding as permissive and eventually consistent; whatever the reason, a
+    limiter measured never to limit is not one.
+
+    This one is approximate too, and says so: the cache is per data centre and a read-then-
+    write can race, so concurrent calls in one location can overshoot. It is the same order
+    of guarantee the binding advertised, with the difference that it was watched to trip.
+
+    The key is a SHA-256 of the connecting IP, living 70 seconds in the edge cache. The IP
+    itself is never stored or logged by this code.
+    """
+
+    async def limit(self, opts):
+        import hashlib
+        from js import Date, Object, Request, Response as JsResponse, caches
+        from pyodide.ffi import to_js
+        window = int(Date.now() / 1000.0 // RATE_LIMIT_PERIOD_SECONDS)
+        digest = hashlib.sha256(str(opts["key"]).encode("utf-8")).hexdigest()[:32]
+        req = Request.new("https://ratelimit.vetagent.internal/%s/%d" % (digest, window))
+        hit = await caches.default.match(req)
+        count = (int(await hit.text()) if hit else 0) + 1
+        headers = to_js({"cache-control": "max-age=%d" % (RATE_LIMIT_PERIOD_SECONDS + 10)},
+                        dict_converter=Object.fromEntries)
+        await caches.default.put(req, JsResponse.new(
+            str(count), to_js({"headers": headers}, dict_converter=Object.fromEntries)))
+        return {"success": count <= RATE_LIMIT_CALLS}
+
+
+_EDGE_COUNTER = _EdgeCounter()
 
 
 async def _rate_limited(env, request):
     """True when this caller has used up its tool calls for the current window."""
-    return (await _limit_state(env, request)).split(";")[0] == "limited"
+    return (await _limit_state(env, request)) == "limited"
 
 
 async def _limit_state(env, request):
     """"limited", "ok", or "open:<why>" -- the limiter's answer for this tool call.
 
     Returned in the `x-vetagent-ratelimit` response header on tool calls. The first
-    production deploy served 280 rapid calls from one IP without a 429, logged nothing, and
-    left no way to tell "the limiter said yes" from "the limiter never ran". The header
-    carries nothing about the caller; it tells them, and us, which of those happened.
+    deploy served 280 rapid calls without a 429 and left no way to tell "the limiter said
+    yes" from "the limiter never ran"; the header is how the binding was found not to
+    enforce. It carries nothing about the caller.
 
-    Keyed on the connecting IP, which Cloudflare already holds for every request; it is
-    handed to the edge counter and never written anywhere by this code.
+    `env.CALL_LIMITER`, when present, replaces the edge counter -- that is how the tests
+    drive this without a Worker runtime.
 
-    Fails OPEN -- no binding, no IP, or a limiter that throws all mean "not limited". A
-    broken abuse control must not become an outage for everyone. The deploy smoke test is
-    what stops "absent" from being the silent permanent state.
+    Fails OPEN -- no IP, no cache runtime, or a counter that throws all mean "not limited".
+    A broken abuse control must not become an outage for everyone. The deploy smoke test
+    floods production and requires a 429, so "open" cannot quietly become permanent.
     """
-    # Every fail-open branch says why in the Worker log (owner-only, no IP printed). The first
-    # production deploy served 80 rapid calls without a 429 and the reason was invisible,
-    # because each of these branches returned False in silence.
     limiter = getattr(env, "CALL_LIMITER", None) if env is not None else None
     if limiter is None:
-        return "open:no-binding"
+        limiter = _EDGE_COUNTER
     try:
         key = request.headers.get("cf-connecting-ip") or ""
     except Exception as e:  # noqa: BLE001
@@ -492,24 +527,12 @@ async def _limit_state(env, request):
     if not key:
         return "open:no-ip"
     try:
-        # A plain dict. The Python Workers SDK wraps bindings (`_BindingWrapper`) and
-        # converts arguments itself; handing it an object already converted with to_js
-        # produced an answer of success=true on every one of 313 calls in 100 s against a
-        # 60/60 s limit -- the key never reached the counter.
-        opts = {"key": key}
-        outcome = await limiter.limit(opts)
+        outcome = await limiter.limit({"key": key})
         success = (outcome.get("success") if isinstance(outcome, dict)
                    else getattr(outcome, "success", None))
         if success is None:
-            return "open:no-success-%s" % type(outcome).__name__
-        # TEMPORARY diagnostic, removed once the limiter is seen to trip.
-        try:
-            from js import JSON
-            seen = str(JSON.stringify(outcome))[:60]
-        except Exception:  # noqa: BLE001
-            seen = "?"
-        return ("limited" if success is False else "ok") + ";dbg=%s|%s|%s|%d|%s" % (
-            type(limiter).__name__, type(opts).__name__, type(success).__name__, len(key), seen)
+            return "open:no-answer"
+        return "limited" if success is False else "ok"
     except Exception as e:  # noqa: BLE001
         return "open:%s" % type(e).__name__
 
@@ -633,7 +656,7 @@ class Default(WorkerEntrypoint):
                         else "find_new_hot_pools" if path == "/new-pools" else "")
         if limited_tool:
             state = await _limit_state(self.env, request)
-            if state.split(";")[0] == "limited":
+            if state == "limited":
                 # Recorded as a failed call to the tool it was, so the gate sees it and a
                 # refusal never counts as a verdict.
                 self._record_http_error(request, limited_tool)
@@ -804,7 +827,7 @@ class Default(WorkerEntrypoint):
 
         if _is_tool_call(body):
             headers["x-vetagent-ratelimit"] = await _limit_state(self.env, request)
-            if headers["x-vetagent-ratelimit"].split(";")[0] == "limited":
+            if headers["x-vetagent-ratelimit"] == "limited":
                 r = _rate_limit_error(body.get("id"))
                 self._record_message(request, body, r)
                 limited = dict(headers)
