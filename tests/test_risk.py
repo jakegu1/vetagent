@@ -1521,6 +1521,142 @@ def test_upstream_text_is_quoted_not_spoken():
           str(searches[:1]))
 
 
+def test_depth_counts_only_what_no_pool_creator_can_price():
+    """A pool's USD depth was whatever its creator's price said it was.
+
+    DexScreener's `liquidity.usd` is base reserve x price + quote reserve x price, and both
+    prices are read off pools. Mint FAKEUSD, anchor it at $1 with under a dollar of USDC,
+    put 12.4M of it against your token, and the engine read "$12.4M -- Liquidity is
+    adequate" and rated the token low (2026-09-13 adversarial audit, reproduced offline:
+    medium/48 with only the real $812 pool, low/0 with the fake one added). The same
+    arithmetic ran in reverse through the impersonation check: a Solana contract holding
+    3.37M self-minted "WETH" against 2.21 USDC was reported at $8.8 billion, and the real
+    Wormhole WETH -- 1,386 days old, $6.7M of depth -- was told it was "almost certainly not
+    the token you meant". Verified in production on 2026-09-14: high/74, that sentence.
+
+    The number is decomposable, and measured so before choosing this: 4,715 of 4,715 cached
+    DexScreener pairs carry both reserves, and the USD figure reconstructs from them within
+    2% on 2,738 of 2,738. So depth is credited only for a side held in an asset whose price
+    no pool creator sets -- the chain's native coin, its major stablecoins, its main bridged
+    majors -- at twice that side, the value of a balanced pool. A pool with no such side
+    stated a number nobody can check, and it is treated as not having stated one.
+    """
+    print("\n[liquidity] depth is what an independently priced reserve backs")
+
+    SCAM = "0x1111111111111111111111111111111111111111"
+    WETH_BASE = "0x4200000000000000000000000000000000000006"
+    USDC_BASE = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+    FAKEUSD = "0x2222222222222222222222222222222222222222"
+
+    def pool(quote_addr, quote_sym, liq_usd, base_amt, quote_amt, price, native,
+             addr, chain="base", base=SCAM, base_sym="SCAM", age_ms=1589841515000):
+        return {"chainId": chain, "dexId": "uniswap", "pairAddress": addr,
+                "baseToken": {"address": base, "symbol": base_sym},
+                "quoteToken": {"address": quote_addr, "symbol": quote_sym},
+                "priceUsd": str(price), "priceNative": str(native),
+                "liquidity": {"usd": liq_usd, "base": base_amt, "quote": quote_amt},
+                "volume": {"h24": liq_usd * 0.1},
+                "txns": {"h24": {"buys": 40, "sells": 35}}, "pairCreatedAt": age_ms}
+
+    # SCAM at $0.01. The real pool: 40,600 SCAM ($406) against 0.1624 WETH ($406 at $2,500).
+    real = pool(WETH_BASE, "WETH", 812.0, 40_600, 0.1624, 0.01, 0.000004, "0x" + "a1" * 20)
+    # The fake: 620M SCAM against 6.2M FAKEUSD, both "worth" $6.2M at the creator's price.
+    fake = pool(FAKEUSD, "FAKEUSD", 12_400_000.0, 620_000_000, 6_200_000, 0.01, 0.01,
+                "0x" + "b2" * 20)
+
+    def assess(pairs, search=None, address=SCAM, chain="base"):
+        install_stub([("dex/tokens", {"pairs": pairs}), ("dex/search", search),
+                      ("honeypot.is", _load("hp_matic.json")), ("rugcheck", None)])
+        return run(risk.assess(address, chain_hint=chain))
+
+    control = assess([real])
+    attack = assess([real, fake])
+    check("the fabricated pool is not the one depth is read from",
+          (attack["evidence"].get("best_pair") or {}).get("liquidity_usd") == 812.0,
+          str(attack["evidence"].get("best_pair")))
+    check("so it cannot buy 'Liquidity is adequate'",
+          not any(s["name"] == "Liquidity is adequate" for s in attack["signals"]),
+          str([s["name"] for s in attack["signals"]]))
+    check("and the attack verdict matches the verdict without it",
+          attack["risk_level"] == control["risk_level"] != "low",
+          "%s vs control %s" % (attack["risk_level"], control["risk_level"]))
+
+    alone = assess([fake])
+    check("a token whose only depth is self-priced is never low",
+          alone["risk_level"] not in ("low", "medium"), alone["risk_level"])
+    gaps = alone["evidence"].get("data_gaps") or []
+    check("  and the gap says the depth could not be verified, not that none was stated",
+          any("priced" in (g.get("reason") or "") for g in gaps), str(gaps))
+
+    # A market that exists but cannot be verified is not "no trace". The no-trace
+    # escalation -- nothing can price it, nothing can trade it, so high -- first fired on
+    # it: the benchmark moved CHOYI, NVDB, fone and halo unknown -> high, all labelled safe,
+    # all quoted in assets outside the anchor table (NVDAB, SPYB, VIRTUAL).
+    install_stub([("dex/tokens", {"pairs": [fake]}), ("dex/search", None),
+                  ("honeypot.is", risk.NO_DATA), ("rugcheck", None)])
+    r = run(risk.assess(SCAM, chain_hint="base"))
+    check("unverifiable depth plus no simulator record is unknown, not 'no trace'",
+          r["risk_level"] == "unknown", "%s %s" % (r["risk_level"], sig_categories(r)))
+
+    # The anchored side still counts in full on an honest pool.
+    honest = pool(USDC_BASE, "USDC", 2_000_000.0, 100_000_000, 1_000_000, 0.01, 0.01,
+                  "0x" + "c3" * 20)
+    r = assess([honest])
+    check("an honest USDC pool keeps its depth", (r["evidence"].get("best_pair") or {})
+          .get("liquidity_usd") == 2_000_000.0, str(r["evidence"].get("best_pair")))
+
+    # A lopsided pool is credited for what the independently priced side can pay out.
+    lopsided = pool(USDC_BASE, "USDC", 2_000_000.0, 199_000_000, 10_000, 0.01, 0.01,
+                    "0x" + "d4" * 20)
+    r = assess([lopsided])
+    check("a pool holding $10k of USDC is not $2M of exit",
+          (r["evidence"].get("best_pair") or {}).get("liquidity_usd") == 20_000.0,
+          str(r["evidence"].get("best_pair")))
+
+    # Impersonation, in reverse. Real Wormhole-style WETH on Solana against a namesake
+    # whose "depth" is its own minted supply priced against two dollars of USDC.
+    SOL_USDC = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    REAL_WETH = "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs"
+    FAKE_WETH = "FakeWeth1111111111111111111111111111111111"
+    mine = pool(SOL_USDC, "USDC", 6_715_333.0, 1_000, 3_357_666, 3357.666, 3357.666,
+                "PoolA", chain="solana", base=REAL_WETH, base_sym="WETH")
+    rival = pool(SOL_USDC, "USDC", 8_843_013_241.0, 3_370_000, 2.21, 2624.0, 2624.0,
+                 "PoolB", chain="solana", base=FAKE_WETH, base_sym="WETH")
+    install_stub([("dex/tokens", {"pairs": [mine]}),
+                  ("dex/search", {"pairs": [mine, rival]}),
+                  ("rugcheck", None)])
+    r = run(risk.assess(REAL_WETH, chain_hint="solana"))
+    imp = [s for s in r["signals"] if s["category"] == "impersonation"
+           and s["severity"] in ("warn", "critical")]
+    check("two dollars of USDC cannot make the real token an impostor", not imp,
+          str([(s["severity"], s["message"][:90]) for s in imp]))
+
+    # ...while a namesake with real depth still exposes a real impostor.
+    big = pool(SOL_USDC, "USDC", 40_000_000.0, 10_000, 20_000_000, 2000.0, 2000.0,
+               "PoolC", chain="solana", base=FAKE_WETH, base_sym="WETH")
+    tiny = pool(SOL_USDC, "USDC", 3_000.0, 1, 1_500, 1500.0, 1500.0,
+                "PoolD", chain="solana", base=REAL_WETH, base_sym="WETH")
+    install_stub([("dex/tokens", {"pairs": [tiny]}),
+                  ("dex/search", {"pairs": [tiny, big]}), ("rugcheck", None)])
+    r = run(risk.assess(REAL_WETH, chain_hint="solana"))
+    check("a namesake backed by $20M of USDC still exposes the $3k impostor",
+          any(s["category"] == "impersonation" and s["severity"] == "critical"
+              for s in r["signals"]), str([s["name"] for s in r["signals"]]))
+
+    # Two things that must not change. A pool whose reserves were not reported (the
+    # GeckoTerminal shim, older fixtures) keeps its stated figure; and a chain with no
+    # anchor table keeps it too -- both named, so neither is an accident.
+    no_amounts = dict(fake)
+    no_amounts["liquidity"] = {"usd": 12_400_000.0}
+    check("a pool without reserve amounts keeps its stated depth",
+          risk._reported_liquidity(no_amounts) == 12_400_000.0,
+          str(risk._reported_liquidity(no_amounts)))
+    unlisted = dict(fake, chainId="some-new-l2")
+    check("a chain with no anchor table keeps its stated depth (a known residual)",
+          risk._reported_liquidity(unlisted) == 12_400_000.0,
+          str(risk._reported_liquidity(unlisted)))
+
+
 def test_impersonation_is_comparative_not_absolute():
     """Being dwarfed under a shared ticker is the signal; sharing one is not.
 

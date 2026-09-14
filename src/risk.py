@@ -57,6 +57,93 @@ _CHAIN_RANK = {
 }
 _UNKNOWN_CHAIN_RANK = 9
 
+# Reserve assets whose USD price no pool creator can set: each chain's native coin (and
+# its wrapped form), its major stablecoins, and its main bridged majors. Keyed by chain,
+# because a fork chain inherits the addresses and none of the value -- pulsechain's copies
+# of USDC and DAI sit at the Ethereum addresses and are not dollars.
+#
+# Read off data, not memory: each address below was checked against the quote assets that
+# actually occur in the benchmark cache's 4,715 costed DexScreener pairs (and, for Solana
+# and Polygon's stablecoins, a live DexScreener read on 2026-09-14), where it appears under
+# the expected symbol.
+# Deliberately short. A token missing here does not make a pool unsafe; it makes that
+# pool's stated depth uncheckable, which _reported_liquidity treats as unstated.
+#
+# Beyond the natives, stablecoins and bridged majors, an asset is admitted by one rule, set
+# before any candidate was measured: on its own chain, its pools whose OTHER side is already
+# an anchor hold more than $10M (live DexScreener, which returns at most 30 pools, so the
+# figure is a floor). Non-circular by construction, and transitive only through assets that
+# qualified themselves -- USDS qualifies once PYUSD, RLUSD and SKY do. Measured and refused on
+# 2026-09-14, and left refused rather than moving the bar: VIRTUAL $8.5M, ADS $0.66M,
+# FDUSD on BSC $0.27M, NVDAB $3.2M. Tokens quoted only in those come back `unknown` on
+# liquidity, which the benchmark counts.
+_ANCHORS = {
+    "ethereum": frozenset((
+        "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",   # WETH
+        "0x0000000000000000000000000000000000000000",   # ETH (v4 native)
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",   # USDC
+        "0xdac17f958d2ee523a2206206994597c13d831ec7",   # USDT
+        "0x6b175474e89094c44da98b954eedeac495271d0f",   # DAI
+        "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",   # WBTC
+        # Admitted by the rule below, measured 2026-09-14.
+        "0x6c3ea9036406852006290770bedfcaba0e23a0e8",   # PYUSD   $38.3M
+        "0x8292bb45bf1ee4d140127049757c2e0ff06317ed",   # RLUSD   $71.6M
+        "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",   # USDe    $28.9M
+        "0x56072c95faa701256059aa122697b133aded9279",   # SKY     $11.8M
+        "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e",   # crvUSD  $89.4M
+        "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",   # wstETH  $10.1M
+        "0xdc035d45d973e3ec169d2276ddab16f1e407384f",   # USDS    $129.3M, second round
+    )),
+    "base": frozenset((
+        "0x4200000000000000000000000000000000000006",   # WETH
+        "0x0000000000000000000000000000000000000000",   # ETH (v4 native)
+        "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",   # USDC
+        "0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca",   # USDbC
+        "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",   # cbBTC
+        "0x940181a94a35a4569e4529a3cdfb74e38fd98631",   # AERO    $51.8M
+    )),
+    "bsc": frozenset((
+        "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",   # WBNB
+        "0x55d398326f99059ff775485246999027b3197955",   # USDT
+        "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",   # USDC
+        "0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c",   # BTCB    $60.0M
+    )),
+    "arbitrum": frozenset((
+        "0x82af49447d8a07e3bd95bd0d56f35241523fbab1",   # WETH
+        "0xaf88d065e77c8cc2239327c5edb3a432268e5831",   # USDC
+        "0xff970a61a04b1ca14834a43f5de4533ebddb5cc8",   # USDC.e
+        "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9",   # USDT0
+        "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f",   # WBTC
+    )),
+    "optimism": frozenset((
+        "0x4200000000000000000000000000000000000006",   # WETH
+        "0x0b2c639c533813f4aa9d7837caf62653d097ff85",   # USDC
+        "0x7f5c764cbc14f9669b88837ca1490cca17c31607",   # USDC.e
+        "0x94b008aa00579c1307b0ef2c499ad98a8ce58e58",   # USDT
+    )),
+    "polygon": frozenset((
+        "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",   # WPOL
+        "0x7ceb23fd6bc0add59e62ac25578270cff1b9f619",   # WETH
+        "0x2791bca1f2de4661ed88a30c99a7a9449aa84174",   # USDC.e
+        "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359",   # USDC
+        "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",   # USDT0
+        "0x8f3cf7ad23cd3cadbd9735aff958023239c6a063",   # DAI
+    )),
+    "avalanche": frozenset((
+        "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7",   # WAVAX
+        "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",   # USDC
+        "0x9702230a8ea53601f5cd2dc00fdbc13d4df4a8c7",   # USDt
+    )),
+    # Base58 is case-sensitive; written as published and lowered by the comprehension below,
+    # since every comparison lowers both sides.
+    "solana": frozenset((
+        "So11111111111111111111111111111111111111112",  # SOL (wrapped)
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",  # USDC
+        "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",  # USDT
+    )),
+}
+_ANCHORS = {chain: frozenset(a.lower() for a in addrs) for chain, addrs in _ANCHORS.items()}
+
 
 def _num(x):
     try:
@@ -516,9 +603,13 @@ def _finalize(address, signals, evidence, data_gaps):
     # those two. Saying so is strictly more conservative than "unknown", and more useful
     # — the absence of any verifiable trace *is* the finding.
     ours = ("upstream request failed",)
+    # A market that exists but whose depth nobody independent backs is not "no trace":
+    # a source did price it, we declined to believe the price. Escalating it to high
+    # condemned four safe-labelled tokens quoted in assets outside _ANCHORS.
+    not_absence = ours + (_UNBACKED_REASON,)
     token_side = [g for g in data_gaps
                   if g.get("dimension") in _CRITICAL_DIMENSIONS
-                  and not str(g.get("reason", "")).startswith(ours)]
+                  and not str(g.get("reason", "")).startswith(not_absence)]
     token_side_dims = {g.get("dimension") for g in token_side}
     # Pools that were costed and found empty is *stronger* evidence than a gap, not
     # weaker. Recording it as a signal instead of a gap removed the liquidity dimension
@@ -648,8 +739,76 @@ def _pair_liquidity(pair):
     return 0.0 if v is None else v
 
 
+def _independent_depth_cap(pair):
+    """What an independently priced reserve can back in this pool, in USD.
+
+    Returns a number (twice the USD value of the reserve held in _ANCHORS assets, or
+    infinity when both sides are anchors), None when neither side is an anchor, or
+    _NOT_CHECKABLE when the pool's composition cannot be read -- no reserve amounts, or a
+    chain with no anchor table.
+
+    Why the cap exists: DexScreener's `liquidity.usd` is base reserve x price + quote
+    reserve x price, and both prices come from pools. A token's own supply priced against
+    a self-minted quote asset states any depth its creator likes: the 2026-09-13 audit
+    bought "Liquidity is adequate" and `low` with a fabricated $12.4M pool, and a Solana
+    namesake holding 3.37M minted "WETH" against 2.21 USDC was reported at $8.8 billion and
+    made the real Wormhole WETH read as an impostor in production. The reserve that pays a
+    seller out is the one in an asset the seller could spend elsewhere; that side is
+    counted, at twice its value so a balanced pool reads what it always read.
+
+    Residuals, stated so they are not mistaken for coverage: the anchor's own USD price is
+    still read from this pool; chains outside _ANCHORS keep the stated figure; and so do
+    GeckoTerminal pools, whose shim carries no reserve amounts.
+    """
+    chain = (pair.get("chainId") or "").lower()
+    anchors = _ANCHORS.get(chain)
+    liq = pair.get("liquidity") or {}
+    if anchors is None or liq.get("base") in (None, "") or liq.get("quote") in (None, ""):
+        return _NOT_CHECKABLE
+    base_is = ((pair.get("baseToken") or {}).get("address") or "").lower() in anchors
+    quote_is = ((pair.get("quoteToken") or {}).get("address") or "").lower() in anchors
+    if base_is and quote_is:
+        return float("inf")
+    price, native = _num(pair.get("priceUsd")), _num(pair.get("priceNative"))
+    if base_is:
+        return 2.0 * _num(liq.get("base")) * price if price > 0 else _NOT_CHECKABLE
+    if quote_is:
+        if price <= 0 or native <= 0:
+            return _NOT_CHECKABLE
+        return 2.0 * _num(liq.get("quote")) * price / native
+    return None
+
+
+_NOT_CHECKABLE = object()
+
+_UNBACKED_REASON = "no pool's depth is priced in an asset we can verify"
+
+_UNBACKED_NOTE = ("Pools state a depth, but none holds a reserve in an asset whose price we "
+                  "can verify independently, so the depth is unknown. A pool priced only in "
+                  "its creator's own tokens can state any figure.")
+
+
+def _only_unbacked_depth(scope):
+    """Some pool stated a positive depth, and the only reason none counts is what backs it."""
+    return any((_stated_liquidity(p) or 0) > 0 and _independent_depth_cap(p) is None
+               for p in scope)
+
+
+def _stated_liquidity(pair):
+    """The depth an upstream stated, before any check on what backs it. None if unstated."""
+    liq = pair.get("liquidity") or {}
+    for v in (liq.get("usd"), pair.get("reserveInUsd")):
+        if v is not None and v != "":
+            return _num(v)
+    return None
+
+
 def _reported_liquidity(pair):
     """Depth in USD, or None when no source actually stated one.
+
+    "Stated" now means stated AND backed: a depth with no independently priced reserve
+    behind it is treated as unstated (see _independent_depth_cap), and one backed by less
+    than it claims is credited for what backs it.
 
     The distinction this draws is the whole difference between an observation and a
     guess. DexScreener returns "liquidity": null for pairs it has not costed -- 303 of
@@ -680,6 +839,16 @@ def _reported_liquidity(pair):
             # quadrillion-supply coin trades at 1e-22 and is perfectly real. That argument
             # does not transfer to a USD reserve, which is denominated in dollars and has
             # no reciprocal. One `> 0` test was guarding both quantities.
+            if n != 0 and abs(n) < _MIN_CREDIBLE_DEPTH_USD:
+                return None
+            if n == 0:
+                return n
+            cap = _independent_depth_cap(pair)
+            if cap is _NOT_CHECKABLE:
+                return n
+            if cap is None:
+                return None          # a figure nothing independent backs is no figure
+            n = min(n, cap)
             if n != 0 and abs(n) < _MIN_CREDIBLE_DEPTH_USD:
                 return None
             return n
@@ -2325,6 +2494,8 @@ async def assess(address, chain_hint=None, verbose=False):
                     % (len(stated), "" if len(stated) == 1 else "s"), "drained"))
             else:
                 reason = ("no pair with a sane price" if stated
+                          else _UNBACKED_REASON
+                          if _only_unbacked_depth(scope)
                           else "no source reported pool depth")
                 data_gaps.append({"dimension": "liquidity", "source": source,
                                   "reason": reason})
@@ -2499,6 +2670,10 @@ async def liquidity(address, chain_hint=None):
                     "note": "%d pool%s on this token's own chain report their depth and "
                             "every one is empty. There is nothing to sell into."
                             % (len(stated), "" if len(stated) == 1 else "s")})
+        if _only_unbacked_depth(scope):
+            return _disclosed({"address": address, "status": "unpriced",
+                               "liquidity_usd": None, "pairs_total": len(pairs),
+                               "note": _UNBACKED_NOTE})
         return _disclosed({"address": address, "status": "unpriced",
                            "liquidity_usd": None,
                 "pairs_total": len(pairs),
