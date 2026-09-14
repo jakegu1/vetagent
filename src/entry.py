@@ -469,14 +469,20 @@ async def _rate_limited(env, request):
     broken abuse control must not become an outage for everyone. The deploy smoke test is
     what stops "absent" from being the silent permanent state.
     """
+    # Every fail-open branch says why in the Worker log (owner-only, no IP printed). The first
+    # production deploy served 80 rapid calls without a 429 and the reason was invisible,
+    # because each of these branches returned False in silence.
     limiter = getattr(env, "CALL_LIMITER", None) if env is not None else None
     if limiter is None:
+        print("rate limiter open: no CALL_LIMITER binding")
         return False
     try:
         key = request.headers.get("cf-connecting-ip") or ""
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        print("rate limiter open: headers %s" % type(e).__name__)
         key = ""
     if not key:
+        print("rate limiter open: no cf-connecting-ip")
         return False
     try:
         try:
@@ -488,8 +494,11 @@ async def _rate_limited(env, request):
         outcome = await limiter.limit(opts)
         success = (outcome.get("success") if isinstance(outcome, dict)
                    else getattr(outcome, "success", None))
+        if success is None:
+            print("rate limiter open: outcome without success (%s)" % type(outcome).__name__)
         return success is False
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        print("rate limiter open: %s %s" % (type(e).__name__, str(e)[:160]))
         return False
 
 
