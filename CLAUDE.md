@@ -129,8 +129,9 @@ for f in tests/test_*.py; do python "$f"; done   # ~56s
 Then commit, then deploy. Publishing before re-measuring puts a stale number on a live
 page, and `test_published_numbers.py` will fail the build for it.
 
-**Check every workflow, not the one you were thinking about.** There are five —
-`deploy.yml`, `test.yml`, `snapshot.yml`, `usage.yml`, `production.yml` — and only
+**Check every workflow, not the one you were thinking about.** There are six —
+`deploy.yml`, `test.yml`, `snapshot.yml`, `usage.yml`, `production.yml`, and the
+dispatch-only read of Cloudflare's crawler settings `zone-check.yml` — and only
 `deploy.yml` gates the deploy. `production.yml` and `snapshot.yml` commit to master on a
 schedule, so pull before you push. On 2026-09-09 `test.yml` was red for **eight consecutive commits** while every
 report said the build was green, because each check ran

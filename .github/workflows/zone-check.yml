@@ -1,0 +1,51 @@
+name: zone-check
+
+# Read-only: is Cloudflare stopping AI crawlers from reading vetagent.dev?
+#
+# GEO -- being cited by the models agent developers ask -- depends on GPTBot, ClaudeBot,
+# PerplexityBot and OAI-SearchBot actually fetching the site and /llms.txt. Spoofing their
+# user agents from a laptop returns 200 (measured 2026-09-15), which proves nothing: the
+# zone's "block AI bots" setting acts on verified crawler IPs, not on user-agent strings. So
+# the setting itself is read, with the repository's own API token, which never leaves CI.
+#
+# Prints setting values only. It changes nothing.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read the zone's bot and crawler settings
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -u
+          api() {
+            curl -sS -m 30 -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              "https://api.cloudflare.com/client/v4$1"
+          }
+          zone=$(api "/zones?name=vetagent.dev" | python3 -c "import json,sys; d=json.load(sys.stdin); r=d.get('result') or []; print(r[0]['id'] if r else ''); sys.stderr.write('zones lookup success=%s errors=%s\n' % (d.get('success'), d.get('errors')))")
+          if [ -z "$zone" ]; then
+            echo "::warning::zone not readable with this token (it may lack Zone:Read)"
+            exit 0
+          fi
+          for path in bot_management settings/security_level settings/browser_check; do
+            echo "=== $path"
+            api "/zones/${zone}/${path}" | python3 -c "import json,sys; d=json.load(sys.stdin); print(json.dumps({'success': d.get('success'), 'errors': d.get('errors'), 'result': d.get('result')}, indent=1))"
+          done
+          echo "=== WAF custom rules that mention bots or user agents"
+          api "/zones/${zone}/rulesets/phases/http_request_firewall_custom/entrypoint" | python3 -c "
+          import json, sys
+          d = json.load(sys.stdin)
+          print('success=%s errors=%s' % (d.get('success'), d.get('errors')))
+          for r in ((d.get('result') or {}).get('rules') or []):
+              expr = r.get('expression', '')
+              if any(k in expr.lower() for k in ('bot', 'user_agent', 'verified')):
+                  print(r.get('action'), r.get('enabled'), expr[:200])
+          "
