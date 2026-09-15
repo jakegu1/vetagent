@@ -2339,8 +2339,10 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
                         "real exits cannot be told apart from one wallet trading with "
                         "itself."}
             data_gaps.append({"dimension": "sellability", "source": "geckoterminal",
-                              "reason": "upstream request failed: no distinct-seller count "
-                                        "to settle a contested honeypot verdict"})
+                              "reason": _failed("coingecko", "geckoterminal").replace(
+                                  "upstream request failed",
+                                  "upstream request failed: no distinct-seller count to settle "
+                                  "a contested honeypot verdict", 1)})
             signals.append(_sig(
                 "warn", "Honeypot verdict contested, not settled",
                 "honeypot.is reports a honeypot, while %s sells completed against %s buys "

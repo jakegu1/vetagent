@@ -2826,6 +2826,21 @@ def test_a_key_that_cannot_be_a_key_is_not_sent():
               risk._onchain_key() == "CG-abcdefghijklmnopqrstuvwx", repr(risk._onchain_key()))
         check("  and a good key leaves no unusable note",
               "unusable" not in risk._failed("coingecko"), risk._failed("coingecko"))
+
+        # The contested-honeypot gap was a fixed sentence, so on 2026-09-15 a stETH answer
+        # read "no distinct-seller count" with no way to tell a refused key from an
+        # unindexed pool. It names what the upstreams answered now, like every other gap.
+        risk.configure(types_ns(CG_DEMO_KEY=chr(22)))
+        hp = json.loads(json.dumps(_load("hp_matic.json")))
+        hp.setdefault("honeypotResult", {})["isHoneypot"] = True
+        ev = {"best_pair": {"liquidity_usd": 60000, "sells_24h": 40, "buys_24h": 60,
+                            "sellers_24h": None}}
+        gaps = []
+        risk._honeypot_signals(hp, [], ev, gaps, chain="ethereum")
+        reason = (gaps or [{}])[0].get("reason", "")
+        check("the contested-honeypot gap names the upstreams' answers too",
+              reason.startswith("upstream request failed") and "coingecko key set but unusable" in reason,
+              reason)
     finally:
         risk.configure(types_ns(CG_DEMO_KEY=saved) if saved else types_ns())
 
