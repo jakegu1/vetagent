@@ -76,9 +76,9 @@ COST_OF_WAITING = {
           "we cannot tell, and neither can anyone reading the benchmark.",
     "W12": "The 10-16 gate arrives with the measurement question still open, so that "
            "gate answers a smaller question than it was meant to.",
-    "W44": "Nothing breaks. Today's rule stays: a token whose holders failed to sell "
-           "reads medium when the chain shows sells, and that keeps costing about 19 of the "
-           "31 false blocks.",
+    "W44": "Nothing breaks. Today's rule stays: every token honeypot.is flags reads medium "
+           "when the chain shows sells, including the 11 liquid, alive tokens where fewer than "
+           "5% of thousands of tested holders failed -- 11 of the 30 false blocks.",
     "Post Experiment C": "This is the one action that can change the 09-18 answer. Not "
                          "doing it does not delay the gate -- the gate still fires, and "
                          "it fires on no.",

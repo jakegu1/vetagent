@@ -67,8 +67,8 @@ These are the things I cannot do. Everything else in this project is mine.
 
 - **When:** 2026-10-16 (in 31 days)
 - **Why then:** no verdict rule changes before the 09-18 gate, and W37/W38 land after it; the D gate should read the rule that was chosen
-- **You know it is done when:** A decision recorded in `DECISIONS.md`, either way
-- **If you do nothing:** Nothing breaks. Today's rule stays: a token whose holders failed to sell reads medium when the chain shows sells, and that keeps costing about 19 of the 31 false blocks.
+- **You know it is done when:** A decision recorded in `DECISIONS.md` with the cuts written before one `python bench/run_benchmark.py` re-run, after the 2026-09-18 gate, then left alone until W40's cohort exists
+- **If you do nothing:** Nothing breaks. Today's rule stays: every token honeypot.is flags reads medium when the chain shows sells, including the 11 liquid, alive tokens where fewer than 5% of thousands of tested holders failed -- 11 of the 30 false blocks.
 
 ## The dates that decide things
 
@@ -168,6 +168,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W36 done: the production probe's schedule fires, five and a half hours late; W48 queued for a flood check that failed once
 - W35: record why an answer was unknown, in words no upstream can write into
 - W46: a honeypot claim from a simulation that never ran could come back low after W31
 - W34: say what honeypot.is's flag is made of, instead of calling it a simulator false positive
@@ -175,9 +176,8 @@ problem looked like before it was fixed.
 - W32: the fallback credited a pool quoted in a self-minted coin, and the token came back low
 - Fallback token ids split at the wrong underscore: every Polygon pool's sides were unnamed
 - W31: our own retry turned "the simulator could not buy" into "you cannot sell"
-- W30: the front page said USDT and WBTC were flagged high; both are low
 
-_97 more not shown (105 commits in total)._
+_98 more not shown (106 commits in total)._
 
 ## What I got wrong
 
