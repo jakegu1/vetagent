@@ -2802,6 +2802,34 @@ def test_a_refusal_carries_the_upstreams_own_error_code():
         risk.cf_fetch, risk._fetch_json, risk._cache_get, risk.asyncio.sleep = saved
 
 
+def test_a_key_that_cannot_be_a_key_is_not_sent():
+    """The first production key was one invisible character, and it read as CoinGecko's fault.
+
+    `wrangler secret put` stored a single non-printable character -- the paste never reached
+    the prompt. Every CoinGecko call then answered 400 with an empty body, three attempts
+    each, and the gap said "coingecko 400" as though the upstream had refused a good key. It
+    took a logged key length to find. A value that cannot be a key is now not sent, and the
+    gap says whose problem it is.
+    """
+    print("\n[keys] a stray keystroke stored as a secret is refused, and named")
+    saved = risk._onchain_key()
+    try:
+        for bad in (chr(22), "  ", "CG-" + chr(13)[:0] + "short", "has a space in it ok ok"):
+            risk.configure(types_ns(CG_DEMO_KEY=bad))
+            check("%r is not used as a key" % bad, risk._onchain_key() is None, repr(risk._onchain_key()))
+        risk.configure(types_ns(CG_DEMO_KEY=chr(22)))
+        check("  and the gap names the key, not the upstream",
+              "coingecko key set but unusable" in risk._failed("dexscreener", "coingecko", "geckoterminal"),
+              risk._failed("dexscreener", "coingecko", "geckoterminal"))
+        risk.configure(types_ns(CG_DEMO_KEY="CG-abcdefghijklmnopqrstuvwx" + chr(13)))
+        check("a real-length key keeps working, trailing carriage return stripped",
+              risk._onchain_key() == "CG-abcdefghijklmnopqrstuvwx", repr(risk._onchain_key()))
+        check("  and a good key leaves no unusable note",
+              "unusable" not in risk._failed("coingecko"), risk._failed("coingecko"))
+    finally:
+        risk.configure(types_ns(CG_DEMO_KEY=saved) if saved else types_ns())
+
+
 def test_the_simulator_is_asked_about_the_chain_we_settled_on():
     """A wrong hint must not send the sell simulator to the wrong chain.
 

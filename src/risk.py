@@ -212,21 +212,25 @@ _FETCH_FAILURES = contextvars.ContextVar("vetagent_fetch_failures")
 # GeckoTerminal call throttled in every round, 48 of 60 calls, while CoinGecko's on-chain API
 # -- the same GeckoTerminal data and JSON -- answered 60 of 60 with a free key. A key is a
 # secret: it travels in a header, never in a URL (URLs are cache keys and log lines).
-_ONCHAIN = {"key": None}
+_ONCHAIN = {"key": None, "unusable": False}
+
+# Shorter than any real provider key (CoinGecko's are 27 characters); long enough to reject a
+# stray keystroke stored as a secret.
+_MIN_KEY_LENGTH = 16
 
 
 def configure(env):
     """Read optional provider keys from the Worker environment. Absent means keyless."""
     key = getattr(env, "CG_DEMO_KEY", None) if env is not None else None
-    raw = str(key) if key else ""
-    # TEMPORARY diagnostic (2026-09-15): lengths only, never the key.
-    if raw and not _ONCHAIN.get("_logged"):
-        _ONCHAIN["_logged"] = True
-        print("cg key: type=%s len=%d stripped_len=%d printable=%s" % (
-            type(key).__name__, len(raw), len(raw.strip()), raw.strip().isprintable()))
-    # Stripped: a secret pasted into a terminal can carry a trailing \r or newline, which is
-    # not a valid header value and never an intended part of a key.
-    _ONCHAIN["key"] = raw.strip() or None
+    raw = (str(key) if key else "").strip()
+    # A secret that cannot be a key is not sent. Measured 2026-09-15: the first CG_DEMO_KEY
+    # set on production was ONE non-printable character -- a paste that never reached the
+    # prompt -- and every CoinGecko call answered 400 with an empty body, three attempts each,
+    # while the gap read like an upstream fault. Stripped first, because a terminal paste can
+    # also carry a trailing carriage return, which is never part of a key.
+    usable = len(raw) >= _MIN_KEY_LENGTH and raw.isprintable() and " " not in raw
+    _ONCHAIN["key"] = raw if usable else None
+    _ONCHAIN["unusable"] = bool(raw) and not usable
 
 
 def _onchain_key():
@@ -273,6 +277,9 @@ def _failure_detail(*names):
 def _failed(*names):
     """The reason string for an upstream failure, naming what each upstream answered."""
     detail = _failure_detail(*names)
+    if "coingecko" in names and _ONCHAIN.get("unusable"):
+        # Ours, and fixable in one command: say so instead of letting it read as theirs.
+        detail = ", ".join(x for x in (detail, "coingecko key set but unusable") if x)
     return "upstream request failed" + (" (%s)" % detail if detail else "")
 
 
@@ -404,11 +411,6 @@ async def _fetch_json(url, retries=2, timeout=8, mark_missing=False, headers=Non
                 code = None
                 try:
                     raw = (await asyncio.wait_for(resp.text(), timeout=timeout))[:2000]
-                    if "api.coingecko.com" in url:
-                        # TEMPORARY diagnostic (2026-09-15): production answers 400 with no
-                        # code this reads. Host-only, addresses masked, removed after reading.
-                        print("coingecko %s: %s" % (resp.status, re.sub(
-                            r"0x[0-9a-fA-F]{6,}|[1-9A-HJ-NP-Za-km-z]{32,44}", "<addr>", raw)[:200]))
                     err = json.loads(raw)
                     if isinstance(err, dict):
                         code = err.get("error_code") or (err.get("status") or {}).get("error_code")
