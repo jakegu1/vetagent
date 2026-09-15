@@ -5,7 +5,7 @@
 > page cannot quietly drift out of date. `tests/test_owner_page.py` fails the
 > build if it does.
 >
-> Generated 2026-09-15.
+> Generated 2026-09-16.
 
 ## The project in one paragraph
 
@@ -21,51 +21,51 @@ These are the things I cannot do. Everything else in this project is mine.
 
 | When | Due | # | What you do | Blocked? |
 |---|---|---|---|---|
-| **in 3 days** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
-| **in 3 days** | 2026-09-18 | W11 | Answer the 2026-09-18 gate | no |
-| **in 3 days** | 2026-09-18 | -- | Post Experiment C | no |
-| in 31 days | 2026-10-16 | W5 | A second, independent sell-simulation source | **yes -- see below** |
-| in 31 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
-| in 31 days | 2026-10-16 | W44 | Decide what a honeypot flag backed by failed holder sells is worth once the chain shows se | no |
+| **in 2 days** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
+| **in 2 days** | 2026-09-18 | W11 | Answer the 2026-09-18 gate | no |
+| **in 2 days** | 2026-09-18 | -- | Post Experiment C | no |
+| in 30 days | 2026-10-16 | W5 | A second, independent sell-simulation source | **yes -- see below** |
+| in 30 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
+| in 30 days | 2026-10-16 | W44 | Decide what a honeypot flag backed by failed holder sells is worth once the chain shows se | no |
 
 ### W10 Create the two accounts the remaining directories need
 
-- **When:** 2026-09-18 (**in 3 days**)
+- **When:** 2026-09-18 (**in 2 days**)
 - **Why then:** distribution is the whole of the gate's failing branch
 - **You know it is done when:** `CHANNELS` in `bench/scorecard.py`, updated only by someone who went and looked
 - **If you do nothing:** Nothing. Six submissions are already queued and the two parked ones are one signup away; waiting costs reach, not work.
 
 ### W11 Answer the 2026-09-18 gate
 
-- **When:** 2026-09-18 (**in 3 days**)
+- **When:** 2026-09-18 (**in 2 days**)
 - **Why then:** this IS the gate -- it has to be answered on the day
 - **You know it is done when:** `python bench/usage.py`, counting rule already fixed in code; then a `Resolved:` line in `STRATEGY.md` §8, which `test_gates_get_reviewed.py` requires once due
 - **If you do nothing:** A gate that passes its date in silence teaches everyone that gates are decoration, and this is the first one that can stop the project.
 
 ###  Post Experiment C
 
-- **When:** 2026-09-18 (**in 3 days**)
+- **When:** 2026-09-18 (**in 2 days**)
 - **Why then:** The gate's failing branch prescribes exactly this, so it happens either way. Post after W30 and W31 land (2026-09-16): both change numbers the post quotes, and the post and the site should say the same thing. Drafts are written and every number in them is checked by the build: docs/EXPERIMENT_C.md. Nothing is posted without you -- it is your name on it.
 - **You know it is done when:** a post exists on at least one of HN, r/ethdev, X or the MCP Discord
 - **If you do nothing:** This is the one action that can change the 09-18 answer. Not doing it does not delay the gate -- the gate still fires, and it fires on no.
 
 ### W5 A second, independent sell-simulation source
 
-- **When:** 2026-10-16 (in 31 days)
+- **When:** 2026-10-16 (in 30 days)
 - **Why then:** needed for W3, which every accuracy claim rests on
 - **You know it is done when:** **Blocked** on a credential, not on engineering. Probed 2026-09-06: staysafu unreachable (SSL), quickintel 401, tokensniffer 401, de.fi public endpoint 404. Every candidate needed a paid key (**2026-09-15, from its pricing page:** Quick Intel now lists a free API Testing tier, 200 calls a month on approval, and a keyless pay-per-scan endpoint at $0.03 paid in USDC; whether its scan simulates a sell is not yet known; next owner step: apply for the testing tier) — this is a W9-shaped item that belongs to whoever holds the budget
 - **If you do nothing:** Every accuracy claim keeps resting on a single sell simulator. If it is wrong, we cannot tell, and neither can anyone reading the benchmark.
 
 ### W12 Decide the price-history trade-off
 
-- **When:** 2026-10-16 (in 31 days)
+- **When:** 2026-10-16 (in 30 days)
 - **Why then:** changes what the benchmark can measure, so before the D gate
 - **You know it is done when:** A decision recorded in `DECISIONS.md`, either way
 - **If you do nothing:** The 10-16 gate arrives with the measurement question still open, so that gate answers a smaller question than it was meant to.
 
 ### W44 Decide what a honeypot flag backed by failed holder sells is worth once the chain shows sells
 
-- **When:** 2026-10-16 (in 31 days)
+- **When:** 2026-10-16 (in 30 days)
 - **Why then:** no verdict rule changes before the 09-18 gate, and W37/W38 land after it; the D gate should read the rule that was chosen
 - **You know it is done when:** A decision recorded in `DECISIONS.md` with the cuts written before one `python bench/run_benchmark.py` re-run, after the 2026-09-18 gate, then left alone until W40's cohort exists
 - **If you do nothing:** Nothing breaks. Today's rule stays: every token honeypot.is flags reads medium when the chain shows sells, including the 11 liquid, alive tokens where fewer than 5% of thousands of tested holders failed -- 11 of the 30 false blocks.
@@ -78,10 +78,10 @@ next -- including stopping.
 
 | Date | When | The question | What happens |
 |---|---|---|---|
-| 2026-09-18 | **in 3 days** | Is anyone using it | Yes → continue; no → run only Experiment C, add no features |
-| 2026-10-16 | in 31 days | Does anyone want to pay | Yes → build payments; no → pick a different customer segment and run D again |
-| 2026-12-04 | in 80 days | Is further investment worth it | Yes → continue per §7; no → move to low-maintenance mode |
-| 2027-03-04 | in 170 days | Does the data asset hold up | Yes → that becomes the main product; no → keep the tool, drop the data narrative |
+| 2026-09-18 | **in 2 days** | Is anyone using it | Yes → continue; no → run only Experiment C, add no features |
+| 2026-10-16 | in 30 days | Does anyone want to pay | Yes → build payments; no → pick a different customer segment and run D again |
+| 2026-12-04 | in 79 days | Is further investment worth it | Yes → continue per §7; no → move to low-maintenance mode |
+| 2027-03-04 | in 169 days | Does the data asset hold up | Yes → that becomes the main product; no → keep the tool, drop the data narrative |
 
 ## The same thing as a picture
 
@@ -95,10 +95,10 @@ gantt
     todayMarker stroke-width:3px,stroke:#d33,stroke-dasharray:0
     title The dates that decide things (red line is today)
     section Decisions
-    Is anyone using it - in 3 days :milestone, 2026-09-18, 0d
-    Does anyone want to pay - in 31 days :milestone, 2026-10-16, 0d
-    Is further investment worth it - in 80 days :milestone, 2026-12-04, 0d
-    Does the data asset hold up - in 170 days :milestone, 2027-03-04, 0d
+    Is anyone using it - in 2 days :milestone, 2026-09-18, 0d
+    Does anyone want to pay - in 30 days :milestone, 2026-10-16, 0d
+    Is further investment worth it - in 79 days :milestone, 2026-12-04, 0d
+    Does the data asset hold up - in 169 days :milestone, 2027-03-04, 0d
 ```
 
 ### Is the archive still collecting?
@@ -109,7 +109,7 @@ gantt
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**13 days, no gaps.** Newest is 2026-09-15, today.
+**13 days, no gaps.** Newest is 2026-09-15, yesterday.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -141,7 +141,7 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **13 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **12 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -168,16 +168,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W43: the anchor re-measurement, committed before it runs
+- W41 run 1: our own V2 sell simulation -- inconclusive under the rule set before it ran
 - W41: own sell simulation -- design page and the rule that judges the prototype, before it runs
 - W44: the holder test is a share with a sample size, and the flag behaves like a count trigger
 - W36 done: the production probe's schedule fires, five and a half hours late; W48 queued for a flood check that failed once
 - W35: record why an answer was unknown, in words no upstream can write into
 - W46: a honeypot claim from a simulation that never ran could come back low after W31
 - W34: say what honeypot.is's flag is made of, instead of calling it a simulator false positive
-- W33: an empty WETH pool answered "nothing to sell into" for a $115,299 pool beside it
-- W32: the fallback credited a pool quoted in a self-minted coin, and the token came back low
 
-_89 more not shown (97 commits in total)._
+_91 more not shown (99 commits in total)._
 
 ## What I got wrong
 
@@ -186,6 +186,12 @@ costs me something. A build check requires an entry here every 14 days: if there
 were genuinely no mistakes, saying so is itself a dated claim on the record.
 
 Newest first.
+
+**2026-09-16** &mdash; I said: *'W41 run 1 committed and pushed' -- reported with the tests workflow red on both W41 commits (c66aba1 and b74e72e).*
+
+> docs/SELL_SIMULATION.md carries percentages and was in neither list the number guard reads, so tests/test_number_coverage.py failed in CI. Before each of those commits I ran a hand-picked subset of the tests instead of the full loop, and did not read CI afterwards.
+
+> How it surfaced: Caught the next morning by the full loop before the W43 commit. It is the 2026-09-09 failure again -- checked one place, reported green -- and the fix is the same: the full loop before every commit, and every workflow read after every push.
 
 **2026-09-15** &mdash; I said: *'honeypot.is flagged a token while its own simulation passed and thousands of sells went through: a simulator false positive' -- the reading behind the contested-honeypot rule, its signal text and its test fixture.*
 

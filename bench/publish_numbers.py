@@ -635,7 +635,11 @@ GENERATED_FILES = ("docs/OWNER.md", "docs/ROUNDS.md", "docs/SCORECARD.md")
 # record what was believed and measured at a date, including numbers later withdrawn. A
 # guard that rewrote those would erase the corrections this project is built on.
 FROZEN_LOG_FILES = ("docs/ROUNDS.md", "docs/DECISIONS.md", "docs/HANDOFF.md",
-                    "docs/BACKLOG.md", "docs/OPPORTUNITIES.md", "docs/STRATEGY.md")
+                    "docs/BACKLOG.md", "docs/OPPORTUNITIES.md", "docs/STRATEGY.md",
+                    # W41's pre-registered rule and its dated runs: thresholds fixed before a
+                    # run and results as measured that day. Rewriting them to a later
+                    # benchmark would be the fitting the page exists to prevent.
+                    "docs/SELL_SIMULATION.md")
 
 # (file, exact substring that must appear on the line) -- scoped to one file each, so an
 # exemption written for one sentence cannot silently cover a new number somewhere else.
