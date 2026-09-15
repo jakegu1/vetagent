@@ -128,6 +128,38 @@ TARGETS = [
      "centralized_high_pct"),
     ("docs/EXPERIMENT_C.md", r"\| ([\d.]+)% \(26 of \d+\) \|", "dead_not_low_pct"),
     ("docs/EXPERIMENT_C.md", r"\| \*\*([\d.]+)%\*\* \(3 of \d+\) \|", "dead_high_pct"),
+    # src/pages.py /method (2026-09-15): each table row guards its rate, its count and its
+    # denominator, anchored on the row label so a moved count cannot unhook it.
+    ("src/pages.py", r"<tr><td>Healthy tokens rated high \(false positives\)</td><td class=\"num\">([\d.]+)%", "fp_pct"),
+    ("src/pages.py", r"<tr><td>Healthy tokens rated high \(false positives\)</td><td class=\"num\">[\d.]+% \((\d+) of", "fp_n"),
+    ("src/pages.py", r"<tr><td>Healthy tokens rated high \(false positives\)</td><td class=\"num\">[\d.]+% \(\d+ of (\d+)\)", "healthy_n"),
+    ("src/pages.py", r"<tr><td>Liquid healthy tokens rated medium or high \(false blocks\)</td><td class=\"num\">([\d.]+)%", "false_block_pct"),
+    ("src/pages.py", r"<tr><td>Liquid healthy tokens rated medium or high \(false blocks\)</td><td class=\"num\">[\d.]+% \((\d+) of", "false_block_n"),
+    ("src/pages.py", r"<tr><td>Liquid healthy tokens rated medium or high \(false blocks\)</td><td class=\"num\">[\d.]+% \(\d+ of (\d+)\)", "false_block_of"),
+    ("src/pages.py", r"<tr><td>Answers returned as unknown</td><td class=\"num\">([\d.]+)%", "unknown_pct"),
+    ("src/pages.py", r"<tr><td>Answers returned as unknown</td><td class=\"num\">[\d.]+% \((\d+) of", "unknown_n"),
+    ("src/pages.py", r"<tr><td>Answers returned as unknown</td><td class=\"num\">[\d.]+% \(\d+ of (\d+)\)", "n"),
+    ("src/pages.py", r"<tr><td>Confirmed-dead tokens not rated low</td><td class=\"num\">([\d.]+)%", "dead_not_low_pct"),
+    ("src/pages.py", r"<tr><td>Confirmed-dead tokens not rated low</td><td class=\"num\">[\d.]+% \((\d+) of", "dead_not_low_n"),
+    ("src/pages.py", r"<tr><td>Confirmed-dead tokens not rated low</td><td class=\"num\">[\d.]+% \(\d+ of (\d+)\)", "dead_n"),
+    ("src/pages.py", r"<tr><td>Confirmed-dead tokens rated high</td><td class=\"num\">([\d.]+)%", "dead_high_pct"),
+    ("src/pages.py", r"<tr><td>Confirmed-dead tokens rated high</td><td class=\"num\">[\d.]+% \((\d+) of", "dead_high_n"),
+    ("src/pages.py", r"<tr><td>Confirmed-dead tokens rated high</td><td class=\"num\">[\d.]+% \(\d+ of (\d+)\)", "dead_n"),
+    ("src/pages.py", r"<tr><td>Adversarial contracts rated high</td><td class=\"num\">([\d.]+)%", "adversarial_high_pct"),
+    ("src/pages.py", r"<tr><td>Adversarial contracts rated high</td><td class=\"num\">[\d.]+% \((\d+) of", "adversarial_high_n"),
+    ("src/pages.py", r"<tr><td>Adversarial contracts rated high</td><td class=\"num\">[\d.]+% \(\d+ of (\d+)\)", "adversarial_n"),
+    ("src/pages.py", r"<tr><td>Oracle-tagged centralised tokens rated high</td><td class=\"num\">([\d.]+)%", "centralized_high_pct"),
+    ("src/pages.py", r"<tr><td>Oracle-tagged centralised tokens rated high</td><td class=\"num\">[\d.]+% \((\d+) of", "centralized_high_n"),
+    ("src/pages.py", r"<tr><td>Oracle-tagged centralised tokens rated high</td><td class=\"num\">[\d.]+% \(\d+ of (\d+)\)", "centralized_n"),
+    ("src/pages.py", r"Measured on (\d+) tokens across Ethereum", "n"),
+    ("src/pages.py", r"signals and dead tokens not rated low falls to ([\d.]+)%", "dead_not_low_ablated_pct"),
+    ("src/pages.py", r"adversarial contracts rated high falls to\s+([\d.]+)%", "adversarial_high_ablated_pct"),
+    ("src/pages.py", r"The adversarial cohort is (\d+) tokens", "adversarial_n"),
+    ("src/pages.py", r"tokens and (\d+) of them hold under a dollar", "adversarial_sub_dollar_n"),
+    ("src/pages.py", r"it finds ([\d.]+)% of the owner powers", "power_pooled_oos_pct"),
+    # The landing FAQ said "16 of which hold under a dollar" while the benchmark said 15, and
+    # nothing guarded it (found 2026-09-15 while writing the /method page).
+    ("src/landing.html", r"17 tokens so far, (\d+) of which hold under a dollar", "adversarial_sub_dollar_n"),
     ("docs/EXPERIMENT_C.md", r"same pool only ([\d.]+)% of the time", "pool_match_pct"),
     # The false-block rate: liquid healthy tokens rated medium or high. The FP rate counts
     # only `high`, while an agent treats `medium` as do-not-trade, so the FP row alone
@@ -542,7 +574,7 @@ def scan(write):
 # an app-store submission, a plugin skill, an install guide -- none of which it scanned.
 # A guard whose file list is a snapshot of the day it was written stops covering the
 # project the moment the project grows.
-LIVE_CLAIM_FILES = ("README.md", "src/landing.html", "src/entry.py",
+LIVE_CLAIM_FILES = ("README.md", "src/landing.html", "src/entry.py", "src/pages.py",
                     "docs/AUDIT_BRIEF.md", "docs/EXPERIMENT_C.md", "docs/SCORECARD.md",
                     "docs/OPENAI_SUBMISSION.md", "docs/AGENT-INTEGRATION.md",
                     "llms-install.md", "plugin/README.md",

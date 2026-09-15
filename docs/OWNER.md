@@ -162,16 +162,16 @@ The owner accepted the open recommendations: stale data caps confidence, the par
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- The fallback put the queried token on the wrong side of the pool: USDC on Base at $2,482.71
+- zone-check: Cloudflare does not block AI crawlers; read the request logs a day at a time
+- Sitemap, robots.txt and IndexNow: tell search engines the site exists
 - The contested-honeypot gap names what the upstreams answered
 - GEO baseline 2026-09-15: vetagent.dev is not in the search index
 - zone-check reads what crawlers actually got; GEO web-search baseline recorded
 - GEO baseline: register the query list and the reading rule before the first measurement
 - The first production key was one invisible character: refuse it, and say it is ours
-- Strip the provider key, and TEMPORARILY log its length and type to read the 400
-- TEMPORARY: log CoinGecko's error body, addresses masked, to read a 400 with no code
-- zone-check: read whether Cloudflare blocks AI crawlers, with the repository's own token
 
-_95 more not shown (103 commits in total)._
+_97 more not shown (105 commits in total)._
 
 ## What I got wrong
 

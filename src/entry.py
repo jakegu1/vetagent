@@ -12,6 +12,8 @@ from urllib.parse import parse_qsl, urlparse
 from workers import Response, WorkerEntrypoint
 
 import mcp_server
+import og_image
+import pages
 import risk
 
 _LANDING_PATH = os.path.join(os.path.dirname(__file__), "landing.html")
@@ -33,7 +35,9 @@ _GLAMA_CLAIM = (
 
 # Pages an engine should index. Every URL here must resolve;
 # tests/test_http_telemetry.py fetches each one.
-_SITEMAP_URLS = ("https://vetagent.dev/", "https://vetagent.dev/llms.txt",
+_SITEMAP_URLS = ("https://vetagent.dev/", "https://vetagent.dev/api",
+                 "https://vetagent.dev/unknown", "https://vetagent.dev/method",
+                 "https://vetagent.dev/llms.txt", "https://vetagent.dev/llms-full.txt",
                  "https://vetagent.dev/privacy", "https://vetagent.dev/terms")
 _SITEMAP_XML = ('<?xml version="1.0" encoding="UTF-8"?>\n'
                 '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
@@ -43,6 +47,27 @@ _ROBOTS_TXT = ("User-agent: *\n"
                "Allow: /\n"
                "\n"
                "Sitemap: https://vetagent.dev/sitemap.xml\n")
+
+def _llms_full():
+    """llms.txt plus every tool's full contract, read from the live tool list so it cannot drift."""
+    out = [_LLMS_TXT, "", "## Reference pages", "",
+           "https://vetagent.dev/api      how to call it over MCP or HTTP, and every field",
+           "https://vetagent.dev/unknown  what unknown means, and when to retry or abstain",
+           "https://vetagent.dev/method   how accuracy is measured, including the worst numbers",
+           "", "## Tool reference (generated from the server's tools/list)", ""]
+    for tool in mcp_server.TOOLS:
+        out.append("### %s" % tool["name"])
+        out.append("")
+        out.append(tool.get("description", "").strip())
+        out.append("")
+        props = (tool.get("inputSchema") or {}).get("properties") or {}
+        required = set((tool.get("inputSchema") or {}).get("required") or [])
+        for name, spec in props.items():
+            out.append("  %s%s: %s" % (name, "" if name in required else " (optional)",
+                                       (spec.get("description") or spec.get("type") or "").strip()))
+        out.append("")
+    return chr(10).join(out) + chr(10)
+
 
 # IndexNow (Bing, Yandex, Seznam, Naver and others share submissions). Not a secret: the
 # protocol requires this exact string to be served at /<key>.txt on the host being submitted.
@@ -652,6 +677,17 @@ class Default(WorkerEntrypoint):
         # `site:vetagent.dev` empty and the domain in none of fifteen result lists, with no
         # sitemap and no Sitemap line in robots.txt. Cloudflare prepends its managed content
         # signals to whatever robots.txt the origin serves, so this file only adds rules.
+        # One question per page, for the searches VetAgent was absent from (bench/geo/).
+        if path in pages.PAGES:
+            return Response(pages.PAGES[path],
+                            headers={"content-type": "text/html; charset=utf-8"}, status=200)
+        if path == "/og.png":
+            return Response(og_image.PNG, headers={"content-type": "image/png",
+                                                   "cache-control": "public, max-age=86400"},
+                            status=200)
+        if path == "/llms-full.txt":
+            return Response(_llms_full(), headers={"content-type": "text/plain; charset=utf-8"},
+                            status=200)
         if path == "/sitemap.xml":
             return Response(_SITEMAP_XML, headers={"content-type": "application/xml; charset=utf-8"},
                             status=200)

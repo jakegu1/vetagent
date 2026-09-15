@@ -484,6 +484,55 @@ def test_search_engines_are_told_what_to_index():
           "deploy.yml does not submit, or submits a different key")
 
 
+def test_each_reference_page_can_be_indexed_cited_and_shared():
+    """One landing page answered no specific question, and a shared link showed no card.
+
+    GEO baseline 2026-09-15: crawlers were reaching the site (the zone logs show Googlebot,
+    bingbot, OAI-SearchBot, ClaudeBot and GPTBot getting 200), yet vetagent.dev appeared in
+    none of fifteen search result lists -- nothing on it matched a question an agent developer
+    types. And links carried no og:image or twitter:card. Each reference page must be
+    reachable, in the sitemap, self-describing to a crawler, and shareable.
+    """
+    print("\n[seo] reference pages, share card, llms-full.txt")
+    import struct
+    w = entry.Default()
+    sitemap = asyncio.run(w.fetch(FakeRequest("https://vetagent.dev/sitemap.xml"))).body or ""
+    for path in ("/api", "/unknown", "/method"):
+        r = asyncio.run(w.fetch(FakeRequest("https://vetagent.dev" + path)))
+        body = r.body or ""
+        check("%s returns 200 HTML" % path, r.status == 200
+              and "text/html" in (r.headers or {}).get("content-type", ""), str(r.status))
+        check("  %s has one title and a description" % path, body.count("<title>") == 1
+              and '<meta name="description"' in body)
+        check("  %s is canonical to itself" % path,
+              '<link rel="canonical" href="https://vetagent.dev%s">' % path in body)
+        check("  %s carries a share card" % path, 'property="og:image"' in body
+              and 'name="twitter:card" content="summary_large_image"' in body)
+        check("  %s has structured data" % path, "application/ld+json" in body)
+        check("  %s is in the sitemap" % path, "<loc>https://vetagent.dev%s</loc>" % path in sitemap)
+
+    landing = asyncio.run(w.fetch(FakeRequest("https://vetagent.dev/"))).body or ""
+    check("the landing page carries the share card too", 'property="og:image"' in landing
+          and 'name="twitter:card"' in landing)
+    check("  and links the reference pages", all('href="%s"' % p in landing
+                                                 for p in ("/api", "/unknown", "/method")))
+
+    r = asyncio.run(w.fetch(FakeRequest("https://vetagent.dev/og.png")))
+    png = r.body if isinstance(r.body, (bytes, bytearray)) else b""
+    ok = png[:8] == b"\x89PNG\r\n\x1a\n"
+    size = struct.unpack(">II", png[16:24]) if ok else None
+    check("/og.png is a 1200x630 PNG", r.status == 200 and ok and size == (1200, 630),
+          "%s %s" % (r.status, size))
+
+    r = asyncio.run(w.fetch(FakeRequest("https://vetagent.dev/llms-full.txt")))
+    body = r.body or ""
+    check("/llms-full.txt returns 200", r.status == 200, str(r.status))
+    check("  and documents every tool the server lists",
+          all(t["name"] in body for t in mcp_server.TOOLS), body[:120])
+    check("  and links the reference pages", all("https://vetagent.dev%s" % p in body
+                                                for p in ("/api", "/unknown", "/method")))
+
+
 def test_an_unissued_verification_token_is_absent_not_wrong():
     """The OpenAI challenge path 404s until a real token exists, and never guesses one.
 
