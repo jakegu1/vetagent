@@ -27,16 +27,31 @@
       "reading": "Recorded as not measurable, never as not found. Creating accounts is the owner's to do."
     },
     "crawler_access": {
-      "status": "not measurable with the repository's token",
-      "spoofed_user_agents": "GPTBot, ClaudeBot, PerplexityBot, OAI-SearchBot and Googlebot user agents from this machine all received HTTP 200 for / and /llms.txt -- which does not prove the verified crawlers are served, because Cloudflare's AI-bot setting acts on crawler IPs",
-      "zone_settings_read": "security_level medium, browser_check on; bot_management and custom WAF rules: Authentication error",
-      "request_logs": "GraphQL analytics refused: the token lacks zone analytics read",
+      "status": "measured",
+      "instrument": "zone-check.yml run 34932099217 at 67f49da (2026-09-15T05:16Z): zone settings plus bench/crawler_log.py over the zone's request logs, 7 days, 0 days unreadable",
+      "first_reading": "Earlier the same day the repository's token could read neither bot_management nor the request logs, and this section said not measurable. The owner added the read-only permissions; spoofed crawler user agents from this machine had received 200, which proved nothing about verified crawler IPs.",
+      "bot_management": "fight_mode false, ai_bots_protection disabled, crawler_protection disabled",
+      "zone_settings_read": "security_level medium, browser_check on; custom WAF rules still 'request is not authorized' in this run",
+      "requests_by_crawler_7d": {
+        "bingbot": {"200": 39, "405": 3},
+        "Googlebot": {"200": 38, "204": 2},
+        "OAI-SearchBot": {"200": 12},
+        "Applebot": {"200": 11, "204": 1},
+        "ClaudeBot": {"200": 8, "404": 5},
+        "YandexBot": {"200": 6},
+        "Amazonbot": {"200": 5, "404": 3},
+        "GPTBot": {"200": 4},
+        "PerplexityBot": {"200": 2},
+        "DuckDuckBot": {"200": 2, "404": 2},
+        "ChatGPT-User": {"200": 1}
+      },
       "robots_txt": "Cloudflare's managed content-signals preamble only; no user-agent rules",
-      "reading": "Unknown whether AI crawlers reach the site. Two read-only token permissions would settle it: Zone Analytics Read and Bot Management Read."
+      "reading": "Crawlers, AI crawlers included, reach the site and are served 200. Access is not why vetagent.dev is absent from result lists; having one page with nothing specific to cite is the likelier cause, and that is what the reference pages address. Inferred from matching counts, not per-request logs: ClaudeBot's five 404s match its five /sitemap.xml fetches, made before the sitemap existed, and bingbot's three 405s match its three fetches of /mcp, which does not serve GET."
     }
   },
   "site_basics": {
     "present": ["title", "meta description", "canonical", "two JSON-LD blocks", "og:title/description/type/url", "/llms.txt", "/robots.txt"],
-    "missing": ["sitemap.xml (404)", "og:image and twitter:card", "llms-full.txt (404)", "any page beyond the landing page that answers one question"]
+    "missing": ["sitemap.xml (404)", "og:image and twitter:card", "llms-full.txt (404)", "any page beyond the landing page that answers one question"],
+    "missing_note": "State at the baseline reading. All four were shipped the same day, after it (36aee0c sitemap; 2e92c84 pages, share card, llms-full.txt); the 2026-09-29 re-measurement is the first reading that includes them."
   }
 }
