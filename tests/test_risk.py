@@ -2926,6 +2926,20 @@ def test_the_fallback_knows_which_side_of_the_pool_the_token_is_on():
     finally:
         risk.configure(types_ns(CG_DEMO_KEY=saved) if saved else types_ns())
 
+    # The token ids are "<network>_<address>", and a network id can hold an underscore:
+    # "polygon_pos_0x2791...". Splitting at the first underscore gave "pos_0x2791...", an
+    # address matching nothing, so on Polygon every pool's sides were unnamed and the side
+    # fix above did nothing there (found 2026-09-15 while writing W32, which asks whether a
+    # side is an anchor).
+    pol = _load("gt_matic_polygon.json")["data"][0]
+    pair = risk._gt_to_pair(pol, "0x0000000000000000000000000000000000001010", "polygon_pos")
+    check("a Polygon pool's quote token is a real address",
+          pair["quoteToken"]["address"] == "0x2791bca1f2de4661ed88a30c99a7a9449aa84174",
+          pair["quoteToken"]["address"])
+    check("  and so is its base token",
+          pair["baseToken"]["address"] == "0x0000000000000000000000000000000000001010",
+          pair["baseToken"]["address"])
+
 
 def test_the_simulator_is_asked_about_the_chain_we_settled_on():
     """A wrong hint must not send the sell simulator to the wrong chain.

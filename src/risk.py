@@ -1342,7 +1342,9 @@ def _gt_to_pair(p, address, network):
 
     def _rel_addr(side):
         rid = str((((rel.get(side) or {}).get("data")) or {}).get("id") or "")
-        return rid.split("_", 1)[-1] if "_" in rid else ""
+        # "<network>_<address>", and the network can contain an underscore
+        # ("polygon_pos"); an address never does.
+        return rid.rsplit("_", 1)[-1] if "_" in rid else ""
 
     names = [x.strip() for x in (a.get("name") or "").split("/")]
     base_sym = names[0] if names else ""
@@ -1357,7 +1359,7 @@ def _gt_to_pair(p, address, network):
         "dexId": "geckoterminal",
         # GeckoTerminal pool ids look like "eth_0xabc..."; the address is the tail.
         "pairAddress": (a.get("address")
-                        or (str(p.get("id") or "").split("_", 1)[-1] or None)),
+                        or (str(p.get("id") or "").rsplit("_", 1)[-1] or None)),
         "chainId": _GT_TO_CHAIN.get(network, network),
         # None, not 0.0, when GeckoTerminal did not state a reserve -- see
         # _reported_liquidity. A missing number must not arrive downstream as a measured
