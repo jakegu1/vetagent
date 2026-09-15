@@ -395,7 +395,13 @@ async def _fetch_json(url, retries=2, timeout=8, mark_missing=False, headers=Non
                 # secret -- they never echo the key -- and only the numeric code is kept.
                 code = None
                 try:
-                    err = json.loads((await asyncio.wait_for(resp.text(), timeout=timeout))[:2000])
+                    raw = (await asyncio.wait_for(resp.text(), timeout=timeout))[:2000]
+                    if "api.coingecko.com" in url:
+                        # TEMPORARY diagnostic (2026-09-15): production answers 400 with no
+                        # code this reads. Host-only, addresses masked, removed after reading.
+                        print("coingecko %s: %s" % (resp.status, re.sub(
+                            r"0x[0-9a-fA-F]{6,}|[1-9A-HJ-NP-Za-km-z]{32,44}", "<addr>", raw)[:200]))
+                    err = json.loads(raw)
                     if isinstance(err, dict):
                         code = err.get("error_code") or (err.get("status") or {}).get("error_code")
                 except Exception:  # noqa: BLE001 -- no code is fine; the status still stands
