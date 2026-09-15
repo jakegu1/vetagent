@@ -1,0 +1,33 @@
+{
+  "purpose": "GEO/SEO baseline for VetAgent. Fixed before the first measurement on 2026-09-15 and not edited after a reading; re-measure with the same list and the same rule.",
+  "registered": "2026-09-15",
+  "remeasure_on": ["2026-09-29", "2026-10-13"],
+  "metric": {
+    "found": "VetAgent is 'found' on a surface for a query when vetagent.dev, github.com/jakegu1/vetagent, or a directory listing page for VetAgent (registry, Glama, Smithery, mcpservers.org, PulseMCP, mcp.so) appears in the top 10 results, or when an AI answer names VetAgent or cites one of those URLs.",
+    "headline": "Share of the 12 non-branded queries where VetAgent is found, per surface. The 3 branded queries are controls: if VetAgent is not found for its own name, the problem is indexing, not relevance, and the non-branded share cannot be read.",
+    "also_recorded": "The rank when found; the tools that are named instead, so a later reading can tell 'we rose' from 'the field changed'.",
+    "not_a_pass_mark": "There is no target. The first reading is a baseline; the comparison is between readings on the same list."
+  },
+  "queries": [
+    {"id": "g01", "branded": false, "q": "how to check if a token is a honeypot before an AI agent buys it"},
+    {"id": "g02", "branded": false, "q": "MCP server for crypto token risk"},
+    {"id": "g03", "branded": false, "q": "token safety check API for trading bots"},
+    {"id": "g04", "branded": false, "q": "free rug pull detection API"},
+    {"id": "g05", "branded": false, "q": "honeypot checker API for AI agents"},
+    {"id": "g06", "branded": false, "q": "pre-trade token risk check for AI agents"},
+    {"id": "g07", "branded": false, "q": "detect scam tokens in an autonomous trading agent"},
+    {"id": "g08", "branded": false, "q": "crypto token security MCP tool"},
+    {"id": "g09", "branded": false, "q": "free honeypot detection API ethereum base bsc"},
+    {"id": "g10", "branded": false, "q": "check token liquidity before buying programmatically"},
+    {"id": "g11", "branded": false, "q": "solana rug check API for AI agent"},
+    {"id": "g12", "branded": false, "q": "token risk API published false positive rate"},
+    {"id": "b01", "branded": true, "q": "VetAgent MCP"},
+    {"id": "b02", "branded": true, "q": "vetagent.dev"},
+    {"id": "b03", "branded": true, "q": "VetAgent token risk check"}
+  ],
+  "surfaces": {
+    "web_search": "The web search tool available to the measuring session, top 10 results per query. Which engine backs it is not under our control and is recorded as a limit.",
+    "ai_answers": "Answer engines usable without an account (Perplexity, ChatGPT without login), in a clean browser. A surface that demands login or a captcha is recorded as not measurable, never as 'not found'.",
+    "crawler_access": "Whether verified AI crawlers are served or blocked by Cloudflare, read from the zone's settings or its request logs."
+  }
+}
