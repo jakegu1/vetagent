@@ -168,6 +168,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W42: /method splits the centralised row by pool depth, with every column that could flatter it
 - Date the W41 correction by the build's clock: 2026-09-16 local was 2026-09-15 UTC
 - W43: VIRTUAL re-measured under E21's unchanged rule -- $8.34M stated, $6.79M credited, refused
 - CI was red on both W41 commits: the design page's percentages were in no guard list
@@ -175,9 +176,8 @@ problem looked like before it was fixed.
 - W41 run 1: our own V2 sell simulation -- inconclusive under the rule set before it ran
 - W41: own sell simulation -- design page and the rule that judges the prototype, before it runs
 - W44: the holder test is a share with a sample size, and the flag behaves like a count trigger
-- W36 done: the production probe's schedule fires, five and a half hours late; W48 queued for a flood check that failed once
 
-_94 more not shown (102 commits in total)._
+_95 more not shown (103 commits in total)._
 
 ## What I got wrong
 
