@@ -108,13 +108,14 @@ EXTRA_ACTIONS = [
 # claim, which is itself a thing that can turn out to be false.
 CORRECTION_WINDOW = 14
 CORRECTIONS = [
-    ("2026-09-16",
+    ("2026-09-15",
      "'W41 run 1 committed and pushed' -- reported with the tests workflow red on both W41 "
      "commits (c66aba1 and b74e72e).",
      "docs/SELL_SIMULATION.md carries percentages and was in neither list the number guard "
      "reads, so tests/test_number_coverage.py failed in CI. Before each of those commits I ran a "
      "hand-picked subset of the tests instead of the full loop, and did not read CI afterwards.",
-     "Caught the next morning by the full loop before the W43 commit. It is the 2026-09-09 "
+     "Caught by the full loop before the W43 commit -- and the fix itself went red in CI, "
+     "dated 2026-09-16 by a local clock eight hours ahead of the build's UTC one. It is the 2026-09-09 "
      "failure again -- checked one place, reported green -- and the fix is the same: the full "
      "loop before every commit, and every workflow read after every push."),
     ("2026-09-15",

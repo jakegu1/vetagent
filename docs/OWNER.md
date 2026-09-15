@@ -168,16 +168,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W43: VIRTUAL re-measured under E21's unchanged rule -- $8.34M stated, $6.79M credited, refused
+- CI was red on both W41 commits: the design page's percentages were in no guard list
 - W43: the anchor re-measurement, committed before it runs
 - W41 run 1: our own V2 sell simulation -- inconclusive under the rule set before it ran
 - W41: own sell simulation -- design page and the rule that judges the prototype, before it runs
 - W44: the holder test is a share with a sample size, and the flag behaves like a count trigger
 - W36 done: the production probe's schedule fires, five and a half hours late; W48 queued for a flood check that failed once
 - W35: record why an answer was unknown, in words no upstream can write into
-- W46: a honeypot claim from a simulation that never ran could come back low after W31
-- W34: say what honeypot.is's flag is made of, instead of calling it a simulator false positive
 
-_91 more not shown (99 commits in total)._
+_93 more not shown (101 commits in total)._
 
 ## What I got wrong
 
@@ -187,11 +187,11 @@ were genuinely no mistakes, saying so is itself a dated claim on the record.
 
 Newest first.
 
-**2026-09-16** &mdash; I said: *'W41 run 1 committed and pushed' -- reported with the tests workflow red on both W41 commits (c66aba1 and b74e72e).*
+**2026-09-15** &mdash; I said: *'W41 run 1 committed and pushed' -- reported with the tests workflow red on both W41 commits (c66aba1 and b74e72e).*
 
 > docs/SELL_SIMULATION.md carries percentages and was in neither list the number guard reads, so tests/test_number_coverage.py failed in CI. Before each of those commits I ran a hand-picked subset of the tests instead of the full loop, and did not read CI afterwards.
 
-> How it surfaced: Caught the next morning by the full loop before the W43 commit. It is the 2026-09-09 failure again -- checked one place, reported green -- and the fix is the same: the full loop before every commit, and every workflow read after every push.
+> How it surfaced: Caught by the full loop before the W43 commit -- and the fix itself went red in CI, dated 2026-09-16 by a local clock eight hours ahead of the build's UTC one. It is the 2026-09-09 failure again -- checked one place, reported green -- and the fix is the same: the full loop before every commit, and every workflow read after every push.
 
 **2026-09-15** &mdash; I said: *'honeypot.is flagged a token while its own simulation passed and thousands of sells went through: a simulator false positive' -- the reading behind the contested-honeypot rule, its signal text and its test fixture.*
 
