@@ -59,8 +59,8 @@ OWNER_DUE = {
     "W5": ("2026-10-16", "needed for W3, which every accuracy claim rests on"),
     "W12": ("2026-10-16", "changes what the benchmark can measure, so before the D gate"),
     "W13": ("", "no deadline -- do it when convenient"),
-    "W29": ("2026-10-16", "the first decision that spends money, so settle it before the "
-                          "gate that asks whether anyone will pay"),
+    "W29": ("2026-09-18", "the keyed fallback is live and idle until the secret exists, and "
+                          "Experiment C's callers arrive around the gate"),
 }
 
 # What it costs to do nothing. An owner reading a task list reads "when" and "what", and
@@ -106,6 +106,16 @@ EXTRA_ACTIONS = [
 # claim, which is itself a thing that can turn out to be false.
 CORRECTION_WINDOW = 14
 CORRECTIONS = [
+    ("2026-09-15",
+     "'Adopt Codex as the fallback: it is the only provider with both reserve amounts and "
+     "distinct sellers in one query, and the fastest.'",
+     "Its data is not safe to use. Real response bodies showed its pool listing ranking "
+     "testnet pools and int64-max liquidity first for WETH, and a mainnet 'USDT pool' "
+     "reporting 30,250,000,000 USDT -- fed to the depth check, that reopens the "
+     "fabricated-depth hole. CoinGecko was integrated instead "
+     "(bench/production/codex-samples-2026-09-15.json).",
+     "Caught before any code used it, by capturing real responses to write the tests against. "
+     "I had recommended it from its field list and a 60/60 status count, not from its data."),
     ("2026-09-14",
      "'Rate limiting is live: 60 calls a minute per caller.'",
      "It never limited anything. From one IP, 313 calls in 100 seconds were all served. "

@@ -23,10 +23,10 @@ These are the things I cannot do. Everything else in this project is mine.
 |---|---|---|---|---|
 | **in 3 days** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
 | **in 3 days** | 2026-09-18 | W11 | Answer the 2026-09-18 gate | no |
+| **in 3 days** | 2026-09-18 | W29 | Get three free market-data API keys, so a two-hour probe can settle whether a key ends the | no |
 | **in 3 days** | 2026-09-18 | -- | Post Experiment C | no |
 | in 31 days | 2026-10-16 | W5 | A second, independent sell-simulation source | **yes -- see below** |
 | in 31 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
-| in 31 days | 2026-10-16 | W29 | Get three free market-data API keys, so a two-hour probe can settle whether a key ends the | no |
 
 ### W10 Create the two accounts the remaining directories need
 
@@ -41,6 +41,13 @@ These are the things I cannot do. Everything else in this project is mine.
 - **Why then:** this IS the gate -- it has to be answered on the day
 - **You know it is done when:** `python bench/usage.py`, counting rule already fixed in code; then a `Resolved:` line in `STRATEGY.md` §8, which `test_gates_get_reviewed.py` requires once due
 - **If you do nothing:** A gate that passes its date in silence teaches everyone that gates are decoration, and this is the first one that can stop the project.
+
+### W29 Get three free market-data API keys, so a two-hour probe can settle whether a key ends the `unknown` answers
+
+- **When:** 2026-09-18 (**in 3 days**)
+- **Why then:** the keyed fallback is live and idle until the secret exists, and Experiment C's callers arrive around the gate
+- **You know it is done when:** Decision rule fixed before running: over 12 rounds in 2 hours from a throwaway Worker, **pass** if in rounds where the keyless control drew a 429 the keyed calls drew none and at most 1% non-2xx; **inconclusive** if the control never drew a 429 (re-run when production fails); **fail** for a provider answering 429/403/1020 under its documented limit. Pay only if a provider passes and projected volume exceeds its free allowance; the smallest paid step is CoinGecko Basic at $35 for one month. **Ran 2026-09-14 14:00-15:52 UTC, 12 rounds, all four providers PASS.** Keys set by the owner as secrets on a throwaway Worker (vetagent-keyprobe, not in this repo). In all 12 rounds a keyless control drew a 429: GeckoTerminal 48 of 60 calls, DexPaprika 38 x 429 and 22 x 402 (its per-IP monthly allowance already spent by the shared egress). In the same rounds from the same Worker, keyed calls: CoinGecko 60/60 HTTP 200, DexPaprika 60/60 plus 60/60 pool details, Codex 60/60 -- zero 429s, zero non-2xx. Field check passed on every chain in every round for all four; the only misses were DAI's top pool on CoinGecko (no seller count) and DexPaprika detail (reserves), 3 rounds each. Median latency: Codex 186 ms, CoinGecko 401 ms, DexPaprika 844 ms. **What this does not show:** every round ran from one data centre (KIX) and one egress IP, and keyless DexScreener answered 200 on all 60 calls here although production logged `dexscreener 429` the same day -- so it settles that a key escapes the throttling, not which colos production is throttled in. Two drained tokens were used instead of three, stated in the probe before it ran. **Next, owner's call:** which provider VetAgent adopts, and whether its free-tier terms (CoinGecko Demo: attribution required; Codex: 'personal & hobby') allow a public free service. **Owner, 2026-09-15: terms are fine, integrate.** Codex was then rejected on its data, not its terms: real response bodies captured by the probe Worker show its pool listing ranking testnet pools and int64-max liquidity first for WETH, and on mainnet a "USDT pool" holding 30,250,000,000 USDT -- fed to the depth check (E21) that would reopen the fabricated-depth hole (`bench/production/codex-samples-2026-09-15.json`). CoinGecko, the same data VetAgent already falls back to, is integrated instead (D8): DexScreener, then CoinGecko with the key, then keyless GeckoTerminal, and the contested-honeypot seller count goes through the key too. The probe Worker and its KV namespace are deleted. **Left for the owner:** set `CG_DEMO_KEY` on the vetagent Worker -- until then the code runs keyless, exactly as before. Verify: `bench/production/verdicts.json`'s unknown share falls in the days after the secret is set, from 40.7% on 2026-09-14
+- **If you do nothing:** The keyed fallback is deployed and does nothing until the secret exists: 40.7% of production answers were `unknown` over the week to 2026-09-14, and the callers Experiment C brings in meet that rate first. Setting it is one command.
 
 ###  Post Experiment C
 
@@ -62,13 +69,6 @@ These are the things I cannot do. Everything else in this project is mine.
 - **Why then:** changes what the benchmark can measure, so before the D gate
 - **You know it is done when:** A decision recorded in `DECISIONS.md`, either way
 - **If you do nothing:** The 10-16 gate arrives with the measurement question still open, so that gate answers a smaller question than it was meant to.
-
-### W29 Get three free market-data API keys, so a two-hour probe can settle whether a key ends the `unknown` answers
-
-- **When:** 2026-10-16 (in 31 days)
-- **Why then:** the first decision that spends money, so settle it before the gate that asks whether anyone will pay
-- **You know it is done when:** Decision rule fixed before running: over 12 rounds in 2 hours from a throwaway Worker, **pass** if in rounds where the keyless control drew a 429 the keyed calls drew none and at most 1% non-2xx; **inconclusive** if the control never drew a 429 (re-run when production fails); **fail** for a provider answering 429/403/1020 under its documented limit. Pay only if a provider passes and projected volume exceeds its free allowance; the smallest paid step is CoinGecko Basic at $35 for one month. **Ran 2026-09-14 14:00-15:52 UTC, 12 rounds, all four providers PASS.** Keys set by the owner as secrets on a throwaway Worker (vetagent-keyprobe, not in this repo). In all 12 rounds a keyless control drew a 429: GeckoTerminal 48 of 60 calls, DexPaprika 38 x 429 and 22 x 402 (its per-IP monthly allowance already spent by the shared egress). In the same rounds from the same Worker, keyed calls: CoinGecko 60/60 HTTP 200, DexPaprika 60/60 plus 60/60 pool details, Codex 60/60 -- zero 429s, zero non-2xx. Field check passed on every chain in every round for all four; the only misses were DAI's top pool on CoinGecko (no seller count) and DexPaprika detail (reserves), 3 rounds each. Median latency: Codex 186 ms, CoinGecko 401 ms, DexPaprika 844 ms. **What this does not show:** every round ran from one data centre (KIX) and one egress IP, and keyless DexScreener answered 200 on all 60 calls here although production logged `dexscreener 429` the same day -- so it settles that a key escapes the throttling, not which colos production is throttled in. Two drained tokens were used instead of three, stated in the probe before it ran. **Next, owner's call:** which provider VetAgent adopts, and whether its free-tier terms (CoinGecko Demo: attribution required; Codex: 'personal & hobby') allow a public free service. **Owner, 2026-09-15: terms are fine, integrate.** Codex was then rejected on its data, not its terms: real response bodies captured by the probe Worker show its pool listing ranking testnet pools and int64-max liquidity first for WETH, and on mainnet a "USDT pool" holding 30,250,000,000 USDT -- fed to the depth check (E21) that would reopen the fabricated-depth hole (`bench/production/codex-samples-2026-09-15.json`). CoinGecko, the same data VetAgent already falls back to, is integrated instead (D8): DexScreener, then CoinGecko with the key, then keyless GeckoTerminal, and the contested-honeypot seller count goes through the key too. The probe Worker and its KV namespace are deleted. **Left for the owner:** set `CG_DEMO_KEY` on the vetagent Worker -- until then the code runs keyless, exactly as before. Verify: `bench/production/verdicts.json`'s unknown share falls in the days after the secret is set, from 40.7% on 2026-09-14
-- **If you do nothing:** The keyed fallback is deployed and does nothing until the secret exists: 40.7% of production answers were `unknown` over the week to 2026-09-14, and the callers Experiment C brings in meet that rate first. Setting it is one command.
 
 ## The dates that decide things
 
@@ -162,6 +162,7 @@ The owner accepted the open recommendations: stale data caps confidence, the par
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W29: a keyed CoinGecko fallback between DexScreener and keyless GeckoTerminal (D8)
 - W29: the key probe passed -- all four keyed providers, 12 rounds, zero 429s
 - First production reading: guards 5/5, production unknown 40.7% -- and stop copying the score
 - Regenerate the owner page after rebasing onto the latest snapshots
@@ -169,9 +170,8 @@ problem looked like before it was fixed.
 - The maturity score could not see R21, so it now can -- and it went down, 55 -> 44
 - The owner page said R19 was in progress, and its corrections stopped at 09-09
 - Regenerate the scorecard: E22 added a test and its evidence cell counts them
-- O7-O11: the owner accepted the review dates; O8's prerequisite has shipped
 
-_89 more not shown (97 commits in total)._
+_90 more not shown (98 commits in total)._
 
 ## What I got wrong
 
@@ -180,6 +180,12 @@ costs me something. A build check requires an entry here every 14 days: if there
 were genuinely no mistakes, saying so is itself a dated claim on the record.
 
 Newest first.
+
+**2026-09-15** &mdash; I said: *'Adopt Codex as the fallback: it is the only provider with both reserve amounts and distinct sellers in one query, and the fastest.'*
+
+> Its data is not safe to use. Real response bodies showed its pool listing ranking testnet pools and int64-max liquidity first for WETH, and a mainnet 'USDT pool' reporting 30,250,000,000 USDT -- fed to the depth check, that reopens the fabricated-depth hole. CoinGecko was integrated instead (bench/production/codex-samples-2026-09-15.json).
+
+> How it surfaced: Caught before any code used it, by capturing real responses to write the tests against. I had recommended it from its field list and a 60/60 status count, not from its data.
 
 **2026-09-14** &mdash; I said: *'Rate limiting is live: 60 calls a minute per caller.'*
 
