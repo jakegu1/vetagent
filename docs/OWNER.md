@@ -141,7 +141,7 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **14 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **15 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -168,6 +168,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W33: an empty WETH pool answered "nothing to sell into" for a $115,299 pool beside it
 - W32: the fallback credited a pool quoted in a self-minted coin, and the token came back low
 - Fallback token ids split at the wrong underscore: every Polygon pool's sides were unnamed
 - W31: our own retry turned "the simulator could not buy" into "you cannot sell"
@@ -175,9 +176,8 @@ problem looked like before it was fixed.
 - R23: the 2026-09-15 numbers audit, checked before it was believed -- a queue, not a verdict change
 - GEO baseline: crawler access is measured, and crawlers are served
 - Reference pages, a share card and llms-full.txt: give search engines something to cite
-- Re-measure the benchmark after the fallback side fix
 
-_93 more not shown (101 commits in total)._
+_94 more not shown (102 commits in total)._
 
 ## What I got wrong
 

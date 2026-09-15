@@ -2209,6 +2209,32 @@ def _sim_failed(hp):
     return bool(hp.get("simulationError"))
 
 
+def _holder_analysis(hp):
+    """honeypot.is's holder test as numbers, or None when it sent none.
+
+    `holders` is how many real holders it sampled and simulated a sell for, `failed` how
+    many could not sell, `siphoned` how many lost tokens to the contract on the way.
+    """
+    ha = hp.get("holderAnalysis") if isinstance(hp, dict) else None
+    if not isinstance(ha, dict) or ha.get("holders") in (None, ""):
+        return None
+    return {"holders": int(_num(ha.get("holders"))), "failed": int(_num(ha.get("failed"))),
+            "siphoned": int(_num(ha.get("siphoned")))}
+
+
+def _holder_phrase(ha):
+    """' (90 of the 3,689 holders it tested could not sell)', or '' when that is not known."""
+    if not ha or ha["holders"] <= 0 or (ha["failed"] <= 0 and ha["siphoned"] <= 0):
+        return ""
+    parts = []
+    if ha["failed"] > 0:
+        parts.append("%s of the %s holders it tested could not sell"
+                     % (format(ha["failed"], ",d"), format(ha["holders"], ",d")))
+    if ha["siphoned"] > 0:
+        parts.append("%s had tokens siphoned" % format(ha["siphoned"], ",d"))
+    return " (%s)" % "; ".join(parts)
+
+
 def _sim_never_ran(hp):
     """An answer that reports a result for a simulation that never reached the token.
 
@@ -2344,6 +2370,13 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
         "is_proxy": (hp.get("contractCode") or {}).get("isProxy"),
         "holders": (hp.get("token") or {}).get("totalHolders"),
     }
+    ha = _holder_analysis(hp)
+    # Carried when it explains something -- a flag, or holders who could not sell -- and
+    # not on every clean answer, where "0 of 1,555 failed" costs every caller bytes (the
+    # slim-output budget in tests/test_mcp.py) to say what `is_honeypot: false` says.
+    if ha is not None and (is_hp is True or ha["failed"] > 0 or ha["siphoned"] > 0):
+        evidence["honeypot"]["holder_analysis"] = ha
+    flagged_by = _holder_phrase(ha)
 
     if is_hp is True:
         # Before relaying a honeypot verdict, check it against what the chain shows.
@@ -2352,6 +2385,13 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
         # simulationSuccess=true and sellTax=0 for tokens with tens of thousands of
         # completed sells in 24h — AKE had 59,031. Thirteen of twenty false positives in
         # the benchmark traced to relaying that flag unexamined.
+        #
+        # What that flag is made of, which this code read wrongly for ten days: not a
+        # simulation that failed to reproduce. When its own fresh-address trade passes,
+        # honeypot.is still flags a token whose sampled real holders could not sell
+        # (holderAnalysis; 53 of the 54 such benchmark flags). That is also exactly what a
+        # contract blocking specific holders looks like, so the chain's sells can downgrade
+        # it to unresolved and never clear it -- and the holder numbers are shown (W34).
         #
         # This is the first place the engine actually adjudicates rather than restating
         # an upstream, and it is the product's whole premise: four sources that disagree,
@@ -2414,11 +2454,11 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
                                   "a contested honeypot verdict", 1)})
             signals.append(_sig(
                 "warn", "Honeypot verdict contested, not settled",
-                "honeypot.is reports a honeypot, while %s sells completed against %s buys "
-                "in the last 24h. Whether those sells came from many holders or from one "
-                "wallet trading with itself could not be checked, so neither side is "
+                "honeypot.is reports a honeypot%s, while %s sells completed against %s "
+                "buys in the last 24h. Whether those sells came from many holders or from "
+                "one wallet trading with itself could not be checked, so neither side is "
                 "taken. Retrying shortly may settle it."
-                % (format(sells, ",.0f"), format(buys, ",.0f")), "honeypot"))
+                % (flagged_by, format(sells, ",.0f"), format(buys, ",.0f")), "honeypot"))
         elif sells_work and _num(sellers) < 10:
             sells_work = False      # many trades, few addresses: the wash-trading shape
         if sells_work and sellers is None:
@@ -2426,11 +2466,11 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
         elif sells_work:
             signals.append(_sig(
                 "warn", "Upstream calls this a honeypot, the chain disagrees",
-                "honeypot.is reports a honeypot, but %s sells completed against %s buys "
-                "in the last 24h. Sells are demonstrably going through, so this is more "
-                "likely a simulator false positive than a trap — treat the token as "
-                "unclear rather than fatal."
-                % (format(sells, ",.0f"), format(buys, ",.0f")), "honeypot"))
+                "honeypot.is reports a honeypot%s, but %s sells completed against %s buys "
+                "in the last 24h. Sells are going through, so not every holder is trapped; "
+                "a contract that blocks specific holders looks exactly like this. Treat "
+                "the token as unresolved, not as cleared."
+                % (flagged_by, format(sells, ",.0f"), format(buys, ",.0f")), "honeypot"))
             evidence["honeypot"]["contradicted_by_chain"] = {
                 "sells_24h": bp.get("sells_24h"), "buys_24h": bp.get("buys_24h"),
                 "liquidity_usd": bp.get("liquidity_usd"),
@@ -2440,9 +2480,15 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
                 "note": "A contract that blocks specific holders can produce this "
                         "pattern deliberately. Treat as unresolved, not as cleared."}
         else:
-            signals.append(_sig("fatal", "Honeypot",
-                                "Simulation confirms it: you can buy, you cannot sell.",
-                                "honeypot"))
+            # "Simulation confirms it" is true only when the simulation is what failed.
+            # When the fresh-address trade passed, the flag is the holder test's.
+            sim_sell_failed = sim_ok is not True or _num(sim.get("sellTax")) >= 50
+            signals.append(_sig(
+                "fatal", "Honeypot",
+                "Simulation confirms it: you can buy, you cannot sell." if sim_sell_failed
+                else "honeypot.is reports a honeypot%s, and the chain shows no exits that "
+                     "contradict it." % flagged_by,
+                "honeypot"))
     elif sim_ok is False or is_hp is None:
         # Deliberately NOT settled by completed sells, unlike the two branches above.
         #

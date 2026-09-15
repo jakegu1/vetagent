@@ -398,8 +398,19 @@ def test_chain_activity_overrules_a_honeypot_verdict():
     print("\n[adjudication] chain activity vs a honeypot flag")
 
     hp_flagged = _load("hp_matic.json")
-    hp_flagged["honeypotResult"] = {"isHoneypot": True}
+    hp_flagged["honeypotResult"] = {"isHoneypot": True, "honeypotReason": "HONEYPOT DETECTED"}
     hp_flagged["simulationSuccess"] = True
+    # What a real flag of this shape carries. The fixture used to flip isHoneypot on an
+    # answer whose holder test found 0 of 1,555 holders failing -- a shape none of the 54
+    # benchmark flags with a passing simulation has: in 53 of them the flag rests on real
+    # holders whose sells failed (W34). Numbers from a real Ethereum answer in bench/cache.
+    hp_flagged["holderAnalysis"] = {"holders": "3689", "successful": "3599", "failed": "90",
+                                    "siphoned": "0", "averageTax": 0, "highestTax": 0}
+    hp_flagged["summary"] = {"risk": "honeypot", "riskLevel": 100,
+                             "flags": [{"flag": "medium_fail_rate",
+                                        "description": "A high amount of users cannot sell "
+                                                       "their tokens.",
+                                        "severity": "high", "severityIndex": 16}]}
 
     def pairs_with(buys, sells):
         d = json.loads(json.dumps(_load("ds_matic.json")))
@@ -423,6 +434,18 @@ def test_chain_activity_overrules_a_honeypot_verdict():
     check("the contradiction is recorded as evidence",
           bool((r["evidence"].get("honeypot") or {}).get("contradicted_by_chain")),
           str(r["evidence"].get("honeypot", {}).keys()))
+    # And what the flag rests on is disclosed, not discarded. The engine dropped
+    # holderAnalysis and told callers the flag was "more likely a simulator false positive
+    # than a trap" -- when the flag is honeypot.is reporting real holders who could not
+    # sell, which is what a contract blocking specific holders produces.
+    ha = (r["evidence"].get("honeypot") or {}).get("holder_analysis")
+    check("the holder test behind the flag is in the evidence",
+          ha == {"holders": 3689, "failed": 90, "siphoned": 0}, str(ha))
+    msg = " ".join(x["message"] for x in hp_sigs)
+    check("the signal says how many tested holders could not sell",
+          "90 of the 3,689 holders" in msg, msg)
+    check("and does not call the flag a simulator false positive",
+          "false positive" not in msg, msg)
 
     # Buys but almost no sells: that is the shape of a real trap. Flag stands.
     install_stub([("dexscreener", pairs_with(900, 3)), ("honeypot.is", hp_flagged)])
@@ -432,6 +455,9 @@ def test_chain_activity_overrules_a_honeypot_verdict():
           hp2 and hp2[0]["severity"] == "fatal",
           str([(x["severity"], x["name"]) for x in hp2]))
     check("and that still reads high", r2["risk_level"] == "high", r2["risk_level"])
+    check("  and it does not say a simulation confirmed what the holder test found",
+          "Simulation confirms" not in hp2[0]["message"] and "90 of the 3,689" in hp2[0]["message"],
+          hp2[0]["message"] if hp2 else "no signal")
 
     # Sells happened, but the pool has since been drained. One benchmark token showed
     # 458 completed sells against $0 of liquidity: people got out and the pool was
