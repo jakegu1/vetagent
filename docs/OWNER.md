@@ -141,7 +141,7 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **12 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **13 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -168,6 +168,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Date the W41 correction by the build's clock: 2026-09-16 local was 2026-09-15 UTC
 - W43: VIRTUAL re-measured under E21's unchanged rule -- $8.34M stated, $6.79M credited, refused
 - CI was red on both W41 commits: the design page's percentages were in no guard list
 - W43: the anchor re-measurement, committed before it runs
@@ -175,9 +176,8 @@ problem looked like before it was fixed.
 - W41: own sell simulation -- design page and the rule that judges the prototype, before it runs
 - W44: the holder test is a share with a sample size, and the flag behaves like a count trigger
 - W36 done: the production probe's schedule fires, five and a half hours late; W48 queued for a flood check that failed once
-- W35: record why an answer was unknown, in words no upstream can write into
 
-_93 more not shown (101 commits in total)._
+_94 more not shown (102 commits in total)._
 
 ## What I got wrong
 

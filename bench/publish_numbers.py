@@ -405,6 +405,118 @@ def _named_centralised(rows):
     return [r for r in rows if (r.get("symbol") or "").upper() in ("USDT", "WBTC")]
 
 
+DEPTH_ROWS = (
+    ("none", "No depth figure"),
+    ("zero", "Every pool reports $0"),
+    ("sub1", "Under $1"),
+    ("1k", "$1 to $1,000"),
+    ("100k", "$1,000 to $100,000"),
+    ("deep", "$100,000 or more"),
+)
+DEPTH_COLUMNS = ("n", "high", "medium", "unknown", "high_contract")
+_DEPTH_GAPS = ("no source reported pool depth", "priced in an asset")
+
+
+def _depth_row(r):
+    """The /method depth row for one benchmark row, by the pool the engine judged (W42).
+
+    A row with no depth figure is one of two different things, and the first draft of the
+    table called both "no depth figure": the engine saw every pool report $0 (an observed
+    absence, driver `drained`), or no pool's depth could be read at all (a gap). Anything that
+    is neither raises, so a misfiled row fails the build instead of landing in a bucket.
+    """
+    liq = r.get("liquidity_usd")
+    if liq is None:
+        if r.get("driver") == "drained":
+            return "zero"
+        if any(g in str(x) for x in (r.get("gap_reasons") or []) for g in _DEPTH_GAPS):
+            return "none"
+        raise ValueError("depth row for %s: no figure, not drained, no depth gap"
+                         % r.get("symbol"))
+    if liq < 1:
+        return "sub1"
+    if liq < 1000:
+        return "1k"
+    if liq < 100000:
+        return "100k"
+    return "deep"
+
+
+def _depth_figures(rows, centralized, false_block_population):
+    out = {}
+    for key, _ in DEPTH_ROWS:
+        cell = [r for r in centralized if _depth_row(r) == key]
+        out["cent_%s_n" % key] = "%d" % len(cell)
+        out["cent_%s_high" % key] = "%d" % len([r for r in cell if r["verdict"] == "high"])
+        out["cent_%s_medium" % key] = "%d" % len([r for r in cell if r["verdict"] == "medium"])
+        out["cent_%s_unknown" % key] = "%d" % len([r for r in cell if r["verdict"] == "unknown"])
+        out["cent_%s_high_contract" % key] = "%d" % len(
+            [r for r in cell if r.get("verdict_ablated") == "high"])
+    high = [r for r in centralized if r["verdict"] == "high"]
+    empty = [r for r in high if _depth_row(r) in ("zero", "sub1")]
+    out["cent_high_empty_n"] = "%d" % len(empty)
+    out["cent_high_empty_not_high_contract_n"] = "%d" % len(
+        [r for r in empty if r.get("verdict_ablated") != "high"])
+    out["cent_high_no_figure_n"] = "%d" % len([r for r in high if _depth_row(r) == "none"])
+    deep = [r for r in rows if (r.get("liquidity_usd") or 0) >= 100000]
+    fb = {id(r) for r in false_block_population}
+    out["deep_n"] = "%d" % len(deep)
+    out["deep_other_n"] = "%d" % len([r for r in deep if id(r) not in fb])
+    for name, col in (("", "verdict"), ("_contract", "verdict_ablated")):
+        out["deep_low%s" % name] = "%d" % len([r for r in deep if r.get(col) == "low"])
+        out["deep_unknown%s" % name] = "%d" % len([r for r in deep if r.get(col) == "unknown"])
+        out["deep_blocked%s" % name] = "%d" % len(
+            [r for r in deep if r.get(col) in ("medium", "high")])
+    movers = [r for r in deep if r["verdict"] != "low" and r.get("verdict_ablated") == "low"]
+    out["deep_movers_n"] = "%d" % len(movers)
+    out["deep_movers_age_lifecycle_n"] = "%d" % len(
+        [r for r in movers if r.get("driver") in ("freshness", "lifecycle")])
+    out["deep_blocked_honeypot_n"] = "%d" % len(
+        [r for r in deep if r["verdict"] in ("medium", "high") and r.get("driver") == "honeypot"])
+    return out
+
+
+def _depth_targets():
+    """One target per number in the /method depth section (W42), built from DEPTH_ROWS."""
+    out = []
+    for key, label in DEPTH_ROWS:
+        head = r"<tr><td>%s</td>" % re.escape(label)
+        for i, col in enumerate(DEPTH_COLUMNS):
+            pattern = head + r'(?:<td class="num">\d+</td>){%d}<td class="num">(\d+)</td>' % i
+            name = "cent_%s_n" % key if col == "n" else "cent_%s_%s" % (key, col)
+            out.append(("src/pages.py", pattern, name))
+    out += [
+        ("src/pages.py", r"So most of the ([\d.]+)% centralised row", "centralized_high_pct"),
+        ("src/pages.py", r"centralised row is empty pools: (\d+) of its \d+ highs", "cent_high_empty_n"),
+        ("src/pages.py", r"centralised row is empty pools: \d+ of its (\d+) highs", "centralized_high_n"),
+        ("src/pages.py", r"and (\d+) of those \d+ are not high on contract", "cent_high_empty_not_high_contract_n"),
+        ("src/pages.py", r"and \d+ of those (\d+) are not high on contract", "cent_high_empty_n"),
+        ("src/pages.py", r"contract signals only; (\d+) more have no depth figure", "cent_high_no_figure_n"),
+        ("src/pages.py", r"themselves are rated low \((\d+) of \d+ benchmark rows", "named_centralised_low_n"),
+        ("src/pages.py", r"themselves are rated low \(\d+ of (\d+) benchmark rows", "named_centralised_n"),
+        ("src/pages.py", r"Across the (\d+) benchmark tokens holding", "deep_n"),
+        ("src/pages.py", r"the (\d+) in the false-block row plus", "false_block_of"),
+        ("src/pages.py", r"false-block row plus (\d+) others", "deep_other_n"),
+        ("src/pages.py", r"others -- (\d+) are low, \d+ unknown", "deep_low"),
+        ("src/pages.py", r"are low, (\d+) unknown and \d+ medium or high\. On", "deep_unknown"),
+        ("src/pages.py", r"unknown and (\d+) medium or high\. On", "deep_blocked"),
+        ("src/pages.py", r"contract signals only it is (\d+) low", "deep_low_contract"),
+        ("src/pages.py", r"only it is \d+ low, (\d+) unknown", "deep_unknown_contract"),
+        ("src/pages.py", r"only it is \d+ low, \d+ unknown and (\d+) medium or high", "deep_blocked_contract"),
+        ("src/pages.py", r"the (\d+) that move to low", "deep_movers_n"),
+        ("src/pages.py", r"lifecycle flag as their driver \((\d+) of \d+\)", "deep_movers_age_lifecycle_n"),
+        ("src/pages.py", r"lifecycle flag as their driver \(\d+ of (\d+)\)", "deep_movers_n"),
+        ("src/pages.py", r"and (\d+) of the \d+ medium-or-high answers are honeypot", "deep_blocked_honeypot_n"),
+        ("src/pages.py", r"and \d+ of the (\d+) medium-or-high answers are honeypot", "deep_blocked"),
+    ]
+    # Prose wraps wherever the page's line length puts it: any whitespace matches a space.
+    return [(f, pat if pat.startswith("<tr>") else pat.replace(" ", r"\s+"), k)
+            for f, pat, k in out]
+
+
+TARGETS += _depth_targets()
+
+
 def figures():
     """The numbers a reader is entitled to, straight from the last benchmark run."""
     with io.open(RESULTS, encoding="utf-8") as f:
@@ -521,6 +633,10 @@ def figures():
                                      if r["verdict"] in ("medium", "high")]),
                                 len(_false_block_population(rows))),
         "centralized_high_n": "%d" % len(centralized_high),
+        # W42: the centralised row by depth -- every row, with medium, unknown and the
+        # contract-signals-only column beside the highs (B3) -- and the benchmark's liquid tokens
+        # as counts. Built in _depth_figures so the table and its targets share DEPTH_ROWS.
+        **_depth_figures(rows, centralized, _false_block_population(rows)),
         # The two assets every reader checks first. The landing page's structured data said
         # "24.0% of legitimate centralised assets such as USDT and WBTC were flagged high"
         # while every USDT row and WBTC were `low` (2026-09-15 numbers audit): a sentence

@@ -292,6 +292,32 @@ the shared network the service runs on; the live figure is read daily into
 seen it finds 50.0% of the owner powers an independent oracle asserts, which is why those powers
 are disclosed and never scored.</p>
 
+<h2>By the depth of the pool</h2>
+<p>Every row above mixes deep markets with pools holding cents. Split by the depth of the pool
+the engine judged -- its own pick, so a token whose real market it missed lands in a shallower
+row than it should. <em>High on contract signals only</em> is the verdict with the liquidity, pool
+age, lifecycle and impersonation signals removed, beside each count so the depth checks cannot
+flatter a row.</p>
+<table>
+<tr><th>Oracle-tagged centralised tokens, pool depth</th><th>Tokens</th><th>High</th><th>Medium</th><th>Unknown</th><th>High on contract signals only</th></tr>
+<tr><td>No depth figure</td><td class="num">6</td><td class="num">4</td><td class="num">0</td><td class="num">2</td><td class="num">2</td></tr>
+<tr><td>Every pool reports $0</td><td class="num">15</td><td class="num">15</td><td class="num">0</td><td class="num">0</td><td class="num">0</td></tr>
+<tr><td>Under $1</td><td class="num">40</td><td class="num">16</td><td class="num">23</td><td class="num">1</td><td class="num">1</td></tr>
+<tr><td>$1 to $1,000</td><td class="num">15</td><td class="num">1</td><td class="num">10</td><td class="num">4</td><td class="num">1</td></tr>
+<tr><td>$1,000 to $100,000</td><td class="num">37</td><td class="num">3</td><td class="num">25</td><td class="num">5</td><td class="num">2</td></tr>
+<tr><td>$100,000 or more</td><td class="num">66</td><td class="num">1</td><td class="num">16</td><td class="num">8</td><td class="num">1</td></tr>
+</table>
+<p>So most of the 22.3% centralised row is empty pools: 31 of its 40 highs are on pools reporting
+$0 or under a dollar, and 30 of those 31 are not high on contract signals only; 4 more have no depth
+figure at all. USDT and WBTC themselves are rated low (4 of 4 benchmark rows).</p>
+<p>Across the 246 benchmark tokens holding $100,000 or more -- the 154 in the false-block row plus 92
+others -- 137 are low, 53 unknown and 56 medium or high. On contract signals only it is 159 low, 53 unknown
+and 34 medium or high: the 22 that move to low all have a pool-age or lifecycle flag as their driver
+(22 of 22), and 30 of the 56 medium-or-high answers are honeypot verdicts, which contract signals keep.
+These are the benchmark's tokens, not the tokens callers ask about, and live answers are
+<code>unknown</code> more often; the live rate is read daily into
+<a href="https://github.com/jakegu1/vetagent/blob/master/docs/SCORECARD.md">the scorecard</a>.</p>
+
 <h2>Where the labels come from</h2>
 <p>Two label families, from sources the engine never reads: an outcome label (a token is
 <em>dead</em> or <em>alive</em>) from daily price and volume history, and a contract-security label
