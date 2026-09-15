@@ -113,7 +113,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 17 | 58.8% | 94.1% | 0.0% | 5.9% | 76.1 |
-| **safe** | 349 | 6.6% | 48.1% | 28.1% | 23.8% | 27.1 |
+| **safe** | 349 | 6.6% | 48.1% | 28.1% | 23.8% | 27.0 |
 
 ### Contract-safety signals only (ablated)
 
@@ -156,7 +156,7 @@ Examples: HYDX(low), CP(unknown), TOSHE(medium), Onyxcoin XCN Kendu(high), SAGE 
 
 ### Are the label and the verdict about the same pool?
 
-The label describes one sampled pool; the engine picks its own. The pool the engine actually **judged** is the labelled one on **298 of 533** rows where both are known (56%).
+The label describes one sampled pool; the engine picks its own. The pool the engine actually **judged** is the labelled one on **299 of 533** rows where both are known (56%).
 
 
 That is a stricter question than the one an external audit measured. It found the labelled pool was among the pairs the engine *loaded* 84% of the time. Loading it and choosing it are different: the engine ranks by chain canonicality and depth and then judges a single pool, so it can hold the labelled pool in hand and still return a verdict about another venue. Both numbers are true; this is the one that governs whether a disagreement is a like-for-like comparison.

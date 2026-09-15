@@ -99,7 +99,7 @@
     "high_or_medium": 0.4813753581661891,
     "low": 0.2808022922636103,
     "unknown": 0.23782234957020057,
-    "mean_score": 27.126074498567334
+    "mean_score": 27.02865329512894
    }
   },
   "contract_only": {
@@ -2023,11 +2023,11 @@
    "symbol": "APE",
    "chain": "base",
    "labelled_pool": "0x1146b7d4b242731307177c14a36073d0deb2e38c",
-   "engine_pool": "0xac74461b46ace3991d344c7e403dc6967520e2ef",
+   "engine_pool": "0x97e0a3c7054ad99e7ead96a864ce8f2b547e4bef",
    "outcome_label": null,
    "goplus_label": "centralized",
    "sampled_from": "backfill_2026-02-17",
-   "liquidity_usd": 0.00886333,
+   "liquidity_usd": 0.524059,
    "gap_reasons": [],
    "verdict": "medium",
    "score": 68,
@@ -4102,7 +4102,7 @@
    "liquidity_usd": 42.1102,
    "gap_reasons": [],
    "verdict": "medium",
-   "score": 68,
+   "score": 58,
    "confidence": "high",
    "verdict_ablated": "low",
    "score_ablated": 0,
@@ -4110,7 +4110,6 @@
    "categories": [
     "freshness",
     "honeypot",
-    "impersonation",
     "lifecycle",
     "liquidity",
     "upstream_risk"
@@ -4913,14 +4912,14 @@
    "symbol": "CORA",
    "chain": "base",
    "labelled_pool": "0x01d5bf76ddae666c720048cc88dde9fd030f4552",
-   "engine_pool": "0xec11fc8bfd1f2b938280da938acf027a9b7623d8",
+   "engine_pool": "0x01d5bf76ddae666c720048cc88dde9fd030f4552",
    "outcome_label": null,
    "goplus_label": "safe",
    "sampled_from": "backfill_2025-12-29",
-   "liquidity_usd": 0.0073648,
+   "liquidity_usd": 19460.1,
    "gap_reasons": [],
    "verdict": "medium",
-   "score": 58,
+   "score": 34,
    "confidence": "high",
    "verdict_ablated": "low",
    "score_ablated": 0,
@@ -7260,11 +7259,11 @@
    "symbol": "TORIVA",
    "chain": "base",
    "labelled_pool": "0x031ba2462884f984d665c25ccff2ffa761e8f159",
-   "engine_pool": "0x2393cf60fd67e58e302f6d0b8c552cd5c37caf97",
+   "engine_pool": "0x86a895b11547fba04179480f79b8c6a905176e4f",
    "outcome_label": null,
    "goplus_label": "safe",
    "sampled_from": "backfill_2026-05-08",
-   "liquidity_usd": 1031.62,
+   "liquidity_usd": 2958.0,
    "gap_reasons": [],
    "verdict": "high",
    "score": 100,
@@ -7275,7 +7274,6 @@
    "categories": [
     "freshness",
     "honeypot",
-    "impersonation",
     "lifecycle",
     "liquidity"
    ],
@@ -11277,11 +11275,11 @@
     "the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
-   "score": 15,
+   "score": 5,
    "confidence": "low",
    "verdict_ablated": "unknown",
    "score_ablated": 5,
-   "driver": "freshness",
+   "driver": "sellability",
    "categories": [
     "freshness",
     "impersonation",
