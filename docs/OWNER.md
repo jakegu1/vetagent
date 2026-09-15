@@ -168,6 +168,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W41: own sell simulation -- design page and the rule that judges the prototype, before it runs
 - W44: the holder test is a share with a sample size, and the flag behaves like a count trigger
 - W36 done: the production probe's schedule fires, five and a half hours late; W48 queued for a flood check that failed once
 - W35: record why an answer was unknown, in words no upstream can write into
@@ -175,9 +176,8 @@ problem looked like before it was fixed.
 - W34: say what honeypot.is's flag is made of, instead of calling it a simulator false positive
 - W33: an empty WETH pool answered "nothing to sell into" for a $115,299 pool beside it
 - W32: the fallback credited a pool quoted in a self-minted coin, and the token came back low
-- Fallback token ids split at the wrong underscore: every Polygon pool's sides were unnamed
 
-_88 more not shown (96 commits in total)._
+_89 more not shown (97 commits in total)._
 
 ## What I got wrong
 

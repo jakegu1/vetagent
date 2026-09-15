@@ -122,3 +122,52 @@ hours, and a pool can be drained or a tax changed since.
 
 **Cost.** About 80 `eth_simulateV1` requests (two per token) and about 60 honeypot.is requests,
 on the free endpoints the engine already uses. $0.
+
+## Run 1, 2026-09-15 -- result under the rule above: INCONCLUSIVE
+
+`python bench/sim_probe.py` at blocks ethereum 0x18c7aa6, base 0x30f8122, bsc 0x7465920.
+Everything it saw is in `bench/sim_probe/v2-2026-09-15.json`.
+
+| Test | Bar | Result |
+|---|---|---|
+| U: definite answers | at least 10 of 13 | **12 of 13** -- all 12 sold, taxes 0-7% each way; SPR's buy reverted (`Pancake: TRANSFER_FAILED`), as honeypot.is's did |
+| Clean controls agree | at least 90% of countable | **50 of 51** (98%); the one miss is an RPC transport error (SSL EOF), counted against us as the definition requires |
+| Honeypot controls agree | at least 80% of countable, at least 5 countable | **10 of 13** (77%) -- under the bar |
+
+So the rule says inconclusive, and the V3 adapter is not written. The thresholds do not move.
+
+**The failures, classified by revert reason as the rule requires.** None of the three honeypot
+disagreements is a honeypot our simulation let through:
+
+- `0x17e6b79b...`: honeypot.is's own answer today puts its pool at $0.00000000000065, with
+  `INSUFFICIENT_OUTPUT_AMOUNT` and zero gas. Our simulation "sold" dust into the same empty pool.
+  Neither answer describes a token; both describe a corpse.
+- `0x2c43ebde...` and `0xe1cb7c7e...`: pools holding $0.30 and $0.0004, quoted in USDT through a
+  different V2 fork's router (`0xeff92a26...`), so our Uniswap V2 router has no path at all.
+
+Of the 10 agreements, 7 bought normally and then reverted on the sell
+(`TransferHelper: TRANSFER_FROM_FAILED`), and 3 sold at a 99.99-100% sell tax. Those are honeypots,
+caught by an implementation that shares no code with honeypot.is.
+
+**What was wrong was the positive set, not the simulation**: an archived birth-time honeypot is,
+days later, usually a drained pool, and honeypot.is's answer on a drained pool keeps the honeypot
+shape. That is a flaw in how the set was defined, found after seeing the result, so it is
+recorded here and does not re-score run 1.
+
+## Amendment 1, 2026-09-15 (after run 1, prompted by the result above)
+
+A positive control counts only if honeypot.is's own answer on the day puts its pool at $1,000
+or more. Applied to what exists today, that leaves **4** unused candidates across the cache and
+the archive -- all on Base, all with an empty router and zero gas, the shape W31 and W46 read as
+a trade that never ran. Fewer than 5 countable positives: under the rule's own clause, **the
+positive control is not measurable yet, and the V3 adapter waits for a positive set.** A set with
+money in it is exactly what W40 (label while the pool is alive) produces; until then the V2
+result stands as measured and nothing goes into `src/` (STRATEGY §8).
+
+Two things run 1 did establish, stated as measured and no further:
+
+- For 12 of the 13 PancakeSwap V2 tokens honeypot.is has no record of, a plain router buy and sell
+  from a fresh address works, with ordinary taxes. On these, the gap was honeypot.is's index, not
+  the tokens.
+- Zero gas in a honeypot.is answer that names a router is not evidence that nothing executed
+  (W47): in 7 such archived answers our simulation bought normally and the sell then reverted.

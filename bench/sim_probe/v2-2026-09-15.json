@@ -1,0 +1,1408 @@
+{
+ "summary": {
+  "run_day": "2026-09-15",
+  "blocks": {
+   "ethereum": "0x18c7aa6",
+   "base": "0x30f8122",
+   "bsc": "0x7465920"
+  },
+  "rule": "docs/SELL_SIMULATION.md (c66aba1)",
+  "u_definite": "12 of 13",
+  "clean_controls": "50 agree of 51 countable (51 asked)",
+  "honeypot_controls": "10 agree of 13 countable (16 asked)",
+  "decision": "INCONCLUSIVE"
+ },
+ "records": {
+  "U": [
+   {
+    "chain": "bsc",
+    "token": "0x0589b25aa1b91a12423b73b041c9cb05c99fffff",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0x0589b25aa1b91a12423b73b041c9cb05c99fffff"
+    ],
+    "block": "0x7465920",
+    "buy_tax": 1.0,
+    "sell_tax": 1.05,
+    "result": "sold",
+    "symbol": "Rong"
+   },
+   {
+    "chain": "bsc",
+    "token": "0x11116f6fc6145fe83e1e11f363210f90e2761111",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0x55d398326f99059ff775485246999027b3197955",
+     "0x11116f6fc6145fe83e1e11f363210f90e2761111"
+    ],
+    "block": "0x7465920",
+    "buy_tax": 2.0,
+    "sell_tax": 2.0,
+    "result": "sold",
+    "symbol": "TAIYI"
+   },
+   {
+    "chain": "bsc",
+    "token": "0x265b3982ea730748100947f52561a4eab54affff",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0x265b3982ea730748100947f52561a4eab54affff"
+    ],
+    "block": "0x7465920",
+    "buy_tax": 1.0,
+    "sell_tax": 1.0,
+    "result": "sold",
+    "symbol": "AST"
+   },
+   {
+    "chain": "bsc",
+    "token": "0x2ab8a4dd2191989ac2898006df350b236d2b7777",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0x2ab8a4dd2191989ac2898006df350b236d2b7777"
+    ],
+    "block": "0x7465920",
+    "buy_tax": 0.0,
+    "sell_tax": 1.0,
+    "result": "sold",
+    "symbol": "Sue"
+   },
+   {
+    "chain": "bsc",
+    "token": "0x3efbfff95576e1d23cf6ead0acd2e73f4d6a7777",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0x3efbfff95576e1d23cf6ead0acd2e73f4d6a7777"
+    ],
+    "block": "0x7465920",
+    "buy_tax": 1.0,
+    "sell_tax": 1.0,
+    "result": "sold",
+    "symbol": "BNBCAT"
+   },
+   {
+    "chain": "bsc",
+    "token": "0x71967d91abfbf96796238e70092c85878fc85999",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0x55d398326f99059ff775485246999027b3197955",
+     "0x71967d91abfbf96796238e70092c85878fc85999"
+    ],
+    "block": "0x7465920",
+    "result": "buy_reverted",
+    "detail": "execution reverted: Pancake: TRANSFER_FAILED: 0x08c379a00000000000000000000000000000000000000000000000000000000000000020",
+    "symbol": "SPR"
+   },
+   {
+    "chain": "bsc",
+    "token": "0x91fcbae169a6bcc342b108979929cdbe93fd7777",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0x91fcbae169a6bcc342b108979929cdbe93fd7777"
+    ],
+    "block": "0x7465920",
+    "buy_tax": 1.0,
+    "sell_tax": 0.98,
+    "result": "sold",
+    "symbol": "\\u70ed\\u94b1"
+   },
+   {
+    "chain": "bsc",
+    "token": "0xa605d1b98f3f26eed3267bade68cb8382136d89e",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0x55d398326f99059ff775485246999027b3197955",
+     "0xa605d1b98f3f26eed3267bade68cb8382136d89e"
+    ],
+    "block": "0x7465920",
+    "buy_tax": 1.0,
+    "sell_tax": 2.0,
+    "result": "sold",
+    "symbol": "MRX"
+   },
+   {
+    "chain": "bsc",
+    "token": "0xd9d3dad2efed7ee99f1363fac549f5e476f19a5a",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0x55d398326f99059ff775485246999027b3197955",
+     "0xd9d3dad2efed7ee99f1363fac549f5e476f19a5a"
+    ],
+    "block": "0x7465920",
+    "buy_tax": 6.97,
+    "sell_tax": 6.97,
+    "result": "sold",
+    "symbol": "\\u55b5\\u55b5\\u5e01"
+   },
+   {
+    "chain": "bsc",
+    "token": "0xe92f7fe3eaf61df28b7b75f3faab199333c42302",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0xe92f7fe3eaf61df28b7b75f3faab199333c42302"
+    ],
+    "block": "0x7465920",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "MAME"
+   },
+   {
+    "chain": "bsc",
+    "token": "0xe9bc5c6a86caa44fd7b469bf3cc7c563e4f77777",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0xe9bc5c6a86caa44fd7b469bf3cc7c563e4f77777"
+    ],
+    "block": "0x7465920",
+    "buy_tax": 3.0,
+    "sell_tax": 3.0,
+    "result": "sold",
+    "symbol": "Max"
+   },
+   {
+    "chain": "bsc",
+    "token": "0xf40592daacb3e5abf358789f5688c0b4f64d7777",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c",
+     "0xf40592daacb3e5abf358789f5688c0b4f64d7777"
+    ],
+    "block": "0x7465920",
+    "buy_tax": 3.0,
+    "sell_tax": 3.0,
+    "result": "sold",
+    "symbol": "FLORK"
+   },
+   {
+    "chain": "bsc",
+    "token": "0xf84048b1a6f04b0ff71e122443c7fa4418777777",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0xf84048b1a6f04b0ff71e122443c7fa4418777777"
+    ],
+    "block": "0x7465920",
+    "buy_tax": 3.0,
+    "sell_tax": 3.0,
+    "result": "sold",
+    "symbol": "\\u9ec4\\u91d1\\u72d7"
+   }
+  ],
+  "C-clean": [
+   {
+    "chain": "bsc",
+    "token": "0x08332a515cb2a57884176e887b682e7da2eb114e",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+     "0x08332a515cb2a57884176e887b682e7da2eb114e"
+    ],
+    "block": "0x7465920",
+    "buy_tax": 0.0,
+    "sell_tax": 5.0,
+    "result": "sold",
+    "symbol": "FNA",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 5,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "bsc",
+    "token": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82"
+    ],
+    "block": "0x7465920",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "Cake",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "bsc",
+    "token": "0x255e746abb8d9acac00d6d023e5e63e3b8dfa7cd",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0x55d398326f99059ff775485246999027b3197955",
+     "0x255e746abb8d9acac00d6d023e5e63e3b8dfa7cd"
+    ],
+    "block": "0x7465920",
+    "buy_tax": 0.0,
+    "sell_tax": 2.5,
+    "result": "sold",
+    "symbol": "IBS",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 2.49,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "bsc",
+    "token": "0x544028231562a43b106fbceca722b65cb5c861b0",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0x55d398326f99059ff775485246999027b3197955",
+     "0x544028231562a43b106fbceca722b65cb5c861b0"
+    ],
+    "block": "0x7465920",
+    "buy_tax": 0.0,
+    "sell_tax": 3.0,
+    "result": "sold",
+    "symbol": "OLY",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 2.99,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "bsc",
+    "token": "0x6ec90334d89dbdc89e08a133271be3d104128edb",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0x6ec90334d89dbdc89e08a133271be3d104128edb"
+    ],
+    "block": "0x7465920",
+    "buy_tax": 2.0,
+    "sell_tax": 2.0,
+    "result": "sold",
+    "symbol": "WKC",
+    "hp_today": "clean",
+    "hp_buy_tax": 1.99,
+    "hp_sell_tax": 1.99,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "bsc",
+    "token": "0x7cc151c2ee1016d7b586fb818759b6ae07719999",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0x55d398326f99059ff775485246999027b3197955",
+     "0x7cc151c2ee1016d7b586fb818759b6ae07719999"
+    ],
+    "block": "0x7465920",
+    "buy_tax": 0.0,
+    "sell_tax": 5.0,
+    "result": "sold",
+    "symbol": "SAC",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 4.99,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "bsc",
+    "token": "0x8d65744527f55d0b2338350912d5c99a81ddf0e2",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0x55d398326f99059ff775485246999027b3197955",
+     "0x8d65744527f55d0b2338350912d5c99a81ddf0e2"
+    ],
+    "block": "0x7465920",
+    "buy_tax": 0.0,
+    "sell_tax": 2.5,
+    "result": "sold",
+    "symbol": "Pro",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 2.49,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "bsc",
+    "token": "0x9212cf1f9f4a9c69bb010146ba5b0725169d4444",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0x9212cf1f9f4a9c69bb010146ba5b0725169d4444"
+    ],
+    "block": "0x7465920",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "bibi",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "bsc",
+    "token": "0xb0ad9c2313b9719ea0ccd43d7e7e1fd07e7cbd90",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0x55d398326f99059ff775485246999027b3197955",
+     "0xb0ad9c2313b9719ea0ccd43d7e7e1fd07e7cbd90"
+    ],
+    "block": "0x7465920",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "DBT",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "bsc",
+    "token": "0xc269d59a0d608ea0bd672f2f4616c372d8554444",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0xc269d59a0d608ea0bd672f2f4616c372d8554444"
+    ],
+    "block": "0x7465920",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "ClipX",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "bsc",
+    "token": "0xcae117ca6bc8a341d2e7207f30e180f0e5618b9d",
+    "path": [
+     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "0x55d398326f99059ff775485246999027b3197955",
+     "0xcae117ca6bc8a341d2e7207f30e180f0e5618b9d"
+    ],
+    "block": "0x7465920",
+    "buy_tax": 0.0,
+    "sell_tax": 2.5,
+    "result": "sold",
+    "symbol": "ARK",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 2.49,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x0125cd0ee8f136f7c14f9bc59486e1e8c782bad9",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x0125cd0ee8f136f7c14f9bc59486e1e8c782bad9"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x012831c34338e885fe87f951393a572c3e8fce7e",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x012831c34338e885fe87f951393a572c3e8fce7e"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x0196b6e23dc37e0ddac8ba9b7d5970ea4f981d6d",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x0196b6e23dc37e0ddac8ba9b7d5970ea4f981d6d"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x01f1a611f51fe7f7f98891990e48d99b799fe78f",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x01f1a611f51fe7f7f98891990e48d99b799fe78f"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x027c426b25f2dd0298f3e7d02678d72d5e9e2f47",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x027c426b25f2dd0298f3e7d02678d72d5e9e2f47"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x034536722d638596fa25688ac1dead57f4684a8c",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x034536722d638596fa25688ac1dead57f4684a8c"
+    ],
+    "block": "0x18c7aa6",
+    "result": "rpc_error",
+    "detail": "<urlopen error [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1028)>",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": false
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x04ddd8568f5e1203402b40155940d97b4d45360f",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x04ddd8568f5e1203402b40155940d97b4d45360f"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x06be14e54b493b9f4e0e22299e28ef9eb4fe6a79",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x06be14e54b493b9f4e0e22299e28ef9eb4fe6a79"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x07090b26ed689a4e773065c5f0a36e6b5f573c04",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x07090b26ed689a4e773065c5f0a36e6b5f573c04"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x07879f1f8778ea8c0181ac6e574577c050d0a8ef",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x07879f1f8778ea8c0181ac6e574577c050d0a8ef"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x07cd95cb78ff8c27c7420f5349ede8f6233cbc81",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x07cd95cb78ff8c27c7420f5349ede8f6233cbc81"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x0880e6c9349daddf8c204dae25cecc8d02064128",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x0880e6c9349daddf8c204dae25cecc8d02064128"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x089b35e5007c39adff12ad445700a4ec74497d10",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x089b35e5007c39adff12ad445700a4ec74497d10"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x090dd5a4a00dd4f8bf6624706327701465bc9148",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x090dd5a4a00dd4f8bf6624706327701465bc9148"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x09bb93f250c19654b1073851c436e75d683371f4",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x09bb93f250c19654b1073851c436e75d683371f4"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x0d5935b078a354053ec75d37ca40d37b0790a6a0",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x0d5935b078a354053ec75d37ca40d37b0790a6a0"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x0ec273bd523eefe73ed17d5891eec57e6a16ed1a",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x0ec273bd523eefe73ed17d5891eec57e6a16ed1a"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x0f711839ffc21a50fb9b2453c43b9cce79a51449",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x0f711839ffc21a50fb9b2453c43b9cce79a51449"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x1007a0274bbfa14d0bce3dec86a5f9bb274f883a",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x1007a0274bbfa14d0bce3dec86a5f9bb274f883a"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x104a44e9e2b11aa882fae933b5db1f8b13548edc",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x104a44e9e2b11aa882fae933b5db1f8b13548edc"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "base",
+    "token": "0x00bf489b69f74bc0657136edb0dd856b14ca8f94",
+    "path": [
+     "0x4200000000000000000000000000000000000006",
+     "0x00bf489b69f74bc0657136edb0dd856b14ca8f94"
+    ],
+    "block": "0x30f8122",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "base",
+    "token": "0x04a27ef5ccfbf019fd7a03f40c9a854ef63d6b42",
+    "path": [
+     "0x4200000000000000000000000000000000000006",
+     "0x04a27ef5ccfbf019fd7a03f40c9a854ef63d6b42"
+    ],
+    "block": "0x30f8122",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "base",
+    "token": "0x06d5667b36b53b620824dc3cbc007ccd3c12e291",
+    "path": [
+     "0x4200000000000000000000000000000000000006",
+     "0x06d5667b36b53b620824dc3cbc007ccd3c12e291"
+    ],
+    "block": "0x30f8122",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "base",
+    "token": "0x0b4efbd727583efb0e90e012320f64cd150c58c1",
+    "path": [
+     "0x4200000000000000000000000000000000000006",
+     "0x0b4efbd727583efb0e90e012320f64cd150c58c1"
+    ],
+    "block": "0x30f8122",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "base",
+    "token": "0x0c4fa26b30c37230406cd5ac2e8d6e638d148382",
+    "path": [
+     "0x4200000000000000000000000000000000000006",
+     "0x0c4fa26b30c37230406cd5ac2e8d6e638d148382"
+    ],
+    "block": "0x30f8122",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "base",
+    "token": "0x0d1d9a4f8b8ecc4d46dac927469c6ce8ea3121e5",
+    "path": [
+     "0x4200000000000000000000000000000000000006",
+     "0x0d1d9a4f8b8ecc4d46dac927469c6ce8ea3121e5"
+    ],
+    "block": "0x30f8122",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "base",
+    "token": "0x0d52cac67a462f4fbfa18fb650cc7e5e36b10aea",
+    "path": [
+     "0x4200000000000000000000000000000000000006",
+     "0x0d52cac67a462f4fbfa18fb650cc7e5e36b10aea"
+    ],
+    "block": "0x30f8122",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "base",
+    "token": "0x0faf8db3f48203595f74548ac24134641bc7e5e0",
+    "path": [
+     "0x4200000000000000000000000000000000000006",
+     "0x0faf8db3f48203595f74548ac24134641bc7e5e0"
+    ],
+    "block": "0x30f8122",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "base",
+    "token": "0x1239b820b902e3913389d7b3792bc3804d582b26",
+    "path": [
+     "0x4200000000000000000000000000000000000006",
+     "0x1239b820b902e3913389d7b3792bc3804d582b26"
+    ],
+    "block": "0x30f8122",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "base",
+    "token": "0x1370f65c58b681d847bc88db4c15f12ceb516594",
+    "path": [
+     "0x4200000000000000000000000000000000000006",
+     "0x1370f65c58b681d847bc88db4c15f12ceb516594"
+    ],
+    "block": "0x30f8122",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "base",
+    "token": "0x155b740ae27740b969620920ab4c3da2966f6a0b",
+    "path": [
+     "0x4200000000000000000000000000000000000006",
+     "0x155b740ae27740b969620920ab4c3da2966f6a0b"
+    ],
+    "block": "0x30f8122",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "base",
+    "token": "0x18dea3d7d9701916a13ced0ea0c380e4974fd48c",
+    "path": [
+     "0x4200000000000000000000000000000000000006",
+     "0x18dea3d7d9701916a13ced0ea0c380e4974fd48c"
+    ],
+    "block": "0x30f8122",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "base",
+    "token": "0x1a88fc82db2748e115da8855c46fb475cba61c9c",
+    "path": [
+     "0x4200000000000000000000000000000000000006",
+     "0x1a88fc82db2748e115da8855c46fb475cba61c9c"
+    ],
+    "block": "0x30f8122",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "base",
+    "token": "0x20d4df9a677076ec239d510a6a51974e31f21690",
+    "path": [
+     "0x4200000000000000000000000000000000000006",
+     "0x20d4df9a677076ec239d510a6a51974e31f21690"
+    ],
+    "block": "0x30f8122",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "base",
+    "token": "0x22e600f3deb67b3bbade647c0dd5bb4ca48a4bd5",
+    "path": [
+     "0x4200000000000000000000000000000000000006",
+     "0x22e600f3deb67b3bbade647c0dd5bb4ca48a4bd5"
+    ],
+    "block": "0x30f8122",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "base",
+    "token": "0x24c3ad7e6bbfd41d83865f701be72da3c95b85f5",
+    "path": [
+     "0x4200000000000000000000000000000000000006",
+     "0x24c3ad7e6bbfd41d83865f701be72da3c95b85f5"
+    ],
+    "block": "0x30f8122",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "base",
+    "token": "0x2d8fae9a739bcdaa84283f391effe0d2c1225407",
+    "path": [
+     "0x4200000000000000000000000000000000000006",
+     "0x2d8fae9a739bcdaa84283f391effe0d2c1225407"
+    ],
+    "block": "0x30f8122",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "base",
+    "token": "0x30b4e829f9b2b9cf1f3f1011759eed3ea21be7af",
+    "path": [
+     "0x4200000000000000000000000000000000000006",
+     "0x30b4e829f9b2b9cf1f3f1011759eed3ea21be7af"
+    ],
+    "block": "0x30f8122",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "base",
+    "token": "0x3258f18a4d5dd51d0262f81d1bcae520bac4fa3c",
+    "path": [
+     "0x4200000000000000000000000000000000000006",
+     "0x3258f18a4d5dd51d0262f81d1bcae520bac4fa3c"
+    ],
+    "block": "0x30f8122",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "base",
+    "token": "0x33b1b0bf1c840c4ede70e34fe848ce1e59e41b13",
+    "path": [
+     "0x4200000000000000000000000000000000000006",
+     "0x33b1b0bf1c840c4ede70e34fe848ce1e59e41b13"
+    ],
+    "block": "0x30f8122",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": true,
+    "agrees": true
+   }
+  ],
+  "C-honeypot": [
+   {
+    "chain": "ethereum",
+    "token": "0x0d5ffa1af4977cda2ff493e082d666ff5402f62a",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x0d5ffa1af4977cda2ff493e082d666ff5402f62a"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "result": "sell_reverted",
+    "detail": "execution reverted: TransferHelper: TRANSFER_FROM_FAILED",
+    "symbol": "",
+    "hp_today": "proven",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 100,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x17e6b79b2c6e59ae89deff3dbeaf065780d40cd0",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x17e6b79b2c6e59ae89deff3dbeaf065780d40cd0"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "sell_tax": 0.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "proven",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 100,
+    "countable": true,
+    "agrees": false
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x2c43ebdeb0431545e44489578aef50e1fccbd6a8",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0xdac17f958d2ee523a2206206994597c13d831ec7",
+     "0x2c43ebdeb0431545e44489578aef50e1fccbd6a8"
+    ],
+    "block": "0x18c7aa6",
+    "result": "no_path",
+    "detail": "execution reverted",
+    "symbol": "",
+    "hp_today": "proven",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 100,
+    "countable": true,
+    "agrees": false
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x42bf9a7d31534096ca80f68d811c83c603c3d850",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x42bf9a7d31534096ca80f68d811c83c603c3d850"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "result": "sell_reverted",
+    "detail": "execution reverted: TransferHelper: TRANSFER_FROM_FAILED",
+    "symbol": "",
+    "hp_today": "proven",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 100,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x5306f99eb61d3d0739d6a7a1dae6319c6ef21f29",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0xdac17f958d2ee523a2206206994597c13d831ec7",
+     "0x5306f99eb61d3d0739d6a7a1dae6319c6ef21f29"
+    ],
+    "block": "0x18c7aa6",
+    "result": "no_path",
+    "detail": "execution reverted",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": false,
+    "agrees": false
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x5380d0429f8ae08d8f7010a29c1306f30d3a38f8",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x5380d0429f8ae08d8f7010a29c1306f30d3a38f8"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "result": "sell_reverted",
+    "detail": "execution reverted: TransferHelper: TRANSFER_FROM_FAILED",
+    "symbol": "",
+    "hp_today": "proven",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 100,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x573d6250f42e3832446375447888f7a52a021809",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x573d6250f42e3832446375447888f7a52a021809"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "result": "sell_reverted",
+    "detail": "execution reverted: TransferHelper: TRANSFER_FROM_FAILED",
+    "symbol": "",
+    "hp_today": "proven",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 100,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0x8b42dd2e45e1148e9e10a676e7a2d3fc5ec57e74",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0x8b42dd2e45e1148e9e10a676e7a2d3fc5ec57e74"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "result": "sell_reverted",
+    "detail": "execution reverted: TransferHelper: TRANSFER_FROM_FAILED",
+    "symbol": "",
+    "hp_today": "proven",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 100,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0xbc417d744a0905cfcc2c0358c661831ad8ec3602",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0xbc417d744a0905cfcc2c0358c661831ad8ec3602"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "result": "sell_reverted",
+    "detail": "execution reverted: TransferHelper: TRANSFER_FROM_FAILED",
+    "symbol": "",
+    "hp_today": "proven",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 100,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0xc53bfc6f6083c135286f2075d9d6d75aceb86926",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0xdac17f958d2ee523a2206206994597c13d831ec7",
+     "0xc53bfc6f6083c135286f2075d9d6d75aceb86926"
+    ],
+    "block": "0x18c7aa6",
+    "result": "no_path",
+    "detail": "execution reverted",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": false,
+    "agrees": false
+   },
+   {
+    "chain": "ethereum",
+    "token": "0xc7e75b1033836ee3ce520fcae6d349d41b0057e9",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0xdac17f958d2ee523a2206206994597c13d831ec7",
+     "0xc7e75b1033836ee3ce520fcae6d349d41b0057e9"
+    ],
+    "block": "0x18c7aa6",
+    "result": "no_path",
+    "detail": "execution reverted",
+    "symbol": "",
+    "hp_today": "clean",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 0,
+    "countable": false,
+    "agrees": false
+   },
+   {
+    "chain": "ethereum",
+    "token": "0xe0e5851b368d90a83473ff3d0a7a6ee8a34d4799",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0xe0e5851b368d90a83473ff3d0a7a6ee8a34d4799"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 0.0,
+    "result": "sell_reverted",
+    "detail": "execution reverted: TransferHelper: TRANSFER_FROM_FAILED",
+    "symbol": "",
+    "hp_today": "proven",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 100,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0xe1cb7c7e030832a972b016278124f38174a5c3bb",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0xdac17f958d2ee523a2206206994597c13d831ec7",
+     "0xe1cb7c7e030832a972b016278124f38174a5c3bb"
+    ],
+    "block": "0x18c7aa6",
+    "result": "no_path",
+    "detail": "execution reverted",
+    "symbol": "",
+    "hp_today": "proven",
+    "hp_buy_tax": 0,
+    "hp_sell_tax": 100,
+    "countable": true,
+    "agrees": false
+   },
+   {
+    "chain": "ethereum",
+    "token": "0xe6e76e11f4bc7f5105b0ff33932ee59f4f88d5a5",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0xe6e76e11f4bc7f5105b0ff33932ee59f4f88d5a5"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 5.0,
+    "sell_tax": 99.99,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "proven",
+    "hp_buy_tax": 4.99,
+    "hp_sell_tax": 77.78,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0xe8f865e53f0947ac05188e2e5d75a1aba4c22a1a",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0xe8f865e53f0947ac05188e2e5d75a1aba4c22a1a"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 5.0,
+    "sell_tax": 100.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "proven",
+    "hp_buy_tax": 4.99,
+    "hp_sell_tax": 99.73,
+    "countable": true,
+    "agrees": true
+   },
+   {
+    "chain": "ethereum",
+    "token": "0xf4ec9c1731bdc0669926636eb8e357d3f779ed4a",
+    "path": [
+     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "0xf4ec9c1731bdc0669926636eb8e357d3f779ed4a"
+    ],
+    "block": "0x18c7aa6",
+    "buy_tax": 1.0,
+    "sell_tax": 100.0,
+    "result": "sold",
+    "symbol": "",
+    "hp_today": "proven",
+    "hp_buy_tax": 0.99,
+    "hp_sell_tax": 77.7,
+    "countable": true,
+    "agrees": true
+   }
+  ]
+ }
+}

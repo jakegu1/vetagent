@@ -46,3 +46,6 @@ bench/run.log
 # backfill is derived from chain history, which does not move -- anyone can regenerate
 # it byte for byte with `python bench/backfill.py --date <the same date>`.
 bench/backfill/
+
+# W41 prototype cache: raw RPC and honeypot.is answers (bench/sim_probe.py). Results are committed in bench/sim_probe/.
+bench/cache_sim/

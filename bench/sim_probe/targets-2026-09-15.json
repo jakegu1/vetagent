@@ -1,0 +1,309 @@
+{
+ "unknown": [
+  {
+   "symbol": "Rong",
+   "address": "0x0589b25aa1b91a12423b73b041c9cb05c99fffff",
+   "pool": "0x7752368edf71ba09751cb2e12f0f30c1ad1f169f",
+   "quote": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+   "liquidity_usd": 8491.81,
+   "gaps": [
+    "the sell simulator has no record of this token"
+   ],
+   "labels": [
+    null,
+    "safe"
+   ]
+  },
+  {
+   "symbol": "TAIYI",
+   "address": "0x11116f6fc6145fe83e1e11f363210f90e2761111",
+   "pool": "0x7d87084ce606f103325c866be20f8fcdd3527982",
+   "quote": "0x55d398326f99059fF775485246999027B3197955",
+   "liquidity_usd": 572138.0,
+   "gaps": [
+    "the sell simulator has no record of this token"
+   ],
+   "labels": [
+    null,
+    "safe"
+   ]
+  },
+  {
+   "symbol": "AST",
+   "address": "0x265b3982ea730748100947f52561a4eab54affff",
+   "pool": "0xf49d9c79a07922d3846c762c73b4df65205ef772",
+   "quote": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+   "liquidity_usd": 214596.0,
+   "gaps": [
+    "the sell simulator has no record of this token"
+   ],
+   "labels": [
+    null,
+    "safe"
+   ]
+  },
+  {
+   "symbol": "Sue",
+   "address": "0x2ab8a4dd2191989ac2898006df350b236d2b7777",
+   "pool": "0xffca411cfbcd3194503effa80fd394b55387915c",
+   "quote": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+   "liquidity_usd": 85685.1,
+   "gaps": [
+    "the sell simulator has no record of this token"
+   ],
+   "labels": [
+    null,
+    "safe"
+   ]
+  },
+  {
+   "symbol": "BNBCAT",
+   "address": "0x3efbfff95576e1d23cf6ead0acd2e73f4d6a7777",
+   "pool": "0x8650e3ede7c2d45f89dbbe108bd6568f414167cb",
+   "quote": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+   "liquidity_usd": 225276.0,
+   "gaps": [
+    "the sell simulator has no record of this token"
+   ],
+   "labels": [
+    null,
+    "safe"
+   ]
+  },
+  {
+   "symbol": "SPR",
+   "address": "0x71967d91abfbf96796238e70092c85878fc85999",
+   "pool": "0xabe0e16758e0ec57848a092285ace3b384c58d88",
+   "quote": "0x55d398326f99059fF775485246999027B3197955",
+   "liquidity_usd": 11119600.0,
+   "gaps": [
+    "simulation failed: execution reverted: HP: BUY_FAILED: 0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e48503a204255595f4641494c4544000000000000000000000000000000000000"
+   ],
+   "labels": [
+    "alive",
+    "safe"
+   ]
+  },
+  {
+   "symbol": "\\u70ed\\u94b1",
+   "address": "0x91fcbae169a6bcc342b108979929cdbe93fd7777",
+   "pool": "0x1f9722ffded32c269970450fc6ee5ceea39f79ea",
+   "quote": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+   "liquidity_usd": 16949.4,
+   "gaps": [
+    "the sell simulator has no record of this token"
+   ],
+   "labels": [
+    null,
+    "safe"
+   ]
+  },
+  {
+   "symbol": "MRX",
+   "address": "0xa605d1b98f3f26eed3267bade68cb8382136d89e",
+   "pool": "0x2bf6c9c9bd7ac448ab3d524653eed7b4297a9c26",
+   "quote": "0x55d398326f99059fF775485246999027B3197955",
+   "liquidity_usd": 106697.0,
+   "gaps": [
+    "the sell simulator has no record of this token"
+   ],
+   "labels": [
+    null,
+    "centralized"
+   ]
+  },
+  {
+   "symbol": "\\u55b5\\u55b5\\u5e01",
+   "address": "0xd9d3dad2efed7ee99f1363fac549f5e476f19a5a",
+   "pool": "0x6f6a6eabbf07af11ea58ba523cf74618f45fd190",
+   "quote": "0x55d398326f99059fF775485246999027B3197955",
+   "liquidity_usd": 1684480.0,
+   "gaps": [
+    "the sell simulator has no record of this token"
+   ],
+   "labels": [
+    null,
+    "centralized"
+   ]
+  },
+  {
+   "symbol": "MAME",
+   "address": "0xe92f7fe3eaf61df28b7b75f3faab199333c42302",
+   "pool": "0x924f1a4422a89900faafa3f886721fdccd6e086a",
+   "quote": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+   "liquidity_usd": 490610.0,
+   "gaps": [
+    "the sell simulator has no record of this token"
+   ],
+   "labels": [
+    null,
+    "safe"
+   ]
+  },
+  {
+   "symbol": "Max",
+   "address": "0xe9bc5c6a86caa44fd7b469bf3cc7c563e4f77777",
+   "pool": "0xa2b1926cb477e92445cf70602f1a7200361f761d",
+   "quote": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+   "liquidity_usd": 543068.0,
+   "gaps": [
+    "the sell simulator has no record of this token"
+   ],
+   "labels": [
+    null,
+    "safe"
+   ]
+  },
+  {
+   "symbol": "FLORK",
+   "address": "0xf40592daacb3e5abf358789f5688c0b4f64d7777",
+   "pool": "0x9793a9cbb04f781433254e4530398107e6a8dcee",
+   "quote": "0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c",
+   "liquidity_usd": 684623.0,
+   "gaps": [
+    "the sell simulator has no record of this token"
+   ],
+   "labels": [
+    null,
+    "safe"
+   ]
+  },
+  {
+   "symbol": "\\u9ec4\\u91d1\\u72d7",
+   "address": "0xf84048b1a6f04b0ff71e122443c7fa4418777777",
+   "pool": "0x01b364778266b8145918bf0e7ff704efb1ea9a4a",
+   "quote": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+   "liquidity_usd": 143033.0,
+   "gaps": [
+    "the sell simulator has no record of this token"
+   ],
+   "labels": [
+    null,
+    "safe"
+   ]
+  }
+ ],
+ "controls": [
+  {
+   "symbol": "FNA",
+   "address": "0x08332a515cb2a57884176e887b682e7da2eb114e",
+   "pool": "0xa0cc1bdc044554116467f866f4c320707c3eb288",
+   "quote": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+   "liquidity_usd": 146744.0,
+   "verdict": "medium",
+   "hp_buy_tax": 0,
+   "hp_sell_tax": 5
+  },
+  {
+   "symbol": "Cake",
+   "address": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
+   "pool": "0x0ed7e52944161450477ee417de9cd3a859b14fd0",
+   "quote": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+   "liquidity_usd": 18449800.0,
+   "verdict": "low",
+   "hp_buy_tax": 0,
+   "hp_sell_tax": 0
+  },
+  {
+   "symbol": "IBS",
+   "address": "0x255e746abb8d9acac00d6d023e5e63e3b8dfa7cd",
+   "pool": "0x2a4b99a9c4544d35e8d266111c50b67fea01d53d",
+   "quote": "0x55d398326f99059fF775485246999027B3197955",
+   "liquidity_usd": 15136200.0,
+   "verdict": "low",
+   "hp_buy_tax": 0,
+   "hp_sell_tax": 2.49
+  },
+  {
+   "symbol": "OLY",
+   "address": "0x544028231562a43b106fbceca722b65cb5c861b0",
+   "pool": "0x6865704ff097b1105ed42b8517020e14fe9a2abd",
+   "quote": "0x55d398326f99059fF775485246999027B3197955",
+   "liquidity_usd": 7187150.0,
+   "verdict": "medium",
+   "hp_buy_tax": 0,
+   "hp_sell_tax": 2.99
+  },
+  {
+   "symbol": "WKC",
+   "address": "0x6ec90334d89dbdc89e08a133271be3d104128edb",
+   "pool": "0x933477eba23726ca95a957cb85dbb1957267ef85",
+   "quote": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+   "liquidity_usd": 1278620.0,
+   "verdict": "low",
+   "hp_buy_tax": 1.99,
+   "hp_sell_tax": 1.99
+  },
+  {
+   "symbol": "SAC",
+   "address": "0x7cc151c2ee1016d7b586fb818759b6ae07719999",
+   "pool": "0x462b30a53c8552035506e82ce7b6a6c418b0477f",
+   "quote": "0x55d398326f99059fF775485246999027B3197955",
+   "liquidity_usd": 27077400.0,
+   "verdict": "medium",
+   "hp_buy_tax": 0,
+   "hp_sell_tax": 4.99
+  },
+  {
+   "symbol": "Pro",
+   "address": "0x8d65744527f55d0b2338350912d5c99a81ddf0e2",
+   "pool": "0x63844bd4bfad910b1643713302a1cc1ed20d50c3",
+   "quote": "0x55d398326f99059fF775485246999027B3197955",
+   "liquidity_usd": 78305000.0,
+   "verdict": "low",
+   "hp_buy_tax": 0,
+   "hp_sell_tax": 2.49
+  },
+  {
+   "symbol": "bibi",
+   "address": "0x9212cf1f9f4a9c69bb010146ba5b0725169d4444",
+   "pool": "0xb2505b8a1ab470acfbc12dd255e7fa298a23ab67",
+   "quote": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+   "liquidity_usd": 246445.0,
+   "verdict": "low",
+   "hp_buy_tax": 0,
+   "hp_sell_tax": 0
+  },
+  {
+   "symbol": "DBT",
+   "address": "0xb0ad9c2313b9719ea0ccd43d7e7e1fd07e7cbd90",
+   "pool": "0xa4d4cf40d4eee090b9454cd914709b45d406d7d4",
+   "quote": "0x55d398326f99059fF775485246999027B3197955",
+   "liquidity_usd": 87870.0,
+   "verdict": "low",
+   "hp_buy_tax": 0,
+   "hp_sell_tax": 0
+  },
+  {
+   "symbol": "WBNB",
+   "address": "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+   "pool": "0x16b9a82891338f9ba80e2d6970fdda79d1eb0dae",
+   "quote": "0x55d398326f99059fF775485246999027B3197955",
+   "liquidity_usd": 66866500.0,
+   "verdict": "low",
+   "hp_buy_tax": 0,
+   "hp_sell_tax": 0
+  },
+  {
+   "symbol": "ClipX",
+   "address": "0xc269d59a0d608ea0bd672f2f4616c372d8554444",
+   "pool": "0x19ae1813d020302e624bd4a02703e0241264baf8",
+   "quote": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+   "liquidity_usd": 194274.0,
+   "verdict": "low",
+   "hp_buy_tax": 0,
+   "hp_sell_tax": 0
+  },
+  {
+   "symbol": "ARK",
+   "address": "0xcae117ca6bc8a341d2e7207f30e180f0e5618b9d",
+   "pool": "0xcaaf3c41a40103a23eeaa4bba468af3cf5b0e0d8",
+   "quote": "0x55d398326f99059fF775485246999027B3197955",
+   "liquidity_usd": 51677100.0,
+   "verdict": "low",
+   "hp_buy_tax": 0,
+   "hp_sell_tax": 2.49
+  }
+ ],
+ "controls_pool": 12
+}
