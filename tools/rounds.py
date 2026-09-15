@@ -210,11 +210,17 @@ ROUNDS = [
      "driver and the age of its evidence, turnover is measured per token, and a false-block "
      "rate is published beside the false-positive rate. The unknown rate got worse, and "
      "recall on the adversarial cohort fell by one token."),
-    ("R22", "Owner decisions, and a score that can see an attack", None,
+    ("R22", "Owner decisions, and a score that can see an attack", "8fff00c",
      "The owner accepted the open recommendations: stale data caps confidence, the parked "
      "ideas keep their review dates, the positioning sentence goes into STRATEGY, and a "
      "keyed market-data source gets priced. The maturity score had no line that could see "
      "any of R21, so it is being widened -- in both directions."),
+    ("R23", "A numbers audit, checked before it was believed", None,
+     "An audit traced the false blocks and the unknowns to honeypot.is and proposed "
+     "releasing its flags. Nine verifiers replayed it on the cache: the counts mostly held "
+     "and the reading did not -- the flag is real holders failing to sell -- and the replay "
+     "found a defect it missed. Defects and false public sentences are fixed first, before "
+     "the Experiment C post; rule changes wait for the 09-18 gate."),
 ]
 
 

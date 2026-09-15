@@ -29,7 +29,7 @@
 | Correctness | production guards observed live | 5.0 | 5 | 429 after 67 calls; batch of 11 -> HTTP 400; service 8e1e2cb on 2026-09-14 |
 | Coverage | risk dimensions covered | 16.4 | 20 | 9 / 11 |
 | Credibility | recall is measurable | 10.0 | 10 | dead samples: 30 (need ≥20) |
-| Credibility | days of snapshots | 0.7 | 10 | 12 of 180 days |
+| Credibility | days of snapshots | 0.7 | 10 | 13 of 180 days |
 | Distribution | channels listed on | 4.2 | 10 | 5 / 12 |
 | Distribution | external callers | — | 5 | not measured (needs CLOUDFLARE_API_TOKEN, see bench/usage.py) |
 | Demand | paying users | 0.0 | 10 | 0 |

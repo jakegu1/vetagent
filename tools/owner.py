@@ -59,8 +59,8 @@ OWNER_DUE = {
     "W5": ("2026-10-16", "needed for W3, which every accuracy claim rests on"),
     "W12": ("2026-10-16", "changes what the benchmark can measure, so before the D gate"),
     "W13": ("", "no deadline -- do it when convenient"),
-    "W29": ("2026-09-18", "the keyed fallback is live and idle until the secret exists, and "
-                          "Experiment C's callers arrive around the gate"),
+    "W44": ("2026-10-16", "no verdict rule changes before the 09-18 gate, and W37/W38 land "
+                          "after it; the D gate should read the rule that was chosen"),
 }
 
 # What it costs to do nothing. An owner reading a task list reads "when" and "what", and
@@ -76,9 +76,9 @@ COST_OF_WAITING = {
           "we cannot tell, and neither can anyone reading the benchmark.",
     "W12": "The 10-16 gate arrives with the measurement question still open, so that "
            "gate answers a smaller question than it was meant to.",
-    "W29": "The keyed fallback is deployed and does nothing until the secret exists: "
-           "40.7% of production answers were `unknown` over the week to 2026-09-14, and the "
-           "callers Experiment C brings in meet that rate first. Setting it is one command.",
+    "W44": "Nothing breaks. Today's rule stays: a token whose holders failed to sell "
+           "reads medium when the chain shows sells, and that keeps costing about 19 of the "
+           "31 false blocks.",
     "Post Experiment C": "This is the one action that can change the 09-18 answer. Not "
                          "doing it does not delay the gate -- the gate still fires, and "
                          "it fires on no.",
@@ -89,6 +89,8 @@ COST_OF_WAITING = {
 EXTRA_ACTIONS = [
     ("Post Experiment C", "2026-09-18",
      "The gate's failing branch prescribes exactly this, so it happens either way. "
+     "Post after W30 and W31 land (2026-09-16): both change numbers the post quotes, "
+     "and the post and the site should say the same thing. "
      "Drafts are written and every number in them is checked by the build: "
      "docs/EXPERIMENT_C.md. Nothing is posted without you -- it is your name on it.",
      "a post exists on at least one of HN, r/ethdev, X or the MCP Discord"),
@@ -106,6 +108,16 @@ EXTRA_ACTIONS = [
 # claim, which is itself a thing that can turn out to be false.
 CORRECTION_WINDOW = 14
 CORRECTIONS = [
+    ("2026-09-15",
+     "'honeypot.is flagged a token while its own simulation passed and thousands of sells "
+     "went through: a simulator false positive' -- the reading behind the contested-honeypot "
+     "rule, its signal text and its test fixture.",
+     "The flag comes from honeypot.is's holder test: in 53 of 54 benchmark cases, real "
+     "holders' sells failed while a fresh address could trade. That is what a blacklist "
+     "honeypot looks like. The rule's outcome (medium, never low) was still right; the "
+     "sentence given to callers, and the fixture with 0 of 1,555 holders failed, were not.",
+     "Caught while checking the 2026-09-15 numbers audit, which proposed releasing the flag "
+     "on the same misreading. I had never opened the part of the answer I was explaining."),
     ("2026-09-15",
      "'Adopt Codex as the fallback: it is the only provider with both reserve amounts and "
      "distinct sellers in one query, and the fastest.'",

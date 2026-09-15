@@ -33,11 +33,12 @@ The maturity score for each round is read from `docs/SCORECARD.md` **as it stood
 | **R19** | Point it outward, and correct what would be found | 67 | 2026-09-08 to 2026-09-11 | 55/100 (+2) |
 | **R20** | The fifth audit: the recall we published was in-sample | 4 | 2026-09-12 | 55/100 (+0) |
 | **R21** | Attacked on purpose | 17 | 2026-09-14 | 55/100 (+0) |
+| **R22** | Owner decisions, and a score that can see an attack | 26 | 2026-09-14 to 2026-09-15 | 50/100 (-5) |
 
-73 snapshot-job commits are excluded up to the last closed round: they are data collection, not development, and would bury the rounds. The job commits daily, so counting them past that point would date this file every morning.
+78 snapshot-job commits are excluded up to the last closed round: they are data collection, not development, and would bury the rounds. The job commits daily, so counting them past that point would date this file every morning.
 
 
-**R22 -- Owner decisions, and a score that can see an attack** is open: The owner accepted the open recommendations: stale data caps confidence, the parked ideas keep their review dates, the positioning sentence goes into STRATEGY, and a keyed market-data source gets priced. The maturity score had no line that could see any of R21, so it is being widened -- in both directions. Its commits are listed here once it closes.
+**R23 -- A numbers audit, checked before it was believed** is open: An audit traced the false blocks and the unknowns to honeypot.is and proposed releasing its flags. Nine verifiers replayed it on the cache: the counts mostly held and the reading did not -- the flag is real holders failing to sell -- and the replay found a defect it missed. Defects and false public sentences are fixed first, before the Experiment C post; rule changes wait for the 09-18 gate. Its commits are listed here once it closes.
 
 ---
 
@@ -578,6 +579,47 @@ The first audit to attack the tool rather than read it. Two dollars of fabricate
 | `904a6c8` | 2026-09-14 | Every answer names what drove it, when it was made, and how old its evidence is |
 | `84a21a2` | 2026-09-14 | Turnover is measured over the token, not its deepest pool |
 | `0ad65b6` | 2026-09-14 | Publish the false-block rate beside the false-positive rate: 20.1% |
+
+Full reasoning for any line above: `git show <hash>`. The commit messages carry the measurement that motivated each change, and several admissions of error.
+
+
+---
+
+
+## R22 -- Owner decisions, and a score that can see an attack
+
+
+The owner accepted the open recommendations: stale data caps confidence, the parked ideas keep their review dates, the positioning sentence goes into STRATEGY, and a keyed market-data source gets priced. The maturity score had no line that could see any of R21, so it is being widened -- in both directions.
+
+
+| Commit | Date | Change |
+|---|---|---|
+| `928ab77` | 2026-09-14 | E22: an answer that used stale data is at most medium confidence |
+| `b821d5e` | 2026-09-14 | O7-O11: the owner accepted the review dates; O8's prerequisite has shipped |
+| `5242fb0` | 2026-09-14 | Regenerate the scorecard: E22 added a test and its evidence cell counts them |
+| `21b2dd9` | 2026-09-14 | The owner page said R19 was in progress, and its corrections stopped at 09-09 |
+| `05a9679` | 2026-09-14 | The maturity score could not see R21, so it now can -- and it went down, 55 -> 44 |
+| `0451f10` | 2026-09-14 | Positioning sentence into STRATEGY, and the market-data key probe onto the owner's list |
+| `8e1e2cb` | 2026-09-14 | Regenerate the owner page after rebasing onto the latest snapshots |
+| `c1d4136` | 2026-09-14 | First production reading: guards 5/5, production unknown 40.7% -- and stop copying the score |
+| `3c9bacf` | 2026-09-14 | W29: the key probe passed -- all four keyed providers, 12 rounds, zero 429s |
+| `60be981` | 2026-09-15 | W29: a keyed CoinGecko fallback between DexScreener and keyless GeckoTerminal (D8) |
+| `888e788` | 2026-09-15 | Owner page: the Codex recommendation was wrong, and W29 is now one command due before the gate |
+| `02c4418` | 2026-09-15 | A refusal names the upstream's own error code: "coingecko 400" was not enough |
+| `0cfb771` | 2026-09-15 | zone-check: read whether Cloudflare blocks AI crawlers, with the repository's own token |
+| `ccba688` | 2026-09-15 | TEMPORARY: log CoinGecko's error body, addresses masked, to read a 400 with no code |
+| `ff94ee5` | 2026-09-15 | Strip the provider key, and TEMPORARILY log its length and type to read the 400 |
+| `c0aa444` | 2026-09-15 | The first production key was one invisible character: refuse it, and say it is ours |
+| `dee590c` | 2026-09-15 | GEO baseline: register the query list and the reading rule before the first measurement |
+| `ee3fabb` | 2026-09-15 | zone-check reads what crawlers actually got; GEO web-search baseline recorded |
+| `67c3ec8` | 2026-09-15 | GEO baseline 2026-09-15: vetagent.dev is not in the search index |
+| `5187026` | 2026-09-15 | The contested-honeypot gap names what the upstreams answered |
+| `36aee0c` | 2026-09-15 | Sitemap, robots.txt and IndexNow: tell search engines the site exists |
+| `67f49da` | 2026-09-15 | zone-check: Cloudflare does not block AI crawlers; read the request logs a day at a time |
+| `eb0f41a` | 2026-09-15 | The fallback put the queried token on the wrong side of the pool: USDC on Base at $2,482.71 |
+| `091f15b` | 2026-09-15 | Re-measure the benchmark after the fallback side fix |
+| `2e92c84` | 2026-09-15 | Reference pages, a share card and llms-full.txt: give search engines something to cite |
+| `8fff00c` | 2026-09-15 | GEO baseline: crawler access is measured, and crawlers are served |
 
 Full reasoning for any line above: `git show <hash>`. The commit messages carry the measurement that motivated each change, and several admissions of error.
 

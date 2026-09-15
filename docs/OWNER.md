@@ -23,10 +23,10 @@ These are the things I cannot do. Everything else in this project is mine.
 |---|---|---|---|---|
 | **in 3 days** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
 | **in 3 days** | 2026-09-18 | W11 | Answer the 2026-09-18 gate | no |
-| **in 3 days** | 2026-09-18 | W29 | Get three free market-data API keys, so a two-hour probe can settle whether a key ends the | no |
 | **in 3 days** | 2026-09-18 | -- | Post Experiment C | no |
 | in 31 days | 2026-10-16 | W5 | A second, independent sell-simulation source | **yes -- see below** |
 | in 31 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
+| in 31 days | 2026-10-16 | W44 | Decide what a honeypot flag backed by failed holder sells is worth once the chain shows se | no |
 
 ### W10 Create the two accounts the remaining directories need
 
@@ -42,17 +42,10 @@ These are the things I cannot do. Everything else in this project is mine.
 - **You know it is done when:** `python bench/usage.py`, counting rule already fixed in code; then a `Resolved:` line in `STRATEGY.md` §8, which `test_gates_get_reviewed.py` requires once due
 - **If you do nothing:** A gate that passes its date in silence teaches everyone that gates are decoration, and this is the first one that can stop the project.
 
-### W29 Get three free market-data API keys, so a two-hour probe can settle whether a key ends the `unknown` answers
-
-- **When:** 2026-09-18 (**in 3 days**)
-- **Why then:** the keyed fallback is live and idle until the secret exists, and Experiment C's callers arrive around the gate
-- **You know it is done when:** Decision rule fixed before running: over 12 rounds in 2 hours from a throwaway Worker, **pass** if in rounds where the keyless control drew a 429 the keyed calls drew none and at most 1% non-2xx; **inconclusive** if the control never drew a 429 (re-run when production fails); **fail** for a provider answering 429/403/1020 under its documented limit. Pay only if a provider passes and projected volume exceeds its free allowance; the smallest paid step is CoinGecko Basic at $35 for one month. **Ran 2026-09-14 14:00-15:52 UTC, 12 rounds, all four providers PASS.** Keys set by the owner as secrets on a throwaway Worker (vetagent-keyprobe, not in this repo). In all 12 rounds a keyless control drew a 429: GeckoTerminal 48 of 60 calls, DexPaprika 38 x 429 and 22 x 402 (its per-IP monthly allowance already spent by the shared egress). In the same rounds from the same Worker, keyed calls: CoinGecko 60/60 HTTP 200, DexPaprika 60/60 plus 60/60 pool details, Codex 60/60 -- zero 429s, zero non-2xx. Field check passed on every chain in every round for all four; the only misses were DAI's top pool on CoinGecko (no seller count) and DexPaprika detail (reserves), 3 rounds each. Median latency: Codex 186 ms, CoinGecko 401 ms, DexPaprika 844 ms. **What this does not show:** every round ran from one data centre (KIX) and one egress IP, and keyless DexScreener answered 200 on all 60 calls here although production logged `dexscreener 429` the same day -- so it settles that a key escapes the throttling, not which colos production is throttled in. Two drained tokens were used instead of three, stated in the probe before it ran. **Next, owner's call:** which provider VetAgent adopts, and whether its free-tier terms (CoinGecko Demo: attribution required; Codex: 'personal & hobby') allow a public free service. **Owner, 2026-09-15: terms are fine, integrate.** Codex was then rejected on its data, not its terms: real response bodies captured by the probe Worker show its pool listing ranking testnet pools and int64-max liquidity first for WETH, and on mainnet a "USDT pool" holding 30,250,000,000 USDT -- fed to the depth check (E21) that would reopen the fabricated-depth hole (`bench/production/codex-samples-2026-09-15.json`). CoinGecko, the same data VetAgent already falls back to, is integrated instead (D8): DexScreener, then CoinGecko with the key, then keyless GeckoTerminal, and the contested-honeypot seller count goes through the key too. The probe Worker and its KV namespace are deleted. **Left for the owner:** set `CG_DEMO_KEY` on the vetagent Worker -- until then the code runs keyless, exactly as before. Verify: `bench/production/verdicts.json`'s unknown share falls in the days after the secret is set, from 40.7% on 2026-09-14
-- **If you do nothing:** The keyed fallback is deployed and does nothing until the secret exists: 40.7% of production answers were `unknown` over the week to 2026-09-14, and the callers Experiment C brings in meet that rate first. Setting it is one command.
-
 ###  Post Experiment C
 
 - **When:** 2026-09-18 (**in 3 days**)
-- **Why then:** The gate's failing branch prescribes exactly this, so it happens either way. Drafts are written and every number in them is checked by the build: docs/EXPERIMENT_C.md. Nothing is posted without you -- it is your name on it.
+- **Why then:** The gate's failing branch prescribes exactly this, so it happens either way. Post after W30 and W31 land (2026-09-16): both change numbers the post quotes, and the post and the site should say the same thing. Drafts are written and every number in them is checked by the build: docs/EXPERIMENT_C.md. Nothing is posted without you -- it is your name on it.
 - **You know it is done when:** a post exists on at least one of HN, r/ethdev, X or the MCP Discord
 - **If you do nothing:** This is the one action that can change the 09-18 answer. Not doing it does not delay the gate -- the gate still fires, and it fires on no.
 
@@ -60,7 +53,7 @@ These are the things I cannot do. Everything else in this project is mine.
 
 - **When:** 2026-10-16 (in 31 days)
 - **Why then:** needed for W3, which every accuracy claim rests on
-- **You know it is done when:** **Blocked** on a credential, not on engineering. Probed 2026-09-06: staysafu unreachable (SSL), quickintel 401, tokensniffer 401, de.fi public endpoint 404. Every candidate needs a paid key — this is a W9-shaped item that belongs to whoever holds the budget
+- **You know it is done when:** **Blocked** on a credential, not on engineering. Probed 2026-09-06: staysafu unreachable (SSL), quickintel 401, tokensniffer 401, de.fi public endpoint 404. Every candidate needed a paid key (**2026-09-15, from its pricing page:** Quick Intel now lists a free API Testing tier, 200 calls a month on approval, and a keyless pay-per-scan endpoint at $0.03 paid in USDC; whether its scan simulates a sell is not yet known; next owner step: apply for the testing tier) — this is a W9-shaped item that belongs to whoever holds the budget
 - **If you do nothing:** Every accuracy claim keeps resting on a single sell simulator. If it is wrong, we cannot tell, and neither can anyone reading the benchmark.
 
 ### W12 Decide the price-history trade-off
@@ -69,6 +62,13 @@ These are the things I cannot do. Everything else in this project is mine.
 - **Why then:** changes what the benchmark can measure, so before the D gate
 - **You know it is done when:** A decision recorded in `DECISIONS.md`, either way
 - **If you do nothing:** The 10-16 gate arrives with the measurement question still open, so that gate answers a smaller question than it was meant to.
+
+### W44 Decide what a honeypot flag backed by failed holder sells is worth once the chain shows sells
+
+- **When:** 2026-10-16 (in 31 days)
+- **Why then:** no verdict rule changes before the 09-18 gate, and W37/W38 land after it; the D gate should read the rule that was chosen
+- **You know it is done when:** A decision recorded in `DECISIONS.md`, either way
+- **If you do nothing:** Nothing breaks. Today's rule stays: a token whose holders failed to sell reads medium when the chain shows sells, and that keeps costing about 19 of the 31 false blocks.
 
 ## The dates that decide things
 
@@ -104,12 +104,12 @@ gantt
 ### Is the archive still collecting?
 
 ```text
-·········████████████   2026-08-25 -> 2026-09-14
+········█████████████   2026-08-26 -> 2026-09-15
 ```
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**12 days, no gaps.** Newest is 2026-09-14, yesterday.
+**13 days, no gaps.** Newest is 2026-09-15, today.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -117,25 +117,37 @@ The collector is scheduled four times a day and GitHub runs it late every time -
 
 ```mermaid
 flowchart LR
+    W3[W3 Grow the genuine adversarial cohort...]
     W4[W4 Cut the unknown rate below 10%]
     W6[W6 EVM holder concentration]
     W7[W7 Point-in-time evaluation from the...]
+    W32[W32 Fallback pools get the...]
+    W33[W33 Every pool is empty must not ignore a...]
+    W37[W37 A pool holding under a dollar is...]
+    W38[W38 A lone lifecycle warning stops forcing...]
+    W39[W39 Measure before adding a second pool...]
+    W40[W40 Label new pools while they still hold...]
     W5[W5 A second, independent sell-simulation...]
     W10([W10 Create the two accounts the remaining...])
     W11[W11 Answer the 2026-09-18 gate]
     E1{{not a work item - DECISIONS.md B2 — the field...}}
     E2{{not a work item - archive depth needs ≥60...}}
-    E3{{not a work item - a credential, not on...}}
+    E3{{not a work item - the 2026-09-18 gate}}
+    E4{{not a work item - a credential, not on...}}
     GATE{{2026-09-18 gate - is anyone using it}}
     W5 -->|blocks| W4
     E1 -->|blocks| W6
     E2 -->|blocks| W7
-    E3 -->|blocks| W5
+    W33 -->|blocks| W37
+    E3 -->|blocks| W38
+    W32 -->|blocks| W39
+    W3 -->|blocks| W40
+    E4 -->|blocks| W5
     W11 -->|answers| GATE
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **7 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **14 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -146,32 +158,32 @@ Rounded = parked by you. Hexagons are not work items -- they are what a row is w
 | False positives | 4.3% -- we called a healthy token dangerous |
 | Answers we refuse | 18.2% -- `unknown`, on purpose |
 | Dead tokens we rated high | 10.0% -- our worst number, published first |
-| Round in progress | R22: Owner decisions, and a score that can see an attack |
+| Round in progress | R23: A numbers audit, checked before it was believed |
 
 The score's ceiling for engineering alone is about 70. The missing points are
 distribution and users, which is why more building cannot move it.
 
 ## What I am doing right now
 
-**R22 -- Owner decisions, and a score that can see an attack**
+**R23 -- A numbers audit, checked before it was believed**
 
-The owner accepted the open recommendations: stale data caps confidence, the parked ideas keep their review dates, the positioning sentence goes into STRATEGY, and a keyed market-data source gets priced. The maturity score had no line that could see any of R21, so it is being widened -- in both directions.
+An audit traced the false blocks and the unknowns to honeypot.is and proposed releasing its flags. Nine verifiers replayed it on the cache: the counts mostly held and the reading did not -- the flag is real holders failing to sell -- and the replay found a defect it missed. Defects and false public sentences are fixed first, before the Experiment C post; rule changes wait for the 09-18 gate.
 
 ## What changed in the last 7 days
 
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- GEO baseline: crawler access is measured, and crawlers are served
+- Reference pages, a share card and llms-full.txt: give search engines something to cite
+- Re-measure the benchmark after the fallback side fix
 - The fallback put the queried token on the wrong side of the pool: USDC on Base at $2,482.71
 - zone-check: Cloudflare does not block AI crawlers; read the request logs a day at a time
 - Sitemap, robots.txt and IndexNow: tell search engines the site exists
 - The contested-honeypot gap names what the upstreams answered
 - GEO baseline 2026-09-15: vetagent.dev is not in the search index
-- zone-check reads what crawlers actually got; GEO web-search baseline recorded
-- GEO baseline: register the query list and the reading rule before the first measurement
-- The first production key was one invisible character: refuse it, and say it is ours
 
-_97 more not shown (105 commits in total)._
+_88 more not shown (96 commits in total)._
 
 ## What I got wrong
 
@@ -180,6 +192,12 @@ costs me something. A build check requires an entry here every 14 days: if there
 were genuinely no mistakes, saying so is itself a dated claim on the record.
 
 Newest first.
+
+**2026-09-15** &mdash; I said: *'honeypot.is flagged a token while its own simulation passed and thousands of sells went through: a simulator false positive' -- the reading behind the contested-honeypot rule, its signal text and its test fixture.*
+
+> The flag comes from honeypot.is's holder test: in 53 of 54 benchmark cases, real holders' sells failed while a fresh address could trade. That is what a blacklist honeypot looks like. The rule's outcome (medium, never low) was still right; the sentence given to callers, and the fixture with 0 of 1,555 holders failed, were not.
+
+> How it surfaced: Caught while checking the 2026-09-15 numbers audit, which proposed releasing the flag on the same misreading. I had never opened the part of the answer I was explaining.
 
 **2026-09-15** &mdash; I said: *'Adopt Codex as the fallback: it is the only provider with both reserve amounts and distinct sellers in one query, and the fastest.'*
 
