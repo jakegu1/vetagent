@@ -173,7 +173,10 @@ for the same reason. Same answer, same code path.</p>
 <p>To answer a request we query these public APIs, sending only the token address:</p>
 <ul>
   <li>DexScreener &mdash; trading pairs, price, liquidity</li>
-  <li>GeckoTerminal &mdash; liquidity fallback, new and trending pools</li>
+  <li>CoinGecko (on-chain API) &mdash; liquidity fallback when DexScreener does not answer,
+      and distinct-seller counts; requested with our own API key since 2026-09-15</li>
+  <li>GeckoTerminal &mdash; the same fallback without a key, if CoinGecko does not answer;
+      new and trending pools</li>
   <li>honeypot.is &mdash; EVM buy/sell simulation</li>
   <li>RugCheck &mdash; Solana contract risk</li>
   <li>rpc.mevblocker.io (Ethereum), mainnet.base.org (Base),
@@ -568,6 +571,9 @@ class Default(WorkerEntrypoint):
     """Worker entrypoint. Cloudflare requires the entrypoint class to be named Default."""
 
     async def fetch(self, request):
+        # Provider keys live in Worker secrets (CG_DEMO_KEY). Read per request so a key set or
+        # rotated with `wrangler secret put` takes effect without a code change.
+        risk.configure(self.env)
         parsed = urlparse(request.url)
         path = parsed.path.rstrip("/") or "/"
         query = dict(parse_qsl(parsed.query))

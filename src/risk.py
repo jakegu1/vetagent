@@ -204,6 +204,37 @@ def _stale_hits():
 _FETCH_FAILURES = contextvars.ContextVar("vetagent_fetch_failures")
 
 
+# The CoinGecko Demo key, read from the Worker's secrets by entry.py on every request.
+#
+# Why a key at all: production answered `unknown` with "upstream request failed
+# (dexscreener 429, geckoterminal 429)" because both free upstreams throttle the Worker's
+# shared egress IP. A 12-round probe from a Worker (BACKLOG W29, 2026-09-14) found the keyless
+# GeckoTerminal call throttled in every round, 48 of 60 calls, while CoinGecko's on-chain API
+# -- the same GeckoTerminal data and JSON -- answered 60 of 60 with a free key. A key is a
+# secret: it travels in a header, never in a URL (URLs are cache keys and log lines).
+_ONCHAIN = {"key": None}
+
+
+def configure(env):
+    """Read optional provider keys from the Worker environment. Absent means keyless."""
+    key = getattr(env, "CG_DEMO_KEY", None) if env is not None else None
+    _ONCHAIN["key"] = str(key) if key else None
+
+
+def _onchain_key():
+    return _ONCHAIN["key"]
+
+
+def _onchain_sources(path):
+    """[(url, headers, name)] to try for a GeckoTerminal-shaped path, keyed source first."""
+    out = []
+    if _ONCHAIN["key"]:
+        out.append(("https://api.coingecko.com/api/v3/onchain/%s" % path,
+                    {"x-cg-demo-api-key": _ONCHAIN["key"]}, "coingecko"))
+    out.append(("https://api.geckoterminal.com/api/v2/%s" % path, None, "geckoterminal"))
+    return out
+
+
 def _note_failure(url, what):
     """Remember how a fetch failed, for the gap reason. Host and status only, never the URL:
     the URL carries the token address, and that is not recorded anywhere."""
@@ -213,6 +244,7 @@ def _note_failure(url, what):
         return
     host = url.split("/")[2] if url.count("/") >= 2 else "?"
     name = {"api.dexscreener.com": "dexscreener", "api.geckoterminal.com": "geckoterminal",
+            "api.coingecko.com": "coingecko",
             "api.honeypot.is": "honeypot.is", "api.rugcheck.xyz": "rugcheck"}.get(host, host)
     failures.append((name, str(what)))
 
@@ -333,7 +365,7 @@ _SIMULATOR_CHAINS = tuple(_SIMULATOR_CHAIN_IDS)
 NO_DATA = object()
 
 
-async def _fetch_json(url, retries=2, timeout=8, mark_missing=False):
+async def _fetch_json(url, retries=2, timeout=8, mark_missing=False, headers=None):
     """Fetch and parse JSON.
 
     A dict means success. None means the **fetch failed** (network error, non-200,
@@ -352,7 +384,8 @@ async def _fetch_json(url, retries=2, timeout=8, mark_missing=False):
     for attempt in range(retries + 1):
         try:
             resp = await asyncio.wait_for(
-                cf_fetch(url, headers={"Accept": "application/json"}), timeout=timeout)
+                cf_fetch(url, headers=dict({"Accept": "application/json"}, **(headers or {}))),
+                timeout=timeout)
             if mark_missing and resp.status == 404:
                 return NO_DATA
             if resp.status != 200:
@@ -2124,8 +2157,11 @@ async def _distinct_sellers(hp, evidence):
     pool = bp.get("pair_address") or ""
     if not net or not pool:
         return
-    gt = await _fetch_json("https://api.geckoterminal.com/api/v2/networks/%s/pools/%s"
-                           % (net, _urlq(pool)))
+    gt = None
+    for url, headers, _name in _onchain_sources("networks/%s/pools/%s" % (net, _urlq(pool))):
+        gt = await _fetch_json(url, headers=headers)
+        if isinstance(gt, dict):
+            break
     if not isinstance(gt, dict):
         return
     attrs = ((gt.get("data") or {}).get("attributes") or {})
@@ -2545,17 +2581,22 @@ async def _load_pairs(address, chain_hint):
             networks.append(n)
     if not networks:
         networks = ["solana"] if _looks_solana(address) else ["eth", "base", "bsc", "polygon_pos"]
+    # CoinGecko with the key first when one is configured, then keyless GeckoTerminal. A host
+    # that answered 429 is not asked about the next network: it is the same host.
+    refused = set()
     for net in networks:
-        gt = await _fetch_json(
-            "https://api.geckoterminal.com/api/v2/networks/%s/tokens/%s/pools" % (net, address))
-        if gt is None:
-            if _failure_detail("geckoterminal") in ("geckoterminal 429",
-                                                    "geckoterminal error body 429"):
-                break           # the host is refusing us; the next network is the same host
-            continue
-        pools = gt.get("data") or []
-        if pools:
-            return [_gt_to_pair(p, address, net) for p in pools], "geckoterminal"
+        for url, headers, name in _onchain_sources("networks/%s/tokens/%s/pools" % (net, address)):
+            if name in refused:
+                continue
+            gt = await _fetch_json(url, headers=headers)
+            if gt is None:
+                if _failure_detail(name) in ("%s 429" % name, "%s error body 429" % name):
+                    refused.add(name)
+                continue
+            pools = gt.get("data") or []
+            if pools:
+                return [_gt_to_pair(p, address, net) for p in pools], name
+            break               # an answer, and it was empty: the next source is the same data
     if ds is None:
         return None, None  # fetch failed, not "there really are no pools"
     return [], "dexscreener"
@@ -2600,7 +2641,7 @@ async def assess(address, chain_hint=None, verbose=False):
             claimed_chain if claimed_chain in _KNOWN_CHAINS else "")
     if pairs is None:
         data_gaps.append({"dimension": "liquidity", "source": "dexscreener+geckoterminal",
-                          "reason": _failed("dexscreener", "geckoterminal")})
+                          "reason": _failed("dexscreener", "coingecko", "geckoterminal")})
         signals.append(_sig("warn", "Liquidity data unavailable",
                             "Both market data sources failed, so liquidity could not be assessed.", "no_liquidity"))
     elif not pairs:

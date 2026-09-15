@@ -68,7 +68,9 @@ CONTRACT_CATEGORIES = {
 
 def install_engine_fetcher():
     """Swap the engine's fetcher for one that caches and books which endpoints it hit."""
-    async def _fetch(url, retries=2, timeout=8, mark_missing=False):
+    async def _fetch(url, retries=2, timeout=8, mark_missing=False, headers=None):
+        # `headers` is accepted and not used: the benchmark runs keyless (no CG_DEMO_KEY is
+        # configured here), so the keyed CoinGecko source is never selected.
         # retries=2, matching src/risk.py. It was 1, so the harness gave upstream one
         # fewer chance than production does and then scored the engine on the result.
         # Production is gentler still: it caches at the edge and serves data up to 15

@@ -1,0 +1,1276 @@
+{
+ "captured": "2026-09-15",
+ "by": "vetagent-keyprobe Worker, filterPairs ranked by liquidity",
+ "responses": {
+  "codex-weth-ethereum": {
+   "data": {
+    "filterPairs": {
+     "results": [
+      {
+       "liquidity": "9223372000000000000",
+       "liquidityToken": "token0",
+       "quoteToken": "token1",
+       "price": "5.36725302016e+32",
+       "priceScale": "1",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1739868948,
+       "priceChange24": "0",
+       "exchange": {
+        "name": null,
+        "address": "0x7e0987e5b3a30e3f2828572bb659a548460a3003"
+       },
+       "token0": {
+        "address": "0x5972bb4602f3e5c9d8bc9a46dd51a8bef9285bd2",
+        "symbol": "YOGEN",
+        "decimals": 18,
+        "networkId": 11155111
+       },
+       "token1": {
+        "address": "0x944e8c34a606e579f5160d31b3ed0b44c4fd755f",
+        "symbol": "YT17",
+        "decimals": 18,
+        "networkId": 11155111
+       },
+       "pair": {
+        "address": "0xc5eb27296b08878dc8fff6f63c21d5cba8f57b7b",
+        "token0": "0x5972bb4602f3e5c9d8bc9a46dd51a8bef9285bd2",
+        "token1": "0x944e8c34a606e579f5160d31b3ed0b44c4fd755f",
+        "createdAt": 1739868948,
+        "networkId": 11155111,
+        "pooled": {
+         "token0": "0.257529078475275533",
+         "token1": "44.725706545311934276"
+        }
+       }
+      },
+      {
+       "liquidity": "9223372000000000000",
+       "liquidityToken": "token0",
+       "quoteToken": "token1",
+       "price": "2.25077582081e+48",
+       "priceScale": "1",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1748269787,
+       "priceChange24": "0",
+       "exchange": {
+        "name": null,
+        "address": "0x13ed0d5e1567684d964469ccba8a977cda580827"
+       },
+       "token0": {
+        "address": "0x3bb9afb94c82752e47706a10779ea525cf95dc27",
+        "symbol": "WNative",
+        "decimals": 18,
+        "networkId": 10143
+       },
+       "token1": {
+        "address": "0x4eb0ea120ca8cb7bcd5d4eca666d16c17b479495",
+        "symbol": "1900",
+        "decimals": 18,
+        "networkId": 10143
+       },
+       "pair": {
+        "address": "0xfc2f0bf9aaa263d8412c21b83d12dc775b618980",
+        "token0": "0x3bb9afb94c82752e47706a10779ea525cf95dc27",
+        "token1": "0x4eb0ea120ca8cb7bcd5d4eca666d16c17b479495",
+        "createdAt": 1748269787,
+        "networkId": 10143,
+        "pooled": {
+         "token0": "39.581394526241059263",
+         "token1": "438031974.629745489701856492"
+        }
+       }
+      },
+      {
+       "liquidity": "9223372000000000000",
+       "liquidityToken": "token0",
+       "quoteToken": "token1",
+       "price": "1.34520188871e+30",
+       "priceScale": "1",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1749642936,
+       "priceChange24": "0",
+       "exchange": {
+        "name": null,
+        "address": "0xc9f18c25cfca2975d6ed18fc63962ebd1083e978"
+       },
+       "token0": {
+        "address": "0x7b79995e5f793a07bc00c21412e50ecae098e7f9",
+        "symbol": "WETH",
+        "decimals": 18,
+        "networkId": 11155111
+       },
+       "token1": {
+        "address": "0x90ac97cfb714483d853736c28fdfc365275d19d5",
+        "symbol": "1",
+        "decimals": 18,
+        "networkId": 11155111
+       },
+       "pair": {
+        "address": "0x29055924bafd4da8b577df93edeefb043a88dfce",
+        "token0": "0x7b79995e5f793a07bc00c21412e50ecae098e7f9",
+        "token1": "0x90ac97cfb714483d853736c28fdfc365275d19d5",
+        "createdAt": 1749642936,
+        "networkId": 11155111,
+        "pooled": {
+         "token0": "0.6",
+         "token1": "420690000000"
+        }
+       }
+      },
+      {
+       "liquidity": "9223372000000000000",
+       "liquidityToken": "token0",
+       "quoteToken": "token1",
+       "price": "9.22901125016e+47",
+       "priceScale": "1",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1754546764,
+       "priceChange24": "0",
+       "exchange": {
+        "name": null,
+        "address": "0x13ed0d5e1567684d964469ccba8a977cda580827"
+       },
+       "token0": {
+        "address": "0x3bb9afb94c82752e47706a10779ea525cf95dc27",
+        "symbol": "WNative",
+        "decimals": 18,
+        "networkId": 10143
+       },
+       "token1": {
+        "address": "0xef20ea70a9f18bd7fdae059a41324181fe7d3b97",
+        "symbol": "1MILLION",
+        "decimals": 18,
+        "networkId": 10143
+       },
+       "pair": {
+        "address": "0x558450787960df2f1982c839f49bc22a00a54442",
+        "token0": "0x3bb9afb94c82752e47706a10779ea525cf95dc27",
+        "token1": "0xef20ea70a9f18bd7fdae059a41324181fe7d3b97",
+        "createdAt": 1754546764,
+        "networkId": 10143,
+        "pooled": {
+         "token0": "23.542898666810672224",
+         "token1": "736344365.959928028220423052"
+        }
+       }
+      },
+      {
+       "liquidity": "9223372000000000000",
+       "liquidityToken": "token0",
+       "quoteToken": "token1",
+       "price": "4.24290042306e+12",
+       "priceScale": "1",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1741648324,
+       "priceChange24": "0",
+       "exchange": {
+        "name": null,
+        "address": "0x13ed0d5e1567684d964469ccba8a977cda580827"
+       },
+       "token0": {
+        "address": "0x3bb9afb94c82752e47706a10779ea525cf95dc27",
+        "symbol": "WNative",
+        "decimals": 18,
+        "networkId": 10143
+       },
+       "token1": {
+        "address": "0x9f1ddb0cf98ef6c201b412423c8a63e66e035d90",
+        "symbol": "GMMONAD",
+        "decimals": 18,
+        "networkId": 10143
+       },
+       "pair": {
+        "address": "0xbabd7a42c3d976e92ce2a6522e4489196eb94283",
+        "token0": "0x3bb9afb94c82752e47706a10779ea525cf95dc27",
+        "token1": "0x9f1ddb0cf98ef6c201b412423c8a63e66e035d90",
+        "createdAt": 1741648324,
+        "networkId": 10143,
+        "pooled": {
+         "token0": "18.389803085265143822",
+         "token1": "951592288.320608252700044058"
+        }
+       }
+      },
+      {
+       "liquidity": "9223372000000000000",
+       "liquidityToken": "token0",
+       "quoteToken": "token1",
+       "price": "2.99923211852e+48",
+       "priceScale": "1",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1747839046,
+       "priceChange24": "0",
+       "exchange": {
+        "name": null,
+        "address": "0x13ed0d5e1567684d964469ccba8a977cda580827"
+       },
+       "token0": {
+        "address": "0x3bb9afb94c82752e47706a10779ea525cf95dc27",
+        "symbol": "WNative",
+        "decimals": 18,
+        "networkId": 10143
+       },
+       "token1": {
+        "address": "0xecea4e665ca052c9776e4238423ecbed7fd0c595",
+        "symbol": "1312",
+        "decimals": 18,
+        "networkId": 10143
+       },
+       "pair": {
+        "address": "0x5debb4281e6892641a3f3486a9cb88046a9047ce",
+        "token0": "0x3bb9afb94c82752e47706a10779ea525cf95dc27",
+        "token1": "0xecea4e665ca052c9776e4238423ecbed7fd0c595",
+        "createdAt": 1747839046,
+        "networkId": 10143,
+        "pooled": {
+         "token0": "25.481755020632795834",
+         "token1": "679854182.521951535034759518"
+        }
+       }
+      }
+     ]
+    }
+   }
+  },
+  "codex-bnkr-base": {
+   "data": {
+    "filterPairs": {
+     "results": [
+      {
+       "liquidity": "2551073",
+       "liquidityToken": "token0",
+       "quoteToken": "token1",
+       "price": "1.37824273619e-5",
+       "priceScale": "10000000000000000",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1789422347,
+       "priceChange24": "0",
+       "exchange": {
+        "name": "Uniswap",
+        "address": "0x498581ff718922c3f8e6a244956af099b2652b2b"
+       },
+       "token0": {
+        "address": "0x4fc59c42653e052c7ab5c8381f839e2d70504131",
+        "symbol": "mmETH",
+        "decimals": 18,
+        "networkId": 8453
+       },
+       "token1": {
+        "address": "0xb20000000000000000000010566efb9e47323b01",
+        "symbol": "8453",
+        "decimals": 18,
+        "networkId": 8453
+       },
+       "pair": {
+        "address": "0xf16b866f43e8147b584020377af6f326576df3405824311a5c791b4e50c9f299",
+        "token0": "0x4fc59c42653e052c7ab5c8381f839e2d70504131",
+        "token1": "0xb20000000000000000000010566efb9e47323b01",
+        "createdAt": 1789422347,
+        "networkId": 8453,
+        "pooled": {
+         "token0": "1000",
+         "token1": "0"
+        }
+       }
+      },
+      {
+       "liquidity": "828838",
+       "liquidityToken": "token1",
+       "quoteToken": "token0",
+       "price": "2.13919218879e-4",
+       "priceScale": "1000000000000000",
+       "volumeUSD24": "52538",
+       "buyCount24": 263,
+       "sellCount24": 316,
+       "uniqueBuys24": 96,
+       "uniqueSells24": 85,
+       "createdAt": 1733201093,
+       "priceChange24": "-0.010479539589608912",
+       "exchange": {
+        "name": "Uniswap",
+        "address": "0x33128a8fc17869897dce68ed026d694621f6fdfd"
+       },
+       "token0": {
+        "address": "0x22af33fe49fd1fa80c7149773dde5890d3c76f3b",
+        "symbol": "BNKR",
+        "decimals": 18,
+        "networkId": 8453
+       },
+       "token1": {
+        "address": "0x4200000000000000000000000000000000000006",
+        "symbol": "WETH",
+        "decimals": 18,
+        "networkId": 8453
+       },
+       "pair": {
+        "address": "0xaec085e5a5ce8d96a7bdd3eb3a62445d4f6ce703",
+        "token0": "0x22af33fe49fd1fa80c7149773dde5890d3c76f3b",
+        "token1": "0x4200000000000000000000000000000000000006",
+        "createdAt": 1733201093,
+        "networkId": 8453,
+        "pooled": {
+         "token0": "4385530440.407060356355693719",
+         "token1": "329.716037478439486106"
+        }
+       }
+      },
+      {
+       "liquidity": "617068",
+       "liquidityToken": "token1",
+       "quoteToken": "token0",
+       "price": "2.13267774652e-4",
+       "priceScale": "1000000000000000",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1739797731,
+       "priceChange24": "0",
+       "exchange": {
+        "name": "Uniswap",
+        "address": "0x498581ff718922c3f8e6a244956af099b2652b2b"
+       },
+       "token0": {
+        "address": "0x22af33fe49fd1fa80c7149773dde5890d3c76f3b",
+        "symbol": "BNKR",
+        "decimals": 18,
+        "networkId": 8453
+       },
+       "token1": {
+        "address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "symbol": "USDC",
+        "decimals": 6,
+        "networkId": 8453
+       },
+       "pair": {
+        "address": "0x4e0132ae52c4a4ac17194e67feae37e538e110a567657bc8a7fc5797c0ae7aa2",
+        "token0": "0x22af33fe49fd1fa80c7149773dde5890d3c76f3b",
+        "token1": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "createdAt": 1739797731,
+        "networkId": 8453,
+        "pooled": {
+         "token0": "30560390.850636434733601685",
+         "token1": "617139.009534"
+        }
+       }
+      },
+      {
+       "liquidity": "114137",
+       "liquidityToken": "token0",
+       "quoteToken": "token1",
+       "price": "100608.217021",
+       "priceScale": "1000000",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1747878557,
+       "priceChange24": "0",
+       "exchange": {
+        "name": "Uniswap",
+        "address": "0x498581ff718922c3f8e6a244956af099b2652b2b"
+       },
+       "token0": {
+        "address": "0x22af33fe49fd1fa80c7149773dde5890d3c76f3b",
+        "symbol": "BNKR",
+        "decimals": 18,
+        "networkId": 8453
+       },
+       "token1": {
+        "address": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+        "symbol": "cbBTC",
+        "decimals": 8,
+        "networkId": 8453
+       },
+       "pair": {
+        "address": "0xde221a640b3aeb6ae05906d0ad1effbf4f443d4864438ca923dd202bbb45ebc3",
+        "token0": "0x22af33fe49fd1fa80c7149773dde5890d3c76f3b",
+        "token1": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+        "createdAt": 1747878557,
+        "networkId": 8453,
+        "pooled": {
+         "token0": "344699061.381961516848833741",
+         "token1": "24.03505508"
+        }
+       }
+      },
+      {
+       "liquidity": "65885",
+       "liquidityToken": "token0",
+       "quoteToken": "token1",
+       "price": "2.40453994699e-5",
+       "priceScale": "10000000000000000",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1741718503,
+       "priceChange24": "0",
+       "exchange": {
+        "name": "Uniswap",
+        "address": "0x498581ff718922c3f8e6a244956af099b2652b2b"
+       },
+       "token0": {
+        "address": "0x22af33fe49fd1fa80c7149773dde5890d3c76f3b",
+        "symbol": "BNKR",
+        "decimals": 18,
+        "networkId": 8453
+       },
+       "token1": {
+        "address": "0x34866f29b71a2516a51e40258993c947818c0035",
+        "symbol": "LIGHT",
+        "decimals": 18,
+        "networkId": 8453
+       },
+       "pair": {
+        "address": "0x6d628bbf413e4d2f1847862f5379a567756c89fdd27a9e065e85238e174b30f2",
+        "token0": "0x22af33fe49fd1fa80c7149773dde5890d3c76f3b",
+        "token1": "0x34866f29b71a2516a51e40258993c947818c0035",
+        "createdAt": 1741718503,
+        "networkId": 8453,
+        "pooled": {
+         "token0": "213260259.002632119389252559",
+         "token1": "36205065.509014975889106655"
+        }
+       }
+      },
+      {
+       "liquidity": "63833",
+       "liquidityToken": "token0",
+       "quoteToken": "token1",
+       "price": "3.7651718084e-9",
+       "priceScale": "10000000000000000",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1746973229,
+       "priceChange24": "0",
+       "exchange": {
+        "name": "Uniswap",
+        "address": "0x498581ff718922c3f8e6a244956af099b2652b2b"
+       },
+       "token0": {
+        "address": "0x22af33fe49fd1fa80c7149773dde5890d3c76f3b",
+        "symbol": "BNKR",
+        "decimals": 18,
+        "networkId": 8453
+       },
+       "token1": {
+        "address": "0x306fd3e7b169aa4ee19412323e1a5995b8c1a1f4",
+        "symbol": "FTW",
+        "decimals": 18,
+        "networkId": 8453
+       },
+       "pair": {
+        "address": "0x8921284df36a74ae9ea169621446cf662053df3c7502db2be620d728166c3f79",
+        "token0": "0x22af33fe49fd1fa80c7149773dde5890d3c76f3b",
+        "token1": "0x306fd3e7b169aa4ee19412323e1a5995b8c1a1f4",
+        "createdAt": 1746973229,
+        "networkId": 8453,
+        "pooled": {
+         "token0": "218717710.273326539500947687",
+         "token1": "11393213389.420787726731034986"
+        }
+       }
+      }
+     ]
+    }
+   }
+  },
+  "codex-beat-bsc-dead": {
+   "data": {
+    "filterPairs": {
+     "results": [
+      {
+       "liquidity": "4469810080620000",
+       "liquidityToken": "token0",
+       "quoteToken": "token1",
+       "price": "4469810080.62",
+       "priceScale": "100",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1726121329,
+       "priceChange24": "0",
+       "exchange": {
+        "name": null,
+        "address": "0x2f795195bae7e61e848ffc87ba7f6ae1a06c0527"
+       },
+       "token0": {
+        "address": "0x05d0dd5135e3ef3ade32a9ef9cb06e8d37a6795d",
+        "symbol": "USDT",
+        "decimals": 6,
+        "networkId": 80084
+       },
+       "token1": {
+        "address": "0xee9909aafc871e33942c2121e7237edeaf81b537",
+        "symbol": "566",
+        "decimals": 18,
+        "networkId": 80084
+       },
+       "pair": {
+        "address": "0xf4f3f409c627af9bf64d900e11f7043e783be937",
+        "token0": "0x05d0dd5135e3ef3ade32a9ef9cb06e8d37a6795d",
+        "token1": "0xee9909aafc871e33942c2121e7237edeaf81b537",
+        "createdAt": 1726121329,
+        "networkId": 80084,
+        "pooled": {
+         "token0": "17.302436",
+         "token1": "1000000"
+        }
+       }
+      },
+      {
+       "liquidity": "244880586",
+       "liquidityToken": "token0",
+       "quoteToken": "token1",
+       "price": "0.367505931987",
+       "priceScale": "1000000000000",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1739524640,
+       "priceChange24": "0",
+       "exchange": {
+        "name": "Uniswap",
+        "address": "0x1f98400000000000000000000000000000000004"
+       },
+       "token0": {
+        "address": "0x4200000000000000000000000000000000000006",
+        "symbol": "WETH",
+        "decimals": 18,
+        "networkId": 130
+       },
+       "token1": {
+        "address": "0x115990e52a220bed260a6fb65ac83b4cf2565e03",
+        "symbol": "0884411",
+        "decimals": 18,
+        "networkId": 130
+       },
+       "pair": {
+        "address": "0x22c8f20074f9b0a855e9c50910cbfaeaeba755f7056f6b22ecee8c9a5ea3f40e",
+        "token0": "0x4200000000000000000000000000000000000006",
+        "token1": "0x115990e52a220bed260a6fb65ac83b4cf2565e03",
+        "createdAt": 1739524640,
+        "networkId": 130,
+        "pooled": {
+         "token0": "97246.68602425987938629",
+         "token1": "0.093180799799868438"
+        }
+       }
+      },
+      {
+       "liquidity": "3944642",
+       "liquidityToken": "token0",
+       "quoteToken": "token1",
+       "price": "4.53315915175e-3",
+       "priceScale": "100000000000000",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1740661798,
+       "priceChange24": "0",
+       "exchange": {
+        "name": null,
+        "address": "0x13ed0d5e1567684d964469ccba8a977cda580827"
+       },
+       "token0": {
+        "address": "0x3bb9afb94c82752e47706a10779ea525cf95dc27",
+        "symbol": "WNative",
+        "decimals": 18,
+        "networkId": 10143
+       },
+       "token1": {
+        "address": "0xc0de91a980ed3400dedd2cda3338447f4f946673",
+        "symbol": "5678",
+        "decimals": 18,
+        "networkId": 10143
+       },
+       "pair": {
+        "address": "0x778905a49954af91b2623f5620b4c773c4acb8b9",
+        "token0": "0x3bb9afb94c82752e47706a10779ea525cf95dc27",
+        "token1": "0xc0de91a980ed3400dedd2cda3338447f4f946673",
+        "createdAt": 1740661798,
+        "networkId": 10143,
+        "pooled": {
+         "token0": "24.886353939103301705",
+         "token1": "706276908.434421536648434808"
+        }
+       }
+      },
+      {
+       "liquidity": "478029",
+       "liquidityToken": "token0",
+       "quoteToken": "token1",
+       "price": "1.56692009443e-11",
+       "priceScale": "10000000000000000",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1739215500,
+       "priceChange24": "0",
+       "exchange": {
+        "name": "Uniswap",
+        "address": "0xe03a1074c86cfedd5c142c4f04f1a1536e203543"
+       },
+       "token0": {
+        "address": "0xfff9976782d46cc05630d1f6ebab18b2324d6b14",
+        "symbol": "WETH",
+        "decimals": 18,
+        "networkId": 11155111
+       },
+       "token1": {
+        "address": "0xb58558d9547e31d40de7d0de25bd3b6f4bf1e38e",
+        "symbol": "MEME",
+        "decimals": 18,
+        "networkId": 11155111
+       },
+       "pair": {
+        "address": "0x76feb4c462491d951d2138a4839815cee6f7b980dc66b7814218b08598625022",
+        "token0": "0xfff9976782d46cc05630d1f6ebab18b2324d6b14",
+        "token1": "0xb58558d9547e31d40de7d0de25bd3b6f4bf1e38e",
+        "createdAt": 1739215500,
+        "networkId": 11155111,
+        "pooled": {
+         "token0": "306.914211358152782699",
+         "token1": "100000.000200200111984427"
+        }
+       }
+      },
+      {
+       "liquidity": "363345",
+       "liquidityToken": "token0",
+       "quoteToken": "token1",
+       "price": "0.253782428001",
+       "priceScale": "1000000000000",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1741028088,
+       "priceChange24": "0",
+       "exchange": {
+        "name": "Uniswap",
+        "address": "0xe03a1074c86cfedd5c142c4f04f1a1536e203543"
+       },
+       "token0": {
+        "address": "0xfff9976782d46cc05630d1f6ebab18b2324d6b14",
+        "symbol": "WETH",
+        "decimals": 18,
+        "networkId": 11155111
+       },
+       "token1": {
+        "address": "0x1eb47bb60c84c4191688983d9969df713734ffe2",
+        "symbol": "STATE",
+        "decimals": 18,
+        "networkId": 11155111
+       },
+       "pair": {
+        "address": "0xe06dccc4d9cc7599fbc7ff0cf25d51188d713abe3365ca0c061454c50f2d163f",
+        "token0": "0xfff9976782d46cc05630d1f6ebab18b2324d6b14",
+        "token1": "0x1eb47bb60c84c4191688983d9969df713734ffe2",
+        "createdAt": 1741028088,
+        "networkId": 11155111,
+        "pooled": {
+         "token0": "165.384001184375157819",
+         "token1": "18.608529575484538341"
+        }
+       }
+      },
+      {
+       "liquidity": "242930",
+       "liquidityToken": "token0",
+       "quoteToken": "token1",
+       "price": "5.37956647558",
+       "priceScale": "100000000000",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1739215680,
+       "priceChange24": "0",
+       "exchange": {
+        "name": "Uniswap",
+        "address": "0xe03a1074c86cfedd5c142c4f04f1a1536e203543"
+       },
+       "token0": {
+        "address": "0xfff9976782d46cc05630d1f6ebab18b2324d6b14",
+        "symbol": "WETH",
+        "decimals": 18,
+        "networkId": 11155111
+       },
+       "token1": {
+        "address": "0x22668771f057828e5a5c4b89cc80418018d66ce9",
+        "symbol": "FTC",
+        "decimals": 18,
+        "networkId": 11155111
+       },
+       "pair": {
+        "address": "0xc44b451893c75a6f9de0bf9f3a8a880a654d8a00dd716a782f35df5b8cc6e91f",
+        "token0": "0xfff9976782d46cc05630d1f6ebab18b2324d6b14",
+        "token1": "0x22668771f057828e5a5c4b89cc80418018d66ce9",
+        "createdAt": 1739215680,
+        "networkId": 11155111,
+        "pooled": {
+         "token0": "90.317422205652250542",
+         "token1": "49.999058873486701822"
+        }
+       }
+      }
+     ]
+    }
+   }
+  },
+  "codex-bonk-solana": {
+   "data": {
+    "filterPairs": {
+     "results": [
+      {
+       "liquidity": "1347295",
+       "liquidityToken": "token0",
+       "quoteToken": "token1",
+       "price": "10.2223590561",
+       "priceScale": "10000000000",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1747202761,
+       "priceChange24": "0",
+       "exchange": {
+        "name": "Meteora",
+        "address": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"
+       },
+       "token0": {
+        "address": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+        "symbol": "Bonk",
+        "decimals": 5,
+        "networkId": 1399811149
+       },
+       "token1": {
+        "address": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+        "symbol": "TRUMP",
+        "decimals": 6,
+        "networkId": 1399811149
+       },
+       "pair": {
+        "address": "5jZzZ6FWJg3aBXswUDDiBJ6PHt3s3uAhwZHpxrBJQiQL",
+        "token0": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+        "token1": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+        "createdAt": 1747202761,
+        "networkId": 1399811149,
+        "pooled": {
+         "token0": "73250838032.90245",
+         "token1": "1.636049"
+        }
+       }
+      },
+      {
+       "liquidity": "543655",
+       "liquidityToken": "token1",
+       "quoteToken": "token0",
+       "price": "2.26423604076e-5",
+       "priceScale": "10000000000000000",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1746062539,
+       "priceChange24": "0",
+       "exchange": {
+        "name": "ZeroFi",
+        "address": "ZERor4xhbUycZ6gb9ntrhqscUcZmAbQDjEAtCf4hbZY"
+       },
+       "token0": {
+        "address": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+        "symbol": "Bonk",
+        "decimals": 5,
+        "networkId": 1399811149
+       },
+       "token1": {
+        "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "symbol": "USDC",
+        "decimals": 6,
+        "networkId": 1399811149
+       },
+       "pair": {
+        "address": "Du4WfVEeXmYtgwvX5FYzJaW5J8LokjFRNFbPFMXYfe4",
+        "token0": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+        "token1": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "createdAt": 1746062539,
+        "networkId": 1399811149,
+        "pooled": {
+         "token0": "16357490445.27062",
+         "token1": "543651.991807"
+        }
+       }
+      },
+      {
+       "liquidity": "234222",
+       "liquidityToken": "token1",
+       "quoteToken": "token0",
+       "price": "4.71384464207e-6",
+       "priceScale": "10000000000000000",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1769463720,
+       "priceChange24": "0",
+       "exchange": {
+        "name": "ZeroFi",
+        "address": "ZERor4xhbUycZ6gb9ntrhqscUcZmAbQDjEAtCf4hbZY"
+       },
+       "token0": {
+        "address": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+        "symbol": "Bonk",
+        "decimals": 5,
+        "networkId": 1399811149
+       },
+       "token1": {
+        "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "symbol": "USDC",
+        "decimals": 6,
+        "networkId": 1399811149
+       },
+       "pair": {
+        "address": "9oLPmVd3Mett8X5YuwM2cfUStE5Y9SD6jFkaEAcmj7EV",
+        "token0": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+        "token1": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "createdAt": 1769463720,
+        "networkId": 1399811149,
+        "pooled": {
+         "token0": "7973608833.59057",
+         "token1": "234283.096333"
+        }
+       }
+      },
+      {
+       "liquidity": "160296",
+       "liquidityToken": "token1",
+       "quoteToken": "token0",
+       "price": "2.71098424526e-6",
+       "priceScale": "10000000000000000",
+       "volumeUSD24": "15969",
+       "buyCount24": 111,
+       "sellCount24": 192,
+       "uniqueBuys24": 73,
+       "uniqueSells24": 132,
+       "createdAt": 1770402387,
+       "priceChange24": "-0.006553649458263767",
+       "exchange": {
+        "name": "Bonkswap",
+        "address": "BSwp6bEBihVLdqJRKGgzjcGLHkcTuzmSo1TQkHepzH8p"
+       },
+       "token0": {
+        "address": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+        "symbol": "Bonk",
+        "decimals": 5,
+        "networkId": 1399811149
+       },
+       "token1": {
+        "address": "So11111111111111111111111111111111111111112",
+        "symbol": "SOL",
+        "decimals": 9,
+        "networkId": 1399811149
+       },
+       "pair": {
+        "address": "GBmzQL7BTKwSV9Qg7h5iXQad1q61xwMSzMpdbBkCyo2p",
+        "token0": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+        "token1": "So11111111111111111111111111111111111111112",
+        "createdAt": 1770402387,
+        "networkId": 1399811149,
+        "pooled": {
+         "token0": "38619129092.29631",
+         "token1": "1566.290202812"
+        }
+       }
+      },
+      {
+       "liquidity": "92260",
+       "liquidityToken": "token1",
+       "quoteToken": "token0",
+       "price": "2.58137161111e-5",
+       "priceScale": "10000000000000000",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1738351902,
+       "priceChange24": "0",
+       "exchange": {
+        "name": "Meteora",
+        "address": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"
+       },
+       "token0": {
+        "address": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+        "symbol": "Bonk",
+        "decimals": 5,
+        "networkId": 1399811149
+       },
+       "token1": {
+        "address": "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump",
+        "symbol": "Fartcoin ",
+        "decimals": 6,
+        "networkId": 1399811149
+       },
+       "pair": {
+        "address": "GhKzz6RTZYLenj39q6xLQxxf6phzKf2ZJ1TJABf6LGMj",
+        "token0": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+        "token1": "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump",
+        "createdAt": 1738351902,
+        "networkId": 1399811149,
+        "pooled": {
+         "token0": "0",
+         "token1": "95916.31895"
+        }
+       }
+      },
+      {
+       "liquidity": "80120",
+       "liquidityToken": "token0",
+       "quoteToken": "token1",
+       "price": "2.74004681113e-6",
+       "priceScale": "10000000000000000",
+       "volumeUSD24": "62134",
+       "buyCount24": 480,
+       "sellCount24": 284,
+       "uniqueBuys24": 311,
+       "uniqueSells24": 197,
+       "createdAt": 1710954392,
+       "priceChange24": "0.004427259306493505",
+       "exchange": {
+        "name": "Orca",
+        "address": "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"
+       },
+       "token0": {
+        "address": "So11111111111111111111111111111111111111112",
+        "symbol": "SOL",
+        "decimals": 9,
+        "networkId": 1399811149
+       },
+       "token1": {
+        "address": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+        "symbol": "Bonk",
+        "decimals": 5,
+        "networkId": 1399811149
+       },
+       "pair": {
+        "address": "BqnpCdDLPV2pFdAaLnVidmn3G93RP2p5oRdGEY2sJGez",
+        "token0": "So11111111111111111111111111111111111111112",
+        "token1": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+        "createdAt": 1710954392,
+        "networkId": 1399811149,
+        "pooled": {
+         "token0": "782.242304729",
+         "token1": "21011599111.83747"
+        }
+       }
+      }
+     ]
+    }
+   }
+  },
+  "codex-weth-nohint": {
+   "data": {
+    "filterPairs": {
+     "results": [
+      {
+       "liquidity": "10744473188400",
+       "liquidityToken": "token0",
+       "quoteToken": "token1",
+       "price": "3.12765589008e-6",
+       "priceScale": "10000000000000000",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1748458751,
+       "priceChange24": "0",
+       "exchange": {
+        "name": "Uniswap",
+        "address": "0x000000000004444c5dc75cb358380d2e3de08a90"
+       },
+       "token0": {
+        "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        "symbol": "WETH",
+        "decimals": 18,
+        "networkId": 1
+       },
+       "token1": {
+        "address": "0x7848ae8f19671dc05966dafbefbbbb0308bdfabd",
+        "symbol": "WED",
+        "decimals": 18,
+        "networkId": 1
+       },
+       "pair": {
+        "address": "0xc979d4611c889172d243cf215cc7369cf74d5a985c9407b58c2a26cfb7ba4ec8",
+        "token0": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        "token1": "0x7848ae8f19671dc05966dafbefbbbb0308bdfabd",
+        "createdAt": 1748458751,
+        "networkId": 1,
+        "pooled": {
+         "token0": "4307739096.824357842051603983",
+         "token1": "122242961.078119170368766243"
+        }
+       }
+      },
+      {
+       "liquidity": "999722671195",
+       "liquidityToken": "token1",
+       "quoteToken": "token0",
+       "price": "2649.71439095",
+       "priceScale": "100000000",
+       "volumeUSD24": "158",
+       "buyCount24": 21,
+       "sellCount24": 20,
+       "uniqueBuys24": 15,
+       "uniqueSells24": 17,
+       "createdAt": 1785467891,
+       "priceChange24": "0.029353441564920656",
+       "exchange": {
+        "name": "Uniswap",
+        "address": "0x000000000004444c5dc75cb358380d2e3de08a90"
+       },
+       "token0": {
+        "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        "symbol": "WETH",
+        "decimals": 18,
+        "networkId": 1
+       },
+       "token1": {
+        "address": "0x424d8a040f20c45734a2c7273b1e66deecfaa948",
+        "symbol": "WAPT",
+        "decimals": 18,
+        "networkId": 1
+       },
+       "pair": {
+        "address": "0x32cd582f8c3e1c9baa4e95b640a597c4f9d7f972089dccbd78ce8dfd1d3183d8",
+        "token0": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        "token1": "0x424d8a040f20c45734a2c7273b1e66deecfaa948",
+        "createdAt": 1785467891,
+        "networkId": 1,
+        "pooled": {
+         "token0": "0.040024918166674117",
+         "token1": "1.00000000010709673745762587569e+12"
+        }
+       }
+      },
+      {
+       "liquidity": "312131013606",
+       "liquidityToken": "token1",
+       "quoteToken": "token0",
+       "price": "3.06010797653e+20",
+       "priceScale": "1",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1720858811,
+       "priceChange24": "0",
+       "exchange": {
+        "name": null,
+        "address": "0x4350fdf7d897b1390e1d76a7e6e27e3d81758f34"
+       },
+       "token0": {
+        "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        "symbol": "WETH",
+        "decimals": 18,
+        "networkId": 1
+       },
+       "token1": {
+        "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "symbol": "USDC",
+        "decimals": 6,
+        "networkId": 1
+       },
+       "pair": {
+        "address": "0xdaa7f29cb4c5d53b88520bf12cd43d64589dc4ab",
+        "token0": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        "token1": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "createdAt": 1720858811,
+        "networkId": 1,
+        "pooled": {
+         "token0": "1.02e-9",
+         "token1": "312104544019.607734"
+        }
+       }
+      },
+      {
+       "liquidity": "30218549378",
+       "liquidityToken": "token1",
+       "quoteToken": "token0",
+       "price": "3021.85493775",
+       "priceScale": "100000000",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1763426795,
+       "priceChange24": "0",
+       "exchange": {
+        "name": null,
+        "address": "0xed73db677b83130d015e887de7f8bffe7b4ac8ce"
+       },
+       "token0": {
+        "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        "symbol": "WETH",
+        "decimals": 18,
+        "networkId": 1
+       },
+       "token1": {
+        "address": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+        "symbol": "USDT",
+        "decimals": 6,
+        "networkId": 1
+       },
+       "pair": {
+        "address": "0xed73db677b83130d015e887de7f8bffe7b4ac8ce",
+        "token0": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        "token1": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+        "createdAt": 1763426795,
+        "networkId": 1,
+        "pooled": {
+         "token0": "10000000",
+         "token1": "30250000000"
+        }
+       }
+      },
+      {
+       "liquidity": "30213964083",
+       "liquidityToken": "token1",
+       "quoteToken": "token0",
+       "price": "3021.39640825",
+       "priceScale": "100000000",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1763430083,
+       "priceChange24": "0",
+       "exchange": {
+        "name": null,
+        "address": "0xf272480e2e379cf98f33812058258146c47a5c34"
+       },
+       "token0": {
+        "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        "symbol": "WETH",
+        "decimals": 18,
+        "networkId": 1
+       },
+       "token1": {
+        "address": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+        "symbol": "USDT",
+        "decimals": 6,
+        "networkId": 1
+       },
+       "pair": {
+        "address": "0xf272480e2e379cf98f33812058258146c47a5c34",
+        "token0": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        "token1": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+        "createdAt": 1763430083,
+        "networkId": 1,
+        "pooled": {
+         "token0": "10000000",
+         "token1": "30250000000"
+        }
+       }
+      },
+      {
+       "liquidity": "30129840000",
+       "liquidityToken": "token1",
+       "quoteToken": "token0",
+       "price": "3012.984",
+       "priceScale": "1000",
+       "volumeUSD24": "0",
+       "buyCount24": 0,
+       "sellCount24": 0,
+       "uniqueBuys24": 0,
+       "uniqueSells24": 0,
+       "createdAt": 1763404379,
+       "priceChange24": "0",
+       "exchange": {
+        "name": null,
+        "address": "0x857eea94a1b5a8102b9f2f5cda7e35a156e87364"
+       },
+       "token0": {
+        "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        "symbol": "WETH",
+        "decimals": 18,
+        "networkId": 1
+       },
+       "token1": {
+        "address": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+        "symbol": "USDT",
+        "decimals": 6,
+        "networkId": 1
+       },
+       "pair": {
+        "address": "0x857eea94a1b5a8102b9f2f5cda7e35a156e87364",
+        "token0": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        "token1": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+        "createdAt": 1763404379,
+        "networkId": 1,
+        "pooled": {
+         "token0": "10000000",
+         "token1": "30160000000"
+        }
+       }
+      }
+     ]
+    }
+   }
+  }
+ }
+}

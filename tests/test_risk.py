@@ -2671,6 +2671,89 @@ def test_freshness_is_in_the_answer_not_only_the_evidence():
           r.get("risk_level") == run(go(False)).get("risk_level"), r.get("risk_level"))
 
 
+def test_a_keyed_fallback_escapes_the_shared_egress_limit():
+    """The fallback that answered 429 now carries a key, in a header and nowhere else.
+
+    Production answered `unknown` with "upstream request failed (dexscreener 429,
+    geckoterminal 429)": both free upstreams throttle the Worker's shared egress IP. A probe
+    from a throwaway Worker (W29, 2026-09-14, 12 rounds) settled what a key buys: in every
+    round the keyless GeckoTerminal call was throttled (48 of 60 answered 429), and in the
+    same rounds CoinGecko's on-chain API -- the same GeckoTerminal data, same JSON -- answered
+    60 of 60 with a free Demo key.
+
+    Codex was probed too and is not used: its pool listing ranked testnet pools and pools
+    reporting int64-max liquidity first, and fed to the depth check its reserve amounts would
+    reopen the fabricated-depth hole (bench/production/codex-samples-2026-09-15.json).
+
+    Order: DexScreener, then CoinGecko with the key, then keyless GeckoTerminal. No key
+    configured means exactly today's behaviour. The key is a secret: it must never reach a
+    URL (URLs are cache keys and appear in logs) or any field of an answer.
+    """
+    print("\n[upstream] a keyed CoinGecko fallback, key in the header only")
+    KEY = "CG-test-key-never-printed"
+    seen = []
+
+    def stub(routes):
+        async def _stub(url, *a, **kw):
+            seen.append((url, dict(kw.get("headers") or {})))
+            for frag, payload in routes:
+                if frag in url:
+                    return payload
+            return None
+        risk._fetch_json = _stub
+
+    saved_key = risk._onchain_key()
+    try:
+        risk.configure(types_ns(CG_DEMO_KEY=KEY))
+        stub([("api.coingecko.com/api/v3/onchain/networks/eth/tokens/", _load("cg_weth_pools.json")),
+              ("honeypot.is", _load("hp_matic.json"))])
+        r = run(risk.assess(WETH, chain_hint="ethereum"))
+        cg = [(u, h) for u, h in seen if "api.coingecko.com" in u]
+        check("DexScreener failing sends the fallback to CoinGecko", bool(cg), str(seen[:3]))
+        check("  with the key in the Demo header", cg and cg[0][1].get("x-cg-demo-api-key") == KEY,
+              str(cg[:1]))
+        check("  and never in any URL", not any(KEY in u for u, _ in seen), "key in a URL")
+        check("  or anywhere in the answer", KEY not in json.dumps(r), "key in the answer")
+        check("the answer is built from it", r["evidence"].get("liquidity_source") == "coingecko"
+              and r["risk_level"] != "unknown", "%s %s" % (r["evidence"].get("liquidity_source"),
+                                                       r["risk_level"]))
+        check("  and no keyless GeckoTerminal call was needed",
+              not any("geckoterminal.com" in u for u, _ in seen), str([u for u, _ in seen]))
+
+        # CoinGecko down too: keyless GeckoTerminal is still tried, and the gap names all three.
+        seen.clear()
+        stub([("honeypot.is", _load("hp_matic.json"))])
+        r = run(risk.assess(WETH, chain_hint="ethereum"))
+        order = [u.split("/")[2] for u, _ in seen if "honeypot" not in u]
+        check("CoinGecko failing still falls back to keyless GeckoTerminal",
+              "api.coingecko.com" in order and "api.geckoterminal.com" in order
+              and order.index("api.coingecko.com") < order.index("api.geckoterminal.com"), str(order))
+
+        # The contested-honeypot seller count comes through the key as well.
+        seen.clear()
+        stub([("api.coingecko.com/api/v3/onchain/networks/base/pools/", _load("cg_bnkr_pool.json"))])
+        ev = {"best_pair": {"chain": "base", "pair_address": "0xaec085e5a5ce8d96a7bdd3eb3a62445d4f6ce703"}}
+        run(risk._distinct_sellers({"honeypotResult": {"isHoneypot": True}}, ev))
+        check("the distinct-seller count is read through CoinGecko with the key",
+              ev["best_pair"].get("sellers_24h") == 83
+              and any(h.get("x-cg-demo-api-key") == KEY for _, h in seen), str(seen))
+
+        # No key: today's behaviour exactly -- CoinGecko is never contacted.
+        risk.configure(types_ns())
+        seen.clear()
+        stub([("honeypot.is", _load("hp_matic.json"))])
+        run(risk.assess(WETH, chain_hint="ethereum"))
+        check("without a key CoinGecko is never called",
+              not any("api.coingecko.com" in u for u, _ in seen), str([u for u, _ in seen]))
+    finally:
+        risk.configure(types_ns(CG_DEMO_KEY=saved_key) if saved_key else types_ns())
+
+
+def types_ns(**kw):
+    import types
+    return types.SimpleNamespace(**kw)
+
+
 def test_the_simulator_is_asked_about_the_chain_we_settled_on():
     """A wrong hint must not send the sell simulator to the wrong chain.
 

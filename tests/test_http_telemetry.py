@@ -709,6 +709,30 @@ def test_a_caller_that_floods_is_slowed_not_served():
           str(r.status))
 
 
+def test_the_worker_hands_its_provider_key_to_the_engine():
+    """A key set with `wrangler secret put` has to reach risk.py, or the keyed fallback is
+    code that never runs -- the rate limiter's exact shape on its first deploy."""
+    print("\n[keys] the Worker's CG_DEMO_KEY secret reaches the engine")
+
+    class Req(FakeRequest):
+        async def json(self):
+            return {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
+
+    saved = risk._onchain_key()
+    try:
+        w = entry.Default()
+        w.env = types.SimpleNamespace(CG_DEMO_KEY="CG-from-a-secret")
+        asyncio.run(w.fetch(Req("https://vetagent.dev/mcp", method="POST")))
+        check("a request configures the engine with the secret",
+              risk._onchain_key() == "CG-from-a-secret", str(risk._onchain_key() is not None))
+        w.env = types.SimpleNamespace()
+        asyncio.run(w.fetch(Req("https://vetagent.dev/mcp", method="POST")))
+        check("no secret: the engine is keyless again", risk._onchain_key() is None,
+              "a key survived its secret being removed")
+    finally:
+        risk.configure(types.SimpleNamespace(CG_DEMO_KEY=saved) if saved else None)
+
+
 def main():
     print("=" * 68)
     print("HTTP telemetry: the interface the gate could not see")

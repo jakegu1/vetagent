@@ -76,10 +76,9 @@ COST_OF_WAITING = {
           "we cannot tell, and neither can anyone reading the benchmark.",
     "W12": "The 10-16 gate arrives with the measurement question still open, so that "
            "gate answers a smaller question than it was meant to.",
-    "W29": "About one live answer in three stays `unknown` whenever the upstreams throttle "
-           "the shared egress, and the callers Experiment C brings in meet that rate first. "
-           "The probe costs $1 and two hours; not running it keeps a measured cause without a "
-           "tested fix.",
+    "W29": "The keyed fallback is deployed and does nothing until the secret exists: "
+           "40.7% of production answers were `unknown` over the week to 2026-09-14, and the "
+           "callers Experiment C brings in meet that rate first. Setting it is one command.",
     "Post Experiment C": "This is the one action that can change the 09-18 answer. Not "
                          "doing it does not delay the gate -- the gate still fires, and "
                          "it fires on no.",

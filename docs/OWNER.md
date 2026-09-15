@@ -5,7 +5,7 @@
 > page cannot quietly drift out of date. `tests/test_owner_page.py` fails the
 > build if it does.
 >
-> Generated 2026-09-14.
+> Generated 2026-09-15.
 
 ## The project in one paragraph
 
@@ -21,54 +21,54 @@ These are the things I cannot do. Everything else in this project is mine.
 
 | When | Due | # | What you do | Blocked? |
 |---|---|---|---|---|
-| **in 4 days** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
-| **in 4 days** | 2026-09-18 | W11 | Answer the 2026-09-18 gate | no |
-| **in 4 days** | 2026-09-18 | -- | Post Experiment C | no |
-| in 32 days | 2026-10-16 | W5 | A second, independent sell-simulation source | **yes -- see below** |
-| in 32 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
-| in 32 days | 2026-10-16 | W29 | Get three free market-data API keys, so a two-hour probe can settle whether a key ends the | no |
+| **in 3 days** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
+| **in 3 days** | 2026-09-18 | W11 | Answer the 2026-09-18 gate | no |
+| **in 3 days** | 2026-09-18 | -- | Post Experiment C | no |
+| in 31 days | 2026-10-16 | W5 | A second, independent sell-simulation source | **yes -- see below** |
+| in 31 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
+| in 31 days | 2026-10-16 | W29 | Get three free market-data API keys, so a two-hour probe can settle whether a key ends the | no |
 
 ### W10 Create the two accounts the remaining directories need
 
-- **When:** 2026-09-18 (**in 4 days**)
+- **When:** 2026-09-18 (**in 3 days**)
 - **Why then:** distribution is the whole of the gate's failing branch
 - **You know it is done when:** `CHANNELS` in `bench/scorecard.py`, updated only by someone who went and looked
 - **If you do nothing:** Nothing. Six submissions are already queued and the two parked ones are one signup away; waiting costs reach, not work.
 
 ### W11 Answer the 2026-09-18 gate
 
-- **When:** 2026-09-18 (**in 4 days**)
+- **When:** 2026-09-18 (**in 3 days**)
 - **Why then:** this IS the gate -- it has to be answered on the day
 - **You know it is done when:** `python bench/usage.py`, counting rule already fixed in code; then a `Resolved:` line in `STRATEGY.md` §8, which `test_gates_get_reviewed.py` requires once due
 - **If you do nothing:** A gate that passes its date in silence teaches everyone that gates are decoration, and this is the first one that can stop the project.
 
 ###  Post Experiment C
 
-- **When:** 2026-09-18 (**in 4 days**)
+- **When:** 2026-09-18 (**in 3 days**)
 - **Why then:** The gate's failing branch prescribes exactly this, so it happens either way. Drafts are written and every number in them is checked by the build: docs/EXPERIMENT_C.md. Nothing is posted without you -- it is your name on it.
 - **You know it is done when:** a post exists on at least one of HN, r/ethdev, X or the MCP Discord
 - **If you do nothing:** This is the one action that can change the 09-18 answer. Not doing it does not delay the gate -- the gate still fires, and it fires on no.
 
 ### W5 A second, independent sell-simulation source
 
-- **When:** 2026-10-16 (in 32 days)
+- **When:** 2026-10-16 (in 31 days)
 - **Why then:** needed for W3, which every accuracy claim rests on
 - **You know it is done when:** **Blocked** on a credential, not on engineering. Probed 2026-09-06: staysafu unreachable (SSL), quickintel 401, tokensniffer 401, de.fi public endpoint 404. Every candidate needs a paid key — this is a W9-shaped item that belongs to whoever holds the budget
 - **If you do nothing:** Every accuracy claim keeps resting on a single sell simulator. If it is wrong, we cannot tell, and neither can anyone reading the benchmark.
 
 ### W12 Decide the price-history trade-off
 
-- **When:** 2026-10-16 (in 32 days)
+- **When:** 2026-10-16 (in 31 days)
 - **Why then:** changes what the benchmark can measure, so before the D gate
 - **You know it is done when:** A decision recorded in `DECISIONS.md`, either way
 - **If you do nothing:** The 10-16 gate arrives with the measurement question still open, so that gate answers a smaller question than it was meant to.
 
 ### W29 Get three free market-data API keys, so a two-hour probe can settle whether a key ends the `unknown` answers
 
-- **When:** 2026-10-16 (in 32 days)
+- **When:** 2026-10-16 (in 31 days)
 - **Why then:** the first decision that spends money, so settle it before the gate that asks whether anyone will pay
-- **You know it is done when:** Decision rule fixed before running: over 12 rounds in 2 hours from a throwaway Worker, **pass** if in rounds where the keyless control drew a 429 the keyed calls drew none and at most 1% non-2xx; **inconclusive** if the control never drew a 429 (re-run when production fails); **fail** for a provider answering 429/403/1020 under its documented limit. Pay only if a provider passes and projected volume exceeds its free allowance; the smallest paid step is CoinGecko Basic at $35 for one month. **Ran 2026-09-14 14:00-15:52 UTC, 12 rounds, all four providers PASS.** Keys set by the owner as secrets on a throwaway Worker (vetagent-keyprobe, not in this repo). In all 12 rounds a keyless control drew a 429: GeckoTerminal 48 of 60 calls, DexPaprika 38 x 429 and 22 x 402 (its per-IP monthly allowance already spent by the shared egress). In the same rounds from the same Worker, keyed calls: CoinGecko 60/60 HTTP 200, DexPaprika 60/60 plus 60/60 pool details, Codex 60/60 -- zero 429s, zero non-2xx. Field check passed on every chain in every round for all four; the only misses were DAI's top pool on CoinGecko (no seller count) and DexPaprika detail (reserves), 3 rounds each. Median latency: Codex 186 ms, CoinGecko 401 ms, DexPaprika 844 ms. **What this does not show:** every round ran from one data centre (KIX) and one egress IP, and keyless DexScreener answered 200 on all 60 calls here although production logged `dexscreener 429` the same day -- so it settles that a key escapes the throttling, not which colos production is throttled in. Two drained tokens were used instead of three, stated in the probe before it ran. **Next, owner's call:** which provider VetAgent adopts, and whether its free-tier terms (CoinGecko Demo: attribution required; Codex: 'personal & hobby') allow a public free service
-- **If you do nothing:** About one live answer in three stays `unknown` whenever the upstreams throttle the shared egress, and the callers Experiment C brings in meet that rate first. The probe costs $1 and two hours; not running it keeps a measured cause without a tested fix.
+- **You know it is done when:** Decision rule fixed before running: over 12 rounds in 2 hours from a throwaway Worker, **pass** if in rounds where the keyless control drew a 429 the keyed calls drew none and at most 1% non-2xx; **inconclusive** if the control never drew a 429 (re-run when production fails); **fail** for a provider answering 429/403/1020 under its documented limit. Pay only if a provider passes and projected volume exceeds its free allowance; the smallest paid step is CoinGecko Basic at $35 for one month. **Ran 2026-09-14 14:00-15:52 UTC, 12 rounds, all four providers PASS.** Keys set by the owner as secrets on a throwaway Worker (vetagent-keyprobe, not in this repo). In all 12 rounds a keyless control drew a 429: GeckoTerminal 48 of 60 calls, DexPaprika 38 x 429 and 22 x 402 (its per-IP monthly allowance already spent by the shared egress). In the same rounds from the same Worker, keyed calls: CoinGecko 60/60 HTTP 200, DexPaprika 60/60 plus 60/60 pool details, Codex 60/60 -- zero 429s, zero non-2xx. Field check passed on every chain in every round for all four; the only misses were DAI's top pool on CoinGecko (no seller count) and DexPaprika detail (reserves), 3 rounds each. Median latency: Codex 186 ms, CoinGecko 401 ms, DexPaprika 844 ms. **What this does not show:** every round ran from one data centre (KIX) and one egress IP, and keyless DexScreener answered 200 on all 60 calls here although production logged `dexscreener 429` the same day -- so it settles that a key escapes the throttling, not which colos production is throttled in. Two drained tokens were used instead of three, stated in the probe before it ran. **Next, owner's call:** which provider VetAgent adopts, and whether its free-tier terms (CoinGecko Demo: attribution required; Codex: 'personal & hobby') allow a public free service. **Owner, 2026-09-15: terms are fine, integrate.** Codex was then rejected on its data, not its terms: real response bodies captured by the probe Worker show its pool listing ranking testnet pools and int64-max liquidity first for WETH, and on mainnet a "USDT pool" holding 30,250,000,000 USDT -- fed to the depth check (E21) that would reopen the fabricated-depth hole (`bench/production/codex-samples-2026-09-15.json`). CoinGecko, the same data VetAgent already falls back to, is integrated instead (D8): DexScreener, then CoinGecko with the key, then keyless GeckoTerminal, and the contested-honeypot seller count goes through the key too. The probe Worker and its KV namespace are deleted. **Left for the owner:** set `CG_DEMO_KEY` on the vetagent Worker -- until then the code runs keyless, exactly as before. Verify: `bench/production/verdicts.json`'s unknown share falls in the days after the secret is set, from 40.7% on 2026-09-14
+- **If you do nothing:** The keyed fallback is deployed and does nothing until the secret exists: 40.7% of production answers were `unknown` over the week to 2026-09-14, and the callers Experiment C brings in meet that rate first. Setting it is one command.
 
 ## The dates that decide things
 
@@ -78,10 +78,10 @@ next -- including stopping.
 
 | Date | When | The question | What happens |
 |---|---|---|---|
-| 2026-09-18 | **in 4 days** | Is anyone using it | Yes → continue; no → run only Experiment C, add no features |
-| 2026-10-16 | in 32 days | Does anyone want to pay | Yes → build payments; no → pick a different customer segment and run D again |
-| 2026-12-04 | in 81 days | Is further investment worth it | Yes → continue per §7; no → move to low-maintenance mode |
-| 2027-03-04 | in 171 days | Does the data asset hold up | Yes → that becomes the main product; no → keep the tool, drop the data narrative |
+| 2026-09-18 | **in 3 days** | Is anyone using it | Yes → continue; no → run only Experiment C, add no features |
+| 2026-10-16 | in 31 days | Does anyone want to pay | Yes → build payments; no → pick a different customer segment and run D again |
+| 2026-12-04 | in 80 days | Is further investment worth it | Yes → continue per §7; no → move to low-maintenance mode |
+| 2027-03-04 | in 170 days | Does the data asset hold up | Yes → that becomes the main product; no → keep the tool, drop the data narrative |
 
 ## The same thing as a picture
 
@@ -95,10 +95,10 @@ gantt
     todayMarker stroke-width:3px,stroke:#d33,stroke-dasharray:0
     title The dates that decide things (red line is today)
     section Decisions
-    Is anyone using it - in 4 days :milestone, 2026-09-18, 0d
-    Does anyone want to pay - in 32 days :milestone, 2026-10-16, 0d
-    Is further investment worth it - in 81 days :milestone, 2026-12-04, 0d
-    Does the data asset hold up - in 171 days :milestone, 2027-03-04, 0d
+    Is anyone using it - in 3 days :milestone, 2026-09-18, 0d
+    Does anyone want to pay - in 31 days :milestone, 2026-10-16, 0d
+    Is further investment worth it - in 80 days :milestone, 2026-12-04, 0d
+    Does the data asset hold up - in 170 days :milestone, 2027-03-04, 0d
 ```
 
 ### Is the archive still collecting?
@@ -109,7 +109,7 @@ gantt
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**12 days, no gaps.** Newest is 2026-09-14, today.
+**12 days, no gaps.** Newest is 2026-09-14, yesterday.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -162,6 +162,7 @@ The owner accepted the open recommendations: stale data caps confidence, the par
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W29: the key probe passed -- all four keyed providers, 12 rounds, zero 429s
 - First production reading: guards 5/5, production unknown 40.7% -- and stop copying the score
 - Regenerate the owner page after rebasing onto the latest snapshots
 - Positioning sentence into STRATEGY, and the market-data key probe onto the owner's list
@@ -169,9 +170,8 @@ problem looked like before it was fixed.
 - The owner page said R19 was in progress, and its corrections stopped at 09-09
 - Regenerate the scorecard: E22 added a test and its evidence cell counts them
 - O7-O11: the owner accepted the review dates; O8's prerequisite has shipped
-- E22: an answer that used stale data is at most medium confidence
 
-_97 more not shown (105 commits in total)._
+_89 more not shown (97 commits in total)._
 
 ## What I got wrong
 

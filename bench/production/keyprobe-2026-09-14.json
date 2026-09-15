@@ -1,0 +1,4211 @@
+{
+ "status": "finished",
+ "rounds_done": "12",
+ "secrets_present": {
+  "CG_DEMO_KEY": true,
+  "DEXPAPRIKA_KEY": true,
+  "CODEX_KEY": true
+ },
+ "rounds": [
+  {
+   "round": 1,
+   "chain": "ethereum",
+   "started_at": "2026-09-14T14:00:57.769Z",
+   "colo": "KIX",
+   "egress_ip": "2a06:98c0:3600::103",
+   "calls": [
+    {
+     "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 32,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 13,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 865,
+       "retry_after": "2",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 912,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 1032,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 686,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 303,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x6b175474e89094c44da98b954eedeac495271d0f",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 107,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 9,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 550,
+       "retry_after": "2",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 477,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": false
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 844,
+       "retry_after": null,
+       "ratelimit": "32",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 1063,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": false
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 197,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x8ed97a637a790be1feff5e888d43629dc05408f6",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 193,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 200,
+       "ms": 732,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 561,
+       "retry_after": "2",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 383,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 639,
+       "retry_after": null,
+       "ratelimit": "31",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 612,
+       "retry_after": null,
+       "ratelimit": "32",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 179,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 123,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 7,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 402,
+       "ms": 565,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 399,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 737,
+       "retry_after": null,
+       "ratelimit": "31",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 641,
+       "retry_after": null,
+       "ratelimit": "30",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 190,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x62d0a8458ed7719fdaf978fe5929c6d342b0bfce",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 74,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 308,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 402,
+       "ms": 588,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 380,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 632,
+       "retry_after": null,
+       "ratelimit": "30",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 886,
+       "retry_after": null,
+       "ratelimit": "29",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 204,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    }
+   ],
+   "finished_at": "2026-09-14T14:01:37.892Z"
+  },
+  {
+   "round": 2,
+   "chain": "base",
+   "started_at": "2026-09-14T14:10:55.168Z",
+   "colo": "KIX",
+   "egress_ip": "2a06:98c0:3600::103",
+   "calls": [
+    {
+     "token": "0x97be14dd8f994a5364573bc035d85309e7cb34de",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 498,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 8,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 402,
+       "ms": 843,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 398,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 1068,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 1207,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 243,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0xacfe6019ed1a7dc6f7b508c02d1b04ec88cc21bf",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 120,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 12,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 402,
+       "ms": 572,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 372,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 916,
+       "retry_after": null,
+       "ratelimit": "32",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 656,
+       "retry_after": null,
+       "ratelimit": "32",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 214,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0xf43eb8de897fbc7f2502483b2bef7bb9ea179229",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 298,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 6,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 561,
+       "retry_after": "6",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 760,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 652,
+       "retry_after": null,
+       "ratelimit": "31",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 634,
+       "retry_after": null,
+       "ratelimit": "30",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 166,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x22af33fe49fd1fa80c7149773dde5890d3c76f3b",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 359,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 6,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 571,
+       "retry_after": "4",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 411,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 694,
+       "retry_after": null,
+       "ratelimit": "31",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 588,
+       "retry_after": null,
+       "ratelimit": "29",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 190,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x5f980dcfc4c0fa3911554cf5ab288ed0eb13dba3",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 270,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 206,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 805,
+       "retry_after": "2",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 389,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 668,
+       "retry_after": null,
+       "ratelimit": "28",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 615,
+       "retry_after": null,
+       "ratelimit": "27",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 238,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    }
+   ],
+   "finished_at": "2026-09-14T14:11:35.382Z"
+  },
+  {
+   "round": 3,
+   "chain": "bsc",
+   "started_at": "2026-09-14T14:20:55.077Z",
+   "colo": "KIX",
+   "egress_ip": "2a06:98c0:3600::103",
+   "calls": [
+    {
+     "token": "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 29,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 6,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 806,
+       "retry_after": "4",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 549,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 1253,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 549,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 320,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x3d4f0513e8a29669b960f9dbca61861548a9a760",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 164,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 6,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 571,
+       "retry_after": "2",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 695,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 992,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 629,
+       "retry_after": null,
+       "ratelimit": "32",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 176,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0xac23b90a79504865d52b49b327328411a23d4db2",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 73,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 6,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 562,
+       "retry_after": "0",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 371,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 997,
+       "retry_after": null,
+       "ratelimit": "31",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 1441,
+       "retry_after": null,
+       "ratelimit": "32",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 228,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x5c85d6c6825ab4032337f11ee92a72df936b46f6",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 208,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 8,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 934,
+       "retry_after": "4",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 402,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 901,
+       "retry_after": null,
+       "ratelimit": "31",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 652,
+       "retry_after": null,
+       "ratelimit": "30",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 207,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0xcf3232b85b43bca90e51d38cc06cc8bb8c8a3e36",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 171,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 200,
+       "ms": 290,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 402,
+       "ms": 575,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 406,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 690,
+       "retry_after": null,
+       "ratelimit": "29",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 624,
+       "retry_after": null,
+       "ratelimit": "30",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 150,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    }
+   ],
+   "finished_at": "2026-09-14T14:21:35.718Z"
+  },
+  {
+   "round": 4,
+   "chain": "solana",
+   "started_at": "2026-09-14T14:30:55.341Z",
+   "colo": "KIX",
+   "egress_ip": "2a06:98c0:3600::103",
+   "calls": [
+    {
+     "token": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 98,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 294,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 574,
+       "retry_after": "4",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 449,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 1200,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 1041,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 296,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 71,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 9,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 566,
+       "retry_after": "2",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 390,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 721,
+       "retry_after": null,
+       "ratelimit": "32",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 640,
+       "retry_after": null,
+       "ratelimit": "31",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 171,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 120,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 7,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 596,
+       "retry_after": "0",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 422,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 694,
+       "retry_after": null,
+       "ratelimit": "32",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 667,
+       "retry_after": null,
+       "ratelimit": "30",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 174,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 167,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 191,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 815,
+       "retry_after": "4",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 388,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 725,
+       "retry_after": null,
+       "ratelimit": "31",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 712,
+       "retry_after": null,
+       "ratelimit": "29",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 186,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 27,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 429,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 402,
+       "ms": 579,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 416,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 1566,
+       "retry_after": null,
+       "ratelimit": "28",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 597,
+       "retry_after": null,
+       "ratelimit": "30",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 172,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    }
+   ],
+   "finished_at": "2026-09-14T14:31:35.511Z"
+  },
+  {
+   "round": 5,
+   "chain": "ethereum",
+   "started_at": "2026-09-14T14:40:54.927Z",
+   "colo": "KIX",
+   "egress_ip": "2a06:98c0:3600::103",
+   "calls": [
+    {
+     "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 28,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 532,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 1220,
+       "retry_after": "4",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 878,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 1191,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 754,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 363,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x6b175474e89094c44da98b954eedeac495271d0f",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 109,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 8,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 747,
+       "retry_after": "1",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 610,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": false
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 797,
+       "retry_after": null,
+       "ratelimit": "32",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 856,
+       "retry_after": null,
+       "ratelimit": "31",
+       "fields": false
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 191,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x8ed97a637a790be1feff5e888d43629dc05408f6",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 192,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 200,
+       "ms": 671,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 402,
+       "ms": 568,
+       "retry_after": null,
+       "ratelimit": "1",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 363,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 627,
+       "retry_after": null,
+       "ratelimit": "30",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 646,
+       "retry_after": null,
+       "ratelimit": "29",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 259,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 142,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 6,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 561,
+       "retry_after": "0",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 441,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 649,
+       "retry_after": null,
+       "ratelimit": "28",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 906,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 162,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x62d0a8458ed7719fdaf978fe5929c6d342b0bfce",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 136,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 200,
+       "ms": 172,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 402,
+       "ms": 874,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 362,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 1189,
+       "retry_after": null,
+       "ratelimit": "27",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 661,
+       "retry_after": null,
+       "ratelimit": "26",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 165,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    }
+   ],
+   "finished_at": "2026-09-14T14:41:36.963Z"
+  },
+  {
+   "round": 6,
+   "chain": "base",
+   "started_at": "2026-09-14T14:50:54.720Z",
+   "colo": "KIX",
+   "egress_ip": "2a06:98c0:3600::103",
+   "calls": [
+    {
+     "token": "0x97be14dd8f994a5364573bc035d85309e7cb34de",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 472,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 190,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 800,
+       "retry_after": "0",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 360,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 1509,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 1045,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 283,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0xacfe6019ed1a7dc6f7b508c02d1b04ec88cc21bf",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 222,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 8,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 573,
+       "retry_after": "1",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 390,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 837,
+       "retry_after": null,
+       "ratelimit": "32",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 640,
+       "retry_after": null,
+       "ratelimit": "31",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 161,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0xf43eb8de897fbc7f2502483b2bef7bb9ea179229",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 286,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 6,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 402,
+       "ms": 1020,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 383,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 674,
+       "retry_after": null,
+       "ratelimit": "30",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 631,
+       "retry_after": null,
+       "ratelimit": "32",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 148,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x22af33fe49fd1fa80c7149773dde5890d3c76f3b",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 180,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 8,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 402,
+       "ms": 545,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 386,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 631,
+       "retry_after": null,
+       "ratelimit": "29",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 884,
+       "retry_after": null,
+       "ratelimit": "28",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 184,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x5f980dcfc4c0fa3911554cf5ab288ed0eb13dba3",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 284,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 200,
+       "ms": 169,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 539,
+       "retry_after": "0",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 401,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 900,
+       "retry_after": null,
+       "ratelimit": "27",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 659,
+       "retry_after": null,
+       "ratelimit": "31",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 157,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    }
+   ],
+   "finished_at": "2026-09-14T14:51:35.285Z"
+  },
+  {
+   "round": 7,
+   "chain": "bsc",
+   "started_at": "2026-09-14T15:00:55.386Z",
+   "colo": "KIX",
+   "egress_ip": "2a06:98c0:3600::103",
+   "calls": [
+    {
+     "token": "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 29,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 6,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 402,
+       "ms": 802,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 432,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 1342,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 545,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 353,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x3d4f0513e8a29669b960f9dbca61861548a9a760",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 393,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 5,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 574,
+       "retry_after": "2",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 381,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 760,
+       "retry_after": null,
+       "ratelimit": "32",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 633,
+       "retry_after": null,
+       "ratelimit": "31",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 381,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0xac23b90a79504865d52b49b327328411a23d4db2",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 73,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 200,
+       "ms": 554,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 402,
+       "ms": 552,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 385,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 912,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 614,
+       "retry_after": null,
+       "ratelimit": "30",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 192,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x5c85d6c6825ab4032337f11ee92a72df936b46f6",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 107,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 4,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 545,
+       "retry_after": "4",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 393,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 925,
+       "retry_after": null,
+       "ratelimit": "29",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 675,
+       "retry_after": null,
+       "ratelimit": "28",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 158,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0xcf3232b85b43bca90e51d38cc06cc8bb8c8a3e36",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 101,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 200,
+       "ms": 351,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 402,
+       "ms": 583,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 387,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 932,
+       "retry_after": null,
+       "ratelimit": "27",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 587,
+       "retry_after": null,
+       "ratelimit": "32",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 179,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    }
+   ],
+   "finished_at": "2026-09-14T15:01:35.231Z"
+  },
+  {
+   "round": 8,
+   "chain": "solana",
+   "started_at": "2026-09-14T15:10:55.013Z",
+   "colo": "KIX",
+   "egress_ip": "2a06:98c0:3600::103",
+   "calls": [
+    {
+     "token": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 96,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 6,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 1403,
+       "retry_after": "5",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 389,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 1146,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 936,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 317,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 69,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 6,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 556,
+       "retry_after": "2",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 389,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 691,
+       "retry_after": null,
+       "ratelimit": "32",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 618,
+       "retry_after": null,
+       "ratelimit": "32",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 172,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 103,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 4,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 582,
+       "retry_after": "0",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 415,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 698,
+       "retry_after": null,
+       "ratelimit": "31",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 614,
+       "retry_after": null,
+       "ratelimit": "30",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 377,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 102,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 200,
+       "ms": 194,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 584,
+       "retry_after": "1",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 450,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 898,
+       "retry_after": null,
+       "ratelimit": "29",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 618,
+       "retry_after": null,
+       "ratelimit": "28",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 157,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 21,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 6,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 555,
+       "retry_after": "1",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 473,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 906,
+       "retry_after": null,
+       "ratelimit": "31",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 641,
+       "retry_after": null,
+       "ratelimit": "30",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 174,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    }
+   ],
+   "finished_at": "2026-09-14T15:11:34.379Z"
+  },
+  {
+   "round": 9,
+   "chain": "ethereum",
+   "started_at": "2026-09-14T15:20:54.866Z",
+   "colo": "KIX",
+   "egress_ip": "2a06:98c0:3600::103",
+   "calls": [
+    {
+     "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 21,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 6,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 402,
+       "ms": 573,
+       "retry_after": null,
+       "ratelimit": "1",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 472,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 1441,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 547,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 285,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x6b175474e89094c44da98b954eedeac495271d0f",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 104,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 7,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 761,
+       "retry_after": "1",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 395,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": false
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 1174,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 641,
+       "retry_after": null,
+       "ratelimit": "32",
+       "fields": false
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 175,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x8ed97a637a790be1feff5e888d43629dc05408f6",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 44,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 7,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 537,
+       "retry_after": "1",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 343,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 725,
+       "retry_after": null,
+       "ratelimit": "31",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 579,
+       "retry_after": null,
+       "ratelimit": "32",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 171,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 237,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 200,
+       "ms": 190,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 558,
+       "retry_after": "5",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 373,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 645,
+       "retry_after": null,
+       "ratelimit": "30",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 580,
+       "retry_after": null,
+       "ratelimit": "31",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 230,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x62d0a8458ed7719fdaf978fe5929c6d342b0bfce",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 164,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 360,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 402,
+       "ms": 579,
+       "retry_after": null,
+       "ratelimit": "1",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 392,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 665,
+       "retry_after": null,
+       "ratelimit": "30",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 572,
+       "retry_after": null,
+       "ratelimit": "29",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 827,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    }
+   ],
+   "finished_at": "2026-09-14T15:21:34.246Z"
+  },
+  {
+   "round": 10,
+   "chain": "base",
+   "started_at": "2026-09-14T15:30:55.069Z",
+   "colo": "KIX",
+   "egress_ip": "2a06:98c0:3600::103",
+   "calls": [
+    {
+     "token": "0x97be14dd8f994a5364573bc035d85309e7cb34de",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 374,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 6,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 558,
+       "retry_after": "4",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 344,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 1020,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 729,
+       "retry_after": null,
+       "ratelimit": "32",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 292,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0xacfe6019ed1a7dc6f7b508c02d1b04ec88cc21bf",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 513,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 5,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 402,
+       "ms": 561,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 366,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 626,
+       "retry_after": null,
+       "ratelimit": "31",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 607,
+       "retry_after": null,
+       "ratelimit": "30",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 169,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0xf43eb8de897fbc7f2502483b2bef7bb9ea179229",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 71,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 9,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 402,
+       "ms": 563,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 398,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 728,
+       "retry_after": null,
+       "ratelimit": "29",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 890,
+       "retry_after": null,
+       "ratelimit": "28",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 146,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x22af33fe49fd1fa80c7149773dde5890d3c76f3b",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 99,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 391,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 553,
+       "retry_after": "2",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 500,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 615,
+       "retry_after": null,
+       "ratelimit": "27",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 1809,
+       "retry_after": null,
+       "ratelimit": "26",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 160,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x5f980dcfc4c0fa3911554cf5ab288ed0eb13dba3",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 66,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 205,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 402,
+       "ms": 565,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 439,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 1035,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 606,
+       "retry_after": null,
+       "ratelimit": "25",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 145,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    }
+   ],
+   "finished_at": "2026-09-14T15:31:35.232Z"
+  },
+  {
+   "round": 11,
+   "chain": "bsc",
+   "started_at": "2026-09-14T15:40:55.016Z",
+   "colo": "KIX",
+   "egress_ip": "2a06:98c0:3600::103",
+   "calls": [
+    {
+     "token": "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 26,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 5,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 402,
+       "ms": 772,
+       "retry_after": null,
+       "ratelimit": "1",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 437,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 1155,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 903,
+       "retry_after": null,
+       "ratelimit": "32",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 290,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x3d4f0513e8a29669b960f9dbca61861548a9a760",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 155,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 4,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 761,
+       "retry_after": "2",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 707,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 1037,
+       "retry_after": null,
+       "ratelimit": "31",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 539,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 166,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0xac23b90a79504865d52b49b327328411a23d4db2",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 73,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 5,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 565,
+       "retry_after": "0",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 363,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 731,
+       "retry_after": null,
+       "ratelimit": "30",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 620,
+       "retry_after": null,
+       "ratelimit": "29",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 229,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0x5c85d6c6825ab4032337f11ee92a72df936b46f6",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 93,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 362,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 535,
+       "retry_after": "0",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 438,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 916,
+       "retry_after": null,
+       "ratelimit": "28",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 909,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 173,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "0xcf3232b85b43bca90e51d38cc06cc8bb8c8a3e36",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 97,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 6,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 402,
+       "ms": 536,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 406,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 620,
+       "retry_after": null,
+       "ratelimit": "32",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 621,
+       "retry_after": null,
+       "ratelimit": "31",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 163,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    }
+   ],
+   "finished_at": "2026-09-14T15:41:34.434Z"
+  },
+  {
+   "round": 12,
+   "chain": "solana",
+   "started_at": "2026-09-14T15:50:54.812Z",
+   "colo": "KIX",
+   "egress_ip": "2a06:98c0:3600::103",
+   "calls": [
+    {
+     "token": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 102,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 200,
+       "ms": 265,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 735,
+       "retry_after": "4",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 467,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 1109,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 682,
+       "retry_after": null,
+       "ratelimit": "32",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 264,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 299,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 200,
+       "ms": 14175,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 529,
+       "retry_after": "0",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 483,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 703,
+       "retry_after": null,
+       "ratelimit": "31",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 1127,
+       "retry_after": null,
+       "ratelimit": "33",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 157,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 103,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 200,
+       "ms": 267,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 402,
+       "ms": 544,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 474,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 632,
+       "retry_after": null,
+       "ratelimit": "32",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 726,
+       "retry_after": null,
+       "ratelimit": "31",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 177,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 155,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 10,
+       "retry_after": "0",
+       "ratelimit": null,
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 429,
+       "ms": 547,
+       "retry_after": "2",
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 501,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 712,
+       "retry_after": null,
+       "ratelimit": "30",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 606,
+       "retry_after": null,
+       "ratelimit": "29",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 174,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    },
+    {
+     "token": "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
+     "results": [
+      {
+       "provider": "dexscreener",
+       "keyed": false,
+       "status": 200,
+       "ms": 22,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "geckoterminal",
+       "keyed": false,
+       "status": 429,
+       "ms": 46872,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": false,
+       "status": 402,
+       "ms": 550,
+       "retry_after": null,
+       "ratelimit": "0",
+       "fields": null
+      },
+      {
+       "provider": "coingecko",
+       "keyed": true,
+       "status": 200,
+       "ms": 374,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika",
+       "keyed": true,
+       "status": 200,
+       "ms": 1168,
+       "retry_after": null,
+       "ratelimit": "32",
+       "fields": true
+      },
+      {
+       "provider": "dexpaprika-detail",
+       "keyed": true,
+       "status": 200,
+       "ms": 628,
+       "retry_after": null,
+       "ratelimit": "31",
+       "fields": true
+      },
+      {
+       "provider": "codex",
+       "keyed": true,
+       "status": 200,
+       "ms": 203,
+       "retry_after": null,
+       "ratelimit": null,
+       "fields": true
+      }
+     ]
+    }
+   ],
+   "finished_at": "2026-09-14T15:52:35.354Z"
+  }
+ ]
+}
