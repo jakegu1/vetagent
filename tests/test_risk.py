@@ -2845,6 +2845,52 @@ def test_a_key_that_cannot_be_a_key_is_not_sent():
         risk.configure(types_ns(CG_DEMO_KEY=saved) if saved else types_ns())
 
 
+def test_the_fallback_knows_which_side_of_the_pool_the_token_is_on():
+    """USDC on Base was priced at $2,482.71 -- the price of ether -- the day the fallback went live.
+
+    Production, 2026-09-15: DexScreener did not answer, CoinGecko did, and the answer for USDC
+    said price_usd 2482.71. `_gt_to_pair` labelled the queried token as the pool's base token
+    whatever the pool said, so in a WETH/USDC pool USDC wore WETH's price and WETH's ticker.
+    The same class as the P0 that once reported USDT at $2,502 through DexScreener; this copy
+    lived in the fallback, which was rarely reached until the keyed fallback started answering
+    the calls DexScreener refused. The ticker half fed the impersonation search the wrong name.
+
+    The pool's own relationships name its base and quote tokens, and its attributes carry the
+    base-in-quote price, so the side is read, not assumed.
+    """
+    print("\n[fallback] the queried token's side of a CoinGecko/GeckoTerminal pool is read")
+    USDC_ETH = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+    searched = []
+
+    def assess(address):
+        async def _stub(url, *a, **kw):
+            if "dex/search" in url:
+                searched.append(url)
+                return None
+            if "api.coingecko.com" in url and "/tokens/" in url:
+                return _load("cg_weth_pools.json")
+            if "honeypot.is" in url:
+                return _load("hp_matic.json")
+            return None
+        risk._fetch_json = _stub
+        return run(risk.assess(address, chain_hint="ethereum"))
+
+    saved = risk._onchain_key()
+    try:
+        risk.configure(types_ns(CG_DEMO_KEY="CG-abcdefghijklmnopqrstuvwx"))
+        r = assess(USDC_ETH)
+        price = (r["evidence"].get("best_pair") or {}).get("price_usd") or 0
+        check("USDC through the fallback is priced near a dollar", 0.9 < price < 1.1, str(price))
+        check("  and the impersonation search never asks about the other token's ticker",
+              not any("WETH" in u for u in searched), str(searched))
+        searched.clear()
+        r = assess(WETH)
+        price = (r["evidence"].get("best_pair") or {}).get("price_usd") or 0
+        check("WETH through the same pool keeps its own price", 2000 < price < 3000, str(price))
+    finally:
+        risk.configure(types_ns(CG_DEMO_KEY=saved) if saved else types_ns())
+
+
 def test_the_simulator_is_asked_about_the_chain_we_settled_on():
     """A wrong hint must not send the sell simulator to the wrong chain.
 

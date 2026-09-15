@@ -1338,6 +1338,21 @@ def _gt_base_price(a):
 
 def _gt_to_pair(p, address, network):
     a = p.get("attributes") or {}
+    rel = p.get("relationships") or {}
+
+    def _rel_addr(side):
+        rid = str((((rel.get(side) or {}).get("data")) or {}).get("id") or "")
+        return rid.split("_", 1)[-1] if "_" in rid else ""
+
+    names = [x.strip() for x in (a.get("name") or "").split("/")]
+    base_sym = names[0] if names else ""
+    # "WETH / USDC 0.05%": the fee tier follows the quote ticker.
+    quote_sym = names[1].split(" ")[0] if len(names) > 1 else ""
+    base_addr, quote_addr = _rel_addr("base_token"), _rel_addr("quote_token")
+    if not base_addr:
+        # No relationships to read (older payloads, test fixtures): the old assumption is
+        # the only information there is, and it is labelled as the base side as before.
+        base_addr, quote_addr = address, ""
     return {
         "dexId": "geckoterminal",
         # GeckoTerminal pool ids look like "eth_0xabc..."; the address is the tail.
@@ -1377,9 +1392,16 @@ def _gt_to_pair(p, address, network):
         # nothing. That is the isHoneypot bug's exact shape: read a key the producer
         # never writes, swallow the miss. And it skipped the thinly-indexed tokens,
         # which are the ones most likely to be impostors.
-        "baseToken": {"address": address,
-                      "symbol": (a.get("name") or "").split("/")[0].strip()},
-        "quoteToken": {"address": ""},
+        #
+        # And the side comes from the pool, not from the question. This shim used to put
+        # the queried address in baseToken whatever the pool was, so in a WETH/USDC pool
+        # USDC wore WETH's price and WETH's ticker: production priced USDC on Base at
+        # $2,482.71 on 2026-09-15, the day the keyed fallback started answering the calls
+        # DexScreener refused. The pool's relationships name both tokens, and
+        # base_token_price_quote_token is the priceNative _price_of_target inverts by.
+        "baseToken": {"address": base_addr, "symbol": base_sym},
+        "quoteToken": {"address": quote_addr, "symbol": quote_sym},
+        "priceNative": a.get("base_token_price_quote_token"),
     }
 
 
