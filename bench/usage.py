@@ -28,7 +28,10 @@ API = "https://api.cloudflare.com/client/v4/accounts/%s/analytics_engine/sql"
 
 # What each blob means is set by the write order in src/entry.py; change one, change both
 BLOB = {"method": "blob1", "tool": "blob2", "verdict": "blob3",
-        "client": "blob4", "country": "blob5"}
+        "client": "blob4", "country": "blob5",
+        # Why an answer was unknown, in fixed words (src/entry.py _why_unknown). Empty for
+        # every other answer and for rows written before 2026-09-15.
+        "why": "blob6"}
 
 
 def query(sql, account, token):
@@ -607,9 +610,24 @@ def production_verdicts(account, token):
             counts[v] += int(float(row.get("n") or 0))
     end = datetime.datetime.now(datetime.timezone.utc)
     start = end - datetime.timedelta(days=PRODUCTION_WINDOW_DAYS)
-    return {"window_start": start.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "window_end": end.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "counts": counts, "excluded_clients": list(PRODUCTION_EXCLUDED_CLIENTS)}
+    out = {"window_start": start.strftime("%Y-%m-%dT%H:%M:%SZ"),
+           "window_end": end.strftime("%Y-%m-%dT%H:%M:%SZ"),
+           "counts": counts, "excluded_clients": list(PRODUCTION_EXCLUDED_CLIENTS)}
+    # Why the unknowns were unknown (W35). A separate query, and a separate failure: if it
+    # fails, the key is absent -- never an empty breakdown that reads as "no reasons".
+    # "(not recorded)" counts rows written before the reason existed, so a window that
+    # straddles the change says how much of it can be explained.
+    why = rows_of(query(
+        "SELECT %s AS why, sum(_sample_interval) AS n FROM %s "
+        "WHERE timestamp > now() - INTERVAL '%d' DAY AND %s = 'assess_token_risk' "
+        "AND %s = 'unknown' AND %s NOT IN (%s) GROUP BY why ORDER BY n DESC LIMIT 40"
+        % (BLOB["why"], DATASET, PRODUCTION_WINDOW_DAYS, BLOB["tool"], BLOB["verdict"],
+           BLOB["client"], ", ".join("'%s'" % c for c in PRODUCTION_EXCLUDED_CLIENTS)),
+        account, token))
+    if why is not None:
+        out["unknown_why"] = {(str(r.get("why") or "") or "(not recorded)"):
+                              int(float(r.get("n") or 0)) for r in why}
+    return out
 
 
 def main():
@@ -804,7 +822,9 @@ def main():
     print("  every AttributeError into '??'. Fixed; rows from today carry a country.")
 
     for title, col in (("By tool", BLOB["tool"]), ("By client", BLOB["client"]),
-                       ("By country", BLOB["country"]), ("By verdict", BLOB["verdict"])):
+                       ("By country", BLOB["country"]), ("By verdict", BLOB["verdict"]),
+                       ("Why unknown (empty = not unknown, or recorded before 09-15)",
+                        BLOB["why"])):
         resp = query(
             "SELECT %s AS k, count() AS n FROM %s WHERE timestamp > now() - %s "
             "GROUP BY k ORDER BY n DESC LIMIT 8" % (col, DATASET, since), account, token)

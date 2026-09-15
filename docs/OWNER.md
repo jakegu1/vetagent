@@ -141,7 +141,7 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **14 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **13 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -168,6 +168,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W46: a honeypot claim from a simulation that never ran could come back low after W31
 - W34: say what honeypot.is's flag is made of, instead of calling it a simulator false positive
 - W33: an empty WETH pool answered "nothing to sell into" for a $115,299 pool beside it
 - W32: the fallback credited a pool quoted in a self-minted coin, and the token came back low
@@ -175,9 +176,8 @@ problem looked like before it was fixed.
 - W31: our own retry turned "the simulator could not buy" into "you cannot sell"
 - W30: the front page said USDT and WBTC were flagged high; both are low
 - R23: the 2026-09-15 numbers audit, checked before it was believed -- a queue, not a verdict change
-- GEO baseline: crawler access is measured, and crawlers are served
 
-_95 more not shown (103 commits in total)._
+_96 more not shown (104 commits in total)._
 
 ## What I got wrong
 

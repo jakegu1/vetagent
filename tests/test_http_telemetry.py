@@ -156,6 +156,64 @@ def test_the_token_address_is_never_recorded():
               and "https://" not in joined, joined[:120])
 
 
+def test_an_unknown_records_why_without_recording_what():
+    """Production answered unknown to 187 of 460 calls in a week, and nothing recorded why.
+
+    The telemetry kept method, tool, verdict, client and country, so "the extra half is
+    429s" (2026-09-15 numbers audit) and "the key will fix it" were both arguments. W35
+    records the reason class of an `unknown` -- its `unknown_kind`, and per critical
+    dimension which upstream answered what -- built from a fixed vocabulary, so no
+    upstream text, and therefore no address, can ride along.
+    """
+    print("\n[http] an unknown records why, from a fixed vocabulary")
+    recorded = []
+    original_record, original_assess = entry._record, risk.assess
+
+    def _rec(env, blobs, doubles):
+        recorded.append(blobs)
+
+    answers = {
+        "infra": {"address": ADDRESS, "risk_level": "unknown", "unknown_kind": "infrastructure",
+                  "signals": [], "evidence": {"data_gaps": [
+                      {"dimension": "liquidity", "source": "dexscreener",
+                       "reason": "upstream request failed (dexscreener 429, geckoterminal 429)"},
+                      {"dimension": "sellability", "source": "honeypot.is",
+                       "reason": "simulation failed: execution reverted at %s" % ADDRESS}]}},
+        "coverage": {"address": ADDRESS, "risk_level": "unknown", "unknown_kind": "coverage",
+                     "signals": [], "evidence": {"data_gaps": [
+                         {"dimension": "sellability", "source": "honeypot.is",
+                          "reason": "the sell simulator has no record of this token"},
+                         {"dimension": "liquidity", "source": "dexscreener",
+                          "reason": "no pool's depth is priced in an asset we can verify"}]}},
+        "low": {"address": ADDRESS, "risk_level": "low", "signals": [], "evidence": {}},
+    }
+    which = {"k": "infra"}
+
+    async def _assess(address, chain_hint=None, verbose=False):
+        return answers[which["k"]]
+
+    entry._record, risk.assess = _rec, _assess
+    try:
+        w = entry.Default()
+        for k in ("infra", "coverage", "low"):
+            which["k"] = k
+            asyncio.run(w.fetch(FakeRequest("https://vetagent.dev/assess/%s" % ADDRESS)))
+    finally:
+        entry._record, risk.assess = original_record, original_assess
+
+    whys = [b[5] if len(b) > 5 else None for b in recorded]
+    check("three answers recorded", len(whys) == 3, str(recorded))
+    if len(whys) == 3:
+        check("an infrastructure unknown names the upstreams and what they answered",
+              whys[0] == "infrastructure|liquidity:dexscreener 429,geckoterminal 429"
+                         "|sellability:simulation failed", str(whys[0]))
+        check("a coverage unknown names the gap classes",
+              whys[1] == "coverage|liquidity:unpriced|sellability:no record", str(whys[1]))
+        check("an answer that is not unknown records no reason", whys[2] == "", str(whys[2]))
+        check("and the reason never carries the address, even when the upstream text did",
+              all(ADDRESS.lower() not in str(x).lower() for x in whys), str(whys))
+
+
 class FakeCf:
     """What `request.cf` actually is: a JsProxy of a plain JS object.
 

@@ -48,7 +48,7 @@
     {"@type":"Question","name":"Is VetAgent free?",
      "acceptedAnswer":{"@type":"Answer","text":"Yes. The remote MCP endpoint and the HTTP API are free and require no account or key."}},
     {"@type":"Question","name":"Does VetAgent log the tokens I look up?",
-     "acceptedAnswer":{"@type":"Answer","text":"No. The token address is used to query public data sources and then discarded with the response. Aggregate counts are kept — which tool was called, the resulting risk level, a coarse client name and country — but never the address, never an IP."}}
+     "acceptedAnswer":{"@type":"Answer","text":"No. The token address is used to query public data sources and then discarded with the response. Aggregate counts are kept — which tool was called, the resulting risk level, a coarse client name, country, and for an unknown answer which check could not run — but never the address, never an IP."}}
   ]
 }
 </script>
@@ -263,7 +263,8 @@
   <h3>Does it log the addresses I look up?</h3>
   <p style="color:var(--dim);font-size:14px">No. That query reveals what you are about to trade,
   so it is used to fetch public data and then discarded. We keep aggregate counts only — tool,
-  verdict, coarse client name, country. Never the address, never an IP.
+  verdict, coarse client name, country, and for an unknown which check could not run. Never the
+  address, never an IP.
   <a href="/privacy">Privacy →</a></p>
 
   <h3>What does it <em>not</em> catch?</h3>

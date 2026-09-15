@@ -7,6 +7,7 @@ Cloudflare requires it. request.url is a string, so parse it with urlparse.
 
 import json
 import os
+import re
 from urllib.parse import parse_qsl, urlparse
 
 from workers import Response, WorkerEntrypoint
@@ -159,7 +160,9 @@ EVM holder concentration; open gaps are listed in docs/SCORECARD.md.
 
 Token addresses you look up are not logged. They are used to query public
 sources and discarded with the response. Aggregate counts only: which tool,
-which verdict, a coarse client name, a country code. No IPs, no addresses.
+which verdict, a coarse client name, a country code, and for an unknown answer
+which check could not run (e.g. "liquidity: dexscreener 429"). No IPs, no
+addresses.
 
 ## Business model
 
@@ -197,8 +200,10 @@ is a deliberate trade: it means we cannot tell you which tokens are popular, and
 consider that the correct side of the trade for a tool whose only asset is trust.</p>
 <p>We do keep aggregate usage counts, so we can tell whether anyone is using the
 service. Each call records: which method and tool was invoked, the resulting risk
-level, whether it errored, a coarse client name taken from the user agent, and the
-country code Cloudflare attaches at the edge. <strong>No IP addresses, no full user
+level, whether it errored, a coarse client name taken from the user agent, the
+country code Cloudflare attaches at the edge, and -- only when the answer is
+<code>unknown</code> -- which check could not run and what the data source answered, in
+fixed words such as <code>liquidity:dexscreener 429</code>. <strong>No IP addresses, no full user
 agents, no token addresses, nothing that identifies a person or a request.</strong></p>
 
 <h2>One thing we cannot promise for you</h2>
@@ -414,6 +419,57 @@ def _from_our_own_page(request):
         if host in _OUR_HOSTS:
             return True
     return False
+
+
+_UPSTREAM_STATUS = re.compile(r"\b(dexscreener|coingecko|geckoterminal|honeypot\.is|rugcheck)"
+                              r"(?: error body)? (\d{3})\b")
+
+# Gap reasons, reduced to a fixed vocabulary. Order matters: the first phrase found wins.
+_GAP_CLASSES = (
+    ("does not cover", "chain not covered"),
+    ("distinct-seller", "contested"),
+    ("no record", "no record"),
+    ("simulation failed", "simulation failed"),
+    ("priced in an asset", "unpriced"),
+    ("no source reported pool depth", "no depth"),
+    ("no pair with a sane price", "price outlier"),
+    ("no trading pair found", "no pair"),
+    ("upstream request failed", "failed"),
+)
+
+
+def _why_unknown(answer):
+    """Why an answer is `unknown`, in words this module chose -- "" for any other answer.
+
+    "infrastructure|liquidity:dexscreener 429,geckoterminal 429|sellability:no record".
+    Built only from `unknown_kind` (one of three values), the gap's dimension, a fixed list
+    of reason classes, and upstream names with a three-digit status matched against a
+    fixed list. Upstream text is never copied, so an address inside a revert message has
+    nowhere to go (W35; the no-address rule in `_record`).
+    """
+    if not isinstance(answer, dict) or answer.get("risk_level") != "unknown":
+        return ""
+    kind = str(answer.get("unknown_kind") or "")
+    if kind not in ("infrastructure", "coverage", "mixed"):
+        kind = "unstated"
+    per_dim = {}
+    for gap in ((answer.get("evidence") or {}).get("data_gaps") or []):
+        if not isinstance(gap, dict):
+            continue
+        dim = str(gap.get("dimension") or "")
+        if dim not in ("liquidity", "sellability"):
+            continue
+        reason = str(gap.get("reason") or "")
+        statuses = ["%s %s" % m for m in _UPSTREAM_STATUS.findall(reason)]
+        if statuses and reason.startswith("upstream request failed"):
+            tag = ",".join(dict.fromkeys(statuses))
+        else:
+            tag = next((label for phrase, label in _GAP_CLASSES if phrase in reason), "other")
+        per_dim.setdefault(dim, [])
+        if tag not in per_dim[dim]:
+            per_dim[dim].append(tag)
+    parts = [kind] + ["%s:%s" % (d, "+".join(per_dim[d])) for d in sorted(per_dim)]
+    return "|".join(parts)[:160]
 
 
 def _caller_id(request):
@@ -969,7 +1025,8 @@ class Default(WorkerEntrypoint):
             verdict = str(result.get("risk_level") or result.get("status") or "")[:24]
         is_error = isinstance(result, dict) and bool(result.get("error"))
         _record(self.env,
-                ["http", tool, verdict, _caller_id(request), _country(request)],
+                ["http", tool, verdict, _caller_id(request), _country(request),
+                 _why_unknown(result)],
                 [1.0, 1.0 if is_error else 0.0])
         return result
 
@@ -994,12 +1051,15 @@ class Default(WorkerEntrypoint):
         if not tool:
             return                    # never reached a tool: a 404 is not a tool call
         _record(self.env,
-                ["http", tool, "", _caller_id(request), _country(request)],
+                ["http", tool, "", _caller_id(request), _country(request), ""],
                 [1.0, 1.0])
 
     def _record_call(self, request, method, tool, verdict, result):
         is_error = bool((result or {}).get("error")
                         or ((result or {}).get("result") or {}).get("isError"))
+        sc = ((result or {}).get("result") or {}).get("structuredContent") \
+            if isinstance(result, dict) else None
         _record(self.env,
-                [method, tool, verdict, _caller_id(request), _country(request)],
+                [method, tool, verdict, _caller_id(request), _country(request),
+                 _why_unknown(sc)],
                 [1.0, 1.0 if is_error else 0.0])
