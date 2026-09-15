@@ -120,7 +120,7 @@ token is.
 ## Measured accuracy (n=576, published)
 
 False positives (healthy tokens flagged high) ....... 3.1%
-Answers returned as unknown ......................... 19.6%
+Answers returned as unknown ......................... 21.2%
 Centralised tokens (oracle-tagged) rated high ....... 22.3%
 Dead tokens not rated low ........................... 86.7% (26 of 30)
 
@@ -131,8 +131,8 @@ recovered from chain history instead -- any past day is readable from the logs
 of the contract that created the pool -- which produced a cohort of 30
 confirmed-dead tokens.
 
-The honest reading is not flattering. Only 3 of those 30 are rated high; 16
-land at medium. That is close to correct rather than a miss: 14 of the 30
+The honest reading is not flattering. Only 3 of those 30 are rated high; 11
+land at medium. That is close to correct rather than a miss: 13 of the 30
 dead tokens still hold $5,000 or more of liquidity, so those positions can
 still be sold. "Dead" means the project died, a market outcome, while this tool scores
 whether you can get out, a safety property.

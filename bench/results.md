@@ -70,9 +70,9 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 
 | Metric | Value |
 |---|---|
-| Verdict distribution | high=75, low=155, medium=233, unknown=113 |
-| unknown rate | 19.6% |
-| Share with a data gap | 23.1% |
+| Verdict distribution | high=75, low=155, medium=224, unknown=122 |
+| unknown rate | 21.2% |
+| Share with a data gap | 24.7% |
 
 > Read the unknown rate next to recall. A tool that answers unknown for everything has perfect recall and is useless.
 
@@ -85,7 +85,7 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
-| **dead** | 30 | 10.0% | 63.3% | 13.3% | 23.3% | 39.3 |
+| **dead** | 30 | 10.0% | 46.7% | 13.3% | 40.0% | 35.4 |
 | **alive** | 162 | 3.1% | 25.9% | 59.3% | 14.8% | 13.4 |
 
 ### Contract-safety signals only (ablated)
@@ -98,7 +98,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | **dead** | 30 | 10.0% | 13.3% | 80.0% | 6.7% | 13.0 |
 | **alive** | 162 | 1.9% | 13.6% | 71.6% | 14.8% | 8.8 |
 
-**Which signal category made the call on dead samples:** `liquidity` 15, `no_liquidity` 5, `honeypot` 4, `sellability` 1, `lifecycle` 1
+**Which signal category made the call on dead samples:** `no_liquidity` 10, `liquidity` 10, `honeypot` 4, `sellability` 1, `lifecycle` 1
 
 
 > If this concentrates in `upstream_risk`, the engine is mostly paraphrasing honeypot.is and adds little of its own.
@@ -113,7 +113,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 17 | 58.8% | 94.1% | 0.0% | 5.9% | 76.1 |
-| **safe** | 349 | 6.0% | 47.0% | 28.1% | 24.9% | 26.8 |
+| **safe** | 349 | 6.0% | 45.6% | 28.1% | 26.4% | 27.0 |
 
 ### Contract-safety signals only (ablated)
 
@@ -149,14 +149,14 @@ This bucket answers one question: **does the engine paint them all as high risk.
 
 | n | high rate | Verdict distribution |
 |---|---|---|
-| 179 | 22.3% | high=40, low=45, medium=75, unknown=19 |
+| 179 | 22.3% | high=40, low=45, medium=74, unknown=20 |
 
 Examples: HYDX(low), CP(unknown), TOSHE(medium), Onyxcoin XCN Kendu(high), SAGE Free(medium), Core Keeper Overnight(medium), VIRTUAL(low), Crypto Carbon Verse(high), ?(medium), BIO(medium)
 
 
 ### Are the label and the verdict about the same pool?
 
-The label describes one sampled pool; the engine picks its own. The pool the engine actually **judged** is the labelled one on **299 of 533** rows where both are known (56%).
+The label describes one sampled pool; the engine picks its own. The pool the engine actually **judged** is the labelled one on **288 of 524** rows where both are known (55%).
 
 
 That is a stricter question than the one an external audit measured. It found the labelled pool was among the pairs the engine *loaded* 84% of the time. Loading it and choosing it are different: the engine ranks by chain canonicality and depth and then judges a single pool, so it can hold the labelled pool in hand and still return a verdict about another venue. Both numbers are true; this is the one that governs whether a disagreement is a like-for-like comparison.
@@ -211,7 +211,7 @@ An `unknown` because we could not reach an upstream is a different thing from an
 | | n | share of all 576 |
 |---|---|---|
 | unknown, our side (upstream unreachable or uncovered) | 6 | 1.0% |
-| unknown, token side (nothing verifiable about it) | 107 | 18.6% |
+| unknown, token side (nothing verifiable about it) | 116 | 20.1% |
 
 
 ## What the sample is made of
@@ -280,10 +280,10 @@ The label means a project died -- price collapsed, volume collapsed. It does **n
 
 | | n | min | p25 | median | p75 | max |
 |---|---|---|---|---|---|---|
-| liquidity, `dead` | 25 | $2 | $3,218 | $7,076 | $43,585 | $436,531 |
+| liquidity, `dead` | 20 | $2 | $2,193 | $11,789 | $65,486 | $436,531 |
 | liquidity, `alive` | 156 | $1 | $152,764 | $474,465 | $1,884,670 | $113,320,000 |
 
-14 of the 30 dead tokens still hold $5,000 or more of liquidity. Those positions can be sold. An engine that rated them `high` would be calling a failed investment a safety hazard, which is a judgement this tool refuses to make (P1 in DECISIONS.md) -- so `medium` with an abandoned-pool warning is the intended answer, not a miss.
+13 of the 30 dead tokens still hold $5,000 or more of liquidity. Those positions can be sold. An engine that rated them `high` would be calling a failed investment a safety hazard, which is a judgement this tool refuses to make (P1 in DECISIONS.md) -- so `medium` with an abandoned-pool warning is the intended answer, not a miss.
 
 
 **What the number should be read against**: of 30 dead tokens, 26 are rated something other than `low`. The remainder is the real finding.

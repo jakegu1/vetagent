@@ -121,11 +121,9 @@ flowchart LR
     W4[W4 Cut the unknown rate below 10%]
     W6[W6 EVM holder concentration]
     W7[W7 Point-in-time evaluation from the...]
-    W32[W32 Fallback pools get the...]
     W33[W33 Every pool is empty must not ignore a...]
     W37[W37 A pool holding under a dollar is...]
     W38[W38 A lone lifecycle warning stops forcing...]
-    W39[W39 Measure before adding a second pool...]
     W40[W40 Label new pools while they still hold...]
     W5[W5 A second, independent sell-simulation...]
     W10([W10 Create the two accounts the remaining...])
@@ -140,23 +138,22 @@ flowchart LR
     E2 -->|blocks| W7
     W33 -->|blocks| W37
     E3 -->|blocks| W38
-    W32 -->|blocks| W39
     W3 -->|blocks| W40
     E4 -->|blocks| W5
     W11 -->|answers| GATE
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **12 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **13 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
 | | |
 |---|---|
-| Maturity score | 50 / 100 (`docs/SCORECARD.md`) |
+| Maturity score | 49 / 100 (`docs/SCORECARD.md`) |
 | Tokens measured | 576 |
 | False positives | 3.1% -- we called a healthy token dangerous |
-| Answers we refuse | 19.6% -- `unknown`, on purpose |
+| Answers we refuse | 21.2% -- `unknown`, on purpose |
 | Dead tokens we rated high | 10.0% -- our worst number, published first |
 | Round in progress | R23: A numbers audit, checked before it was believed |
 
@@ -174,16 +171,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Fallback token ids split at the wrong underscore: every Polygon pool's sides were unnamed
+- W31: our own retry turned "the simulator could not buy" into "you cannot sell"
 - W30: the front page said USDT and WBTC were flagged high; both are low
 - R23: the 2026-09-15 numbers audit, checked before it was believed -- a queue, not a verdict change
 - GEO baseline: crawler access is measured, and crawlers are served
 - Reference pages, a share card and llms-full.txt: give search engines something to cite
 - Re-measure the benchmark after the fallback side fix
 - The fallback put the queried token on the wrong side of the pool: USDC on Base at $2,482.71
-- zone-check: Cloudflare does not block AI crawlers; read the request logs a day at a time
-- Sitemap, robots.txt and IndexNow: tell search engines the site exists
 
-_90 more not shown (98 commits in total)._
+_92 more not shown (100 commits in total)._
 
 ## What I got wrong
 
@@ -293,7 +290,7 @@ python tools/owner.py --write   # regenerate this page
 
 **A gate** -- A date with a question and a rule, written down BEFORE the date. On the day, the rule is read and it decides what happens next. The point is that the rule cannot be argued with afterwards. This project has four.
 
-**`unknown`** -- A verdict that means 'a check I needed could not run'. It is not 'low risk' and it is not a bug -- it is the product refusing to guess. 19.6% of answers are this.
+**`unknown`** -- A verdict that means 'a check I needed could not run'. It is not 'low risk' and it is not a bug -- it is the product refusing to guess. 21.2% of answers are this.
 
 **Fail-closed** -- When something breaks, answer 'I don't know' rather than 'looks fine'. A safety tool that guesses optimistically when it is broken is worse than no tool.
 

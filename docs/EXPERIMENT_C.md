@@ -31,7 +31,7 @@
 > liquidity signals and it is 17.6%. The cohort is 17 tokens and 15 of them hold under a
 > dollar, so read both columns.
 >
-> 3.1% false positives, on a control with a median of $460,180 in the pool. 19.6% of
+> 3.1% false positives, on a control with a median of $460,180 in the pool. 21.2% of
 > answers are a refusal.
 >
 > Method, dataset and harness — run it yourself: github.com/jakegu1/vetagent
@@ -86,7 +86,7 @@ Measured on 576 tokens across Ethereum, BSC and Base, 2026-09-14:
 | Confirmed-dead tokens rated high (n=30) | **10.0%** (3 of 30) | |
 | Healthy tokens rated high — false positives (n=162) | **3.1%** (5 of 162) | |
 | Liquid healthy tokens ($100k+) rated medium or high — false blocks (n=154) | **19.5%** (30 of 154) | |
-| Answers returned as `unknown` (n=576) | **19.6%** (113 of 576) | |
+| Answers returned as `unknown` (n=576) | **21.2%** (122 of 576) | |
 | Tokens the oracle tags centralised, rated high (n=179) | **22.3%** (40 of 179) | |
 
 **Read the second column before the first.** "Signals stripped" removes the liquidity and
@@ -121,11 +121,11 @@ first would be the flattering half of a pair.
   out and the build fails if the engine ever reads it. What is true is subtler and worse
   for me — both it and one of my upstreams simulate sells, so the correlation pushes that
   6.0% **down**, not up. At this sample size my own report calls the two indistinguishable.
-- **The label and the verdict describe the same pool only 56% of the time.**
+- **The label and the verdict describe the same pool only 55% of the time.**
 - **`unknown` is a design choice and also a dependency.** Fail-closed is real: a check that
-  cannot run must never read as low risk. But 94 of the 113 unknowns are one free upstream
+  cannot run must never read as low risk. But 94 of the 122 unknowns are one free upstream
   either not having indexed the token or its simulation reverting, on tokens with a median
-  of $120k in the pool. That is my supply chain, not the market's ambiguity. Another 16
+  of $120k in the pool. That is my supply chain, not the market's ambiguity. Another 25
   are tokens whose every pool is priced in an asset no independent market prices: the
   engine declines to believe a depth nobody can check.
 - **Until 2026-09-14 it could be fooled for about two dollars.** An adversarial audit found
@@ -177,7 +177,7 @@ HTTP), and I published the benchmark instead of a marketing number.
 576 tokens on Ethereum, BSC and Base:
 
 - 3.1% false positives on healthy tokens
-- 19.6% of answers are `unknown` — a critical check could not run, so it refuses rather
+- 21.2% of answers are `unknown` — a critical check could not run, so it refuses rather
   than guessing
 - 22.3% of the tokens GoPlus tags as centralised are rated high. Almost all of those
   are abandoned pools holding cents -- 16 of the 21 with a liquidity figure are under a
@@ -227,14 +227,14 @@ auth, no signup. Three tools: `assess_token_risk`, `get_token_liquidity`,
 `find_new_hot_pools`.
 
 The thing that might interest this group is not the tool, it is the benchmark. It
-publishes its own false-positive rate (3.1%), unknown rate (19.6%) and the cases where it
+publishes its own false-positive rate (3.1%), unknown rate (21.2%) and the cases where it
 disagrees with the labelling oracle, with the harness in the repo so anyone can re-run
 it. I could not find another server in this category that publishes a reproducible error
 rate, and I looked.
 
 One design note relevant to anyone building agent-facing tools: when a check cannot run,
 it returns `unknown` and says so in the recommendation text, rather than defaulting to
-"low risk". 19.6% of answers are that refusal. An agent reading a confident wrong answer
+"low risk". 21.2% of answers are that refusal. An agent reading a confident wrong answer
 is worse than an agent reading "I could not tell", and most scanners in this space return
 a score no matter what.
 

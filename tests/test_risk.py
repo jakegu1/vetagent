@@ -1682,18 +1682,88 @@ def test_depth_counts_only_what_no_pool_creator_can_price():
           any(s["category"] == "impersonation" and s["severity"] == "critical"
               for s in r["signals"]), str([s["name"] for s in r["signals"]]))
 
-    # Two things that must not change. A pool whose reserves were not reported (the
-    # GeckoTerminal shim, older fixtures) keeps its stated figure; and a chain with no
-    # anchor table keeps it too -- both named, so neither is an accident.
+    # Two things that must not change. A DexScreener pool whose reserves were not reported
+    # (older fixtures; 0 of 4,715 cached pairs) keeps its stated figure; and a chain with no
+    # anchor table keeps it too -- both named, so neither is an accident. The fallback shim,
+    # which never carries amounts, is held to the rule where it can be: see
+    # test_a_fallback_pool_is_held_to_the_same_depth_rule.
     no_amounts = dict(fake)
     no_amounts["liquidity"] = {"usd": 12_400_000.0}
-    check("a pool without reserve amounts keeps its stated depth",
+    check("a DexScreener pool without reserve amounts keeps its stated depth",
           risk._reported_liquidity(no_amounts) == 12_400_000.0,
           str(risk._reported_liquidity(no_amounts)))
     unlisted = dict(fake, chainId="some-new-l2")
     check("a chain with no anchor table keeps its stated depth (a known residual)",
           risk._reported_liquidity(unlisted) == 12_400_000.0,
           str(risk._reported_liquidity(unlisted)))
+
+
+def test_a_fallback_pool_is_held_to_the_same_depth_rule():
+    """The E21 fix never reached the fallback, which is where a new token is judged.
+
+    Pools from CoinGecko / GeckoTerminal carry no reserve amounts, so _independent_depth_cap
+    called them not checkable and _reported_liquidity credited the stated `reserve_in_usd`
+    in full. Since D8 that path answers for every token DexScreener does not list -- and a
+    token too new for DexScreener is exactly the one a creator can quote in a coin they
+    minted. The 2026-09-15 numbers-audit replay credited a synthetic pool quoted in a
+    non-anchor at $12.4M with $12.4M. The shim has named both tokens since eb0f41a, so the
+    anchor question is answerable without amounts.
+    """
+    print("\n[liquidity] a fallback pool is held to the independent-depth rule")
+
+    SCAM = "0x3333333333333333333333333333333333333333"
+    FAKEUSD = "0x4444444444444444444444444444444444444444"
+    WETH_BASE = "0x4200000000000000000000000000000000000006"
+
+    def gt_pool(quote_addr, quote_sym, reserve):
+        return {"id": "base_0x" + "c3" * 20, "type": "pool",
+                "attributes": {"address": "0x" + "c3" * 20,
+                               "name": "SCAM / %s 1%%" % quote_sym,
+                               "base_token_price_usd": "0.01",
+                               "base_token_price_quote_token": "0.01",
+                               "reserve_in_usd": str(reserve),
+                               "pool_created_at": "2024-01-01T00:00:00Z",
+                               "volume_usd": {"h24": str(reserve * 0.1)},
+                               "transactions": {"h24": {"buys": 40, "sells": 35,
+                                                        "buyers": 30, "sellers": 25}}},
+                "relationships": {"base_token": {"data": {"id": "base_" + SCAM}},
+                                  "quote_token": {"data": {"id": "base_" + quote_addr}}}}
+
+    fake = risk._gt_to_pair(gt_pool(FAKEUSD, "FAKEUSD", 12_400_000), SCAM, "base")
+    backed = risk._gt_to_pair(gt_pool(WETH_BASE, "WETH", 12_400_000), SCAM, "base")
+    check("a fallback pool quoted in a coin nobody independent prices is not credited",
+          risk._reported_liquidity(fake) is None, str(risk._reported_liquidity(fake)))
+    check("the same pool quoted in WETH is credited as stated",
+          risk._reported_liquidity(backed) == 12_400_000.0,
+          str(risk._reported_liquidity(backed)))
+    # A payload with no relationships names no quote side; the question cannot be asked,
+    # and the stated figure stands -- a residual, named.
+    unnamed = risk._gt_to_pair(dict(gt_pool(FAKEUSD, "FAKEUSD", 12_400_000), relationships={}),
+                               SCAM, "base")
+    check("a fallback pool whose sides are not named keeps its stated depth (a known residual)",
+          risk._reported_liquidity(unnamed) == 12_400_000.0,
+          str(risk._reported_liquidity(unnamed)))
+
+    def assess(pool):
+        install_stub([("dex/tokens", {"pairs": []}), ("dex/search", None),
+                      ("/tokens/%s/pools" % SCAM, {"data": [pool]}),
+                      ("honeypot.is", _load("hp_matic.json")), ("rugcheck", None)])
+        return run(risk.assess(SCAM, chain_hint="base"))
+
+    attack = assess(gt_pool(FAKEUSD, "FAKEUSD", 12_400_000))
+    check("so a token DexScreener does not list cannot buy 'Liquidity is adequate'",
+          not any(s["name"] == "Liquidity is adequate" for s in attack["signals"]),
+          str([s["name"] for s in attack["signals"]]))
+    check("and is never low or medium on that depth",
+          attack["risk_level"] not in ("low", "medium"), attack["risk_level"])
+    gaps = attack["evidence"].get("data_gaps") or []
+    check("and the gap says the depth could not be verified",
+          any("priced" in (g.get("reason") or "") for g in gaps), str(gaps))
+
+    control = assess(gt_pool(WETH_BASE, "WETH", 12_400_000))
+    check("while the WETH-quoted pool still reads adequate",
+          any(s["name"] == "Liquidity is adequate" for s in control["signals"]),
+          str([s["name"] for s in control["signals"]]))
 
 
 def test_impersonation_is_comparative_not_absolute():

@@ -936,16 +936,30 @@ def _independent_depth_cap(pair):
     counted, at twice its value so a balanced pool reads what it always read.
 
     Residuals, stated so they are not mistaken for coverage: the anchor's own USD price is
-    still read from this pool; chains outside _ANCHORS keep the stated figure; and so do
-    GeckoTerminal pools, whose shim carries no reserve amounts.
+    still read from this pool; chains outside _ANCHORS keep the stated figure; and a pool
+    with no reserve amounts -- the CoinGecko / GeckoTerminal shim -- keeps it when one side
+    is an anchor or a side is unnamed, because the anchor's share cannot be computed.
+
+    What it does NOT keep any more is a pool with no amounts whose named sides are both
+    outside the table. That question needs no amounts, and leaving it unasked meant the
+    fallback -- which answers for every token DexScreener does not list, the newest ones
+    first -- credited a pool quoted in a self-minted coin at whatever it stated (W32).
     """
     chain = (pair.get("chainId") or "").lower()
     anchors = _ANCHORS.get(chain)
-    liq = pair.get("liquidity") or {}
-    if anchors is None or liq.get("base") in (None, "") or liq.get("quote") in (None, ""):
+    if anchors is None:
         return _NOT_CHECKABLE
-    base_is = ((pair.get("baseToken") or {}).get("address") or "").lower() in anchors
-    quote_is = ((pair.get("quoteToken") or {}).get("address") or "").lower() in anchors
+    base_addr = ((pair.get("baseToken") or {}).get("address") or "").lower()
+    quote_addr = ((pair.get("quoteToken") or {}).get("address") or "").lower()
+    base_is, quote_is = base_addr in anchors, quote_addr in anchors
+    liq = pair.get("liquidity") or {}
+    if liq.get("base") in (None, "") or liq.get("quote") in (None, ""):
+        # Only for the shim, which never carries amounts. A DexScreener pair without them
+        # is unobserved (4,715 of 4,715 cached pairs carry both) and stays not checkable.
+        if (pair.get("dexId") == "geckoterminal" and base_addr and quote_addr
+                and not base_is and not quote_is):
+            return None
+        return _NOT_CHECKABLE
     if base_is and quote_is:
         return float("inf")
     price, native = _num(pair.get("priceUsd")), _num(pair.get("priceNative"))

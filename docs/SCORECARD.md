@@ -4,11 +4,11 @@
 > It moves with every commit, so `git diff` tells you what the change was worth.
 
 
-## Total: **50 / 100**
+## Total: **49 / 100**
 
 | Dimension | Score | Max |
 |---|---|---|
-| Correctness | 19.0 | 30 |
+| Correctness | 18.0 | 30 |
 | Coverage | 16.4 | 20 |
 | Credibility | 10.7 | 20 |
 | Distribution | 4.2 ⚠️ | 15 |
@@ -21,10 +21,10 @@
 
 | Dimension | Item | Score | Max | Evidence |
 |---|---|---|---|---|
-| Correctness | tests all green | 5.0 | 5 | test_risk.py 374 passed, 0 failed All passed; test_mcp.py 80 passed, 0 failed All passed; test_http_telemetry.py 145 passed, 0 failed All passed |
+| Correctness | tests all green | 5.0 | 5 | test_risk.py 383 passed, 0 failed All passed; test_mcp.py 80 passed, 0 failed All passed; test_http_telemetry.py 145 passed, 0 failed All passed |
 | Correctness | false positive rate (healthy rated high) | 4.0 | 5 | 3.1% |
 | Correctness | false-block rate (liquid healthy rated medium or high) | 1.0 | 5 | 19.5% (30 of 154) |
-| Correctness | unknown rate (benchmark, cached upstreams) | 3.0 | 5 | 19.6% |
+| Correctness | unknown rate (benchmark, cached upstreams) | 2.0 | 5 | 21.2% |
 | Correctness | unknown rate (production, served answers) | 1.0 | 5 | 40.7% of 460, 2026-09-07 to 2026-09-14 |
 | Correctness | production guards observed live | 5.0 | 5 | 429 after 67 calls; batch of 11 -> HTTP 400; service 8e1e2cb on 2026-09-14 |
 | Coverage | risk dimensions covered | 16.4 | 20 | 9 / 11 |
@@ -98,7 +98,7 @@ with false positives and false blocks <2%, unknown <5% in the benchmark and in p
 outcome data, the benchmark methodology cited as a standard by peers, the default
 choice at every agent entry point, and paying users who would complain if it disappeared.
 
-**The current 50 is not a failure** — it says precisely that the
+**The current 49 is not a failure** — it says precisely that the
 engineering is decent, proof and demand are both still zero, and writing more code
 cannot solve those last two.
 
