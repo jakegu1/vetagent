@@ -1,0 +1,886 @@
+{
+ "measured": "2026-09-15",
+ "surface": "web_search",
+ "rows": [
+  {
+   "id": "b01",
+   "query": "VetAgent MCP",
+   "results_returned": 8,
+   "vetagent_found": true,
+   "vetagent_rank": 1,
+   "vetagent_url": "https://smithery.ai/servers/jake-gu95/vetagent",
+   "top_results": [
+    {
+     "rank": 1,
+     "title": "vetagent - MCP | Smithery",
+     "url": "https://smithery.ai/servers/jake-gu95/vetagent"
+    },
+    {
+     "rank": 2,
+     "title": "awesome-remote-mcp-servers PR #131",
+     "url": "https://github.com/punkpeye/awesome-remote-mcp-servers/pull/131"
+    },
+    {
+     "rank": 3,
+     "title": "VetAgent MCP Server | Awesome MCP Servers",
+     "url": "https://mcpservers.org/servers/vetagent-dev"
+    },
+    {
+     "rank": 4,
+     "title": "awesome-mcp-servers PR #13873",
+     "url": "https://github.com/punkpeye/awesome-mcp-servers/pull/13873"
+    },
+    {
+     "rank": 5,
+     "title": "447 Finance MCP Servers",
+     "url": "https://mcpservers.org/category/finance"
+    },
+    {
+     "rank": 6,
+     "title": "GitHub - jakegu1/vetagent",
+     "url": "https://github.com/jakegu1/vetagent"
+    },
+    {
+     "rank": 7,
+     "title": "vetagent - MCP Connector | Glama",
+     "url": "https://glama.ai/mcp/connectors/dev.vetagent/vetagent"
+    },
+    {
+     "rank": 8,
+     "title": "VetAgent by jakegu1 | Glama",
+     "url": "https://glama.ai/mcp/servers/jakegu1/vetagent"
+    }
+   ],
+   "tools_named_instead": []
+  },
+  {
+   "id": "b02",
+   "query": "vetagent.dev",
+   "results_returned": 9,
+   "vetagent_found": true,
+   "vetagent_rank": 1,
+   "vetagent_url": "https://glama.ai/mcp/connectors/dev.vetagent/vetagent",
+   "top_results": [
+    {
+     "rank": 1,
+     "title": "vetagent - MCP Connector | Glama",
+     "url": "https://glama.ai/mcp/connectors/dev.vetagent/vetagent"
+    },
+    {
+     "rank": 2,
+     "title": "vetagent - MCP | Smithery",
+     "url": "https://smithery.ai/servers/jake-gu95/vetagent"
+    },
+    {
+     "rank": 3,
+     "title": "VetAgent MCP Server | Awesome MCP Servers",
+     "url": "https://mcpservers.org/servers/vetagent-dev"
+    },
+    {
+     "rank": 4,
+     "title": "awesome-mcp-servers PR #13873",
+     "url": "https://github.com/punkpeye/awesome-mcp-servers/pull/13873"
+    },
+    {
+     "rank": 5,
+     "title": "GitHub - jakegu1/vetagent",
+     "url": "https://github.com/jakegu1/vetagent"
+    },
+    {
+     "rank": 6,
+     "title": "AI-powered veterinary clinic SaaS - DEV Community",
+     "url": "https://dev.to/silent1903/how-we-built-an-ai-powered-veterinary-clinic-management-saas-lessons-learned-after-50-clinics-1c5k"
+    },
+    {
+     "rank": 7,
+     "title": "VetAgent by jakegu1 | Glama",
+     "url": "https://glama.ai/mcp/servers/jakegu1/vetagent"
+    },
+    {
+     "rank": 8,
+     "title": "447 Finance MCP Servers",
+     "url": "https://mcpservers.org/category/finance"
+    },
+    {
+     "rank": 9,
+     "title": "vetagent.com Developer Portal",
+     "url": "https://www.vetagent.com/"
+    }
+   ],
+   "tools_named_instead": [
+    "vetagent.com (unrelated)"
+   ]
+  },
+  {
+   "id": "b03",
+   "query": "VetAgent token risk check",
+   "results_returned": 8,
+   "vetagent_found": true,
+   "vetagent_rank": 1,
+   "vetagent_url": "https://github.com/jakegu1/vetagent",
+   "top_results": [
+    {
+     "rank": 1,
+     "title": "GitHub - jakegu1/vetagent",
+     "url": "https://github.com/jakegu1/vetagent"
+    },
+    {
+     "rank": 2,
+     "title": "vetagent - MCP | Smithery",
+     "url": "https://smithery.ai/servers/jake-gu95/vetagent"
+    },
+    {
+     "rank": 3,
+     "title": "VetAgent by jakegu1 | Glama",
+     "url": "https://glama.ai/mcp/servers/jakegu1/vetagent"
+    },
+    {
+     "rank": 4,
+     "title": "awesome-remote-mcp-servers PR #131",
+     "url": "https://github.com/punkpeye/awesome-remote-mcp-servers/pull/131"
+    },
+    {
+     "rank": 5,
+     "title": "assess_token_risk - VetAgent | Glama",
+     "url": "https://glama.ai/mcp/servers/jakegu1/vetagent/tools/assess_token_risk"
+    },
+    {
+     "rank": 6,
+     "title": "awesome-mcp-servers PR #13873",
+     "url": "https://github.com/punkpeye/awesome-mcp-servers/pull/13873"
+    },
+    {
+     "rank": 7,
+     "title": "vetagent - MCP Connector | Glama",
+     "url": "https://glama.ai/mcp/connectors/dev.vetagent/vetagent"
+    },
+    {
+     "rank": 8,
+     "title": "VetAgent MCP Server | Awesome MCP Servers",
+     "url": "https://mcpservers.org/servers/vetagent-dev"
+    }
+   ],
+   "tools_named_instead": []
+  },
+  {
+   "id": "g01",
+   "query": "how to check if a token is a honeypot before an AI agent buys it",
+   "results_returned": 8,
+   "vetagent_found": false,
+   "vetagent_rank": null,
+   "vetagent_url": null,
+   "top_results": [
+    {
+     "rank": 1,
+     "title": "VIDEO: How to Check If a Token Is a Honeypot Scam",
+     "url": "https://www.techloy.com/video-how-to-check-if-a-token-is-a-honeypot-scam/"
+    },
+    {
+     "rank": 2,
+     "title": "How to spot a honeypot token before you buy - DEV Community",
+     "url": "https://dev.to/mrvlyouknowwho/how-to-spot-a-honeypot-token-before-you-buy-and-automate-the-whole-checklist-3n6b"
+    },
+    {
+     "rank": 3,
+     "title": "Honeypot Token Checker Tool - RugDoc",
+     "url": "https://rugdoc.io/honeypot/"
+    },
+    {
+     "rank": 4,
+     "title": "How to Check If a Token Is a Honeypot with DEXTools",
+     "url": "https://www.dextools.io/tutorials/how-to-check-if-token-is-honeypot-with-dextools-2026"
+    },
+    {
+     "rank": 5,
+     "title": "Honeypot Checker Guide | OpenLiquid",
+     "url": "https://openliquid.io/blog/honeypot-checker-guide/"
+    },
+    {
+     "rank": 6,
+     "title": "How to Detect Honeypot Tokens - Bitrue",
+     "url": "https://www.bitrue.com/blog/how-to-detect-honeypot-tokens-and-avoid-crypto-scams"
+    },
+    {
+     "rank": 7,
+     "title": "How to Identify Honeypot Token - Bitrue",
+     "url": "https://www.bitrue.com/blog/how-to-identify-honeypot-token"
+    },
+    {
+     "rank": 8,
+     "title": "check token (aegis) | Glama",
+     "url": "https://glama.ai/mcp/servers/StanleytheGoat/aegis/tools/check_token"
+    }
+   ],
+   "tools_named_instead": [
+    "honeypot.is",
+    "RugDoc",
+    "DEXTools",
+    "Token Sniffer",
+    "RugLens_bot",
+    "RugCheck",
+    "aegis (Glama)"
+   ]
+  },
+  {
+   "id": "g02",
+   "query": "MCP server for crypto token risk",
+   "results_returned": 9,
+   "vetagent_found": false,
+   "vetagent_rank": null,
+   "vetagent_url": null,
+   "top_results": [
+    {
+     "rank": 1,
+     "title": "token-risk-check by micole66 | Glama",
+     "url": "https://glama.ai/mcp/servers/micole66/memecoin-signal-mcp"
+    },
+    {
+     "rank": 2,
+     "title": "token-risk - MCP Connector | Glama",
+     "url": "https://glama.ai/mcp/connectors/io.nip.5-9-107-124/token-risk"
+    },
+    {
+     "rank": 3,
+     "title": "badkk/awesome-crypto-mcp-servers",
+     "url": "https://github.com/badkk/awesome-crypto-mcp-servers"
+    },
+    {
+     "rank": 4,
+     "title": "TensorBlock awesome-mcp-servers finance--crypto.md",
+     "url": "https://github.com/TensorBlock/awesome-mcp-servers/blob/main/docs/finance--crypto.md"
+    },
+    {
+     "rank": 5,
+     "title": "Token Security MCP Server Discovery",
+     "url": "https://www.token.security/blog/token-security-mcp-server-discovery-capability-uncovers-hidden-ai-servers-and-secrets"
+    },
+    {
+     "rank": 6,
+     "title": "MCP Security - Obot",
+     "url": "https://obot.ai/resources/learning-center/mcp-security/"
+    },
+    {
+     "rank": 7,
+     "title": "Top 5 MCP Crypto Projects - BingX",
+     "url": "https://bingx.com/en/learn/article/understanding-model-context-protocol-mcp-top-5-mcp-crypto-projects-to-watch"
+    },
+    {
+     "rank": 8,
+     "title": "MCP Server Security - arnav.au",
+     "url": "https://arnav.au/2026/05/14/mcp-server-security/"
+    },
+    {
+     "rank": 9,
+     "title": "Crypto MCP Server Evaluation Guide | Hive Intelligence",
+     "url": "https://www.hiveintelligence.xyz/best-crypto-mcp-servers"
+    }
+   ],
+   "tools_named_instead": [
+    "token-risk-check (micole66)",
+    "token-risk connector",
+    "Sharpe MCP",
+    "crest Counterparty Intelligence",
+    "DexPaprika",
+    "Hive Intelligence"
+   ]
+  },
+  {
+   "id": "g03",
+   "query": "token safety check API for trading bots",
+   "results_returned": 8,
+   "vetagent_found": false,
+   "vetagent_rank": null,
+   "vetagent_url": null,
+   "top_results": [
+    {
+     "rank": 1,
+     "title": "Token Safety Check (Base) API - Apify",
+     "url": "https://apify.com/cyberwarex/token-safety-check-base"
+    },
+    {
+     "rank": 2,
+     "title": "Honeypot Checker & Rug Pull Detector - Apify",
+     "url": "https://apify.com/aspiring_barricade/crypto-token-safety-scanner/api"
+    },
+    {
+     "rank": 3,
+     "title": "Crypto Token Security Check API in Python - Apify",
+     "url": "https://apify.com/scrapemint/crypto-token-security-check/api/python"
+    },
+    {
+     "rank": 4,
+     "title": "Crypto Token Rug Check - Apify",
+     "url": "https://apify.com/agent_services/crypto-rug-check/api/javascript"
+    },
+    {
+     "rank": 5,
+     "title": "AI Crypto Trading Bot Safety Checklist",
+     "url": "https://arti-trends.com/ai-investment/ai-crypto-trading-bot-safety-checklist/"
+    },
+    {
+     "rank": 6,
+     "title": "How to Check Token Safety Before Trading - Onchain Diary",
+     "url": "https://paragraph.com/@onchaindiary/check-token-safety-api-guide"
+    },
+    {
+     "rank": 7,
+     "title": "API Trading Safety - BloFin",
+     "url": "https://blofin.com/en/academy/education/trading/api-trading-safety"
+    },
+    {
+     "rank": 8,
+     "title": "check token (aegis) | Glama",
+     "url": "https://glama.ai/mcp/servers/StanleytheGoat/aegis/tools/check_token"
+    }
+   ],
+   "tools_named_instead": [
+    "Apify token safety actors (CyberWareX etc.)",
+    "Onchain Diary Token Risk API",
+    "aegis (Glama)"
+   ]
+  },
+  {
+   "id": "g04",
+   "query": "free rug pull detection API",
+   "results_returned": 8,
+   "vetagent_found": false,
+   "vetagent_rank": null,
+   "vetagent_url": null,
+   "top_results": [
+    {
+     "rank": 1,
+     "title": "QuickScan - SolidityScan",
+     "url": "https://solidityscan.com/quickscan"
+    },
+    {
+     "rank": 2,
+     "title": "Rug Pull Check - GetBlock.io",
+     "url": "https://getblock.io/rug-pull-check/"
+    },
+    {
+     "rank": 3,
+     "title": "Rug Pull Detector - ChainAware Docs",
+     "url": "https://chainaware.ai/learn/for-individuals/rug-pull-detector.html"
+    },
+    {
+     "rank": 4,
+     "title": "Rug Pull Detector V3",
+     "url": "https://chainaware.ai/rug-pull-detector"
+    },
+    {
+     "rank": 5,
+     "title": "How to use Predictive Rug Pull Detector | ChainAware",
+     "url": "https://learn.chainaware.ai/ai-fraud-detection-for-users/how-to-use-predictive-rug-pull-detector"
+    },
+    {
+     "rank": 6,
+     "title": "Best Web3 Rug Pull Detection Tools 2026 - ChainAware",
+     "url": "https://chainaware.ai/blog/best-web3-rug-pull-detection-tools-2026/"
+    },
+    {
+     "rank": 7,
+     "title": "QuillCheck",
+     "url": "https://quillcheckv3-frontend.vercel.app/"
+    },
+    {
+     "rank": 8,
+     "title": "Crypto Rug Pull Checker - shattered.io",
+     "url": "https://shattered.io/crypto-rug-pull-checker-2026/"
+    }
+   ],
+   "tools_named_instead": [
+    "SolidityScan",
+    "GetBlock",
+    "ChainAware",
+    "GoPlus",
+    "QuillCheck"
+   ]
+  },
+  {
+   "id": "g05",
+   "query": "honeypot checker API for AI agents",
+   "results_returned": 8,
+   "vetagent_found": false,
+   "vetagent_rank": null,
+   "vetagent_url": null,
+   "top_results": [
+    {
+     "rank": 1,
+     "title": "samitkoya/Agentic-Honey-Pot",
+     "url": "https://github.com/samitkoya/Agentic-Honey-Pot"
+    },
+    {
+     "rank": 2,
+     "title": "Honeypot Detector MCP by catwhisperingninja | Glama",
+     "url": "https://glama.ai/mcp/servers/catwhisperingninja/honeypot-detector-mcp"
+    },
+    {
+     "rank": 3,
+     "title": "honeypot-detector GitHub Topics",
+     "url": "https://github.com/topics/honeypot-detector"
+    },
+    {
+     "rank": 4,
+     "title": "Apurva654/agentic-honeypot-buildathon",
+     "url": "https://github.com/Apurva654/agentic-honeypot-buildathon"
+    },
+    {
+     "rank": 5,
+     "title": "BrightGir/AI-Honeypot",
+     "url": "https://github.com/BrightGir/AI-Honeypot"
+    },
+    {
+     "rank": 6,
+     "title": "LucasFaudman/honeypot-ai",
+     "url": "https://github.com/LucasFaudman/honeypot-ai"
+    },
+    {
+     "rank": 7,
+     "title": "LLM Agent Honeypot - Palisade",
+     "url": "https://ai-honeypot.palisaderesearch.org/"
+    },
+    {
+     "rank": 8,
+     "title": "arxiv 2410.13919",
+     "url": "https://www.arxiv.org/pdf/2410.13919"
+    }
+   ],
+   "tools_named_instead": [
+    "honeypot-detector-mcp (catwhisperingninja)",
+    "honeypot.is",
+    "isRug"
+   ]
+  },
+  {
+   "id": "g06",
+   "query": "pre-trade token risk check for AI agents",
+   "results_returned": 10,
+   "vetagent_found": true,
+   "vetagent_rank": 3,
+   "vetagent_url": "https://glama.ai/mcp/connectors/dev.vetagent/vetagent",
+   "tools_named_instead": [
+    "AgentRisk (Neurobyteio)",
+    "PreApe",
+    "x402 Bazaar (OpenSea)"
+   ],
+   "top_results": [
+    {
+     "rank": 1,
+     "title": "Opensea",
+     "url": "https://opensea.io/tools/x402-bazaar/base/7238609474271384773"
+    },
+    {
+     "rank": 2,
+     "title": "AgentRisk MCP by Neurobyteio | Glama",
+     "url": "https://glama.ai/mcp/servers/Neurobyteio/agentrisk-mcp"
+    },
+    {
+     "rank": 3,
+     "title": "vetagent - MCP Connector | Glama",
+     "url": "https://glama.ai/mcp/connectors/dev.vetagent/vetagent"
+    },
+    {
+     "rank": 4,
+     "title": "agentrisk - MCP Connector | Glama",
+     "url": "https://glama.ai/mcp/connectors/io.github.Neurobyteio/agentrisk"
+    },
+    {
+     "rank": 5,
+     "title": "assess_token_risk - VetAgent | Glama",
+     "url": "https://glama.ai/mcp/servers/jakegu1/vetagent/tools/assess_token_risk"
+    },
+    {
+     "rank": 6,
+     "title": "preape_check - PreApe | Glama",
+     "url": "https://glama.ai/mcp/connectors/ai.preape/preape/tools/preape_check"
+    },
+    {
+     "rank": 7,
+     "title": "agentriskm2m \u00b7 PyPI",
+     "url": "https://pypi.org/project/agentriskm2m/"
+    },
+    {
+     "rank": 8,
+     "title": "GitHub - Neurobyteio/agentrisk",
+     "url": "https://github.com/Neurobyteio/agentrisk"
+    },
+    {
+     "rank": 9,
+     "title": "Agentic Trading: When LLM Agents Meet Financial Markets",
+     "url": "https://arxiv.org/pdf/2605.19337"
+    },
+    {
+     "rank": 10,
+     "title": "Systems and/or methods for automatic ordering of pre-trade order evaluations",
+     "url": "https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/10147137"
+    }
+   ]
+  },
+  {
+   "id": "g07",
+   "query": "detect scam tokens in an autonomous trading agent",
+   "results_returned": 7,
+   "vetagent_found": false,
+   "vetagent_rank": null,
+   "vetagent_url": null,
+   "error": "Search returned only 7 results, not 10.",
+   "tools_named_instead": [
+    "SolGuard / rugcheck-ai (Glama)",
+    "Solidus Labs",
+    "TRM Labs"
+   ],
+   "top_results": [
+    {
+     "rank": 1,
+     "title": "A Hybrid Multi-Agent System for Early Scam Detection in Crypto-Assets",
+     "url": "https://doi.org/10.3390/app16073122"
+    },
+    {
+     "rank": 2,
+     "title": "SolGuard by MrWizardlyLoaf | Glama",
+     "url": "https://glama.ai/mcp/servers/MrWizardlyLoaf/rugcheck-ai"
+    },
+    {
+     "rank": 3,
+     "title": "Trade or Trick? Detecting and Characterizing Scam Tokens on Uniswap",
+     "url": "https://arxiv.org/pdf/2109.00229"
+    },
+    {
+     "rank": 4,
+     "title": "Autonomous Crypto Trading with AI Agents | Dysnix",
+     "url": "https://dysnix.com/blog/ai-agents-for-crypto-trading"
+    },
+    {
+     "rank": 5,
+     "title": "AI Crypto Agents in Crypto Trading",
+     "url": "https://ulam.io/blog/ai-crypto-agents-in-crypto-trading-key-use-cases-trends/"
+    },
+    {
+     "rank": 6,
+     "title": "Token Scams Screening | Solidus Labs",
+     "url": "https://www.soliduslabs.com/podcast/token-scams-screening"
+    },
+    {
+     "rank": 7,
+     "title": "Autonomous AI Agents and Financial Crime | TRM Labs",
+     "url": "https://www.trmlabs.com/resources/blog/autonomous-ai-agents-and-financial-crime-risk-responsibility-and-accountability"
+    }
+   ]
+  },
+  {
+   "id": "g08",
+   "query": "crypto token security MCP tool",
+   "results_returned": 9,
+   "vetagent_found": false,
+   "vetagent_rank": null,
+   "vetagent_url": null,
+   "error": "Search returned only 9 results, not 10.",
+   "tools_named_instead": [
+    "onchain-safety-mcp (aitools420)",
+    "Token Safety Check (Base) on Apify",
+    "Hive Intelligence MCP",
+    "CoinGecko MCP",
+    "Token Security"
+   ],
+   "top_results": [
+    {
+     "rank": 1,
+     "title": "onchain-safety-mcp by aitools420 | Glama",
+     "url": "https://glama.ai/mcp/servers/aitools420/onchain-safety-mcp"
+    },
+    {
+     "rank": 2,
+     "title": "badkk/awesome-crypto-mcp-servers",
+     "url": "https://github.com/badkk/awesome-crypto-mcp-servers"
+    },
+    {
+     "rank": 3,
+     "title": "Token Safety Check (Base) API MCP server \u00b7 Apify",
+     "url": "https://apify.com/cyberwarex/token-safety-check-base/api/mcp"
+    },
+    {
+     "rank": 4,
+     "title": "CoinAPI.io Glossary - MCP Crypto",
+     "url": "https://www.coinapi.io/learn/glossary/mcp-crypto"
+    },
+    {
+     "rank": 5,
+     "title": "MCP Server and AI Agent | Token Security",
+     "url": "https://www.token.security/product/mcp-server-and-ai-agent"
+    },
+    {
+     "rank": 6,
+     "title": "CoinGecko MCP | ethereum.org",
+     "url": "https://ethereum.org/developers/tools/coingecko-mcp/"
+    },
+    {
+     "rank": 7,
+     "title": "Hive Intelligence MCP - MCP Connector | Glama",
+     "url": "https://glama.ai/mcp/connectors/xyz.hiveintelligence/mcp"
+    },
+    {
+     "rank": 8,
+     "title": "TensorBlock awesome-mcp-servers finance--crypto.md",
+     "url": "https://github.com/TensorBlock/awesome-mcp-servers/blob/main/docs/finance--crypto.md"
+    },
+    {
+     "rank": 9,
+     "title": "MCP Servers for cryptocurrency | MCP Server Finder",
+     "url": "https://www.mcpserverfinder.com/categories/cryptocurrency"
+    }
+   ]
+  },
+  {
+   "id": "g09",
+   "query": "free honeypot detection API ethereum base bsc",
+   "results_returned": 10,
+   "vetagent_found": false,
+   "vetagent_rank": null,
+   "vetagent_url": null,
+   "tools_named_instead": [
+    "honeypot.is",
+    "OnChainRisk",
+    "De.Fi Scanner",
+    "detecthoneypot.live",
+    "honeypot-detector-mcp (kukapay)"
+   ],
+   "top_results": [
+    {
+     "rank": 1,
+     "title": "honeypot-detector GitHub Topics",
+     "url": "https://github.com/topics/honeypot-detector"
+    },
+    {
+     "rank": 2,
+     "title": "Honeypot Detector for BSC/Ethereum",
+     "url": "https://honeypot.is/"
+    },
+    {
+     "rank": 3,
+     "title": "Honeypot Detector for Base",
+     "url": "https://honeypot.is/base"
+    },
+    {
+     "rank": 4,
+     "title": "Honeypot Detector for Ethereum",
+     "url": "https://honeypot.is/ethereum"
+    },
+    {
+     "rank": 5,
+     "title": "rcamino/honeypot-detection",
+     "url": "https://github.com/rcamino/honeypot-detection"
+    },
+    {
+     "rank": 6,
+     "title": "Honeypot Checker (BSC, ETH) | OnChainRisk",
+     "url": "https://onchainrisk.io/honeypot-checker/"
+    },
+    {
+     "rank": 7,
+     "title": "Honeypot Checker Tools | De.Fi",
+     "url": "https://de.fi/blog/honeypot-checker-keep-crypto-safe"
+    },
+    {
+     "rank": 8,
+     "title": "Normalizex/honeypot-is",
+     "url": "https://github.com/Normalizex/honeypot-is"
+    },
+    {
+     "rank": 9,
+     "title": "Honeypot Detection API",
+     "url": "https://detecthoneypot.live/"
+    },
+    {
+     "rank": 10,
+     "title": "check honeypot (kukapay)",
+     "url": "https://glama.ai/mcp/servers/kukapay/honeypot-detector-mcp/tools/check_honeypot"
+    }
+   ]
+  },
+  {
+   "id": "g10",
+   "query": "check token liquidity before buying programmatically",
+   "results_returned": 8,
+   "vetagent_found": false,
+   "vetagent_rank": null,
+   "vetagent_url": null,
+   "error": "Search returned only 8 results, not 10.",
+   "tools_named_instead": [
+    "DEXTools",
+    "Matcha",
+    "aegis check_token (Glama)",
+    "Token Sniffer",
+    "GoPlus Security"
+   ],
+   "top_results": [
+    {
+     "rank": 1,
+     "title": "How to Check Liquidity Lock Before Buying a Token",
+     "url": "https://www.dextools.io/tutorials/how-to-check-liquidity-lock"
+    },
+    {
+     "rank": 2,
+     "title": "Low liquidity? Check the score before you trade - Matcha",
+     "url": "https://blog.matcha.xyz/article/low-liquidity-check-before-you-trade"
+    },
+    {
+     "rank": 3,
+     "title": "How to See the Liquidity Pool of a Coin | Bitbond",
+     "url": "https://www.bitbond.com/resources/how-to-see-the-liquidity-pool-of-a-coin"
+    },
+    {
+     "rank": 4,
+     "title": "How To Check Liquidity Of A Crypto",
+     "url": "https://bitkan.com/learn/how-to-check-liquidity-of-a-crypto-3-ways-to-checks-it-8987"
+    },
+    {
+     "rank": 5,
+     "title": "How to Audit a Token Smart Contract Before Buying",
+     "url": "https://laikalabs.ai/market-intelligence/check-smart-contract-before-buying"
+    },
+    {
+     "rank": 6,
+     "title": "How to Check Liquidity Pool of a Crypto Coin?",
+     "url": "https://bitkan.com/learn/how-to-check-liquidity-pool-of-a-crypto-coin-33720"
+    },
+    {
+     "rank": 7,
+     "title": "check token (aegis)",
+     "url": "https://glama.ai/mcp/servers/StanleytheGoat/aegis/tools/check_token"
+    },
+    {
+     "rank": 8,
+     "title": "How to buy a token programmatically",
+     "url": "https://dev.to/rahuldev17/how-to-buy-a-token-programmatically-3plb"
+    }
+   ]
+  },
+  {
+   "id": "g11",
+   "query": "solana rug check API for AI agent",
+   "results_returned": 9,
+   "vetagent_found": false,
+   "vetagent_rank": null,
+   "vetagent_url": null,
+   "top_results": [
+    {
+     "rank": 1,
+     "title": "kukapay/rug-check-mcp",
+     "url": "https://github.com/kukapay/rug-check-mcp"
+    },
+    {
+     "rank": 2,
+     "title": "token-rugcheck by AetherCore-Dev | Glama",
+     "url": "https://glama.ai/mcp/servers/AetherCore-Dev/token-rugcheck"
+    },
+    {
+     "rank": 3,
+     "title": "I Built an AI Agent That Checks If a Solana Token Is a Rug Pull",
+     "url": "https://dev.to/0xallendev/i-built-an-ai-agent-that-checks-if-a-solana-token-is-a-rug-pull-before-you-buy-2g3f"
+    },
+    {
+     "rank": 4,
+     "title": "Rugcheck API Integrated - solana-agent-kit PR #90",
+     "url": "https://github.com/sendaifun/solana-agent-kit/pull/90"
+    },
+    {
+     "rank": 5,
+     "title": "Solana Token Safety Checker - Apify",
+     "url": "https://apify.com/sanjeep/solana-token-safety-checker/api/openapi"
+    },
+    {
+     "rank": 6,
+     "title": "Rugcheck API Guide | Qodex.ai",
+     "url": "https://qodex.ai/blog/how-to-get-a-rugcheck-api-key-and-start-using-the-api"
+    },
+    {
+     "rank": 7,
+     "title": "Your AI Agent Is One Rug Pull Away from Losing Everything",
+     "url": "https://dev.to/amarodeabreu/your-ai-agent-is-one-rug-pull-away-from-losing-everything-heres-the-fix-3274"
+    },
+    {
+     "rank": 8,
+     "title": "RugCheck - AI Skill - Termo",
+     "url": "https://termo.ai/skills/rugcheck"
+    },
+    {
+     "rank": 9,
+     "title": "rug check mcp | Glama",
+     "url": "https://glama.ai/mcp/servers/kukapay/rug-check-mcp"
+    }
+   ],
+   "tools_named_instead": [
+    "kukapay rug-check-mcp",
+    "AetherCore token-rugcheck",
+    "RugCheck (rugcheck.xyz)",
+    "solana-agent-kit",
+    "Apify Solana Token Safety Checker",
+    "Rug Munch Intelligence"
+   ]
+  },
+  {
+   "id": "g12",
+   "query": "token risk API published false positive rate",
+   "results_returned": 9,
+   "vetagent_found": false,
+   "vetagent_rank": null,
+   "vetagent_url": null,
+   "top_results": [
+    {
+     "rank": 1,
+     "title": "IBM/mcp-context-forge issue #6827",
+     "url": "https://github.com/IBM/mcp-context-forge/issues/6827"
+    },
+    {
+     "rank": 2,
+     "title": "Why do leaked API tokens create such high cost risk",
+     "url": "https://nhimg.org/faq/why-do-leaked-api-tokens-create-such-high-cost-risk-in-ai-application-platforms/"
+    },
+    {
+     "rank": 3,
+     "title": "Zero-Trust API Security - DEV Community",
+     "url": "https://dev.to/mtahir27/zero-trust-api-security-oauth-21-distributed-rate-limiting-and-automated-threat-mitigation-28lf"
+    },
+    {
+     "rank": 4,
+     "title": "Imperva report - Security Boulevard",
+     "url": "https://securityboulevard.com/2026/08/imperva-api-security-token-authentication-risk-report-nearly-40-of-apis-face-multiple-authentication-risks/"
+    },
+    {
+     "rank": 5,
+     "title": "API security false positives - nhimg",
+     "url": "https://nhimg.org/faq/what-should-security-teams-do-when-api-security-keeps-producing-false-positives/"
+    },
+    {
+     "rank": 6,
+     "title": "Imperva API Security Token & Authentication Risk Report",
+     "url": "https://www.imperva.com/blog/imperva-api-security-token-authentication-risk-report-nearly-40-of-apis-face-multiple-authentication-risks/"
+    },
+    {
+     "rank": 7,
+     "title": "False positive rate - Wikipedia",
+     "url": "https://en.wikipedia.org/wiki/False_positive_rate"
+    },
+    {
+     "rank": 8,
+     "title": "Your API is being enumerated... - DEV Community",
+     "url": "https://dev.to/darkedges/your-api-is-being-enumerated-by-a-client-with-a-perfectly-valid-token-fk1"
+    },
+    {
+     "rank": 9,
+     "title": "Best Token Security APIs in 2026 - CoinStats",
+     "url": "https://coinstats.app/blog/best-token-security-apis-in-2026-smart-contract-risk-detection-compared/"
+    }
+   ],
+   "tools_named_instead": [
+    "Glider",
+    "CoinStats Token Risks"
+   ]
+  }
+ ],
+ "tool_notes": [
+  "WebSearch tool (backing engine not disclosed, US-only). One verbatim search per query. Every query returned fewer than 10 results: 8, 9, 8, 8 and 8. VetAgent was not found in any of the 5 (0/5). Only the web-search link lists were checked against the 'found' rule. The tool's own summaries did not mention VetAgent either. Glama listings for other MCP servers do appear, for example aegis on g01 and g03.",
+  "WebSearch tool (US-only, backing engine not disclosed). Each query run once, verbatim. The tool returned fewer than 10 results every time (9, 9, 8, 9, 8). vetagent.dev itself never showed up in any result list. It is found on the branded queries only through GitHub and directory pages. b02 also returned unrelated vetagent.com and a veterinary SaaS page. On g11, Glama pages are present but for other servers, so they do not count. The tool's generated summary for b03 quoted '4.3% false positive rate on 162 healthy tokens'. That comes from the summary text, not from anything I checked.",
+  "One WebSearch call per query, verbatim, no retries. The WebSearch tool (US-only; backing engine not disclosed) returned fewer than 10 results for g07 (7), g08 (9), g10 (8). Ranks are the order of the returned link list. g06 had two VetAgent Glama pages: rank 3 (connector dev.vetagent) and rank 5 (jakegu1/vetagent assess_token_risk tool page). No vetagent.dev or github.com/jakegu1/vetagent URLs appeared in any of the five."
+ ]
+}

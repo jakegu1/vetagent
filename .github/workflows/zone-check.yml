@@ -39,6 +39,42 @@ jobs:
             echo "=== $path"
             api "/zones/${zone}/${path}" | python3 -c "import json,sys; d=json.load(sys.stdin); print(json.dumps({'success': d.get('success'), 'errors': d.get('errors'), 'result': d.get('result')}, indent=1))"
           done
+          echo "=== what crawlers actually got, last 7 days (request logs, not settings)"
+          since=$(date -u -d '-6 days' +%Y-%m-%dT%H:%M:%SZ)
+          until=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          python3 - "$zone" "$since" "$until" <<'PY' > /tmp/gql.json
+          import json, sys
+          zone, since, until = sys.argv[1:4]
+          q = """query($zone: String!, $since: Time!, $until: Time!) { viewer { zones(filter: {zoneTag: $zone}) {
+            httpRequestsAdaptiveGroups(limit: 200, filter: {datetime_geq: $since, datetime_lt: $until,
+              userAgent_like: "%bot%"}, orderBy: [count_DESC]) {
+              count dimensions { userAgent edgeResponseStatus clientRequestPath } } } } }"""
+          print(json.dumps({"query": q, "variables": {"zone": zone, "since": since, "until": until}}))
+          PY
+          curl -sS -m 30 -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H "content-type: application/json" \
+            --data @/tmp/gql.json https://api.cloudflare.com/client/v4/graphql | python3 -c "
+          import json, re, sys
+          d = json.load(sys.stdin)
+          print('errors=%s' % d.get('errors'))
+          zones = ((d.get('data') or {}).get('viewer') or {}).get('zones') or []
+          rows = (zones[0].get('httpRequestsAdaptiveGroups') if zones else None) or []
+          agg = {}
+          for r in rows:
+              ua = r['dimensions']['userAgent']
+              m = re.search(r'(GPTBot|OAI-SearchBot|ChatGPT-User|ClaudeBot|Claude-User|Claude-SearchBot|PerplexityBot|Perplexity-User|Googlebot|bingbot|Bytespider|Amazonbot|Applebot|meta-externalagent|CCBot|DuckDuckBot|YandexBot)', ua)
+              name = m.group(1) if m else 'other-bot'
+              key = (name, r['dimensions']['edgeResponseStatus'])
+              agg[key] = agg.get(key, 0) + r['count']
+          for (name, status), n in sorted(agg.items(), key=lambda kv: -kv[1]):
+              print('%-20s status %s  requests %d' % (name, status, n))
+          paths = {}
+          for r in rows:
+              if re.search(r'GPTBot|ClaudeBot|PerplexityBot|OAI-SearchBot|Googlebot|bingbot', r['dimensions']['userAgent']):
+                  p = r['dimensions']['clientRequestPath']
+                  paths[p] = paths.get(p, 0) + r['count']
+          print('paths fetched by the named crawlers:', sorted(paths.items(), key=lambda kv: -kv[1])[:15])
+          "
+
           echo "=== WAF custom rules that mention bots or user agents"
           api "/zones/${zone}/rulesets/phases/http_request_firewall_custom/entrypoint" | python3 -c "
           import json, sys
