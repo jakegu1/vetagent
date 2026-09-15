@@ -1,0 +1,42 @@
+{
+  "measured": "2026-09-15",
+  "rule": "bench/geo/queries.json, registered before this reading",
+  "surfaces": {
+    "web_search": {
+      "status": "measured",
+      "detail_file": "bench/geo/baseline-2026-09-15-web.json",
+      "instrument": "the measuring session's WebSearch tool (US-only; backing engine not disclosed), one verbatim search per query, 7-10 results returned per query",
+      "non_branded_found": 1,
+      "non_branded_total": 12,
+      "branded_found": 3,
+      "branded_total": 3,
+      "found_via": {
+        "g06": "glama.ai/mcp/connectors/dev.vetagent/vetagent at rank 3, and the Glama tool page at rank 5",
+        "b01": "smithery.ai listing at rank 1",
+        "b02": "glama.ai connector at rank 1",
+        "b03": "github.com/jakegu1/vetagent at rank 1"
+      },
+      "vetagent_dev_in_any_result_list": false,
+      "site_query": "site:vetagent.dev returned no results; a search restricted to the vetagent.dev domain returned no results either",
+      "reading": "The branded controls pass, so the name is known -- but only through directories and GitHub. The product's own site is not in this engine's index at all, so every non-branded query can only ever find VetAgent through a third party's page."
+    },
+    "ai_answers": {
+      "status": "not measurable",
+      "perplexity": "answered 'Sign up and repeat your request' without an account (2026-09-15, in-app browser, no login)",
+      "chatgpt": "showed 'Sign in to continue' without an account (2026-09-15, in-app browser, no login)",
+      "reading": "Recorded as not measurable, never as not found. Creating accounts is the owner's to do."
+    },
+    "crawler_access": {
+      "status": "not measurable with the repository's token",
+      "spoofed_user_agents": "GPTBot, ClaudeBot, PerplexityBot, OAI-SearchBot and Googlebot user agents from this machine all received HTTP 200 for / and /llms.txt -- which does not prove the verified crawlers are served, because Cloudflare's AI-bot setting acts on crawler IPs",
+      "zone_settings_read": "security_level medium, browser_check on; bot_management and custom WAF rules: Authentication error",
+      "request_logs": "GraphQL analytics refused: the token lacks zone analytics read",
+      "robots_txt": "Cloudflare's managed content-signals preamble only; no user-agent rules",
+      "reading": "Unknown whether AI crawlers reach the site. Two read-only token permissions would settle it: Zone Analytics Read and Bot Management Read."
+    }
+  },
+  "site_basics": {
+    "present": ["title", "meta description", "canonical", "two JSON-LD blocks", "og:title/description/type/url", "/llms.txt", "/robots.txt"],
+    "missing": ["sitemap.xml (404)", "og:image and twitter:card", "llms-full.txt (404)", "any page beyond the landing page that answers one question"]
+  }
+}
