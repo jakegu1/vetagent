@@ -1,11 +1,11 @@
 {
- "window_start": "2026-09-07T10:17:07Z",
- "window_end": "2026-09-14T10:17:07Z",
+ "window_start": "2026-09-08T12:07:16Z",
+ "window_end": "2026-09-15T12:07:16Z",
  "counts": {
-  "low": 164,
-  "medium": 69,
-  "high": 40,
-  "unknown": 187
+  "low": 177,
+  "medium": 70,
+  "high": 39,
+  "unknown": 189
  },
  "excluded_clients": [
   "vetagent-ci-smoke"

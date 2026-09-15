@@ -168,6 +168,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W34: say what honeypot.is's flag is made of, instead of calling it a simulator false positive
 - W33: an empty WETH pool answered "nothing to sell into" for a $115,299 pool beside it
 - W32: the fallback credited a pool quoted in a self-minted coin, and the token came back low
 - Fallback token ids split at the wrong underscore: every Polygon pool's sides were unnamed
@@ -175,9 +176,8 @@ problem looked like before it was fixed.
 - W30: the front page said USDT and WBTC were flagged high; both are low
 - R23: the 2026-09-15 numbers audit, checked before it was believed -- a queue, not a verdict change
 - GEO baseline: crawler access is measured, and crawlers are served
-- Reference pages, a share card and llms-full.txt: give search engines something to cite
 
-_94 more not shown (102 commits in total)._
+_95 more not shown (103 commits in total)._
 
 ## What I got wrong
 
