@@ -183,8 +183,8 @@ HTTP), and I published the benchmark instead of a marketing number.
 - 24.0% of the tokens GoPlus tags as centralised are rated high. Almost all of those
   are abandoned pools holding cents -- 17 of the 24 with a liquidity figure are under a
   dollar, median $0.023 -- and the drivers are liquidity, drained and honeypot checks,
-  never owner powers, which `_owner_power_signal` is forbidden from scoring. USDT itself
-  is rated low on Base and BSC and medium on Ethereum; WBTC is medium
+  never owner powers, which `_owner_power_signal` is forbidden from scoring. USDT and WBTC themselves
+  are rated low (4 of 4 benchmark rows)
 - only 10% of tokens that actually died are rated high, and the 86.7% "not rated low"
   beside it falls to 20.0% once the liquidity signals are stripped — that row was
   largely detecting an empty pool rather than a bad contract

@@ -78,8 +78,8 @@ TARGETS = [
     ("docs/EXPERIMENT_C.md", r"the\s+tax\s+figure\s+reads\s+([\d.]+)%", "power_tax_pct"),
     ("docs/EXPERIMENT_C.md", r"that\s+([\d.]+)%\s+is\s+memory", "power_tax_pct"),
     ("src/landing.html", r"Measured on (\d+) tokens:", "n"),
-    ("src/landing.html", r"were flagged high\. (\d+) of \d+ confirmed-dead", "dead_not_low_n"),
-    ("src/landing.html", r"were flagged high\. \d+ of (\d+) confirmed-dead", "dead_n"),
+    ("src/landing.html", r"benchmark rows\)\. (\d+) of \d+ confirmed-dead", "dead_not_low_n"),
+    ("src/landing.html", r"benchmark rows\)\. \d+ of (\d+) confirmed-dead", "dead_n"),
     ("src/landing.html", r"tokens: ([\d.]+)% of healthy tokens were flagged high", "fp_pct"),
     ("src/landing.html", r"\(false positives\), ([\d.]+)% of answers were unknown", "unknown_pct"),
     ("src/landing.html", r"[Mm]easured over (\d+) tokens,", "n"),
@@ -96,11 +96,25 @@ TARGETS = [
     ("README.md", r"\*\*([\d.]+)%\*\* of GoPlus-tagged centralised tokens rated high",
      "centralized_high_pct"),
     ("src/landing.html",
-     r"<td>GoPlus-tagged centralised tokens rated high</td><td class=\"num low\">([\d.]+)%",
+     r"<td>Oracle-tagged centralised tokens rated high</td><td class=\"num low\">([\d.]+)%",
      "centralized_high_pct"),
     ("src/landing.html", r"<td>Dead tokens not rated low</td><td class=\"num low\">([\d.]+)%",
      "dead_not_low_pct"),
-    ("src/landing.html", r"([\d.]+)% of legitimate centralised assets", "centralized_high_pct"),
+    ("src/landing.html", r"([\d.]+)% of oracle-tagged centralised tokens were flagged", "centralized_high_pct"),
+    ("src/landing.html", r"USDT and WBTC themselves are rated low \((\d+) of \d+ benchmark rows",
+     "named_centralised_low_n"),
+    ("src/landing.html", r"USDT and WBTC themselves are rated low \(\d+ of (\d+) benchmark rows",
+     "named_centralised_n"),
+    ("src/landing.html", r"are rated <em>high</em>;\s+(\d+) land at <em>medium</em>", "dead_medium_n"),
+    ("src/landing.html", r"miss: (\d+) of the \d+ dead\s+tokens still hold", "dead_liquid_n"),
+    ("src/landing.html", r"miss: \d+ of the (\d+) dead\s+tokens still hold", "dead_n"),
+    ("src/entry.py", r"rated high; (\d+)\s+land at medium", "dead_medium_n"),
+    ("src/entry.py", r"miss: (\d+) of the \d+\s+dead tokens still hold", "dead_liquid_n"),
+    ("src/entry.py", r"miss: \d+ of the (\d+)\s+dead tokens still hold", "dead_n"),
+    ("docs/EXPERIMENT_C.md", r"USDT and WBTC themselves\s+are rated low \((\d+) of \d+ benchmark rows",
+     "named_centralised_low_n"),
+    ("docs/EXPERIMENT_C.md", r"USDT and WBTC themselves\s+are rated low \(\d+ of (\d+) benchmark rows",
+     "named_centralised_n"),
     ("src/landing.html", r"(\d+) of \d+ confirmed-dead tokens were not rated low",
      "dead_not_low_n"),
     ("src/entry.py", r"Centralised tokens \(oracle-tagged\) rated high \.+ ([\d.]+)%",
@@ -378,6 +392,10 @@ def _simulator_unknowns(unknown):
         for g in (r.get("gap_reasons") or []))]
 
 
+def _named_centralised(rows):
+    return [r for r in rows if (r.get("symbol") or "").upper() in ("USDT", "WBTC")]
+
+
 def figures():
     """The numbers a reader is entitled to, straight from the last benchmark run."""
     with io.open(RESULTS, encoding="utf-8") as f:
@@ -425,6 +443,11 @@ def figures():
                                        / len(dead)) if dead else "0.0"),
         "dead_not_low_n": "%d" % len([r for r in dead if r["verdict"] != "low"]),
         "dead_high_n": "%d" % len([r for r in dead if r["verdict"] == "high"]),
+        "dead_medium_n": "%d" % len([r for r in dead if r["verdict"] == "medium"]),
+        # "Half the dead cohort still holds over $5,000" was 14 of 30 and carried no percent
+        # sign, so no guard saw it. Same threshold as bench/results.md's generated sentence.
+        "dead_liquid_n": "%d" % len([r for r in dead
+                                     if (r.get("liquidity_usd") or 0) >= 5000]),
         # Everything below was quoted in the Experiment C post and computed nowhere. The
         # exercise of making them computable found one of them wrong: the post said
         # "83% of the dataset is Base" twice. The dataset is 58% Base. 83% is the
@@ -489,6 +512,13 @@ def figures():
                                      if r["verdict"] in ("medium", "high")]),
                                 len(_false_block_population(rows))),
         "centralized_high_n": "%d" % len(centralized_high),
+        # The two assets every reader checks first. The landing page's structured data said
+        # "24.0% of legitimate centralised assets such as USDT and WBTC were flagged high"
+        # while every USDT row and WBTC were `low` (2026-09-15 numbers audit): a sentence
+        # that named them and no figure that looked at them.
+        "named_centralised_n": "%d" % len(_named_centralised(rows)),
+        "named_centralised_low_n": "%d" % len([r for r in _named_centralised(rows)
+                                               if r.get("verdict") == "low"]),
         "centralized_high_priced_n": "%d" % len([r for r in centralized_high
                                                  if r.get("liquidity_usd") is not None]),
         "centralized_high_sub_dollar_n": "%d" % len([r for r in centralized_high

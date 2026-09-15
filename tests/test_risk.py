@@ -277,14 +277,21 @@ def test_benchmark_oracle_stays_out_of_the_engine():
     src_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src")
     forbidden = ("gopluslabs", "goplus")
     offenders = []
-    for fn in sorted(os.listdir(src_dir)):
-        if not fn.endswith(".py"):
-            continue
-        with open(os.path.join(src_dir, fn), encoding="utf-8") as f:
-            body = f.read().lower()
-        for token in forbidden:
-            if token in body:
-                offenders.append("%s contains %r" % (fn, token))
+    # Every text file under src/, not only the Python. The scan read `*.py` for a week while
+    # src/landing.html -- which the Worker serves as the product's front page -- named the
+    # oracle in its accuracy table (2026-09-15 numbers audit). CLAUDE.md states the rule
+    # as "src/", and the page is in src/.
+    for dirpath, dirnames, filenames in os.walk(src_dir):
+        dirnames[:] = [d for d in dirnames if d != "__pycache__"]
+        for fn in sorted(filenames):
+            if not fn.endswith((".py", ".html", ".txt", ".json", ".md", ".js", ".css")):
+                continue
+            rel = os.path.relpath(os.path.join(dirpath, fn), src_dir)
+            with open(os.path.join(dirpath, fn), encoding="utf-8") as f:
+                body = f.read().lower()
+            for token in forbidden:
+                if token in body:
+                    offenders.append("%s contains %r" % (rel, token))
     # The code check passed for three days while docs/STRATEGY.md told readers GoPlus was
     # an upstream. A guard on the implementation and none on the claim about it is exactly
     # the asymmetry this project keeps paying for: the engine was right and the document a

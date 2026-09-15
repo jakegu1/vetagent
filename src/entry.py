@@ -131,10 +131,10 @@ recovered from chain history instead -- any past day is readable from the logs
 of the contract that created the pool -- which produced a cohort of 30
 confirmed-dead tokens.
 
-The honest reading is not flattering. Only 3 of those 30 are rated high; most
-land at medium. That is close to correct rather than a miss: half the dead
-cohort still holds over $5,000 of liquidity, so those positions can still be
-sold. "Dead" means the project died, a market outcome, while this tool scores
+The honest reading is not flattering. Only 3 of those 30 are rated high; 16
+land at medium. That is close to correct rather than a miss: 14 of the 30
+dead tokens still hold $5,000 or more of liquidity, so those positions can
+still be sold. "Dead" means the project died, a market outcome, while this tool scores
 whether you can get out, a safety property.
 
 The number we would most like to publish -- recall against deliberately
