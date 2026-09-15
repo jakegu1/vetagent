@@ -226,7 +226,16 @@ TARGETS = [
     ("docs/EXPERIMENT_C.md", r"a median of \$([\d,]+) in the pool", "alive_median_liq"),
     ("docs/EXPERIMENT_C.md", r"Of the (\d+) tokens where the engine saw", "alive_deep_n"),
     ("docs/EXPERIMENT_C.md", r"depth, \*\*(\d+)\*\* (?:was|were) rated high", "alive_deep_high_n"),
-    ("docs/EXPERIMENT_C.md", r"The other (\d+) false\s+positives are among", "alive_thin_high_n"),
+    ("docs/EXPERIMENT_C.md", r"All (\d+) false\s+positives are among", "alive_thin_high_n"),
+    # Five copies of the false-positive rate that no target named. The unclaimed-percentage
+    # scan counted them as claimed because the same value was claimed elsewhere in the file,
+    # so they looked guarded for exactly as long as they were right: the first re-measurement
+    # that moved the rate (W31, 4.3 -> 3.1) left all five behind.
+    ("docs/EXPERIMENT_C.md", r"> ([\d.]+)% false positives, on a control", "fp_pct"),
+    ("docs/EXPERIMENT_C.md", r"realised market outcome it is ([\d.]+)%", "fp_pct"),
+    ("docs/EXPERIMENT_C.md", r"false-positive rate for my token-risk checker \u2014 ([\d.]+)%", "fp_pct"),
+    ("docs/EXPERIMENT_C.md", r"- ([\d.]+)% false positives on healthy tokens", "fp_pct"),
+    ("docs/EXPERIMENT_C.md", r"publishes its own false-positive rate \(([\d.]+)%\)", "fp_pct"),
     ("docs/EXPERIMENT_C.md",
      r"Adversarial contracts rated high \(n=\d+\) \| \*\*[\d.]+%\*\* \((\d+) of",
      "adversarial_high_n"),

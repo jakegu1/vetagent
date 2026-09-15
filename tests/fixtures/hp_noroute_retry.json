@@ -1,0 +1,64 @@
+{
+ "token": {
+  "name": "Trace Token",
+  "symbol": "TRAC",
+  "decimals": 18,
+  "address": "0xA81a52B4dda010896cDd386C7fBdc5CDc835ba23",
+  "totalHolders": 1800
+ },
+ "withToken": {
+  "name": "Wrapped Ether",
+  "symbol": "WETH",
+  "decimals": 18,
+  "address": "0x4200000000000000000000000000000000000006",
+  "totalHolders": 5039284
+ },
+ "summary": {
+  "risk": "honeypot",
+  "riskLevel": 100,
+  "flags": []
+ },
+ "simulationSuccess": true,
+ "honeypotResult": {
+  "isHoneypot": true,
+  "honeypotReason": "execution reverted: \"revert: Target contract does not contain code\""
+ },
+ "simulationResult": {
+  "buyTax": 0,
+  "sellTax": 100,
+  "transferTax": 0,
+  "buyGas": "0",
+  "sellGas": "0"
+ },
+ "flags": [],
+ "contractCode": {
+  "openSource": true,
+  "rootOpenSource": true,
+  "isProxy": false,
+  "hasProxyCalls": false
+ },
+ "chain": {
+  "id": "8453",
+  "name": "Base",
+  "shortName": "base",
+  "currency": "ETH"
+ },
+ "router": "",
+ "pair": {
+  "pair": {
+   "name": "WETH-TRAC",
+   "address": "0x7DeBF227c7bab346C16342e39CC0eCebd9Ea4091",
+   "token0": "0x4200000000000000000000000000000000000006",
+   "token1": "0xA81a52B4dda010896cDd386C7fBdc5CDc835ba23",
+   "type": "Aerodrome"
+  },
+  "chainId": "8453",
+  "reserves0": "11182419410255733787",
+  "reserves1": "81633942447560432745028",
+  "liquidity": 55542.40626557561,
+  "router": "",
+  "createdAtTimestamp": "1735822143",
+  "creationTxHash": "0x3b20517172700aec28707e70bebf3c61374fd1cbe4b7da43f667de5da4c06464"
+ },
+ "pairAddress": "0x7DeBF227c7bab346C16342e39CC0eCebd9Ea4091"
+}

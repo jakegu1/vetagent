@@ -2186,9 +2186,30 @@ def _sim_failed(hp):
     """
     if not isinstance(hp, dict):
         return False
+    if _sim_never_ran(hp):
+        return True
     if hp.get("simulationSuccess") is True:
         return False
     return bool(hp.get("simulationError"))
+
+
+def _sim_never_ran(hp):
+    """An answer that reports a result for a simulation that never reached the token.
+
+    Given a pair on a DEX it has no router for, honeypot.is calls a router that is not
+    there and still answers `simulationSuccess: true`, `isHoneypot: true`, sell tax 100 --
+    with `router: ""`, buy gas 0 and the reason "Target contract does not contain code".
+    All 54 such answers in bench/cache are our own `&pair=` retries, and 8 benchmark tokens
+    (TRAC, MAI, COLLECT among them) were rated honeypots on one: our retry turned the
+    simulator's "I could not buy" into "you cannot sell" (2026-09-15 numbers audit replay).
+
+    Read from the shape, not the sentence: no router and no gas spent means nothing was
+    executed. A real honeypot answer names the router it traded through.
+    """
+    if not isinstance(hp, dict):
+        return False
+    gas = str((hp.get("simulationResult") or {}).get("buyGas"))
+    return hp.get("router") == "" and gas == "0"
 
 
 async def _distinct_sellers(hp, evidence):
@@ -2282,6 +2303,16 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
     hp_result = hp.get("honeypotResult") or {}
     sim = hp.get("simulationResult") or {}
     is_hp = hp_result.get("isHoneypot")
+    if _sim_never_ran(hp):
+        # Its verdict fields describe a trade that did not happen (see _sim_never_ran), so
+        # they are not read: this is the failed-simulation branch below, with the reason
+        # the simulator gave in place of an error it did not report.
+        # The taxes and the aggregate are dropped from the evidence too: "sell tax 100" from
+        # a trade that never happened is not a number a caller should see.
+        sim_ok, is_hp, sim, summary = False, None, {}, {}
+        hp = dict(hp, simulationError=hp.get("simulationError")
+                  or "no router for this pool: %s" % _ascii_safe(
+                      hp_result.get("honeypotReason") or "nothing executed", 80))
     flags = [f.get("flag") for f in (summary.get("flags") or []) if isinstance(f, dict)]
 
     evidence["honeypot"] = {

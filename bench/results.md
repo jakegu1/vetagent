@@ -70,9 +70,9 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 
 | Metric | Value |
 |---|---|
-| Verdict distribution | high=80, low=155, medium=236, unknown=105 |
-| unknown rate | 18.2% |
-| Share with a data gap | 21.7% |
+| Verdict distribution | high=75, low=155, medium=233, unknown=113 |
+| unknown rate | 19.6% |
+| Share with a data gap | 23.1% |
 
 > Read the unknown rate next to recall. A tool that answers unknown for everything has perfect recall and is useless.
 
@@ -86,7 +86,7 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **dead** | 30 | 10.0% | 63.3% | 13.3% | 23.3% | 39.3 |
-| **alive** | 162 | 4.3% | 27.8% | 59.3% | 13.0% | 14.1 |
+| **alive** | 162 | 3.1% | 25.9% | 59.3% | 14.8% | 13.4 |
 
 ### Contract-safety signals only (ablated)
 
@@ -96,7 +96,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **dead** | 30 | 10.0% | 13.3% | 80.0% | 6.7% | 13.0 |
-| **alive** | 162 | 3.1% | 15.4% | 71.6% | 13.0% | 9.6 |
+| **alive** | 162 | 1.9% | 13.6% | 71.6% | 14.8% | 8.8 |
 
 **Which signal category made the call on dead samples:** `liquidity` 15, `no_liquidity` 5, `honeypot` 4, `sellability` 1, `lifecycle` 1
 
@@ -113,7 +113,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 17 | 58.8% | 94.1% | 0.0% | 5.9% | 76.1 |
-| **safe** | 349 | 6.6% | 48.1% | 28.1% | 23.8% | 27.0 |
+| **safe** | 349 | 6.0% | 47.0% | 28.1% | 24.9% | 26.8 |
 
 ### Contract-safety signals only (ablated)
 
@@ -123,7 +123,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 17 | 17.6% | 41.2% | 35.3% | 23.5% | 32.7 |
-| **safe** | 349 | 4.3% | 12.3% | 64.5% | 23.2% | 11.3 |
+| **safe** | 349 | 3.7% | 11.2% | 64.5% | 24.4% | 10.9 |
 
 **Which signal category made the call on unsafe samples:** `liquidity` 12, `honeypot` 3, `impersonation` 2
 
@@ -136,7 +136,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 An agent refuses `medium` as well as `high`, so the false-positive rate above understates what a caller is turned away from. Population: outcome `alive` or oracle `centralized`, with $100,000 or more of depth.
 
 
-**20.1%** (31 of 154). By driving signal: `honeypot` 21, `lifecycle` 6, `upstream_risk` 3, `freshness` 1
+**19.5%** (30 of 154). By driving signal: `honeypot` 20, `lifecycle` 6, `upstream_risk` 3, `freshness` 1
 
 
 ## Centralized-asset control group (not scored)
@@ -149,7 +149,7 @@ This bucket answers one question: **does the engine paint them all as high risk.
 
 | n | high rate | Verdict distribution |
 |---|---|---|
-| 179 | 24.0% | high=43, low=45, medium=76, unknown=15 |
+| 179 | 22.3% | high=40, low=45, medium=75, unknown=19 |
 
 Examples: HYDX(low), CP(unknown), TOSHE(medium), Onyxcoin XCN Kendu(high), SAGE Free(medium), Core Keeper Overnight(medium), VIRTUAL(low), Crypto Carbon Verse(high), ?(medium), BIO(medium)
 
@@ -190,9 +190,9 @@ The false-positive rate depends on who is asked what a 'healthy token' is, and t
 
 | Oracle | What it actually measures | Independent of us? | Cohort | FP rate |
 |---|---|---|---|---|
-| realized market outcome | what happened to the money | **yes** -- built from price/volume history, not from any contract scanner | `alive`, n=162 | **4.3%** (7) |
-| GoPlus | what the contract does under simulation | **no** -- GoPlus is this benchmark's own labeller, so this is a disagreement rate | `safe`, n=349 | 6.6% (23) |
-| both, intersected | passes on both instruments | strictest available | n=95 | 3.2% (3) |
+| realized market outcome | what happened to the money | **yes** -- built from price/volume history, not from any contract scanner | `alive`, n=162 | **3.1%** (5) |
+| GoPlus | what the contract does under simulation | **no** -- GoPlus is this benchmark's own labeller, so this is a disagreement rate | `safe`, n=349 | 6.0% (21) |
+| both, intersected | passes on both instruments | strictest available | n=95 | 2.1% (2) |
 
 **Read it this way.** The outcome-based rate is the one to trust on method: market outcome is causally independent of every contract scanner, so it cannot be circular. Its weakness is population -- `alive` requires 90 days of history and real weekly volume, so freshness signals cannot fire on those tokens and liquidity rarely does, while agents mostly ask about tokens younger than that.
 
@@ -211,7 +211,7 @@ An `unknown` because we could not reach an upstream is a different thing from an
 | | n | share of all 576 |
 |---|---|---|
 | unknown, our side (upstream unreachable or uncovered) | 6 | 1.0% |
-| unknown, token side (nothing verifiable about it) | 99 | 17.2% |
+| unknown, token side (nothing verifiable about it) | 107 | 18.6% |
 
 
 ## What the sample is made of
@@ -247,13 +247,13 @@ Samples where the label and the engine disagree. Read the **false negatives** (l
 | false positive | `USI` | base | goplus=safe | high | high | honeypot |
 | false positive | `HYPER` | base | goplus=safe | high | high | honeypot |
 | false positive | `BONKO` | base | goplus=safe | high | high | honeypot |
-| false positive | `TRAC` | base | outcome=alive | high | high | honeypot |
 | false positive | `BURN` | base | goplus=safe | high | unknown | no_liquidity |
 | false positive | `TORIVA` | base | goplus=safe | high | high | honeypot |
 | false positive | `TREB` | base | goplus=safe | high | high | honeypot |
 | false positive | `\u6211\u7684\u5973\u53cb\u666f\u751c` | base | goplus=safe | high | unknown | liquidity |
+| false positive | `CLAWD` | base | goplus=safe | high | unknown | impersonation |
 
-(14 more in `results.json`)
+(10 more in `results.json`)
 
 
 ### Counted as false positives, but outside the labeller's reach

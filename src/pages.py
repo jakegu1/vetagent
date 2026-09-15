@@ -267,13 +267,13 @@ Base.</p>
 <h2>The numbers</h2>
 <table>
 <tr><th>Measure</th><th>Result</th></tr>
-<tr><td>Healthy tokens rated high (false positives)</td><td class="num">4.3% (7 of 162)</td></tr>
-<tr><td>Liquid healthy tokens rated medium or high (false blocks)</td><td class="num">20.1% (31 of 154)</td></tr>
-<tr><td>Answers returned as unknown</td><td class="num">18.2% (105 of 576)</td></tr>
+<tr><td>Healthy tokens rated high (false positives)</td><td class="num">3.1% (5 of 162)</td></tr>
+<tr><td>Liquid healthy tokens rated medium or high (false blocks)</td><td class="num">19.5% (30 of 154)</td></tr>
+<tr><td>Answers returned as unknown</td><td class="num">19.6% (113 of 576)</td></tr>
 <tr><td>Confirmed-dead tokens not rated low</td><td class="num">86.7% (26 of 30)</td></tr>
 <tr><td>Confirmed-dead tokens rated high</td><td class="num">10.0% (3 of 30)</td></tr>
 <tr><td>Adversarial contracts rated high</td><td class="num">58.8% (10 of 17)</td></tr>
-<tr><td>Oracle-tagged centralised tokens rated high</td><td class="num">24.0% (43 of 179)</td></tr>
+<tr><td>Oracle-tagged centralised tokens rated high</td><td class="num">22.3% (40 of 179)</td></tr>
 </table>
 
 <h2>Read the unflattering rows first</h2>

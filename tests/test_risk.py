@@ -854,6 +854,35 @@ def test_the_simulator_gets_a_second_chance_on_our_pool():
     check("two failures are still one finding",
           r3["risk_level"] in ("unknown", "medium", "high"), r3["risk_level"])
 
+    # 5. The retry "succeeds" without running. Real body, TRAC on Base, 2026-09 cache: given
+    # a pair on a DEX it has no router for, honeypot.is calls a router that is not there and
+    # reports `isHoneypot: true`, sell tax 100, gas 0, `router: ""` -- "Target contract does
+    # not contain code". All 54 such answers in bench/cache are `&pair=` retries, and 8
+    # benchmark tokens (TRAC, MAI, COLLECT among them) were rated honeypots on one. The
+    # simulator never reached the token; that is a failed simulation, not a verdict.
+    noroute = _load("hp_noroute_retry.json")
+    r5 = run_with(failed, noroute)
+    hp_sigs = [s for s in r5["signals"] if s["category"] == "honeypot"]
+    check("a retry that never ran does not replace the real failure",
+          any("BUY_FAILE" in str(g.get("reason", ""))
+              for g in (r5.get("evidence") or {}).get("data_gaps") or []),
+          str((r5.get("evidence") or {}).get("data_gaps")))
+    # Not fatal, and not "contested" either: a honeypot verdict the simulator never reached
+    # is not a claim for the chain to argue with.
+    check("and it is not read as a honeypot, fatal or contested", not hp_sigs, str(hp_sigs))
+    check("so the answer is unknown, not high", r5["risk_level"] == "unknown", r5["risk_level"])
+
+    # Same body as a first answer (not observed in the cache, but nothing stops it): still a
+    # simulation that did not run.
+    r6 = run_with(noroute, noroute)
+    check("a first answer that never ran is not a honeypot either",
+          not [s for s in r6["signals"] if s["category"] == "honeypot"],
+          str(r6["signals"])[:300])
+    check("and it is filed as a simulation that failed",
+          any("simulation failed" in str(g.get("reason", ""))
+              for g in (r6.get("evidence") or {}).get("data_gaps") or []),
+          str((r6.get("evidence") or {}).get("data_gaps")))
+
 
 def test_an_error_body_is_not_data():
     """GeckoTerminal says "you have exceeded the rate limit" with a 200 attached.

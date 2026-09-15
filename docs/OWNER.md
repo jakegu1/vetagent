@@ -147,7 +147,7 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **14 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **12 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -155,8 +155,8 @@ Rounded = parked by you. Hexagons are not work items -- they are what a row is w
 |---|---|
 | Maturity score | 50 / 100 (`docs/SCORECARD.md`) |
 | Tokens measured | 576 |
-| False positives | 4.3% -- we called a healthy token dangerous |
-| Answers we refuse | 18.2% -- `unknown`, on purpose |
+| False positives | 3.1% -- we called a healthy token dangerous |
+| Answers we refuse | 19.6% -- `unknown`, on purpose |
 | Dead tokens we rated high | 10.0% -- our worst number, published first |
 | Round in progress | R23: A numbers audit, checked before it was believed |
 
@@ -174,16 +174,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W30: the front page said USDT and WBTC were flagged high; both are low
+- R23: the 2026-09-15 numbers audit, checked before it was believed -- a queue, not a verdict change
 - GEO baseline: crawler access is measured, and crawlers are served
 - Reference pages, a share card and llms-full.txt: give search engines something to cite
 - Re-measure the benchmark after the fallback side fix
 - The fallback put the queried token on the wrong side of the pool: USDC on Base at $2,482.71
 - zone-check: Cloudflare does not block AI crawlers; read the request logs a day at a time
 - Sitemap, robots.txt and IndexNow: tell search engines the site exists
-- The contested-honeypot gap names what the upstreams answered
-- GEO baseline 2026-09-15: vetagent.dev is not in the search index
 
-_88 more not shown (96 commits in total)._
+_90 more not shown (98 commits in total)._
 
 ## What I got wrong
 
@@ -293,11 +293,11 @@ python tools/owner.py --write   # regenerate this page
 
 **A gate** -- A date with a question and a rule, written down BEFORE the date. On the day, the rule is read and it decides what happens next. The point is that the rule cannot be argued with afterwards. This project has four.
 
-**`unknown`** -- A verdict that means 'a check I needed could not run'. It is not 'low risk' and it is not a bug -- it is the product refusing to guess. 18.2% of answers are this.
+**`unknown`** -- A verdict that means 'a check I needed could not run'. It is not 'low risk' and it is not a bug -- it is the product refusing to guess. 19.6% of answers are this.
 
 **Fail-closed** -- When something breaks, answer 'I don't know' rather than 'looks fine'. A safety tool that guesses optimistically when it is broken is worse than no tool.
 
-**False positive** -- We said a token was dangerous and it was fine. Ours is 4.3%. This is the number that costs a user money by making them skip a good trade.
+**False positive** -- We said a token was dangerous and it was fine. Ours is 3.1%. This is the number that costs a user money by making them skip a good trade.
 
 **Recall** -- Of the bad things that existed, how many did we catch. Ours on tokens that actually died is 10%. It is the worst number we publish, and we publish it first.
 
