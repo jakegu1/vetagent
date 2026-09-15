@@ -121,8 +121,6 @@ flowchart LR
     W4[W4 Cut the unknown rate below 10%]
     W6[W6 EVM holder concentration]
     W7[W7 Point-in-time evaluation from the...]
-    W33[W33 Every pool is empty must not ignore a...]
-    W37[W37 A pool holding under a dollar is...]
     W38[W38 A lone lifecycle warning stops forcing...]
     W40[W40 Label new pools while they still hold...]
     W5[W5 A second, independent sell-simulation...]
@@ -136,7 +134,6 @@ flowchart LR
     W5 -->|blocks| W4
     E1 -->|blocks| W6
     E2 -->|blocks| W7
-    W33 -->|blocks| W37
     E3 -->|blocks| W38
     W3 -->|blocks| W40
     E4 -->|blocks| W5
@@ -144,7 +141,7 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **13 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **14 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -171,6 +168,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W32: the fallback credited a pool quoted in a self-minted coin, and the token came back low
 - Fallback token ids split at the wrong underscore: every Polygon pool's sides were unnamed
 - W31: our own retry turned "the simulator could not buy" into "you cannot sell"
 - W30: the front page said USDT and WBTC were flagged high; both are low
@@ -178,9 +176,8 @@ problem looked like before it was fixed.
 - GEO baseline: crawler access is measured, and crawlers are served
 - Reference pages, a share card and llms-full.txt: give search engines something to cite
 - Re-measure the benchmark after the fallback side fix
-- The fallback put the queried token on the wrong side of the pool: USDC on Base at $2,482.71
 
-_92 more not shown (100 commits in total)._
+_93 more not shown (101 commits in total)._
 
 ## What I got wrong
 

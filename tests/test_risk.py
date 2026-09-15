@@ -1766,6 +1766,54 @@ def test_a_fallback_pool_is_held_to_the_same_depth_rule():
           str([s["name"] for s in control["signals"]]))
 
 
+def test_an_empty_pool_does_not_speak_for_a_deep_one_we_cannot_price():
+    """"Every pool is empty" was said over the pools we could price, not the pools there were.
+
+    `assess()` asks whether every pool that stated a depth is empty, over the credited
+    figures -- and a pool with no anchor side credits nothing, so it dropped out of the
+    list. A $0 WETH pool beside a VIRTUAL pool stating $115,299 read "1 pool reports its
+    depth and every one of them is empty. There is nothing to sell into at any price" --
+    fatal, high. The deep pool is unverifiable, which is a gap; it is not absent. Found by
+    the 2026-09-15 numbers-audit verification (synthetic; no benchmark row has this shape),
+    and the precondition for W37, which asks the same question about dust.
+    """
+    print("\n[liquidity] an empty pool does not speak for a deep unverifiable one")
+    TOKEN = "0x5555555555555555555555555555555555555555"
+    WETH_BASE = "0x4200000000000000000000000000000000000006"
+    VIRTUAL = "0x0b3e328455c4059eeb9e3f84b5543f74e24e7e1b"
+
+    def pool(quote, sym, usd, base_amt, quote_amt, addr):
+        return {"chainId": "base", "dexId": "uniswap", "pairAddress": addr,
+                "baseToken": {"address": TOKEN, "symbol": "TKN"},
+                "quoteToken": {"address": quote, "symbol": sym},
+                "priceUsd": "0.01", "priceNative": "0.000004",
+                "liquidity": {"usd": usd, "base": base_amt, "quote": quote_amt},
+                "volume": {"h24": 5000}, "txns": {"h24": {"buys": 40, "sells": 35}},
+                "pairCreatedAt": 1589841515000}
+
+    empty_weth = pool(WETH_BASE, "WETH", 0, 0, 0, "0x" + "d4" * 20)
+    deep_virtual = pool(VIRTUAL, "VIRTUAL", 115_299.0, 5_764_950, 57_649, "0x" + "e5" * 20)
+
+    install_stub([("dex/tokens", {"pairs": [empty_weth, deep_virtual]}), ("dex/search", None),
+                  ("honeypot.is", _load("hp_matic.json")), ("rugcheck", None)])
+    r = run(risk.assess(TOKEN, chain_hint="base"))
+    check("a deep pool we cannot price is not called empty",
+          not any(s["category"] == "drained" for s in r["signals"]),
+          str([(s["severity"], s["name"]) for s in r["signals"]]))
+    gaps = r["evidence"].get("data_gaps") or []
+    check("  it is a gap about what backs the depth",
+          any("priced" in (g.get("reason") or "") for g in gaps), str(gaps))
+    check("  and the answer is unknown, not high", r["risk_level"] == "unknown", r["risk_level"])
+
+    # The rule it must not break: every pool empty, nothing else stated, is still a finding.
+    install_stub([("dex/tokens", {"pairs": [empty_weth]}), ("dex/search", None),
+                  ("honeypot.is", _load("hp_matic.json")), ("rugcheck", None)])
+    r = run(risk.assess(TOKEN, chain_hint="base"))
+    check("a token whose only pool is empty is still drained",
+          any(s["category"] == "drained" and s["severity"] == "fatal" for s in r["signals"]),
+          str([(s["severity"], s["name"]) for s in r["signals"]]))
+
+
 def test_impersonation_is_comparative_not_absolute():
     """Being dwarfed under a shared ticker is the signal; sharing one is not.
 

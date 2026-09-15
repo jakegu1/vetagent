@@ -2793,7 +2793,11 @@ async def assess(address, chain_hint=None, verbose=False):
             # answer a question about the token's real exit.
             scope = _home_scope(pairs, chain_hint, address)
             stated = [v for v in (_reported_liquidity(p) for p in scope) if v is not None]
-            if stated and max(stated) <= 0:
+            # And only pools we could price can testify that they are empty: a pool stating
+            # depth that nothing independent backs drops out of `stated`, which let a $0
+            # WETH pool speak for a $115,299 VIRTUAL pool beside it (W33). Unverifiable is
+            # a gap, not an absence.
+            if stated and max(stated) <= 0 and not _only_unbacked_depth(scope):
                 evidence["pools_all_empty"] = len(stated)
                 # fatal, not critical. "There is nothing to sell into at any price" is
                 # the most serious thing this engine can conclude, and at critical it
@@ -2805,9 +2809,9 @@ async def assess(address, chain_hint=None, verbose=False):
                     "There is nothing to sell into at any price."
                     % (len(stated), "" if len(stated) == 1 else "s"), "drained"))
             else:
-                reason = ("no pair with a sane price" if stated
-                          else _UNBACKED_REASON
-                          if _only_unbacked_depth(scope)
+                reason = (_UNBACKED_REASON
+                          if (not stated or max(stated) <= 0) and _only_unbacked_depth(scope)
+                          else "no pair with a sane price" if stated
                           else "no source reported pool depth")
                 data_gaps.append({"dimension": "liquidity", "source": source,
                                   "reason": reason})
