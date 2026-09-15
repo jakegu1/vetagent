@@ -162,6 +162,7 @@ The owner accepted the open recommendations: stale data caps confidence, the par
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Owner page: the Codex recommendation was wrong, and W29 is now one command due before the gate
 - W29: a keyed CoinGecko fallback between DexScreener and keyless GeckoTerminal (D8)
 - W29: the key probe passed -- all four keyed providers, 12 rounds, zero 429s
 - First production reading: guards 5/5, production unknown 40.7% -- and stop copying the score
@@ -169,9 +170,8 @@ problem looked like before it was fixed.
 - Positioning sentence into STRATEGY, and the market-data key probe onto the owner's list
 - The maturity score could not see R21, so it now can -- and it went down, 55 -> 44
 - The owner page said R19 was in progress, and its corrections stopped at 09-09
-- Regenerate the scorecard: E22 added a test and its evidence cell counts them
 
-_90 more not shown (98 commits in total)._
+_87 more not shown (95 commits in total)._
 
 ## What I got wrong
 

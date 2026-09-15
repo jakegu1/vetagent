@@ -389,7 +389,19 @@ async def _fetch_json(url, retries=2, timeout=8, mark_missing=False, headers=Non
             if mark_missing and resp.status == 404:
                 return NO_DATA
             if resp.status != 200:
-                _note_failure(url, resp.status)
+                # The upstream's own error code, when its body carries one: CoinGecko answers
+                # 400 for several different mistakes (10010 Pro key on the public root, 10011
+                # the reverse), and a bare "400" could not say which. Error bodies carry no
+                # secret -- they never echo the key -- and only the numeric code is kept.
+                code = None
+                try:
+                    err = json.loads((await asyncio.wait_for(resp.text(), timeout=timeout))[:2000])
+                    if isinstance(err, dict):
+                        code = err.get("error_code") or (err.get("status") or {}).get("error_code")
+                except Exception:  # noqa: BLE001 -- no code is fine; the status still stands
+                    code = None
+                _note_failure(url, "%s (%s)" % (resp.status, int(code))
+                              if isinstance(code, int) and code != resp.status else resp.status)
                 if resp.status == 429:
                     # DexScreener and GeckoTerminal publish their limits per minute.
                     # Retrying at 0.3 s and 0.6 s cannot clear one and spends two more

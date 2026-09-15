@@ -2754,6 +2754,54 @@ def types_ns(**kw):
     return types.SimpleNamespace(**kw)
 
 
+def test_a_refusal_carries_the_upstreams_own_error_code():
+    """"coingecko 400" was the whole message, and 400 means several different things there.
+
+    The first production run of the keyed fallback (2026-09-15) answered
+    "upstream request failed (dexscreener 429, coingecko 400, geckoterminal 429)". The probe
+    Worker had used the same endpoint and key header 60 times without a failure, and CoinGecko
+    answers 400 for more than one mistake -- error_code 10010 is a Pro key on the public root,
+    10011 the reverse -- while a missing or unknown key is 401 with 10002. The status alone
+    could not say which, so the fix would have been a guess. The body says it, and carries no
+    secret: CoinGecko's errors never echo the key.
+    """
+    print("\n[upstream] a refusal names the upstream's own error code")
+
+    class Resp:
+        def __init__(self, status, body):
+            self.status, self._body = status, body
+
+        async def text(self):
+            return self._body
+
+    async def fake_fetch(url, **kw):
+        return Resp(400, '{"timestamp":"t","error_code":10010,"status":{"error_message":"x"}}')
+
+    async def no_sleep(*_a, **_k):
+        return None
+
+    async def no_cache(*_a, **_k):
+        return None, None
+
+    saved = (risk.cf_fetch, risk._fetch_json, risk._cache_get, risk.asyncio.sleep)
+    risk.cf_fetch, risk._cache_get, risk.asyncio.sleep = fake_fetch, no_cache, no_sleep
+    risk._fetch_json = _ORIGINAL_FETCH_JSON
+    try:
+        async def go():
+            risk._begin_request()
+            await risk._fetch_json("https://api.coingecko.com/api/v3/onchain/networks/eth/pools/x")
+            return risk._failure_detail("coingecko")
+        detail = run(go())
+        check("the error code travels with the status", detail == "coingecko 400 (10010)", detail)
+
+        async def plain(url, **kw):
+            return Resp(502, "<html>bad gateway</html>")
+        risk.cf_fetch = plain
+        check("a body with no code keeps the bare status", run(go()) == "coingecko 502", run(go()))
+    finally:
+        risk.cf_fetch, risk._fetch_json, risk._cache_get, risk.asyncio.sleep = saved
+
+
 def test_the_simulator_is_asked_about_the_chain_we_settled_on():
     """A wrong hint must not send the sell simulator to the wrong chain.
 
