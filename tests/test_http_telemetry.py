@@ -446,6 +446,44 @@ def test_the_pages_a_directory_asks_for_exist():
           "not financial advice" in r.body.lower())
 
 
+def test_search_engines_are_told_what_to_index():
+    """The site was not in the search index at all, and nothing told an engine it existed.
+
+    GEO baseline, 2026-09-15: `site:vetagent.dev` returned no results, and vetagent.dev
+    appeared in none of fifteen result lists -- VetAgent was found only through directory and
+    GitHub pages. There was no sitemap (404), robots.txt was Cloudflare's managed preamble with
+    no Sitemap line, and no engine had been pinged. A sitemap only helps if every URL in it
+    resolves, so each one is fetched here; and IndexNow only accepts a submission if the key
+    file on the host says exactly the key that was submitted.
+    """
+    print("\n[seo] sitemap, robots.txt and the IndexNow key agree with each other")
+    w = entry.Default()
+    r = asyncio.run(w.fetch(FakeRequest("https://vetagent.dev/sitemap.xml")))
+    check("/sitemap.xml returns 200", r.status == 200, str(r.status))
+    check("  as XML", "xml" in (r.headers or {}).get("content-type", ""), str(r.headers))
+    urls = re.findall(r"<loc>([^<]+)</loc>", r.body or "")
+    check("  listing the landing page and the reference pages",
+          {"https://vetagent.dev/", "https://vetagent.dev/llms.txt", "https://vetagent.dev/privacy",
+           "https://vetagent.dev/terms"} <= set(urls), str(urls))
+    for u in urls:
+        rr = asyncio.run(w.fetch(FakeRequest(u)))
+        check("  %s resolves" % u, rr.status == 200, str(rr.status))
+
+    r = asyncio.run(w.fetch(FakeRequest("https://vetagent.dev/robots.txt")))
+    check("/robots.txt names the sitemap", r.status == 200
+          and "Sitemap: https://vetagent.dev/sitemap.xml" in (r.body or ""), (r.body or "")[:120])
+    check("  and blocks nobody", not re.search(r"^Disallow:\s*/\s*$", r.body or "", re.M), r.body)
+
+    key = entry.INDEXNOW_KEY
+    check("the IndexNow key is a valid key", bool(re.fullmatch(r"[a-zA-Z0-9-]{8,128}", key)), key)
+    r = asyncio.run(w.fetch(FakeRequest("https://vetagent.dev/%s.txt" % key)))
+    check("  and its key file answers with exactly the key", r.status == 200
+          and (r.body or "").strip() == key, "%s %r" % (r.status, (r.body or "")[:40]))
+    wf = io.open(os.path.join(ROOT, ".github", "workflows", "deploy.yml"), encoding="utf-8").read()
+    check("the deploy pings IndexNow with that same key", "api.indexnow.org" in wf and key in wf,
+          "deploy.yml does not submit, or submits a different key")
+
+
 def test_an_unissued_verification_token_is_absent_not_wrong():
     """The OpenAI challenge path 404s until a real token exists, and never guesses one.
 

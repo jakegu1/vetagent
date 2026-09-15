@@ -31,6 +31,23 @@ _GLAMA_CLAIM = (
     '}\n'
 )
 
+# Pages an engine should index. Every URL here must resolve;
+# tests/test_http_telemetry.py fetches each one.
+_SITEMAP_URLS = ("https://vetagent.dev/", "https://vetagent.dev/llms.txt",
+                 "https://vetagent.dev/privacy", "https://vetagent.dev/terms")
+_SITEMAP_XML = ('<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+                + "".join("  <url><loc>%s</loc></url>\n" % u for u in _SITEMAP_URLS)
+                + "</urlset>\n")
+_ROBOTS_TXT = ("User-agent: *\n"
+               "Allow: /\n"
+               "\n"
+               "Sitemap: https://vetagent.dev/sitemap.xml\n")
+
+# IndexNow (Bing, Yandex, Seznam, Naver and others share submissions). Not a secret: the
+# protocol requires this exact string to be served at /<key>.txt on the host being submitted.
+INDEXNOW_KEY = "bff341c9bde3fe572840f1d103debec5"
+
 _LLMS_TXT = """# VetAgent
 
 > A pre-trade safety check for AI agents. Before an agent buys, holds or
@@ -629,6 +646,22 @@ class Default(WorkerEntrypoint):
         # rate, and the recall we can't measure.
         if path == "/llms.txt":
             return Response(_LLMS_TXT, headers={"content-type": "text/plain; charset=utf-8"},
+                            status=200)
+
+        # Search engines had nothing pointing at this site: GEO baseline 2026-09-15 found
+        # `site:vetagent.dev` empty and the domain in none of fifteen result lists, with no
+        # sitemap and no Sitemap line in robots.txt. Cloudflare prepends its managed content
+        # signals to whatever robots.txt the origin serves, so this file only adds rules.
+        if path == "/sitemap.xml":
+            return Response(_SITEMAP_XML, headers={"content-type": "application/xml; charset=utf-8"},
+                            status=200)
+        if path == "/robots.txt":
+            return Response(_ROBOTS_TXT, headers={"content-type": "text/plain; charset=utf-8"},
+                            status=200)
+        # IndexNow key file. Public by protocol, like the registry key: an engine accepts a
+        # URL submission for this host only if this file answers with the submitted key.
+        if path == "/%s.txt" % INDEXNOW_KEY:
+            return Response(INDEXNOW_KEY, headers={"content-type": "text/plain; charset=utf-8"},
                             status=200)
 
         # Domain-ownership verification for the official MCP Registry. Verifying by

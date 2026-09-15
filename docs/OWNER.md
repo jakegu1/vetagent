@@ -162,16 +162,16 @@ The owner accepted the open recommendations: stale data caps confidence, the par
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- The contested-honeypot gap names what the upstreams answered
+- GEO baseline 2026-09-15: vetagent.dev is not in the search index
+- zone-check reads what crawlers actually got; GEO web-search baseline recorded
+- GEO baseline: register the query list and the reading rule before the first measurement
+- The first production key was one invisible character: refuse it, and say it is ours
 - Strip the provider key, and TEMPORARILY log its length and type to read the 400
 - TEMPORARY: log CoinGecko's error body, addresses masked, to read a 400 with no code
 - zone-check: read whether Cloudflare blocks AI crawlers, with the repository's own token
-- A refusal names the upstream's own error code: "coingecko 400" was not enough
-- Owner page: the Codex recommendation was wrong, and W29 is now one command due before the gate
-- W29: a keyed CoinGecko fallback between DexScreener and keyless GeckoTerminal (D8)
-- W29: the key probe passed -- all four keyed providers, 12 rounds, zero 429s
-- First production reading: guards 5/5, production unknown 40.7% -- and stop copying the score
 
-_91 more not shown (99 commits in total)._
+_95 more not shown (103 commits in total)._
 
 ## What I got wrong
 

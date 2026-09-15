@@ -185,3 +185,26 @@ jobs:
             if [ "$code" = "429" ]; then got429=1; echo "429 after $i calls"; break; fi
           done
           test "$got429" = "1"
+
+      # Tell search engines the pages exist. GEO baseline 2026-09-15: site:vetagent.dev
+      # returned nothing, and nothing had ever told an engine about the site. IndexNow is
+      # shared by Bing, Yandex, Seznam and others, and ChatGPT's search reads Bing's index.
+      # The URL list is read from the live sitemap, so the two cannot disagree. The key is
+      # public by protocol and served at /<key>.txt (src/entry.py INDEXNOW_KEY).
+      # A refusal is annotated, not failed: an engine's queue is not a reason to red a deploy.
+      - name: Ping IndexNow
+        if: steps.creds.outputs.ready == 'true'
+        run: |
+          CI_TAG="-H x-mcp-client:vetagent-ci-smoke"
+          KEY="bff341c9bde3fe572840f1d103debec5"
+          test "$(curl -sS $CI_TAG --max-time 30 https://vetagent.dev/${KEY}.txt)" = "$KEY"
+          urls=$(curl -sS $CI_TAG --max-time 30 https://vetagent.dev/sitemap.xml \
+                 | grep -o '<loc>[^<]*' | sed 's/<loc>//' | python3 -c "import json,sys; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))")
+          body=$(python3 -c "import json,sys; print(json.dumps({'host': 'vetagent.dev', 'key': sys.argv[1], 'keyLocation': 'https://vetagent.dev/%s.txt' % sys.argv[1], 'urlList': json.loads(sys.argv[2])}))" "$KEY" "$urls")
+          code=$(curl -sS -o /tmp/indexnow.txt -w '%{http_code}' --max-time 30 -X POST https://api.indexnow.org/indexnow \
+                 -H 'Content-Type: application/json; charset=utf-8' -d "$body")
+          echo "IndexNow answered HTTP $code for $(echo "$urls" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))') URLs"
+          case "$code" in
+            200|202) ;;
+            *) echo "::warning::IndexNow answered HTTP $code: $(head -c 200 /tmp/indexnow.txt)" ;;
+          esac
