@@ -908,6 +908,30 @@ def test_the_simulator_gets_a_second_chance_on_our_pool():
           any("simulation failed" in str(g.get("reason", ""))
               for g in (r6.get("evidence") or {}).get("data_gaps") or []),
           str((r6.get("evidence") or {}).get("data_gaps")))
+    ev6 = (r6.get("evidence") or {}).get("honeypot") or {}
+    check("and its sell tax of 100 from a trade that never happened is not shown",
+          ev6.get("sell_tax") is None and ev6.get("upstream_risk") is None, str(ev6))
+
+    # 7. A first answer that never ran but still says honeypot, then a clean retry on our
+    # pool (E14 review of W31, W46). The retry replaces the first answer, and before this the
+    # token read "Buys and sells normally" -- low -- where it had been fatal. A clean trade
+    # on another pool does not settle a honeypot claim about the pool the simulator picked;
+    # it is unresolved, like every other contested flag. 0 of 1,111 cached first answers
+    # have this shape, so this moves nothing measured; it closes the one W31 path to low.
+    r7 = run_with(noroute, ok)
+    check("a never-ran honeypot claim is retried", len(calls) == 2, "%d calls" % len(calls))
+    check("  and a clean retry does not turn it into low", r7["risk_level"] == "unknown",
+          r7["risk_level"])
+
+    # 8. The shape alone is not enough: an empty router and zero gas with any other reason is
+    # read as honeypot.is wrote it. Gas 0 also appears on real honeypot verdicts (W47), so
+    # the reason the 54 never-ran answers all carry is required too.
+    other_reason = json.loads(json.dumps(noroute))
+    other_reason["honeypotResult"]["honeypotReason"] = "HONEYPOT DETECTED"
+    r8 = run_with(other_reason, other_reason)
+    check("an empty router with a different reason is still a honeypot claim",
+          any(s["category"] == "honeypot" for s in r8["signals"]),
+          str([(s["severity"], s["name"]) for s in r8["signals"]]))
 
 
 def test_an_error_body_is_not_data():

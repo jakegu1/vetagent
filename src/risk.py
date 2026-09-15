@@ -2245,13 +2245,17 @@ def _sim_never_ran(hp):
     (TRAC, MAI, COLLECT among them) were rated honeypots on one: our retry turned the
     simulator's "I could not buy" into "you cannot sell" (2026-09-15 numbers audit replay).
 
-    Read from the shape, not the sentence: no router and no gas spent means nothing was
-    executed. A real honeypot answer names the router it traded through.
+    The shape and the sentence together. No router and no gas is the shape, but gas 0 also
+    appears on answers that name a router and carry real buy-side reverts (W47), so an empty
+    router is not trusted alone either: all 54 never-ran answers also say the target has no
+    code. If honeypot.is rewords it, this falls back to reading the answer as written --
+    the fail-closed direction (E14 review, W46).
     """
     if not isinstance(hp, dict):
         return False
     gas = str((hp.get("simulationResult") or {}).get("buyGas"))
-    return hp.get("router") == "" and gas == "0"
+    reason = str((hp.get("honeypotResult") or {}).get("honeypotReason") or "")
+    return hp.get("router") == "" and gas == "0" and "does not contain code" in reason
 
 
 async def _distinct_sellers(hp, evidence):
@@ -2941,14 +2945,34 @@ async def assess(address, chain_hint=None, verbose=False):
         # comes back empty we keep the first response, because "the simulator reverted on
         # its own pool" is a more informative thing to report than "no record".
         hp_pair = ((evidence.get("best_pair") or {}).get("pair_address") or "")
+        # A first answer that never ran but still says honeypot is retried like any failed
+        # simulation -- and remembered, because a clean trade on our pool does not settle
+        # a claim about the pool the simulator picked (W46).
+        unsettled_claim = (_sim_never_ran(hp)
+                           and (hp.get("honeypotResult") or {}).get("isHoneypot") is True)
+        replaced = False
         if (_sim_failed(hp) and hp_pair.startswith("0x") and len(hp_pair) == 42):
             retry = await _fetch_json("%s&pair=%s" % (hp_url, hp_pair),
                                       mark_missing=True)
             if retry is not None and retry is not NO_DATA and not _sim_failed(retry):
                 hp = retry
+                replaced = True
 
         await _distinct_sellers(hp, evidence)
         _honeypot_signals(hp, signals, evidence, data_gaps, chain=hp_chain)
+        if unsettled_claim and replaced:
+            # Before W31 this answer was a fatal honeypot; W31 read it as a failed
+            # simulation and let the retry replace it, which could end at `low`. Neither:
+            # the claim stands unresolved, and a missing sellability dimension is unknown.
+            data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
+                              "reason": "simulation failed: the simulator's own pool could "
+                                        "not be traded and it still reported a honeypot; a "
+                                        "clean trade on another pool does not settle that"})
+            signals.append(_sig(
+                "warn", "Honeypot claim not settled",
+                "The sell simulator reported a honeypot on the pool it chose without "
+                "completing a trade there. A trade on another pool went through, which "
+                "does not show the first pool can be exited.", "sellability"))
         if chain_hint and not observed and not claimed_is_known:
             # Worth a signal rather than a silent shrug: the caller believes they scoped
             # this request to a chain, and they did not. Naming what we do recognise lets
