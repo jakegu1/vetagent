@@ -218,7 +218,15 @@ _ONCHAIN = {"key": None}
 def configure(env):
     """Read optional provider keys from the Worker environment. Absent means keyless."""
     key = getattr(env, "CG_DEMO_KEY", None) if env is not None else None
-    _ONCHAIN["key"] = str(key) if key else None
+    raw = str(key) if key else ""
+    # TEMPORARY diagnostic (2026-09-15): lengths only, never the key.
+    if raw and not _ONCHAIN.get("_logged"):
+        _ONCHAIN["_logged"] = True
+        print("cg key: type=%s len=%d stripped_len=%d printable=%s" % (
+            type(key).__name__, len(raw), len(raw.strip()), raw.strip().isprintable()))
+    # Stripped: a secret pasted into a terminal can carry a trailing \r or newline, which is
+    # not a valid header value and never an intended part of a key.
+    _ONCHAIN["key"] = raw.strip() or None
 
 
 def _onchain_key():
