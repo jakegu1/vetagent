@@ -8,6 +8,8 @@ Run:  python tests/test_risk.py
 
 import asyncio
 import datetime
+import io
+import glob
 import json
 import os
 import re
@@ -1608,6 +1610,50 @@ def test_upstream_text_is_quoted_not_spoken():
     check("the ticker is percent-encoded into the search URL",
           bool(searches) and "&limit=1" not in searches[0] and "#x" not in searches[0],
           str(searches[:1]))
+
+
+def test_the_anchor_table_admits_only_by_its_rule():
+    """E21 admits an anchor beyond the natives and stablecoins by one rule, set before measuring:
+    its pools against existing anchors hold more than $10M. Nothing enforced it.
+
+    A 2026-09-15 audit proposed adding VIRTUAL from pools adding up to $5.92M, under a bar that
+    had already refused it at $8.5M. The only thing standing between that proposal and the table
+    was someone remembering the comment. W43 re-measured under the unchanged rule
+    (bench/anchor_admission.py, committed before it ran; admission needs both the stated and the
+    credited figure above the bar): VIRTUAL $8.34M stated, $6.79M credited -- refused again.
+
+    Pinned here: every admitted anchor carries its measured figure and it clears the bar; the
+    refused assets are absent; and an asset the latest re-measurement found above the bar turns
+    this red until someone admits it with its figure or records why not.
+    """
+    print("\n[E21] the anchor table admits only by its rule")
+    src = io.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src", "risk.py"),
+                  encoding="utf-8").read()
+    table = src[src.index("_ANCHORS = {"):src.index("_ANCHORS = {chain:")]
+    figures = re.findall(r'"(0x[0-9a-fA-F]{40})",\s*#\s*\S+\s+\$([\d.]+)M', table)
+    check("admitted anchors carry their measured figure", len(figures) >= 9, str(figures))
+    below = [(a, f) for a, f in figures if float(f) <= 10.0]
+    check("  and every figure clears the $10M bar", not below, str(below))
+
+    refused = [("base", "0x0b3e328455c4059eeb9e3f84b5543f74e24e7e1b", "VIRTUAL"),
+               ("base", "0xb20a4bd059f5914a2f8b9c18881c637f79efb7df", "ADS"),
+               ("bsc", "0x02fca66c1d1afb4e2a7884261eb00f63598a7436", "NVDAB"),
+               ("bsc", "0xc5f0f7b66764f6ec8c8dff7ba683102295e16409", "FDUSD")]
+    present = [sym for chain, addr, sym in refused if addr in risk._ANCHORS[chain]]
+    check("assets measured under the bar are not anchors", not present, str(present))
+
+    runs = sorted(glob.glob(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
+                                         "bench", "anchor_admission", "*.json")))
+    check("a re-measurement exists", bool(runs), "bench/anchor_admission/ is empty")
+    if runs:
+        latest = json.load(io.open(runs[-1], encoding="utf-8"))
+        undecided = [r["symbol"] for r in latest.get("refused_2026_09_14", [])
+                     if r.get("passes") and r["address"] not in risk._ANCHORS[r["chain"]]]
+        check("no refused asset has since measured above the bar without a decision",
+              not undecided, "%s in %s" % (undecided, os.path.basename(runs[-1])))
+        lapsed = [r["symbol"] for r in latest.get("admitted_reread", [])
+                  if "error" not in r and not r.get("passes")]
+        check("every admitted anchor still clears the bar when re-read", not lapsed, str(lapsed))
 
 
 def test_depth_counts_only_what_no_pool_creator_can_price():
