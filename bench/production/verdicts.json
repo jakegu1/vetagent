@@ -1,13 +1,17 @@
 {
- "window_start": "2026-09-08T12:07:16Z",
- "window_end": "2026-09-15T12:07:16Z",
+ "window_start": "2026-09-09T12:02:24Z",
+ "window_end": "2026-09-16T12:02:24Z",
  "counts": {
-  "low": 177,
-  "medium": 70,
+  "low": 179,
+  "medium": 69,
   "high": 39,
-  "unknown": 189
+  "unknown": 170
  },
  "excluded_clients": [
   "vetagent-ci-smoke"
- ]
+ ],
+ "unknown_why": {
+  "(not recorded)": 166,
+  "coverage|sellability:simulation failed": 4
+ }
 }

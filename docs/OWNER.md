@@ -104,12 +104,12 @@ gantt
 ### Is the archive still collecting?
 
 ```text
-········█████████████   2026-08-26 -> 2026-09-15
+·······██████████████   2026-08-27 -> 2026-09-16
 ```
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**13 days, no gaps.** Newest is 2026-09-15, yesterday.
+**14 days, no gaps.** Newest is 2026-09-16, today.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -168,16 +168,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- plugin/README claimed a blocker that had just stopped being true
+- W48 recurred: the deploy flood check failed on 29e8c9c too, 2 of the last 3 deploys
 - W42: /method splits the centralised row by pool depth, with every column that could flatter it
 - Date the W41 correction by the build's clock: 2026-09-16 local was 2026-09-15 UTC
 - W43: VIRTUAL re-measured under E21's unchanged rule -- $8.34M stated, $6.79M credited, refused
 - CI was red on both W41 commits: the design page's percentages were in no guard list
 - W43: the anchor re-measurement, committed before it runs
 - W41 run 1: our own V2 sell simulation -- inconclusive under the rule set before it ran
-- W41: own sell simulation -- design page and the rule that judges the prototype, before it runs
-- W44: the holder test is a share with a sample size, and the flag behaves like a count trigger
 
-_95 more not shown (103 commits in total)._
+_69 more not shown (77 commits in total)._
 
 ## What I got wrong
 
