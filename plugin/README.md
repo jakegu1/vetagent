@@ -14,9 +14,9 @@ plugin/
 
 ## Install
 
-**Not in a marketplace yet**, so there is no `/plugin install` line to give you: the
-community directory needs an account the maintainer has not created. Until then, load it
-from a clone:
+**Submitted to the Claude plugin directory on 2026-09-16, not listed yet** — the
+submission form states that submitting does not guarantee inclusion. So there is still no
+`/plugin install` line to give you. Until it is listed, load it from a clone:
 
 ```bash
 claude --plugin-dir ./plugin
