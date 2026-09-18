@@ -25,6 +25,9 @@ Engine:
 
 - `api.dexscreener.com/latest/dex/search`
 - `api.dexscreener.com/latest/dex/tokens/{id}`
+- `api.dexscreener.com/token-pairs/v1/base/{id}`
+- `api.dexscreener.com/token-pairs/v1/bsc/{id}`
+- `api.dexscreener.com/token-pairs/v1/ethereum/{id}`
 - `api.geckoterminal.com/api/v2/networks/base/pools/{id}`
 - `api.geckoterminal.com/api/v2/networks/base/tokens/{id}/pools`
 - `api.geckoterminal.com/api/v2/networks/bsc/pools/{id}`
@@ -70,7 +73,7 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 
 | Metric | Value |
 |---|---|
-| Verdict distribution | high=75, low=155, medium=224, unknown=122 |
+| Verdict distribution | high=75, low=158, medium=221, unknown=122 |
 | unknown rate | 21.2% |
 | Share with a data gap | 24.7% |
 
@@ -113,7 +116,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 17 | 58.8% | 94.1% | 0.0% | 5.9% | 76.1 |
-| **safe** | 349 | 6.0% | 45.6% | 28.1% | 26.4% | 27.0 |
+| **safe** | 349 | 6.0% | 44.7% | 28.9% | 26.4% | 26.8 |
 
 ### Contract-safety signals only (ablated)
 
@@ -281,7 +284,7 @@ The label means a project died -- price collapsed, volume collapsed. It does **n
 | | n | min | p25 | median | p75 | max |
 |---|---|---|---|---|---|---|
 | liquidity, `dead` | 20 | $2 | $2,193 | $11,789 | $65,486 | $436,531 |
-| liquidity, `alive` | 156 | $1 | $152,764 | $474,465 | $1,884,670 | $113,320,000 |
+| liquidity, `alive` | 156 | $1 | $152,764 | $494,501 | $1,975,020 | $127,451,000 |
 
 13 of the 30 dead tokens still hold $5,000 or more of liquidity. Those positions can be sold. An engine that rated them `high` would be calling a failed investment a safety hazard, which is a judgement this tool refuses to make (P1 in DECISIONS.md) -- so `medium` with an abandoned-pool warning is the intended answer, not a miss.
 

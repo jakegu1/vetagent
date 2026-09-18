@@ -31,7 +31,7 @@
 > liquidity signals and it is 17.6%. The cohort is 17 tokens and 15 of them hold under a
 > dollar, so read both columns.
 >
-> 3.1% false positives, on a control with a median of $460,180 in the pool. 21.2% of
+> 3.1% false positives, on a control with a median of $484,483 in the pool. 21.2% of
 > answers are a refusal.
 >
 > Method, dataset and harness — run it yourself: github.com/jakegu1/vetagent
@@ -104,7 +104,7 @@ first would be the flattering half of a pair.
   which the engine downgrades to `medium` when the chain contradicts it rather than
   dropping it.
 - **The false-positive rate is measured where the engine can barely fail.** The healthy
-  control has a median of $460,180 in the pool. Of the 146 tokens where the engine saw
+  control has a median of $484,483 in the pool. Of the 146 tokens where the engine saw
   $10k or more of depth, **0** were rated high. All 5 false
   positives are among the 16 thin ones — and for four of those the engine found no
   costable pool at all, which for two became `high` rather than `unknown`. That last part

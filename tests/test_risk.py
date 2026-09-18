@@ -1477,7 +1477,11 @@ def test_an_unrecognised_chain_hint_is_not_a_chain():
           sellability_gap(sol))
 
     # -- 4. An observed chain is a fact even if we have never heard of it. ----
-    fork = {"pairs": [{"chainId": "pulsechain", "dexId": "pulsex",
+    # Not pulsechain any more: a pulsechain pool under an Ethereum address is a fork copy,
+    # and since 2026-09-18 the token's home chain is read before a copy can be judged
+    # (test_usdt_is_judged_on_ethereum_not_on_a_fork_copy). A chain nobody forked from is
+    # the case this check is about.
+    fork = {"pairs": [{"chainId": "hyperevm", "dexId": "hyperswap",
                        "baseToken": {"address": WETH, "symbol": "TKN"},
                        "quoteToken": {"address": "0xq"}, "priceUsd": "1.0",
                        "liquidity": {"usd": 250_000}, "volume": {"h24": 10_000},
@@ -3093,6 +3097,91 @@ def test_a_key_that_cannot_be_a_key_is_not_sent():
               reason)
     finally:
         risk.configure(types_ns(CG_DEMO_KEY=saved) if saved else types_ns())
+
+
+def test_usdt_is_judged_on_ethereum_not_on_a_fork_copy():
+    """USDT was rated on a PulseChain copy worth $0.00095, in the benchmark and in production.
+
+    DexScreener's /latest/dex/tokens answer is capped at 30 pairs. For USDT's Ethereum address
+    it returned 30 PulseChain pairs and no Ethereum pool at all (every cached answer since
+    2026-09-03, and live on 2026-09-18), so the published "USDT low" row and the live default
+    call (`GET /assess/<USDT>`, no chain: medium, "Looks abandoned", chain_searched
+    pulsechain) both judged a fork copy. USDC's answer held 28 PulseChain pairs and two small
+    Ethereum pools, the deeper one 8 days old, so it read "Recently created pair": the cap
+    had cut off every deep pool. Found by the 2026-09-18 pre-post review and its
+    verification; "USDT and WBTC are rated low (4 of 4)" had been published on the strength
+    of that row since W30.
+
+    When the answer holds no pool on the token's home chain, or is full at the cap, the
+    per-chain listing (`/token-pairs/v1/<chain>/<address>`) is asked for the home chain. If
+    that listing cannot be read and the home chain has no pool, the fork copy is not judged:
+    the market fallback is asked, and failing that the answer is a gap, never a verdict on a
+    copy.
+    """
+    print("\n[liquidity] a fork chain's copy never stands in for the token's own chain")
+    USDT = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+    USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+    now_ms = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
+
+    def pool(chain, target, liq, vol, age_days, price, n):
+        return {"chainId": chain, "dexId": "pulsex" if chain == "pulsechain" else "uniswap",
+                "pairAddress": "0x%s%038x" % (chain[:2].encode().hex()[:2], n),
+                "baseToken": {"address": target, "symbol": "TKN"},
+                "quoteToken": {"address": "0x%040x" % (n + 7), "symbol": "Q"},
+                "priceUsd": str(price), "priceNative": "1",
+                "liquidity": {"usd": liq, "base": liq / 2 / price, "quote": liq / 2},
+                "volume": {"h24": vol}, "txns": {"h24": {"buys": 50, "sells": 40}},
+                "pairCreatedAt": now_ms - age_days * 86400000}
+
+    def assess(addr, hint, tokens, per_chain, fallback=None):
+        install_stub([("dex/tokens/", {"pairs": tokens}),
+                      ("token-pairs/v1/ethereum/", per_chain),
+                      ("/tokens/%s/pools" % addr, fallback),
+                      ("dex/search", {"pairs": []}),
+                      ("honeypot.is", _load("hp_matic.json")), ("rugcheck", None)])
+        return run(risk.assess(addr, chain_hint=hint))
+
+    usdt_tokens = [pool("pulsechain", USDT, 275_366 - i * 5000, 361, 644, 0.00095, i)
+                   for i in range(30)]
+    usdt_chain = [pool("ethereum", USDT, 16_907_541, 5_000_000, 598, 1.0, 100)]
+    usdc_tokens = ([pool("pulsechain", USDC, 70_000, 100, 1200, 0.00097, i) for i in range(28)]
+                   + [pool("ethereum", USDC, 6_968_668, 100_000_000, 8, 1.0, 50),
+                      pool("ethereum", USDC, 884_146, 60_000_000, 493, 1.0, 51)])
+    usdc_chain = [pool("ethereum", USDC, 127_445_461, 4_000_000, 2202, 1.0, 101)]
+
+    for name, addr, tokens, chain in (("USDT", USDT, usdt_tokens, usdt_chain),
+                                      ("USDC", USDC, usdc_tokens, usdc_chain)):
+        for hint in ("ethereum", None):
+            r = assess(addr, hint, tokens, chain)
+            bp = (r.get("evidence") or {}).get("best_pair") or {}
+            warns = {s["name"] for s in r["signals"] if s["severity"] not in ("ok", "info")}
+            check("%s (hint %s) is judged on Ethereum at about a dollar" % (name, hint),
+                  bp.get("chain") == "ethereum" and abs((bp.get("price_usd") or 0) - 1) < 0.05,
+                  "%s $%s on %s" % (bp.get("price_usd"), bp.get("liquidity_usd"),
+                                     bp.get("chain")))
+            check("  and reads neither abandoned nor freshly created",
+                  not {"Looks abandoned", "Recently created pair"} & warns, str(warns))
+            check("  and says which chain it searched",
+                  (r.get("evidence") or {}).get("chain_searched") == "ethereum",
+                  str((r.get("evidence") or {}).get("chain_searched")))
+
+    # The per-chain listing cannot be read and the token has no pool on its own chain: the
+    # copy must not be judged. Nothing else answers either, so this is a gap, not a verdict.
+    r = assess(USDT, "ethereum", usdt_tokens, None, fallback=None)
+    check("an unreadable home chain is never replaced by a fork copy",
+          ((r.get("evidence") or {}).get("best_pair") or {}).get("chain") != "pulsechain",
+          str((r.get("evidence") or {}).get("best_pair")))
+    check("  it is a liquidity gap, so the answer is unknown", r["risk_level"] == "unknown",
+          r["risk_level"])
+
+    # A token that genuinely lives on the fork: the listing answers, with nothing on
+    # Ethereum. Its own pools are judged as before, not refused.
+    native = "0x" + "9a" * 20
+    fork_only = [pool("pulsechain", native, 500_000, 200_000, 400, 0.5, i) for i in range(3)]
+    r = assess(native, None, fork_only, [])
+    check("a token whose only market is the fork is still judged there",
+          ((r.get("evidence") or {}).get("best_pair") or {}).get("chain") == "pulsechain",
+          str((r.get("evidence") or {}).get("best_pair")))
 
 
 def test_the_fallback_knows_which_side_of_the_pool_the_token_is_on():

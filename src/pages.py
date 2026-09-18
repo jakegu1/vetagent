@@ -311,9 +311,9 @@ flatter a row.</p>
 $0 or under a dollar, and 30 of those 31 are not high on contract signals only; 4 more have no depth
 figure at all. USDT and WBTC themselves are rated low (4 of 4 benchmark rows).</p>
 <p>Across the 246 benchmark tokens holding $100,000 or more -- the 154 in the false-block row plus 92
-others -- 137 are low, 53 unknown and 56 medium or high. On contract signals only it is 159 low, 53 unknown
-and 34 medium or high: the 22 that move to low all have a pool-age or lifecycle flag as their driver
-(22 of 22), and 30 of the 56 medium-or-high answers are honeypot verdicts, which contract signals keep.
+others -- 139 are low, 53 unknown and 54 medium or high. On contract signals only it is 159 low, 53 unknown
+and 34 medium or high: the 20 that move to low all have a pool-age or lifecycle flag as their driver
+(20 of 20), and 30 of the 54 medium-or-high answers are honeypot verdicts, which contract signals keep.
 These are the benchmark's tokens, not the tokens callers ask about, and live answers are
 <code>unknown</code> more often; the live rate is read daily into
 <a href="https://github.com/jakegu1/vetagent/blob/master/docs/SCORECARD.md">the scorecard</a>.</p>

@@ -2715,16 +2715,73 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
 
 # ---------------------------------------------------------------- the three tools
 
+# DexScreener's /latest/dex/tokens answer stops at this many pairs, whatever exists.
+_DS_TOKENS_CAP = 30
+
+# Chains that forked another and inherited its token addresses, and none of their value. A
+# pool here under USDT's address is a copy of USDT, priced at $0.00095.
+_FORK_OF = {"pulsechain": "ethereum"}
+
+
+async def _complete_home_chain(pairs, address, chain_hint):
+    """Make sure the token's own chain is in the answer. Returns (pairs, home_unreadable, want).
+
+    DexScreener's token answer is a capped sample, and for the most-asked tokens the sample
+    can miss their chain entirely: on 2026-09-18 it returned 30 PulseChain pairs and no
+    Ethereum pool for USDT, and 28 PulseChain plus two small Ethereum pools for USDC, so USDT
+    was judged on a copy ("Looks abandoned", $0.00095) and USDC on an 8-day-old pool. The
+    published "USDT low" row was the same copy.
+
+    The per-chain listing is asked when the chosen scope is not a ranked chain (a fork copy,
+    or a chain we cannot rank, with a home chain we can name) or when the answer is full at
+    the cap. Its pools are merged; nothing is dropped. If it cannot be read and the home
+    chain has no pool at all, `home_unreadable` is True: the caller must not judge the
+    copies it has, and asks the market fallback for the home chain instead.
+    """
+    if _looks_solana(address) or not pairs:
+        return pairs, False, ""
+    scope = _home_scope(pairs, chain_hint, address)
+    scope_chain = ((scope[0].get("chainId") or "").lower() if scope else "")
+    saturated = len(pairs) >= _DS_TOKENS_CAP
+    if scope_chain in _CHAIN_RANK:
+        if not saturated:
+            return pairs, False, ""
+        want = scope_chain
+    else:
+        hint = _canonical_chain(chain_hint)
+        want = _FORK_OF.get(scope_chain) or (hint if hint in _CHAIN_RANK else "")
+        if not want:
+            return pairs, False, ""
+    listed = await _fetch_json("https://api.dexscreener.com/token-pairs/v1/%s/%s"
+                               % (want, address))
+    if isinstance(listed, list):
+        seen = {(p.get("pairAddress") or "").lower() for p in pairs if isinstance(p, dict)}
+        extra = [p for p in listed if isinstance(p, dict)
+                 and (p.get("chainId") or "").lower() == want
+                 and (p.get("pairAddress") or "").lower() not in seen]
+        return pairs + extra, False, want
+    on_home = any((p.get("chainId") or "").lower() == want for p in pairs
+                  if isinstance(p, dict))
+    return pairs, not on_home, want
+
+
 async def _load_pairs(address, chain_hint):
     """Load pairs. Returns (pairs, source); pairs is None when both sources failed."""
     ds = await _fetch_json("https://api.dexscreener.com/latest/dex/tokens/%s" % address)
+    home_unreadable, want = False, ""
     if ds is not None:
         pairs = ds.get("pairs") or []
         if pairs:
-            return pairs, "dexscreener"
+            pairs, home_unreadable, want = await _complete_home_chain(pairs, address, chain_hint)
+            if not home_unreadable:
+                return pairs, "dexscreener"
+            # What we hold are copies on a fork, and the token's own chain could not be
+            # read. Ask the market fallback about the home chain; never judge the copy.
     # Fallback: GeckoTerminal. Network comes from chain_hint; eth is no longer hardcoded.
     networks = []
-    if chain_hint:
+    if home_unreadable and _GT_NETWORK.get(want):
+        networks.append(_GT_NETWORK[want])
+    if chain_hint and not networks:
         n = _GT_NETWORK.get(chain_hint.strip().lower())
         if n:
             networks.append(n)
@@ -2746,8 +2803,10 @@ async def _load_pairs(address, chain_hint):
             if pools:
                 return [_gt_to_pair(p, address, net) for p in pools], name
             break               # an answer, and it was empty: the next source is the same data
-    if ds is None:
-        return None, None  # fetch failed, not "there really are no pools"
+    if ds is None or home_unreadable:
+        # The fetch failed, or the only pools we saw are fork copies and the token's own
+        # chain could not be read: not "there really are no pools".
+        return None, None
     return [], "dexscreener"
 
 
