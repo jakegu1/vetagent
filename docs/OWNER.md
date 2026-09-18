@@ -168,6 +168,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- The landing page no longer assesses a token on every visit
 - An unknown whose sell simulation reverted no longer says "no source can see this token"
 - USDT was judged on a PulseChain copy at $0.00095 -- in the published benchmark and live
 - Gate 2026-09-18 answered: the frozen rule says YES, and the YES is ours
@@ -175,9 +176,8 @@ problem looked like before it was fixed.
 - plugin/README claimed a blocker that had just stopped being true
 - W48 recurred: the deploy flood check failed on 29e8c9c too, 2 of the last 3 deploys
 - W42: /method splits the centralised row by pool depth, with every column that could flatter it
-- Date the W41 correction by the build's clock: 2026-09-16 local was 2026-09-15 UTC
 
-_63 more not shown (71 commits in total)._
+_64 more not shown (72 commits in total)._
 
 ## What I got wrong
 
@@ -186,6 +186,12 @@ costs me something. A build check requires an entry here every 14 days: if there
 were genuinely no mistakes, saying so is itself a dated claim on the record.
 
 Newest first.
+
+**2026-09-18** &mdash; I said: *'USDT and WBTC themselves are rated low (4 of 4 benchmark rows)' -- written in W30 (2026-09-15) as the correction to a false USDT claim, and put on five surfaces, three of them live pages.*
+
+> The USDT/Ethereum row it counted was a PulseChain copy of USDT priced at $0.00095: DexScreener's capped answer held 30 PulseChain pairs and no Ethereum pool, and the live default call answered medium. The guard counted rows by ticker, so it could not see it. Fixed in the engine (the token's own chain is read before a copy can be judged) and the guard now matches the contracts' addresses; the post says so.
+
+> How it surfaced: Caught by the 2026-09-18 pre-post review, which read the row's pool, not its verdict. I had checked that the four rows said low, not what they said low about.
 
 **2026-09-15** &mdash; I said: *'W41 run 1 committed and pushed' -- reported with the tests workflow red on both W41 commits (c66aba1 and b74e72e).*
 

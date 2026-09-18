@@ -27,12 +27,12 @@
 > I built a token-risk API for AI agents and published its error rate, including the
 > number that makes it look worst.
 >
-> On contracts an independent oracle calls adversarial, we rate 58.8% high. Strip the
-> liquidity signals and it is 17.6%. The cohort is 17 tokens and 15 of them hold under a
+> On contracts an independent oracle calls adversarial, we rate 58.8% high. Keep only the
+> contract signals and it is 17.6%. The cohort is 17 tokens and 15 of them hold under a
 > dollar, so read both columns.
 >
 > 3.1% false positives, on a control with a median of $484,483 in the pool. 21.2% of
-> answers are a refusal.
+> benchmark answers are a refusal.
 >
 > Method, dataset and harness — run it yourself: github.com/jakegu1/vetagent
 
@@ -40,11 +40,11 @@
 
 ## Hacker News
 
-**Title:** I published my crypto risk API's error rate, including the number that makes it look worst
+**Title:** Show HN: A token-risk check for AI agents that publishes its own error rates
 
 **The number the title is actually about, first.** On 17 contracts an independent oracle
-labels adversarial, the engine rates **58.8%** (10 of 17) high risk. Strip out the
-liquidity signals and it is **17.6%**, with **35.3%** rated *low*. 15 of those 17
+labels adversarial, the engine rates **58.8%** (10 of 17) high risk. Keep only the
+contract signals and it is **17.6%**, with **35.3%** rated *low*. 15 of those 17
 hold under a dollar of liquidity, so the full column is substantially measuring "is this
 pool empty" rather than "is this contract hostile". Seventeen is a small cohort and I will
 say so before you do; growing it is the top open item in the backlog.
@@ -63,10 +63,10 @@ a pre-publication review caught it:
 - **ChainAware** publishes a denominator — 45,904 of 50,948 — defines its positive, and
   states its own **9.9% miss rate**. (Forta's and ChainAware's figures are their own, on
   their own pages, checked 2026-09-09.)
-- **Two academic groups** have already benchmarked these scanners on released datasets:
+- **Two academic groups** have already evaluated these scanners and released their data:
   arXiv 2309.04700 scores GoPlus at 60% detection on 11,943 labelled trapdoor tokens, and
-  the ISSTA 2025 SoK (arXiv 2403.16082) puts 14 scanners against a public 2,360-instance
-  set.
+  an ISSTA 2025 SoK (doi.org/10.1145/3728900) releases a labelled rug-pull dataset and
+  measures which rug-pull types 13 detection tools catch.
 - Among MCP servers, **Mindjack** publishes per-band sample sizes and a measured rate, and
   says its safest band still rugged about 35% of the time (its own published scorecard,
   checked 2026-09-09).
@@ -77,9 +77,11 @@ checked 2026-09-09. So the surviving claim is narrower and I will state only tha
 **I do not know of another vendor that self-publishes its rates together with the harness
 that produces them.** If you know of one, say so and I will link it.
 
-Measured on 576 tokens across Ethereum, BSC and Base, 2026-09-14:
+Measured on 576 tokens across Ethereum, BSC and Base: the engine as of 2026-09-18, over
+market data the harness cached mostly on 2026-09-04 to 09-07 (plus DexScreener's per-chain
+listings, first asked on 2026-09-18):
 
-| | full | signals stripped |
+| | full | contract signals only |
 |---|---|---|
 | Adversarial contracts rated high (n=17) | **58.8%** (10 of 17) | **17.6%** |
 | Confirmed-dead tokens not rated low (n=30) | 86.7% (26 of 30) | **20.0%** |
@@ -89,8 +91,8 @@ Measured on 576 tokens across Ethereum, BSC and Base, 2026-09-14:
 | Answers returned as `unknown` (n=576) | **21.2%** (122 of 576) | |
 | Tokens the oracle tags centralised, rated high (n=179) | **22.3%** (40 of 179) | |
 
-**Read the second column before the first.** "Signals stripped" removes the liquidity and
-market-depth checks. Where a number collapses under it, the number was substantially
+**Read the second column before the first.** "Contract signals only" drops the liquidity,
+market-depth, pool-age, lifecycle and impersonation checks. Where a number collapses under it, the number was substantially
 detecting an empty pool. 86.7% becoming 20.0% is the clearest case, and my own report
 calls the full figure "close to a tautology". I publish both because publishing only the
 first would be the flattering half of a pair.
@@ -128,7 +130,7 @@ first would be the flattering half of a pair.
   of $120k in the pool. That is my supply chain, not the market's ambiguity. Another 25
   are tokens whose every pool is priced in an asset no independent market prices: the
   engine declines to believe a depth nobody can check.
-- **Until 2026-09-14 it could be fooled for about two dollars.** An adversarial audit found
+- **Until 2026-09-15 it could be fooled for about two dollars.** An adversarial audit found
   three ways. A pool priced in a token its creator minted could claim any depth and buy a
   `low`. The same arithmetic let a $2.21 pool outrank the real Wormhole WETH on Solana,
   which the engine then called an impostor, in production. And twenty self-sells could
@@ -136,12 +138,19 @@ first would be the flattering half of a pair.
   on the data source most tokens resolve through. All three are fixed, each with a test
   that failed first, and the table above is measured after the fixes. They cost
   something: 13 healthy tokens moved from low to medium on thinner verifiable depth, and
-  17 more of the 576 answers became `unknown`.
+  17 more of the 576 answers became `unknown` -- and the same hole had a second door, the
+  fallback data source, which I found and closed a day later.
+- **Until 2026-09-18 the benchmark's USDT row was a copy of USDT.** DexScreener's token
+  answer stops at 30 pairs, and for USDT's Ethereum address all 30 were PulseChain copies,
+  priced at a thousandth of a cent. The engine judged a copy, and "USDT is rated low" rested
+  on it; asked with no chain, the live service answered `medium`. A reviewer found it the day
+  before this post. The engine now reads the token's own chain before it will judge a
+  copy, and the row is USDT on Ethereum.
 - **Zero Solana rows in the benchmark.** The product answers Solana, and the discovery tool
   defaults to it. The advertised flow — discover, then assess — defaults to the one chain
   with no measured error rate.
-- **58% of the dataset is Base, and the adversarial cohort is 83% Base.** The skew is worst
-  exactly where the set is smallest.
+- **58% of the dataset is Base, and the 47 dead or adversarial tokens are 83% Base** (11 of
+  the 17 adversarial ones). The skew is worst in the small cohorts that matter most.
 - **One feature was measured and deleted.** LP lock/burn fired on 22 of 38 good tokens in a
   one-off check — worse than chance — so it was removed from the coverage denominator
   rather than shipped. That check was a spot measurement, not a benchmark run.
@@ -152,9 +161,10 @@ Free, no signup, MIT. `https://vetagent.dev/mcp` for MCP, or `GET /assess/<addre
 is `bench/run_benchmark.py`, and it exits non-zero if the engine's endpoints and the
 labelling endpoints ever intersect. Until 2026-09-09 that command did not work on a fresh
 clone — it evaluated for twenty minutes and exited "Benchmark void" because a required
-file was gitignored. That is fixed. The **figures** are a snapshot against live upstreams
-on 2026-09-14, so a re-run today will not land on the same decimals; tell me if the drift
-is large.
+file was gitignored. That is fixed. The **figures** are the engine as of 2026-09-18, scored over upstream answers the
+harness cached mostly on 2026-09-04 to 09-07 (it keeps every successful fetch). A fresh
+clone re-fetches everything, so a re-run will not land on the same decimals; tell me if
+the drift is large.
 
 What "independent" does and does not mean here: the labels use none of the endpoints the
 engine reads, and the build enforces that. The outcome oracle is independent of every
@@ -177,20 +187,21 @@ HTTP), and I published the benchmark instead of a marketing number.
 576 tokens on Ethereum, BSC and Base:
 
 - 3.1% false positives on healthy tokens
-- 21.2% of answers are `unknown` — a critical check could not run, so it refuses rather
-  than guessing
+- 21.2% of answers are `unknown` in the benchmark — a critical check could not run, so it
+  refuses rather than guessing (live it runs higher, and most live calls so far are my own
+  monitoring)
 - 22.3% of the tokens GoPlus tags as centralised are rated high. Almost all of those
   are abandoned pools holding cents -- 16 of the 21 with a liquidity figure are under a
   dollar, median $0.023 -- and the drivers are liquidity, drained and honeypot checks,
   never owner powers, which `_owner_power_signal` is forbidden from scoring. USDT and WBTC themselves
   are rated low (4 of 4 benchmark rows)
 - only 10% of tokens that actually died are rated high, and the 86.7% "not rated low"
-  beside it falls to 20.0% once the liquidity signals are stripped — that row was
+  beside it falls to 20.0% once only contract signals are kept — that row was
   largely detecting an empty pool rather than a bad contract
 
-The last two are the honest failure modes. Centralised stablecoins really do hold the
-powers we flag, and "this project died" is a market outcome while the engine scores a
-safety property — they overlap and are not the same thing.
+The last two are the honest failure modes. The centralised row is mostly pools that are
+gone, not owner powers, and "this project died" is a market outcome while the engine
+scores a safety property — they overlap and are not the same thing.
 
 What it actually checks: sell simulation (can you get out), buy/sell tax, liquidity
 depth, pair age, same-ticker impersonation, and owner powers read from bytecode. What it
@@ -212,8 +223,8 @@ command, and the gap between them is the most useful thing in the file.
 So the scan is not scored, for two reasons rather than one: half is half, and the
 adversarial cohort here is 17 tokens — a discrimination claim on 17 is not a claim.
 
-The method is reproducible and the numbers are a dated snapshot (2026-09-14, live
-upstreams), not a constant — `python bench/run_benchmark.py` re-measures rather than
+The method is reproducible and the numbers are a dated snapshot (engine 2026-09-15,
+market data cached mostly 2026-09-04 to 09-07), not a constant — `python bench/run_benchmark.py` re-measures rather than
 replays, and the disagreements are listed by token so you can check them one at a time.
 
 github.com/jakegu1/vetagent
@@ -227,14 +238,15 @@ auth, no signup. Three tools: `assess_token_risk`, `get_token_liquidity`,
 `find_new_hot_pools`.
 
 The thing that might interest this group is not the tool, it is the benchmark. It
-publishes its own false-positive rate (3.1%), unknown rate (21.2%) and the cases where it
+publishes its own false-positive rate (3.1%), benchmark unknown rate (21.2%) and the cases where it
 disagrees with the labelling oracle, with the harness in the repo so anyone can re-run
 it. I could not find another server in this category that publishes a reproducible error
 rate, and I looked.
 
 One design note relevant to anyone building agent-facing tools: when a check cannot run,
 it returns `unknown` and says so in the recommendation text, rather than defaulting to
-"low risk". 21.2% of answers are that refusal. An agent reading a confident wrong answer
+"low risk". In the benchmark, 21.2% of answers are that refusal; live, more. An agent reading
+a confident wrong answer
 is worse than an agent reading "I could not tell", and most scanners in this space return
 a score no matter what.
 
@@ -258,8 +270,8 @@ github.com/jakegu1/vetagent
   reader questions. The post raises both before a reader can.
 - Expect "your dataset is 58% Base". True, in the report, and agreeing immediately is the
   right response. An earlier draft of this post
-  said 83%, which is the adversarial cohort's Base share — 47 tokens, not 576. Do not
+  said 83%, which is the Base share of the 47 dead or adversarial tokens, not of all 576. Do not
   quote a number for a set twelve times larger than the one it was measured on, in a post
   whose entire argument is that our numbers can be checked.
-- If anyone asks whether it is safe to depend on: it is a solo project, four upstreams,
+- If anyone asks whether it is safe to depend on: it is a solo project, five upstream data sources,
   no SLA. Say so.

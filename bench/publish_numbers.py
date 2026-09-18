@@ -129,6 +129,7 @@ TARGETS = [
     ("src/entry.py", r"Dead tokens not rated low \.+ [\d.]+% \(\d+ of (\d+)\)", "dead_n"),
     ("README.md", r"Sampling has turned up (\d+) dead tokens in \d+", "dead_n"),
     ("README.md", r"Sampling has turned up \d+ dead tokens in (\d+)", "n"),
+    ("README.md", r"the adversarial cohort is (\d+) contracts", "adversarial_n"),
     # docs/EXPERIMENT_C.md is the text that goes to Hacker News and Reddit. A number
     # that drifts there is worse than one that drifts in the README: it is quoted in
     # public, by us, to an audience invited specifically to check it.
@@ -190,10 +191,10 @@ TARGETS = [
      "false_block_pct"),
     ("docs/EXPERIMENT_C.md", r"only ([\d.]+)% of tokens that actually died", "dead_high_pct_round"),
     ("docs/EXPERIMENT_C.md", r"and the ([\d.]+)% \"not rated low\"", "dead_not_low_pct"),
-    ("docs/EXPERIMENT_C.md", r"falls to ([\d.]+)% once the liquidity", "dead_not_low_ablated_pct"),
+    ("docs/EXPERIMENT_C.md", r"falls to ([\d.]+)% once only contract", "dead_not_low_ablated_pct"),
     ("docs/EXPERIMENT_C.md", r"\*\*([\d.]+)% of the dataset is Base",
      "base_share_pct"),
-    ("docs/EXPERIMENT_C.md", r"adversarial cohort is ([\d.]+)% Base", "bad_base_share_pct"),
+    ("docs/EXPERIMENT_C.md", r"dead or adversarial tokens are ([\d.]+)% Base", "bad_base_share_pct"),
     ("docs/EXPERIMENT_C.md", r"dataset is ([\d.]+)% Base\"\. True", "base_share_pct"),
     # The rewritten post leads with the number the old one never printed: recall on the
     # adversarial cohort, in both columns. A review found the post described four of its
@@ -206,7 +207,7 @@ TARGETS = [
      "adversarial_high_n"),
     ("docs/EXPERIMENT_C.md", r"the engine rates \*\*[\d.]+%\*\* \(\d+ of (\d+)\) high risk",
      "adversarial_n"),
-    ("docs/EXPERIMENT_C.md", r"liquidity signals and it is \*\*([\d.]+)%\*\*",
+    ("docs/EXPERIMENT_C.md", r"contract signals and it is \*\*([\d.]+)%\*\*",
      "adversarial_high_ablated_pct"),
     ("docs/EXPERIMENT_C.md", r"with \*\*([\d.]+)%\*\* rated \*low\*",
      "adversarial_low_ablated_pct"),
@@ -240,11 +241,11 @@ TARGETS = [
      r"Adversarial contracts rated high \(n=\d+\) \| \*\*[\d.]+%\*\* \((\d+) of",
      "adversarial_high_n"),
     ("docs/EXPERIMENT_C.md", r"calls adversarial, we rate ([\d.]+)% high", "adversarial_high_pct"),
-    ("docs/EXPERIMENT_C.md", r"Strip the\s+>?\s*liquidity signals and it is ([\d.]+)%",
+    ("docs/EXPERIMENT_C.md", r"Keep only the\s+>?\s*contract signals and it is ([\d.]+)%",
      "adversarial_high_ablated_pct"),
     ("docs/EXPERIMENT_C.md", r"17 tokens and (\d+) of them hold under a", "adversarial_sub_dollar_n"),
     ("docs/EXPERIMENT_C.md", r"(\d+) of those 17\s+hold under a dollar", "adversarial_sub_dollar_n"),
-    ("docs/EXPERIMENT_C.md", r"([\d.]+)% of\s+>?\s*answers are a refusal", "unknown_pct"),
+    ("docs/EXPERIMENT_C.md", r"([\d.]+)% of\s+>?\s*benchmark answers are a refusal", "unknown_pct"),
     ("docs/EXPERIMENT_C.md", r"control has a median of \$([\d,]+)", "alive_median_liq"),
     ("docs/EXPERIMENT_C.md", r"\*\*([\d.]+)% of centralised-tagged tokens rated high",
      "centralized_high_pct"),
@@ -401,8 +402,20 @@ def _simulator_unknowns(unknown):
         for g in (r.get("gap_reasons") or []))]
 
 
+# The canonical contracts, not the ticker. Matching "USDT" by symbol let the published
+# "4 of 4" count a row that was a PulseChain copy of USDT (fixed 2026-09-18), and would let a
+# lookalike "USDT" in a future sample turn it into "4 of 5".
+_NAMED_CENTRALISED = {
+    ("ethereum", "0xdac17f958d2ee523a2206206994597c13d831ec7"),   # USDT
+    ("bsc", "0x55d398326f99059ff775485246999027b3197955"),        # USDT
+    ("base", "0xfde4c96c8593536e31f229ea8f37b2ada2699bb2"),       # USDT (bridged)
+    ("ethereum", "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"),   # WBTC
+}
+
+
 def _named_centralised(rows):
-    return [r for r in rows if (r.get("symbol") or "").upper() in ("USDT", "WBTC")]
+    return [r for r in rows
+            if (r.get("chain"), (r.get("address") or "").lower()) in _NAMED_CENTRALISED]
 
 
 DEPTH_ROWS = (
@@ -572,7 +585,7 @@ def figures():
         # Everything below was quoted in the Experiment C post and computed nowhere. The
         # exercise of making them computable found one of them wrong: the post said
         # "83% of the dataset is Base" twice. The dataset is 58% Base. 83% is the
-        # ADVERSARIAL COHORT, which is 47 tokens, not 576 -- a real weakness of the
+        # DEAD-OR-ADVERSARIAL set, 47 tokens, not 576 (the adversarial cohort alone is 17) -- a real weakness of the
         # sampling, misattributed to a set twelve times larger.
         "goplus_fp_pct": "%.1f" % (100.0 * goplus_good.get("high", 0.0)),
         "base_share_pct": ("%.0f" % (100.0 * comp["chain"].get("base", 0) / comp["n"])
@@ -925,7 +938,7 @@ def unclaimed_percentages():
 
     Two things this catches that the keyword-gated version did not, both found the day it
     was written: the Experiment C post said "83% of the dataset is Base" twice, when the
-    dataset is 58% Base and 83% is the 47-token adversarial cohort; and the owner-power
+    dataset is 58% Base and 83% is the 47 dead-or-adversarial tokens; and the owner-power
     recall figures in the same post were measured on 250 Base contracts holding 3 of the
     19 pausable ones.
     """

@@ -281,7 +281,7 @@ Base.</p>
 <p><strong>One liquid, healthy token in five is refused.</strong> The false-positive row counts
 only <code>high</code>, but an agent treats <code>medium</code> as do-not-trade too; the false-block
 row counts it that way, on tokens that are alive or merely centralised and hold $100,000 or more.</p>
-<p><strong>Much of the dead-token recall is detecting an empty pool.</strong> Strip the liquidity
+<p><strong>Much of the dead-token recall is detecting an empty pool.</strong> Keep only the contract
 signals and dead tokens not rated low falls to 20.0%; adversarial contracts rated high falls to
 17.6%. The adversarial cohort is 17 tokens and 15 of them hold under a dollar, so it is too small
 and too drained to support a discrimination claim yet.</p>

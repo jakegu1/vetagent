@@ -113,11 +113,12 @@ What is measured today: a **3.1% false positive rate** on 162 healthy tokens, a
 agent will also refuse), a
 **21.2% unknown rate**, and **22.3%** of GoPlus-tagged centralised tokens rated high -- almost all abandoned pools holding cents, not USDT, which is rated low.
 
-What is **not** measured today: **recall**. Sampling has turned up 30 dead tokens in 576,
+What is **not** measured yet: **recall you could rely on**. Sampling has turned up 30 dead tokens in 576,
 because every public source ranks by liquidity and rugged pools fall off the listing
-entirely. Rather than compute a detection rate on a single sample and present it as a
-result, that figure is left blank until the daily snapshot archive matures enough to
-supply a real cohort. An earlier version of this section claimed "measured recall",
+entirely, and the adversarial cohort is 17 contracts. Recall on those two small cohorts is
+published in `bench/results.md` beside a contract-signals-only column, because most of
+what they catch is an empty pool rather than a hostile contract. A population-level
+detection rate waits until the daily snapshot archive matures enough to supply a real cohort. An earlier version of this section claimed "measured recall",
 which the benchmark file itself contradicted.
 
 → **[`bench/results.md`](bench/results.md)** — current numbers, method, and known limits.
@@ -133,7 +134,8 @@ Why it is built this way:
   is worse than none, so it is made structurally impossible rather than documented.
 - **An ablation column.** A token that already collapsed has ~zero liquidity today, so
   flagging it is close to tautological. Results are therefore reported twice: with all
-  signals, and with liquidity/lifecycle signals removed. The gap is what the engine
+  signals, and with only contract signals kept (liquidity, lifecycle, pool-age and
+  impersonation signals removed). The gap is what the engine
   actually contributes beyond the obvious.
 - **`unknown` rate reported alongside recall.** A tool that answers `unknown` to
   everything has perfect recall and zero value.
@@ -222,4 +224,4 @@ checks that ran", never as "safe to buy".
 
 ## License
 
-Not yet chosen — see `docs/HANDOFF.md`.
+MIT — see [`LICENSE`](LICENSE).
