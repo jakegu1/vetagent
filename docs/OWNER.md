@@ -168,6 +168,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- An unknown whose sell simulation reverted no longer says "no source can see this token"
 - USDT was judged on a PulseChain copy at $0.00095 -- in the published benchmark and live
 - Gate 2026-09-18 answered: the frozen rule says YES, and the YES is ours
 - Keep the owner's strategy review out of the public repo
@@ -175,9 +176,8 @@ problem looked like before it was fixed.
 - W48 recurred: the deploy flood check failed on 29e8c9c too, 2 of the last 3 deploys
 - W42: /method splits the centralised row by pool depth, with every column that could flatter it
 - Date the W41 correction by the build's clock: 2026-09-16 local was 2026-09-15 UTC
-- W43: VIRTUAL re-measured under E21's unchanged rule -- $8.34M stated, $6.79M credited, refused
 
-_62 more not shown (70 commits in total)._
+_63 more not shown (71 commits in total)._
 
 ## What I got wrong
 

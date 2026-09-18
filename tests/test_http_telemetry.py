@@ -283,6 +283,17 @@ def test_a_caller_can_name_itself_on_every_request():
                       encoding="utf-8").read()
     check("our own demo button sends it, so browser clicks stop hiding in 'mozilla'",
           "X-MCP-Client" in landing and "vetagent-landing-demo" in landing)
+    # The page used to call run() on load, so every visit -- crawlers that execute JS
+    # included -- sent one live assessment of the demo token. Those rows are counted in the
+    # production unknown rate (only the CI smoke client is excluded), and the demo token is
+    # usually `unknown`: our own page was inflating the figure the scorecard publishes as
+    # "live", and greeting each visitor with a verdict nobody asked for (2026-09-18 pre-post
+    # review). The call now happens only on a click.
+    script = landing[landing.rindex("<script>"):]
+    body_end = script.rindex("})();")
+    tail = script[:body_end].rstrip().splitlines()[-1].strip()
+    check("the demo does not run until someone asks it to",
+          tail != "run();", "the script ends by calling run() on page load")
 
 
 def test_a_call_from_our_own_page_is_ours_even_with_stale_javascript():
