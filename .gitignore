@@ -49,3 +49,6 @@ bench/backfill/
 
 # W41 prototype cache: raw RPC and honeypot.is answers (bench/sim_probe.py). Results are committed in bench/sim_probe/.
 bench/cache_sim/
+
+# Owner-private strategy material: kept out of this public repository on purpose.
+docs/VetAgent_Product_Strategy_Evaluation.docx
