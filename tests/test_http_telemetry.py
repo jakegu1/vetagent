@@ -793,6 +793,26 @@ def _post(body, limiter=None, path="/mcp", method="POST", ip="203.0.113.7"):
         risk.assess, entry._record = saved
 
 
+def test_the_deploy_flood_cannot_fail_on_a_minute_boundary():
+    """W48. The limiter counts per 60-second window, so a flood that crosses a minute boundary
+    splits its calls between two windows. 75 calls in 22-28 seconds could split as 30/49 and
+    never reach 61 in either: the check went red on 3 of 17 deploys with a working counter
+    (2026-09-18 ops review, modelled at 8-26% per deploy). 125 calls fit inside one boundary
+    at the measured pace and guarantee one window past 61. One of the three failures ran
+    inside a single minute, which the boundary cannot explain, so each call's Cloudflare colo
+    (the cf-ray suffix) is printed: a split across data centres would show there.
+    """
+    print("\n[deploy] the flood check fails only when the limiter does")
+    wf = io.open(os.path.join(ROOT, ".github", "workflows", "deploy.yml"), encoding="utf-8").read()
+    step = wf[wf.index("a flooding caller must get 429"):]
+    step = step[:step.index("- name:")]
+    m = re.search(r"seq 1 (\d+)", step)
+    check("the flood sends enough calls that one window must pass the limit",
+          bool(m) and int(m.group(1)) >= 125, m.group(0) if m else "no seq")
+    check("  and records the data centre each call landed on",
+          "cf-ray" in step.lower(), "no cf-ray in the flood step")
+
+
 def test_one_request_cannot_carry_an_unbounded_batch():
     """Fifty assessments rode in on one POST and were all served.
 

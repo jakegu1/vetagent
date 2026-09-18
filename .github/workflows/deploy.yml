@@ -177,13 +177,22 @@ jobs:
           # when Cloudflare's rate-limit binding answered success on all of 313 calls. Invalid addresses on
           # purpose: they are rejected before any upstream request, so the flood costs the
           # shared upstream budget nothing.
+          # 125, not 75 (W48): the window is a fixed 60 s, so 75 calls in ~25 s could straddle a
+          # minute boundary as 30/49 and never reach 61 in either -- 3 red deploys of 17 with a
+          # working counter. At the measured pace 125 calls cross at most one boundary, so one
+          # window must pass 61. Each call's colo (cf-ray suffix) is printed, because one of the
+          # three failures ran inside a single minute and a data-centre split would explain it.
           got429=0
-          for i in $(seq 1 75); do
-            code=$(curl -sS $CI_TAG -o /dev/null -w '%{http_code}' --max-time 30 -X POST \
+          colos=""
+          for i in $(seq 1 125); do
+            out=$(curl -sS $CI_TAG -o /dev/null -w '%{http_code} %header{cf-ray}' --max-time 30 -X POST \
               https://vetagent.dev/mcp -H 'Content-Type: application/json' \
               -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"assess_token_risk","arguments":{"address":"not-an-address"}}}')
+            code=${out%% *}
+            colos="$colos ${out##*-}"
             if [ "$code" = "429" ]; then got429=1; echo "429 after $i calls"; break; fi
           done
+          echo "colos:$(echo $colos | tr ' ' '\n' | sort | uniq -c | tr '\n' ' ')"
           test "$got429" = "1"
 
       # Tell search engines the pages exist. GEO baseline 2026-09-15: site:vetagent.dev

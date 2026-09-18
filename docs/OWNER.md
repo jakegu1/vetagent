@@ -168,6 +168,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Experiment C text: every false or stale sentence the pre-post review and its checkers found
 - The landing page no longer assesses a token on every visit
 - An unknown whose sell simulation reverted no longer says "no source can see this token"
 - USDT was judged on a PulseChain copy at $0.00095 -- in the published benchmark and live
@@ -175,9 +176,8 @@ problem looked like before it was fixed.
 - Keep the owner's strategy review out of the public repo
 - plugin/README claimed a blocker that had just stopped being true
 - W48 recurred: the deploy flood check failed on 29e8c9c too, 2 of the last 3 deploys
-- W42: /method splits the centralised row by pool depth, with every column that could flatter it
 
-_64 more not shown (72 commits in total)._
+_65 more not shown (73 commits in total)._
 
 ## What I got wrong
 
