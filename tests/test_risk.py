@@ -2720,6 +2720,49 @@ def test_an_upstream_failure_says_how_it_failed_and_is_not_made_worse():
         risk.cf_fetch, risk._fetch_json, risk._cache_get, risk.asyncio.sleep = saved
 
 
+def test_an_unknown_says_what_it_could_not_see():
+    """"No source can see this token" was the sentence on every coverage unknown -- true for a
+    token nothing lists, false for one whose sell simulation reverted on a pool we priced.
+
+    In production the week to 2026-09-18, 19 of the 19 unknowns with a recorded reason were
+    `coverage|sellability:simulation failed`, and every one told its caller no source could
+    see a token that DexScreener or CoinGecko had just priced. The landing page's own demo
+    token (ALIGN) opened every visit with that contradiction: "Thin liquidity: main pair holds
+    $7,739" above "No source can see this token". Found by the 2026-09-18 pre-post review.
+    The kind and the next action were right; the reason given was not.
+    """
+    print("\n[unknown] the recommendation names what could not be seen")
+
+    def says(gaps):
+        r = {"recommendation": "Not enough data to judge."}
+        risk._unknown_guidance(r, gaps)
+        return r
+
+    reverted = says([{"dimension": "sellability", "source": "honeypot.is",
+                      "reason": "simulation failed: execution reverted: HP: BUY_FAILED"}])
+    check("a reverted simulation does not claim no source can see the token",
+          "No source can see" not in reverted["recommendation"], reverted["recommendation"])
+    check("  it says the sell simulation did not complete",
+          "simulation" in reverted["recommendation"], reverted["recommendation"])
+    check("  and still says do not retry into a trade",
+          reverted["next_action"] == "abstain"
+          and "do not retry" in reverted["recommendation"], str(reverted))
+
+    unseen = says([{"dimension": "sellability", "source": "honeypot.is",
+                    "reason": "the sell simulator has no record of this token"},
+                   {"dimension": "liquidity", "source": "dexscreener",
+                    "reason": "no trading pair found"}])
+    check("a token nothing lists is still told nothing can see it",
+          "No source can see" in unseen["recommendation"], unseen["recommendation"])
+
+    unpriced = says([{"dimension": "liquidity", "source": "dexscreener",
+                      "reason": risk._UNBACKED_REASON}])
+    check("unverifiable depth is named as such",
+          "cannot be verified" in unpriced["recommendation"]
+          and "No source can see" not in unpriced["recommendation"],
+          unpriced["recommendation"])
+
+
 def test_an_unknown_says_whether_to_retry_or_to_abstain():
     """Two different unknowns read the same, so the rational client retried both.
 

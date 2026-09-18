@@ -852,10 +852,26 @@ def _unknown_guidance(result, data_gaps):
                                      "about a minute.")
     else:
         result.update(unknown_kind="mixed" if ours else "coverage", next_action="abstain")
-        result["recommendation"] += (" No source can see this token: do not retry into a "
-                                     "trade." if not ours else
+        result["recommendation"] += (" %s: do not retry into a trade." % _what_was_unseen(critical)
+                                     if not ours else
                                      " Part of this is the token itself: do not retry into "
                                      "a trade.")
+
+
+def _what_was_unseen(gaps):
+    """The token-side reason for a coverage unknown, from the gap reasons, in one clause.
+
+    "No source can see this token" was said for all of them, including the commonest case in
+    production -- a sell simulation that reverted on a pool a market source had just priced.
+    """
+    reasons = " ".join(str(g.get("reason", "")) for g in gaps)
+    if "simulation failed" in reasons:
+        return ("The sell simulation could not complete on this token, so it cannot be "
+                "confirmed sellable")
+    if _UNBACKED_REASON in reasons:
+        return ("Its pools are priced only in assets whose value cannot be verified, so its "
+                "depth is unknown")
+    return "No source can see this token"
 
 
 # ---------------------------------------------------------------- pool selection

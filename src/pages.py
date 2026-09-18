@@ -198,8 +198,9 @@ looks. A safety check that answers optimistically when it is broken is worse tha
 <tr><td><code>infrastructure</code></td><td>Our upstream data sources did not answer &mdash; usually
 rate limits. The token may be fine.</td><td><code>retry</code>, once, after
 <code>retry_after_seconds</code></td></tr>
-<tr><td><code>coverage</code></td><td>No source can see this token: no trading pair, no simulator
-record, or no pool priced in an asset whose value can be verified.</td><td><code>abstain</code>
+<tr><td><code>coverage</code></td><td>The token itself cannot be checked: no trading pair, no
+simulator record, a sell simulation that reverted, or no pool priced in an asset whose value
+can be verified. The recommendation names which.</td><td><code>abstain</code>
 &mdash; retrying will not change it</td></tr>
 <tr><td><code>mixed</code></td><td>Some of each.</td><td><code>abstain</code></td></tr>
 </table>
