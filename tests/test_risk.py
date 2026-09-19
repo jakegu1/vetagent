@@ -2387,6 +2387,157 @@ def test_a_chain_the_simulator_does_not_cover_is_our_gap():
           str(gaps3))
 
 
+def test_a_honeypot_flag_is_read_by_its_holder_share():
+    """W44, decided by the owner 2026-09-18: read the holder test as a share with a sample size.
+
+    When its own fresh-address trade passes, honeypot.is still flags a token if roughly four
+    of the real holders it tested could not sell, whatever the sample -- GALE was flagged at
+    8 of 4,958. Of 298 unflagged benchmark answers none had four failures and the highest
+    share was 4.3%. So a low share of many tested holders is background, and a high one is
+    the blacklist signature (XPL 530 of 3,647; SYP 23 of 224).
+
+    The rule, as pre-registered in BACKLOG W44 (3863539) and DECISIONS E23:
+    - Wilson 95% LOWER bound of failed/tested at 20% or more: fatal, whatever the chain
+      shows. A tightening: before, sells on the chain downgraded any flag.
+    - UPPER bound under 5% (confident the share is low -- releasing is the silencing
+      direction, E17), no siphon / closed-source / sell-limit flag, and the chain check
+      already required to downgrade (live pool, sells clearing, 10 or more distinct
+      sellers): released to `info`, the numbers in the sentence.
+    - Anything else: as before -- downgraded to unresolved when the chain disagrees, fatal
+      when it cannot.
+    """
+    print("\n[honeypot] the holder test is a share with a sample size")
+
+    def hp_with(failed, holders, flags=("medium_fail_rate",), siphoned=0, taxes=(0, 0, 0),
+                sim_ok=True):
+        hp = json.loads(json.dumps(_load("hp_matic.json")))
+        hp["simulationSuccess"] = sim_ok
+        hp["simulationResult"] = dict(hp.get("simulationResult") or {}, buyTax=taxes[0],
+                                      sellTax=taxes[1], transferTax=taxes[2])
+        hp["honeypotResult"] = {"isHoneypot": True, "honeypotReason": "HONEYPOT DETECTED"}
+        hp["summary"] = {"risk": "honeypot", "riskLevel": 100,
+                         "flags": [{"flag": f, "description": f, "severity": "high"}
+                                   for f in flags]}
+        hp["holderAnalysis"] = {"holders": str(holders), "failed": str(failed),
+                                "siphoned": str(siphoned), "successful": str(holders - failed)}
+        return hp
+
+    def assess(hp, liq=400_000, buys=900, sells=800, gt_sellers=610):
+        pair = {"chainId": "ethereum", "dexId": "uniswap", "pairAddress": "0x" + "ce" * 20,
+                "baseToken": {"address": WETH, "symbol": "TKN"},
+                "quoteToken": {"address": "0xq"}, "priceUsd": "1.0",
+                "liquidity": {"usd": liq}, "volume": {"h24": liq},
+                "txns": {"h24": {"buys": buys, "sells": sells}},
+                "pairCreatedAt": 1589841515000}
+        gt = (None if gt_sellers is None else
+              {"data": {"attributes": {"transactions": {"h24": {"sellers": gt_sellers}}}}})
+        install_stub([("dex/tokens", {"pairs": [pair]}), ("networks/eth/pools/", gt),
+                      ("dex/search", None), ("honeypot.is", hp)])
+        return run(risk.assess(WETH, chain_hint="ethereum"))
+
+    def hp_sigs(r):
+        return [(x["severity"], x["name"], x["message"]) for x in r["signals"]
+                if x["category"] == "honeypot"]
+
+    # 1. Few failures among thousands tested, and the chain settles it: released.
+    r = assess(hp_with(90, 3689))
+    sig = hp_sigs(r)
+    check("a low share of many tested holders, settled by the chain, is released to info",
+          sig and all(sv == "info" for sv, _, _ in sig), str(sig))
+    check("  and the sentence gives the numbers",
+          sig and "90 of the 3,689 holders" in sig[0][2], str(sig))
+    check("  and the release is recorded in the evidence",
+          ((r["evidence"].get("honeypot") or {}).get("contradicted_by_chain") or {})
+          .get("released_by_holder_share") is True,
+          str((r["evidence"].get("honeypot") or {}).get("contradicted_by_chain")))
+
+    # 2. A share that is not confidently low stays unresolved.
+    sig = hp_sigs(assess(hp_with(36, 400)))
+    check("a 9% share is not released", sig and sig[0][0] == "warn", str(sig))
+
+    # 3. A small sample cannot be confidently low, even with no failure in it.
+    sig = hp_sigs(assess(hp_with(1, 5)))
+    check("five tested holders are too few to release", sig and sig[0][0] == "warn", str(sig))
+
+    # 4. A high share is the blacklist signature: fatal, whatever the chain shows.
+    r = assess(hp_with(300, 1000))
+    sig = hp_sigs(r)
+    check("a 30% share is fatal even while the chain shows sells",
+          sig and sig[0][0] == "fatal" and r["risk_level"] == "high", "%s %s" % (r["risk_level"], sig))
+
+    # 5. Release needs the chain check too: a thin pool settles nothing.
+    sig = hp_sigs(assess(hp_with(90, 3689), liq=2_000))
+    check("a low share with no counter-evidence on the chain stays fatal",
+          sig and sig[0][0] == "fatal", str(sig))
+
+    # 6. Wash-trading shape: sells from under ten addresses settle nothing.
+    sig = hp_sigs(assess(hp_with(90, 3689), gt_sellers=3))
+    check("a low share with few distinct sellers is not released",
+          sig and sig[0][0] == "fatal", str(sig))
+
+    # 7. Siphoning or a sell limit is not a sampling question.
+    sig = hp_sigs(assess(hp_with(90, 3689, flags=("medium_siphon_rate",), siphoned=40)))
+    check("a siphon flag is never released", sig and sig[0][0] != "info", str(sig))
+
+    # 8. No distinct-seller count: contested, as before -- never low.
+    r = assess(hp_with(90, 3689), gt_sellers=None)
+    check("a low share the chain could not settle is not low", r["risk_level"] != "low",
+          r["risk_level"])
+
+    # The E14 review of W44 (2026-09-18), each case watched red before its fix.
+    def released(r):
+        return any(sv == "info" for sv, _, _ in hp_sigs(r))
+
+    check("the frozen cuts are the ones E23 records",
+          risk._HOLDER_RELEASE_UPPER == 0.05 and risk._HOLDER_FATAL_LOWER == 0.20
+          and getattr(risk, "_HOLDER_MIN_FOR_FATAL", None) == 20,
+          "change them only with a new, dated DECISIONS row")
+    check("an upper bound just over 5% is not released (POP, 165 of 3,827: 5.0021%)",
+          not released(assess(hp_with(165, 3827))))
+    check("  and one just under is (160 of 3,827: 4.86%)", released(assess(hp_with(160, 3827))))
+    check("a lower bound just over 20% is fatal (28 of 100: 20.1%)",
+          any(sv == "fatal" for sv, _, _ in hp_sigs(assess(hp_with(28, 100)))))
+    check("  and one just under is not (27 of 100: 19.3%)",
+          not any(sv == "fatal" for sv, _, _ in hp_sigs(assess(hp_with(27, 100)))))
+    check("a tiny sample cannot reach the fatal band (3 of 5)",
+          not any(sv == "fatal" for sv, _, _ in hp_sigs(assess(hp_with(3, 5)))))
+    # A released flag skipped the tax check: 45% sell tax read low.
+    for taxes in ((0, 45, 0), (0, 0, 90), (90, 0, 0)):
+        r = assess(hp_with(90, 3689, taxes=taxes))
+        check("a low share with a tax %s is not released and not low" % (taxes,),
+              not released(r) and r["risk_level"] != "low", "%s %s" % (r["risk_level"], hp_sigs(r)))
+    check("a flag whose simulation failed is never released",
+          not released(assess(hp_with(90, 3689, sim_ok=False))))
+    check("a proven honeypot (sell tax 100) with a low share is never released",
+          not released(assess(hp_with(90, 3689, taxes=(0, 100, 0)))))
+    for flag in ("effective_honeypot_low_sell_limit", "closed_source", "all_snipers_honeypot",
+                 "medium_siphon_rate"):
+        check("a %s flag is never released" % flag,
+              not released(assess(hp_with(0, 3032, flags=(flag,)))))
+    check("siphoned holders block release even without a siphon flag",
+          not released(assess(hp_with(90, 3689, siphoned=13))))
+    # Missing or unreadable counts are not zero failures.
+    for bad in ("missing", "n/a", "more-than-tested"):
+        hp = hp_with(90, 3689)
+        if bad == "missing":
+            del hp["holderAnalysis"]["failed"]
+        elif bad == "n/a":
+            hp["holderAnalysis"]["failed"] = "n/a"
+        else:
+            hp["holderAnalysis"]["failed"] = "4000"
+        r = assess(hp)
+        check("a %s failed count is not read as zero failures" % bad, not released(r),
+              str(hp_sigs(r)))
+    # The fatal band does not also file the contested gap.
+    r = assess(hp_with(300, 1000), gt_sellers=None)
+    sig = hp_sigs(r)
+    check("a fatal share with no seller count is one fatal verdict, not a contested one",
+          r["risk_level"] == "high" and len(sig) == 1 and sig[0][0] == "fatal"
+          and not any("distinct-seller" in str(g.get("reason", ""))
+                      for g in (r["evidence"].get("data_gaps") or [])),
+          "%s %s %s" % (r["risk_level"], sig, r["evidence"].get("data_gaps")))
+
+
 def test_overturning_a_honeypot_verdict_needs_distinct_sellers():
     """Silencing a detection must cost something, but not the wrong thing.
 
@@ -2432,6 +2583,9 @@ def test_overturning_a_honeypot_verdict_needs_distinct_sellers():
 
     hp = json.loads(json.dumps(_load("hp_matic.json")))
     hp.setdefault("honeypotResult", {})["isHoneypot"] = True
+    # A share W44 does not release (36 of 400, upper bound about 12%), so this still tests
+    # what it was written for: the chain can downgrade a flag, never clear it.
+    hp["holderAnalysis"] = {"holders": "400", "failed": "36", "siphoned": "0", "successful": "364"}
 
     def verdict(liq, buys, sells, sellers=None, gt_sellers=None):
         # `sellers` rides on the pair, as GeckoTerminal-sourced pairs carry it;
@@ -2444,7 +2598,10 @@ def test_overturning_a_honeypot_verdict_needs_distinct_sellers():
         return run(risk.assess(WETH, chain_hint="ethereum"))
 
     def overridden(r):
-        return any("chain disagrees" in x["name"] for x in r["signals"])
+        # A downgrade, not a release: W44's `info` release also names the chain, so the
+        # severity is what tells them apart (E14 review of W44).
+        return any("chain disagrees" in x["name"] and x["severity"] == "warn"
+                   for x in r["signals"])
 
     # A pool too thin to matter buys nothing, whatever it claims.
     check("a pool under the liquidity floor cannot buy a downgrade",
@@ -2503,6 +2660,9 @@ def test_a_seller_count_nobody_took_cannot_overturn_a_honeypot():
         "pairCreatedAt": 1589841515000}]}
     hp = json.loads(json.dumps(_load("hp_matic.json")))
     hp.setdefault("honeypotResult", {})["isHoneypot"] = True
+    # A share W44 does not release (36 of 400, upper bound about 12%), so this still tests
+    # what it was written for: the chain can downgrade a flag, never clear it.
+    hp["holderAnalysis"] = {"holders": "400", "failed": "36", "siphoned": "0", "successful": "364"}
 
     def gt_pool(sellers):
         return {"data": {"attributes": {"transactions": {"h24": {
@@ -2524,7 +2684,10 @@ def test_a_seller_count_nobody_took_cannot_overturn_a_honeypot():
         return run(risk.assess(WETH, chain_hint="ethereum"))
 
     def overridden(r):
-        return any("chain disagrees" in x["name"] for x in r["signals"])
+        # A downgrade, not a release: W44's `info` release also names the chain, so the
+        # severity is what tells them apart (E14 review of W44).
+        return any("chain disagrees" in x["name"] and x["severity"] == "warn"
+                   for x in r["signals"])
 
     r = verdict(None)
     check("a count nobody could take buys no downgrade", not overridden(r),
@@ -3396,6 +3559,9 @@ def test_the_override_can_fire_on_the_geckoterminal_path():
                                  "buyers": 35, "sellers": 640}}}}]}
     hp = json.loads(json.dumps(_load("hp_matic.json")))
     hp.setdefault("honeypotResult", {})["isHoneypot"] = True
+    # A share W44 does not release (36 of 400, upper bound about 12%), so this still tests
+    # what it was written for: the chain can downgrade a flag, never clear it.
+    hp["holderAnalysis"] = {"holders": "400", "failed": "36", "siphoned": "0", "successful": "364"}
 
     # DexScreener empty forces the GeckoTerminal fallback.
     install_stub([("dex/tokens", {"pairs": []}), ("dex/search", None),

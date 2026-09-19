@@ -87,7 +87,7 @@ listings, first asked on 2026-09-18):
 | Confirmed-dead tokens not rated low (n=30) | 86.7% (26 of 30) | **20.0%** |
 | Confirmed-dead tokens rated high (n=30) | **10.0%** (3 of 30) | |
 | Healthy tokens rated high — false positives (n=162) | **3.1%** (5 of 162) | |
-| Liquid healthy tokens ($100k+) rated medium or high — false blocks (n=154) | **19.5%** (30 of 154) | |
+| Liquid healthy tokens ($100k+) rated medium or high — false blocks (n=154) | **13.0%** (20 of 154) | |
 | Answers returned as `unknown` (n=576) | **21.2%** (122 of 576) | |
 | Tokens the oracle tags centralised, rated high (n=179) | **22.3%** (40 of 179) | |
 
@@ -99,12 +99,14 @@ first would be the flattering half of a pair.
 
 **The things in the report that argue against the tool:**
 
-- **One liquid, healthy token in five is refused.** The false-positive row counts only
+- **20 of 154 liquid, healthy tokens are refused.** The false-positive row counts only
   `high`, but an agent treats `medium` as do-not-trade too. Counted that way, on tokens
   that are alive or merely centralised and hold $100k or more, the rate is the false-block
-  row above -- and most of those are driven by the upstream simulator's honeypot flag,
-  which the engine downgrades to `medium` when the chain contradicts it rather than
-  dropping it.
+  row above. 10 of the 20 are the upstream simulator's honeypot flag that my release rule
+  does not clear: too many of the sampled holders failed to sell, too few were sampled, or
+  the flag is about siphoning or blacklisted snipers rather than failed sells. That rule is
+  new (2026-09-18); before it this row was 30 of 154, and I chose it with these same 576
+  tokens in view, so treat the drop as a fit until a fresh cohort confirms it.
 - **The false-positive rate is measured where the engine can barely fail.** The healthy
   control has a median of $484,483 in the pool. Of the 146 tokens where the engine saw
   $10k or more of depth, **0** were rated high. All 5 false
@@ -163,8 +165,12 @@ labelling endpoints ever intersect. Until 2026-09-09 that command did not work o
 clone — it evaluated for twenty minutes and exited "Benchmark void" because a required
 file was gitignored. That is fixed. The **figures** are the engine as of 2026-09-18, scored over upstream answers the
 harness cached mostly on 2026-09-04 to 09-07 (it keeps every successful fetch). A fresh
-clone re-fetches everything, so a re-run will not land on the same decimals; tell me if
-the drift is large.
+clone re-fetches everything, so a re-run will not land on the same decimals. A reviewer
+did exactly that on 2026-09-18, cold, in 44 minutes: 60 of the 576 verdicts moved, and
+replaying both runs' saved upstream answers through both engine versions showed that none
+of the 60 came from code -- dead pools that one data source stopped listing, one-day
+trading-activity thresholds, pools that moved, and a sell simulator that answered
+differently. Tell me if your drift is larger.
 
 What "independent" does and does not mean here: the labels use none of the endpoints the
 engine reads, and the build enforces that. The outcome oracle is independent of every

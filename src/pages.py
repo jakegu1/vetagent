@@ -269,7 +269,7 @@ Base.</p>
 <table>
 <tr><th>Measure</th><th>Result</th></tr>
 <tr><td>Healthy tokens rated high (false positives)</td><td class="num">3.1% (5 of 162)</td></tr>
-<tr><td>Liquid healthy tokens rated medium or high (false blocks)</td><td class="num">19.5% (30 of 154)</td></tr>
+<tr><td>Liquid healthy tokens rated medium or high (false blocks)</td><td class="num">13.0% (20 of 154)</td></tr>
 <tr><td>Answers returned as unknown</td><td class="num">21.2% (122 of 576)</td></tr>
 <tr><td>Confirmed-dead tokens not rated low</td><td class="num">86.7% (26 of 30)</td></tr>
 <tr><td>Confirmed-dead tokens rated high</td><td class="num">10.0% (3 of 30)</td></tr>
@@ -278,7 +278,7 @@ Base.</p>
 </table>
 
 <h2>Read the unflattering rows first</h2>
-<p><strong>One liquid, healthy token in five is refused.</strong> The false-positive row counts
+<p><strong>20 of 154 liquid, healthy tokens are refused.</strong> The false-positive row counts
 only <code>high</code>, but an agent treats <code>medium</code> as do-not-trade too; the false-block
 row counts it that way, on tokens that are alive or merely centralised and hold $100,000 or more.</p>
 <p><strong>Much of the dead-token recall is detecting an empty pool.</strong> Keep only the contract
@@ -306,15 +306,15 @@ flatter a row.</p>
 <tr><td>Under $1</td><td class="num">40</td><td class="num">16</td><td class="num">23</td><td class="num">1</td><td class="num">1</td></tr>
 <tr><td>$1 to $1,000</td><td class="num">15</td><td class="num">1</td><td class="num">10</td><td class="num">4</td><td class="num">1</td></tr>
 <tr><td>$1,000 to $100,000</td><td class="num">37</td><td class="num">3</td><td class="num">25</td><td class="num">5</td><td class="num">2</td></tr>
-<tr><td>$100,000 or more</td><td class="num">66</td><td class="num">1</td><td class="num">16</td><td class="num">8</td><td class="num">1</td></tr>
+<tr><td>$100,000 or more</td><td class="num">66</td><td class="num">1</td><td class="num">13</td><td class="num">8</td><td class="num">1</td></tr>
 </table>
 <p>So most of the 22.3% centralised row is empty pools: 31 of its 40 highs are on pools reporting
 $0 or under a dollar, and 30 of those 31 are not high on contract signals only; 4 more have no depth
 figure at all. USDT and WBTC themselves are rated low (4 of 4 benchmark rows).</p>
 <p>Across the 246 benchmark tokens holding $100,000 or more -- the 154 in the false-block row plus 92
-others -- 139 are low, 53 unknown and 54 medium or high. On contract signals only it is 159 low, 53 unknown
-and 34 medium or high: the 20 that move to low all have a pool-age or lifecycle flag as their driver
-(20 of 20), and 30 of the 54 medium-or-high answers are honeypot verdicts, which contract signals keep.
+others -- 156 are low, 53 unknown and 37 medium or high. On contract signals only it is 176 low, 53 unknown
+and 17 medium or high: the 20 that move to low all have a pool-age or lifecycle flag as their driver
+(20 of 20), and 13 of the 37 medium-or-high answers are honeypot verdicts, which contract signals keep.
 These are the benchmark's tokens, not the tokens callers ask about, and live answers are
 <code>unknown</code> more often; the live rate is read daily into
 <a href="https://github.com/jakegu1/vetagent/blob/master/docs/SCORECARD.md">the scorecard</a>.</p>

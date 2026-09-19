@@ -109,7 +109,7 @@ method behind them** — including the parts that do not work yet — against la
 produced by data sources **the engine does not read**.
 
 What is measured today: a **3.1% false positive rate** on 162 healthy tokens, a
-**19.5% false-block rate** (30 of 154 liquid healthy tokens rated medium or high, which an
+**13.0% false-block rate** (20 of 154 liquid healthy tokens rated medium or high, which an
 agent will also refuse), a
 **21.2% unknown rate**, and **22.3%** of GoPlus-tagged centralised tokens rated high -- almost all abandoned pools holding cents, not USDT, which is rated low.
 

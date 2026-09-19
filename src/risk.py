@@ -2232,10 +2232,84 @@ def _holder_analysis(hp):
     many could not sell, `siphoned` how many lost tokens to the contract on the way.
     """
     ha = hp.get("holderAnalysis") if isinstance(hp, dict) else None
-    if not isinstance(ha, dict) or ha.get("holders") in (None, ""):
+    if not isinstance(ha, dict):
         return None
-    return {"holders": int(_num(ha.get("holders"))), "failed": int(_num(ha.get("failed"))),
-            "siphoned": int(_num(ha.get("siphoned")))}
+
+    def whole(v):
+        if isinstance(v, bool):
+            return None
+        if isinstance(v, int):
+            return v if v >= 0 else None
+        if isinstance(v, float) and v.is_integer() and v >= 0:
+            return int(v)
+        if isinstance(v, str) and v.strip().isdigit():
+            return int(v.strip())
+        return None
+
+    # A missing or unreadable count is not zero failures -- read that way it released a flag
+    # (E14 review of W44). Siphoned may be absent; the other two may not, and the parts may
+    # not exceed the whole.
+    holders, failed = whole(ha.get("holders")), whole(ha.get("failed"))
+    siphoned = 0 if ha.get("siphoned") in (None, "") else whole(ha.get("siphoned"))
+    if holders is None or failed is None or siphoned is None or failed + siphoned > holders:
+        return None
+    return {"holders": holders, "failed": failed, "siphoned": siphoned}
+
+
+# W44 / DECISIONS E23, decided by the owner 2026-09-18 and frozen until W40's cohort exists.
+# Chosen with the benchmark in view, so they are pre-registered, not tuned: 5% sits on the
+# highest failed share among 298 unflagged benchmark answers (4.3%).
+_HOLDER_RELEASE_UPPER = 0.05
+_HOLDER_FATAL_LOWER = 0.20
+# The fatal band needs a sample: 1 failure of 1 tested holder has a lower bound of 20.6%,
+# and "too large a share to be a sampling accident" is not a sentence about one wallet.
+_HOLDER_MIN_FOR_FATAL = 20
+# Flags that are not a sampling question: holders losing tokens, hidden code, a sell cap, and
+# snipers blacklisted -- a targeted blacklist, which is exactly what a release must not hide.
+# The last was added by the E14 review of W44, before the rule was committed: a tightening.
+_NOT_A_SAMPLING_QUESTION = ("siphon", "closed_source", "sell_limit", "all_snipers")
+# A released flag skipped the tax check (the tax signals live in the unflagged branch), so a
+# 45% sell tax read `low`. Release only where the unflagged path would say "Buys and sells
+# normally".
+_RELEASE_MAX_TAX = 5
+
+
+def _wilson(k, n, z=1.96):
+    """Wilson 95% interval for k successes of n."""
+    if n <= 0:
+        return 0.0, 1.0
+    p = float(k) / n
+    den = 1 + z * z / n
+    centre = p + z * z / (2 * n)
+    half = z * ((p * (1 - p) / n + z * z / (4.0 * n * n)) ** 0.5)
+    return (centre - half) / den, (centre + half) / den
+
+
+def _holder_share_band(ha, flags, sim_ok, sim):
+    """"fatal", "release" or None for a honeypot flag whose own simulation passed (W44).
+
+    The holder test is a proportion with a sample size: honeypot.is simulated a sell from
+    `holders` real holders and `failed` of them reverted. A lower bound of 20% or more is the
+    blacklist signature, fatal whatever the chain shows. An upper bound under 5% -- confident
+    the share is low, because releasing is the silencing direction (E17) -- may be released,
+    and only by a chain that independently shows exits; the caller decides that. Anything
+    else, and every flag whose simulation did not pass, is read as before.
+    """
+    if not ha or ha["holders"] <= 0:
+        return None
+    if sim_ok is not True or _num((sim or {}).get("sellTax")) >= 50:
+        return None
+    lower, upper = _wilson(ha["failed"], ha["holders"])
+    if ha["holders"] >= _HOLDER_MIN_FOR_FATAL and lower >= _HOLDER_FATAL_LOWER:
+        return "fatal"
+    if ha["siphoned"] > 0 or any(t in str(f or "") for f in flags
+                                 for t in _NOT_A_SAMPLING_QUESTION):
+        return None
+    if max(_num((sim or {}).get(k)) for k in ("buyTax", "sellTax", "transferTax")) > _RELEASE_MAX_TAX:
+        return None
+    if upper < _HOLDER_RELEASE_UPPER:
+        return "release"
+    return None
 
 
 def _holder_phrase(ha):
@@ -2461,7 +2535,10 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
         sellers = (bp.get("sellers_24h"))
         pool_alive = _num(bp.get("liquidity_usd")) >= 5_000
         sells_work = pool_alive and sells >= 20 and sells >= 0.15 * (buys + 1)
-        if sells_work and sellers is None:
+        band = _holder_share_band(ha, flags, sim_ok, sim)
+        if band == "fatal":
+            evidence["honeypot"]["holder_share_band"] = "fatal"
+        if band != "fatal" and sells_work and sellers is None:
             evidence["honeypot"]["contested_unsettled"] = {
                 "sells_24h": bp.get("sells_24h"), "buys_24h": bp.get("buys_24h"),
                 "note": "Distinct sellers could not be counted, and without that count "
@@ -2481,8 +2558,36 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
                 % (flagged_by, format(sells, ",.0f"), format(buys, ",.0f")), "honeypot"))
         elif sells_work and _num(sellers) < 10:
             sells_work = False      # many trades, few addresses: the wash-trading shape
-        if sells_work and sellers is None:
+        if band == "fatal":
+            # W44: too large a share of the real holders it tested could not sell for that to
+            # be a sampling accident. Sells on the chain do not clear it: a contract that
+            # blocks specific holders lets everyone else trade.
+            signals.append(_sig(
+                "fatal", "Honeypot",
+                "honeypot.is reports a honeypot%s -- too large a share of the real holders it "
+                "tested to be a sampling accident, so sells by others do not clear it."
+                % flagged_by, "honeypot"))
+        elif sells_work and sellers is None:
             pass                    # contested and unsettled: recorded just above
+        elif sells_work and band == "release":
+            # W44: few failures among many tested holders, and the chain independently shows
+            # real exits from many addresses. honeypot.is flags on a count of about four
+            # failures whatever the sample; this is that count on a large sample, not the
+            # blacklist signature. Released, never silently: the numbers are in the sentence.
+            signals.append(_sig(
+                "info", "Upstream honeypot flag released: the chain disagrees, and so do its holders",
+                "honeypot.is reports a honeypot%s, and %s sells from %s distinct sellers "
+                "completed in the last 24h. A share that small of that many tested holders is "
+                "within what healthy tokens show, so the flag is not treated as a trap; the "
+                "numbers are here so you can weigh it."
+                % (flagged_by, format(sells, ",.0f"), format(_num(sellers), ",.0f")),
+                "honeypot"))
+            evidence["honeypot"]["contradicted_by_chain"] = {
+                "sells_24h": bp.get("sells_24h"), "buys_24h": bp.get("buys_24h"),
+                "sellers_24h": sellers, "liquidity_usd": bp.get("liquidity_usd"),
+                "downgraded_from": "fatal", "released_by_holder_share": True,
+                "note": "Released under DECISIONS E23: the Wilson upper bound of failed/tested "
+                        "holders is under 5% and the chain shows real exits."}
         elif sells_work:
             signals.append(_sig(
                 "warn", "Upstream calls this a honeypot, the chain disagrees",

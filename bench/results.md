@@ -73,7 +73,7 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 
 | Metric | Value |
 |---|---|
-| Verdict distribution | high=75, low=158, medium=221, unknown=122 |
+| Verdict distribution | high=75, low=175, medium=204, unknown=122 |
 | unknown rate | 21.2% |
 | Share with a data gap | 24.7% |
 
@@ -89,7 +89,7 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **dead** | 30 | 10.0% | 46.7% | 13.3% | 40.0% | 35.4 |
-| **alive** | 162 | 3.1% | 25.9% | 59.3% | 14.8% | 13.4 |
+| **alive** | 162 | 3.1% | 21.0% | 64.2% | 14.8% | 12.2 |
 
 ### Contract-safety signals only (ablated)
 
@@ -99,7 +99,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **dead** | 30 | 10.0% | 13.3% | 80.0% | 6.7% | 13.0 |
-| **alive** | 162 | 1.9% | 13.6% | 71.6% | 14.8% | 8.8 |
+| **alive** | 162 | 1.9% | 8.6% | 76.5% | 14.8% | 7.5 |
 
 **Which signal category made the call on dead samples:** `no_liquidity` 10, `liquidity` 10, `honeypot` 4, `sellability` 1, `lifecycle` 1
 
@@ -116,7 +116,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 17 | 58.8% | 94.1% | 0.0% | 5.9% | 76.1 |
-| **safe** | 349 | 6.0% | 44.7% | 28.9% | 26.4% | 26.8 |
+| **safe** | 349 | 6.0% | 41.0% | 32.7% | 26.4% | 25.8 |
 
 ### Contract-safety signals only (ablated)
 
@@ -126,7 +126,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 17 | 17.6% | 41.2% | 35.3% | 23.5% | 32.7 |
-| **safe** | 349 | 3.7% | 11.2% | 64.5% | 24.4% | 10.9 |
+| **safe** | 349 | 3.7% | 7.4% | 68.2% | 24.4% | 10.0 |
 
 **Which signal category made the call on unsafe samples:** `liquidity` 12, `honeypot` 3, `impersonation` 2
 
@@ -139,7 +139,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 An agent refuses `medium` as well as `high`, so the false-positive rate above understates what a caller is turned away from. Population: outcome `alive` or oracle `centralized`, with $100,000 or more of depth.
 
 
-**19.5%** (30 of 154). By driving signal: `honeypot` 20, `lifecycle` 6, `upstream_risk` 3, `freshness` 1
+**13.0%** (20 of 154). By driving signal: `honeypot` 10, `lifecycle` 6, `upstream_risk` 3, `freshness` 1
 
 
 ## Centralized-asset control group (not scored)
@@ -152,9 +152,9 @@ This bucket answers one question: **does the engine paint them all as high risk.
 
 | n | high rate | Verdict distribution |
 |---|---|---|
-| 179 | 22.3% | high=40, low=45, medium=74, unknown=20 |
+| 179 | 22.3% | high=40, low=48, medium=71, unknown=20 |
 
-Examples: HYDX(low), CP(unknown), TOSHE(medium), Onyxcoin XCN Kendu(high), SAGE Free(medium), Core Keeper Overnight(medium), VIRTUAL(low), Crypto Carbon Verse(high), ?(medium), BIO(medium)
+Examples: HYDX(low), CP(unknown), TOSHE(medium), Onyxcoin XCN Kendu(high), SAGE Free(medium), Core Keeper Overnight(medium), VIRTUAL(low), Crypto Carbon Verse(high), ?(medium), BIO(low)
 
 
 ### Are the label and the verdict about the same pool?

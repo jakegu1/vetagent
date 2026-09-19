@@ -26,7 +26,6 @@ These are the things I cannot do. Everything else in this project is mine.
 | **1 days OVERDUE** | 2026-09-18 | -- | Post Experiment C | no |
 | in 27 days | 2026-10-16 | W5 | A second, independent sell-simulation source | **yes -- see below** |
 | in 27 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
-| in 27 days | 2026-10-16 | W44 | Decide what a honeypot flag backed by failed holder sells is worth once the chain shows se | no |
 
 ### W10 Create the two accounts the remaining directories need
 
@@ -62,13 +61,6 @@ These are the things I cannot do. Everything else in this project is mine.
 - **Why then:** changes what the benchmark can measure, so before the D gate
 - **You know it is done when:** A decision recorded in `DECISIONS.md`, either way
 - **If you do nothing:** The 10-16 gate arrives with the measurement question still open, so that gate answers a smaller question than it was meant to.
-
-### W44 Decide what a honeypot flag backed by failed holder sells is worth once the chain shows sells
-
-- **When:** 2026-10-16 (in 27 days)
-- **Why then:** no verdict rule changes before the 09-18 gate, and W37/W38 land after it; the D gate should read the rule that was chosen
-- **You know it is done when:** A decision recorded in `DECISIONS.md` with the cuts written before one `python bench/run_benchmark.py` re-run, after the 2026-09-18 gate, then left alone until W40's cohort exists
-- **If you do nothing:** Nothing breaks. Today's rule stays: every token honeypot.is flags reads medium when the chain shows sells, including the 11 liquid, alive tokens where fewer than 5% of thousands of tested holders failed -- 11 of the 30 false blocks.
 
 ## The dates that decide things
 
@@ -141,7 +133,7 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **13 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **12 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -168,6 +160,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Take the owner's remaining private details out of the public files, and guard them
 - HANDOFF.md: remove the server IP and the private key's location from the public repo
 - W48: the flood split across two data centres -- 74 EWR, 21 IAD, 429 at call 95
 - W48: the deploy's flood check sends 125 calls and prints each call's colo
@@ -175,9 +168,8 @@ problem looked like before it was fixed.
 - The landing page no longer assesses a token on every visit
 - An unknown whose sell simulation reverted no longer says "no source can see this token"
 - USDT was judged on a PulseChain copy at $0.00095 -- in the published benchmark and live
-- Gate 2026-09-18 answered: the frozen rule says YES, and the YES is ours
 
-_64 more not shown (72 commits in total)._
+_65 more not shown (73 commits in total)._
 
 ## What I got wrong
 

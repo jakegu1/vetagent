@@ -29,9 +29,9 @@
  },
  "overall": {
   "verdict_distribution": {
-   "low": 158,
+   "low": 175,
    "unknown": 122,
-   "medium": 221,
+   "medium": 204,
    "high": 75
   },
   "unknown_rate": 0.21180555555555555,
@@ -52,10 +52,10 @@
    "good": {
     "n": 162,
     "high": 0.030864197530864196,
-    "high_or_medium": 0.25925925925925924,
-    "low": 0.5925925925925926,
+    "high_or_medium": 0.20987654320987653,
+    "low": 0.6419753086419753,
     "unknown": 0.14814814814814814,
-    "mean_score": 13.407407407407407
+    "mean_score": 12.17283950617284
    }
   },
   "contract_only": {
@@ -70,10 +70,10 @@
    "good": {
     "n": 162,
     "high": 0.018518518518518517,
-    "high_or_medium": 0.13580246913580246,
-    "low": 0.7160493827160493,
+    "high_or_medium": 0.08641975308641975,
+    "low": 0.7654320987654321,
     "unknown": 0.14814814814814814,
-    "mean_score": 8.753086419753087
+    "mean_score": 7.518518518518518
    }
   },
   "driving_categories_on_bad": {
@@ -99,10 +99,10 @@
    "good": {
     "n": 349,
     "high": 0.06017191977077364,
-    "high_or_medium": 0.4469914040114613,
-    "low": 0.28939828080229224,
+    "high_or_medium": 0.40974212034383956,
+    "low": 0.32664756446991405,
     "unknown": 0.2636103151862464,
-    "mean_score": 26.759312320916905
+    "mean_score": 25.828080229226362
    }
   },
   "contract_only": {
@@ -117,10 +117,10 @@
    "good": {
     "n": 349,
     "high": 0.03724928366762178,
-    "high_or_medium": 0.11174785100286533,
-    "low": 0.6446991404011462,
+    "high_or_medium": 0.07449856733524356,
+    "low": 0.6819484240687679,
     "unknown": 0.24355300859598855,
-    "mean_score": 10.882521489971346
+    "mean_score": 9.951289398280803
    }
   },
   "driving_categories_on_bad": {
@@ -132,9 +132,9 @@
  "centralized": {
   "n": 179,
   "verdict_distribution": {
-   "low": 45,
+   "low": 48,
    "unknown": 20,
-   "medium": 74,
+   "medium": 71,
    "high": 40
   },
   "high_rate": 0.22346368715083798,
@@ -196,17 +196,17 @@
    {
     "symbol": "BIO",
     "chain": "base",
-    "verdict": "medium",
+    "verdict": "low",
     "driver": "honeypot"
    }
   ]
  },
  "false_block": {
   "n": 154,
-  "blocked": 30,
-  "rate": 0.19480519480519481,
+  "blocked": 20,
+  "rate": 0.12987012987012986,
   "by_driver": {
-   "honeypot": 20,
+   "honeypot": 10,
    "lifecycle": 6,
    "upstream_risk": 3,
    "freshness": 1
@@ -1814,11 +1814,11 @@
    "sampled_from": "backfill_2026-02-07",
    "liquidity_usd": 279974.0,
    "gap_reasons": [],
-   "verdict": "medium",
-   "score": 30,
+   "verdict": "low",
+   "score": 5,
    "confidence": "high",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
+   "verdict_ablated": "low",
+   "score_ablated": 5,
    "driver": "honeypot",
    "categories": [
     "cross_chain",
@@ -3361,11 +3361,11 @@
    "sampled_from": "backfill_2026-05-08",
    "liquidity_usd": 747930.0,
    "gap_reasons": [],
-   "verdict": "medium",
-   "score": 30,
+   "verdict": "low",
+   "score": 5,
    "confidence": "medium",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
+   "verdict_ablated": "low",
+   "score_ablated": 5,
    "driver": "honeypot",
    "categories": [
     "freshness",
@@ -4268,11 +4268,11 @@
    "sampled_from": "backfill_2025-11-09",
    "liquidity_usd": 205356.0,
    "gap_reasons": [],
-   "verdict": "medium",
-   "score": 30,
+   "verdict": "low",
+   "score": 5,
    "confidence": "medium",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
+   "verdict_ablated": "low",
+   "score_ablated": 5,
    "driver": "honeypot",
    "categories": [
     "honeypot",
@@ -4573,11 +4573,11 @@
    "sampled_from": "backfill_2025-12-09",
    "liquidity_usd": 644597.0,
    "gap_reasons": [],
-   "verdict": "medium",
-   "score": 30,
+   "verdict": "low",
+   "score": 5,
    "confidence": "medium",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
+   "verdict_ablated": "low",
+   "score_ablated": 5,
    "driver": "honeypot",
    "categories": [
     "freshness",
@@ -5623,11 +5623,11 @@
    "sampled_from": "backfill_2026-05-08",
    "liquidity_usd": 902278.0,
    "gap_reasons": [],
-   "verdict": "medium",
-   "score": 30,
+   "verdict": "low",
+   "score": 5,
    "confidence": "medium",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
+   "verdict_ablated": "low",
+   "score_ablated": 5,
    "driver": "honeypot",
    "categories": [
     "freshness",
@@ -5673,11 +5673,11 @@
    "sampled_from": "snapshot_2026-09-04",
    "liquidity_usd": 1138230.0,
    "gap_reasons": [],
-   "verdict": "medium",
-   "score": 30,
+   "verdict": "low",
+   "score": 5,
    "confidence": "medium",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
+   "verdict_ablated": "low",
+   "score_ablated": 5,
    "driver": "honeypot",
    "categories": [
     "freshness",
@@ -9268,11 +9268,11 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 1893980.0,
    "gap_reasons": [],
-   "verdict": "medium",
-   "score": 30,
+   "verdict": "low",
+   "score": 5,
    "confidence": "medium",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
+   "verdict_ablated": "low",
+   "score_ablated": 5,
    "driver": "honeypot",
    "categories": [
     "freshness",
@@ -9344,11 +9344,11 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 1135440.0,
    "gap_reasons": [],
-   "verdict": "medium",
-   "score": 30,
+   "verdict": "low",
+   "score": 5,
    "confidence": "medium",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
+   "verdict_ablated": "low",
+   "score_ablated": 5,
    "driver": "honeypot",
    "categories": [
     "freshness",
@@ -9754,11 +9754,11 @@
    "sampled_from": "snapshot_2026-09-04",
    "liquidity_usd": 1975020.0,
    "gap_reasons": [],
-   "verdict": "medium",
-   "score": 30,
+   "verdict": "low",
+   "score": 5,
    "confidence": "medium",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
+   "verdict_ablated": "low",
+   "score_ablated": 5,
    "driver": "honeypot",
    "categories": [
     "freshness",
@@ -9958,11 +9958,11 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 331696.0,
    "gap_reasons": [],
-   "verdict": "medium",
-   "score": 30,
+   "verdict": "low",
+   "score": 5,
    "confidence": "medium",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
+   "verdict_ablated": "low",
+   "score_ablated": 5,
    "driver": "honeypot",
    "categories": [
     "freshness",
@@ -10061,11 +10061,11 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 1322650.0,
    "gap_reasons": [],
-   "verdict": "medium",
-   "score": 30,
+   "verdict": "low",
+   "score": 5,
    "confidence": "high",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
+   "verdict_ablated": "low",
+   "score_ablated": 5,
    "driver": "honeypot",
    "categories": [
     "freshness",
@@ -10213,11 +10213,11 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 2357570.0,
    "gap_reasons": [],
-   "verdict": "medium",
-   "score": 30,
+   "verdict": "low",
+   "score": 5,
    "confidence": "high",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
+   "verdict_ablated": "low",
+   "score_ablated": 5,
    "driver": "honeypot",
    "categories": [
     "freshness",
@@ -10238,11 +10238,11 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 1320070.0,
    "gap_reasons": [],
-   "verdict": "medium",
-   "score": 30,
+   "verdict": "low",
+   "score": 5,
    "confidence": "medium",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
+   "verdict_ablated": "low",
+   "score_ablated": 5,
    "driver": "honeypot",
    "categories": [
     "freshness",
@@ -10620,11 +10620,11 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 361387.0,
    "gap_reasons": [],
-   "verdict": "medium",
-   "score": 30,
+   "verdict": "low",
+   "score": 5,
    "confidence": "medium",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
+   "verdict_ablated": "low",
+   "score_ablated": 5,
    "driver": "honeypot",
    "categories": [
     "freshness",
@@ -10695,11 +10695,11 @@
    "sampled_from": "snapshot_2026-09-03",
    "liquidity_usd": 5042820.0,
    "gap_reasons": [],
-   "verdict": "medium",
-   "score": 30,
+   "verdict": "low",
+   "score": 5,
    "confidence": "high",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
+   "verdict_ablated": "low",
+   "score_ablated": 5,
    "driver": "honeypot",
    "categories": [
     "cross_chain",
@@ -10770,11 +10770,11 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 1612270.0,
    "gap_reasons": [],
-   "verdict": "medium",
-   "score": 30,
+   "verdict": "low",
+   "score": 5,
    "confidence": "high",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
+   "verdict_ablated": "low",
+   "score_ablated": 5,
    "driver": "honeypot",
    "categories": [
     "freshness",
@@ -10820,11 +10820,11 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 705438.0,
    "gap_reasons": [],
-   "verdict": "medium",
-   "score": 30,
+   "verdict": "low",
+   "score": 5,
    "confidence": "medium",
-   "verdict_ablated": "medium",
-   "score_ablated": 30,
+   "verdict_ablated": "low",
+   "score_ablated": 5,
    "driver": "honeypot",
    "categories": [
     "freshness",

@@ -8,7 +8,7 @@
 
 | Dimension | Score | Max |
 |---|---|---|
-| Correctness | 18.0 | 30 |
+| Correctness | 19.0 | 30 |
 | Coverage | 16.4 | 20 |
 | Credibility | 10.9 | 20 |
 | Distribution | 4.2 ⚠️ | 15 |
@@ -21,9 +21,9 @@
 
 | Dimension | Item | Score | Max | Evidence |
 |---|---|---|---|---|
-| Correctness | tests all green | 5.0 | 5 | test_risk.py 421 passed, 0 failed All passed; test_mcp.py 80 passed, 0 failed All passed; test_http_telemetry.py 153 passed, 0 failed All passed |
+| Correctness | tests all green | 5.0 | 5 | test_risk.py 451 passed, 0 failed All passed; test_mcp.py 80 passed, 0 failed All passed; test_http_telemetry.py 153 passed, 0 failed All passed |
 | Correctness | false positive rate (healthy rated high) | 4.0 | 5 | 3.1% |
-| Correctness | false-block rate (liquid healthy rated medium or high) | 1.0 | 5 | 19.5% (30 of 154) |
+| Correctness | false-block rate (liquid healthy rated medium or high) | 2.0 | 5 | 13.0% (20 of 154) |
 | Correctness | unknown rate (benchmark, cached upstreams) | 2.0 | 5 | 21.2% |
 | Correctness | unknown rate (production, served answers) | 1.0 | 5 | 35.7% of 445, 2026-09-12 to 2026-09-19 |
 | Correctness | production guards observed live | 5.0 | 5 | 429 after 61 calls; batch of 11 -> HTTP 400; service e2d2a0e on 2026-09-19 |

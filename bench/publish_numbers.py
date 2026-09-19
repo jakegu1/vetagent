@@ -529,6 +529,19 @@ def _depth_targets():
 
 TARGETS += _depth_targets()
 
+# "One in five" became false when W44 moved the false-block row from 30 to 19 of 154, and had
+# no percent sign for the scan to catch. Counts now, each guarded.
+TARGETS += [
+    ("docs/EXPERIMENT_C.md", r"\*\*(\d+) of \d+ liquid, healthy tokens are refused", "false_block_n"),
+    ("docs/EXPERIMENT_C.md", r"\*\*\d+ of (\d+) liquid, healthy tokens are refused", "false_block_of"),
+    ("docs/EXPERIMENT_C.md", r"row above\. (\d+) of the \d+ are the upstream", "false_block_honeypot_n"),
+    ("docs/EXPERIMENT_C.md", r"row above\. \d+ of the (\d+) are the upstream", "false_block_n"),
+    ("src/pages.py", r"<strong>(\d+) of \d+ liquid, healthy tokens are refused", "false_block_n"),
+    ("src/pages.py", r"<strong>\d+ of (\d+) liquid, healthy tokens are refused", "false_block_of"),
+    ("src/landing.html", r"refuses that it should not, (\d+) of \d+\.", "false_block_n"),
+    ("src/landing.html", r"refuses that it should not, \d+ of (\d+)\.", "false_block_of"),
+]
+
 
 def figures():
     """The numbers a reader is entitled to, straight from the last benchmark run."""
@@ -640,6 +653,10 @@ def figures():
                                             if r.get("liquidity_usd") is not None]),
         "unknown_n": "%d" % len(unknown),
         "false_block_of": "%d" % len(_false_block_population(rows)),
+        # W44: how many of the false blocks the honeypot flag still drives after E23.
+        "false_block_honeypot_n": "%d" % len([r for r in _false_block_population(rows)
+                                              if r["verdict"] in ("medium", "high")
+                                              and r.get("driver") == "honeypot"]),
         "false_block_n": "%d" % len([r for r in _false_block_population(rows)
                                      if r["verdict"] in ("medium", "high")]),
         "false_block_pct": _pct(len([r for r in _false_block_population(rows)
