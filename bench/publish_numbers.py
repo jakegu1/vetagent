@@ -785,7 +785,11 @@ FROZEN_LOG_FILES = ("docs/ROUNDS.md", "docs/DECISIONS.md", "docs/HANDOFF.md",
                     # W41's pre-registered rule and its dated runs: thresholds fixed before a
                     # run and results as measured that day. Rewriting them to a later
                     # benchmark would be the fitting the page exists to prevent.
-                    "docs/SELL_SIMULATION.md")
+                    "docs/SELL_SIMULATION.md",
+                    # A reviewer's registration, copied verbatim: bands fixed while a cold
+                    # re-run was going, against the 2026-09-15 figures. Tracking today's
+                    # benchmark would rewrite what was registered.
+                    "bench/drift/2026-09-17/PREREG_fresh_clone_drift.md")
 
 # (file, exact substring that must appear on the line) -- scoped to one file each, so an
 # exemption written for one sentence cannot silently cover a new number somewhere else.
