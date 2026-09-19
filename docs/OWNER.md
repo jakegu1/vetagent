@@ -168,6 +168,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W48: the deploy's flood check sends 125 calls and prints each call's colo
 - Experiment C text: every false or stale sentence the pre-post review and its checkers found
 - The landing page no longer assesses a token on every visit
 - An unknown whose sell simulation reverted no longer says "no source can see this token"
@@ -175,9 +176,8 @@ problem looked like before it was fixed.
 - Gate 2026-09-18 answered: the frozen rule says YES, and the YES is ours
 - Keep the owner's strategy review out of the public repo
 - plugin/README claimed a blocker that had just stopped being true
-- W48 recurred: the deploy flood check failed on 29e8c9c too, 2 of the last 3 deploys
 
-_65 more not shown (73 commits in total)._
+_66 more not shown (74 commits in total)._
 
 ## What I got wrong
 
