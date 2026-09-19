@@ -1,0 +1,87 @@
+figure                     published     fresh  pre-registered band
+fp_alive_high                      5         6  2..8 inside
+unknown                          122       122  105..139 inside
+adversarial_high                  10        10  8..12 inside
+adversarial_high_ablated           3         3  
+dead_high                          3         3  
+dead_not_low                      26        27  
+dead_not_low_ablated               6         6  
+false_blocks                      30        36  25..35 OUTSIDE
+false_block_n                    154       149  
+centralized_high                  40        26  
+
+independence overlap (fresh): []
+n_evaluated: 576 -> 576
+unknown rows whose every gap reason is 'upstream request failed': published 6, fresh 7
+
+verdict flips, published -> fresh: 60 of 576 rows
+   18  low -> medium
+   16  high -> medium
+    7  medium -> low
+    7  medium -> unknown
+    5  unknown -> medium
+    4  unknown -> high
+    2  low -> unknown
+    1  medium -> high
+
+flipped rows (symbol, chain, outcome, goplus, old, new, new driver, new gap reasons):
+   ('CP', 'base', None, 'centralized', 'unknown', 'medium', 'upstream_risk', [])
+   ('BSTONK', 'base', None, 'safe', 'medium', 'low', None, [])
+   ('CTR', 'base', None, 'safe', 'unknown', 'medium', 'honeypot', [])
+   ('ST', 'base', None, 'safe', 'medium', 'unknown', 'no_liquidity', ["no pool's depth is priced in an asset we can verify"])
+   ('ELSA', 'base', 'alive', 'safe', 'medium', 'low', None, [])
+   ('Fartcoin', 'base', None, 'safe', 'low', 'medium', 'lifecycle', [])
+   ('GITLAWB', 'base', None, 'safe', 'unknown', 'high', 'impersonation', ['the sell simulator has no record of this token'])
+   ('SPX', 'base', 'alive', 'safe', 'medium', 'high', 'honeypot', [])
+   ('$NVDAC', 'base', None, 'safe', 'high', 'medium', 'liquidity', [])
+   ('CIRCLE', 'base', None, 'safe', 'low', 'medium', 'lifecycle', [])
+   ('wtCOIN', 'base', 'alive', 'safe', 'medium', 'low', None, [])
+   ('SOSO', 'base', 'alive', 'centralized', 'medium', 'low', None, [])
+   ('SPX6900 Filecoin', 'base', None, 'centralized', 'medium', 'unknown', 'no_liquidity', ['no trading pair found'])
+   ('BTC', 'base', None, 'centralized', 'high', 'medium', 'liquidity', [])
+   ('A0X', 'base', None, 'safe', 'low', 'medium', 'liquidity', [])
+   ('HFURY', 'base', None, 'safe', 'unknown', 'medium', 'liquidity', [])
+   ('CHECK', 'base', None, 'safe', 'medium', 'low', None, [])
+   ('BID', 'base', 'alive', 'centralized', 'low', 'medium', 'lifecycle', [])
+   ('CLAWNCH', 'base', 'dead', 'safe', 'low', 'medium', 'liquidity', [])
+   ('WELL', 'base', None, 'safe', 'low', 'medium', 'lifecycle', [])
+   ('PENDLE', 'base', 'alive', 'centralized', 'low', 'unknown', 'sellability', ['simulation failed: execution reverted: HP: BUY_FAILED'])
+   ('BAES', 'base', None, 'safe', 'low', 'medium', 'liquidity', [])
+   ('KOTAEMON', 'base', 'alive', 'safe', 'unknown', 'medium', 'liquidity', [])
+   ('DCAI', 'base', 'alive', 'centralized', 'medium', 'low', None, [])
+   ('LAY', 'base', None, 'safe', 'medium', 'unknown', 'no_liquidity', ["no pool's depth is priced in an asset we can verify"])
+   ('BENJI', 'base', 'alive', 'centralized', 'low', 'medium', 'lifecycle', [])
+   ('CHOCO', 'base', None, 'safe', 'medium', 'unknown', 'liquidity', ['simulation failed: execution reverted: "revert: HP: BUY_FAILED"'])
+   ('OpenAI', 'base', None, 'safe', 'unknown', 'high', 'liquidity', ['the sell simulator has no record of this token'])
+   ('ZXBT', 'base', 'dead', 'safe', 'medium', 'unknown', 'no_liquidity', ["no pool's depth is priced in an asset we can verify"])
+   ('MOCHI', 'base', None, 'centralized', 'low', 'medium', 'lifecycle', [])
+   ('COLLECT', 'bsc', 'alive', 'safe', 'unknown', 'medium', 'liquidity', [])
+   ('AGT', 'bsc', 'alive', 'safe', 'medium', 'unknown', 'honeypot', ['upstream request failed: no distinct-seller count to settle a contested honeypot verdict'])
+   ('EDGE', 'bsc', 'alive', 'safe', 'medium', 'unknown', 'sellability', ["no pool's depth is priced in an asset we can verify", 'simulation failed: execution reverted: HP: BUY_FAILED: 0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e48503a204255595f4641494c4544000000000000000000000000000000000000'])
+   ('LAB', 'bsc', None, 'safe', 'low', 'medium', 'liquidity', [])
+   ('TUZKI', 'bsc', None, 'safe', 'unknown', 'high', 'impersonation', ['the sell simulator has no record of this token'])
+   ('SHIBABYAS', 'ethereum', None, 'centralized', 'high', 'medium', 'liquidity', [])
+   ('YFI', 'ethereum', None, 'centralized', 'medium', 'low', None, [])
+   ('$SNHC', 'ethereum', None, 'centralized', 'high', 'medium', 'liquidity', [])
+   ('\\U0001f48ePRMX', 'ethereum', None, 'centralized', 'high', 'medium', 'liquidity', [])
+   ('\\U0001f4abNVLT', 'ethereum', None, 'centralized', 'high', 'medium', 'liquidity', [])
+   ('$NXLE', 'ethereum', None, 'centralized', 'high', 'medium', 'liquidity', [])
+   ('Z', 'ethereum', None, 'safe', 'low', 'medium', 'lifecycle', [])
+   ('CLRI', 'ethereum', None, 'centralized', 'high', 'medium', 'liquidity', [])
+   ('VEE', 'ethereum', None, 'centralized', 'low', 'medium', 'liquidity', [])
+   ('CST', 'ethereum', None, 'centralized', 'unknown', 'high', 'liquidity', ['simulation failed: execution reverted: "revert: HP: BUY_FAILED"'])
+   ('TBCC', 'ethereum', None, 'centralized', 'high', 'medium', 'liquidity', [])
+   ('$OMNX', 'ethereum', None, 'centralized', 'high', 'medium', 'liquidity', [])
+   ('ANDY', 'ethereum', None, 'centralized', 'low', 'medium', 'lifecycle', [])
+   ('PYUSD', 'ethereum', 'alive', 'safe', 'low', 'medium', 'upstream_risk', [])
+   ('NRXG', 'ethereum', None, 'centralized', 'high', 'medium', 'liquidity', [])
+   ('ETHCAT', 'ethereum', None, 'safe', 'low', 'medium', 'liquidity', [])
+   ('$SNTI', 'ethereum', None, 'centralized', 'high', 'medium', 'liquidity', [])
+   ('$PRXG', 'ethereum', None, 'centralized', 'high', 'medium', 'liquidity', [])
+   ('DRVN', 'ethereum', None, 'centralized', 'high', 'medium', 'liquidity', [])
+   ('USDC', 'ethereum', 'alive', 'safe', 'low', 'medium', 'freshness', [])
+   ('ZAMA', 'ethereum', 'alive', 'safe', 'low', 'unknown', 'sellability', ['simulation failed: execution reverted: HP: BUY_FAILED'])
+   ('TBCC', 'ethereum', None, 'centralized', 'high', 'medium', 'liquidity', [])
+   ('USDT', 'ethereum', 'alive', 'centralized', 'low', 'medium', 'lifecycle', [])
+   ('SYNAI', 'ethereum', None, 'centralized', 'high', 'medium', 'liquidity', [])
+   ('UNITY', 'ethereum', 'alive', 'safe', 'low', 'medium', 'liquidity', [])

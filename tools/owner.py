@@ -107,6 +107,18 @@ EXTRA_ACTIONS = [
 # claim, which is itself a thing that can turn out to be false.
 CORRECTION_WINDOW = 14
 CORRECTIONS = [
+    ("2026-09-19",
+     "The Experiment C post as it went live on dev.to (2026-09-19): 'the engine as of "
+     "2026-09-18', and a re-run paragraph with no false-block figure.",
+     "The figures came from commit 4d86202 (2026-09-19 15:13 UTC), the rule that took false "
+     "blocks to 20. And the reviewer's cold re-run had put false blocks at 36 of 149, outside "
+     "the 25 to 35 tolerance registered while it ran, whose rule says such a miss is printed in "
+     "the post. The post printed '60 of the 576 verdicts moved' and not that. Both are fixed on "
+     "dev.to and in docs/EXPERIMENT_C.md, the post says the sentence came late, and the "
+     "registration is now public in bench/drift/2026-09-17/.",
+     "Caught by the two-lens check of the X, r/ethdev and Discord texts, which read the "
+     "registration. I had checked the post's numbers against the benchmark and never its "
+     "promises against the registration that made them."),
     ("2026-09-18",
      "'USDT and WBTC themselves are rated low (4 of 4 benchmark rows)' -- written in W30 "
      "(2026-09-15) as the correction to a false USDT claim, and put on five surfaces, three of "

@@ -77,7 +77,7 @@ checked 2026-09-09. So the surviving claim is narrower and I will state only tha
 **I do not know of another vendor that self-publishes its rates together with the harness
 that produces them.** If you know of one, say so and I will link it.
 
-Measured on 576 tokens across Ethereum, BSC and Base: the engine as of 2026-09-18, over
+Measured on 576 tokens across Ethereum, BSC and Base: the engine as of 2026-09-19, over
 market data the harness cached mostly on 2026-09-04 to 09-07 (plus DexScreener's per-chain
 listings, first asked on 2026-09-18):
 
@@ -105,7 +105,7 @@ first would be the flattering half of a pair.
   row above. 10 of the 20 are the upstream simulator's honeypot flag that my release rule
   does not clear: too many of the sampled holders failed to sell, too few were sampled, or
   the flag is about siphoning or blacklisted snipers rather than failed sells. That rule is
-  new (2026-09-18); before it this row was 30 of 154, and I chose it with these same 576
+  new (decided 2026-09-18, in the engine 2026-09-19); before it this row was 30 of 154, and I chose it with these same 576
   tokens in view, so treat the drop as a fit until a fresh cohort confirms it.
 - **The false-positive rate is measured where the engine can barely fail.** The healthy
   control has a median of $484,483 in the pool. Of the 146 tokens where the engine saw
@@ -163,14 +163,21 @@ Free, no signup, MIT. `https://vetagent.dev/mcp` for MCP, or `GET /assess/<addre
 is `bench/run_benchmark.py`, and it exits non-zero if the engine's endpoints and the
 labelling endpoints ever intersect. Until 2026-09-09 that command did not work on a fresh
 clone — it evaluated for twenty minutes and exited "Benchmark void" because a required
-file was gitignored. That is fixed. The **figures** are the engine as of 2026-09-18, scored over upstream answers the
+file was gitignored. That is fixed. The **figures** are the engine as of 2026-09-19, scored over upstream answers the
 harness cached mostly on 2026-09-04 to 09-07 (it keeps every successful fetch). A fresh
-clone re-fetches everything, so a re-run will not land on the same decimals. A reviewer
-did exactly that on 2026-09-18, cold, in 44 minutes: 60 of the 576 verdicts moved, and
+clone re-fetches everything, so a re-run will not land on the same numbers. A reviewer
+did exactly that on 2026-09-17 (UTC), cold, in 44 minutes: 60 of the 576 verdicts moved, and
 replaying both runs' saved upstream answers through both engine versions showed that none
 of the 60 came from code -- dead pools that one data source stopped listing, one-day
 trading-activity thresholds, pools that moved, and a sell simulator that answered
-differently. Tell me if your drift is larger.
+differently. The reviewer registered tolerances while that run was still going, before it
+had printed anything, and one published row fell outside them: false blocks went from 30
+of 154 to 36 of 149, against a tolerance of 25 to 35. The centralised row had no tolerance
+and moved further, from 40 of 179 rated high to 26. The registration says a miss is
+printed here; it was missing when this went out on 2026-09-19 and was added the same day.
+That run predates the rule that brought false blocks to 20, and the new rule has not had a
+cold re-run yet. The registration and the run's output are in `bench/drift/2026-09-17/`.
+Tell me if your drift is larger.
 
 What "independent" does and does not mean here: the labels use none of the endpoints the
 engine reads, and the build enforces that. The outcome oracle is independent of every

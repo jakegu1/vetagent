@@ -5,7 +5,7 @@
 > page cannot quietly drift out of date. `tests/test_owner_page.py` fails the
 > build if it does.
 >
-> Generated 2026-09-19.
+> Generated 2026-09-20.
 
 ## The project in one paragraph
 
@@ -21,43 +21,43 @@ These are the things I cannot do. Everything else in this project is mine.
 
 | When | Due | # | What you do | Blocked? |
 |---|---|---|---|---|
-| **1 days OVERDUE** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
-| **1 days OVERDUE** | 2026-09-18 | W11 | Answer the 2026-09-18 gate | no |
-| **1 days OVERDUE** | 2026-09-18 | -- | Post Experiment C | no |
-| in 27 days | 2026-10-16 | W5 | A second, independent sell-simulation source | **yes -- see below** |
-| in 27 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
+| **2 days OVERDUE** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
+| **2 days OVERDUE** | 2026-09-18 | W11 | Answer the 2026-09-18 gate | no |
+| **2 days OVERDUE** | 2026-09-18 | -- | Post Experiment C | no |
+| in 26 days | 2026-10-16 | W5 | A second, independent sell-simulation source | **yes -- see below** |
+| in 26 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
 
 ### W10 Create the two accounts the remaining directories need
 
-- **When:** 2026-09-18 (**1 days OVERDUE**)
+- **When:** 2026-09-18 (**2 days OVERDUE**)
 - **Why then:** distribution is the whole of the gate's failing branch
 - **You know it is done when:** `CHANNELS` in `bench/scorecard.py`, updated only by someone who went and looked
 - **If you do nothing:** Nothing. Six submissions are already queued and the two parked ones are one signup away; waiting costs reach, not work.
 
 ### W11 Answer the 2026-09-18 gate
 
-- **When:** 2026-09-18 (**1 days OVERDUE**)
+- **When:** 2026-09-18 (**2 days OVERDUE**)
 - **Why then:** this IS the gate -- it has to be answered on the day
 - **You know it is done when:** `python bench/usage.py`, counting rule already fixed in code; then a `Resolved:` line in `STRATEGY.md` §8, which `test_gates_get_reviewed.py` requires once due
 - **If you do nothing:** A gate that passes its date in silence teaches everyone that gates are decoration, and this is the first one that can stop the project.
 
 ###  Post Experiment C
 
-- **When:** 2026-09-18 (**1 days OVERDUE**)
+- **When:** 2026-09-18 (**2 days OVERDUE**)
 - **Why then:** The gate's failing branch prescribes exactly this, so it happens either way. Post after W30 and W31 land (2026-09-16): both change numbers the post quotes, and the post and the site should say the same thing. Drafts are written and every number in them is checked by the build: docs/EXPERIMENT_C.md. Nothing is posted without you -- it is your name on it. Posted on dev.to on 2026-09-19, with your go-ahead, disclosed as written by the agent: https://dev.to/jakegu1/a-token-risk-check-for-ai-agents-that-publishes-its-own-error-rates-1iac -- dev.to is not one of the four places below, so this stays open until one of them carries it.
 - **You know it is done when:** a post exists on at least one of HN, r/ethdev, X or the MCP Discord
 - **If you do nothing:** This is the one action that can change the 09-18 answer. Not doing it does not delay the gate -- the gate still fires, and it fires on no.
 
 ### W5 A second, independent sell-simulation source
 
-- **When:** 2026-10-16 (in 27 days)
+- **When:** 2026-10-16 (in 26 days)
 - **Why then:** needed for W3, which every accuracy claim rests on
 - **You know it is done when:** **Blocked** on a credential, not on engineering. Probed 2026-09-06: staysafu unreachable (SSL), quickintel 401, tokensniffer 401, de.fi public endpoint 404. Every candidate needed a paid key (**2026-09-15, from its pricing page:** Quick Intel now lists a free API Testing tier, 200 calls a month on approval, and a keyless pay-per-scan endpoint at $0.03 paid in USDC; whether its scan simulates a sell is not yet known; next owner step: apply for the testing tier) — this is a W9-shaped item that belongs to whoever holds the budget
 - **If you do nothing:** Every accuracy claim keeps resting on a single sell simulator. If it is wrong, we cannot tell, and neither can anyone reading the benchmark.
 
 ### W12 Decide the price-history trade-off
 
-- **When:** 2026-10-16 (in 27 days)
+- **When:** 2026-10-16 (in 26 days)
 - **Why then:** changes what the benchmark can measure, so before the D gate
 - **You know it is done when:** A decision recorded in `DECISIONS.md`, either way
 - **If you do nothing:** The 10-16 gate arrives with the measurement question still open, so that gate answers a smaller question than it was meant to.
@@ -70,10 +70,10 @@ next -- including stopping.
 
 | Date | When | The question | What happens |
 |---|---|---|---|
-| 2026-09-18 | **1 days OVERDUE** | Is anyone using it | Yes → continue; no → run only Experiment C, add no features. **Resolved:** `gate_verdict()` printed YES (usage.yml run 35374258574, 2026-09-18 17:25 UTC) on `curl` (14 calls over 4 days, JP on 14 of 14 rows: our own untagged probes from this machine's Tokyo egress, 63c485b; adding JP to OWNER_COUNTRIES turns it NEAR and does not change the verdict) and `mozilla` (23 calls over 9 days; its verdicts come from GET /assess, and the bucket is any `Mozilla/` user agent, crawlers included). Recorded as the frozen rule printed it, and read for what it is: **not evidence of adoption** -- no identified stranger received a verdict, and 3,169 of 3,259 attributable tool calls (97.2%) were ours -> continue per §7: Experiment C now; Experiment D (20 operators, the $99/month line, each with its own client tag) sent by 2026-09-23; E only when a D reply asks how to pay; no new features before 10-16 (fixes are not features). |
-| 2026-10-16 | in 27 days | Does anyone want to pay | Yes → build payments; no → pick a different customer segment and run D again |
-| 2026-12-04 | in 76 days | Is further investment worth it | Yes → continue per §7; no → move to low-maintenance mode |
-| 2027-03-04 | in 166 days | Does the data asset hold up | Yes → that becomes the main product; no → keep the tool, drop the data narrative |
+| 2026-09-18 | **2 days OVERDUE** | Is anyone using it | Yes → continue; no → run only Experiment C, add no features. **Resolved:** `gate_verdict()` printed YES (usage.yml run 35374258574, 2026-09-18 17:25 UTC) on `curl` (14 calls over 4 days, JP on 14 of 14 rows: our own untagged probes from this machine's Tokyo egress, 63c485b; adding JP to OWNER_COUNTRIES turns it NEAR and does not change the verdict) and `mozilla` (23 calls over 9 days; its verdicts come from GET /assess, and the bucket is any `Mozilla/` user agent, crawlers included). Recorded as the frozen rule printed it, and read for what it is: **not evidence of adoption** -- no identified stranger received a verdict, and 3,169 of 3,259 attributable tool calls (97.2%) were ours -> continue per §7: Experiment C now; Experiment D (20 operators, the $99/month line, each with its own client tag) sent by 2026-09-23; E only when a D reply asks how to pay; no new features before 10-16 (fixes are not features). |
+| 2026-10-16 | in 26 days | Does anyone want to pay | Yes → build payments; no → pick a different customer segment and run D again |
+| 2026-12-04 | in 75 days | Is further investment worth it | Yes → continue per §7; no → move to low-maintenance mode |
+| 2027-03-04 | in 165 days | Does the data asset hold up | Yes → that becomes the main product; no → keep the tool, drop the data narrative |
 
 ## The same thing as a picture
 
@@ -87,10 +87,10 @@ gantt
     todayMarker stroke-width:3px,stroke:#d33,stroke-dasharray:0
     title The dates that decide things (red line is today)
     section Decisions
-    Is anyone using it - 1 days OVERDUE :milestone, 2026-09-18, 0d
-    Does anyone want to pay - in 27 days :milestone, 2026-10-16, 0d
-    Is further investment worth it - in 76 days :milestone, 2026-12-04, 0d
-    Does the data asset hold up - in 166 days :milestone, 2027-03-04, 0d
+    Is anyone using it - 2 days OVERDUE :milestone, 2026-09-18, 0d
+    Does anyone want to pay - in 26 days :milestone, 2026-10-16, 0d
+    Is further investment worth it - in 75 days :milestone, 2026-12-04, 0d
+    Does the data asset hold up - in 165 days :milestone, 2027-03-04, 0d
 ```
 
 ### Is the archive still collecting?
@@ -101,7 +101,7 @@ gantt
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**17 days, no gaps.** Newest is 2026-09-19, today.
+**17 days, no gaps.** Newest is 2026-09-19, yesterday.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -160,6 +160,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Owner page: Experiment C went out on dev.to on 2026-09-19
 - W44: a honeypot flag is read by its holder share -- false blocks 30 -> 20 of 154 (DECISIONS E23)
 - Take the owner's remaining private details out of the public files, and guard them
 - HANDOFF.md: remove the server IP and the private key's location from the public repo
@@ -167,9 +168,8 @@ problem looked like before it was fixed.
 - W48: the deploy's flood check sends 125 calls and prints each call's colo
 - Experiment C text: every false or stale sentence the pre-post review and its checkers found
 - The landing page no longer assesses a token on every visit
-- An unknown whose sell simulation reverted no longer says "no source can see this token"
 
-_66 more not shown (74 commits in total)._
+_67 more not shown (75 commits in total)._
 
 ## What I got wrong
 
@@ -178,6 +178,12 @@ costs me something. A build check requires an entry here every 14 days: if there
 were genuinely no mistakes, saying so is itself a dated claim on the record.
 
 Newest first.
+
+**2026-09-19** &mdash; I said: *The Experiment C post as it went live on dev.to (2026-09-19): 'the engine as of 2026-09-18', and a re-run paragraph with no false-block figure.*
+
+> The figures came from commit 4d86202 (2026-09-19 15:13 UTC), the rule that took false blocks to 20. And the reviewer's cold re-run had put false blocks at 36 of 149, outside the 25 to 35 tolerance registered while it ran, whose rule says such a miss is printed in the post. The post printed '60 of the 576 verdicts moved' and not that. Both are fixed on dev.to and in docs/EXPERIMENT_C.md, the post says the sentence came late, and the registration is now public in bench/drift/2026-09-17/.
+
+> How it surfaced: Caught by the two-lens check of the X, r/ethdev and Discord texts, which read the registration. I had checked the post's numbers against the benchmark and never its promises against the registration that made them.
 
 **2026-09-18** &mdash; I said: *'USDT and WBTC themselves are rated low (4 of 4 benchmark rows)' -- written in W30 (2026-09-15) as the correction to a false USDT claim, and put on five surfaces, three of them live pages.*
 
