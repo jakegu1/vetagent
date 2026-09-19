@@ -74,26 +74,13 @@ COST_OF_WAITING = {
           "we cannot tell, and neither can anyone reading the benchmark.",
     "W12": "The 10-16 gate arrives with the measurement question still open, so that "
            "gate answers a smaller question than it was meant to.",
-    "Post Experiment C": "This is the one action that can change the 09-18 answer. Not "
-                         "doing it does not delay the gate -- the gate still fires, and "
-                         "it fires on no.",
 }
 
-# Not a backlog item, because it is not engineering. It is the single action that decides
-# what the 09-18 gate can even see.
-EXTRA_ACTIONS = [
-    ("Post Experiment C", "2026-09-18",
-     "The gate's failing branch prescribes exactly this, so it happens either way. "
-     "Post after W30 and W31 land (2026-09-16): both change numbers the post quotes, "
-     "and the post and the site should say the same thing. "
-     "Drafts are written and every number in them is checked by the build: "
-     "docs/EXPERIMENT_C.md. Nothing is posted without you -- it is your name on it. "
-     "Posted on dev.to on 2026-09-19, with your go-ahead, disclosed as written by the agent: "
-     "https://dev.to/jakegu1/a-token-risk-check-for-ai-agents-that-publishes-its-own-error-rates-1iac "
-     "-- dev.to is not one of the four places below, so this stays open until one of them "
-     "carries it.",
-     "a post exists on at least one of HN, r/ethdev, X or the MCP Discord"),
-]
+# Not backlog items, because they are not engineering. "Post Experiment C" sat here until
+# 2026-09-19: dev.to first, then X from the owner's account with his go-ahead, which met
+# its done condition (a post on HN, r/ethdev, X or the MCP Discord). The r/ethdev and
+# Discord texts are in docs/EXPERIMENT_C.md for him to post himself.
+EXTRA_ACTIONS = []
 
 # What I told the owner that turned out to be wrong.
 #

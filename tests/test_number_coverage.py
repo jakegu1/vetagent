@@ -131,14 +131,21 @@ def test_the_shortest_draft_is_actually_guarded():
         check("the short version exists", False, "section headings moved")
         return
 
-    nums = list(re.finditer(r"(\d+(?:\.\d+)?)%", orig[a:b]))
+    # Every number in the quoted post, counts as well as percentages: the post as sent on
+    # 2026-09-19 carries two percentages and three counts ("Of 17", "rates 10", "15 of those"),
+    # and a count read off the wrong cohort is the same error as a wrong percentage. Links and
+    # "$1"-style thresholds are not measurements and are left alone.
+    nums, pos = [], a
+    for line in orig[a:b].splitlines(True):
+        if line.startswith(">") and "http" not in line:
+            for m in re.finditer(r"(?<![\w.$/-])(\d+(?:\.\d+)?)(?![\w/-])", line):
+                nums.append((pos + m.start(1), m.group(1)))
+        pos += len(line)
     check("the draft has numbers to guard", len(nums) >= 3, "%d found" % len(nums))
 
     caught = 0
     try:
-        for m in nums:
-            off = a + m.start(1)
-            val = orig[off:off + len(m.group(1))]
+        for off, val in nums:
             mutated = orig[:off] + ("9.9" if val != "9.9" else "8.8") + orig[off + len(val):]
             io.open(path, "w", encoding="utf-8", newline="").write(mutated)
             r = subprocess.run([sys.executable, "bench/publish_numbers.py"],
@@ -147,7 +154,7 @@ def test_the_shortest_draft_is_actually_guarded():
             if r.returncode != 0:
                 caught += 1
             else:
-                print("       MISSED %s%% -- unguarded in the shortest draft" % val)
+                print("       MISSED %s -- unguarded in the shortest draft" % val)
     finally:
         io.open(path, "w", encoding="utf-8", newline="").write(orig)
 
