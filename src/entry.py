@@ -392,7 +392,17 @@ LANDING_CLIENT = "vetagent-landing-demo"
 
 # Hosts whose pages are ours. A call whose Origin or Referer is one of these came from
 # the demo button on our own landing page.
-_OUR_HOSTS = ("vetagent.dev", "www.vetagent.dev", "vetagent.jake-gu95.workers.dev")
+_OUR_HOSTS = ("vetagent.dev", "www.vetagent.dev")
+
+
+def _is_our_host(host):
+    """Our custom domain, or the Worker's workers.dev fallback, vetagent.<account>.workers.dev.
+
+    The account subdomain is not written here: it is the owner's account name, and it was
+    taken out of the public files on 2026-09-18 (tests/test_no_private_identifiers.py).
+    """
+    return host in _OUR_HOSTS or (host.startswith("vetagent.") and host.endswith(".workers.dev")
+                                  and host.count(".") == 3)
 
 
 def _from_our_own_page(request):
@@ -416,7 +426,7 @@ def _from_our_own_page(request):
         if not value:
             continue
         host = value.split("://", 1)[-1].split("/", 1)[0].split(":", 1)[0]
-        if host in _OUR_HOSTS:
+        if _is_our_host(host):
             return True
     return False
 

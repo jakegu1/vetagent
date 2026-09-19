@@ -300,7 +300,7 @@ def test_a_call_from_our_own_page_is_ours_even_with_stale_javascript():
     """The demo button's own header is not enough, because the page can be cached.
 
     The worker sets Cache-Control: no-cache on the landing page and the custom domain
-    strips it -- verified against vetagent.dev and vetagent.jake-gu95.workers.dev on
+    strips it -- verified against vetagent.dev and the workers.dev fallback on
     2026-09-07, where only the workers.dev origin returns the header. So a visitor can
     hold a copy of the page from before the tag shipped and keep arriving as an anonymous
     browser. That bucket is what put a YES on the 09-18 gate.
@@ -311,7 +311,7 @@ def test_a_call_from_our_own_page_is_ours_even_with_stale_javascript():
     print("\n[http] a click on our own page is ours however old the page is")
     for name in ("origin", "referer"):
         for host in ("https://vetagent.dev", "https://www.vetagent.dev/",
-                     "https://vetagent.jake-gu95.workers.dev/index.html"):
+                     "https://vetagent.some-account.workers.dev/index.html"):
             r = FakeRequest("https://vetagent.dev/mcp", method="POST",
                             headers={"user-agent": "Mozilla/5.0", name: host})
             check("%s %s -> the landing demo" % (name, host),

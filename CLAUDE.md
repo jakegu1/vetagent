@@ -74,7 +74,8 @@ built on Windows it has `Scripts/`, and a WSL run wants `bin/`.
 ```bash
 rm -rf .venv-workers python_modules   # only if switching platforms
 wsl -d Ubuntu -- bash -lc 'cd /mnt/d/Work/test/vetagent && \
-  XDG_CONFIG_HOME=/mnt/c/Users/86277/AppData/Roaming/xdg.config uv run pywrangler deploy'
+  XDG_CONFIG_HOME=/mnt/c/Users/$WIN_USER/AppData/Roaming/xdg.config uv run pywrangler deploy'
+# WIN_USER: your Windows user name. Deploys normally run in CI (deploy.yml); this is the fallback.
 ```
 
 **`/tmp` is not shared.** Git Bash's `/tmp` is invisible to Windows Python. Use the

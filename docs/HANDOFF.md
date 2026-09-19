@@ -1,7 +1,7 @@
 # 🤝 VetAgent — Handoff (HANDOFF.md)
 
 > Product + technical handoff for the AI coding agent taking over (Claude Code).
-> Product owner: Jianyi (Jia's chief AI lead) — you own **implementation**, I own **overall planning, direction, and quality**. We work together; this is not a chain of command.
+> Product owner — you own **implementation**, I own **overall planning, direction, and quality**. We work together; this is not a chain of command.
 > Goal: pick this up with **zero context loss** — what to work on, which traps are known, which principles hold, and who to ask for resources.
 
 ---
@@ -11,7 +11,7 @@
 
 ## 0. Roles first (the most important thing to get straight)
 
-- **I am the product/project owner** (Jianyi): direction, priorities, quality, the moat, and backing your call when you have a better idea.
+- **I am the product/project owner**: direction, priorities, quality, the moat, and backing your call when you have a better idea.
 - **You are the dev agent** (Claude Code): **coding, deploying, fixing, testing**. You can **push back and improve** on my direction — I actively want that.
 - **Jake is the boss**: final call plus resources (domain, Cloudflare, GitHub, servers).
 
@@ -36,11 +36,10 @@ This is not a tool for trading yourself, it **sells shovels** — keeping people
 | Item | Value |
 |---|---|
 | Production URL | **https://vetagent.dev** (Cloudflare Worker: no ICP filing, automatic HTTPS, global CDN)|
-| Fallback URL | https://vetagent.jake-gu95.workers.dev |
+| Fallback URL | the Worker's workers.dev address (see the private note) |
 | MCP endpoint | **https://vetagent.dev/mcp** (streamable-http, verified against the official FastMCP client)|
 | Landing page | https://vetagent.dev/ (VetAgent branding, SEO/GEO, JSON-LD)|
 | Source repo | **github.com/jakegu1/vetagent** (Worker version, main line of development)|
-| Docs repo | github.com/jakegu1/crypto-agent-risk (China-server version + ops docs)|
 | Cloudflare domain | vetagent.dev (zone id: see the private note, W13) |
 | Account ID | see the private note, W13 |
 
@@ -173,7 +172,7 @@ export CLOUDFLARE_ACCOUNT_ID=<from the private note, W13>
 > **W13, and what removing them does and does not achieve.** The Cloudflare account id
 > and zone id were in this file in plain text from 2026-09-03 to 2026-09-09. Neither is a
 > secret — Cloudflare treats both as public identifiers and neither can be rotated — but
-> together with the maintainer's name, email and the `jake-gu95.workers.dev` subdomain
+> together with the maintainer's name, email and the workers.dev subdomain
 > above, they are exactly what a convincing "Cloudflare security team" phishing message
 > needs. That is the threat, not account takeover.
 >
@@ -197,7 +196,7 @@ export CLOUDFLARE_ACCOUNT_ID=<from the private note, W13>
 
 > Two options: `wrangler login` OAuth (safest, no token to hand around) and an API token (stable across networks). On a remote server the API token is more reliable; for local development prefer OAuth.
 
-## 7. Asking Jake / Jianyi for resources
+## 7. Asking the owner for resources
 
 Say what you need and Jake will sort it out:
 - **Cloudflare** ($5/month Workers, nowhere near the cap)

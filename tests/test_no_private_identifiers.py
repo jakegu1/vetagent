@@ -4,8 +4,14 @@ W13. The Cloudflare account id and zone id sat in docs/HANDOFF.md in plain text 
 2026-09-03 to 2026-09-09. Neither is a secret and neither can be rotated -- Cloudflare
 treats both as public identifiers -- so this is not credential hygiene. The threat is
 narrower and more plausible: combined with the maintainer's real name, email, and the
-`jake-gu95.workers.dev` subdomain, all still public and reasonably so, they are exactly
-what makes a "Cloudflare security team" phishing message sound like it already has access.
+workers.dev subdomain, they are exactly what makes a "Cloudflare security team" phishing
+message sound like it already has access.
+
+**Extended 2026-09-18**, before Experiment C sent readers here, at the owner's request: the
+server's IP address, the owner's name and employer, the Windows user directory, and the
+workers.dev subdomain came out of the current files (they stay in history). Those are words,
+not 32-hex tokens, so a second scan hashes every word-like token -- and each dotted token's
+dot-suffixes, so a subdomain is caught inside a longer host name -- against their digests.
 
 **This test cannot prevent the original exposure.** Both values are still in public commit
 `5a16721` and always will be. What it prevents is the second, third and fourth time
@@ -36,7 +42,16 @@ FORBIDDEN = {
     "7963e3b464a7de6f9515c33e33f9c850ef0b98aabd7ae9b32f30a04653026ee1": "vetagent.dev zone id",
 }
 
+# sha256 of lowercased words. Same rule: the values are nowhere in this file.
+FORBIDDEN_WORDS = {
+    "3f17783443a3c789e8f41800ca991ebc83ed91f208a105d14f1343657a69456f": "the owner's name",
+    "4fa075f59a5b7db1137abf61bd46df536f3ba6847791511e903ccb7335d741f4": "the Windows user directory",
+    "4289846a7508016a7f1de468e3e9e8fc57e821569e4c46db84a070f02462e052": "the server's IP address",
+    "8ef9fda11e491014600527662b93562d33e20decf4601175f97b2a75b1f5bcae": "the workers.dev subdomain",
+}
+
 HEX32 = re.compile(r"\b[0-9a-f]{32}\b")
+WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 
 _PASSED = 0
 _FAILURES = []
@@ -77,6 +92,20 @@ def _scan_text(text, forbidden):
             if hashlib.sha256(t.encode()).hexdigest() in forbidden]
 
 
+def _scan_words(text, forbidden):
+    """Every word-like token (or dot-suffix of one) in `text` whose lowercased digest is in
+    `forbidden`."""
+    hits = []
+    for token in WORD.findall(text):
+        token = token.lower().rstrip(".")
+        parts = token.split(".")
+        for i in range(len(parts)):
+            digest = hashlib.sha256(".".join(parts[i:]).encode()).hexdigest()
+            if digest in forbidden:
+                hits.append(forbidden[digest])
+    return hits
+
+
 def tracked_files():
     """Only files git actually tracks. `.wrangler/` holds the account id and is ignored."""
     out = subprocess.run(["git", "ls-files"], cwd=ROOT, capture_output=True,
@@ -105,6 +134,25 @@ def test_the_identifiers_are_not_in_any_tracked_file():
 
     check("no tracked file carries either identifier", not hits,
           "; ".join("%s:%d is the %s" % h for h in hits))
+
+    # The word scan. Harvested market data (bench/snapshots) is skipped: it is public pool
+    # data written by a bot and is most of the repository's bytes.
+    words = []
+    for rel in files:
+        if rel.startswith("bench/snapshots/"):
+            continue
+        path = os.path.join(ROOT, rel)
+        if not os.path.isfile(path):
+            continue
+        try:
+            with io.open(path, encoding="utf-8", errors="ignore") as f:
+                for lineno, line in enumerate(f, 1):
+                    for what in _scan_words(line, FORBIDDEN_WORDS):
+                        words.append((rel, lineno, what))
+        except OSError:
+            continue
+    check("no tracked file carries the owner's private details", not words,
+          "; ".join("%s:%d is %s" % h for h in words))
 
 
 def test_the_private_note_exists_and_is_outside_the_repo():
@@ -153,6 +201,13 @@ def test_the_guard_actually_catches_the_thing():
 
     check("and does not fire on a 40-char git sha",
           not _scan_text("commit 5a16721" + "a" * 33, fixture))
+
+    word_fixture = {hashlib.sha256(b"planted-sub.workers.dev").hexdigest(): "planted host"}
+    check("the word scan finds a planted subdomain inside a longer host",
+          _scan_words("https://app.planted-sub.workers.dev/x", word_fixture) == ["planted host"],
+          str(_scan_words("https://app.planted-sub.workers.dev/x", word_fixture)))
+    check("  and not a different subdomain",
+          not _scan_words("https://app.other-sub.workers.dev/x", word_fixture))
 
     # The real digests must still be the ones the real scan uses.
     check("the real forbidden list is non-empty and hashed",
