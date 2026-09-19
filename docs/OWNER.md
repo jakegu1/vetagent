@@ -104,12 +104,12 @@ gantt
 ### Is the archive still collecting?
 
 ```text
-·····████████████████   2026-08-29 -> 2026-09-18
+····█████████████████   2026-08-30 -> 2026-09-19
 ```
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**16 days, no gaps.** Newest is 2026-09-18, yesterday.
+**17 days, no gaps.** Newest is 2026-09-19, today.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -168,6 +168,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- HANDOFF.md: remove the server IP and the private key's location from the public repo
 - W48: the flood split across two data centres -- 74 EWR, 21 IAD, 429 at call 95
 - W48: the deploy's flood check sends 125 calls and prints each call's colo
 - Experiment C text: every false or stale sentence the pre-post review and its checkers found
@@ -175,9 +176,8 @@ problem looked like before it was fixed.
 - An unknown whose sell simulation reverted no longer says "no source can see this token"
 - USDT was judged on a PulseChain copy at $0.00095 -- in the published benchmark and live
 - Gate 2026-09-18 answered: the frozen rule says YES, and the YES is ours
-- Keep the owner's strategy review out of the public repo
 
-_67 more not shown (75 commits in total)._
+_64 more not shown (72 commits in total)._
 
 ## What I got wrong
 
