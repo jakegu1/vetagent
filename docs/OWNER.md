@@ -44,7 +44,7 @@ These are the things I cannot do. Everything else in this project is mine.
 ###  Post Experiment C
 
 - **When:** 2026-09-18 (**1 days OVERDUE**)
-- **Why then:** The gate's failing branch prescribes exactly this, so it happens either way. Post after W30 and W31 land (2026-09-16): both change numbers the post quotes, and the post and the site should say the same thing. Drafts are written and every number in them is checked by the build: docs/EXPERIMENT_C.md. Nothing is posted without you -- it is your name on it.
+- **Why then:** The gate's failing branch prescribes exactly this, so it happens either way. Post after W30 and W31 land (2026-09-16): both change numbers the post quotes, and the post and the site should say the same thing. Drafts are written and every number in them is checked by the build: docs/EXPERIMENT_C.md. Nothing is posted without you -- it is your name on it. Posted on dev.to on 2026-09-19, with your go-ahead, disclosed as written by the agent: https://dev.to/jakegu1/a-token-risk-check-for-ai-agents-that-publishes-its-own-error-rates-1iac -- dev.to is not one of the four places below, so this stays open until one of them carries it.
 - **You know it is done when:** a post exists on at least one of HN, r/ethdev, X or the MCP Discord
 - **If you do nothing:** This is the one action that can change the 09-18 answer. Not doing it does not delay the gate -- the gate still fires, and it fires on no.
 
@@ -160,6 +160,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W44: a honeypot flag is read by its holder share -- false blocks 30 -> 20 of 154 (DECISIONS E23)
 - Take the owner's remaining private details out of the public files, and guard them
 - HANDOFF.md: remove the server IP and the private key's location from the public repo
 - W48: the flood split across two data centres -- 74 EWR, 21 IAD, 429 at call 95
@@ -167,9 +168,8 @@ problem looked like before it was fixed.
 - Experiment C text: every false or stale sentence the pre-post review and its checkers found
 - The landing page no longer assesses a token on every visit
 - An unknown whose sell simulation reverted no longer says "no source can see this token"
-- USDT was judged on a PulseChain copy at $0.00095 -- in the published benchmark and live
 
-_65 more not shown (73 commits in total)._
+_66 more not shown (74 commits in total)._
 
 ## What I got wrong
 

@@ -87,7 +87,11 @@ EXTRA_ACTIONS = [
      "Post after W30 and W31 land (2026-09-16): both change numbers the post quotes, "
      "and the post and the site should say the same thing. "
      "Drafts are written and every number in them is checked by the build: "
-     "docs/EXPERIMENT_C.md. Nothing is posted without you -- it is your name on it.",
+     "docs/EXPERIMENT_C.md. Nothing is posted without you -- it is your name on it. "
+     "Posted on dev.to on 2026-09-19, with your go-ahead, disclosed as written by the agent: "
+     "https://dev.to/jakegu1/a-token-risk-check-for-ai-agents-that-publishes-its-own-error-rates-1iac "
+     "-- dev.to is not one of the four places below, so this stays open until one of them "
+     "carries it.",
      "a post exists on at least one of HN, r/ethdev, X or the MCP Discord"),
 ]
 
