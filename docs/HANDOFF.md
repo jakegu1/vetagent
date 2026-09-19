@@ -203,7 +203,7 @@ Say what you need and Jake will sort it out:
 - **Cloudflare** ($5/month Workers, nowhere near the cap)
 - **Domain** (vetagent.dev is bought, zone ID in the table above)
 - **GitHub** (jakegu1 account)
-- **Server** (124.222.120.49, already running the China-hosted crypto-agent-risk)
+- **Server** (ask the owner)
 
 ## 8. Key reference files
 - `docs/server.json` — MCP registry format
@@ -272,7 +272,7 @@ Say what you need and Jake will sort it out:
    earned any other way.
 
 4. **Infrastructure identifiers in a public repo.** The Cloudflare Account ID
-   (`3976e6f6...`) and Zone ID (`371490a6...`) in the §2 table are committed to a
+   and Zone ID in the §2 table are committed to a
    **public** repo. Neither is a secret and neither alone lets anyone act on the account,
    but both are useful material for targeted phishing. Suggest moving them to a private
    note with an "ask Jake" line left behind. Confirmed: git history contains **no** token
@@ -309,8 +309,9 @@ Say what you need and Jake will sort it out:
 **How to republish** (when the version changes):
 
 ```bash
-# Private key is at C:\Users\86277\.vetagent-secrets\key.pem — outside the repo, never commit it
-PRIV="$(openssl pkey -in ~/.vetagent-secrets/key.pem -noout -text | grep -A3 'priv:' | tail -n +2 | tr -d ' :\n')"
+# The private key lives outside the repo; never commit it
+# KEY_PEM: the path to that key on your machine
+PRIV="$(openssl pkey -in "$KEY_PEM" -noout -text | grep -A3 'priv:' | tail -n +2 | tr -d ' :\n')"
 mcp-publisher login http --domain vetagent.dev --private-key "$PRIV"
 cd docs && mcp-publisher publish
 ```

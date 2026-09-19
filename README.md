@@ -208,7 +208,6 @@ Four documents, one job each. If something is in two of them, one of them is wro
 |---|---|
 | `README.md` (this file) | What is this, how do I call it |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Why is it built this way, and **what enforces each rule** |
-| [`docs/HANDOFF.md`](docs/HANDOFF.md) | Where things stand, what breaks, what to do next |
 | [`docs/STRATEGY.md`](docs/STRATEGY.md) | Who pays, what the moat is, when to shut it down |
 
 Why a change was made lives in the commit message, which is immutable and attached

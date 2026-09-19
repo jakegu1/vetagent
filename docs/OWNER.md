@@ -168,6 +168,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W48: the flood split across two data centres -- 74 EWR, 21 IAD, 429 at call 95
 - W48: the deploy's flood check sends 125 calls and prints each call's colo
 - Experiment C text: every false or stale sentence the pre-post review and its checkers found
 - The landing page no longer assesses a token on every visit
@@ -175,9 +176,8 @@ problem looked like before it was fixed.
 - USDT was judged on a PulseChain copy at $0.00095 -- in the published benchmark and live
 - Gate 2026-09-18 answered: the frozen rule says YES, and the YES is ours
 - Keep the owner's strategy review out of the public repo
-- plugin/README claimed a blocker that had just stopped being true
 
-_66 more not shown (74 commits in total)._
+_67 more not shown (75 commits in total)._
 
 ## What I got wrong
 
