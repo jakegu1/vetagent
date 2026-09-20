@@ -88,12 +88,12 @@ gantt
 ### Is the archive still collecting?
 
 ```text
-····█████████████████   2026-08-30 -> 2026-09-19
+···██████████████████   2026-08-31 -> 2026-09-20
 ```
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**17 days, no gaps.** Newest is 2026-09-19, yesterday.
+**18 days, no gaps.** Newest is 2026-09-20, today.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -131,7 +131,7 @@ Rounded = parked by you. Hexagons are not work items -- they are what a row is w
 
 | | |
 |---|---|
-| Maturity score | 45 / 100 (`docs/SCORECARD.md`) |
+| Maturity score | 42 / 100 (`docs/SCORECARD.md`) |
 | Tokens measured | 576 |
 | False positives | 3.1% -- we called a healthy token dangerous |
 | Answers we refuse | 21.2% -- `unknown`, on purpose |
@@ -152,6 +152,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- A sell simulation from a chain we did not ask about was being read as this token's
 - F4: the advertising guard is a rule now, not a list of seven sentences
 - F3: the scorecard called sellability covered on four chains nothing tests
 - Re-run the benchmark after the gap-reason change (no number moves)
@@ -159,9 +160,8 @@ problem looked like before it was fixed.
 - F3: an unreadable transfer-fee rate is not an upstream failure
 - F2: the EVM twin of the Solana coverage signal stops scoring the token
 - F1: a coverage gap stopped swallowing the outage next to it (E24 regression)
-- Say the two Solana dimensions are open, on every surface that sold them
 
-_79 more not shown (87 commits in total)._
+_80 more not shown (88 commits in total)._
 
 ## What I got wrong
 
