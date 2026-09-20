@@ -98,10 +98,14 @@ assess_token_risk(address, chain_hint?, verbose?)
   buy/sell/transfer taxes, whether the contract is open source, upstream scanner
   verdicts. No sell simulation runs on the four other EVM chains we accept, nor on
   Solana, so those answers are `unknown` rather than `low`.
-  Checks on Solana: the mint/freeze authority and the Token-2022 extensions
-  (transfer fee, permanent delegate, transfer hook, frozen-by-default), plus the
-  RugCheck score. No holder concentration on any chain: on EVM it needs an oracle
-  the benchmark holds out, and on Solana the upstream stopped sending holders.
+  Checks on Solana: the mint/freeze authority, the RugCheck score, and the SPL
+  Token-2022 extension block -- non-transferable, frozen-by-default, transfer fee
+  (with its cap), permanent delegate, transfer hook, pausable, close authority,
+  scaled balances and interest-bearing balances. Every other extension the report
+  carries is named in the answer with the reason it is not scored, so silence
+  there means considered-and-dismissed rather than unread.
+  No holder concentration on any chain: on EVM it needs an oracle the benchmark
+  holds out, and on Solana the upstream stopped sending holders.
 
 get_token_liquidity(address, chain_hint?)
   Price, 24h volume, pair count and chains for the primary trading pair.

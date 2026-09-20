@@ -307,6 +307,49 @@ def test_every_dimension_has_a_vocabulary():
     check("no vocabulary for a dimension the scorecard dropped", not stale, str(stale))
 
 
+def test_a_named_token_2022_extension_list_names_all_of_them():
+    """A parenthesis that names four of them reads as all of them.
+
+    Three surfaces carried the identical closed list -- "the Token-2022 extensions
+    (transfer fee, permanent delegate, transfer hook, frozen-by-default)" -- in the API
+    help, in the MCP tool description an agent reads as the contract, and in the method
+    page's coverage table. The engine graded **six** when that sentence was written, so
+    non-transferable and pausable were already missing from it, and nine after 2026-09-20.
+
+    This is the same defect as `evidence.token2022 = {"read": true}` beside six of the
+    seventeen keys RugCheck sends (DECISIONS E28), moved one layer out onto the surface an
+    agent meets first, and the fix is the same: what was looked at and what was not must
+    not be the same shape. An agent handed a complete-looking parenthesis has no way to
+    tell it is a sample.
+
+    The rule is not "every surface must list nine things". A surface may say
+    "Token-2022 extensions" and enumerate nothing -- README.md's upstream table does, and
+    that claims nothing about which ones. **But a surface that names any of them must name
+    all of them**, because naming some is what makes the list look closed.
+    """
+    print("\n[advertising] a named Token-2022 extension list is not a sample of four")
+    sys.path.insert(0, os.path.join(ROOT, "src"))
+    import risk  # noqa: E402
+
+    missing_label = sorted(set(risk._TOKEN2022_SCORED) - set(risk._TOKEN2022_LABEL))
+    check("every scored extension has a public name", not missing_label,
+          "%s: add to _TOKEN2022_LABEL, or no surface can be checked against it"
+          % missing_label)
+    stale = sorted(set(risk._TOKEN2022_LABEL) - set(risk._TOKEN2022_SCORED))
+    check("no public name for an extension nothing scores", not stale, str(stale))
+
+    labels = {k: v for k, v in risk._TOKEN2022_LABEL.items()
+              if k in risk._TOKEN2022_SCORED}
+    for rel in SURFACES:
+        text = read(rel).lower()
+        named = {k for k, v in labels.items() if v.lower() in text}
+        if not named:
+            continue        # enumerates none, so it closes no list
+        absent = sorted(labels[k] for k in set(labels) - named)
+        check("%s names every scored extension, having named one" % rel, not absent,
+              "names %d of %d; missing %s" % (len(named), len(labels), absent))
+
+
 def test_the_surface_list_is_complete():
     """A new public file must be classified, not silently unscanned."""
     print("\n[advertising] every public file is either scanned or excused by name")

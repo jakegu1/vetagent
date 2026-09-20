@@ -2906,6 +2906,26 @@ _TOKEN2022_SCORED = frozenset((
 # extension has no security impact, that is what is written here. Inventing a danger for
 # confidential transfer fee -- which Neodyme reviews and finds "no immediate security
 # implications in using this extension" -- would be the same failure as missing one.
+# What each scored extension is called on a public surface. Not decoration: the tool
+# descriptions, the API help and the method page each carried the same closed list of
+# four -- "the Token-2022 extensions (transfer fee, permanent delegate, transfer hook,
+# frozen-by-default)" -- while the engine graded six, and now nine. An agent reading that
+# parenthesis has been handed a complete-looking list, which is the same failure as
+# `read: true` beside six of seventeen keys, on the surface an agent actually reads first.
+# `test_a_named_token_2022_extension_list_names_all_of_them` pins every surface to this
+# map, and fails if a scored extension has no entry in it.
+_TOKEN2022_LABEL = {
+    "nonTransferable": "non-transferable",
+    "defaultAccountState": "frozen-by-default",
+    "transferFeeConfig": "transfer fee",
+    "permanentDelegate": "permanent delegate",
+    "transferHook": "transfer hook",
+    "pausableConfig": "pausable",
+    "mintCloseAuthority": "close authority",
+    "scaledUiAmountConfig": "scaled balances",
+    "interestBearingConfig": "interest-bearing balances",
+}
+
 _TOKEN2022_GROUPING = ("collection membership, which the extension reference calls "
                        "cosmetic: it cannot gate or price a transfer")
 _TOKEN2022_NOT_SCORED = {
