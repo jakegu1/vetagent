@@ -214,23 +214,41 @@ to prevent.</p>
 terms:</p>
 <pre><code>"data_gaps": [
   {"dimension": "liquidity", "source": "dexscreener+geckoterminal",
-   "reason": "upstream request failed (dexscreener 429, coingecko 400, geckoterminal 429)"}
+   "reason": "upstream request failed (dexscreener 429, coingecko 400, geckoterminal 429)"},
+  {"dimension": "sellability", "source": "rugcheck",
+   "reason": "our coverage gap: the sell simulator does not cover solana"}
 ]</code></pre>
+<p>Every reason opens with one of exactly three phrases, and that phrase is the whole of what
+your agent needs to decide what to do next. The detail after it is for a human reading the log.</p>
 <table>
-<tr><th>Reason begins with</th><th>Means</th></tr>
-<tr><td><code>upstream request failed</code></td><td>Ours: a source did not answer, and the
-parentheses say what each one returned.</td></tr>
-<tr><td><code>the sell simulator has no record of this token</code></td><td>About the token: the
+<tr><th>Reason begins with</th><th>Means</th><th>Worth retrying?</th></tr>
+<tr><td><code>upstream request failed</code></td><td>Ours, and temporary: a source did not answer.
+The parentheses say what each one returned.</td><td>Yes, once</td></tr>
+<tr><td><code>our coverage gap</code></td><td>Ours, and permanent: we do not run this check here.
+No sell simulator covers Solana, and honeypot.is covers only Ethereum, BSC and Base &mdash; on any
+other chain the sell test is a gap of ours and says nothing about the token.</td><td>No</td></tr>
+<tr><td><code>about the token</code></td><td>What came back does not contain it. A finding, or the
+absence of one.</td><td>No</td></tr>
+</table>
+<p>Some details you will see after those prefixes:</p>
+<table>
+<tr><th>Reason</th><th>Means</th></tr>
+<tr><td><code>about the token: the sell simulator has no record of this token</code></td><td>The
 simulator has never seen it.</td></tr>
-<tr><td><code>simulation failed</code></td><td>The simulator ran and the trade reverted, often on a
-router it cannot drive. Unverified, not dangerous.</td></tr>
-<tr><td><code>no pool's depth is priced in an asset we can verify</code></td><td>Pools exist, but
-every one is priced in a token whose value no independent market sets &mdash; so the depth it
-claims cannot be checked.</td></tr>
+<tr><td><code>about the token: simulation failed: &hellip;</code></td><td>The simulator ran and the
+trade reverted, often on a router it cannot drive. Unverified, not dangerous.</td></tr>
+<tr><td><code>about the token: no pool's depth is priced in an asset we can verify</code></td><td>Pools
+exist, but every one is priced in a token whose value no independent market sets &mdash; so the depth
+it claims cannot be checked.</td></tr>
 <tr><td><code>upstream request failed: no distinct-seller count</code></td><td>The simulator calls
 it a honeypot while sells are completing, and the number of distinct sellers &mdash; which tells
 real exits from one wallet trading with itself &mdash; could not be read.</td></tr>
 </table>
+<p>Before 2026-09-20 only the first two prefixes existed and everything else was bare, which meant
+"a fact about the token" was whatever was left over. A gap that forgot its prefix changed meaning
+silently: a transfer fee we could not read was published as an upstream outage, and a real outage on
+Solana was published as a permanent coverage gap telling callers not to retry. The third prefix
+exists so that no reason can mean something by default.</p>
 
 <h2>When the absence is the answer</h2>
 <p>If no market data source can price a token and no simulator can trade it, on a chain we know we
@@ -249,7 +267,7 @@ _UNKNOWN_JSONLD = """{"@context":"https://schema.org","@type":"FAQPage","url":"h
 "mainEntity":[
 {"@type":"Question","name":"What does a risk_level of unknown mean in VetAgent?","acceptedAnswer":{"@type":"Answer","text":"A critical check - liquidity or sellability - could not be completed. It is not a low-risk result and must never be used to justify a trade."}},
 {"@type":"Question","name":"Should an AI agent retry an unknown answer?","acceptedAnswer":{"@type":"Answer","text":"Only when unknown_kind is infrastructure and next_action is retry, and only once, after retry_after_seconds. A coverage unknown will not change on retry: abstain. A mixed unknown sets retry_after_seconds when part of it was an upstream failure - that retry brings back what the outage hid, but the rating stays unknown."}},
-{"@type":"Question","name":"Where does VetAgent say why an answer is unknown?","acceptedAnswer":{"@type":"Answer","text":"evidence.data_gaps lists each missing check with its reason. Reasons that begin with 'upstream request failed' are VetAgent's own data sources failing, with what each one returned."}}]}"""
+{"@type":"Question","name":"Where does VetAgent say why an answer is unknown?","acceptedAnswer":{"@type":"Answer","text":"evidence.data_gaps lists each missing check with its reason. Every reason begins with one of three phrases: 'upstream request failed' (ours and temporary - retry once), 'our coverage gap' (ours and permanent - do not retry) or 'about the token' (what came back does not contain it - do not retry)."}}]}"""
 
 UNKNOWN_HTML = _page(
     "/unknown", "What 'unknown' means in a token risk check, and what an AI agent should do - VetAgent",

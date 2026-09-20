@@ -280,7 +280,7 @@ def _failed(*names):
     if "coingecko" in names and _ONCHAIN.get("unusable"):
         # Ours, and fixable in one command: say so instead of letting it read as theirs.
         detail = ", ".join(x for x in (detail, "coingecko key set but unusable") if x)
-    return "upstream request failed" + (" (%s)" % detail if detail else "")
+    return _gap(_UPSTREAM_FAILED) + (" (%s)" % detail if detail else "")
 
 
 def _begin_request():
@@ -658,12 +658,47 @@ _NOT_COVERED = "our coverage gap"
 # temporary and a retry is the cure, where _NOT_COVERED is permanent and no retry touches
 # it. Collapsing the two is how the retryable half went missing (see _unknown_guidance).
 _UPSTREAM_FAILED = "upstream request failed"
+# The third, and the one that had no name until now. Everything that was not one of the
+# two above was *assumed* to be this -- a silent default, so a gap that forgot its prefix
+# became a finding about somebody's token, and a finding about a token wearing the wrong
+# prefix became an outage. Both directions shipped, in one commit, on 2026-09-20:
+# `upstream request failed: the transfer-fee schedule could not be read` (F3) and
+# `upstream request failed: the report carried no holder distribution` blamed an upstream
+# that had answered, while the Solana coverage gap swallowed a real outage (F1).
+_ABOUT_TOKEN = "about the token"
+
+# A data gap means exactly one of three things, and the reason string has to say which in
+# its first words. Nothing else in this engine may invent a fourth.
+#
+#   our coverage gap       we do not run this check here, and never will -- retrying is
+#                          spending the caller's one retry on nothing
+#   upstream request failed  a source did not answer; this is temporary and a retry is
+#                          the cure
+#   about the token        what we got back does not contain it. A finding, or the
+#                          absence of one; either way no retry closes it
+#
+# `_finalize` and `_unknown_guidance` both route on these prefixes, which is why an
+# ill-fitting one is not a wording problem: it changes what the caller is told to do.
+_GAP_KINDS = (_NOT_COVERED, _UPSTREAM_FAILED, _ABOUT_TOKEN)
 # Every place that asks "is this gap about us or about the token?" reads this one tuple.
 # It was two copies for one day: `_finalize` learned `_NOT_COVERED` and `_unknown_guidance`
 # did not, so the first Solana fail-close told every caller "No source can see this token"
 # about tokens three sources had just priced -- the error the change was written to fix,
 # moved into the sentence the agent reads (E14 review, 2026-09-20).
 _OUR_GAP = (_UPSTREAM_FAILED, _NOT_COVERED)
+
+
+def _gap(kind, detail=""):
+    """One data_gaps reason, with its meaning declared in its first words.
+
+    Every reason string in this file is built here, so no site can quietly invent a fourth
+    kind of gap or hand a caller a prefix that contradicts what happened. The guard that
+    keeps it that way is `test_every_data_gap_declares_which_of_three_things_it_is`: it
+    reads this file and fails on any `"reason":` that did not come through this function.
+    """
+    if kind not in _GAP_KINDS:
+        raise ValueError("a data gap must be one of %r, not %r" % (_GAP_KINDS, kind))
+    return "%s: %s" % (kind, detail) if detail else kind
 
 
 
@@ -1069,7 +1104,8 @@ def _independent_depth_cap(pair):
 
 _NOT_CHECKABLE = object()
 
-_UNBACKED_REASON = "no pool's depth is priced in an asset we can verify"
+_UNBACKED_REASON = _gap(_ABOUT_TOKEN,
+                        "no pool's depth is priced in an asset we can verify")
 
 _UNBACKED_NOTE = ("Pools state a depth, but none holds a reserve in an asset whose price we "
                   "can verify independently, so the depth is unknown. A pool priced only in "
@@ -2472,8 +2508,9 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
         # upstream text does not get to write sentences in our voice.
         safe_chain = _ascii_safe(chain, 24)
         data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
-                          "reason": "%s: the sell simulator does not cover %s"
-                                    % (_NOT_COVERED, safe_chain)})
+                          "reason": _gap(_NOT_COVERED,
+                                         "the sell simulator does not cover %s"
+                                         % safe_chain)})
         # `info` in the zero-weight `coverage` category, for the reason the message itself
         # gives: this says nothing about the token, so it must not score the token. As
         # `warn`/`sellability` it was 30 weighted points plus a corroboration point for a
@@ -2506,7 +2543,8 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
         # excused it from the no-trace escalation in _finalize, which is precisely the
         # rule written for a token nothing can verify.
         data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
-                          "reason": "the sell simulator has no record of this token"})
+                          "reason": _gap(_ABOUT_TOKEN,
+                                         "the sell simulator has no record of this token")})
         settled, sells, buys = _sells_demonstrated(evidence)
         if settled:
             _sells_answer(signals, evidence, sells, buys,
@@ -2643,9 +2681,10 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
                         "itself."}
             data_gaps.append({"dimension": "sellability", "source": "geckoterminal",
                               "reason": _failed("coingecko", "geckoterminal").replace(
-                                  "upstream request failed",
-                                  "upstream request failed: no distinct-seller count to settle "
-                                  "a contested honeypot verdict", 1)})
+                                  _UPSTREAM_FAILED,
+                                  _gap(_UPSTREAM_FAILED,
+                                       "no distinct-seller count to settle a contested "
+                                       "honeypot verdict"), 1)})
             signals.append(_sig(
                 "warn", "Honeypot verdict contested, not settled",
                 "honeypot.is reports a honeypot%s, while %s sells completed against %s "
@@ -2726,7 +2765,7 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
         # which is exactly what it is for.
         err = hp.get("simulationError") or "unknown reason"
         data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
-                          "reason": "simulation failed: %s" % err})
+                          "reason": _gap(_ABOUT_TOKEN, "simulation failed: %s" % err)})
         # warn, not critical -- and the same severity as an unresponsive upstream a few
         # lines up, because they are the same statement: we could not check.
         #
@@ -2883,8 +2922,9 @@ def _token2022_signals(rc, signals, evidence, established=False, data_gaps=None)
                 # re-ask for a thing no re-ask produces, and it is the same conflation this
                 # whole review is about, in the code the review's own fix had just written.
                 data_gaps.append({"dimension": "sell_tax", "source": "rugcheck",
-                                  "reason": "the report carries a transfer-fee config "
-                                            "with no rate we can read"})
+                                  "reason": _gap(_ABOUT_TOKEN,
+                                                 "the report carries a transfer-fee "
+                                                 "config with no rate we can read")})
             signals.append(_sig(
                 "warn", "Transfer fee is configured and unreadable",
                 "The mint charges a fee on every transfer and the report did not carry a "
@@ -2973,7 +3013,8 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
     # delegate. Found by a reader's comment on the Experiment C post, 2026-09-19, not by
     # us. DECISIONS E24.
     data_gaps.append({"dimension": "sellability", "source": "rugcheck",
-                      "reason": "%s: the sell simulator does not cover solana" % _NOT_COVERED})
+                      "reason": _gap(_NOT_COVERED,
+                                     "the sell simulator does not cover solana")})
     # `info`, not `warn`: this is our gap, and a gap must not score the token. As `warn` it
     # was worth 30 weighted points plus a fourth bad category, which carried three of 34
     # live Solana mints from `unknown` past 70 into a confident `high` -- our own coverage
@@ -2998,7 +3039,7 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
     # An empty response and "a report exists and it scores 0" must not collapse together
     if not rc.get("mint") and not rc.get("token") and rc.get("score") is None:
         data_gaps.append({"dimension": "sellability", "source": "rugcheck",
-                          "reason": "no risk report returned"})
+                          "reason": _gap(_ABOUT_TOKEN, "no risk report returned")})
         signals.append(_sig("warn", "No RugCheck report",
                             "RugCheck returned no risk report for this token.", "sellability"))
         return
@@ -3019,7 +3060,8 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
     raw_normalised = rc.get("score_normalised")
     if raw_normalised is None or raw_normalised == "":
         data_gaps.append({"dimension": "sellability", "source": "rugcheck",
-                          "reason": "no normalised risk score in the report"})
+                          "reason": _gap(_ABOUT_TOKEN,
+                                         "no normalised risk score in the report")})
         signals.append(_sig(
             "warn", "RugCheck score missing",
             "RugCheck returned a report with no normalised risk score, so its verdict "
@@ -3128,9 +3170,16 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
         # `topHolders: null` and `totalHolders: 0` -- while docs/SCORECARD.md went on
         # claiming the dimension for Solana. An unobserved dimension wearing an observed
         # absence's clothes, in the engine this time.
+        #
+        # Filed `about the token`, not `upstream request failed` as it was until 2026-09-20.
+        # The request did not fail: the report arrived and carries no holder list, so a
+        # retry a minute later returns the same body. What the measurement does NOT settle
+        # is whether the absence is per-mint or this upstream having stopped sending
+        # holders for everyone -- four of four is four mints, not a population. The prefix
+        # claims only the part that is certain: asking again does not close this gap.
         data_gaps.append({"dimension": "concentration", "source": "rugcheck",
-                          "reason": "upstream request failed: the report carried no "
-                                    "holder distribution"})
+                          "reason": _gap(_ABOUT_TOKEN,
+                                         "the report carried no holder distribution")})
         signals.append(_sig(
             "info", "Holder distribution unavailable",
             "RugCheck returned no holder list for this token, so concentration could not "
@@ -3281,7 +3330,7 @@ async def assess(address, chain_hint=None, verbose=False):
                             "Both market data sources failed, so liquidity could not be assessed.", "no_liquidity"))
     elif not pairs:
         data_gaps.append({"dimension": "liquidity", "source": source,
-                          "reason": "no trading pair found"})
+                          "reason": _gap(_ABOUT_TOKEN, "no trading pair found")})
         signals.append(_sig("warn", "No trading pair found",
                             "No pair was found for this address. It may be brand new, or the address may be wrong.",
                             "no_liquidity"))
@@ -3297,8 +3346,9 @@ async def assess(address, chain_hint=None, verbose=False):
                                               "high_usd": _sig_round(hi)}
             data_gaps.append({
                 "dimension": "price", "source": source,
-                "reason": "pools on unranked chains disagree on the price by %.0fx"
-                          % (hi / lo)})
+                "reason": _gap(_ABOUT_TOKEN,
+                               "pools on unranked chains disagree on the price by %.0fx"
+                               % (hi / lo))})
             signals.append(_sig(
                 "warn", "Pools disagree about the price",
                 "This token trades only on chains we cannot rank for canonicality, and "
@@ -3347,8 +3397,8 @@ async def assess(address, chain_hint=None, verbose=False):
             else:
                 reason = (_UNBACKED_REASON
                           if (not stated or max(stated) <= 0) and _only_unbacked_depth(scope)
-                          else "no pair with a sane price" if stated
-                          else "no source reported pool depth")
+                          else _gap(_ABOUT_TOKEN, "no pair with a sane price") if stated
+                          else _gap(_ABOUT_TOKEN, "no source reported pool depth"))
                 data_gaps.append({"dimension": "liquidity", "source": source,
                                   "reason": reason})
                 signals.append(_sig("warn", "No usable pool",
@@ -3451,9 +3501,11 @@ async def assess(address, chain_hint=None, verbose=False):
             # simulation and let the retry replace it, which could end at `low`. Neither:
             # the claim stands unresolved, and a missing sellability dimension is unknown.
             data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
-                              "reason": "simulation failed: the simulator's own pool could "
-                                        "not be traded and it still reported a honeypot; a "
-                                        "clean trade on another pool does not settle that"})
+                              "reason": _gap(_ABOUT_TOKEN,
+                                             "simulation failed: the simulator's own pool "
+                                             "could not be traded and it still reported a "
+                                             "honeypot; a clean trade on another pool does "
+                                             "not settle that")})
             signals.append(_sig(
                 "warn", "Honeypot claim not settled",
                 "The sell simulator reported a honeypot on the pool it chose without "

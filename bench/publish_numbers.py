@@ -435,8 +435,13 @@ def _false_block_population(rows):
 
 
 def _simulator_unknowns(unknown):
+    # Substring, not startswith: since 2026-09-20 every gap reason opens with one of the
+    # three kinds in `risk._GAP_KINDS`, so "simulation failed" is no longer the first
+    # thing in the string. A startswith here would have counted zero and reported it as
+    # a finding. Rows cached before that date keep the older, unprefixed wording, and
+    # both match.
     return [r for r in unknown if any(
-        "simulator has no record" in str(g) or str(g).startswith("simulation failed")
+        "simulator has no record" in str(g) or "simulation failed" in str(g)
         for g in (r.get("gap_reasons") or []))]
 
 

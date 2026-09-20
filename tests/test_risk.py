@@ -4359,6 +4359,190 @@ def test_token_2022_shapes_this_upstream_actually_sends():
           "77.77" not in json.dumps(r), "77.77 reached the answer")
 
 
+def test_every_data_gap_declares_which_of_three_things_it_is():
+    """A data gap means one of three things, and the reason string has to say which.
+
+    The 2026-09-20 review found the same root cause in three places at once: "we do not
+    cover this", "our upstream is down" and "here is what we found about the token" are
+    different answers to "what should the caller do now?", and all three were being
+    carried by reason strings nobody had given a shared vocabulary.
+
+      F1  a Solana coverage gap swallowed a live RugCheck outage, so the answer said
+          "a retry will not change it" when a retry was the one useful action
+      F3  `upstream request failed: the transfer-fee schedule could not be read` blamed
+          an upstream that had answered
+      and its sibling, from the same commit: `upstream request failed: the report carried
+          no holder distribution`, likewise about a report that had arrived
+
+    The third meaning had no name. Anything that was not one of the two "ours" prefixes
+    was *assumed* to be a finding about the token, so a gap that forgot its prefix changed
+    meaning silently, in whichever direction the omission happened to point.
+
+    So: three prefixes, named in `_GAP_KINDS`, and one constructor. This test is the thing
+    that keeps it true -- it reads src/risk.py and fails on any reason built any other way,
+    which is the only version of this rule that survives the next person in a hurry.
+    """
+    import ast
+    print("\n[data gaps] every gap says which of three things it is")
+
+    src_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src", "risk.py")
+    with open(src_path, encoding="utf-8") as f:
+        source = f.read()
+    tree = ast.parse(source)
+
+    check("there are exactly three kinds, and no more",
+          risk._GAP_KINDS == (risk._NOT_COVERED, risk._UPSTREAM_FAILED, risk._ABOUT_TOKEN),
+          str(risk._GAP_KINDS))
+    # If one prefix began with another, "which kind is this?" would have two answers.
+    check("  and no kind is a prefix of another kind",
+          not any(a != b and a.startswith(b) for a in risk._GAP_KINDS for b in risk._GAP_KINDS),
+          str(risk._GAP_KINDS))
+    try:
+        risk._gap("something else", "x")
+        rejected = False
+    except ValueError:
+        rejected = True
+    check("  and a fourth kind cannot be invented", rejected, "_gap accepted an unknown kind")
+
+    # ---- 1. every gap reason in the engine is built by the one constructor -----------
+    #
+    # Structural, not a sample: a new `data_gaps.append` that hand-writes its reason fails
+    # here on the day it is written, whatever scenario would have exercised it.
+    # A reason handed over as a local name is resolved inside the function that files it,
+    # never file-wide: `reason` is also the name `_honeypot_signals` gives a line of
+    # upstream text, and a lookup that ignored scope would have accepted it.
+    def assignments_in(fn, name):
+        out = []
+        for n in ast.walk(fn):
+            if isinstance(n, ast.Assign) and any(
+                    isinstance(t, ast.Name) and t.id == name for t in n.targets):
+                out.append(ast.get_source_segment(source, n.value) or "")
+        return out
+
+    def is_declared(seg, fn, name=None):
+        if "_gap(" in seg or "_failed(" in seg:
+            return True
+        if name and fn is not None:
+            found = assignments_in(fn, name)
+            return bool(found) and all(
+                "_gap(" in a or "_failed(" in a or "_UNBACKED_REASON" in a for a in found)
+        return False
+
+    sites, undeclared = 0, []
+    for fn in ast.walk(tree):
+        if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        for node in ast.walk(fn):
+            if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                    and node.func.attr == "append"
+                    and isinstance(node.func.value, ast.Name)
+                    and node.func.value.id == "data_gaps"):
+                continue
+            for arg in node.args:
+                if not isinstance(arg, ast.Dict):
+                    continue
+                for k, v in zip(arg.keys, arg.values):
+                    if not (isinstance(k, ast.Constant) and k.value == "reason"):
+                        continue
+                    sites += 1
+                    seg = ast.get_source_segment(source, v) or ""
+                    nm = v.id if isinstance(v, ast.Name) else None
+                    if not is_declared(seg, fn, nm):
+                        undeclared.append("risk.py:%d  %s"
+                                          % (v.lineno, " ".join(seg.split())[:90]))
+    check("the engine files gap reasons in more than one place", sites >= 12, str(sites))
+    check("  and every one of them is built by _gap() or _failed()",
+          not undeclared, " | ".join(undeclared))
+
+    # ---- 2. nothing hand-writes a prefix and walks around the constructor ------------
+    #
+    # This is F3's exact shape: a string literal that opens with a declared prefix, chosen
+    # by hand, asserting a meaning nothing checked.
+    hand_written = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            # Longer than the prefix: the three constants are the prefixes themselves.
+            if any(node.value.startswith(k) and node.value != k for k in risk._GAP_KINDS):
+                hand_written.append("risk.py:%d  %r" % (node.lineno, node.value[:70]))
+    check("no reason literal hand-writes one of the prefixes",
+          not hand_written, " | ".join(hand_written))
+
+    # ---- 3. the prefix decides what the caller is told, and it decides it correctly ---
+    #
+    # "The prefix matches the meaning" is only worth anything if the engine is actually
+    # reading it that way, so the truth table is checked against the engine, not asserted
+    # in prose.
+    def guidance(*reasons):
+        r = {"recommendation": "x."}
+        risk._unknown_guidance(r, [{"dimension": "sellability", "reason": s} for s in reasons])
+        return r
+
+    covered = risk._gap(risk._NOT_COVERED, "the sell simulator does not cover solana")
+    outage = risk._gap(risk._UPSTREAM_FAILED)
+    finding = risk._gap(risk._ABOUT_TOKEN, "no trading pair found")
+
+    table = [
+        ("our coverage gap alone", (covered,), "coverage", "abstain", False),
+        ("an outage alone", (outage,), "infrastructure", "retry", True),
+        ("a finding about the token alone", (finding,), "coverage", "abstain", False),
+        ("a blind spot plus an outage", (covered, outage), "mixed", "retry", True),
+        ("a finding plus an outage", (finding, outage), "mixed", "abstain", False),
+    ]
+    for label, reasons, kind, action, retries in table:
+        g = guidance(*reasons)
+        check("%s -> %s / %s" % (label, kind, action),
+              g.get("unknown_kind") == kind and g.get("next_action") == action,
+              "%s / %s" % (g.get("unknown_kind"), g.get("next_action")))
+        check("  and %s" % ("carries a retry time" if retries else "carries no retry time"),
+              (g.get("retry_after_seconds") == risk._RETRY_AFTER_SECONDS) == retries,
+              str(g.get("retry_after_seconds")))
+
+    # ---- 4. and the strings the engine really emits conform ---------------------------
+    #
+    # Sampled, not exhaustive: eight scenarios, which between them reach the Solana path,
+    # the EVM covered and uncovered paths, both upstream outages and the no-pair case.
+    # Completeness is check 1's job, not this one's.
+    emitted = set()
+
+    def gaps_from(result):
+        for g in (result.get("evidence") or {}).get("data_gaps") or []:
+            emitted.add(str(g.get("reason", "")))
+
+    rc_no_score = dict(_load("rc_bonk.json"))
+    rc_no_score.pop("score_normalised", None)
+    rc_no_holders = dict(_load("rc_bonk.json"))
+    rc_no_holders["topHolders"] = None
+
+    scenarios = [
+        ("solana clean", [("dexscreener", _load("ds_bonk.json")),
+                          ("rugcheck", _load("rc_bonk.json"))], BONK, None),
+        ("solana, everything down", [], BONK, None),
+        ("solana, no normalised score", [("dexscreener", _load("ds_bonk.json")),
+                                         ("rugcheck", rc_no_score)], BONK, None),
+        ("solana, no holder list", [("dexscreener", _load("ds_bonk.json")),
+                                    ("rugcheck", rc_no_holders)], BONK, None),
+        ("solana, empty report", [("dexscreener", _load("ds_bonk.json")),
+                                  ("rugcheck", {})], BONK, None),
+        ("evm, chain we do not cover", [("dexscreener", _load("ds_matic.json")),
+                                        ("honeypot.is", risk.NO_DATA)], MATIC, "polygon"),
+        ("evm, simulator has no record", [("dexscreener", _load("ds_matic.json")),
+                                          ("honeypot.is", risk.NO_DATA)], MATIC, "ethereum"),
+        ("evm, everything down", [], MATIC, "ethereum"),
+    ]
+    for label, routes, address, hint in scenarios:
+        install_stub(routes, default=None)
+        gaps_from(run(risk.assess(address, chain_hint=hint)))
+
+    check("the sweep reached a useful spread of gaps", len(emitted) >= 6, str(len(emitted)))
+    stray = sorted(r for r in emitted if not r.startswith(risk._GAP_KINDS))
+    check("  and every reason it produced opens with a declared kind",
+          not stray, " | ".join(stray))
+    # All three kinds have to be represented, or the sweep proves less than it looks.
+    for kind in risk._GAP_KINDS:
+        check("  the sweep produced at least one %r gap" % kind,
+              any(r.startswith(kind) for r in emitted), str(sorted(emitted))[:200])
+
+
 # ---------------------------------------------------------------- main
 
 def main():
