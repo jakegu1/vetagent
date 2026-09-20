@@ -2854,23 +2854,85 @@ def _solana_key(v):
     return None if not v or v == _SOLANA_NO_AUTHORITY else v
 
 
+# Every extension this upstream puts in `token_extensions`, and what this engine does
+# with each one. Measured 2026-09-20 against the live API: RugCheck returns **17** keys on
+# a Token-2022 mint, unset ones as null -- the same 17 on BERN (one populated) and on
+# PYUSD (eight).
+#
+# The first cut graded six of them and published `read: true`. Six is not seventeen, and
+# nothing in the answer said so: a caller seeing `read: true` with no extension signal can
+# only conclude the block was checked and came back clean. On PYUSD that conclusion is
+# wrong -- `mintCloseAuthority` is set and was not read by anything here.
+#
+# So the split below is the point of this table, not the coverage it happens to have
+# today: **a capability nobody looked at and a capability that was looked at and judged
+# harmless must not be the same shape in the code.** A key in neither map has never been
+# considered, and `_token2022_signals` treats that as a gap rather than a clean bill.
+_TOKEN2022_SCORED = frozenset((
+    "nonTransferable",          # transfers are disabled outright -> fatal
+    "defaultAccountState",      # new holders start frozen and cannot sell -> fatal
+    "transferFeeConfig",        # a cut of every transfer: a sell tax under another name
+    "permanentDelegate",        # the issuer can move or burn any balance
+    "transferHook",             # issuer code runs on every transfer and can reject it
+    "pausableConfig",           # the issuer can stop every transfer
+    "mintCloseAuthority",       # the mint can be closed and re-made at the same address
+    "scaledUiAmountConfig",     # the displayed balance is a multiple the issuer sets
+    "interestBearingConfig",    # the displayed balance accrues at a rate the issuer sets
+))
+
+# Looked at, and deliberately not scored. Each line is the reason, and it travels in the
+# answer (`evidence.token2022.not_scored`) rather than living only here -- the caller
+# drawing "checked, clean" from silence is the one who needs it.
+#
+# Sources: Neodyme, "SPL Token-2022: Don't shoot yourself in the foot with extensions",
+# and the Token-2022 extension reference at solana-program.com. Where a source says an
+# extension has no security impact, that is what is written here. Inventing a danger for
+# confidential transfer fee -- which Neodyme reviews and finds "no immediate security
+# implications in using this extension" -- would be the same failure as missing one.
+_TOKEN2022_GROUPING = ("collection membership, which the extension reference calls "
+                       "cosmetic: it cannot gate or price a transfer")
+_TOKEN2022_NOT_SCORED = {
+    "confidentialTransferFeeConfig":
+        "the withheld-fee half of confidential transfers, which Neodyme reviews and finds "
+        "no immediate security implication in; nothing here invents one for it",
+    "confidentialTransferMint":
+        "encrypts amounts. The documented hazards -- a blocked pending-balance counter, "
+        "an amount leaked by withdrawing straight after a deposit -- act on confidential "
+        "accounts, not on an ordinary sale into a market",
+    "metadataPointer":
+        "says where the name and symbol are kept; cosmetic, and it cannot gate a transfer",
+    "tokenMetadata":
+        "the name, symbol and uri themselves; cosmetic, and they cannot gate a transfer",
+    "groupPointer": _TOKEN2022_GROUPING,
+    "groupMemberPointer": _TOKEN2022_GROUPING,
+    "tokenGroup": _TOKEN2022_GROUPING,
+    "tokenGroupMember": _TOKEN2022_GROUPING,
+}
+
+
 def _token2022_signals(rc, signals, evidence, established=False, data_gaps=None):
     """Read the SPL Token-2022 extension block RugCheck already returns.
 
-    What each extension does to a sale, which is the only question this engine asks:
+    What each extension does to a sale, which is the only question this engine asks, is
+    written against `_TOKEN2022_SCORED` and `_TOKEN2022_NOT_SCORED` above. Three grades
+    are used and they are not interchangeable:
 
-      nonTransferable      transfers are disabled outright
-      defaultAccountState  a new holder's account is created frozen, so they cannot sell
-                           until the issuer thaws it
-      transferFeeConfig    a cut of every transfer, scheduled per epoch and changeable by
-                           its authority -- a sell tax under another name
-      permanentDelegate    the issuer can move or burn anyone's balance, and the holder's
-                           own transfer never fails, so no simulation of any kind sees it
-      transferHook         issuer code runs on every transfer and can reject it
-      pausableConfig       the issuer can stop every transfer
+      * `fatal` / graded tax -- the extension decides whether, and at what cost, a holder
+        can get out: nonTransferable, defaultAccountState, transferFeeConfig.
+      * graded by how established the issuer is, exactly as E9 grades freeze and mint
+        authority -- a capability nobody has exercised, which is a real danger on an
+        anonymous mint and is how a regulated one is built: permanentDelegate,
+        transferHook, pausableConfig, mintCloseAuthority.
+      * flat `info` -- scaledUiAmountConfig and interestBearingConfig. Both upstream
+        sources call these cosmetic and both are right: the multiplier moves the
+        *displayed* balance and never the raw on-chain amount, so there is no sale for an
+        anonymous issuer to stop and nothing for the E9 grading to bite on. They are named
+        because the number a caller reads in token units is one the issuer can change
+        without a transfer.
 
-    The last three are capabilities nobody has exercised yet, so they are named and not
-    scored -- the same rule that keeps EVM owner powers at `info`.
+    Note that Neodyme grades several of these from a different seat -- a program
+    integrating the token, which is why it can call nonTransferable harmless. This engine
+    answers for a holder trying to exit, where it is total. Do not "correct" the fatal.
 
     NOT read: RugCheck's convenience `transferFee` key. Measured 2026-09-19 on
     CKfats..., it reports `{"pct": 0}` while `token_extensions.transferFeeConfig` in the
@@ -2879,16 +2941,24 @@ def _token2022_signals(rc, signals, evidence, established=False, data_gaps=None)
 
     Added 2026-09-19 after a reader of the Experiment C post pointed out that the
     Solana attack surface runs through these extensions and nothing here read them.
+    Widened 2026-09-20 from six of the seventeen keys to all of them.
     """
     te = rc.get("token_extensions")
     if not isinstance(te, dict):
         evidence["token2022"] = {"read": False,
                                  "reason": "the report carried no token_extensions block"}
         return
+    live = sorted(k for k, v in te.items() if v not in (None, False, {}, []))
     evidence["token2022"] = {
         "read": True,
         "program": _ascii_safe(rc.get("tokenProgram"), 48),
-        "extensions": sorted(k for k, v in te.items() if v not in (None, False, {}, [])),
+        "extensions": live,
+        # `read: true` on its own said only that the block parsed. These two say how far
+        # the reading went, per extension, for the caller who would otherwise read silence
+        # as a clean bill.
+        "scored": [k for k in live if k in _TOKEN2022_SCORED],
+        "not_scored": {k: _TOKEN2022_NOT_SCORED[k]
+                       for k in live if k in _TOKEN2022_NOT_SCORED},
     }
 
     if te.get("nonTransferable"):
@@ -3007,6 +3077,56 @@ def _token2022_signals(rc, signals, evidence, established=False, data_gaps=None)
             "info" if established else "warn", "Transfers can be paused",
             "The mint carries the pausable extension: the issuer can stop every transfer, "
             "including yours.", "contract"))
+
+    # Graded with the three above rather than scored flat, for the same reason: it is a
+    # capability, not an event. What it buys the holder of it is documented -- the mint
+    # can be closed and a different token re-initialised at the same address, which
+    # Neodyme records being used to shed a transfer fee and to escape a soulbound
+    # restriction. The precondition is real and belongs in the sentence: the supply has to
+    # reach zero first, so this is not something that can happen under a live holder base.
+    # It matters here because this engine answers about an *address*, and an address whose
+    # mint can be re-made is not a permanent identity. PYUSD holds one by design.
+    close = te.get("mintCloseAuthority")
+    if _solana_key(close.get("closeAuthority") if isinstance(close, dict) else close):
+        if established:
+            signals.append(_sig(
+                "info", "The mint can be closed and re-made at this address",
+                "A close authority is set: once the supply reaches zero the mint can be "
+                "closed and a different token initialised at this same address. Common "
+                "for regulated issuers; it means this answer describes the mint as it is "
+                "today, not the address forever.", "contract"))
+        else:
+            signals.append(_sig(
+                "warn", "The mint can be closed and re-made at this address",
+                "A close authority is set on a token with no established holder base: "
+                "once the supply reaches zero the mint can be closed and re-initialised "
+                "at this same address with different extensions -- a documented way to "
+                "shed a transfer fee. This answer describes the mint as it is today, not "
+                "the address forever.", "contract"))
+
+    # Flat `info`, and deliberately not graded by `established`. Both the extension
+    # reference and Neodyme call these cosmetic, and on their own terms they are right:
+    # the multiplier moves the *displayed* balance and never the raw on-chain amount, so
+    # an anonymous issuer holding one cannot stop or tax a sale with it. What it can do is
+    # change a number a caller reads. That is worth one line and not a point of risk.
+    scaled = te.get("scaledUiAmountConfig")
+    if isinstance(scaled, dict) and scaled:
+        signals.append(_sig(
+            "info", "Displayed balances are scaled by a multiplier",
+            "The mint carries the scaled-UI-amount extension: what wallets show is the "
+            "raw on-chain amount times a multiplier the issuer sets and can change at any "
+            "time. No tokens are created or destroyed when it moves, so a quantity quoted "
+            "in token units -- a balance, a supply -- is not the quantity that transfers.",
+            "contract"))
+
+    interest = te.get("interestBearingConfig")
+    if isinstance(interest, dict) and interest:
+        signals.append(_sig(
+            "info", "Displayed balances accrue interest",
+            "The mint carries the interest-bearing extension: what wallets show is the "
+            "raw on-chain amount plus interest accrued at a rate the issuer sets and can "
+            "change. No tokens are created when it accrues, so a quantity quoted in token "
+            "units is not the quantity that transfers.", "contract"))
 
 
 def _rugcheck_signals(rc, signals, evidence, data_gaps):

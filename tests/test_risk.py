@@ -4227,6 +4227,91 @@ def test_solana_token_2022_extensions_are_read():
           str(r["evidence"].get("token2022")))
 
 
+PYUSD = "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo"   # Solana, eight live extensions
+
+
+def test_every_token_2022_extension_is_scored_or_named():
+    """`read: true` claimed the block had been checked. Six of its seventeen keys had.
+
+    Measured 2026-09-20 against the live API: RugCheck returns **17** extension keys on a
+    Token-2022 mint -- the same 17 on BERN, where one is populated, and on PYUSD, where
+    eight are. `_token2022_signals` graded six of them and published
+    `evidence.token2022 = {"read": true, ...}` with no other qualifier, so a caller seeing
+    `read: true` and no extension signal can only conclude the block was checked and came
+    back clean. On PYUSD that conclusion is wrong: `mintCloseAuthority` is set, and it is
+    the one extension on this mint with a documented abuse -- the mint can be closed once
+    supply reaches zero and re-initialised at the same address, which Neodyme records as a
+    way to shed a transfer fee ("SPL Token-2022: Don't shoot yourself in the foot with
+    extensions").
+
+    The rule this fixes is not "score everything". It is that **a capability nobody
+    looked at and a capability that was looked at and judged harmless must not be the same
+    shape in the code**. Scored, or named in `_TOKEN2022_NOT_SCORED` with the reason --
+    and the reason travels in the evidence, where the caller drawing the inference is.
+    """
+    print("\n[Solana] all seventeen extension keys are accounted for")
+    rc = _load("rc_pyusd.json")
+    install_stub([("dexscreener", _load("ds_bonk.json")), ("rugcheck", rc)])
+    r = run(risk.assess(PYUSD))
+    t2 = r["evidence"].get("token2022") or {}
+    names = [s["name"] for s in r["signals"]]
+
+    # --- the hole itself, on the mint that shows it ---
+    check("a mint close authority is named on PYUSD",
+          any("close" in n.lower() for n in names), str(names))
+    closed = [s for s in r["signals"] if "close" in s["name"].lower()]
+    check("  and on an issuer this established it is info, not an alarm",
+          closed and closed[0]["severity"] == "info", str(closed[:1]))
+    check("  and it says what the close actually needs (supply at zero)",
+          closed and "zero" in closed[0]["message"].lower(), str(closed[:1]))
+
+    # --- every key upstream sent is accounted for, one way or the other ---
+    both = risk._TOKEN2022_SCORED & set(risk._TOKEN2022_NOT_SCORED)
+    check("no extension is both scored and deliberately not scored", not both, str(both))
+    known = risk._TOKEN2022_SCORED | set(risk._TOKEN2022_NOT_SCORED)
+    sent = set(rc["token_extensions"])
+    check("all 17 keys this upstream sends are scored or named", sent <= known,
+          "never looked at: %s" % sorted(sent - known))
+    check("every named-and-not-scored key carries a reason",
+          all(len((risk._TOKEN2022_NOT_SCORED.get(k) or "").strip()) > 30
+              for k in risk._TOKEN2022_NOT_SCORED),
+          str({k: v for k, v in risk._TOKEN2022_NOT_SCORED.items()
+               if len((v or "").strip()) <= 30}))
+
+    # --- and the caller can see which of the two happened, without reading our source ---
+    populated = set(t2.get("extensions") or [])
+    check("the evidence separates what was graded from what was not",
+          "scored" in t2 and "not_scored" in t2, str(sorted(t2)))
+    check("  and the two together cover every populated extension",
+          set(t2.get("scored") or []) | set(t2.get("not_scored") or {}) == populated,
+          "populated %s, accounted %s" % (sorted(populated),
+                                          sorted(set(t2.get("scored") or [])
+                                                 | set(t2.get("not_scored") or {}))))
+    ns = t2.get("not_scored") or {}
+    check("  and each not-scored one says why, in the answer",
+          ns and all(isinstance(v, str) and v.strip() for v in ns.values()), str(ns))
+    check("  and confidential transfer fee is not given an invented danger",
+          "confidentialTransferFeeConfig" in ns, str(sorted(ns)))
+
+    # A cosmetic display multiplier is a misreading hazard, not a way to stop a sale, so
+    # it is flat `info` -- not graded by how established the issuer is, because there is
+    # nothing for that grading to bite on.
+    for key, word in (("scaledUiAmountConfig", "multiplier"),
+                      ("interestBearingConfig", "interest")):
+        rc2 = json.loads(json.dumps(rc))
+        rc2["token_extensions"][key] = {"authority": "2apBGMsS6ti9RyF5TwQTDswXBWskiJP2LD4cUEDqYJjk",
+                                        "multiplier": 2.0, "currentRate": 500}
+        install_stub([("dexscreener", _load("ds_bonk.json")), ("rugcheck", rc2)])
+        r2 = run(risk.assess(PYUSD))
+        hit = [s for s in r2["signals"] if word in s["message"].lower()]
+        check("%s is named as a displayed-balance hazard" % key, hit,
+              str([s["name"] for s in r2["signals"]]))
+        check("  and it says the raw on-chain amount does not move",
+              hit and "raw" in hit[0]["message"].lower(), str(hit[:1]))
+        check("  and it is info: it cannot stop or tax a sale",
+              hit and hit[0]["severity"] == "info", str(hit[:1]))
+
+
 def test_solana_holder_distribution_absence_is_a_gap():
     """RugCheck stopped returning holders, and the check went quiet instead of red.
 
