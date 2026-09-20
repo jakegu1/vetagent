@@ -109,52 +109,35 @@ def test_a_guard_seen_failing_scores_nothing():
     check("both seen failing score 0, measured", it[GUARDS][1] == 0.0, str(it[GUARDS]))
 
 
-def test_an_uncovered_dimension_is_not_advertised_as_covered():
-    """A dimension the scorecard marks open must not be sold as a feature anywhere.
+def test_an_open_dimension_is_stated_as_open():
+    """The gaps have to be said out loud, not merely left unclaimed.
 
-    On 2026-09-19 the scorecard learned that Solana has no sell test and that holder
-    concentration there stopped arriving, while seven strings a reader meets first -- the
-    MCP tool description, /api, /llms.txt, the homepage and its structured data, the
-    README -- still listed both as covered. The project has paid for this shape before:
-    a false line fixed in one document and left standing on three live surfaces.
+    The over-claiming half of this test is gone: it was a list of seven exact sentences,
+    it could not see README.md:92 saying "holder concentration" in different words, and it
+    had no entry at all for the EVM half of that dimension. It is replaced by a rule in
+    tests/test_advertised_coverage.py -- every capability noun maps to a RISK_VECTORS row,
+    and an unqualified one claims every advertised chain.
 
-    The map is written out rather than inferred, because a phrase and a scorecard row are
-    not the same sentence and guessing the link is how a guard goes quiet.
+    What a rule cannot do is notice silence. Deleting a false claim and saying nothing is
+    also a way to mislead, and it is the cheaper way out of a failing guard, so the
+    disclosures stay pinned here by hand.
     """
-    print("\n[coverage] no surface advertises a dimension the scorecard calls open")
-    vectors = dict((n, frozenset(on or ()))
-                   for n, applies, on in scorecard.RISK_VECTORS if applies is not None)
-    # (dimension, chain) in RISK_VECTORS -> phrases that would claim it, per file
-    CLAIMS = {
-        ("holder concentration", "solana"): [
-            ("src/mcp_server.py", "on Solana the mint/freeze authority and holder concentration"),
-            ("src/entry.py", "mint/freeze authority plus top-10 holder concentration"),
-            ("src/pages.py", "Mint and freeze authority, top-10 holder concentration"),
-            ("src/landing.html", "on Solana the mint/freeze authority and holder concentration"),
-            ("README.md", "mint/freeze authority, holder concentration"),
-        ],
-        ("sellability simulation", "solana"): [
-            ("src/mcp_server.py", "sell simulation for every chain"),
-            ("src/pages.py", "<tr><td>Sell simulation</td><td>Solana</td></tr>"),
-        ],
-    }
-    for (dimension, chain), claims in CLAIMS.items():
-        check("%s is a known scorecard row" % dimension, dimension in vectors,
-              str(sorted(vectors)[:4]))
-        if chain in vectors.get(dimension, frozenset()):
-            continue        # covered again: the claim would be true, so nothing to check
-        for rel, phrase in claims:
-            text = open(os.path.join(ROOT, rel), encoding="utf-8").read()
-            check("%s does not claim %s on %s" % (rel, dimension, chain), phrase not in text,
-                  "found: %s" % phrase)
-
-    # And the two that are open must be stated as open where a reader looks for gaps.
-    for rel, needle in (("src/landing.html", "sellability on Solana"),
-                        ("src/entry.py", "does not test sellability on Solana"),
+    print("\n[coverage] the open gaps are stated where a reader looks for them")
+    for rel, needle in (("src/landing.html", "does not test sellability on\n  Solana"),
+                        ("src/entry.py", "Does not test sellability on\nSolana"),
                         ("docs/SCORECARD.md",
                          "| sellability simulation | \u2705 | \u2705 | \u2705 | \u2b1c")):
         text = open(os.path.join(ROOT, rel), encoding="utf-8").read()
         check("%s says the Solana sell test is an open gap" % rel, needle in text, needle)
+
+    # Solana was named on both pages while the four EVM chains the simulator never reached
+    # were not, which is the same omission the scorecard row made: a gap disclosed for the
+    # chain someone happened to be thinking about reads as a complete list of the gaps.
+    for rel in ("src/landing.html", "src/entry.py"):
+        text = " ".join(open(os.path.join(ROOT, rel), encoding="utf-8").read().split())
+        for chain in ("polygon", "arbitrum", "optimism", "avalanche"):
+            check("%s names %s among the chains with no sell test" % (rel, chain),
+                  chain in text.lower(), "the sell simulator does not reach it either")
 
 
 def main():

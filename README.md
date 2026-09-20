@@ -89,7 +89,7 @@ A risk tool that honestly says "I don't know" is useful. One that guesses is not
 
 | Tool | What it does |
 |---|---|
-| `assess_token_risk(address, chain_hint?, verbose?)` | Full risk profile: sellability simulation, liquidity depth, pair age, holder concentration, contract permissions, upstream aggregate verdicts |
+| `assess_token_risk(address, chain_hint?, verbose?)` | Full risk profile: liquidity depth, pair age and same-ticker impersonation on all eight chains; sellability simulation, taxes, contract permissions and upstream aggregate verdicts on Ethereum, BSC and Base; mint/freeze authority and Token-2022 extensions on Solana. No holder concentration on any chain yet |
 | `get_token_liquidity(address, chain_hint?)` | Liquidity snapshot for the primary pair, with an explicit `status` so "upstream failed" is distinguishable from "no pools exist" |
 | `find_new_hot_pools(chain?, limit?)` | Newest / hottest pools on a chain. Discovery only — **not a safety endorsement** |
 
@@ -193,8 +193,8 @@ Workers. Plain JSON-RPC turned out to be smaller and fully client-compatible.
 |---|---|
 | DexScreener | pairs, price, liquidity, volume, pair age |
 | GeckoTerminal | liquidity fallback, new/trending pools |
-| honeypot.is | EVM buy/sell simulation, taxes, aggregate risk, contract openness |
-| RugCheck | Solana rug score, mint/freeze authority, Token-2022 extensions (holder concentration when the report carries holders, which it currently does not) |
+| honeypot.is | buy/sell simulation, taxes, aggregate risk, contract openness -- Ethereum, BSC and Base only |
+| RugCheck | Solana rug score, mint/freeze authority, Token-2022 extensions. No holder concentration: the report has carried no holders since 2026-09-19 |
 
 GoPlus is **not** used by the engine — it is reserved as the benchmark's held-out
 oracle. Adding it to the engine requires giving the benchmark a new independent

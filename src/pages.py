@@ -79,9 +79,10 @@ risk; not investment advice.</footer>
 
 _API_BODY = """
 <h1>Honeypot and rug-pull check API for AI agents</h1>
-<p class="lede">One call before your agent buys a token: a sell simulation, the taxes, liquidity
-depth, pair age and same-ticker impersonation, rolled into <code>low</code>, <code>medium</code>,
-<code>high</code> or <code>unknown</code> with every signal behind it. Remote MCP server and plain
+<p class="lede">One call before your agent buys a token: liquidity depth, pair age and
+same-ticker impersonation on all eight chains, a sell simulation and the taxes on Ethereum, BSC
+and Base, rolled into <code>low</code>, <code>medium</code>, <code>high</code> or
+<code>unknown</code> with every signal behind it. Remote MCP server and plain
 HTTP. Free, no account, no API key.</p>
 
 <h2>Connect over MCP</h2>

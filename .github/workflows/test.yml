@@ -121,6 +121,14 @@ jobs:
       - name: The engine covers what the scorecard says it covers, chain by chain
         run: python tests/test_coverage_matrix.py
 
+      # The other direction: what the public surfaces promise. The guard this replaces was
+      # a list of seven exact sentences and went blind the day after it was written --
+      # README.md:92 said "holder concentration" in different words and it saw nothing.
+      # This one is a rule: every capability noun maps to a RISK_VECTORS row, and an
+      # unqualified one is a claim about all eight advertised chains.
+      - name: No public surface promises a check we do not run
+        run: python tests/test_advertised_coverage.py
+
       # docs/OWNER.md is the only page here written for someone who will not read the
       # code, and it carries the deadlines. A stale deadline on the page whose job is
       # deadlines is worse than no page.

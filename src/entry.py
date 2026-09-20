@@ -92,13 +92,16 @@ Registry:     dev.vetagent/vetagent on registry.modelcontextprotocol.io
 assess_token_risk(address, chain_hint?, verbose?)
   Returns risk_level (low | medium | high | unknown), a 0-100 risk_score,
   a confidence level, and every signal that fired with its evidence.
-  Checks: sell simulation (honeypot detection), buy/sell/transfer taxes,
-  liquidity depth, trading-pair age, cross-chain presence, whether the
-  contract is open source, upstream scanner verdicts, and on Solana the
-  mint/freeze authority and the Token-2022 extensions (transfer fee, permanent
-  delegate, transfer hook, frozen-by-default). No sell simulation runs on Solana,
-  so a Solana answer is `unknown` rather than `low`, and holder concentration there
-  is unavailable while the upstream stops sending holders.
+  Checks on every chain: liquidity depth, trading-pair age, cross-chain
+  presence, same-ticker impersonation.
+  Checks on Ethereum, BSC and Base only: sell simulation (honeypot detection),
+  buy/sell/transfer taxes, whether the contract is open source, upstream scanner
+  verdicts. No sell simulation runs on the four other EVM chains we accept, nor on
+  Solana, so those answers are `unknown` rather than `low`.
+  Checks on Solana: the mint/freeze authority and the Token-2022 extensions
+  (transfer fee, permanent delegate, transfer hook, frozen-by-default), plus the
+  RugCheck score. No holder concentration on any chain: on EVM it needs an oracle
+  the benchmark holds out, and on Solana the upstream stopped sending holders.
 
 get_token_liquidity(address, chain_hint?)
   Price, 24h volume, pair count and chains for the primary trading pair.
@@ -156,9 +159,11 @@ Full method: https://github.com/jakegu1/vetagent/blob/master/bench/results.md
 
 Covers observable on-chain risk only. Not investment advice. Does not size
 positions. Cannot detect off-chain risk: team behaviour, social engineering,
-or a rug executed through governance. Does not yet check LP lock status or
-EVM holder concentration, does not test sellability on Solana, and cannot read
-Solana holder concentration while its upstream omits holders; open gaps are listed
+or a rug executed through governance. Does not yet check LP lock status, and has
+no holder concentration on any chain -- on EVM it needs an oracle the benchmark
+holds out, on Solana the upstream omits holders. Does not test sellability on
+Solana, nor on polygon, arbitrum, optimism and avalanche: the sell simulator
+reaches three of the eight chains accepted as a chain_hint. Open gaps are listed
 in docs/SCORECARD.md.
 
 ## Privacy
@@ -229,7 +234,7 @@ for the same reason. Same answer, same code path.</p>
       and distinct-seller counts; requested with our own API key since 2026-09-15</li>
   <li>GeckoTerminal &mdash; the same fallback without a key, if CoinGecko does not answer;
       new and trending pools</li>
-  <li>honeypot.is &mdash; EVM buy/sell simulation</li>
+  <li>honeypot.is &mdash; buy/sell simulation, on Ethereum, BSC and Base only</li>
   <li>RugCheck &mdash; Solana contract risk</li>
   <li>rpc.mevblocker.io (Ethereum), mainnet.base.org (Base),
       bsc-dataseed.bnbchain.org (BSC) &mdash; public RPC nodes, read-only

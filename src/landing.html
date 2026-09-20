@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VetAgent — Pre-trade token risk check for AI agents</title>
-<meta name="description" content="An MCP server that checks a crypto token for honeypots, extraction taxes, thin liquidity and same-ticker impersonation before an AI agent buys it. Free, no auth, remote endpoint at https://vetagent.dev/mcp. Publishes its own measured false-positive rate.">
+<meta name="description" content="An MCP server that checks a crypto token for honeypots and extraction taxes on Ethereum, BSC and Base, and for thin liquidity and same-ticker impersonation on all eight chains it accepts, before an AI agent buys it. Free, no auth, remote endpoint at https://vetagent.dev/mcp. Publishes its own measured false-positive rate.">
 <link rel="canonical" href="https://vetagent.dev/">
 <meta property="og:title" content="VetAgent — Pre-trade token risk check for AI agents">
-<meta property="og:description" content="Your agent reads an address and buys. This is the brake. Honeypot simulation, extraction taxes, liquidity depth and impersonation checks over MCP — with a published, reproducible error rate.">
+<meta property="og:description" content="Your agent reads an address and buys. This is the brake. Honeypot simulation and extraction taxes on Ethereum, BSC and Base; liquidity depth and impersonation checks on all eight chains — over MCP, with a published, reproducible error rate.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://vetagent.dev/">
 <meta property="og:site_name" content="VetAgent">
@@ -25,7 +25,7 @@
   "name": "VetAgent",
   "applicationCategory": "DeveloperApplication",
   "operatingSystem": "Any (remote MCP over HTTP)",
-  "description": "MCP server that assesses crypto token risk before an AI agent trades. Checks sell simulation (honeypot), buy/sell/transfer taxes, liquidity depth, pair age, contract open-source status, and on Solana the mint/freeze authority and the Token-2022 extensions. Solana has no sell test, so it answers unknown rather than low. Returns low/medium/high/unknown with the signals behind it.",
+  "description": "MCP server that assesses crypto token risk before an AI agent trades. Checks liquidity depth, pair age and same-ticker impersonation on all eight chains; sell simulation (honeypot), buy/sell/transfer taxes and contract open-source status on Ethereum, BSC and Base; the mint/freeze authority and the Token-2022 extensions on Solana. No sell test runs on Solana or on polygon, arbitrum, optimism and avalanche, so those answer unknown rather than low. Returns low/medium/high/unknown with the signals behind it.",
   "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
   "url": "https://vetagent.dev/",
   "softwareVersion": "0.2.0",
@@ -40,7 +40,7 @@
   "@type": "FAQPage",
   "mainEntity": [
     {"@type":"Question","name":"How do I check whether a crypto token is a honeypot from an AI agent?",
-     "acceptedAnswer":{"@type":"Answer","text":"Connect the VetAgent MCP server at https://vetagent.dev/mcp and call assess_token_risk with the contract address. It runs a buy/sell simulation, reads the taxes, checks liquidity depth and pair age, and returns low, medium, high or unknown together with the individual signals. No API key and no authentication."}},
+     "acceptedAnswer":{"@type":"Answer","text":"Connect the VetAgent MCP server at https://vetagent.dev/mcp and call assess_token_risk with the contract address. On Ethereum, BSC and Base it runs a buy/sell simulation and reads the taxes; on all eight chains it checks liquidity depth and pair age; and it returns low, medium, high or unknown together with the individual signals. No API key and no authentication."}},
     {"@type":"Question","name":"What does a risk_level of unknown mean?",
      "acceptedAnswer":{"@type":"Answer","text":"It means a critical check could not be completed — usually an upstream data source failed. It is not a low-risk result and must not be used to justify a trade. evidence.data_gaps lists exactly which checks were missing."}},
     {"@type":"Question","name":"How accurate is VetAgent?",
@@ -127,7 +127,8 @@
     <span>token risk intelligence</span></div>
   <h1>Your agent reads an address and buys.<br>This is the brake.</h1>
   <p class="sub">A pre-trade safety check for AI agents. One call before buying, holding or
-  recommending a token — honeypot simulation, extraction taxes, liquidity depth, same-ticker impersonation —
+  recommending a token — honeypot simulation and extraction taxes on Ethereum, BSC and Base,
+  liquidity depth and same-ticker impersonation on all eight chains —
   and a verdict you can act on instead of forty fields to interpret.</p>
   <div class="pills">
     <span class="pill">Free · no API key</span>
@@ -270,7 +271,9 @@
   <h3>What does it <em>not</em> catch?</h3>
   <p style="color:var(--dim);font-size:14px">Anything off-chain: team behaviour, social
   engineering, a rug executed through governance, a project that simply dies. It also does not
-  yet check LP lock status, EVM holder concentration, or sellability on Solana — all listed as open gaps in the
+  yet check LP lock status, or holder concentration on any chain, and does not test sellability on
+  Solana or on the four EVM chains the sell simulator does not reach — polygon, arbitrum, optimism
+  and avalanche. All are listed as open gaps in the
   <a href="https://github.com/jakegu1/vetagent/blob/master/docs/SCORECARD.md">scorecard</a>.
   <strong style="color:var(--txt)">Treat <code>low</code> as "no fatal signal in the checks that
   ran", never as "safe to buy".</strong></p>
