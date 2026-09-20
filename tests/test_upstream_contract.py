@@ -253,6 +253,20 @@ def test_rugcheck_extension_inventory():
     check("RugCheck's convenience transferFee key still disagrees with the block",
           isinstance(d.get("transferFee"), dict), str(d.get("transferFee")))
 
+    # The fee is min(amount * bps / 10000, maximumFee) and the rating reads both halves,
+    # so both halves have to keep arriving. A vanished `maximumFee` would silently put
+    # every capped mint back on the uncapped sentence (F7).
+    sch = [(d.get("token_extensions") or {}).get("transferFeeConfig") or {}]
+    sch = [(sch[0]).get(k) for k in ("olderTransferFee", "newerTransferFee")]
+    for name, entry in zip(("older", "newer"), sch):
+        check("the %s fee schedule still carries both bps and maximumFee" % name,
+              isinstance(entry, dict) and "transferFeeBasisPoints" in entry
+              and "maximumFee" in entry, str(entry))
+    check("token.supply and token.decimals are still there to scale the cap against",
+          isinstance(d.get("token"), dict) and "supply" in d["token"]
+          and isinstance(d["token"].get("decimals"), int),
+          str(d.get("token")))
+
 
 def main():
     print("=" * 68)

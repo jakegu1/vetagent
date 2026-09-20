@@ -2854,6 +2854,23 @@ def _solana_key(v):
     return None if not v or v == _SOLANA_NO_AUTHORITY else v
 
 
+def _approx_tokens(raw, decimals):
+    """A raw base-unit amount written in whole tokens, or None if the scale is unknown.
+
+    Token-2022 states `maximumFee` in base units, the same units as `token.supply`, and
+    they are not the units a person reads: BERN's cap is 3906250000000000000, which is
+    39.06 trillion tokens at 5 decimals. Every comparison in the caller is done in raw
+    units, where it needs no scale at all; this exists only to put a number in a sentence.
+    """
+    if raw is None or not isinstance(decimals, int) or isinstance(decimals, bool):
+        return None
+    x = raw / (10.0 ** decimals)
+    for cut, word in ((1e12, "trillion"), (1e9, "billion"), (1e6, "million")):
+        if abs(x) >= cut:
+            return "%.4g %s" % (x / cut, word)
+    return "%.6g" % x
+
+
 # Every extension this upstream puts in `token_extensions`, and what this engine does
 # with each one. Measured 2026-09-20 against the live API: RugCheck returns **17** keys on
 # a Token-2022 mint, unset ones as null -- the same 17 on BERN (one populated) and on
@@ -3016,10 +3033,22 @@ def _token2022_signals(rc, signals, evidence, established=False, data_gaps=None)
 
     fee = te.get("transferFeeConfig")
     if isinstance(fee, dict):
-        rates = [int(_num(v.get("transferFeeBasisPoints")))
-                 for v in (fee.get("olderTransferFee"), fee.get("newerTransferFee"))
+        sched = [v for v in (fee.get("olderTransferFee"), fee.get("newerTransferFee"))
                  if isinstance(v, dict) and v.get("transferFeeBasisPoints") is not None]
+        rates = [int(_num(v.get("transferFeeBasisPoints"))) for v in sched]
         evidence["token2022"]["transfer_fee_bps"] = rates
+        # The other half of `min(amount * bps / 10000, maximumFee)`, which the rating read
+        # none of. A cap is only usable when every scheduled rate carries one: a schedule
+        # where one entry states a cap and the other does not tells us nothing about the
+        # epoch that is live, and taking the one we can see would be reading a key the
+        # producer did not populate for the case in hand.
+        caps = [int(_num(v.get("maximumFee"))) for v in sched
+                if v.get("maximumFee") is not None]
+        have_caps = bool(sched) and len(caps) == len(sched)
+        if have_caps:
+            # `_raw` in the name on purpose: these are base units, the same units as
+            # `token.supply` and not the units anybody reads a fee in.
+            evidence["token2022"]["transfer_fee_max_raw"] = caps
         # The report carries the schedule but not the current epoch, so which rate applies
         # right now cannot be read from it. The higher one is quoted: overstating our own
         # cost estimate is the fail-closed direction, and the authority can raise it back
@@ -3049,10 +3078,65 @@ def _token2022_signals(rc, signals, evidence, established=False, data_gaps=None)
         else:
             worst = max(rates) / 100.0
             both = " and ".join("%.2f%%" % (b / 100.0) for b in rates)
+
+            # The fee is `min(amount * bps / 10000, maximumFee)` and the rating read only
+            # the first half, so "Up to 50.00% of every transfer is taken by the mint" was
+            # printed for a mint whose cap is zero -- true of no transfer it can process.
+            #
+            # Ignoring the cap overstates, which is the fail-closed direction, and the fix
+            # must not reverse it. So the severity moves in exactly one case, and it is
+            # arithmetic rather than judgement: every scheduled rate capped at zero means
+            # no transfer pays anything whatever the basis points say. Everywhere else the
+            # rate stands -- it is the true rate for any transfer at or below the
+            # breakpoint, and the caller's size is not ours to guess -- and what changes is
+            # that the sentence stops implying there is no cap at all.
+            #
+            # `cap` is the largest of the schedule's caps for the same reason `worst` is
+            # the largest of its rates: the report carries no current epoch, and
+            # min(amount * max_bps / 10000, max_cap) bounds every row of it from above.
+            cap = max(caps) if have_caps else None
+            tok = rc.get("token") if isinstance(rc.get("token"), dict) else {}
+            supply = _num(tok.get("supply")) if tok.get("supply") is not None else None
+            decimals = tok.get("decimals")
+            in_tokens = _approx_tokens(cap, decimals) if cap else None
+
+            if not have_caps:
+                # A cap we did not see is not the absence of one, and the old sentence
+                # said "of every transfer" with nothing behind it. Same rule as the
+                # unreadable rate one branch above, and as `transferFee: {"pct": 0}`.
+                cap_note = (" The report does not carry a maximum for every scheduled "
+                            "rate, so whether a cap applies could not be read.")
+            elif supply and max(rates) > 0 and cap * 10000.0 / max(rates) >= supply:
+                # The breakpoint sits above the entire supply, so no transfer that can
+                # exist reaches it. BERN, measured: the cap is about 982,000x what the
+                # whole supply would pay at 420 bps.
+                cap_note = (" The schedule caps the fee at %s tokens a transfer, more "
+                            "than the entire supply would pay at that rate, so the cap "
+                            "never binds." % in_tokens if in_tokens else
+                            " The schedule's cap sits above what the entire supply would "
+                            "pay at that rate, so it never binds.")
+            elif supply and max(rates) > 0:
+                edge = _approx_tokens(cap * 10000.0 / max(rates), decimals)
+                cap_note = (" The fee is capped at %s tokens a transfer, so the full rate "
+                            "applies up to about %s tokens and a smaller share above that."
+                            % (in_tokens, edge) if in_tokens and edge else
+                            " The fee is also capped per transfer, so the full rate "
+                            "applies only up to the cap.")
+            else:
+                cap_note = (" The fee is capped at %s tokens a transfer." % in_tokens
+                            if in_tokens else "")
+
             detail = ("Up to %.2f%% of every transfer is taken by the mint. Scheduled "
                       "rates: %s; the report does not say which is live now, so the higher "
-                      "is quoted." % (worst, both)) + held
-            if worst > 20:
+                      "is quoted." % (worst, both)) + cap_note + held
+            if worst > 0 and have_caps and cap == 0:
+                signals.append(_sig(
+                    "info", "Transfer fee is capped at zero",
+                    "A fee of up to %.2f%% is configured, and the same schedule caps it "
+                    "at zero tokens a transfer. What is charged is the smaller of the "
+                    "two, so no transfer pays anything while this stands." % worst + held,
+                    "sell_tax"))
+            elif worst > 20:
                 signals.append(_sig("critical", "Extreme transfer fee", detail, "sell_tax"))
             elif worst > 5:
                 signals.append(_sig("warn", "Elevated transfer fee", detail, "sell_tax"))

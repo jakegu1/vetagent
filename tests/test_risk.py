@@ -4234,6 +4234,7 @@ def test_solana_token_2022_extensions_are_read():
 
 
 PYUSD = "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo"   # Solana, eight live extensions
+BERN = "CKfatsPMUf8SkiURsDXs7eK6GWb4Jsd6UDbs7twMCWxo"    # Solana, a live 420/269 bps fee
 
 
 def test_every_token_2022_extension_is_scored_or_named():
@@ -4316,6 +4317,101 @@ def test_every_token_2022_extension_is_scored_or_named():
               hit and "raw" in hit[0]["message"].lower(), str(hit[:1]))
         check("  and it is info: it cannot stop or tax a sale",
               hit and hit[0]["severity"] == "info", str(hit[:1]))
+
+
+def test_a_transfer_fee_rate_is_not_the_fee_without_its_cap():
+    """The rating read basis points and ignored `maximumFee` in the same dict.
+
+    A Token-2022 transfer fee is `min(amount * bps / 10000, maximumFee)`, and the rating
+    only ever read the first half. Ignoring the cap overstates, which is the fail-closed
+    direction and is why this is small -- but it is not free: a rate of 50% capped at
+    nothing is rated `critical` "Extreme transfer fee", and the sentence
+    "Up to 50.00% of every transfer is taken by the mint" is not true of any transfer that
+    mint can process.
+
+    The fix must not reverse the direction it got right. So the severity moves in exactly
+    one case, the one that is arithmetic rather than judgement: **every** scheduled rate
+    capped at zero means no transfer can ever pay anything, whatever the basis points say.
+    Everywhere else the rate stands -- it is the true rate for any transfer up to the
+    breakpoint, and we do not know the caller's size -- and what changes is that the
+    sentence stops implying there is no cap.
+
+    Measured on BERN's real response (tests/fixtures/rc_bern.json): 420/269 bps with
+    maximumFee 3.90625e18 against a supply of 9.47e13, so the cap sits about 982,000x
+    above what the entire supply would pay at the worse rate. It cannot bind, and saying
+    so is the honest version of what the old sentence assumed.
+    """
+    print("\n[Solana] a transfer fee rate is not the fee without its cap")
+
+    def fee_signal(rc):
+        install_stub([("dexscreener", _load("ds_bonk.json")), ("rugcheck", rc)])
+        r = run(risk.assess(BERN))
+        tax = [s for s in r["signals"] if s["category"] == "sell_tax"]
+        return r, (tax[0] if tax else None)
+
+    # --- the false positive: a headline rate no transfer can ever pay ---
+    rc = json.loads(json.dumps(_load("rc_bern.json")))
+    for k in ("olderTransferFee", "newerTransferFee"):
+        rc["token_extensions"]["transferFeeConfig"][k] = {
+            "epoch": 700, "transferFeeBasisPoints": 5000, "maximumFee": 0}
+    _r, s = fee_signal(rc)
+    check("a 50% rate capped at zero is not called an extreme fee",
+          s and s["severity"] == "info", str((s or {}).get("severity")))
+    check("  and the answer says the cap, not the rate, is what binds",
+          s and "cap" in s["message"].lower(), str((s or {}).get("message")))
+    check("  and it still says the authority can raise it",
+          s and "authorit" in s["message"].lower(), str((s or {}).get("message")))
+
+    # --- the direction that must not flip: same rate, cap that cannot bind ---
+    rc = json.loads(json.dumps(_load("rc_bern.json")))
+    for k in ("olderTransferFee", "newerTransferFee"):
+        rc["token_extensions"]["transferFeeConfig"][k] = {
+            "epoch": 700, "transferFeeBasisPoints": 5000,
+            "maximumFee": 3906250000000000000}
+    _r, s = fee_signal(rc)
+    check("the same 50% rate under a cap that cannot bind is still critical",
+          s and s["severity"] == "critical", str((s or {}).get("severity")))
+
+    # --- BERN as it really is: cap present, far above supply, rating unchanged ---
+    _r, s = fee_signal(_load("rc_bern.json"))
+    check("BERN's real 4.20%/2.69% schedule still rates the same as before the cap was read",
+          s and s["severity"] == "info" and "4.20%" in s["message"],
+          str((s or {}).get("message")))
+    check("  and the sentence no longer leaves the cap unmentioned",
+          s and "cap" in s["message"].lower(), str((s or {}).get("message")))
+    check("  and says the cap cannot bind, rather than reciting a number nobody can use",
+          s and "never" in s["message"].lower(), str((s or {}).get("message")))
+    check("  and both caps are in the evidence",
+          (_r["evidence"].get("token2022") or {}).get("transfer_fee_max_raw")
+          == [3906250000000000000, 3906250000000000000],
+          str((_r["evidence"].get("token2022") or {}).get("transfer_fee_max_raw")))
+
+    # --- a cap that does bind: rate stands, but the claim gets its qualifier ---
+    rc = json.loads(json.dumps(_load("rc_bern.json")))
+    for k in ("olderTransferFee", "newerTransferFee"):
+        rc["token_extensions"]["transferFeeConfig"][k] = {
+            "epoch": 700, "transferFeeBasisPoints": 1000, "maximumFee": 100000000}
+    _r, s = fee_signal(rc)
+    check("a cap that binds leaves the rate alone: it is the real rate below the cap",
+          s and s["severity"] == "warn", str((s or {}).get("severity")))
+    # "up to" is not enough of a check: the sentence already opened with "Up to 10.00% of
+    # every transfer" before this change, and that is the claim the cap qualifies.
+    check("  and the sentence says where the full rate stops applying",
+          s and "capped at" in s["message"].lower()
+          and "1000 tokens" in s["message"], str((s or {}).get("message")))
+
+    # --- a schedule with no cap in it must not be read as uncapped ---
+    rc = json.loads(json.dumps(_load("rc_bern.json")))
+    for k in ("olderTransferFee", "newerTransferFee"):
+        rc["token_extensions"]["transferFeeConfig"][k] = {
+            "epoch": 700, "transferFeeBasisPoints": 420}
+    _r, s = fee_signal(rc)
+    check("a schedule that carries no cap is not reported as having none",
+          s and "does not" in s["message"].lower() and "cap" in s["message"].lower(),
+          str((s or {}).get("message")))
+    check("  and no cap is invented in the evidence",
+          "transfer_fee_max_raw" not in (_r["evidence"].get("token2022") or {}),
+          str((_r["evidence"].get("token2022") or {}).get("transfer_fee_max_raw")))
 
 
 def test_an_extension_nobody_here_has_seen_is_a_gap_not_a_pass():
