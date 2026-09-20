@@ -122,35 +122,37 @@ def test_an_uncovered_dimension_is_not_advertised_as_covered():
     not the same sentence and guessing the link is how a guard goes quiet.
     """
     print("\n[coverage] no surface advertises a dimension the scorecard calls open")
-    vectors = dict((n, ok) for n, ok in scorecard.RISK_VECTORS)
-    # dimension in RISK_VECTORS -> phrases that would claim it, per file
+    vectors = dict((n, frozenset(on or ()))
+                   for n, applies, on in scorecard.RISK_VECTORS if applies is not None)
+    # (dimension, chain) in RISK_VECTORS -> phrases that would claim it, per file
     CLAIMS = {
-        "holder concentration (Solana)": [
+        ("holder concentration", "solana"): [
             ("src/mcp_server.py", "on Solana the mint/freeze authority and holder concentration"),
             ("src/entry.py", "mint/freeze authority plus top-10 holder concentration"),
             ("src/pages.py", "Mint and freeze authority, top-10 holder concentration"),
             ("src/landing.html", "on Solana the mint/freeze authority and holder concentration"),
             ("README.md", "mint/freeze authority, holder concentration"),
         ],
-        "sellability test (Solana)": [
+        ("sellability simulation", "solana"): [
             ("src/mcp_server.py", "sell simulation for every chain"),
             ("src/pages.py", "<tr><td>Sell simulation</td><td>Solana</td></tr>"),
         ],
     }
-    for dimension, claims in CLAIMS.items():
+    for (dimension, chain), claims in CLAIMS.items():
         check("%s is a known scorecard row" % dimension, dimension in vectors,
               str(sorted(vectors)[:4]))
-        if vectors.get(dimension):
+        if chain in vectors.get(dimension, frozenset()):
             continue        # covered again: the claim would be true, so nothing to check
         for rel, phrase in claims:
             text = open(os.path.join(ROOT, rel), encoding="utf-8").read()
-            check("%s does not claim %s" % (rel, dimension), phrase not in text,
+            check("%s does not claim %s on %s" % (rel, dimension, chain), phrase not in text,
                   "found: %s" % phrase)
 
     # And the two that are open must be stated as open where a reader looks for gaps.
     for rel, needle in (("src/landing.html", "sellability on Solana"),
                         ("src/entry.py", "does not test sellability on Solana"),
-                        ("docs/SCORECARD.md", "sellability test (Solana) | \u2b1c")):
+                        ("docs/SCORECARD.md",
+                         "| sellability simulation | \u2705 | \u2705 | \u2705 | \u2b1c")):
         text = open(os.path.join(ROOT, rel), encoding="utf-8").read()
         check("%s says the Solana sell test is an open gap" % rel, needle in text, needle)
 

@@ -142,27 +142,70 @@ def snapshot_days():
                 if f.startswith("pools-") and f.endswith(".ndjson")])
 
 
-# Risk dimensions we know matter. This table is the roadmap —
-# every unchecked line is a real blind spot, not filler.
+# Chains the product advertises as valid `chain_hint` values, in the order /api lists
+# them. This is the second axis of the coverage table below, and it exists because the
+# first version of that table had only one: rows like "sellability simulation (honeypot,
+# EVM)" carried a `True` while the simulator reached three of these eight chains. The
+# comment two lines under it said so -- "The simulator covers ethereum, bsc and base" --
+# and the row was marked covered anyway. Four advertised chains had nothing testing
+# whether a holder can sell, and the scorecard called the dimension done.
+#
+# Advertised, not supported: a chain earns a column here by being offered to a caller,
+# never by being covered. That is the whole point of the axis -- if the list shrank to
+# what we cover, the table would score 100% by definition and say nothing.
+ADVERTISED_CHAINS = ("ethereum", "bsc", "base", "arbitrum", "polygon",
+                     "optimism", "avalanche", "solana")
+_EVM = tuple(c for c in ADVERTISED_CHAINS if c != "solana")
+
+
+# Risk dimensions we know matter, as (dimension, applies on, covered on).
+# This table is the roadmap -- every empty cell is a real blind spot, not filler.
+#
+#   applies on  = the advertised chains where the dimension is a real question. A chain
+#                 outside it is `n/a` and leaves the denominator, on the same rule that
+#                 governs a rejected row: measured inapplicable, never "we skipped it".
+#   covered on  = the subset we actually check. Everything in `applies on` and not in
+#                 `covered on` is an open gap, and `tests/test_coverage_matrix.py` runs a
+#                 real token on that chain to check the engine agrees.
+#   applies on = None means the dimension itself was measured and rejected (see LP lock
+#                 / burn). Excluded from the denominator either way.
+#
+# This is a **claim**, maintained by hand, and it is deliberately not derived from
+# `src/risk.py`: the matrix test compares it against what the engine does, and a claim
+# generated from the thing it is checking would agree with it always and mean nothing.
 RISK_VECTORS = [
-    ("sellability simulation (honeypot, EVM)", True),
-    # Never covered, and the row above used to imply otherwise by saying nothing about
-    # chains. The simulator covers ethereum, bsc and base; on Solana nothing tests whether
-    # a holder can sell, and until 2026-09-19 a RugCheck report was quietly accepted in
-    # place of a sell test (DECISIONS E24). Solana is what find_new_hot_pools defaults to.
-    ("sellability test (Solana)", False),
-    ("buy / sell / transfer tax", True),
-    ("liquidity depth", True),
-    ("pair age", True),
-    ("contract source published", True),
-    ("upstream aggregator verdict", True),
-    # Was True. The code is still there, but the upstream stopped feeding it: measured
-    # 2026-09-19 on four live mints, RugCheck returned topHolders: null and
-    # totalHolders: 0 on all four, so the check fired on none of them. A dimension whose
-    # data has gone is not a covered dimension, whatever the code says.
-    ("holder concentration (Solana)", False),
-    ("mint / freeze authority (Solana)", True),
-    ("holder concentration (EVM)", False),   # needs GoPlus, the held-out oracle (DECISIONS B2)
+    # The sell simulator answers for three of the eight chains we advertise and HTTP 400
+    # "Invalid chain" for the rest (`risk._SIMULATOR_CHAIN_IDS`, verified against the API
+    # 2026-09-06). On the other five nothing tests whether a holder can sell.
+    ("sellability simulation", ADVERTISED_CHAINS, ("ethereum", "bsc", "base")),
+    # honeypot.is reports the three taxes from the same simulation, so they reach exactly
+    # as far. Solana's Token-2022 transfer fee is read from RugCheck and is a transfer
+    # tax in the same sense -- E25/E26 -- so it counts here.
+    ("buy / sell / transfer tax", ADVERTISED_CHAINS,
+     ("ethereum", "bsc", "base", "solana")),
+    # DexScreener and GeckoTerminal cover all eight, and `_ANCHORS` has an entry for each,
+    # so depth is counted in independently priced reserves everywhere we advertise.
+    ("liquidity depth", ADVERTISED_CHAINS, ADVERTISED_CHAINS),
+    ("pair age", ADVERTISED_CHAINS, ADVERTISED_CHAINS),
+    # Whether the source is published is an EVM question; a Solana mint has no verified
+    # source in this sense, and RugCheck reports none. Read from honeypot.is's
+    # `contractCode`, so it stops where the simulator stops.
+    ("contract source published", _EVM, ("ethereum", "bsc", "base")),
+    # honeypot.is `summary.risk` on its three, RugCheck's score on Solana.
+    ("upstream aggregator verdict", ADVERTISED_CHAINS,
+     ("ethereum", "bsc", "base", "solana")),
+    # Covered nowhere, for two different reasons that used to be two rows. On EVM it needs
+    # GoPlus, the held-out oracle (DECISIONS B2). On Solana the code is still there and the
+    # upstream stopped feeding it: measured 2026-09-19 on four live mints, RugCheck
+    # returned topHolders: null and totalHolders: 0 on all four, so the check fired on
+    # none of them. A dimension whose data has gone is not a covered dimension, whatever
+    # the code says. Same empty row, two causes, and the reasons live here rather than in
+    # the row name -- a name is not a place to keep a measurement.
+    ("holder concentration", ADVERTISED_CHAINS, ()),
+    # A Solana concept. The EVM equivalent -- owner powers in the bytecode -- is disclosed
+    # and never scored, and is not a row here; it is advertised on /api as its own line and
+    # is a gap in this table rather than in the product. Noted, not fixed, in this pass.
+    ("mint / freeze authority", ("solana",), ("solana",)),
     # None = measured, and rejected on the evidence. Not counted either way: scoring it
     # as "missing" would keep rewarding someone for building it, and scoring it as
     # "covered" would reward not building it. Both are wrong; the honest answer is that
@@ -174,12 +217,31 @@ RISK_VECTORS = [
     # because most legitimate projects never burn LP -- they keep it to manage liquidity.
     # And burning does not imply safe: 4 of the 8 bad tokens had burned 95%+.
     # Building it would have added false positives and called it coverage.
-    ("LP lock / burn", None),
-    ("same-name token impersonation", True),   # shipped 2026-09-05, same-chain only:
-                                               # a cross-chain rival cannot be verified
-                                               # and can be manufactured by an attacker
-    ("deployer history", False),
+    ("LP lock / burn", None, None),
+    # Shipped 2026-09-05, same-chain only: a cross-chain rival cannot be verified and can
+    # be manufactured by an attacker. Runs off the DexScreener search, so it reaches every
+    # advertised chain.
+    ("same-name token impersonation", ADVERTISED_CHAINS, ADVERTISED_CHAINS),
+    ("deployer history", ADVERTISED_CHAINS, ()),
 ]
+
+
+def coverage_cells():
+    """(covered, applicable, rejected dimension names) counted in chain x dimension cells.
+
+    Counted per cell rather than per row because a row was the unit that let four chains
+    hide inside one `True`.
+    """
+    covered = applicable = 0
+    rejected = []
+    for name, applies, on in RISK_VECTORS:
+        if applies is None:
+            rejected.append(name)
+            continue
+        applicable += len(applies)
+        covered += len([c for c in on if c in applies])
+    return covered, applicable, rejected
+
 
 # Target distribution channels.
 #
@@ -272,9 +334,7 @@ def score():
     tp, tdetail = tests_pass()
     b = benchmark_facts()
     days = snapshot_days()
-    applicable = [(n, ok) for n, ok in RISK_VECTORS if ok is not None]
-    rejected = [n for n, ok in RISK_VECTORS if ok is None]
-    covered = sum(1 for _, ok in applicable if ok)
+    covered, applicable, rejected = coverage_cells()
     # A channel with `ok is None` has been measured inapplicable and leaves the denominator,
     # exactly as a rejected risk vector does. `if ok` alone would have counted None as a
     # miss and kept it in the denominator, which is the same as False -- so the exclusion
@@ -373,9 +433,11 @@ def score():
     if rejected:
         print("  note: %d dimension(s) measured and rejected, excluded from the "
               "denominator: %s" % (len(rejected), ", ".join(rejected)))
-    items.append(("Coverage", "risk dimensions covered", 20,
-                  round(20.0 * covered / len(applicable), 1),
-                  "%d / %d" % (covered, len(applicable))))
+    # Per chain x dimension cell, not per dimension: the row was the unit that hid four
+    # uncovered chains inside one `True`, so the row cannot be the unit that scores it.
+    items.append(("Coverage", "risk dimensions covered, per advertised chain", 20,
+                  round(20.0 * covered / applicable, 1),
+                  "%d / %d chain-dimension cells" % (covered, applicable)))
 
     # --- Credibility 20 ---
     items.append(("Credibility", "recall is measurable", 10,
@@ -460,7 +522,9 @@ def render(items, facts):
     A("**it does not let 'I have been busy' impersonate 'we made progress'.**\n")
 
     A("\n## Risk dimension coverage\n")
-    A("Every unchecked line is a real blind spot, and the roadmap itself.\n")
+    A("Every empty cell is a real blind spot, and the roadmap itself. One column per "
+      "chain this tool **advertises**, because a dimension is not covered until it is "
+      "covered where a caller is invited to ask.\n")
     # Three states, three glyphs. `None` means measured inapplicable and excluded from the
     # denominator, and it rendered as the same empty box as "not covered" -- so this
     # document showed LP lock / burn as an open gap for four days while the code was
@@ -472,13 +536,26 @@ def render(items, facts):
             return "➖ n/a"
         return "✅" if ok else "⬜"
 
-    A("\n| Dimension | Covered |")
-    A("|---|---|")
-    for name, ok in RISK_VECTORS:
-        A("| %s | %s |" % (name, cell(ok)))
-    A("\n`➖ n/a` = measured and found not to be a dimension. Excluded from the "
-      "denominator rather than counted as a gap, with the measurement in "
-      "`bench/scorecard.py`.")
+    # Short chain headings: the table is eight columns wide and the full names push it
+    # into a horizontal scrollbar on a phone, where the right-hand chains -- the four the
+    # sell simulator misses -- are exactly the ones that would scroll out of sight.
+    _ABBR = {"ethereum": "eth", "avalanche": "avax", "optimism": "op",
+             "arbitrum": "arb", "polygon": "poly", "solana": "sol"}
+    A("\n| Dimension | %s |"
+      % " | ".join(_ABBR.get(c, c) for c in ADVERTISED_CHAINS))
+    A("|---|%s" % ("---|" * len(ADVERTISED_CHAINS)))
+    for name, applies, on in RISK_VECTORS:
+        if applies is None:
+            row = ["➖"] * len(ADVERTISED_CHAINS)
+        else:
+            row = [cell(c in on) if c in applies else "➖" for c in ADVERTISED_CHAINS]
+        A("| %s | %s |" % (name, " | ".join(row)))
+    A("\n`✅` covered · `⬜` advertised and not covered · `➖` not a "
+      "question on that chain, or a dimension measured and found not to be one. `➖` "
+      "leaves the denominator rather than counting as a gap, with the measurement in "
+      "`bench/scorecard.py`; `⬜` counts against the score on every chain it is empty "
+      "on. `tests/test_coverage_matrix.py` runs a real token per chain and fails if the "
+      "engine disagrees with a cell here.")
 
     A("\n## Distribution channels\n")
     A("| Channel | Listed |")

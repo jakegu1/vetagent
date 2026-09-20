@@ -131,7 +131,7 @@ Rounded = parked by you. Hexagons are not work items -- they are what a row is w
 
 | | |
 |---|---|
-| Maturity score | 47 / 100 (`docs/SCORECARD.md`) |
+| Maturity score | 45 / 100 (`docs/SCORECARD.md`) |
 | Tokens measured | 576 |
 | False positives | 3.1% -- we called a healthy token dangerous |
 | Answers we refuse | 21.2% -- `unknown`, on purpose |
@@ -152,16 +152,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Re-run the benchmark after the gap-reason change (no number moves)
+- A data gap must declare which of three things it is (E27)
+- F3: an unreadable transfer-fee rate is not an upstream failure
+- F2: the EVM twin of the Solana coverage signal stops scoring the token
+- F1: a coverage gap stopped swallowing the outage next to it (E24 regression)
+- Say the two Solana dimensions are open, on every surface that sold them
+- Solana: stop claiming a sell was tested, and read the Token-2022 block (E24-E26)
 - Experiment C on X, and checked texts for r/ethdev and the MCP Discord
-- Number guard: the published drift registration is a frozen record
-- Experiment C: the engine date, and the drift miss its registration required
-- Owner page: Experiment C went out on dev.to on 2026-09-19
-- W44: a honeypot flag is read by its holder share -- false blocks 30 -> 20 of 154 (DECISIONS E23)
-- Take the owner's remaining private details out of the public files, and guard them
-- HANDOFF.md: remove the server IP and the private key's location from the public repo
-- W48: the flood split across two data centres -- 74 EWR, 21 IAD, 429 at call 95
 
-_70 more not shown (78 commits in total)._
+_77 more not shown (85 commits in total)._
 
 ## What I got wrong
 

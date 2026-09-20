@@ -113,6 +113,14 @@ jobs:
       - name: The production score items keep their pre-registered rules
         run: python tests/test_scorecard_production.py
 
+      # The scorecard's coverage table is a claim about the engine, and for four advertised
+      # chains it was false: the sell simulator reaches three of the eight we offer, and one
+      # `True` on a row called "sellability simulation (honeypot, EVM)" covered all seven EVM
+      # ones. Nothing compared the claim against the engine until this. Replays a recorded
+      # real token per chain, so it is offline and does not touch an upstream.
+      - name: The engine covers what the scorecard says it covers, chain by chain
+        run: python tests/test_coverage_matrix.py
+
       # docs/OWNER.md is the only page here written for someone who will not read the
       # code, and it carries the deadlines. A stale deadline on the page whose job is
       # deadlines is worse than no page.

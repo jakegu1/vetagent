@@ -4,12 +4,12 @@
 > It moves with every commit, so `git diff` tells you what the change was worth.
 
 
-## Total: **47 / 100**
+## Total: **45 / 100**
 
 | Dimension | Score | Max |
 |---|---|---|
 | Correctness | 19.0 | 30 |
-| Coverage | 13.3 | 20 |
+| Coverage | 10.8 | 20 |
 | Credibility | 10.9 | 20 |
 | Distribution | 4.2 ⚠️ | 15 |
 | Demand | 0.0 | 15 |
@@ -33,7 +33,7 @@
 | Correctness | unknown rate (benchmark, cached upstreams) | 2.0 | 5 | 21.2% |
 | Correctness | unknown rate (production, served answers) | 1.0 | 5 | 35.7% of 445, 2026-09-12 to 2026-09-19 |
 | Correctness | production guards observed live | 5.0 | 5 | 429 after 61 calls; batch of 11 -> HTTP 400; service e2d2a0e on 2026-09-19 |
-| Coverage | risk dimensions covered | 13.3 | 20 | 8 / 12 |
+| Coverage | risk dimensions covered, per advertised chain | 10.8 | 20 | 39 / 72 chain-dimension cells |
 | Credibility | recall is measurable | 10.0 | 10 | dead samples: 30 (need ≥20) |
 | Credibility | days of snapshots | 0.9 | 10 | 17 of 180 days |
 | Distribution | channels listed on | 4.2 | 10 | 5 / 12 |
@@ -57,26 +57,24 @@ That is not pessimism baked into the design, it is the reason this score exists 
 
 ## Risk dimension coverage
 
-Every unchecked line is a real blind spot, and the roadmap itself.
+Every empty cell is a real blind spot, and the roadmap itself. One column per chain this tool **advertises**, because a dimension is not covered until it is covered where a caller is invited to ask.
 
 
-| Dimension | Covered |
-|---|---|
-| sellability simulation (honeypot, EVM) | ✅ |
-| sellability test (Solana) | ⬜ |
-| buy / sell / transfer tax | ✅ |
-| liquidity depth | ✅ |
-| pair age | ✅ |
-| contract source published | ✅ |
-| upstream aggregator verdict | ✅ |
-| holder concentration (Solana) | ⬜ |
-| mint / freeze authority (Solana) | ✅ |
-| holder concentration (EVM) | ⬜ |
-| LP lock / burn | ➖ n/a |
-| same-name token impersonation | ✅ |
-| deployer history | ⬜ |
+| Dimension | eth | bsc | base | arb | poly | op | avax | sol |
+|---|---|---|---|---|---|---|---|---|
+| sellability simulation | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| buy / sell / transfer tax | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ✅ |
+| liquidity depth | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| pair age | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| contract source published | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ➖ |
+| upstream aggregator verdict | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ✅ |
+| holder concentration | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| mint / freeze authority | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ✅ |
+| LP lock / burn | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ |
+| same-name token impersonation | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| deployer history | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 
-`➖ n/a` = measured and found not to be a dimension. Excluded from the denominator rather than counted as a gap, with the measurement in `bench/scorecard.py`.
+`✅` covered · `⬜` advertised and not covered · `➖` not a question on that chain, or a dimension measured and found not to be one. `➖` leaves the denominator rather than counting as a gap, with the measurement in `bench/scorecard.py`; `⬜` counts against the score on every chain it is empty on. `tests/test_coverage_matrix.py` runs a real token per chain and fails if the engine disagrees with a cell here.
 
 ## Distribution channels
 
@@ -105,7 +103,7 @@ with false positives and false blocks <2%, unknown <5% in the benchmark and in p
 outcome data, the benchmark methodology cited as a standard by peers, the default
 choice at every agent entry point, and paying users who would complain if it disappeared.
 
-**The current 47 is not a failure** — it says precisely that the
+**The current 45 is not a failure** — it says precisely that the
 engineering is decent, proof and demand are both still zero, and writing more code
 cannot solve those last two.
 
