@@ -194,7 +194,7 @@ Workers. Plain JSON-RPC turned out to be smaller and fully client-compatible.
 | DexScreener | pairs, price, liquidity, volume, pair age |
 | GeckoTerminal | liquidity fallback, new/trending pools |
 | honeypot.is | EVM buy/sell simulation, taxes, aggregate risk, contract openness |
-| RugCheck | Solana rug score, mint/freeze authority, holder concentration |
+| RugCheck | Solana rug score, mint/freeze authority, Token-2022 extensions (holder concentration when the report carries holders, which it currently does not) |
 
 GoPlus is **not** used by the engine — it is reserved as the benchmark's held-out
 oracle. Adding it to the engine requires giving the benchmark a new independent

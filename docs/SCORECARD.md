@@ -4,12 +4,12 @@
 > It moves with every commit, so `git diff` tells you what the change was worth.
 
 
-## Total: **50 / 100**
+## Total: **47 / 100**
 
 | Dimension | Score | Max |
 |---|---|---|
 | Correctness | 19.0 | 30 |
-| Coverage | 16.4 | 20 |
+| Coverage | 13.3 | 20 |
 | Credibility | 10.9 | 20 |
 | Distribution | 4.2 ⚠️ | 15 |
 | Demand | 0.0 | 15 |
@@ -19,15 +19,21 @@
 
 ## Line items
 
+> Every Correctness row below is **EVM-only**: the benchmark is 576 tokens on base,
+> ethereum and bsc and zero on Solana, because the held-out labeller does not cover
+> Solana. Solana is the chain the discovery tool defaults to, and it has no measured
+> error rate at all — including after the 2026-09-19 changes (DECISIONS E24-E26),
+> which moved none of these numbers because the instrument cannot see that chain.
+
 | Dimension | Item | Score | Max | Evidence |
 |---|---|---|---|---|
-| Correctness | tests all green | 5.0 | 5 | test_risk.py 451 passed, 0 failed All passed; test_mcp.py 80 passed, 0 failed All passed; test_http_telemetry.py 153 passed, 0 failed All passed |
+| Correctness | tests all green | 5.0 | 5 | test_risk.py 491 passed, 0 failed All passed; test_mcp.py 80 passed, 0 failed All passed; test_http_telemetry.py 153 passed, 0 failed All passed |
 | Correctness | false positive rate (healthy rated high) | 4.0 | 5 | 3.1% |
 | Correctness | false-block rate (liquid healthy rated medium or high) | 2.0 | 5 | 13.0% (20 of 154) |
 | Correctness | unknown rate (benchmark, cached upstreams) | 2.0 | 5 | 21.2% |
 | Correctness | unknown rate (production, served answers) | 1.0 | 5 | 35.7% of 445, 2026-09-12 to 2026-09-19 |
 | Correctness | production guards observed live | 5.0 | 5 | 429 after 61 calls; batch of 11 -> HTTP 400; service e2d2a0e on 2026-09-19 |
-| Coverage | risk dimensions covered | 16.4 | 20 | 9 / 11 |
+| Coverage | risk dimensions covered | 13.3 | 20 | 8 / 12 |
 | Credibility | recall is measurable | 10.0 | 10 | dead samples: 30 (need ≥20) |
 | Credibility | days of snapshots | 0.9 | 10 | 17 of 180 days |
 | Distribution | channels listed on | 4.2 | 10 | 5 / 12 |
@@ -56,13 +62,14 @@ Every unchecked line is a real blind spot, and the roadmap itself.
 
 | Dimension | Covered |
 |---|---|
-| sellability simulation (honeypot) | ✅ |
+| sellability simulation (honeypot, EVM) | ✅ |
+| sellability test (Solana) | ⬜ |
 | buy / sell / transfer tax | ✅ |
 | liquidity depth | ✅ |
 | pair age | ✅ |
 | contract source published | ✅ |
 | upstream aggregator verdict | ✅ |
-| holder concentration (Solana) | ✅ |
+| holder concentration (Solana) | ⬜ |
 | mint / freeze authority (Solana) | ✅ |
 | holder concentration (EVM) | ⬜ |
 | LP lock / burn | ➖ n/a |
@@ -98,7 +105,7 @@ with false positives and false blocks <2%, unknown <5% in the benchmark and in p
 outcome data, the benchmark methodology cited as a standard by peers, the default
 choice at every agent entry point, and paying users who would complain if it disappeared.
 
-**The current 50 is not a failure** — it says precisely that the
+**The current 47 is not a failure** — it says precisely that the
 engineering is decent, proof and demand are both still zero, and writing more code
 cannot solve those last two.
 

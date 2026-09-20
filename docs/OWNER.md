@@ -131,7 +131,7 @@ Rounded = parked by you. Hexagons are not work items -- they are what a row is w
 
 | | |
 |---|---|
-| Maturity score | 50 / 100 (`docs/SCORECARD.md`) |
+| Maturity score | 47 / 100 (`docs/SCORECARD.md`) |
 | Tokens measured | 576 |
 | False positives | 3.1% -- we called a healthy token dangerous |
 | Answers we refuse | 21.2% -- `unknown`, on purpose |
@@ -152,6 +152,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Experiment C on X, and checked texts for r/ethdev and the MCP Discord
 - Number guard: the published drift registration is a frozen record
 - Experiment C: the engine date, and the drift miss its registration required
 - Owner page: Experiment C went out on dev.to on 2026-09-19
@@ -159,9 +160,8 @@ problem looked like before it was fixed.
 - Take the owner's remaining private details out of the public files, and guard them
 - HANDOFF.md: remove the server IP and the private key's location from the public repo
 - W48: the flood split across two data centres -- 74 EWR, 21 IAD, 429 at call 95
-- W48: the deploy's flood check sends 125 calls and prints each call's colo
 
-_69 more not shown (77 commits in total)._
+_70 more not shown (78 commits in total)._
 
 ## What I got wrong
 

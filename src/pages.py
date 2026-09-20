@@ -132,7 +132,7 @@ category. <code>null</code> when nothing above <code>ok</code> fired.</td></tr>
 is. An answer that leaned on cached data is at most <code>medium</code>.</td></tr>
 <tr><td><code>unknown_kind</code>, <code>next_action</code></td><td>Only on
 <code>unknown</code>: whether to retry (our upstream failed) or abstain (nothing can see the
-token).</td></tr>
+token, or we do not cover its chain).</td></tr>
 <tr><td><code>checked_at</code>, <code>evidence_max_age_seconds</code></td><td>When the answer was
 made, and how old its oldest evidence is.</td></tr>
 </table>
@@ -141,7 +141,7 @@ made, and how old its oldest evidence is.</td></tr>
 <table>
 <tr><th>Check</th><th>Chains</th></tr>
 <tr><td>Buy/sell simulation (honeypot), buy/sell/transfer tax</td><td>Ethereum, BSC, Base</td></tr>
-<tr><td>Mint and freeze authority, top-10 holder concentration</td><td>Solana</td></tr>
+<tr><td>Mint and freeze authority; Token-2022 transfer fee, permanent delegate, transfer hook, frozen-by-default. No sell test; holder concentration unavailable while the upstream omits holders</td><td>Solana</td></tr>
 <tr><td>Liquidity depth &mdash; counted only for reserves held in independently priced assets,
 so a pool priced in its creator's own token cannot buy a <code>low</code></td><td>Ethereum, BSC,
 Base, Arbitrum, Optimism, Polygon, Avalanche, Solana; elsewhere the depth a pool states is used
@@ -198,10 +198,11 @@ looks. A safety check that answers optimistically when it is broken is worse tha
 <tr><td><code>infrastructure</code></td><td>Our upstream data sources did not answer &mdash; usually
 rate limits. The token may be fine.</td><td><code>retry</code>, once, after
 <code>retry_after_seconds</code></td></tr>
-<tr><td><code>coverage</code></td><td>The token itself cannot be checked: no trading pair, no
-simulator record, a sell simulation that reverted, or no pool priced in an asset whose value
-can be verified. The recommendation names which.</td><td><code>abstain</code>
-&mdash; retrying will not change it</td></tr>
+<tr><td><code>coverage</code></td><td>The check could not be run for this token, and a retry
+will not change that. Either the token cannot be checked &mdash; no trading pair, no simulator
+record, a sell simulation that reverted, no pool priced in an asset whose value can be verified
+&mdash; or this tool does not cover the chain, which is our gap and says nothing about the
+token: no sell simulator covers Solana. The recommendation names which.</td><td><code>abstain</code> &mdash; retrying will not change it</td></tr>
 <tr><td><code>mixed</code></td><td>Some of each.</td><td><code>abstain</code></td></tr>
 </table>
 <p>Retry at most once. An agent that retries every <code>unknown</code> until it gets an answer

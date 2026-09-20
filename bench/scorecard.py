@@ -145,13 +145,22 @@ def snapshot_days():
 # Risk dimensions we know matter. This table is the roadmap —
 # every unchecked line is a real blind spot, not filler.
 RISK_VECTORS = [
-    ("sellability simulation (honeypot)", True),
+    ("sellability simulation (honeypot, EVM)", True),
+    # Never covered, and the row above used to imply otherwise by saying nothing about
+    # chains. The simulator covers ethereum, bsc and base; on Solana nothing tests whether
+    # a holder can sell, and until 2026-09-19 a RugCheck report was quietly accepted in
+    # place of a sell test (DECISIONS E24). Solana is what find_new_hot_pools defaults to.
+    ("sellability test (Solana)", False),
     ("buy / sell / transfer tax", True),
     ("liquidity depth", True),
     ("pair age", True),
     ("contract source published", True),
     ("upstream aggregator verdict", True),
-    ("holder concentration (Solana)", True),
+    # Was True. The code is still there, but the upstream stopped feeding it: measured
+    # 2026-09-19 on four live mints, RugCheck returned topHolders: null and
+    # totalHolders: 0 on all four, so the check fired on none of them. A dimension whose
+    # data has gone is not a covered dimension, whatever the code says.
+    ("holder concentration (Solana)", False),
     ("mint / freeze authority (Solana)", True),
     ("holder concentration (EVM)", False),   # needs GoPlus, the held-out oracle (DECISIONS B2)
     # None = measured, and rejected on the evidence. Not counted either way: scoring it
@@ -283,6 +292,13 @@ def score():
     items = []
 
     # --- Correctness 30 ---
+    #
+    # Every benchmark-derived row below is EVM-only. bench/dataset.json is 576 tokens on
+    # base, ethereum and bsc and **zero on Solana** -- the labeller (GoPlus, held out under
+    # B2) does not cover it, so the builder drops every Solana candidate. The 2026-09-19
+    # Solana changes (E24-E26) therefore moved none of these numbers, and that is the
+    # instrument's blind spot rather than evidence of safety. Solana is the chain
+    # `find_new_hot_pools` defaults to, and it has no measured error rate at all.
     #
     # Rebalanced 2026-09-14 after an adversarial audit and a judged redesign. Six items at 5
     # each instead of three at 10, and every change lowered the score the day it landed
@@ -419,6 +435,11 @@ def render(items, facts):
       "The score is low for lack of data, not for lack of work.\n")
 
     A("\n## Line items\n")
+    A("> Every Correctness row below is **EVM-only**: the benchmark is 576 tokens on base,")
+    A("> ethereum and bsc and zero on Solana, because the held-out labeller does not cover")
+    A("> Solana. Solana is the chain the discovery tool defaults to, and it has no measured")
+    A("> error rate at all — including after the 2026-09-19 changes (DECISIONS E24-E26),")
+    A("> which moved none of these numbers because the instrument cannot see that chain.\n")
     A("| Dimension | Item | Score | Max | Evidence |")
     A("|---|---|---|---|---|")
     for dim, name, weight, got, note in items:

@@ -25,7 +25,7 @@
   "name": "VetAgent",
   "applicationCategory": "DeveloperApplication",
   "operatingSystem": "Any (remote MCP over HTTP)",
-  "description": "MCP server that assesses crypto token risk before an AI agent trades. Checks sell simulation (honeypot), buy/sell/transfer taxes, liquidity depth, pair age, contract open-source status, and on Solana the mint/freeze authority and holder concentration. Returns low/medium/high/unknown with the signals behind it.",
+  "description": "MCP server that assesses crypto token risk before an AI agent trades. Checks sell simulation (honeypot), buy/sell/transfer taxes, liquidity depth, pair age, contract open-source status, and on Solana the mint/freeze authority and the Token-2022 extensions. Solana has no sell test, so it answers unknown rather than low. Returns low/medium/high/unknown with the signals behind it.",
   "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
   "url": "https://vetagent.dev/",
   "softwareVersion": "0.2.0",
@@ -270,7 +270,7 @@
   <h3>What does it <em>not</em> catch?</h3>
   <p style="color:var(--dim);font-size:14px">Anything off-chain: team behaviour, social
   engineering, a rug executed through governance, a project that simply dies. It also does not
-  yet check LP lock status or EVM holder concentration — both listed as open gaps in the
+  yet check LP lock status, EVM holder concentration, or sellability on Solana — all listed as open gaps in the
   <a href="https://github.com/jakegu1/vetagent/blob/master/docs/SCORECARD.md">scorecard</a>.
   <strong style="color:var(--txt)">Treat <code>low</code> as "no fatal signal in the checks that
   ran", never as "safe to buy".</strong></p>

@@ -95,7 +95,10 @@ assess_token_risk(address, chain_hint?, verbose?)
   Checks: sell simulation (honeypot detection), buy/sell/transfer taxes,
   liquidity depth, trading-pair age, cross-chain presence, whether the
   contract is open source, upstream scanner verdicts, and on Solana the
-  mint/freeze authority plus top-10 holder concentration.
+  mint/freeze authority and the Token-2022 extensions (transfer fee, permanent
+  delegate, transfer hook, frozen-by-default). No sell simulation runs on Solana,
+  so a Solana answer is `unknown` rather than `low`, and holder concentration there
+  is unavailable while the upstream stops sending holders.
 
 get_token_liquidity(address, chain_hint?)
   Price, 24h volume, pair count and chains for the primary trading pair.
@@ -154,7 +157,9 @@ Full method: https://github.com/jakegu1/vetagent/blob/master/bench/results.md
 Covers observable on-chain risk only. Not investment advice. Does not size
 positions. Cannot detect off-chain risk: team behaviour, social engineering,
 or a rug executed through governance. Does not yet check LP lock status or
-EVM holder concentration; open gaps are listed in docs/SCORECARD.md.
+EVM holder concentration, does not test sellability on Solana, and cannot read
+Solana holder concentration while its upstream omits holders; open gaps are listed
+in docs/SCORECARD.md.
 
 ## Privacy
 
