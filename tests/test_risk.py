@@ -1419,7 +1419,7 @@ def test_an_unrecognised_chain_hint_is_not_a_chain():
 
       - We printed "The sell-simulation service does not cover erc-20", a sentence that is
         false about a thing that does not exist.
-      - That branch files its gap under "upstream request failed", the prefix `_finalize`
+      - That branch files its gap under a prefix in `_OUR_GAP`, the set `_finalize`
         reserves for *our* shortcomings, which excuses the token from the no-trace
         escalation. A token with no pool anywhere and no simulator record -- the exact
         shape the escalation exists to catch -- came back `unknown` instead of `high`
@@ -1473,7 +1473,7 @@ def test_an_unrecognised_chain_hint_is_not_a_chain():
     # -- 3. A recognised chain the simulator does not cover is still our gap. --
     sol = assess_with("solana")
     check("a real uncovered chain is still declared our coverage gap",
-          sellability_gap(sol).startswith("upstream request failed"),
+          sellability_gap(sol).startswith(risk._OUR_GAP),
           sellability_gap(sol))
 
     # -- 4. An observed chain is a fact even if we have never heard of it. ----
@@ -1489,7 +1489,7 @@ def test_an_unrecognised_chain_hint_is_not_a_chain():
                        "pairCreatedAt": 1589841515000}]}
     obs = assess_with(None, pairs=fork)
     check("an observed chain the simulator does not cover is our gap",
-          sellability_gap(obs).startswith("upstream request failed"),
+          sellability_gap(obs).startswith(risk._OUR_GAP),
           sellability_gap(obs))
 
     # -- 5. The hint is caller-controlled text, and reaches the caller. -------
@@ -3990,6 +3990,284 @@ def test_geckoterminal_fallback_is_multichain():
     check("request goes to polygon_pos", any("polygon_pos" in u for u in seen), str(seen))
     check("chain name normalised to polygon", r.get("best_pair_chain") == "polygon",
           str(r.get("best_pair_chain")))
+
+
+def test_solana_never_claims_a_sell_was_tested():
+    """A RugCheck report is a risk opinion. Nothing on Solana tests whether you can sell.
+
+    The sell simulator covers ethereum, bsc and base. For an EVM chain it does not cover,
+    `_honeypot_signals` files a sellability gap ("our coverage gap") and the verdict
+    fail-closes to `unknown`. That code sits inside the EVM branch, so Solana -- the chain
+    `find_new_hot_pools` defaults to -- skipped it: a RugCheck report that merely parsed
+    satisfied the sellability dimension, and production answered `low` with
+    `confidence: high` on a Token-2022 mint holding a live permanent delegate
+    (2b1kV6Dk..., measured 2026-09-19). Found by a reader's comment on the Experiment C
+    post, not by us.
+    """
+    print("\n[Solana] a RugCheck report is not a sell test")
+    install_stub([("dexscreener", _load("ds_bonk.json")),
+                  ("rugcheck", _load("rc_bonk.json"))])
+    r = run(risk.assess(BONK))
+    gaps = r["evidence"].get("data_gaps") or []
+    sell_gaps = [g for g in gaps if g.get("dimension") == "sellability"]
+    check("a clean Solana answer still carries a sellability gap", sell_gaps, str(gaps))
+    check("and the verdict is not low", r["risk_level"] != "low", r["risk_level"])
+    check("and confidence is not high", r["evidence"].get("confidence") != "high",
+          str(r["evidence"].get("confidence")))
+    check("the gap is filed as ours, so the no-trace escalation cannot fire",
+          not any(s["name"] == "Nothing about this token can be verified"
+                  for s in r["signals"]),
+          str([s["name"] for s in r["signals"]]))
+    check("and it says which chain has no simulator",
+          any("solana" in str(g.get("reason", "")).lower() for g in sell_gaps),
+          str(sell_gaps))
+
+
+def _rc_with_extensions(**ext):
+    rc = json.loads(json.dumps(_load("rc_bonk.json")))
+    base = {"nonTransferable": False, "transferFeeConfig": None, "defaultAccountState": None,
+            "permanentDelegate": None, "transferHook": None, "pausableConfig": None}
+    base.update(ext)
+    rc["token_extensions"] = base
+    rc["tokenProgram"] = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+    # RugCheck's convenience field, measured wrong on a live mint: it reports 0% while
+    # token_extensions.transferFeeConfig says 269 basis points on the same token.
+    rc["transferFee"] = {"pct": 0, "maxAmount": 0, "authority": "11111111111111111111111111111111"}
+    return rc
+
+
+def test_solana_token_2022_extensions_are_read():
+    """The extension block sits in the RugCheck response the engine already fetches.
+
+    Measured 2026-09-19: no file in src/ mentioned token_extensions, so a mint taking
+    2.69% of every exit (CKfats..., scheduled 4.20% -> 2.69%, fee authority still set)
+    came back "RugCheck passed" with no fee named, and a permanent delegate -- which takes
+    the tokens without the holder's own transfer ever failing -- was invisible.
+    """
+    print("\n[Solana] Token-2022 extensions")
+
+    def assess_with(**ext):
+        install_stub([("dexscreener", _load("ds_bonk.json")),
+                      ("rugcheck", _rc_with_extensions(**ext))])
+        return run(risk.assess(BONK))
+
+    fee = {"transferFeeConfigAuthority": "7MyTjmRygJoCuDBUtAuSugiYZFULD2SWaoUTmtjtRDzD",
+           "olderTransferFee": {"epoch": 624, "transferFeeBasisPoints": 420},
+           "newerTransferFee": {"epoch": 698, "transferFeeBasisPoints": 269}}
+    r = assess_with(transferFeeConfig=fee)
+    cats = sig_categories(r)
+    tax = [s for s in r["signals"] if s["category"] == "sell_tax"]
+    check("a transfer fee is read as a tax, not ignored", tax, str(cats))
+    check("  and the higher scheduled rate is the one quoted",
+          tax and "4.2" in tax[0]["message"], str(tax[:1]))
+    check("  and both scheduled rates are in the evidence",
+          (r["evidence"].get("token2022") or {}).get("transfer_fee_bps") == [420, 269],
+          str(r["evidence"].get("token2022")))
+    check("  and RugCheck's own transferFee field, measured wrong, is not what we read",
+          not any("0.0%" in s["message"] for s in tax), str(tax[:1]))
+
+    delegate = {"delegate": "2apBGMsS6ti9RyF5TwQTDswXBWskiJP2LD4cUEDqYJjk"}
+    r = assess_with(permanentDelegate=delegate)
+    named = [s for s in r["signals"]
+             if "delegate" in s["name"].lower() or "take your balance" in s["name"].lower()]
+    check("a permanent delegate is named", named, str([s["name"] for s in r["signals"]]))
+    check("  and on an established issuer (PYUSD holds one by design) it is info",
+          named and named[0]["severity"] == "info", str(named[:1]))
+    # Graded like freeze and mint authority (E9): the same capability on a token nobody
+    # holds is not the same fact.
+    anon = _rc_with_extensions(permanentDelegate=delegate)
+    anon["totalHolders"], anon["score_normalised"] = 120, 25
+    anon.pop("verification", None)
+    install_stub([("dexscreener", _load("ds_bonk.json")), ("rugcheck", anon)])
+    r = run(risk.assess(BONK))
+    named = [s for s in r["signals"]
+             if "delegate" in s["name"].lower() or "take your balance" in s["name"].lower()]
+    check("  and on an anonymous one it is critical",
+          named and named[0]["severity"] == "critical", str(named[:1]))
+
+    r = assess_with(transferHook={"authority": "2apB", "programId": None})
+    hooks = [s for s in r["signals"] if "hook" in s["name"].lower()]
+    check("an installable transfer hook is named", hooks, str([s["name"] for s in r["signals"]]))
+    check("  and an authority with no hook installed is info",
+          hooks and hooks[0]["severity"] == "info", str(hooks[:1]))
+    r = assess_with(transferHook={"authority": "2apB", "programId": "hooK1111111111111111111111111111111111111111"})
+    hooks = [s for s in r["signals"] if "hook" in s["name"].lower()]
+    check("  and an installed hook, which runs on every transfer, is a warning",
+          hooks and hooks[0]["severity"] == "warn", str(hooks[:1]))
+
+    r = assess_with(nonTransferable=True)
+    check("a non-transferable mint is fatal",
+          any(s["severity"] == "fatal" for s in r["signals"]) and r["risk_level"] == "high",
+          "%s %s" % (r["risk_level"], [(s["severity"], s["name"]) for s in r["signals"]]))
+
+    for frozen in ("frozen", {"state": "frozen"}):
+        r = assess_with(defaultAccountState=frozen)
+        check("frozen-by-default accounts are fatal (%s)" % type(frozen).__name__,
+              any(s["severity"] == "fatal" for s in r["signals"]),
+              str([(s["severity"], s["name"]) for s in r["signals"]]))
+    r = assess_with(defaultAccountState={"state": "initialized"})
+    check("  but an initialized default state is not",
+          not any(s["severity"] == "fatal" for s in r["signals"]),
+          str([(s["severity"], s["name"]) for s in r["signals"]]))
+
+    r = assess_with()
+    check("a mint with no extensions set says so and emits no extension signal",
+          (r["evidence"].get("token2022") or {}).get("extensions") == [],
+          str(r["evidence"].get("token2022")))
+    install_stub([("dexscreener", _load("ds_bonk.json")), ("rugcheck", _load("rc_bonk.json"))])
+    r = run(risk.assess(BONK))
+    check("and a report with no extension block at all is not read as clean",
+          "token2022" not in r["evidence"] or r["evidence"]["token2022"].get("read") is False,
+          str(r["evidence"].get("token2022")))
+
+
+def test_solana_holder_distribution_absence_is_a_gap():
+    """RugCheck stopped returning holders, and the check went quiet instead of red.
+
+    Measured 2026-09-19 on four live mints: `totalHolders: 0`, `topHolders: null`. The
+    concentration block is `if top_holders:` with no else, so the dimension the scorecard
+    claims for Solana simply stopped being checked, and nothing said so -- an unobserved
+    dimension wearing an observed absence's clothes, in the engine this time.
+    """
+    print("\n[Solana] missing holder distribution")
+    rc = json.loads(json.dumps(_load("rc_bonk.json")))
+    rc["topHolders"], rc["totalHolders"] = None, 0
+    install_stub([("dexscreener", _load("ds_bonk.json")), ("rugcheck", rc)])
+    r = run(risk.assess(BONK))
+    cats = sig_categories(r)
+    check("no concentration verdict is invented", cats.get("concentration") != "ok", str(cats))
+    check("the missing distribution is filed as a gap",
+          any(g.get("dimension") == "concentration"
+              for g in (r["evidence"].get("data_gaps") or [])),
+          str(r["evidence"].get("data_gaps")))
+
+
+def test_our_coverage_gap_never_speaks_for_the_token():
+    """A gap that is ours must not be reported as a fact about the token.
+
+    Every finding here was measured by the E14 review of the first Solana fail-close,
+    2026-09-20, before it was committed. `_finalize` learned the new prefix and
+    `_unknown_guidance` did not, so every Solana answer ended "No source can see this
+    token: do not retry into a trade" -- on tokens DexScreener had just priced and
+    RugCheck had just scored. The same seam turned a DexScreener outage on Solana into
+    `mixed`/abstain, losing the one retry that could have helped.
+    """
+    print("\n[Solana] a coverage gap is about us, not the token")
+    install_stub([("dexscreener", _load("ds_bonk.json")),
+                  ("rugcheck", _load("rc_bonk.json"))])
+    r = run(risk.assess(BONK))
+    rec = r["recommendation"]
+    check("the answer is unknown", r["risk_level"] == "unknown", r["risk_level"])
+    check("and it does not claim nothing can see the token",
+          "No source can see this token" not in rec, rec)
+    check("and it says the gap is ours", "our coverage" in rec.lower(), rec)
+    check("and it does not send the caller back for a retry that cannot help",
+          r.get("next_action") == "abstain" and not r.get("retry_after_seconds"),
+          "%s %s" % (r.get("next_action"), r.get("retry_after_seconds")))
+
+    # Both prefixes mean "ours", and one list decides that for the whole engine.
+    check("the two prefixes live in one place",
+          risk._NOT_COVERED in risk._OUR_GAP and len(risk._OUR_GAP) == 2,
+          str(risk._OUR_GAP))
+
+
+def test_a_coverage_gap_scores_nothing():
+    """Our own gap must not add points to someone else's token.
+
+    Measured before commit: as a `warn` the coverage signal was worth 30 weighted points
+    plus a fourth bad category, and carried three of 34 live Solana mints from `unknown`
+    to a confident `high` -- a verdict manufactured entirely by our coverage. It also won
+    the `driver` tie, so an installed transfer hook was reported behind the boilerplate.
+    """
+    print("\n[Solana] the coverage signal is not scored")
+    install_stub([("dexscreener", _load("ds_bonk.json")),
+                  ("rugcheck", _load("rc_bonk.json"))])
+    r = run(risk.assess(BONK))
+    coverage = [x for x in r["signals"] if x["name"] == "Sellability was not tested on this chain"]
+    check("the coverage signal is info", coverage and coverage[0]["severity"] == "info",
+          str(coverage[:1]))
+    check("and a clean token scores 0", r["risk_score"] == 0, str(r["risk_score"]))
+
+    # A token whose one real finding is critical must not be pushed over the line by it.
+    anon = _rc_with_extensions(permanentDelegate={"delegate": "2apBGMsS6ti9RyF5TwQTDswXBWskiJP2LD4cUEDqYJjk"})
+    anon["totalHolders"], anon["score_normalised"] = 120, 25
+    anon.pop("verification", None)
+    install_stub([("dexscreener", _load("ds_bonk.json")), ("rugcheck", anon)])
+    r2 = run(risk.assess(BONK))
+    without = risk._score([x for x in r2["signals"]
+                           if x["name"] != "Sellability was not tested on this chain"])
+    check("and it adds nothing to a token that does have findings",
+          r2["risk_score"] == without, "%s vs %s" % (r2["risk_score"], without))
+
+    # The finding, not the boilerplate, is what the caller is told.
+    install_stub([("dexscreener", _load("ds_bonk.json")),
+                  ("rugcheck", _rc_with_extensions(
+                      transferHook={"authority": "2apB",
+                                    "programId": "hooK1111111111111111111111111111111111111112"}))])
+    r3 = run(risk.assess(BONK))
+    check("an installed hook is the driver, not our coverage gap",
+          (r3.get("driver") or {}).get("category") != "sellability", str(r3.get("driver")))
+    check("and the unknown recommendation names it",
+          "hook" in r3["recommendation"].lower(), r3["recommendation"])
+
+
+def test_token_2022_shapes_this_upstream_actually_sends():
+    """Every shape below was measured on live RugCheck reports, 2026-09-20.
+
+    The first cut of this reader accepted only the shapes I had guessed: a word for the
+    account state and a null for an absent authority. RugCheck sends an integer for the
+    first and the system program for the second, so the `fatal` could never fire and a
+    revoked fee authority read as retained.
+    """
+    print("\n[Solana] the shapes the upstream really sends")
+
+    def assess_with(**ext):
+        install_stub([("dexscreener", _load("ds_bonk.json")),
+                      ("rugcheck", _rc_with_extensions(**ext))])
+        return run(risk.assess(BONK))
+
+    # SPL AccountState: 0 uninitialized, 1 initialized, 2 frozen.
+    r = assess_with(defaultAccountState={"state": 2})
+    check("the frozen account-state enum (2) is read as frozen",
+          any(x["severity"] == "fatal" for x in r["signals"]),
+          str([(x["severity"], x["name"]) for x in r["signals"]]))
+    r = assess_with(defaultAccountState={"state": 1})
+    check("  and the initialized one (1) is not",
+          not any(x["severity"] == "fatal" for x in r["signals"]),
+          str([(x["severity"], x["name"]) for x in r["signals"]]))
+
+    none_key = "11111111111111111111111111111111"
+    r = assess_with(permanentDelegate={"delegate": none_key})
+    check("the system program means 'no delegate', not 'a delegate'",
+          not any("balance" in x["name"].lower() for x in r["signals"]),
+          str([x["name"] for x in r["signals"]]))
+    r = assess_with(transferFeeConfig={"transferFeeConfigAuthority": none_key,
+                                       "olderTransferFee": {"epoch": 1, "transferFeeBasisPoints": 0},
+                                       "newerTransferFee": {"epoch": 2, "transferFeeBasisPoints": 0}})
+    tax = [x for x in r["signals"] if x["category"] == "sell_tax"]
+    check("  and a revoked fee authority is not reported as retained",
+          tax and "has not been revoked" not in tax[0]["message"], str(tax[:1]))
+
+    # A fee we cannot read is not a fee of zero.
+    r = assess_with(transferFeeConfig={"transferFeeConfigAuthority": "7MyT"})
+    tax = [x for x in r["signals"] if x["category"] == "sell_tax"]
+    check("an unreadable fee schedule is a warning, not a measured 0%",
+          tax and tax[0]["severity"] == "warn" and "0%" not in tax[0]["message"],
+          str(tax[:1]))
+    check("  and it is filed as a gap",
+          any(g.get("dimension") == "sell_tax"
+              for g in (r["evidence"].get("data_gaps") or [])),
+          str(r["evidence"].get("data_gaps")))
+
+    # The guard that matters: the convenience key is never the source.
+    rc = _rc_with_extensions(transferFeeConfig={
+        "olderTransferFee": {"epoch": 1, "transferFeeBasisPoints": 100},
+        "newerTransferFee": {"epoch": 2, "transferFeeBasisPoints": 100}})
+    rc["transferFee"] = {"pct": 77.77, "maxAmount": 0, "authority": "7MyT"}
+    install_stub([("dexscreener", _load("ds_bonk.json")), ("rugcheck", rc)])
+    r = run(risk.assess(BONK))
+    check("RugCheck's convenience transferFee key is not read at all",
+          "77.77" not in json.dumps(r), "77.77 reached the answer")
 
 
 # ---------------------------------------------------------------- main

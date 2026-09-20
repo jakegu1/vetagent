@@ -639,11 +639,28 @@ _CATEGORY_WEIGHT = {
     "impersonation": 0.9,   # right ticker, wrong contract
     "concentration": 0.7,   # holder concentration
     "cross_chain": 0.2,     # one chain is not itself a risk, so keep this near zero
+    # Weight zero on purpose: this category is for saying what WE did not check. A gap of
+    # ours must not add a point to someone else's token, must never be the `driver`, and
+    # must not enter the ablation column. Measured as `warn` before it was committed: it
+    # carried three of 34 live Solana mints from `unknown` to a confident `high`.
+    "coverage": 0.0,
 }
 
 # Dimensions whose absence is disqualifying: miss one and the answer must be unknown.
 # Other signals must never add up to "low" in its place.
 _CRITICAL_DIMENSIONS = ("liquidity", "sellability")
+
+# The phrase _finalize reads as "this gap is about us, not the token". "upstream request
+# failed" said that for an outage; a chain we simply do not cover is not a failure of
+# anyone's, and calling it one was how the Solana coverage hole stayed invisible.
+_NOT_COVERED = "our coverage gap"
+# Every place that asks "is this gap about us or about the token?" reads this one tuple.
+# It was two copies for one day: `_finalize` learned `_NOT_COVERED` and `_unknown_guidance`
+# did not, so the first Solana fail-close told every caller "No source can see this token"
+# about tokens three sources had just priced -- the error the change was written to fix,
+# moved into the sentence the agent reads (E14 review, 2026-09-20).
+_OUR_GAP = ("upstream request failed", _NOT_COVERED)
+
 
 
 def _score(signals):
@@ -737,7 +754,7 @@ def _finalize(address, signals, evidence, data_gaps):
     # can trade is not a question mark: every legitimate token clears at least one of
     # those two. Saying so is strictly more conservative than "unknown", and more useful
     # — the absence of any verifiable trace *is* the finding.
-    ours = ("upstream request failed",)
+    ours = _OUR_GAP
     # A market that exists but whose depth nobody independent backs is not "no trace":
     # a source did price it, we declined to believe the price. Escalating it to high
     # condemned four safe-labelled tokens quoted in assets outside _ANCHORS.
@@ -762,11 +779,14 @@ def _finalize(address, signals, evidence, data_gaps):
     # premise is false for four of the seven chains this tool advertises.
     #
     # The gate is "we know where we looked", not "the chain is one the simulator covers".
-    # The narrower version is right for EVM and wrong at the edge: Solana's sellability
-    # oracle is RugCheck, not the simulator, and Solana is not in _SIMULATOR_CHAINS, so
-    # that gate would have switched the escalation off for an entire chain. A known chain
-    # the simulator does not cover is already handled -- the coverage branch files that
-    # gap as ours, so the escalation cannot fire regardless.
+    # The narrower version is right for EVM and wrong at the edge: Solana is not in
+    # _SIMULATOR_CHAINS, so that gate would have switched the escalation off for an entire
+    # chain. A known chain the simulator does not cover is already handled -- the coverage
+    # branch files that gap as ours, so the escalation cannot fire regardless.
+    #
+    # This comment used to call RugCheck "Solana's sellability oracle". It is not one: it
+    # is a risk opinion, and reading it as a sell test is what let Solana answers come
+    # back `low` with no sell test behind them until 2026-09-19 (E24).
     if token_side_dims >= set(_CRITICAL_DIMENSIONS) and evidence.get("chain_searched"):
         level = "high"
         score = max(score, 70)
@@ -822,6 +842,19 @@ def _finalize(address, signals, evidence, data_gaps):
         }[level])
     if level == "unknown":
         _unknown_guidance(result, data_gaps)
+        # An `unknown` used to end there, and everything the engine DID find stayed in
+        # signals[] where only a caller who walks the list would see it. On Solana that
+        # meant a mint with a transfer hook installed and a clean mint returned the same
+        # sentence (E14 review, 2026-09-20). The high and medium branches name their
+        # driver; this one now does too, when the driver is a finding about the token
+        # rather than our own coverage.
+        if driver and driver.get("category") != "sellability":
+            worst_named = next((s for s in signals
+                                if s["name"] == driver.get("name")
+                                and s["severity"] in ("warn", "critical", "fatal")), None)
+            if worst_named:
+                result["recommendation"] += (" Separately, %s: %s"
+                                             % (_driver_phrase(driver), worst_named["message"]))
     return result
 
 
@@ -843,9 +876,18 @@ def _unknown_guidance(result, data_gaps):
     """
     critical = [g for g in data_gaps if g.get("dimension") in _CRITICAL_DIMENSIONS] or \
         list(data_gaps)
-    ours = [g for g in critical
-            if str(g.get("reason", "")).startswith("upstream request failed")]
-    if critical and len(ours) == len(critical):
+    ours = [g for g in critical if str(g.get("reason", "")).startswith(_OUR_GAP)]
+    # A chain we do not cover outranks everything else here, because it is the one gap no
+    # retry can close: telling a caller to retry a check this tool will never run on that
+    # chain spends their one retry (the /unknown page says "retry at most once") on nothing.
+    not_covered = [g for g in critical
+                   if str(g.get("reason", "")).startswith(_NOT_COVERED)]
+    if not_covered:
+        result.update(unknown_kind="coverage", next_action="abstain")
+        result["recommendation"] += (
+            " %s, so this cannot be rated: that is our coverage, not a finding about the "
+            "token, and a retry will not change it." % _not_covered_clause(not_covered))
+    elif critical and len(ours) == len(critical):
         result.update(unknown_kind="infrastructure", next_action="retry",
                       retry_after_seconds=_RETRY_AFTER_SECONDS)
         result["recommendation"] += (" This was our upstream, not the token: retry in "
@@ -856,6 +898,15 @@ def _unknown_guidance(result, data_gaps):
                                      if not ours else
                                      " Part of this is the token itself: do not retry into "
                                      "a trade.")
+
+
+def _not_covered_clause(gaps):
+    """What we do not cover, in our own words, from the gap that says so."""
+    reasons = " ".join(str(g.get("reason", "")) for g in gaps)
+    if "sell simulator" in reasons:
+        chain = reasons.rsplit("does not cover ", 1)[-1].split()[0] if "does not cover " in reasons else ""
+        return ("No sell simulator here covers %s" % chain) if chain else "No sell simulator covers this chain"
+    return "Part of this check does not cover this token's chain"
 
 
 def _what_was_unseen(gaps):
@@ -2393,8 +2444,8 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
         # upstream text does not get to write sentences in our voice.
         safe_chain = _ascii_safe(chain, 24)
         data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
-                          "reason": "upstream request failed: the sell simulator does "
-                                    "not cover %s" % safe_chain})
+                          "reason": "%s: the sell simulator does not cover %s"
+                                    % (_NOT_COVERED, safe_chain)})
         signals.append(_sig(
             "warn", "Sellability cannot be checked on this chain",
             "The sell-simulation service does not cover %s, so this token's sellability "
@@ -2690,6 +2741,167 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
                             "Source is not published, so hidden logic (minting, blacklists, adjustable tax) cannot be ruled out.", "contract"))
 
 
+# RugCheck serialises "no authority" as the system program, not as null -- measured on
+# BONK, TRUMP and USDG, 2026-09-20. Read for truthiness it says the opposite of what it
+# means: a revoked fee authority reads as retained, and an absent delegate would have
+# fired `critical` "an anonymous issuer can take your balance" on a token that has none.
+_SOLANA_NO_AUTHORITY = "11111111111111111111111111111111"
+
+
+def _solana_key(v):
+    """A pubkey field's value, or None when it is absent however this upstream says so."""
+    v = v.strip() if isinstance(v, str) else v
+    return None if not v or v == _SOLANA_NO_AUTHORITY else v
+
+
+def _token2022_signals(rc, signals, evidence, established=False, data_gaps=None):
+    """Read the SPL Token-2022 extension block RugCheck already returns.
+
+    What each extension does to a sale, which is the only question this engine asks:
+
+      nonTransferable      transfers are disabled outright
+      defaultAccountState  a new holder's account is created frozen, so they cannot sell
+                           until the issuer thaws it
+      transferFeeConfig    a cut of every transfer, scheduled per epoch and changeable by
+                           its authority -- a sell tax under another name
+      permanentDelegate    the issuer can move or burn anyone's balance, and the holder's
+                           own transfer never fails, so no simulation of any kind sees it
+      transferHook         issuer code runs on every transfer and can reject it
+      pausableConfig       the issuer can stop every transfer
+
+    The last three are capabilities nobody has exercised yet, so they are named and not
+    scored -- the same rule that keeps EVM owner powers at `info`.
+
+    NOT read: RugCheck's convenience `transferFee` key. Measured 2026-09-19 on
+    CKfats..., it reports `{"pct": 0}` while `token_extensions.transferFeeConfig` in the
+    same response says 269 basis points. Reading a key the producer does not populate and
+    publishing the zero as a measurement is the isHoneypot mistake for the third time.
+
+    Added 2026-09-19 after a reader of the Experiment C post pointed out that the
+    Solana attack surface runs through these extensions and nothing here read them.
+    """
+    te = rc.get("token_extensions")
+    if not isinstance(te, dict):
+        evidence["token2022"] = {"read": False,
+                                 "reason": "the report carried no token_extensions block"}
+        return
+    evidence["token2022"] = {
+        "read": True,
+        "program": _ascii_safe(rc.get("tokenProgram"), 48),
+        "extensions": sorted(k for k, v in te.items() if v not in (None, False, {}, [])),
+    }
+
+    if te.get("nonTransferable"):
+        signals.append(_sig(
+            "fatal", "Token cannot be transferred",
+            "The mint carries the non-transferable extension: it cannot be sold or moved "
+            "at all.", "honeypot"))
+
+    # The account-state enum arrives as an integer from this upstream and as a word from
+    # the chain's own jsonParsed output: measured {"state": 1} on a live Token-2022 mint,
+    # where SPL's AccountState is Uninitialized 0, Initialized 1, Frozen 2. Accepting only
+    # the word made this `fatal` unreachable -- a check that cannot fire is not a check.
+    das = te.get("defaultAccountState")
+    state = das.get("state") if isinstance(das, dict) else das
+    if isinstance(state, bool):
+        state = None
+    if isinstance(state, (int, float)):
+        state = "frozen" if int(state) == 2 else "initialized"
+    if isinstance(state, str) and state.strip().lower() == "frozen":
+        signals.append(_sig(
+            "fatal", "New holders are frozen by default",
+            "Every account created for this token starts frozen, so a buyer cannot sell "
+            "until the issuer thaws it one by one.", "honeypot"))
+
+    fee = te.get("transferFeeConfig")
+    if isinstance(fee, dict):
+        rates = [int(_num(v.get("transferFeeBasisPoints")))
+                 for v in (fee.get("olderTransferFee"), fee.get("newerTransferFee"))
+                 if isinstance(v, dict) and v.get("transferFeeBasisPoints") is not None]
+        evidence["token2022"]["transfer_fee_bps"] = rates
+        # The report carries the schedule but not the current epoch, so which rate applies
+        # right now cannot be read from it. The higher one is quoted: overstating our own
+        # cost estimate is the fail-closed direction, and the authority can raise it back
+        # anyway (two epochs' notice, measured on a mint that already moved 420 -> 269).
+        held = (" The fee authority has not been revoked."
+                if _solana_key(fee.get("transferFeeConfigAuthority")) else "")
+        if not rates:
+            # A rate we could not read is not a rate of zero. Saying "currently at 0%"
+            # here would be the `transferFee: {"pct": 0}` mistake this function exists to
+            # avoid, one branch below the comment that says so (E14 review, 2026-09-20).
+            if data_gaps is not None:
+                data_gaps.append({"dimension": "sell_tax", "source": "rugcheck",
+                                  "reason": "upstream request failed: the transfer-fee "
+                                            "schedule could not be read"})
+            signals.append(_sig(
+                "warn", "Transfer fee is configured and unreadable",
+                "The mint charges a fee on every transfer and the report did not carry a "
+                "rate we could read, so the cost of selling is unknown." + held,
+                "sell_tax"))
+        else:
+            worst = max(rates) / 100.0
+            both = " and ".join("%.2f%%" % (b / 100.0) for b in rates)
+            detail = ("Up to %.2f%% of every transfer is taken by the mint. Scheduled "
+                      "rates: %s; the report does not say which is live now, so the higher "
+                      "is quoted." % (worst, both)) + held
+            if worst > 20:
+                signals.append(_sig("critical", "Extreme transfer fee", detail, "sell_tax"))
+            elif worst > 5:
+                signals.append(_sig("warn", "Elevated transfer fee", detail, "sell_tax"))
+            elif worst > 0:
+                signals.append(_sig("info", "Transfer fee on every trade", detail, "sell_tax"))
+            else:
+                signals.append(_sig(
+                    "info", "Transfer fee is set to zero, and can be raised",
+                    "The mint carries a transfer-fee config, measured at 0%% now.%s" % held,
+                    "sell_tax"))
+
+    # The three below are capabilities nobody has exercised, and they are graded the way
+    # E9 already grades freeze and mint authority: an anonymous mint keeping them is a
+    # real danger, a widely held or verified issuer keeping them is how it is built
+    # (PYUSD holds a permanent delegate by design). Flat `info` would have said the same
+    # thing about both, which is the mistake E9 was written to stop.
+    pd = te.get("permanentDelegate")
+    if _solana_key(pd.get("delegate") if isinstance(pd, dict) else pd):
+        if established:
+            signals.append(_sig(
+                "info", "A permanent delegate can move your balance",
+                "The mint names a permanent delegate, which can transfer or burn tokens "
+                "from any holder without their consent. Common for regulated issuers; "
+                "nothing in your own sale fails, so no sell simulation can see it.",
+                "contract"))
+        else:
+            signals.append(_sig(
+                "critical", "An anonymous issuer can take your balance",
+                "The mint names a permanent delegate on a token with no established "
+                "holder base: it can transfer or burn anyone's tokens without consent. "
+                "Your own sale never fails, so no sell simulation can see this.",
+                "honeypot"))
+
+    hook = te.get("transferHook")
+    if isinstance(hook, str):        # a bare program id, seen from the chain's own output
+        hook = {"programId": hook}
+    if isinstance(hook, dict) and (_solana_key(hook.get("programId"))
+                                   or _solana_key(hook.get("authority"))):
+        if _solana_key(hook.get("programId")):
+            signals.append(_sig(
+                "warn", "A transfer hook runs on every transfer",
+                "The mint points at a hook program that executes on each transfer and can "
+                "reject it. Whether it rejects yours depends on code we do not read.",
+                "honeypot"))
+        else:
+            signals.append(_sig(
+                "info", "A transfer hook can be installed",
+                "No hook program is set, but the hook authority remains, so one can be "
+                "added later.", "contract"))
+
+    if te.get("pausableConfig"):
+        signals.append(_sig(
+            "info" if established else "warn", "Transfers can be paused",
+            "The mint carries the pausable extension: the issuer can stop every transfer, "
+            "including yours.", "contract"))
+
+
 def _rugcheck_signals(rc, signals, evidence, data_gaps):
     """Read RugCheck (Solana).
 
@@ -2700,6 +2912,30 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
     response and were all dropped. freezeAuthority is the Solana honeypot: holders
     can be frozen, which amounts to not being able to sell.
     """
+    # A RugCheck report is a risk opinion, not a sell test, and nothing else on this chain
+    # tests whether a holder can get out. The simulator covers ethereum, bsc and base, and
+    # the branch that files THAT coverage gap lives inside the EVM path -- so Solana, the
+    # chain `find_new_hot_pools` defaults to, slipped past the fail-closed rule entirely:
+    # a report that merely parsed satisfied the sellability dimension and production
+    # answered `low` with `confidence: high` on a Token-2022 mint holding a live permanent
+    # delegate. Found by a reader's comment on the Experiment C post, 2026-09-19, not by
+    # us. DECISIONS E24.
+    data_gaps.append({"dimension": "sellability", "source": "rugcheck",
+                      "reason": "%s: the sell simulator does not cover solana" % _NOT_COVERED})
+    # `info`, not `warn`: this is our gap, and a gap must not score the token. As `warn` it
+    # was worth 30 weighted points plus a fourth bad category, which carried three of 34
+    # live Solana mints from `unknown` past 70 into a confident `high` -- our own coverage
+    # manufacturing a verdict about someone else's token (E14 review, 2026-09-20). It also
+    # won the `driver` tie against every warn-level finding, so an installed transfer hook
+    # was reported behind the boilerplate. The data gap does the fail-closing; the signal
+    # only has to say so.
+    signals.append(_sig(
+        "info", "Sellability was not tested on this chain",
+        "The sell-simulation service covers Ethereum, BSC and Base. On Solana nothing "
+        "here tests whether you can sell -- RugCheck's report is a risk opinion, not a "
+        "sell test. That is a gap in our coverage and says nothing about the token.",
+        "coverage"))
+
     if rc is None:
         data_gaps.append({"dimension": "sellability", "source": "rugcheck",
                           "reason": _failed("rugcheck")})
@@ -2753,6 +2989,7 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
                    "level": _ascii_safe(r.get("level"), 16)} for r in risks],
     }
 
+
     if rc.get("rugged") is True:
         signals.append(_sig("fatal", "Already rugged",
                             "RugCheck has flagged this token as rugged.", "rugcheck"))
@@ -2773,6 +3010,7 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
     established = (_num(rc.get("totalHolders")) >= 100_000
                    or bool(rc.get("verification"))
                    or (normalised is not None and normalised <= 5))
+    _token2022_signals(rc, signals, evidence, established, data_gaps)
     freeze, mint = rc.get("freezeAuthority"), rc.get("mintAuthority")
     if freeze or mint:
         held = " and ".join(n for n, v in (("freeze", freeze), ("mint", mint)) if v)
@@ -2832,6 +3070,19 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
         else:
             signals.append(_sig("ok", "Holdings are well distributed",
                                 "Top 10 addresses hold %.1f%%." % top10, "concentration"))
+    else:
+        # `if top_holders:` with no else meant the check simply went quiet when the
+        # upstream stopped sending holders -- measured 2026-09-19, four live mints, all
+        # `topHolders: null` and `totalHolders: 0` -- while docs/SCORECARD.md went on
+        # claiming the dimension for Solana. An unobserved dimension wearing an observed
+        # absence's clothes, in the engine this time.
+        data_gaps.append({"dimension": "concentration", "source": "rugcheck",
+                          "reason": "upstream request failed: the report carried no "
+                                    "holder distribution"})
+        signals.append(_sig(
+            "info", "Holder distribution unavailable",
+            "RugCheck returned no holder list for this token, so concentration could not "
+            "be checked.", "concentration"))
 
 
 # ---------------------------------------------------------------- the three tools
@@ -2936,7 +3187,10 @@ _SLIM_EVIDENCE_KEYS = (
     "best_pair", "chains", "pair_age_days", "turnover_24h", "honeypot",
     # `confidence` is not here: it is a top-level field, and the copy in evidence was
     # 22 duplicate bytes on every call. Verbose still carries it.
-    "rugcheck", "liquidity_source", "data_gaps", "served_stale",
+    # `token2022` earns its bytes: it is the evidence behind signals up to `fatal`
+    # (non-transferable, frozen by default) and behind the only fee figure this engine
+    # has on Solana.
+    "rugcheck", "token2022", "liquidity_source", "data_gaps", "served_stale",
     "owner_powers",
     "price_change_24h_pct",
     "sellability_from_chain",
