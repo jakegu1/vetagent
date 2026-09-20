@@ -2474,11 +2474,29 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
         data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
                           "reason": "%s: the sell simulator does not cover %s"
                                     % (_NOT_COVERED, safe_chain)})
+        # `info` in the zero-weight `coverage` category, for the reason the message itself
+        # gives: this says nothing about the token, so it must not score the token. As
+        # `warn`/`sellability` it was 30 weighted points plus a corroboration point for a
+        # fourth bad category, and it won the `driver` tie against every real finding --
+        # measured on polygon, arbitrum, optimism and avalanche, where a healthy token with
+        # a $3M pool came back score=30 with the driver "Sellability cannot be checked on
+        # this chain". Our own blind spot was the loudest thing said about someone else's
+        # token, on four chains at once.
+        #
+        # E14 made exactly this correction on the Solana twin of this signal (2026-09-20,
+        # where it carried three of 34 live mints from `unknown` into a confident `high`)
+        # and stopped there -- the two are the same statement about the same gap, and the
+        # EVM copy is the wider one. The benchmark is base/ethereum/bsc, all covered, so
+        # this branch never fires in it and no benchmark number moves: the absence of a
+        # moved number is not evidence that nothing was wrong.
+        #
+        # The data gap above is what fail-closes the verdict to `unknown`. The signal only
+        # has to say so.
         signals.append(_sig(
-            "warn", "Sellability cannot be checked on this chain",
+            "info", "Sellability cannot be checked on this chain",
             "The sell-simulation service does not cover %s, so this token's sellability "
             "could not be tested. That is a gap in our coverage and says nothing about "
-            "the token." % safe_chain, "sellability"))
+            "the token." % safe_chain, "coverage"))
         return
 
     if hp is NO_DATA:

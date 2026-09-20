@@ -2386,6 +2386,39 @@ def test_a_chain_the_simulator_does_not_cover_is_our_gap():
           any("no record of this token" in str(g.get("reason", "")) for g in gaps3),
           str(gaps3))
 
+    # ...and the gap must not score the token either. E14 made exactly this correction on
+    # the Solana twin of this signal on 2026-09-20 -- `warn`/`sellability` at weight 1.0
+    # carried three of 34 live mints from `unknown` into a confident `high` -- and left
+    # this copy, four chains wide, untouched. Measured here before the fix: polygon,
+    # arbitrum, optimism and avalanche all returned score=30 with the driver
+    # "Sellability cannot be checked on this chain". Our own blind spot was the single
+    # loudest thing said about someone else's token.
+    #
+    # The arithmetic that makes it dangerous rather than merely rude: `_score` adds 10 for
+    # each additional warn-or-worse category, and the fail-close override
+    # (`if missing_critical and level in ("low", "medium")`) never rewrites `high`. So the
+    # corroboration point this signal contributes can carry a 60 to 70 and the safety net
+    # by design does not catch it.
+    for chain in ("polygon", "arbitrum", "optimism", "avalanche"):
+        r4 = on(chain)
+        cov = [x for x in r4["signals"]
+               if x["name"] == "Sellability cannot be checked on this chain"]
+        check("on %s the coverage signal is info, not warn" % chain,
+              cov and cov[0]["severity"] == "info", str(cov[:1]))
+        check("  and sits in the zero-weight coverage category",
+              cov and cov[0]["category"] == "coverage", str(cov[:1]))
+        check("  so our blind spot never drives the verdict",
+              (r4.get("driver") or {}).get("name") != "Sellability cannot be checked on this chain",
+              str(r4.get("driver")))
+        without = risk._score([x for x in r4["signals"] if x not in cov])
+        check("  and adds nothing to the score",
+              r4["risk_score"] == without, "%s vs %s" % (r4["risk_score"], without))
+
+    # The category weight is the thing that actually enforces it, so pin it directly.
+    check("the coverage category is weighted zero",
+          risk._CATEGORY_WEIGHT.get("coverage") == 0.0,
+          str(risk._CATEGORY_WEIGHT.get("coverage")))
+
 
 def test_a_honeypot_flag_is_read_by_its_holder_share():
     """W44, decided by the owner 2026-09-18: read the holder test as a share with a sample size.
