@@ -4131,8 +4131,14 @@ def test_solana_never_claims_a_sell_was_tested():
 
 def _rc_with_extensions(**ext):
     rc = json.loads(json.dumps(_load("rc_bonk.json")))
-    base = {"nonTransferable": False, "transferFeeConfig": None, "defaultAccountState": None,
-            "permanentDelegate": None, "transferHook": None, "pausableConfig": None}
+    # The shape this upstream really sends: all seventeen keys, unset ones null, taken
+    # from a real response rather than typed out here. It used to be a hand-written six --
+    # the same six the engine graded -- so every case below ran against a sample that had
+    # been trimmed to what the code already knew about, and the eleven keys nobody read
+    # were missing from the test for the same reason they were missing from the engine.
+    # A synthetic sample built out of the code's own assumptions cannot contradict them.
+    base = {k: None for k in _load("rc_pyusd.json")["token_extensions"]}
+    base["nonTransferable"] = False
     base.update(ext)
     rc["token_extensions"] = base
     rc["tokenProgram"] = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
@@ -4310,6 +4316,84 @@ def test_every_token_2022_extension_is_scored_or_named():
               hit and "raw" in hit[0]["message"].lower(), str(hit[:1]))
         check("  and it is info: it cannot stop or tax a sale",
               hit and hit[0]["severity"] == "info", str(hit[:1]))
+
+
+def test_an_extension_nobody_here_has_seen_is_a_gap_not_a_pass():
+    """SPL adds extensions. The engine has to notice, on the token, the day it happens.
+
+    F5 made every one of the seventeen keys this upstream sends either scored or named.
+    That is a statement about seventeen keys measured on one day, and it decays: the
+    Token-2022 program has gained extensions since launch and will gain more, RugCheck
+    passes the block through, and the eighteenth would have arrived into exactly the
+    silence the sixth through seventeenth arrived into -- present in `extensions`, in
+    neither list, no gap, no signal, and an answer that still reads as a clean bill.
+
+    An unread capability is an unobserved dimension, which is this project's most
+    frequent serious bug and has its own rule: it must not be allowed to wear an observed
+    absence's clothes. So a populated key nothing here knows is filed as **our** coverage
+    gap -- `coverage`, weight zero, so it fail-closes the confidence without scoring
+    someone else's token for our ignorance.
+
+    The other half of this guard is `test_rugcheck_extension_inventory` in
+    test_upstream_contract.py, which asks the live API and goes red when the key set
+    moves. This half is what production does in the meantime, on the token in hand.
+    """
+    print("\n[Solana] an extension this engine has never seen")
+    rc = json.loads(json.dumps(_load("rc_pyusd.json")))
+    rc["token_extensions"]["confidentialMintBurn"] = {"authority": "2apBGMsS6ti9RyF5TwQTDswXBWskiJP2LD4cUEDqYJjk"}
+    install_stub([("dexscreener", _load("ds_bonk.json")), ("rugcheck", rc)])
+    r = run(risk.assess(PYUSD))
+    t2 = r["evidence"].get("token2022") or {}
+    gaps = [g for g in (r["evidence"].get("data_gaps") or [])
+            if "extension" in str(g.get("reason", ""))]
+
+    check("the unknown key is named in the evidence as unread",
+          t2.get("unrecognised") == ["confidentialMintBurn"], str(t2.get("unrecognised")))
+    check("it is not quietly counted as scored",
+          "confidentialMintBurn" not in (t2.get("scored") or []), str(t2.get("scored")))
+    cov = [s for s in r["signals"] if s["category"] == "coverage"]
+    check("a signal says an extension went unread, beside the sellability boilerplate",
+          len(cov) >= 2 and any("extension" in s["name"].lower() for s in cov),
+          str([s["name"] for s in cov]))
+    check("  and it names the extension, so the reader can go look it up",
+          any("confidentialMintBurn" in s["message"] for s in r["signals"]),
+          str([s["message"] for s in r["signals"] if s["category"] == "coverage"]))
+    check("it is filed as our coverage gap, not as a finding about the token",
+          gaps and all(str(g["reason"]).startswith(risk._NOT_COVERED) for g in gaps),
+          str(gaps))
+    check("  so it cannot push the token's own score up",
+          all(s["category"] == "coverage"
+              for s in r["signals"] if "confidentialMintBurn" in s["message"]),
+          str([(s["category"], s["name"]) for s in r["signals"]
+               if "confidentialMintBurn" in s["message"]]))
+    check("  and the answer does not come back a confident low",
+          r["risk_level"] != "low" or r["evidence"].get("confidence") != "high",
+          "%s / %s" % (r["risk_level"], r["evidence"].get("confidence")))
+
+    # An extension that exists in the schema and is not set on this mint says nothing
+    # about this mint. Filing a gap for it would put a permanent warning on every Solana
+    # answer, which is how a real alarm gets tuned out.
+    rc2 = json.loads(json.dumps(_load("rc_pyusd.json")))
+    rc2["token_extensions"]["confidentialMintBurn"] = None
+    install_stub([("dexscreener", _load("ds_bonk.json")), ("rugcheck", rc2)])
+    r2 = run(risk.assess(PYUSD))
+    t2b = r2["evidence"].get("token2022") or {}
+    check("an unknown key that is not set on this mint is recorded",
+          t2b.get("unrecognised") == ["confidentialMintBurn"], str(t2b.get("unrecognised")))
+    check("  but files no gap, because it says nothing about this token",
+          not [g for g in (r2["evidence"].get("data_gaps") or [])
+               if "extension" in str(g.get("reason", ""))],
+          str(r2["evidence"].get("data_gaps")))
+    check("  and adds no signal",
+          not any("confidentialMintBurn" in s["message"] for s in r2["signals"]),
+          str([s["name"] for s in r2["signals"]]))
+
+    # And the ordinary case stays quiet: no unrecognised key, no field, no noise.
+    install_stub([("dexscreener", _load("ds_bonk.json")), ("rugcheck", _load("rc_pyusd.json"))])
+    r3 = run(risk.assess(PYUSD))
+    check("a fully recognised block carries no unrecognised field at all",
+          "unrecognised" not in (r3["evidence"].get("token2022") or {}),
+          str(r3["evidence"].get("token2022")))
 
 
 def test_solana_holder_distribution_absence_is_a_gap():

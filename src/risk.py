@@ -2961,6 +2961,37 @@ def _token2022_signals(rc, signals, evidence, established=False, data_gaps=None)
                        for k in live if k in _TOKEN2022_NOT_SCORED},
     }
 
+    # The eighteenth extension. The table above is seventeen keys measured on one day, and
+    # SPL keeps adding to the program: a key in neither map has never been considered
+    # here, and it would otherwise arrive into exactly the silence the previous eleven
+    # arrived into -- listed in `extensions`, graded by nothing, and an answer that still
+    # reads as a clean bill. An unread capability is an unobserved dimension, so it is
+    # filed as one: `coverage`, weight zero, which fail-closes the confidence without
+    # scoring someone else's token for our ignorance.
+    #
+    # A key that is present in the schema and not set on this mint says nothing about this
+    # mint, so it is recorded and nothing more. Filing a gap for it would put a permanent
+    # warning on every Solana answer, which is how a real alarm gets tuned out.
+    # `test_rugcheck_extension_inventory` is the other half, and asks the live API.
+    unread = sorted(k for k in te
+                    if k not in _TOKEN2022_SCORED and k not in _TOKEN2022_NOT_SCORED)
+    if unread:
+        evidence["token2022"]["unrecognised"] = unread
+    live_unread = [k for k in unread if k in live]
+    if live_unread:
+        named = ", ".join(live_unread[:4])
+        if data_gaps is not None:
+            data_gaps.append({"dimension": "contract", "source": "rugcheck",
+                              "reason": _gap(_NOT_COVERED,
+                                             "this mint carries a Token-2022 extension "
+                                             "this engine does not read (%s)" % named)})
+        signals.append(_sig(
+            "info", "An extension on this mint was not read",
+            "The mint carries %s, which this engine does not grade -- it was added to the "
+            "token program after the extensions here were written, so what it does to a "
+            "sale has not been read either way. That is a gap in our coverage and says "
+            "nothing about the token." % named, "coverage"))
+
     if te.get("nonTransferable"):
         signals.append(_sig(
             "fatal", "Token cannot be transferred",

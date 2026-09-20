@@ -201,6 +201,59 @@ def test_simulator_chain_coverage():
                   risk._SIMULATOR_CHAIN_IDS[name] == cid,
                   str(risk._SIMULATOR_CHAIN_IDS.get(name)))
 
+def test_rugcheck_extension_inventory():
+    """Every Token-2022 extension key this upstream sends is one the engine has considered.
+
+    `src/risk.py` carries a table of seventeen extension keys, split into the ones it
+    grades and the ones it names with the reason it does not. Seventeen is a count
+    measured against the live API on 2026-09-20 -- the same seventeen on BERN and on
+    PYUSD, unset ones as null -- and it decays: SPL keeps adding extensions to the token
+    program and RugCheck passes the block straight through.
+
+    This is the same guard, and the same two directions, as
+    `test_simulator_chain_coverage` above. The first cut of the extension reader graded
+    six keys of the seventeen and published `read: true` beside them, and nothing anywhere
+    compared that six against what the API actually returns, so the gap was invisible from
+    inside the repository -- the offline fixture had been hand-written with exactly the six
+    keys the code already knew about. A hardcoded list that nothing compares against the
+    world is a belief, not a fact.
+
+    PYUSD is the sample because it populates eight of the seventeen, including the three
+    with a documented abuse. A plain SPL token is no use here: it returns
+    `token_extensions: null` and would assert nothing.
+    """
+    print("\n[coverage] RugCheck sends exactly the extension keys we have considered")
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                    "..", "src"))
+    import risk  # noqa: E402
+
+    PYUSD = "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo"
+    d = get("https://api.rugcheck.xyz/v1/tokens/%s/report" % PYUSD)
+    te = d.get("token_extensions")
+    check("a Token-2022 mint still returns a token_extensions block",
+          isinstance(te, dict) and te, str(sorted(d.keys()))[:200])
+    if not isinstance(te, dict) or not te:
+        return
+
+    sent = set(te)
+    known = set(risk._TOKEN2022_SCORED) | set(risk._TOKEN2022_NOT_SCORED)
+    check("nothing arrives that nobody here has considered", sent <= known,
+          "new since 2026-09-20: %s -- score it, or name it in _TOKEN2022_NOT_SCORED "
+          "with the reason" % sorted(sent - known))
+    check("nothing we read has stopped being sent", known <= sent,
+          "gone: %s -- the branch that reads it can no longer fire, and the table is "
+          "claiming coverage of a key that is not there" % sorted(known - sent))
+
+    # The three that decide whether a holder can get out are worth naming individually:
+    # a rename of one of these is a `fatal` silently becoming unreachable.
+    for key in ("nonTransferable", "defaultAccountState", "transferFeeConfig"):
+        check("%s is still the key name" % key, key in sent, str(sorted(sent)))
+    check("PYUSD still populates a mint close authority (the F5 sample)",
+          bool(te.get("mintCloseAuthority")), str(te.get("mintCloseAuthority")))
+    check("RugCheck's convenience transferFee key still disagrees with the block",
+          isinstance(d.get("transferFee"), dict), str(d.get("transferFee")))
+
+
 def main():
     print("=" * 68)
     print("VetAgent upstream contract tests (live network)")
