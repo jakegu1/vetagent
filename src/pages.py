@@ -132,7 +132,7 @@ category. <code>null</code> when nothing above <code>ok</code> fired.</td></tr>
 is. An answer that leaned on cached data is at most <code>medium</code>.</td></tr>
 <tr><td><code>unknown_kind</code>, <code>next_action</code></td><td>Only on
 <code>unknown</code>: whether to retry (our upstream failed) or abstain (nothing can see the
-token, or we do not cover its chain).</td></tr>
+token, or we do not cover its chain). An answer can hold both, and then it says both.</td></tr>
 <tr><td><code>checked_at</code>, <code>evidence_max_age_seconds</code></td><td>When the answer was
 made, and how old its oldest evidence is.</td></tr>
 </table>
@@ -203,7 +203,7 @@ will not change that. Either the token cannot be checked &mdash; no trading pair
 record, a sell simulation that reverted, no pool priced in an asset whose value can be verified
 &mdash; or this tool does not cover the chain, which is our gap and says nothing about the
 token: no sell simulator covers Solana. The recommendation names which.</td><td><code>abstain</code> &mdash; retrying will not change it</td></tr>
-<tr><td><code>mixed</code></td><td>Some of each.</td><td><code>abstain</code></td></tr>
+<tr><td><code>mixed</code></td><td>Some of each. When one half is an upstream of ours that failed, <code>retry_after_seconds</code> is set and the retry is worth making for what it brings back &mdash; but if the other half is a chain we do not cover, or a fact about the token, the rating stays <code>unknown</code> however the retry goes. The recommendation says which halves are in play.</td><td><code>retry</code> when an upstream of ours failed, otherwise <code>abstain</code></td></tr>
 </table>
 <p>Retry at most once. An agent that retries every <code>unknown</code> until it gets an answer
 has turned "we could not check" into "we checked", which is exactly the mistake the verdict exists
@@ -248,7 +248,7 @@ daily reading of the live rate is in
 _UNKNOWN_JSONLD = """{"@context":"https://schema.org","@type":"FAQPage","url":"https://vetagent.dev/unknown",
 "mainEntity":[
 {"@type":"Question","name":"What does a risk_level of unknown mean in VetAgent?","acceptedAnswer":{"@type":"Answer","text":"A critical check - liquidity or sellability - could not be completed. It is not a low-risk result and must never be used to justify a trade."}},
-{"@type":"Question","name":"Should an AI agent retry an unknown answer?","acceptedAnswer":{"@type":"Answer","text":"Only when unknown_kind is infrastructure and next_action is retry, and only once, after retry_after_seconds. A coverage or mixed unknown will not change on retry: abstain."}},
+{"@type":"Question","name":"Should an AI agent retry an unknown answer?","acceptedAnswer":{"@type":"Answer","text":"Only when unknown_kind is infrastructure and next_action is retry, and only once, after retry_after_seconds. A coverage unknown will not change on retry: abstain. A mixed unknown sets retry_after_seconds when part of it was an upstream failure - that retry brings back what the outage hid, but the rating stays unknown."}},
 {"@type":"Question","name":"Where does VetAgent say why an answer is unknown?","acceptedAnswer":{"@type":"Answer","text":"evidence.data_gaps lists each missing check with its reason. Reasons that begin with 'upstream request failed' are VetAgent's own data sources failing, with what each one returned."}}]}"""
 
 UNKNOWN_HTML = _page(

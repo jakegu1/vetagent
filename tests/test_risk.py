@@ -2974,6 +2974,32 @@ def test_an_unknown_says_whether_to_retry_or_to_abstain():
           r.get("unknown_kind") == "mixed" and r.get("next_action") == "abstain",
           "%s %s" % (r.get("unknown_kind"), r.get("next_action")))
 
+    # A permanent blind spot and a retryable outage in the SAME answer. Solana is where
+    # this shape lives: the coverage gap is filed unconditionally, so every Solana answer
+    # carries it, and RugCheck -- the chain's only source -- supplies the Token-2022
+    # extensions, the mint and freeze authorities and the rug score. When it 503s, the
+    # coverage branch used to win outright and the answer told the caller "a retry will not
+    # change it" without ever mentioning that an upstream was down. Retrying is the one
+    # useful action there, and it was the one action the answer argued against.
+    both = [{"dimension": "sellability", "source": "rugcheck",
+             "reason": "%s: the sell simulator does not cover solana" % risk._NOT_COVERED},
+            {"dimension": "sellability", "source": "rugcheck",
+             "reason": "upstream request failed (rugcheck 503)"},
+            {"dimension": "liquidity", "source": "dexscreener+geckoterminal",
+             "reason": "upstream request failed (dexscreener 503)"}]
+    r = finalize(both)
+    check("a blind spot plus an outage is mixed, not coverage",
+          r.get("unknown_kind") == "mixed", str(r.get("unknown_kind")))
+    check("  and the retryable half keeps its retry time",
+          r.get("next_action") == "retry" and r.get("retry_after_seconds") == 60,
+          "%s %s" % (r.get("next_action"), r.get("retry_after_seconds")))
+    check("  the sentence says an upstream of ours failed",
+          "upstream" in r["recommendation"].lower(), r["recommendation"])
+    check("  and still says the chain is not covered",
+          "cover" in r["recommendation"].lower(), r["recommendation"])
+    check("  and never claims a retry changes nothing",
+          "retry will not change" not in r["recommendation"], r["recommendation"])
+
     r = finalize([], [risk._sig("ok", "a", "a", "liquidity"), risk._sig("ok", "b", "b", "honeypot")])
     check("a verdict that is not unknown carries neither field",
           "unknown_kind" not in r and "next_action" not in r, str(sorted(r)))
@@ -4169,6 +4195,23 @@ def test_our_coverage_gap_never_speaks_for_the_token():
     check("the two prefixes live in one place",
           risk._NOT_COVERED in risk._OUR_GAP and len(risk._OUR_GAP) == 2,
           str(risk._OUR_GAP))
+
+    # ...and the outage case end to end, on the path production actually walks. RugCheck
+    # is the only source this chain has: it carries the Token-2022 extensions, the mint
+    # and freeze authorities and the rug score, so an outage costs every token-side
+    # conclusion and a retry buys them all back. Measured on this input: 6e424a2 answered
+    # infrastructure/retry/60; 337b6b1 answered coverage/abstain/None and told the caller
+    # "a retry will not change it" without once saying an upstream was down.
+    install_stub([], default=None)
+    r = run(risk.assess(BONK))
+    rec = r["recommendation"]
+    check("an outage on the only Solana source is not swallowed by the coverage gap",
+          r.get("unknown_kind") == "mixed", str(r.get("unknown_kind")))
+    check("  the caller is sent back for the retry that restores the token's own facts",
+          r.get("next_action") == "retry" and r.get("retry_after_seconds") == 60,
+          "%s %s" % (r.get("next_action"), r.get("retry_after_seconds")))
+    check("  and the sentence says both halves", "upstream" in rec.lower()
+          and "cover" in rec.lower(), rec)
 
 
 def test_a_coverage_gap_scores_nothing():

@@ -654,12 +654,16 @@ _CRITICAL_DIMENSIONS = ("liquidity", "sellability")
 # failed" said that for an outage; a chain we simply do not cover is not a failure of
 # anyone's, and calling it one was how the Solana coverage hole stayed invisible.
 _NOT_COVERED = "our coverage gap"
+# The other half of "ours", and a different half: an upstream that did not answer is
+# temporary and a retry is the cure, where _NOT_COVERED is permanent and no retry touches
+# it. Collapsing the two is how the retryable half went missing (see _unknown_guidance).
+_UPSTREAM_FAILED = "upstream request failed"
 # Every place that asks "is this gap about us or about the token?" reads this one tuple.
 # It was two copies for one day: `_finalize` learned `_NOT_COVERED` and `_unknown_guidance`
 # did not, so the first Solana fail-close told every caller "No source can see this token"
 # about tokens three sources had just priced -- the error the change was written to fix,
 # moved into the sentence the agent reads (E14 review, 2026-09-20).
-_OUR_GAP = ("upstream request failed", _NOT_COVERED)
+_OUR_GAP = (_UPSTREAM_FAILED, _NOT_COVERED)
 
 
 
@@ -882,7 +886,31 @@ def _unknown_guidance(result, data_gaps):
     # chain spends their one retry (the /unknown page says "retry at most once") on nothing.
     not_covered = [g for g in critical
                    if str(g.get("reason", "")).startswith(_NOT_COVERED)]
-    if not_covered:
+    failed = [g for g in critical
+              if str(g.get("reason", "")).startswith(_UPSTREAM_FAILED)]
+    # ...but "outranks" was written as "wins outright", and an answer can hold both at once.
+    # Solana is where it bites: the coverage gap is filed unconditionally on every answer
+    # (E24), so a RugCheck outage there arrived as coverage + infrastructure together and
+    # the coverage branch swallowed the whole thing -- `abstain`, no `retry_after_seconds`,
+    # and the sentence "a retry will not change it" with no mention that an upstream was
+    # down. On that chain RugCheck is the only source there is: it carries the Token-2022
+    # extensions, the mint and freeze authorities and the rug score, so retrying was not
+    # merely allowed, it was the one action worth taking, and the answer argued against it.
+    # Measured on RugCheck 503 + DexScreener 503: 6e424a2 infrastructure/retry/60,
+    # 337b6b1 coverage/abstain/None.
+    #
+    # Both are said, and the retry survives. The rating will stay `unknown` however the
+    # retry goes -- that is the coverage half -- so the sentence promises findings back,
+    # never a verdict.
+    if not_covered and failed:
+        result.update(unknown_kind="mixed", next_action="retry",
+                      retry_after_seconds=_RETRY_AFTER_SECONDS)
+        result["recommendation"] += (
+            " %s, so it cannot be rated here whatever else we learn: that is our coverage, "
+            "not a finding about the token. An upstream of ours also failed, which is "
+            "separate and temporary -- retry in about a minute to get back what it was "
+            "carrying, but the rating will still be `unknown`." % _not_covered_clause(not_covered))
+    elif not_covered:
         result.update(unknown_kind="coverage", next_action="abstain")
         result["recommendation"] += (
             " %s, so this cannot be rated: that is our coverage, not a finding about the "
