@@ -125,7 +125,7 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **12 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **13 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -152,6 +152,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- The upstream contract's field list is generated from the engine, not typed
 - F8: three surfaces named four extensions as "the Token-2022 extensions"
 - F7: the fee rating read the basis points and ignored the cap in the same dict
 - F6: the eighteenth extension would have arrived in silence, like the last eleven
@@ -159,9 +160,8 @@ problem looked like before it was fixed.
 - A sell simulation from a chain we did not ask about was being read as this token's
 - F4: the advertising guard is a rule now, not a list of seven sentences
 - F3: the scorecard called sellability covered on four chains nothing tests
-- Re-run the benchmark after the gap-reason change (no number moves)
 
-_84 more not shown (92 commits in total)._
+_85 more not shown (93 commits in total)._
 
 ## What I got wrong
 

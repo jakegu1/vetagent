@@ -53,6 +53,19 @@ jobs:
               || echo "::warning::verdict query failed: nothing written, nothing claimed"
           fi
 
+      # DECISIONS E30. test.yml already fails the build on a contract change; what it
+      # cannot see is an upstream that stops answering for a week, because the contract
+      # test then asserts nothing and prints "all passed". This records what the run
+      # managed to observe. `|| true`: a contract failure is test.yml's to report, and
+      # losing the record would remove the only evidence of how long this has been going
+      # on -- which is the single thing the record is for.
+      - name: Record what the upstream contract monitor could observe
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          python tests/test_upstream_contract.py \
+            --status-json bench/production/upstream_contract.json || true
+
       # Regenerate everything that quotes the score, in the same commit, or test.yml goes
       # red on this bot's push.
       - name: Regenerate the pages that read it

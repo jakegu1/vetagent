@@ -287,8 +287,12 @@ Say what you need and Jake will sort it out:
 1. **Run the tests before you touch code.** `python tests/test_risk.py` should be 71/71.
    If it is red, someone broke a path that once produced a real defect.
 
-2. **A red upstream contract test is not necessarily your fault.** It hits live APIs, so a third party renaming a field turns it red.
-   Check whether upstream changed first, then update `risk.py` to match — that is exactly why it exists.
+2. **A red upstream contract test is now always something to act on.** It hits live APIs, but since
+   DECISIONS E30 it separates the two cases: a third party that did not answer is printed as
+   *unobserved* and the run still exits 0, so red means a body arrived and a field it carries
+   changed shape. Check what upstream changed, then update `risk.py` to match — that is exactly
+   why it exists. A run that goes quiet instead is not free either: `tests/test_upstream_contract_is_observed.py`
+   fails once a source has gone unwatched for more than five recorded days.
 
 3. **fail-closed is the one thing in this product that cannot be traded away.** Any time you are about to write
    "default to X when the data isn't there", stop. The right answer is always `unknown` plus an entry in `data_gaps`.

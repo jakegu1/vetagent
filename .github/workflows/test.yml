@@ -179,11 +179,30 @@ jobs:
       - name: The frozen dataset can re-derive its own labels
         run: python tests/test_dataset_replayable.py
 
+      # DECISIONS E30. The upstream contract test goes quiet rather than red when a third
+      # party does not answer -- correct, and it means a week of silence prints the same
+      # "all passed" as a week of checking. This reads the daily record and fails when a
+      # source has gone unwatched long enough to be an endpoint that moved.
+      - name: The upstream contract monitor is still monitoring
+        run: python tests/test_upstream_contract_is_observed.py
+
   # Upstream contract monitor: real API calls that check the fields we depend on still exist.
   # Separate from the unit tests: a third-party outage turns it red, which is the signal.
+  # DECISIONS E30. This job was `continue-on-error: true` until 2026-09-20, for a reason
+  # that was sound -- a third party going down must not redden a build nobody can fix --
+  # and an effect that was not: red here changed nothing, so the one instrument watching
+  # the upstream contract had no consumer. E25 and E26 were both field-level defects, and
+  # both shipped while this job was, in principle, watching.
+  #
+  # The premise is what was wrong. "Outage" and "contract change" are distinguishable, at
+  # the only place it matters: a body that never arrived cannot testify about a field,
+  # while a body that arrived without it is an observed absence. That is E11, applied to
+  # CI. The test now draws that line itself -- it exits 0 and prints what it could not
+  # observe when upstream is down, and non-zero only for a contract change in a body that
+  # did arrive. A job that fails only for reasons that are ours to fix does not need to be
+  # soft-failed, so it is not.
   upstream-contract:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -192,9 +211,20 @@ jobs:
       - name: Verify upstream API contracts
         run: python tests/test_upstream_contract.py
 
-      # Also network-dependent: it round-trips decoded pool addresses against the chain,
-      # which is the only assertion that can catch a wrong byte offset. It was written
-      # and then never wired in here, so it protected nothing outside a local run.
+  # Still soft, and named rather than assumed. test_backfill.py round-trips decoded pool
+  # addresses against the chain -- the only assertion that can catch a wrong byte offset --
+  # but it has not been taught the outage/absence split above, so an RPC hiccup and a
+  # decoder defect still look identical to it. Hard-failing it would be the exact error
+  # E30 removes from the job above. It stays here, on its own, until it can tell them
+  # apart; `docs/BACKLOG.md` carries the work.
+  backfill-roundtrip:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - name: Backfill decoder round-trip
         run: python tests/test_backfill.py
 
