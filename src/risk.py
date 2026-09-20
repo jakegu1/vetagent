@@ -670,8 +670,17 @@ _ABOUT_TOKEN = "about the token"
 # A data gap means exactly one of three things, and the reason string has to say which in
 # its first words. Nothing else in this engine may invent a fourth.
 #
-#   our coverage gap       we do not run this check here, and never will -- retrying is
-#                          spending the caller's one retry on nothing
+#   our coverage gap       this check cannot be answered here, and no retry the caller
+#                          would make changes that -- either we do not run it at all
+#                          (a chain the sell simulator does not cover), or the single
+#                          source that carries it has nothing for this token. The second
+#                          shape was added 2026-09-20 for the Solana holder distribution,
+#                          on a measurement rather than a guess: 24 of 64 mints carry one
+#                          and 40 do not, every sweep for 109 minutes, all 576 requests
+#                          answering 200, and no mint changing state. Both shapes give the
+#                          caller the same true sentence -- ours, not the token's, and
+#                          retrying spends their one retry on nothing -- which is what
+#                          this prefix exists to decide
 #   upstream request failed  a source did not answer; this is temporary and a retry is
 #                          the cure
 #   about the token        what we got back does not contain it. A finding, or the
@@ -3371,6 +3380,25 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
     # reputable one keeping them is how it is built. RugCheck's own normalised score
     # already prices in the difference, so the authorities are graded against how
     # established the token is rather than in isolation.
+    # Measured 2026-09-20, 64 Solana mints x 8 sweeps (512 observations), because a review
+    # had reported the first clause dead -- `totalHolders` always 0, so the gate really
+    # has only two. It is not dead: it is true in 128 of 512 observations. That review
+    # sampled 20 freshly created mints, and RugCheck sends no holder count for a mint it
+    # has just detected (0 of 26 new mints here carried one, against 14 of 18 majors), so
+    # the cohort was selected, accidentally, to exclude every case where the clause can
+    # fire. Do not delete this clause on that premise.
+    #
+    # What *is* true, and is the weaker finding worth keeping: the clause never decided
+    # anything. In 0 of 512 observations was it the only clause true -- every mint with
+    # 100k+ holders is also Jupiter-verified, so clause two already carried it. Redundant
+    # here, not dead, and the two differ: a redundant clause costs nothing and catches the
+    # day RugCheck's verification coverage changes, which is exactly the kind of upstream
+    # shift this file keeps being surprised by.
+    #
+    # `verification` was checked in the same sweep and is a real signal rather than a block
+    # every report carries: 25 of 64 mints had one (200 of 512 observations), all of them
+    # with `jup_verified: true`, and none of the 26 new mints had any. So `bool(...)` here
+    # is not fail-open.
     established = (_num(rc.get("totalHolders")) >= 100_000
                    or bool(rc.get("verification"))
                    or (normalised is not None and normalised <= 5))
@@ -3441,19 +3469,61 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
         # claiming the dimension for Solana. An unobserved dimension wearing an observed
         # absence's clothes, in the engine this time.
         #
-        # Filed `about the token`, not `upstream request failed` as it was until 2026-09-20.
-        # The request did not fail: the report arrived and carries no holder list, so a
-        # retry a minute later returns the same body. What the measurement does NOT settle
-        # is whether the absence is per-mint or this upstream having stopped sending
-        # holders for everyone -- four of four is four mints, not a population. The prefix
-        # claims only the part that is certain: asking again does not close this gap.
+        # Filed `our coverage gap`. It was `upstream request failed` until 2026-09-20,
+        # which blamed an upstream that had answered; then `about the token` for a day,
+        # on a sample of four mints, with the comment here saying outright that it did
+        # not settle whether the absence was per-mint or this upstream having stopped
+        # sending holders for everyone.
+        #
+        # Settled 2026-09-20, 64 mints x 8 sweeps over 109 minutes, 576 requests, **zero**
+        # non-200:
+        #   * 24 of 64 carry a holder list and 40 do not, in every single sweep. Both
+        #     states exist at the same instant, so this is not an outage.
+        #   * Not one mint gained or lost its list in 109 minutes, and 64 of 64 immediate
+        #     re-requests three seconds apart agreed. No retry closes it, at any scale
+        #     measured.
+        #   * It tracks age: 14 of 18 established mints carry one, 10 of 20 trending, and
+        #     0 of 26 mints that this probe itself caused RugCheck to detect.
+        #
+        # So it is not a fact about the token, and that was the third face of the E27
+        # confusion. USDC has millions of holders and RugCheck reports none for it;
+        # "about the token: the report carried no holder distribution" hands the caller a
+        # finding about their token. What is true is that our only holder source on
+        # Solana has nothing for this mint, which is our coverage -- and the guidance
+        # `_NOT_COVERED` produces ("that is our coverage, not a finding about the token,
+        # and a retry will not change it") is what the measurement supports, word for
+        # word.
+        #
+        # And it moves over hours, which the 109 minutes above were too short to see.
+        # The review that prompted this re-test reported BONK going from no holders to
+        # 2,069,663 inside two hours; that did not reproduce in the window above, and
+        # twelve hours later it reproduced in the other direction -- 22:00 the same day,
+        # **0 of 16** probe mints carried a holder list, all answering HTTP 200, BONK
+        # among them. So the per-mint split is what a single instant looks like, and the
+        # whole level rises and falls underneath it. "Stable" was an artefact of the
+        # window, and every sentence above that reads as stability should be read as
+        # "within 109 minutes".
+        #
+        # The prefix survives that, because none of its three clauses rested on it: this
+        # is still not a fact about the token, the request still did not fail, and a
+        # retry on the horizon a caller has -- `_RETRY_AFTER_SECONDS`, about a minute --
+        # still does not close it (64 of 64 immediate retries agreed, 0 flips in 109
+        # minutes). What it does cost is the reason given for refusing a fourth kind of
+        # gap. That refusal said "nothing measured here is temporary", and this is
+        # temporary on a scale of hours. The taxonomy's empty cell -- temporary, but not
+        # closable by any retry the caller will make -- is real after all. It is not
+        # being filled on one evening's observation, two days after E27 fixed the number
+        # of kinds at three; `docs/BACKLOG.md` W54 carries the experiment that would
+        # settle its period and duty cycle first.
         data_gaps.append({"dimension": "concentration", "source": "rugcheck",
-                          "reason": _gap(_ABOUT_TOKEN,
+                          "reason": _gap(_NOT_COVERED,
                                          "the report carried no holder distribution")})
         signals.append(_sig(
             "info", "Holder distribution unavailable",
-            "RugCheck returned no holder list for this token, so concentration could not "
-            "be checked.", "concentration"))
+            "RugCheck sent no holder list for this token, so concentration could not be "
+            "checked. That is a gap in our coverage and says nothing about the token: "
+            "this source carries holders for some mints and not others, and a retry does "
+            "not change which.", "concentration"))
 
 
 # ---------------------------------------------------------------- the three tools

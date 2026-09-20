@@ -195,12 +195,27 @@ RISK_VECTORS = [
     ("upstream aggregator verdict", ADVERTISED_CHAINS,
      ("ethereum", "bsc", "base", "solana")),
     # Covered nowhere, for two different reasons that used to be two rows. On EVM it needs
-    # GoPlus, the held-out oracle (DECISIONS B2). On Solana the code is still there and the
-    # upstream stopped feeding it: measured 2026-09-19 on four live mints, RugCheck
-    # returned topHolders: null and totalHolders: 0 on all four, so the check fired on
-    # none of them. A dimension whose data has gone is not a covered dimension, whatever
-    # the code says. Same empty row, two causes, and the reasons live here rather than in
-    # the row name -- a name is not a place to keep a measurement.
+    # GoPlus, the held-out oracle (DECISIONS B2).
+    #
+    # On Solana the reason stated here was wrong, and the row was right anyway. It read
+    # "the upstream stopped feeding it", from four live mints on 2026-09-19 that all
+    # returned topHolders: null. Re-measured 2026-09-20 over 64 mints x 8 sweeps, 109
+    # minutes, 576 requests and zero non-200: RugCheck sends a holder list for 24 of 64 --
+    # 14 of 18 established mints, 10 of 20 trending, and 0 of 26 it had just detected --
+    # in every sweep, with no mint changing state over those 109 minutes. Twelve hours
+    # later the same day it read 0 of 16 -- still all HTTP 200 -- so the level moves too,
+    # and "the upstream stopped feeding it" was wrong about the mechanism rather than
+    # about the moment. Coverage is per-mint at an instant and oscillates underneath
+    # (DECISIONS E31).
+    #
+    # The row stays empty, because a dimension that answers for some tokens and not others
+    # is not one this product can advertise, and the chains column is what the public
+    # surfaces are checked against by `test_no_surface_claims_a_dimension_on_a_chain_we_do
+    # _not_cover`. Marking Solana covered would license a claim that is false for 40 of 64
+    # mints and for every mint younger than about an hour -- which is exactly the token an
+    # agent is most likely to be asking about. Conservative in the same direction, on a
+    # premise that is now measured instead of inferred: 37.5% is not 0%, and the honest
+    # word for it is intermittent, not gone.
     ("holder concentration", ADVERTISED_CHAINS, ()),
     # A Solana concept. The EVM equivalent -- owner powers in the bytecode -- is disclosed
     # and never scored, and is not a row here; it is advertised on /api as its own line and

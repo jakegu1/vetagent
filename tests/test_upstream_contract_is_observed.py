@@ -44,6 +44,13 @@ MAX_BLIND_DAYS = 5
 # The record itself can stop. A daily job that silently stopped running leaves a file that
 # looks green forever, which is the same bug one level up again.
 MAX_RECORD_AGE_DAYS = 8
+# And the same shape for a coverage collapse. `test_upstream_contract.py` records rather
+# than fails when a path's share falls off a cliff, because on 2026-09-20 RugCheck served
+# HTTP 200 for all 16 probe mints and a holder list for none of them -- 0 of 16 against 12
+# of 16 the same morning, BONK included, which had carried 2,069,663 holders in nine
+# consecutive sweeps twelve hours earlier. Nothing had changed shape. One sample cannot
+# tell a trough from a removal; five days of trough is not weather.
+MAX_COLLAPSE_DAYS = 5
 
 _FAILURES = []
 _PASSED = 0
@@ -138,6 +145,23 @@ def test_no_upstream_has_been_unobserved_for_a_week():
               run <= MAX_BLIND_DAYS,
               "unobserved on the last %d recorded days -- the endpoint moved, an auth "
               "requirement appeared, or our probe broke; all three are ours" % run)
+
+    # The same rule for a collapsed coverage share, per path, for the same reason: the
+    # share rule cannot fail on sight without dying of ordinary upstream weather, so its
+    # alarm lives here instead, on the one thing weather does not do -- persist.
+    paths = sorted({p for h in history for p in (h.get("collapsed_paths") or [])})
+    for path in paths:
+        run = 0
+        for h in reversed(history):
+            if path in (h.get("collapsed_paths") or []):
+                run += 1
+            else:
+                break
+        check("%s has carried its data within the last %d recorded days"
+              % (path, MAX_COLLAPSE_DAYS),
+              run <= MAX_COLLAPSE_DAYS,
+              "collapsed on the last %d recorded days -- that is no longer a trough; the "
+              "engine reads this path and it is not arriving" % run)
 
     # A run of contract failures is a different fault and fails on sight: `red` means
     # bodies arrived and did not match, which test.yml has already failed the build for.

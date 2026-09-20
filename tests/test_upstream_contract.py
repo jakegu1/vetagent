@@ -17,14 +17,22 @@ of a fact whose first copy is the code, and the second copy is always the stale 
 `tools/upstream_fields.py` reads `src/risk.py` and derives every JSON path the engine
 actually depends on -- 122 of them, against the 25 that were written down.
 
-**The assertion is a distribution, not a presence.** `totalHolders` does not vanish; it
-is there for some mints and not others. Measured 2026-09-20 across 64 Solana mints: 24
-carry a holder list and 40 do not, in every sweep, with all 64 answering HTTP 200 -- so
-this is RugCheck's coverage of a mint, not an outage and not a fact about the token. A
-test that asked "is the field there?" of one token would be green on BONK, red on USDC,
-and get labelled flaky and switched off, which is how an instrument dies. So the baseline
-records, per path, what share of a fixed probe set carries it, and the test fails when
-that share collapses.
+**The assertion is a distribution, not a presence.** `totalHolders` does not vanish; it is
+there for some mints and not others, and the level moves. Measured 2026-09-20 across 64
+Solana mints: 24 carried a holder list and 40 did not, in every sweep for 109 minutes,
+all 64 answering HTTP 200. Twelve hours later, 0 of 16 -- still all 200, BONK among them.
+A test that asked "is the field there?" of one token would be green on BONK in the
+morning, red on BONK at night, and be called flaky and switched off, which is how an
+instrument dies. So the baseline records what share of a fixed probe set carries each
+path.
+
+**And a collapse in that share is recorded, not failed.** That was the third thing this
+file had to learn, and it learned it by going red on its own baseline the evening it was
+written. No threshold on one sample separates "the field was removed" from "coverage is
+in a trough" -- both look identical -- so only persistence does. A collapse goes into the
+record `production.yml` commits, and `test_upstream_contract_is_observed.py` fails when
+the same path stays collapsed for five days. Presence (R1) and type (R3) still fail on
+sight: those are structural, and neither oscillates.
 
 Run:       python tests/test_upstream_contract.py
 Re-freeze: python tests/test_upstream_contract.py --write
@@ -173,6 +181,9 @@ UNPROBED_TEMPLATES = {
 #       intermittent-coverage rule: holders move, and the alarm is for a collapse.
 #   R3  a JSON type never seen at baseline is red, whatever the share.
 VALUE_BAND = 0.40
+# Consecutive recorded days a path may stay collapsed before it stops being weather. Same
+# number, and the same reasoning, as the blindness threshold it sits beside.
+MAX_COLLAPSE_DAYS = 5
 # How many days of daily status the artifact keeps. Long enough that a run of blind days
 # is visible as a run, short enough that the committed file stays small.
 HISTORY_DAYS = 30
@@ -205,6 +216,9 @@ def get(url):
 
 # Probes that could not testify: (source, why). Never failures -- see `fetch`.
 _UNOBSERVED = []
+# Paths whose coverage share collapsed this run: (source:path, detail). Recorded
+# rather than failed -- see R2.
+_COLLAPSES = []
 
 
 def fetch(source, url, record=True):
@@ -450,12 +464,31 @@ def test_generated_field_contract():
                 check("%s: %s still present in every probe" % (source, path),
                       is_["key"] >= 1.0,
                       "was 100%% of probes, now %.0f%%" % (100 * is_["key"]))
-            # R2 -- intermittent coverage may move, but not collapse.
-            if n >= MIN_FOR_SHARE:
-                check("%s: %s coverage has not collapsed" % (source, path),
-                      is_["value"] >= was.get("value", 0) - VALUE_BAND,
-                      "carried by %.0f%% of probes at baseline, %.0f%% now"
-                      % (100 * was.get("value", 0), 100 * is_["value"]))
+            # R2 -- a collapse in coverage is RECORDED, and fails only when it persists.
+            #
+            # It failed on sight until 2026-09-20 22:00, when it went red on its own
+            # baseline: RugCheck answered HTTP 200 for all 16 probe mints and sent a
+            # holder list for none of them, 0 of 16 against 12 of 16 the same morning,
+            # BONK included -- the same BONK that carried 2,069,663 holders in nine
+            # consecutive sweeps twelve hours earlier. Nothing changed shape. The field
+            # comes and goes on a scale of hours, sometimes for everything at once.
+            #
+            # There is no threshold on one sample that tells "the field was removed" from
+            # "coverage is in a trough", because both look exactly like this. Only time
+            # does. So the share rule joins the blindness rule: the day's collapse goes
+            # into the record `production.yml` commits, and
+            # `test_upstream_contract_is_observed.py` fails when the same path has been
+            # collapsed for MAX_COLLAPSE_DAYS recorded days running. R1 and R3 still fail
+            # on sight, which is right -- a key that vanishes and a type that changes are
+            # structural, and neither oscillates.
+            #
+            # Measured before it was believed: this is the second time the same field has
+            # taught this file that a single observation is not a state.
+            if n >= MIN_FOR_SHARE and is_["value"] < was.get("value", 0) - VALUE_BAND:
+                _COLLAPSES.append(
+                    ("%s:%s" % (source, path),
+                     "carried by %.0f%% of probes at baseline, %.0f%% now"
+                     % (100 * was.get("value", 0), 100 * is_["value"])))
             # R3 -- a type nobody has seen before. `null` is not one of them: a field
             # arriving empty is absence, which is precisely what R1 and R2 measure, and
             # treating it as a new type made the guard go red on an ordinary day. Caught
@@ -686,6 +719,13 @@ def test_rugcheck_extension_inventory():
 
 def write_baseline():
     sources, _ = measure()
+    if _COLLAPSES:
+        print("refusing to freeze a baseline while coverage is collapsed:")
+        for name, detail in _COLLAPSES:
+            print("  %-44s %s" % (name, detail))
+        print("re-freezing here records the trough as normal and blinds the rule to the")
+        print("recovery; nothing was written.")
+        return 1
     # A baseline is a frozen record, and freezing one from a partial run writes an outage
     # into it permanently: every path only that probe exercises drops to zero, and R1 and
     # R2 then have nothing to compare for as long as the file stands. It happened twice on
@@ -718,7 +758,7 @@ def write_baseline():
     return 0
 
 
-def write_status(path, failures, unobserved):
+def write_status(path, failures, unobserved, collapses=()):
     """The one line the daily job commits, so persistent blindness cannot hide.
 
     Removing `continue-on-error` fixes the loud half: a contract change now fails the
@@ -731,12 +771,16 @@ def write_status(path, failures, unobserved):
     """
     blind = sorted(set(s for s, _ in unobserved))
     today = time.strftime("%Y-%m-%d", time.gmtime())
+    collapsed = sorted(name for name, _ in collapses)
     payload = {
         "date": today,
-        "status": "red" if failures else ("blind" if blind else "green"),
+        "status": ("red" if failures else
+                   "blind" if blind else
+                   "collapsed" if collapsed else "green"),
         "failures": [name for name, _ in failures],
         "unobserved_sources": blind,
         "unobserved_probes": len(unobserved),
+        "collapsed_paths": collapsed,
     }
     # The history is the point: one day's status cannot answer "has this been blind for a
     # week", and that question is the whole residual. Kept in the artifact rather than
@@ -750,7 +794,7 @@ def write_status(path, failures, unobserved):
             history = []
     history = [h for h in history if h.get("date") != today]
     history.append({"date": today, "status": payload["status"],
-                    "unobserved_sources": blind})
+                    "unobserved_sources": blind, "collapsed_paths": collapsed})
     payload["history"] = sorted(history, key=lambda h: h.get("date") or "")[-HISTORY_DAYS:]
     with open(path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=1, sort_keys=True)
@@ -770,8 +814,19 @@ def main():
                         if k.startswith("test_")):
         fn()
     print("\n" + "=" * 68)
-    print("%d passed, %d failed, %d probes unobserved"
-          % (_PASSED, len(_FAILURES), len(_UNOBSERVED)))
+    print("%d passed, %d failed, %d probes unobserved, %d paths collapsed"
+          % (_PASSED, len(_FAILURES), len(_UNOBSERVED), len(_COLLAPSES)))
+
+    if _COLLAPSES:
+        print("")
+        print("Coverage collapsed on %d path(s). Recorded, not failed: this upstream's"
+              % len(_COLLAPSES))
+        print("holder fields swing between all and nothing over hours, and one sample")
+        print("cannot tell a trough from a removal. It fails after %d recorded days"
+              % MAX_COLLAPSE_DAYS)
+        print("(tests/test_upstream_contract_is_observed.py).")
+        for name, detail in _COLLAPSES:
+            print("  - %-44s %s" % (name, detail))
 
     if _UNOBSERVED:
         # Said out loud, always. A run that could not look is not a run that found
@@ -787,7 +842,7 @@ def main():
 
     for i, arg in enumerate(sys.argv):
         if arg == "--status-json" and i + 1 < len(sys.argv):
-            write_status(sys.argv[i + 1], _FAILURES, _UNOBSERVED)
+            write_status(sys.argv[i + 1], _FAILURES, _UNOBSERVED, _COLLAPSES)
 
     if _FAILURES:
         print("\nFailures (upstream may have changed a field; risk.py has to change too):")

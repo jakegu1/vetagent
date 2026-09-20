@@ -88,12 +88,12 @@ gantt
 ### Is the archive still collecting?
 
 ```text
-····█████████████████   2026-08-30 -> 2026-09-19
+···██████████████████   2026-08-31 -> 2026-09-20
 ```
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**17 days, no gaps.** Newest is 2026-09-19, yesterday.
+**18 days, no gaps.** Newest is 2026-09-20, today.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -125,13 +125,13 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **13 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **16 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
 | | |
 |---|---|
-| Maturity score | 45 / 100 (`docs/SCORECARD.md`) |
+| Maturity score | 42 / 100 (`docs/SCORECARD.md`) |
 | Tokens measured | 576 |
 | False positives | 3.1% -- we called a healthy token dangerous |
 | Answers we refuse | 21.2% -- `unknown`, on purpose |
@@ -152,6 +152,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- The upstream-contract job can fail the build again (continue-on-error removed)
 - The upstream contract's field list is generated from the engine, not typed
 - F8: three surfaces named four extensions as "the Token-2022 extensions"
 - F7: the fee rating read the basis points and ignored the cap in the same dict
@@ -159,9 +160,8 @@ problem looked like before it was fixed.
 - F5: read: true covered six of the seventeen extension keys upstream sends
 - A sell simulation from a chain we did not ask about was being read as this token's
 - F4: the advertising guard is a rule now, not a list of seven sentences
-- F3: the scorecard called sellability covered on four chains nothing tests
 
-_85 more not shown (93 commits in total)._
+_86 more not shown (94 commits in total)._
 
 ## What I got wrong
 

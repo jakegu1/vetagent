@@ -4513,6 +4513,49 @@ def test_solana_holder_distribution_absence_is_a_gap():
           str(r["evidence"].get("data_gaps")))
 
 
+def test_a_missing_holder_list_is_our_coverage_not_a_fact_about_the_token():
+    """Whose fact is "no holder distribution"? Measured, not assumed.
+
+    E26 filed this gap as `upstream request failed`, which blamed an upstream that had
+    answered. E27 moved it to `about the token`, on four mints, with the comment saying
+    outright that the measurement did not settle whether the absence was per-mint or this
+    upstream having stopped sending holders for everyone.
+
+    It is settled now. 64 mints, 8 sweeps, 109 minutes, 2026-09-20: 24 carry a holder list
+    and 40 do not, **in every sweep**, with all 576 requests answering HTTP 200. Both
+    states exist at the same instant, so it is not an outage; not one mint gained or lost
+    its list in 109 minutes and 64 of 64 immediate retries agreed, so no retry closes it;
+    and it tracks age -- 14 of 18 established mints carry one, 0 of 26 mints RugCheck
+    first saw during the probe do.
+
+    So it is not a fact about the token either, and that is the third face of the E27
+    confusion. USDC has millions of holders; RugCheck reports none for it. Telling a
+    caller "about the token: the report carried no holder distribution" hands them a
+    finding about their token when the truth is that our only holder source on Solana has
+    nothing for this mint. That is our coverage.
+    """
+    print("\n[Solana] a missing holder list is ours, not the token's")
+    rc = json.loads(json.dumps(_load("rc_bonk.json")))
+    rc["topHolders"], rc["totalHolders"] = None, 0
+    install_stub([("dexscreener", _load("ds_bonk.json")), ("rugcheck", rc)])
+    r = run(risk.assess(BONK))
+    gaps = [g for g in (r["evidence"].get("data_gaps") or [])
+            if g.get("dimension") == "concentration"]
+    check("the concentration gap is still filed", bool(gaps),
+          str(r["evidence"].get("data_gaps")))
+    if not gaps:
+        return
+    reason = str(gaps[0].get("reason", ""))
+    check("it is filed as our coverage gap", reason.startswith(risk._NOT_COVERED), reason)
+    check("and not as a finding about the token",
+          not reason.startswith(risk._ABOUT_TOKEN), reason)
+    # The sentence the caller reads has to agree with the prefix, or the prefix is
+    # bookkeeping. E24 set the wording for exactly this case on the sellability twin.
+    text = " ".join(s.get("message", "") for s in (r.get("signals") or [])
+                    if s.get("category") == "concentration")
+    check("and the message says so in words", "our coverage" in text.lower(), text)
+
+
 def test_our_coverage_gap_never_speaks_for_the_token():
     """A gap that is ours must not be reported as a fact about the token.
 
