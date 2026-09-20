@@ -579,7 +579,7 @@
    "sampled_from": "snapshot_2026-09-04",
    "liquidity_usd": 926081.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED"
+    "about the token: simulation failed: execution reverted: HP: BUY_FAILED"
    ],
    "verdict": "unknown",
    "score": 30,
@@ -708,7 +708,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 111160.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 15,
@@ -760,7 +760,7 @@
    "sampled_from": "backfill_2026-02-07",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no source reported pool depth"
+    "about the token: no source reported pool depth"
    ],
    "verdict": "high",
    "score": 100,
@@ -863,7 +863,7 @@
    "sampled_from": "backfill_2026-02-17",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no source reported pool depth"
+    "about the token: no source reported pool depth"
    ],
    "verdict": "high",
    "score": 100,
@@ -889,7 +889,7 @@
    "sampled_from": "backfill_2026-02-17",
    "liquidity_usd": 65060.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED"
+    "about the token: simulation failed: execution reverted: HP: BUY_FAILED"
    ],
    "verdict": "unknown",
    "score": 30,
@@ -966,7 +966,7 @@
    "sampled_from": "backfill_2026-05-08",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no source reported pool depth"
+    "about the token: no source reported pool depth"
    ],
    "verdict": "high",
    "score": 100,
@@ -992,7 +992,7 @@
    "sampled_from": "backfill_2026-08-25",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify"
+    "about the token: no pool's depth is priced in an asset we can verify"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -1095,7 +1095,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 114410.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED"
+    "about the token: simulation failed: execution reverted: HP: BUY_FAILED"
    ],
    "verdict": "unknown",
    "score": 30,
@@ -1148,7 +1148,7 @@
    "sampled_from": "backfill_2026-03-09",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify"
+    "about the token: no pool's depth is priced in an asset we can verify"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -1252,7 +1252,7 @@
    "sampled_from": "backfill_2026-08-26",
    "liquidity_usd": 484982.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED"
+    "about the token: simulation failed: execution reverted: HP: BUY_FAILED"
    ],
    "verdict": "unknown",
    "score": 30,
@@ -1302,7 +1302,7 @@
    "sampled_from": "backfill_2026-08-31",
    "liquidity_usd": 8.4246,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "high",
    "score": 78,
@@ -1634,7 +1634,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 539716.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 15,
@@ -2097,7 +2097,7 @@
    "sampled_from": "backfill_2026-08-27",
    "liquidity_usd": 0.03,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "about the token: simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "unknown",
    "score": 68,
@@ -2351,7 +2351,7 @@
    "sampled_from": "backfill_2025-12-09",
    "liquidity_usd": 73905.7,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED"
+    "about the token: simulation failed: execution reverted: HP: BUY_FAILED"
    ],
    "verdict": "unknown",
    "score": 30,
@@ -2455,7 +2455,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 210712.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 5,
@@ -2506,7 +2506,7 @@
    "sampled_from": "backfill_2025-10-10",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no source reported pool depth"
+    "about the token: no source reported pool depth"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -2583,7 +2583,7 @@
    "sampled_from": "backfill_2025-10-10",
    "liquidity_usd": 139.602,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED"
+    "about the token: simulation failed: execution reverted: HP: BUY_FAILED"
    ],
    "verdict": "unknown",
    "score": 68,
@@ -2714,7 +2714,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 42530.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -2817,7 +2817,7 @@
    "sampled_from": "backfill_2025-12-29",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify"
+    "about the token: no pool's depth is priced in an asset we can verify"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -2843,7 +2843,7 @@
    "sampled_from": "backfill_2026-04-08",
    "liquidity_usd": 12.0901,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "about the token: simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "unknown",
    "score": 68,
@@ -2895,7 +2895,7 @@
    "sampled_from": "backfill_2026-08-28",
    "liquidity_usd": 148386.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "about the token: simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "unknown",
    "score": 30,
@@ -3231,7 +3231,7 @@
    "sampled_from": "backfill_2026-05-08",
    "liquidity_usd": 167639.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "about the token: simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "unknown",
    "score": 30,
@@ -3308,8 +3308,8 @@
    "sampled_from": "backfill_2026-09-04",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no trading pair found",
-    "the sell simulator has no record of this token"
+    "about the token: no trading pair found",
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "high",
    "score": 70,
@@ -3334,7 +3334,7 @@
    "sampled_from": "backfill_2026-08-25",
    "liquidity_usd": 62190.9,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 5,
@@ -3636,7 +3636,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 249.31,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 58,
@@ -4291,7 +4291,7 @@
    "sampled_from": "backfill_2026-05-28",
    "liquidity_usd": 204.556,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "about the token: simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "unknown",
    "score": 58,
@@ -4317,7 +4317,7 @@
    "sampled_from": "backfill_2026-08-28",
    "liquidity_usd": 2193.13,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED"
+    "about the token: simulation failed: execution reverted: HP: BUY_FAILED"
    ],
    "verdict": "unknown",
    "score": 58,
@@ -4472,7 +4472,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 161806.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 5,
@@ -4623,7 +4623,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 385682.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 5,
@@ -4754,7 +4754,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 771960.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 5,
@@ -4806,7 +4806,7 @@
    "sampled_from": "backfill_2026-05-28",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify"
+    "about the token: no pool's depth is priced in an asset we can verify"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -5112,7 +5112,7 @@
    "sampled_from": "backfill_2025-10-10",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no source reported pool depth"
+    "about the token: no source reported pool depth"
    ],
    "verdict": "high",
    "score": 100,
@@ -5241,7 +5241,7 @@
    "sampled_from": "backfill_2026-08-27",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify"
+    "about the token: no pool's depth is priced in an asset we can verify"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -5368,7 +5368,7 @@
    "sampled_from": "backfill_2026-04-08",
    "liquidity_usd": 42664.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -5523,7 +5523,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 19527.7,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED"
+    "about the token: simulation failed: execution reverted: HP: BUY_FAILED"
    ],
    "verdict": "unknown",
    "score": 40,
@@ -5548,7 +5548,7 @@
    "sampled_from": "backfill_2025-12-09",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no source reported pool depth"
+    "about the token: no source reported pool depth"
    ],
    "verdict": "high",
    "score": 100,
@@ -5598,7 +5598,7 @@
    "sampled_from": "backfill_2026-08-25",
    "liquidity_usd": 14792.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "about the token: simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "unknown",
    "score": 40,
@@ -5774,7 +5774,7 @@
    "sampled_from": "backfill_2026-02-07",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no source reported pool depth"
+    "about the token: no source reported pool depth"
    ],
    "verdict": "high",
    "score": 100,
@@ -6049,7 +6049,7 @@
    "sampled_from": "backfill_2025-12-09",
    "liquidity_usd": 54088.3,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED"
+    "about the token: simulation failed: execution reverted: HP: BUY_FAILED"
    ],
    "verdict": "unknown",
    "score": 30,
@@ -6075,8 +6075,8 @@
    "sampled_from": "backfill_2026-02-17",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no source reported pool depth",
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "about the token: no source reported pool depth",
+    "about the token: simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "high",
    "score": 70,
@@ -6407,7 +6407,7 @@
    "sampled_from": "backfill_2026-02-07",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify"
+    "about the token: no pool's depth is priced in an asset we can verify"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -6433,7 +6433,7 @@
    "sampled_from": "backfill_2026-05-08",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify"
+    "about the token: no pool's depth is priced in an asset we can verify"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -6459,7 +6459,7 @@
    "sampled_from": "backfill_2026-05-08",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify"
+    "about the token: no pool's depth is priced in an asset we can verify"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -6485,7 +6485,7 @@
    "sampled_from": "backfill_2026-02-17",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify"
+    "about the token: no pool's depth is priced in an asset we can verify"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -6511,7 +6511,7 @@
    "sampled_from": "backfill_2026-05-08",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify"
+    "about the token: no pool's depth is priced in an asset we can verify"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -6537,7 +6537,7 @@
    "sampled_from": "backfill_2026-08-28",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify"
+    "about the token: no pool's depth is priced in an asset we can verify"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -6563,7 +6563,7 @@
    "sampled_from": "backfill_2026-02-07",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify"
+    "about the token: no pool's depth is priced in an asset we can verify"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -6589,7 +6589,7 @@
    "sampled_from": "backfill_2026-05-08",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify"
+    "about the token: no pool's depth is priced in an asset we can verify"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -6615,7 +6615,7 @@
    "sampled_from": "backfill_2026-05-08",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify"
+    "about the token: no pool's depth is priced in an asset we can verify"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -6641,7 +6641,7 @@
    "sampled_from": "backfill_2026-02-17",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify"
+    "about the token: no pool's depth is priced in an asset we can verify"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -6667,7 +6667,7 @@
    "sampled_from": "backfill_2025-12-09",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify"
+    "about the token: no pool's depth is priced in an asset we can verify"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -6693,7 +6693,7 @@
    "sampled_from": "backfill_2026-05-08",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify"
+    "about the token: no pool's depth is priced in an asset we can verify"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -6719,7 +6719,7 @@
    "sampled_from": "backfill_2026-02-17",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify"
+    "about the token: no pool's depth is priced in an asset we can verify"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -6745,7 +6745,7 @@
    "sampled_from": "backfill_2026-05-08",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify"
+    "about the token: no pool's depth is priced in an asset we can verify"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -6771,7 +6771,7 @@
    "sampled_from": "backfill_2026-08-28",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify"
+    "about the token: no pool's depth is priced in an asset we can verify"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -6875,7 +6875,7 @@
    "sampled_from": "backfill_2025-12-29",
    "liquidity_usd": 1.6595,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "about the token: simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "unknown",
    "score": 68,
@@ -7005,7 +7005,7 @@
    "sampled_from": "backfill_2026-02-07",
    "liquidity_usd": 360.95,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "about the token: simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "unknown",
    "score": 68,
@@ -7108,7 +7108,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 91963.7,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 5,
@@ -7159,7 +7159,7 @@
    "sampled_from": "backfill_2026-02-17",
    "liquidity_usd": 29744.3,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "about the token: simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "unknown",
    "score": 40,
@@ -7420,7 +7420,7 @@
    "sampled_from": "backfill_2026-09-01",
    "liquidity_usd": 465.677,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "high",
    "score": 78,
@@ -7447,7 +7447,7 @@
    "sampled_from": "backfill_2026-01-08",
    "liquidity_usd": 96.3327,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "about the token: simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "unknown",
    "score": 68,
@@ -7474,8 +7474,8 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify",
-    "the sell simulator has no record of this token"
+    "about the token: no pool's depth is priced in an asset we can verify",
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 40,
@@ -7602,7 +7602,7 @@
    "sampled_from": "backfill_2025-12-29",
    "liquidity_usd": 2107780.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "about the token: simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "unknown",
    "score": 40,
@@ -7629,7 +7629,7 @@
    "sampled_from": "snapshot_2026-09-03",
    "liquidity_usd": 389096.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "about the token: simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "unknown",
    "score": 30,
@@ -7810,7 +7810,7 @@
    "sampled_from": "backfill_2026-02-17",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify"
+    "about the token: no pool's depth is priced in an asset we can verify"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -7861,7 +7861,7 @@
    "sampled_from": "backfill_2026-02-17",
    "liquidity_usd": 178.964,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "about the token: simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "high",
    "score": 84,
@@ -7913,7 +7913,7 @@
    "sampled_from": "backfill_2026-05-08",
    "liquidity_usd": 152240.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED"
+    "about the token: simulation failed: execution reverted: HP: BUY_FAILED"
    ],
    "verdict": "unknown",
    "score": 30,
@@ -8191,7 +8191,7 @@
    "sampled_from": "backfill_2025-12-29",
    "liquidity_usd": 64668.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 40,
@@ -8423,7 +8423,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 210016.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 5,
@@ -9189,7 +9189,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 1517540.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 5,
@@ -9215,7 +9215,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 8491.81,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 34,
@@ -9316,7 +9316,7 @@
    "sampled_from": "snapshot_2026-09-05",
    "liquidity_usd": 0.0756,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "high",
    "score": 84,
@@ -9368,7 +9368,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 22494.5,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED: 0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e48503a204255595f4641494c4544000000000000000000000000000000000000"
+    "about the token: simulation failed: execution reverted: HP: BUY_FAILED: 0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e48503a204255595f4641494c4544000000000000000000000000000000000000"
    ],
    "verdict": "unknown",
    "score": 40,
@@ -9420,7 +9420,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 2826830.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 15,
@@ -9446,7 +9446,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 572138.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 15,
@@ -9472,7 +9472,7 @@
    "sampled_from": "snapshot_2026-09-04",
    "liquidity_usd": 0.3,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "high",
    "score": 84,
@@ -9500,8 +9500,8 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no source reported pool depth",
-    "the sell simulator has no record of this token"
+    "about the token: no source reported pool depth",
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "high",
    "score": 70,
@@ -9650,7 +9650,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 214596.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 15,
@@ -9677,7 +9677,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 408.197,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 58,
@@ -9728,7 +9728,7 @@
    "sampled_from": "snapshot_2026-09-04",
    "liquidity_usd": 85685.1,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 15,
@@ -9778,7 +9778,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 19589.5,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED: 0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e48503a204255595f4641494c4544000000000000000000000000000000000000"
+    "about the token: simulation failed: execution reverted: HP: BUY_FAILED: 0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e48503a204255595f4641494c4544000000000000000000000000000000000000"
    ],
    "verdict": "unknown",
    "score": 40,
@@ -9829,7 +9829,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 7309.76,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED: 0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e48503a204255595f4641494c4544000000000000000000000000000000000000"
+    "about the token: simulation failed: execution reverted: HP: BUY_FAILED: 0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e48503a204255595f4641494c4544000000000000000000000000000000000000"
    ],
    "verdict": "unknown",
    "score": 40,
@@ -9855,7 +9855,7 @@
    "sampled_from": "snapshot_2026-09-04",
    "liquidity_usd": 225276.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 15,
@@ -9931,7 +9931,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 15.0224,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED: 0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e48503a204255595f4641494c4544000000000000000000000000000000000000"
+    "about the token: simulation failed: execution reverted: HP: BUY_FAILED: 0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e48503a204255595f4641494c4544000000000000000000000000000000000000"
    ],
    "verdict": "unknown",
    "score": 68,
@@ -9982,7 +9982,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 2683.2,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED: 0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e48503a204255595f4641494c4544000000000000000000000000000000000000"
+    "about the token: simulation failed: execution reverted: HP: BUY_FAILED: 0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e48503a204255595f4641494c4544000000000000000000000000000000000000"
    ],
    "verdict": "unknown",
    "score": 58,
@@ -10008,7 +10008,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 304208.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 5,
@@ -10034,7 +10034,7 @@
    "sampled_from": "snapshot_2026-09-05",
    "liquidity_usd": 0.3025,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "high",
    "score": 78,
@@ -10187,8 +10187,8 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify",
-    "the sell simulator has no record of this token"
+    "about the token: no pool's depth is priced in an asset we can verify",
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 40,
@@ -10361,7 +10361,7 @@
    "sampled_from": "snapshot_2026-09-04",
    "liquidity_usd": 1137.68,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 58,
@@ -10438,7 +10438,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 286331.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 5,
@@ -10464,7 +10464,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 11119600.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED: 0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e48503a204255595f4641494c4544000000000000000000000000000000000000"
+    "about the token: simulation failed: execution reverted: HP: BUY_FAILED: 0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e48503a204255595f4641494c4544000000000000000000000000000000000000"
    ],
    "verdict": "unknown",
    "score": 30,
@@ -10490,7 +10490,7 @@
    "sampled_from": "snapshot_2026-09-05",
    "liquidity_usd": 0.3782,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "high",
    "score": 84,
@@ -10569,7 +10569,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 121614.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 5,
@@ -10669,8 +10669,8 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify",
-    "the sell simulator has no record of this token"
+    "about the token: no pool's depth is priced in an asset we can verify",
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 40,
@@ -10844,7 +10844,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 16949.4,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 34,
@@ -10920,7 +10920,7 @@
    "sampled_from": "snapshot_2026-09-03",
    "liquidity_usd": null,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "high",
    "score": 70,
@@ -10946,8 +10946,8 @@
    "sampled_from": "snapshot_2026-09-03",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no pool's depth is priced in an asset we can verify",
-    "the sell simulator has no record of this token"
+    "about the token: no pool's depth is priced in an asset we can verify",
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 40,
@@ -10972,7 +10972,7 @@
    "sampled_from": "snapshot_2026-09-04",
    "liquidity_usd": 19193.7,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -10999,7 +10999,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 268526.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 5,
@@ -11050,7 +11050,7 @@
    "sampled_from": "snapshot_2026-09-04",
    "liquidity_usd": 106697.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 15,
@@ -11076,7 +11076,7 @@
    "sampled_from": "snapshot_2026-09-05",
    "liquidity_usd": 0.4538,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "high",
    "score": 84,
@@ -11154,7 +11154,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 26368.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -11229,7 +11229,7 @@
    "sampled_from": "snapshot_2026-09-04",
    "liquidity_usd": 2176310.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 5,
@@ -11255,7 +11255,7 @@
    "sampled_from": "snapshot_2026-09-04",
    "liquidity_usd": 1156070.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 5,
@@ -11307,7 +11307,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 796872.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 5,
@@ -11333,7 +11333,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 991240.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 5,
@@ -11482,7 +11482,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 257031.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 15,
@@ -11508,7 +11508,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 1684480.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 5,
@@ -11534,7 +11534,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 490610.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 5,
@@ -11560,7 +11560,7 @@
    "sampled_from": "snapshot_2026-09-04",
    "liquidity_usd": 543068.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 5,
@@ -11587,7 +11587,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 60109.3,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 15,
@@ -11613,7 +11613,7 @@
    "sampled_from": "snapshot_2026-09-04",
    "liquidity_usd": 684623.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 15,
@@ -11639,7 +11639,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 143033.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 30,
@@ -11691,7 +11691,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 2839.08,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 68,
@@ -11818,7 +11818,7 @@
    "sampled_from": "snapshot_2026-09-04",
    "liquidity_usd": 1965.9,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "about the token: simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "unknown",
    "score": 68,
@@ -11945,7 +11945,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 811569.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 15,
@@ -11996,7 +11996,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 711.397,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 58,
@@ -12097,8 +12097,8 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no source reported pool depth",
-    "the sell simulator has no record of this token"
+    "about the token: no source reported pool depth",
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "high",
    "score": 70,
@@ -12278,7 +12278,7 @@
    "sampled_from": "snapshot_2026-09-04",
    "liquidity_usd": 907513.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: SETUP_FAILED"
+    "about the token: simulation failed: execution reverted: HP: SETUP_FAILED"
    ],
    "verdict": "unknown",
    "score": 30,
@@ -12529,7 +12529,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 284.24,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "about the token: simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "unknown",
    "score": 68,
@@ -13517,7 +13517,7 @@
    "sampled_from": "snapshot_2026-09-04",
    "liquidity_usd": 48388.7,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 24,
@@ -13722,7 +13722,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 118424.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 5,
@@ -13749,7 +13749,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 3006300.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED"
+    "about the token: simulation failed: execution reverted: HP: BUY_FAILED"
    ],
    "verdict": "unknown",
    "score": 30,
@@ -13802,7 +13802,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 936380.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "about the token: simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "unknown",
    "score": 30,
@@ -14004,7 +14004,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 54741.8,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: SETUP_FAILED"
+    "about the token: simulation failed: execution reverted: HP: SETUP_FAILED"
    ],
    "verdict": "unknown",
    "score": 30,
@@ -14057,7 +14057,7 @@
    "sampled_from": "snapshot_2026-09-04",
    "liquidity_usd": 818509.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED"
+    "about the token: simulation failed: execution reverted: HP: BUY_FAILED"
    ],
    "verdict": "unknown",
    "score": 30,
@@ -14134,8 +14134,8 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": null,
    "gap_reasons": [
-    "no source reported pool depth",
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "about the token: no source reported pool depth",
+    "about the token: simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "high",
    "score": 70,
@@ -14518,7 +14518,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 642699.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED"
+    "about the token: simulation failed: execution reverted: HP: BUY_FAILED"
    ],
    "verdict": "unknown",
    "score": 30,
@@ -14544,7 +14544,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 796872.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 5,
@@ -14570,7 +14570,7 @@
    "sampled_from": "snapshot_2026-09-03",
    "liquidity_usd": 15128100.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "about the token: simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "unknown",
    "score": 30,
@@ -14646,7 +14646,7 @@
    "sampled_from": "snapshot_2026-09-03",
    "liquidity_usd": 92.85,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 68,
@@ -14875,7 +14875,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 1689750.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: HP: BUY_FAILED"
+    "about the token: simulation failed: execution reverted: HP: BUY_FAILED"
    ],
    "verdict": "unknown",
    "score": 30,
@@ -14901,7 +14901,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 20028400.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "about the token: simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "unknown",
    "score": 30,
@@ -14952,7 +14952,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 985415.0,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 5,
@@ -14978,7 +14978,7 @@
    "sampled_from": "snapshot_2026-09-03",
    "liquidity_usd": 4812.84,
    "gap_reasons": [
-    "the sell simulator has no record of this token"
+    "about the token: the sell simulator has no record of this token"
    ],
    "verdict": "unknown",
    "score": 68,
@@ -15108,7 +15108,7 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": 97617600.0,
    "gap_reasons": [
-    "simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+    "about the token: simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
    "verdict": "unknown",
    "score": 30,
