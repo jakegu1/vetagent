@@ -152,16 +152,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- F8: three surfaces named four extensions as "the Token-2022 extensions"
+- F7: the fee rating read the basis points and ignored the cap in the same dict
+- F6: the eighteenth extension would have arrived in silence, like the last eleven
+- F5: read: true covered six of the seventeen extension keys upstream sends
+- A sell simulation from a chain we did not ask about was being read as this token's
 - F4: the advertising guard is a rule now, not a list of seven sentences
 - F3: the scorecard called sellability covered on four chains nothing tests
 - Re-run the benchmark after the gap-reason change (no number moves)
-- A data gap must declare which of three things it is (E27)
-- F3: an unreadable transfer-fee rate is not an upstream failure
-- F2: the EVM twin of the Solana coverage signal stops scoring the token
-- F1: a coverage gap stopped swallowing the outage next to it (E24 regression)
-- Say the two Solana dimensions are open, on every surface that sold them
 
-_79 more not shown (87 commits in total)._
+_84 more not shown (92 commits in total)._
 
 ## What I got wrong
 

@@ -68,7 +68,7 @@ python bench/run_benchmark.py     # accuracy, on 559 labelled tokens
 python bench/scorecard.py         # maturity score, per line item
 python tests/test_risk.py         # 140 assertions on the engine
 python tests/test_mcp.py          # 54 on the protocol layer
-python tests/test_upstream_contract.py   # hits live APIs; goes red when upstream changes
+python tests/test_upstream_contract.py   # live APIs; red when a field changes, quiet when one is down
 python tests/test_english_only.py        # no Chinese anywhere in the repo
 python tests/test_gates_get_reviewed.py  # parked ideas AND strategy gates are answered on time
 python tests/test_rounds.py              # every commit belongs to exactly one round

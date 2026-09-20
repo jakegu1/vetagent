@@ -116,7 +116,7 @@ manually ran two or three addresses, missing a code path is inevitable, not bad 
 ```bash
 python tests/test_risk.py              # offline, against real upstream snapshots
 python tests/test_mcp.py               # 41 cases, MCP protocol conformance
-python tests/test_upstream_contract.py # 41 cases, live network, checks upstream JSON paths
+python tests/test_upstream_contract.py # live network; field list derived from risk.py
 ```
 
 The third one matters most: **only a contract test could have caught the honeypot bug** —

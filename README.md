@@ -152,7 +152,7 @@ python bench/run_benchmark.py               # score the local engine, write resu
 ```bash
 python tests/test_risk.py               # engine regressions, offline, real upstream snapshots
 python tests/test_mcp.py                # MCP protocol conformance
-python tests/test_upstream_contract.py  # live: asserts the JSON paths we depend on still exist
+python tests/test_upstream_contract.py  # live: every path risk.py reads, against a measured baseline
 ```
 
 Every case in `tests/` is pinned to a defect that actually reached production.

@@ -1,0 +1,881 @@
+{
+ "engine_paths": 122,
+ "measured_utc": "2026-09-20T08:57:44Z",
+ "rule": {
+  "min_for_share": 8,
+  "value_band": 0.4
+ },
+ "sources": {
+  "dexscreener": {
+   "asked": 8,
+   "paths": {
+    "[].chainId": {
+     "key": 0.0,
+     "types": [],
+     "value": 0.0
+    },
+    "[].pairAddress": {
+     "key": 0.0,
+     "types": [],
+     "value": 0.0
+    },
+    "pairs": {
+     "key": 1.0,
+     "types": [
+      "list"
+     ],
+     "value": 1.0
+    },
+    "pairs.[].baseToken": {
+     "key": 1.0,
+     "types": [
+      "dict"
+     ],
+     "value": 1.0
+    },
+    "pairs.[].baseToken.address": {
+     "key": 1.0,
+     "types": [
+      "str"
+     ],
+     "value": 1.0
+    },
+    "pairs.[].baseToken.symbol": {
+     "key": 1.0,
+     "types": [
+      "str"
+     ],
+     "value": 1.0
+    },
+    "pairs.[].chainId": {
+     "key": 1.0,
+     "types": [
+      "str"
+     ],
+     "value": 1.0
+    },
+    "pairs.[].dexId": {
+     "key": 1.0,
+     "types": [
+      "str"
+     ],
+     "value": 1.0
+    },
+    "pairs.[].liquidity": {
+     "key": 1.0,
+     "types": [
+      "dict"
+     ],
+     "value": 1.0
+    },
+    "pairs.[].liquidity.base": {
+     "key": 1.0,
+     "types": [
+      "float",
+      "int"
+     ],
+     "value": 1.0
+    },
+    "pairs.[].liquidity.quote": {
+     "key": 1.0,
+     "types": [
+      "float",
+      "int"
+     ],
+     "value": 1.0
+    },
+    "pairs.[].liquidity.usd": {
+     "key": 1.0,
+     "types": [
+      "float",
+      "int"
+     ],
+     "value": 1.0
+    },
+    "pairs.[].pairAddress": {
+     "key": 1.0,
+     "types": [
+      "str"
+     ],
+     "value": 1.0
+    },
+    "pairs.[].pairCreatedAt": {
+     "key": 1.0,
+     "types": [
+      "int"
+     ],
+     "value": 1.0
+    },
+    "pairs.[].pool_id": {
+     "key": 0.0,
+     "types": [],
+     "value": 0.0
+    },
+    "pairs.[].priceChange": {
+     "key": 1.0,
+     "types": [
+      "dict"
+     ],
+     "value": 1.0
+    },
+    "pairs.[].priceChange.h24": {
+     "key": 1.0,
+     "types": [
+      "float",
+      "int"
+     ],
+     "value": 1.0
+    },
+    "pairs.[].priceNative": {
+     "key": 1.0,
+     "types": [
+      "str"
+     ],
+     "value": 1.0
+    },
+    "pairs.[].priceUsd": {
+     "key": 1.0,
+     "types": [
+      "str"
+     ],
+     "value": 1.0
+    },
+    "pairs.[].quoteToken": {
+     "key": 1.0,
+     "types": [
+      "dict"
+     ],
+     "value": 1.0
+    },
+    "pairs.[].quoteToken.address": {
+     "key": 1.0,
+     "types": [
+      "str"
+     ],
+     "value": 1.0
+    },
+    "pairs.[].reserveInUsd": {
+     "key": 0.0,
+     "types": [],
+     "value": 0.0
+    },
+    "pairs.[].traders": {
+     "key": 0.0,
+     "types": [],
+     "value": 0.0
+    },
+    "pairs.[].traders.h24": {
+     "key": 0.0,
+     "types": [],
+     "value": 0.0
+    },
+    "pairs.[].traders.h24.sellers": {
+     "key": 0.0,
+     "types": [],
+     "value": 0.0
+    },
+    "pairs.[].txns": {
+     "key": 1.0,
+     "types": [
+      "dict"
+     ],
+     "value": 1.0
+    },
+    "pairs.[].txns.h24": {
+     "key": 1.0,
+     "types": [
+      "dict"
+     ],
+     "value": 1.0
+    },
+    "pairs.[].txns.h24.buys": {
+     "key": 1.0,
+     "types": [
+      "int"
+     ],
+     "value": 1.0
+    },
+    "pairs.[].txns.h24.sells": {
+     "key": 1.0,
+     "types": [
+      "int"
+     ],
+     "value": 1.0
+    },
+    "pairs.[].volume": {
+     "key": 1.0,
+     "types": [
+      "dict"
+     ],
+     "value": 1.0
+    },
+    "pairs.[].volume.h24": {
+     "key": 1.0,
+     "types": [
+      "float",
+      "int"
+     ],
+     "value": 1.0
+    }
+   },
+   "probes": 8
+  },
+  "geckoterminal": {
+   "asked": 8,
+   "paths": {
+    "data": {
+     "key": 1.0,
+     "types": [
+      "dict",
+      "list"
+     ],
+     "value": 1.0
+    },
+    "data.[].attributes": {
+     "key": 0.875,
+     "types": [
+      "dict"
+     ],
+     "value": 0.875
+    },
+    "data.[].attributes.address": {
+     "key": 0.875,
+     "types": [
+      "str"
+     ],
+     "value": 0.875
+    },
+    "data.[].attributes.base_token_price_quote_token": {
+     "key": 0.875,
+     "types": [
+      "str"
+     ],
+     "value": 0.875
+    },
+    "data.[].attributes.base_token_price_usd": {
+     "key": 0.875,
+     "types": [
+      "str"
+     ],
+     "value": 0.875
+    },
+    "data.[].attributes.name": {
+     "key": 0.875,
+     "types": [
+      "str"
+     ],
+     "value": 0.875
+    },
+    "data.[].attributes.pool_created_at": {
+     "key": 0.875,
+     "types": [
+      "str"
+     ],
+     "value": 0.875
+    },
+    "data.[].attributes.price_change_percentage": {
+     "key": 0.875,
+     "types": [
+      "dict"
+     ],
+     "value": 0.875
+    },
+    "data.[].attributes.price_change_percentage.h24": {
+     "key": 0.875,
+     "types": [
+      "str"
+     ],
+     "value": 0.875
+    },
+    "data.[].attributes.quote_token_price_usd": {
+     "key": 0.875,
+     "types": [
+      "str"
+     ],
+     "value": 0.875
+    },
+    "data.[].attributes.reserve_in_usd": {
+     "key": 0.875,
+     "types": [
+      "str"
+     ],
+     "value": 0.875
+    },
+    "data.[].attributes.transactions": {
+     "key": 0.875,
+     "types": [
+      "dict"
+     ],
+     "value": 0.875
+    },
+    "data.[].attributes.transactions.h24": {
+     "key": 0.875,
+     "types": [
+      "dict"
+     ],
+     "value": 0.875
+    },
+    "data.[].attributes.transactions.h24.buyers": {
+     "key": 0.875,
+     "types": [
+      "int",
+      "null"
+     ],
+     "value": 0.875
+    },
+    "data.[].attributes.transactions.h24.buys": {
+     "key": 0.875,
+     "types": [
+      "int"
+     ],
+     "value": 0.875
+    },
+    "data.[].attributes.transactions.h24.sellers": {
+     "key": 0.875,
+     "types": [
+      "int",
+      "null"
+     ],
+     "value": 0.875
+    },
+    "data.[].attributes.transactions.h24.sells": {
+     "key": 0.875,
+     "types": [
+      "int"
+     ],
+     "value": 0.875
+    },
+    "data.[].attributes.volume_usd": {
+     "key": 0.875,
+     "types": [
+      "dict"
+     ],
+     "value": 0.875
+    },
+    "data.[].attributes.volume_usd.h24": {
+     "key": 0.875,
+     "types": [
+      "str"
+     ],
+     "value": 0.875
+    },
+    "data.[].id": {
+     "key": 0.875,
+     "types": [
+      "str"
+     ],
+     "value": 0.875
+    },
+    "data.[].relationships": {
+     "key": 0.875,
+     "types": [
+      "dict"
+     ],
+     "value": 0.875
+    },
+    "data.[].relationships.base_token": {
+     "key": 0.875,
+     "types": [
+      "dict"
+     ],
+     "value": 0.875
+    },
+    "data.[].relationships.base_token.data": {
+     "key": 0.875,
+     "types": [
+      "dict"
+     ],
+     "value": 0.875
+    },
+    "data.[].relationships.base_token.data.id": {
+     "key": 0.875,
+     "types": [
+      "str"
+     ],
+     "value": 0.875
+    },
+    "data.attributes": {
+     "key": 0.125,
+     "types": [
+      "dict"
+     ],
+     "value": 0.125
+    },
+    "data.attributes.transactions": {
+     "key": 0.125,
+     "types": [
+      "dict"
+     ],
+     "value": 0.125
+    },
+    "data.attributes.transactions.h24": {
+     "key": 0.125,
+     "types": [
+      "dict"
+     ],
+     "value": 0.125
+    },
+    "data.attributes.transactions.h24.sellers": {
+     "key": 0.125,
+     "types": [
+      "int"
+     ],
+     "value": 0.125
+    },
+    "status": {
+     "key": 0.0,
+     "types": [],
+     "value": 0.0
+    },
+    "status.error_code": {
+     "key": 0.0,
+     "types": [],
+     "value": 0.0
+    }
+   },
+   "probes": 8
+  },
+  "honeypot.is": {
+   "asked": 8,
+   "paths": {
+    "contractCode": {
+     "key": 1.0,
+     "types": [
+      "dict"
+     ],
+     "value": 1.0
+    },
+    "contractCode.isProxy": {
+     "key": 1.0,
+     "types": [
+      "bool"
+     ],
+     "value": 1.0
+    },
+    "contractCode.openSource": {
+     "key": 1.0,
+     "types": [
+      "bool"
+     ],
+     "value": 1.0
+    },
+    "holderAnalysis": {
+     "key": 0.25,
+     "types": [
+      "dict"
+     ],
+     "value": 0.25
+    },
+    "holderAnalysis.failed": {
+     "key": 0.25,
+     "types": [
+      "str"
+     ],
+     "value": 0.25
+    },
+    "holderAnalysis.holders": {
+     "key": 0.25,
+     "types": [
+      "str"
+     ],
+     "value": 0.25
+    },
+    "holderAnalysis.siphoned": {
+     "key": 0.25,
+     "types": [
+      "str"
+     ],
+     "value": 0.25
+    },
+    "honeypotResult": {
+     "key": 0.875,
+     "types": [
+      "dict"
+     ],
+     "value": 0.875
+    },
+    "honeypotResult.honeypotReason": {
+     "key": 0.0,
+     "types": [],
+     "value": 0.0
+    },
+    "honeypotResult.isHoneypot": {
+     "key": 0.875,
+     "types": [
+      "bool"
+     ],
+     "value": 0.875
+    },
+    "router": {
+     "key": 1.0,
+     "types": [
+      "str"
+     ],
+     "value": 1.0
+    },
+    "simulationError": {
+     "key": 0.125,
+     "types": [
+      "str"
+     ],
+     "value": 0.125
+    },
+    "simulationResult": {
+     "key": 0.875,
+     "types": [
+      "dict"
+     ],
+     "value": 0.875
+    },
+    "simulationResult.buyGas": {
+     "key": 0.875,
+     "types": [
+      "str"
+     ],
+     "value": 0.875
+    },
+    "simulationResult.buyTax": {
+     "key": 0.875,
+     "types": [
+      "int"
+     ],
+     "value": 0.875
+    },
+    "simulationResult.sellTax": {
+     "key": 0.875,
+     "types": [
+      "int"
+     ],
+     "value": 0.875
+    },
+    "simulationResult.transferTax": {
+     "key": 0.875,
+     "types": [
+      "int"
+     ],
+     "value": 0.875
+    },
+    "simulationSuccess": {
+     "key": 1.0,
+     "types": [
+      "bool"
+     ],
+     "value": 1.0
+    },
+    "summary": {
+     "key": 1.0,
+     "types": [
+      "dict"
+     ],
+     "value": 1.0
+    },
+    "summary.flags": {
+     "key": 1.0,
+     "types": [
+      "list"
+     ],
+     "value": 0.25
+    },
+    "summary.flags.[].flag": {
+     "key": 0.25,
+     "types": [
+      "str"
+     ],
+     "value": 0.25
+    },
+    "summary.risk": {
+     "key": 1.0,
+     "types": [
+      "str"
+     ],
+     "value": 1.0
+    },
+    "summary.riskLevel": {
+     "key": 0.875,
+     "types": [
+      "int"
+     ],
+     "value": 0.875
+    },
+    "token": {
+     "key": 1.0,
+     "types": [
+      "dict"
+     ],
+     "value": 1.0
+    },
+    "token.totalHolders": {
+     "key": 1.0,
+     "types": [
+      "int"
+     ],
+     "value": 1.0
+    }
+   },
+   "probes": 8
+  },
+  "rugcheck": {
+   "asked": 16,
+   "paths": {
+    "freezeAuthority": {
+     "key": 1.0,
+     "types": [
+      "dict",
+      "null"
+     ],
+     "value": 0.25
+    },
+    "lockers": {
+     "key": 1.0,
+     "types": [
+      "dict"
+     ],
+     "value": 0.6875
+    },
+    "mint": {
+     "key": 1.0,
+     "types": [
+      "str"
+     ],
+     "value": 1.0
+    },
+    "mintAuthority": {
+     "key": 1.0,
+     "types": [
+      "dict",
+      "null"
+     ],
+     "value": 0.3125
+    },
+    "risks": {
+     "key": 1.0,
+     "types": [
+      "list"
+     ],
+     "value": 0.6875
+    },
+    "risks.[].level": {
+     "key": 0.6875,
+     "types": [
+      "str"
+     ],
+     "value": 0.6875
+    },
+    "risks.[].name": {
+     "key": 0.6875,
+     "types": [
+      "str"
+     ],
+     "value": 0.6875
+    },
+    "rugged": {
+     "key": 1.0,
+     "types": [
+      "bool"
+     ],
+     "value": 1.0
+    },
+    "score": {
+     "key": 1.0,
+     "types": [
+      "int"
+     ],
+     "value": 1.0
+    },
+    "score_normalised": {
+     "key": 1.0,
+     "types": [
+      "int"
+     ],
+     "value": 1.0
+    },
+    "token": {
+     "key": 1.0,
+     "types": [
+      "dict"
+     ],
+     "value": 1.0
+    },
+    "token.decimals": {
+     "key": 1.0,
+     "types": [
+      "int"
+     ],
+     "value": 1.0
+    },
+    "token.supply": {
+     "key": 1.0,
+     "types": [
+      "int"
+     ],
+     "value": 1.0
+    },
+    "tokenProgram": {
+     "key": 1.0,
+     "types": [
+      "str"
+     ],
+     "value": 1.0
+    },
+    "token_extensions": {
+     "key": 1.0,
+     "types": [
+      "dict",
+      "null"
+     ],
+     "value": 0.125
+    },
+    "token_extensions.defaultAccountState": {
+     "key": 0.125,
+     "types": [
+      "null"
+     ],
+     "value": 0.0
+    },
+    "token_extensions.defaultAccountState.state": {
+     "key": 0.0,
+     "types": [],
+     "value": 0.0
+    },
+    "token_extensions.interestBearingConfig": {
+     "key": 0.125,
+     "types": [
+      "null"
+     ],
+     "value": 0.0
+    },
+    "token_extensions.mintCloseAuthority": {
+     "key": 0.125,
+     "types": [
+      "dict",
+      "null"
+     ],
+     "value": 0.0625
+    },
+    "token_extensions.mintCloseAuthority.closeAuthority": {
+     "key": 0.0625,
+     "types": [
+      "str"
+     ],
+     "value": 0.0625
+    },
+    "token_extensions.nonTransferable": {
+     "key": 0.125,
+     "types": [
+      "bool"
+     ],
+     "value": 0.125
+    },
+    "token_extensions.pausableConfig": {
+     "key": 0.125,
+     "types": [
+      "null"
+     ],
+     "value": 0.0
+    },
+    "token_extensions.permanentDelegate": {
+     "key": 0.125,
+     "types": [
+      "dict",
+      "null"
+     ],
+     "value": 0.0625
+    },
+    "token_extensions.permanentDelegate.delegate": {
+     "key": 0.0625,
+     "types": [
+      "str"
+     ],
+     "value": 0.0625
+    },
+    "token_extensions.scaledUiAmountConfig": {
+     "key": 0.125,
+     "types": [
+      "null"
+     ],
+     "value": 0.0
+    },
+    "token_extensions.transferFeeConfig": {
+     "key": 0.125,
+     "types": [
+      "dict"
+     ],
+     "value": 0.125
+    },
+    "token_extensions.transferFeeConfig.newerTransferFee": {
+     "key": 0.125,
+     "types": [
+      "dict"
+     ],
+     "value": 0.125
+    },
+    "token_extensions.transferFeeConfig.olderTransferFee": {
+     "key": 0.125,
+     "types": [
+      "dict"
+     ],
+     "value": 0.125
+    },
+    "token_extensions.transferFeeConfig.transferFeeConfigAuthority": {
+     "key": 0.125,
+     "types": [
+      "str"
+     ],
+     "value": 0.125
+    },
+    "token_extensions.transferHook": {
+     "key": 0.125,
+     "types": [
+      "dict",
+      "null"
+     ],
+     "value": 0.0625
+    },
+    "token_extensions.transferHook.authority": {
+     "key": 0.0625,
+     "types": [
+      "str"
+     ],
+     "value": 0.0625
+    },
+    "token_extensions.transferHook.programId": {
+     "key": 0.0625,
+     "types": [
+      "null"
+     ],
+     "value": 0.0
+    },
+    "topHolders": {
+     "key": 1.0,
+     "types": [
+      "list",
+      "null"
+     ],
+     "value": 0.75
+    },
+    "topHolders.[].pct": {
+     "key": 0.75,
+     "types": [
+      "float"
+     ],
+     "value": 0.75
+    },
+    "totalHolders": {
+     "key": 1.0,
+     "types": [
+      "int"
+     ],
+     "value": 1.0
+    },
+    "verification": {
+     "key": 1.0,
+     "types": [
+      "dict"
+     ],
+     "value": 1.0
+    }
+   },
+   "probes": 16
+  }
+ }
+}
