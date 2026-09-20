@@ -4334,6 +4334,19 @@ def test_token_2022_shapes_this_upstream_actually_sends():
           any(g.get("dimension") == "sell_tax"
               for g in (r["evidence"].get("data_gaps") or [])),
           str(r["evidence"].get("data_gaps")))
+    # ...under the right heading. "upstream request failed" is the prefix the engine
+    # reserves for an upstream that did not answer, and this upstream answered: the report
+    # arrived, it carries a transferFeeConfig, and it simply does not state a rate we can
+    # read. Retrying returns the identical body. `sell_tax` is not a critical dimension so
+    # nothing downstream is misrouted today, but the string goes out in
+    # evidence.data_gaps for a caller to read, and it says our infrastructure broke.
+    fee_gap = [g for g in (r["evidence"].get("data_gaps") or [])
+               if g.get("dimension") == "sell_tax"]
+    check("  and the gap does not blame an upstream that answered",
+          fee_gap and not str(fee_gap[0].get("reason", "")).startswith(risk._UPSTREAM_FAILED),
+          str(fee_gap[:1]))
+    check("  it says what is actually missing: a rate in the report",
+          fee_gap and "rate" in str(fee_gap[0].get("reason", "")), str(fee_gap[:1]))
 
     # The guard that matters: the convenience key is never the source.
     rc = _rc_with_extensions(transferFeeConfig={

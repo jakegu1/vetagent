@@ -2876,9 +2876,15 @@ def _token2022_signals(rc, signals, evidence, established=False, data_gaps=None)
             # here would be the `transferFee: {"pct": 0}` mistake this function exists to
             # avoid, one branch below the comment that says so (E14 review, 2026-09-20).
             if data_gaps is not None:
+                # Not "upstream request failed": that prefix is the engine's word for an
+                # upstream that did not answer, and this one answered. The report arrived,
+                # it carries a transferFeeConfig, and it states no rate we can read --
+                # retrying returns the identical body. Mislabelling it sends a caller to
+                # re-ask for a thing no re-ask produces, and it is the same conflation this
+                # whole review is about, in the code the review's own fix had just written.
                 data_gaps.append({"dimension": "sell_tax", "source": "rugcheck",
-                                  "reason": "upstream request failed: the transfer-fee "
-                                            "schedule could not be read"})
+                                  "reason": "the report carries a transfer-fee config "
+                                            "with no rate we can read"})
             signals.append(_sig(
                 "warn", "Transfer fee is configured and unreadable",
                 "The mint charges a fee on every transfer and the report did not carry a "
