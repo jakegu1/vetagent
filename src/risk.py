@@ -2500,7 +2500,22 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
     permanently "ok". It also discarded summary.risk, flags and contractCode, all of
     which were already in the response we had fetched.
     """
-    if hp is NO_DATA and chain and chain not in _SIMULATOR_CHAINS:
+    if chain and chain not in _SIMULATOR_CHAINS:
+        # Whatever came back. This used to read `hp is NO_DATA and ...`, so the branch was
+        # reached only when honeypot.is answered 404 -- and on a chain we send no chainID
+        # for, honeypot.is picks a chain of its own. An address that also exists on one it
+        # does index comes back 200 with a complete, healthy simulation about the wrong
+        # chain, and that walked straight past this guard into `evidence["honeypot"]`.
+        #
+        # Measured 2026-09-20 on a live recording: BENQI (QI), asked for on avalanche,
+        # answered out of {"id": "56", "name": "Binance Smart Chain"} with a PancakeSwap
+        # QI-WBNB pair, isHoneypot false, summary low. No data gap was filed and the
+        # verdict was `low` -- a sell verdict for an Avalanche holder, measured on BSC.
+        # Every multi-chain deployment sharing an address is in that set.
+        #
+        # The chain we do not cover is the fact here; what the simulator says about some
+        # other chain is not evidence about this token, so nothing below runs.
+        #
         # Our coverage gap, not the token's absence: excluded from the no-trace
         # escalation by starting the reason with the phrase _finalize reserves for
         # our own shortcomings.

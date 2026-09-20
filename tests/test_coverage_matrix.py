@@ -17,7 +17,7 @@ did not catch it because reading a table of `True`s tells you what someone belie
 
 WHAT IT DOES
 
-For each advertised chain it replays one real token's recorded upstream responses through
+For each advertised chain it replays real tokens' recorded upstream responses through
 `risk.assess()`, then asks, dimension by dimension, what the engine actually produced. The
 expectations are **generated** from `scorecard.RISK_VECTORS` -- there is no second table
 here to drift from the first one. Adding a chain to `ADVERTISED_CHAINS` adds a column and
@@ -30,6 +30,11 @@ An observer returns `covered`, `open`, or `None` for "this token could not settl
 a ticker with no rival says nothing about whether impersonation is checked. `None` is
 printed as `----` and counted separately. This file exists because a dimension nobody
 looked at was reported as a dimension that passed; it must not make that mistake itself.
+
+Where two tokens on the same chain answer a cell differently, that is a failure and not a
+tie-break. A question about a chain has one answer, so a disagreement means an observer is
+reading something about the token instead -- and the first time it fired, on 2026-09-20,
+it was neither: the engine really was answering about BSC when asked about Avalanche.
 
 RE-RECORDING
 
@@ -60,20 +65,46 @@ import scorecard   # noqa: E402
 
 FIXTURES = os.path.join(ROOT, "tests", "fixtures", "coverage_matrix")
 
-# One real token per advertised chain. Established tokens on purpose: the question is
-# what the engine *can* read on a chain, and a token nothing has indexed yet cannot
+# Real reference tokens per advertised chain. Established tokens on purpose: the question
+# is what the engine *can* read on a chain, and a token nothing has indexed yet cannot
 # answer it. Checked against ADVERTISED_CHAINS below, so a new chain cannot be advertised
 # without one.
+#
+# A list, not a single token, because one token cannot settle every cell: a ticker with no
+# rival says nothing about whether impersonation runs, and an SPL mint says nothing about
+# whether the Token-2022 transfer fee is read. A cell is settled by any token that
+# produces a reading, and two tokens that disagree on the same cell fail. So closing a
+# blind cell is adding a token here and re-recording, rather than a redesign -- which is
+# the difference between an instrument with known gaps and one with permanent ones.
 TOKENS = {
-    "ethereum":  ("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "USDC"),
-    "bsc":       ("0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82", "CAKE"),
-    "base":      ("0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed", "DEGEN"),
-    "arbitrum":  ("0x912CE59144191C1204E64559FE8253a0e49E6548", "ARB"),
-    "polygon":   ("0x53E0bca35eC356BD5ddDFebbD1Fc0fD03FaBad39", "LINK"),
-    "optimism":  ("0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db", "VELO"),
-    "avalanche": ("0x60781C2586D68229fde47564546784ab3fACA982", "PNG"),
-    "solana":    ("rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof", "RENDER"),
+    "ethereum":  [("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "USDC")],
+    "bsc":       [("0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82", "CAKE")],
+    "base":      [("0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed", "DEGEN")],
+    "arbitrum":  [("0x912CE59144191C1204E64559FE8253a0e49E6548", "ARB")],
+    # QUICK shares its ticker with another Polygon contract, which is what settles the
+    # impersonation cell there; SNX and QI carry a pairCreatedAt that VELO and PNG's best
+    # pairs do not, which settles pair age on their chains. Each was added to close a cell
+    # this file had reported as unsettled, which is the intended way to use the list.
+    "polygon":   [("0x53E0bca35eC356BD5ddDFebbD1Fc0fD03FaBad39", "LINK"),
+                  ("0xB5C064F955D8e7F38fE0460C556a72987494eE17", "QUICK")],
+    "optimism":  [("0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db", "VELO"),
+                  ("0x8700dAec35aF8Ff88c16BdF0418774CB3D7599B4", "SNX")],
+    "avalanche": [("0x60781C2586D68229fde47564546784ab3fACA982", "PNG"),
+                  ("0x8729438EB15e2C8B576fCc6AeCdA6A148776C0F5", "QI")],
+    # RENDER is an ordinary SPL mint and leaves the transfer-fee cell unsettled; PYUSD is
+    # Token-2022 and carries the extensions block the fee is read out of (E25).
+    "solana":    [("rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof", "RENDER"),
+                  ("2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo", "PYUSD")],
 }
+
+
+def references(chain):
+    """(address, symbol, fixture stem) for each reference token on a chain."""
+    out = []
+    for i, (address, symbol) in enumerate(TOKENS.get(chain, [])):
+        out.append((address, symbol, chain if i == 0 else "%s-%s" % (chain, symbol.lower())))
+    return out
+
 
 COVERED, OPEN = "covered", "open"
 
@@ -122,9 +153,9 @@ def _replay(responses):
     return _fetch
 
 
-def _assess(chain):
-    """Replay one chain's recording through the engine. (result, recorded_at)."""
-    path = os.path.join(FIXTURES, "%s.json" % chain)
+def _assess(chain, stem=None):
+    """Replay one recording through the engine. (result, recording)."""
+    path = os.path.join(FIXTURES, "%s.json" % (stem or chain))
     with io.open(path, encoding="utf-8") as f:
         rec = json.load(f)
     risk.cf_fetch = _replay(rec["responses"])
@@ -282,10 +313,11 @@ OBSERVERS = {
 def test_every_advertised_chain_has_a_token():
     print("\n[matrix] a chain cannot be advertised without a token to check it on")
     for chain in scorecard.ADVERTISED_CHAINS:
-        check("%s has a reference token" % chain, chain in TOKENS, sorted(TOKENS))
-        check("%s has a recording" % chain,
-              os.path.exists(os.path.join(FIXTURES, "%s.json" % chain)),
-              "run: python tests/test_coverage_matrix.py --record %s" % chain)
+        check("%s has a reference token" % chain, bool(TOKENS.get(chain)), sorted(TOKENS))
+        for _address, symbol, stem in references(chain):
+            check("%s / %s has a recording" % (chain, symbol),
+                  os.path.exists(os.path.join(FIXTURES, "%s.json" % stem)),
+                  "run: python tests/test_coverage_matrix.py --record %s" % chain)
     extra = sorted(set(TOKENS) - set(scorecard.ADVERTISED_CHAINS))
     check("no reference token for a chain we do not advertise", not extra, str(extra))
 
@@ -310,26 +342,42 @@ def test_the_engine_does_what_the_scorecard_claims():
     """The matrix. Generated from RISK_VECTORS x ADVERTISED_CHAINS, measured per cell."""
     print("\n[matrix] the engine's behaviour, chain by chain, against the claim")
     for chain in scorecard.ADVERTISED_CHAINS:
-        if chain not in TOKENS or not os.path.exists(
-                os.path.join(FIXTURES, "%s.json" % chain)):
-            continue                      # already failed above; do not fail twice
-        result, rec = _assess(chain)
-        age = _age_days(rec.get("recorded_at"))
-        print("\n  %s / %s  recorded %s%s -> %s"
-              % (chain, rec.get("symbol", "?"), str(rec.get("recorded_at"))[:10],
-                 "" if age is None else " (%d days ago)" % age,
-                 result.get("risk_level")))
+        readings = {}          # dimension -> {observation: the token that produced it}
+        for _address, symbol, stem in references(chain):
+            if not os.path.exists(os.path.join(FIXTURES, "%s.json" % stem)):
+                continue                  # already failed above; do not fail twice
+            result, rec = _assess(chain, stem)
+            age = _age_days(rec.get("recorded_at"))
+            print("\n  %s / %s  recorded %s%s -> %s"
+                  % (chain, rec.get("symbol", "?"), str(rec.get("recorded_at"))[:10],
+                     "" if age is None else " (%d days ago)" % age,
+                     result.get("risk_level")))
+            for name, applies, _on in scorecard.RISK_VECTORS:
+                if applies is None or chain not in applies:
+                    continue
+                observed = OBSERVERS[name](result)
+                if observed is not None:
+                    readings.setdefault(name, {}).setdefault(observed, symbol)
         for name, applies, on in scorecard.RISK_VECTORS:
             if applies is None or chain not in applies:
                 continue
             claimed = COVERED if chain in on else OPEN
-            observed = OBSERVERS[name](result)
+            seen = readings.get(name, {})
             label = "%s on %s: scorecard says %s" % (name, chain, claimed)
-            if observed is None:
-                unchecked(label, "%s / %s produced no reading either way"
-                          % (chain, rec.get("symbol", "?")))
+            if not seen:
+                unchecked(label,
+                          "no reference token on %s produced a reading either way" % chain)
+            elif len(seen) > 1:
+                # Two tokens, two answers, to a question about the chain. One of them is
+                # answering about the token instead, and an observer that cannot tell
+                # which is not measuring what this file says it measures.
+                check(label, False, "reference tokens disagree: %s"
+                      % ", ".join("%s says %s" % (tok, obs)
+                                  for obs, tok in sorted(seen.items())))
             else:
-                check(label, observed == claimed, "engine says %s" % observed)
+                observed = next(iter(seen))
+                check(label, observed == claimed,
+                      "engine says %s (on %s)" % (observed, seen[observed]))
 
 
 def test_a_dimension_is_not_claimed_on_a_chain_it_is_not_asked_about():
@@ -339,15 +387,16 @@ def test_a_dimension_is_not_claimed_on_a_chain_it_is_not_asked_about():
         if applies is None:
             continue
         for chain in scorecard.ADVERTISED_CHAINS:
-            if chain in applies or chain not in TOKENS:
+            if chain in applies:
                 continue
-            if not os.path.exists(os.path.join(FIXTURES, "%s.json" % chain)):
-                continue
-            result, _rec = _assess(chain)
-            observed = OBSERVERS[name](result)
-            check("%s is not quietly covered on %s, where it is marked n/a"
-                  % (name, chain), observed != COVERED,
-                  "engine says %s -- if it is covered there it is not n/a" % observed)
+            for _address, symbol, stem in references(chain):
+                if not os.path.exists(os.path.join(FIXTURES, "%s.json" % stem)):
+                    continue
+                result, _rec = _assess(chain, stem)
+                observed = OBSERVERS[name](result)
+                check("%s is not quietly covered on %s (%s), where it is marked n/a"
+                      % (name, chain, symbol), observed != COVERED,
+                      "engine says %s -- if it is covered there it is not n/a" % observed)
 
 
 def _age_days(stamp):
@@ -373,8 +422,7 @@ def record(chains):
             return self._body
 
     os.makedirs(FIXTURES, exist_ok=True)
-    for chain in chains:
-        address, symbol = TOKENS[chain]
+    for chain, address, symbol, stem in [(c,) + r for c in chains for r in references(c)]:
         seen = {}
 
         async def _fetch(url, method="GET", headers=None, body=None, **kw):
@@ -404,7 +452,7 @@ def record(chains):
                                    .strftime("%Y-%m-%dT%H:%M:%SZ"),
             "responses": seen,
         }
-        path = os.path.join(FIXTURES, "%s.json" % chain)
+        path = os.path.join(FIXTURES, "%s.json" % stem)
         with io.open(path, "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=1, sort_keys=True)
         print("recorded %-10s %-7s %2d responses, %4d KB, verdict %s"

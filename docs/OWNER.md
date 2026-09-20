@@ -152,6 +152,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- F4: the advertising guard is a rule now, not a list of seven sentences
 - F3: the scorecard called sellability covered on four chains nothing tests
 - Re-run the benchmark after the gap-reason change (no number moves)
 - A data gap must declare which of three things it is (E27)
@@ -159,9 +160,8 @@ problem looked like before it was fixed.
 - F2: the EVM twin of the Solana coverage signal stops scoring the token
 - F1: a coverage gap stopped swallowing the outage next to it (E24 regression)
 - Say the two Solana dimensions are open, on every surface that sold them
-- Solana: stop claiming a sell was tested, and read the Token-2022 block (E24-E26)
 
-_78 more not shown (86 commits in total)._
+_79 more not shown (87 commits in total)._
 
 ## What I got wrong
 

@@ -2419,6 +2419,53 @@ def test_a_chain_the_simulator_does_not_cover_is_our_gap():
           risk._CATEGORY_WEIGHT.get("coverage") == 0.0,
           str(risk._CATEGORY_WEIGHT.get("coverage")))
 
+    # And the half of this that a 404 hid for a fortnight: the coverage branch was reached
+    # only when honeypot.is answered 404. Without a chainID -- which is exactly what we
+    # send on a chain the simulator does not cover -- honeypot.is picks a chain of its own,
+    # and an address that also exists on one it does index comes back **200 with a real
+    # simulation about the wrong chain**.
+    #
+    # Found 2026-09-20 by tests/test_coverage_matrix.py, on a live recording: BENQI (QI),
+    # asked for on avalanche, answered out of `{"id": "56", "name": "Binance Smart Chain"}`
+    # with a PancakeSwap QI-WBNB pair, isHoneypot false, summary low. The engine filed no
+    # coverage gap and returned `low` -- a sell verdict for an Avalanche holder, measured
+    # on BSC. Every token whose address exists on both is in this set, which is most
+    # bridged and multi-chain deployments.
+    def wrong_chain(chain):
+        install_stub([
+            ("dex/tokens", {"pairs": [{
+                "chainId": chain, "dexId": "traderjoe",
+                "baseToken": {"address": WETH, "symbol": "TKN"},
+                "quoteToken": {"address": "0xq"}, "priceUsd": "0.45",
+                "liquidity": {"usd": 3_000_000.0}, "volume": {"h24": 1_500_000.0},
+                "txns": {"h24": {"buys": 4000, "sells": 3800}},
+                "pairCreatedAt": 1589841515000}]}),
+            ("dex/search", None),
+            # A complete, healthy simulation -- about chain 56.
+            ("honeypot.is", {
+                "token": {"symbol": "TKN", "totalHolders": 50000},
+                "chain": {"id": "56", "name": "Binance Smart Chain"},
+                "simulationSuccess": True,
+                "honeypotResult": {"isHoneypot": False},
+                "simulationResult": {"buyTax": 0, "sellTax": 0, "transferTax": 0},
+                "summary": {"risk": "low", "riskLevel": 1, "flags": []},
+                "contractCode": {"openSource": True, "isProxy": False},
+                "flags": []}),
+        ])
+        return run(risk.assess(WETH, chain_hint=chain))
+
+    for chain in ("polygon", "arbitrum", "optimism", "avalanche"):
+        r5 = wrong_chain(chain)
+        gaps5 = [str(g.get("reason", "")) for g in
+                 ((r5.get("evidence") or {}).get("data_gaps") or [])]
+        check("on %s a simulation from another chain is still our coverage gap" % chain,
+              any("does not cover" in g for g in gaps5), str(gaps5))
+        check("  and is not reported as this token's sellability",
+              "honeypot" not in (r5.get("evidence") or {}),
+              str((r5.get("evidence") or {}).get("honeypot")))
+        check("  so the verdict fails closed rather than reading low",
+              r5["risk_level"] == "unknown", r5["risk_level"])
+
 
 def test_a_honeypot_flag_is_read_by_its_holder_share():
     """W44, decided by the owner 2026-09-18: read the holder test as a share with a sample size.
