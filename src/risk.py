@@ -710,6 +710,27 @@ def _gap(kind, detail=""):
     return "%s: %s" % (kind, detail) if detail else kind
 
 
+def _our_coverage_gap(data_gaps, signals, dimension, source, detail, name, message):
+    """File one of our coverage gaps and the signal that says so, as one act.
+
+    E24's rule for that signal -- `info`, in the zero-weight `coverage` category, so our
+    own gap scores the token nothing and is never named the driver -- used to be carried to
+    each new site by hand. F2 carried it to the EVM twin; E31 did not carry it to the
+    Solana holder list, which then scored a clean, settled mint 4 and named itself the
+    driver (2026-09-21). Filed through here, the severity and the category are not a choice
+    any site makes, and the gap and its signal cannot drift apart in the source.
+    `test_every_data_gap_declares_which_of_three_things_it_is` fails on any
+    `_gap(_NOT_COVERED, ...)` written anywhere else.
+
+    `data_gaps` may be None where the caller has no list to file into (the Token-2022
+    reader, called without one); the signal is filed either way.
+    """
+    if data_gaps is not None:
+        data_gaps.append({"dimension": dimension, "source": source,
+                          "reason": _gap(_NOT_COVERED, detail)})
+    signals.append(_sig("info", name, message, "coverage"))
+
+
 
 def _score(signals):
     """Worst signal dominates, corroboration adds a little. Not a naive sum.
@@ -2607,10 +2628,6 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
         # Escaped on the way out: `chain` can be an observed name from upstream, and
         # upstream text does not get to write sentences in our voice.
         safe_chain = _ascii_safe(chain, 24)
-        data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
-                          "reason": _gap(_NOT_COVERED,
-                                         "the sell simulator does not cover %s"
-                                         % safe_chain)})
         # `info` in the zero-weight `coverage` category, for the reason the message itself
         # gives: this says nothing about the token, so it must not score the token. As
         # `warn`/`sellability` it was 30 weighted points plus a corroboration point for a
@@ -2627,13 +2644,15 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
         # this branch never fires in it and no benchmark number moves: the absence of a
         # moved number is not evidence that nothing was wrong.
         #
-        # The data gap above is what fail-closes the verdict to `unknown`. The signal only
-        # has to say so.
-        signals.append(_sig(
-            "info", "Sellability cannot be checked on this chain",
+        # The data gap is what fail-closes the verdict to `unknown`. The signal only has to
+        # say so.
+        _our_coverage_gap(
+            data_gaps, signals, "sellability", "honeypot.is",
+            "the sell simulator does not cover %s" % safe_chain,
+            "Sellability cannot be checked on this chain",
             "The sell-simulation service does not cover %s, so this token's sellability "
             "could not be tested. That is a gap in our coverage and says nothing about "
-            "the token." % safe_chain, "coverage"))
+            "the token." % safe_chain)
         return
 
     if hp is NO_DATA:
@@ -3102,17 +3121,14 @@ def _token2022_signals(rc, signals, evidence, established=False, data_gaps=None)
     live_unread = [k for k in unread if k in live]
     if live_unread:
         named = ", ".join(live_unread[:4])
-        if data_gaps is not None:
-            data_gaps.append({"dimension": "contract", "source": "rugcheck",
-                              "reason": _gap(_NOT_COVERED,
-                                             "this mint carries a Token-2022 extension "
-                                             "this engine does not read (%s)" % named)})
-        signals.append(_sig(
-            "info", "An extension on this mint was not read",
+        _our_coverage_gap(
+            data_gaps, signals, "contract", "rugcheck",
+            "this mint carries a Token-2022 extension this engine does not read (%s)" % named,
+            "An extension on this mint was not read",
             "The mint carries %s, which this engine does not grade -- it was added to the "
             "token program after the extensions here were written, so what it does to a "
             "sale has not been read either way. That is a gap in our coverage and says "
-            "nothing about the token." % named, "coverage"))
+            "nothing about the token." % named)
 
     if te.get("nonTransferable"):
         signals.append(_sig(
@@ -3451,9 +3467,6 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
     # answered `low` with `confidence: high` on a Token-2022 mint holding a live permanent
     # delegate. Found by a reader's comment on the Experiment C post, 2026-09-19, not by
     # us. DECISIONS E24.
-    data_gaps.append({"dimension": "sellability", "source": "rugcheck",
-                      "reason": _gap(_NOT_COVERED,
-                                     "the sell simulator does not cover solana")})
     # `info`, not `warn`: this is our gap, and a gap must not score the token. As `warn` it
     # was worth 30 weighted points plus a fourth bad category, which carried three of 34
     # live Solana mints from `unknown` past 70 into a confident `high` -- our own coverage
@@ -3461,12 +3474,13 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
     # won the `driver` tie against every warn-level finding, so an installed transfer hook
     # was reported behind the boilerplate. The data gap does the fail-closing; the signal
     # only has to say so.
-    signals.append(_sig(
-        "info", "Sellability was not tested on this chain",
+    _our_coverage_gap(
+        data_gaps, signals, "sellability", "rugcheck",
+        "the sell simulator does not cover solana",
+        "Sellability was not tested on this chain",
         "The sell-simulation service covers Ethereum, BSC and Base. On Solana nothing "
         "here tests whether you can sell -- RugCheck's report is a risk opinion, not a "
-        "sell test. That is a gap in our coverage and says nothing about the token.",
-        "coverage"))
+        "sell test. That is a gap in our coverage and says nothing about the token.")
 
     if rc is None:
         data_gaps.append({"dimension": "sellability", "source": "rugcheck",
@@ -3573,10 +3587,6 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
             seen = "%d minutes ago" % int(age_minutes)
             settles = ", and " + _SETTLES % max(
                 1, int(_RUGCHECK_SETTLING_MINUTES - age_minutes))
-        data_gaps.append({"dimension": "sellability", "source": "rugcheck",
-                          "reason": _gap(_NOT_COVERED,
-                                         "RugCheck's score is provisional on a mint it "
-                                         "indexed %s%s" % (seen, settles))})
         # The named risk items travel with this message, and they have to.
         #
         # A warn-level entry in `risks[]` reaches a caller **only** as the parenthesised
@@ -3588,13 +3598,15 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
         # statement of safety; RugCheck's stated concerns are not ours to drop, and a
         # caller losing them is strictly worse off than before the change.
         held = [_ascii_safe(r.get("name"), 60) for r in risks if r.get("name")]
-        signals.append(_sig(
-            "info", "RugCheck score is still provisional",
+        _our_coverage_gap(
+            data_gaps, signals, "sellability", "rugcheck",
+            "RugCheck's score is provisional on a mint it indexed %s%s" % (seen, settles),
+            "RugCheck score is still provisional",
             "RugCheck scored this %.0f/100 (%s), but it last indexed this mint %s and that "
             "score can keep moving for %d minutes or more afterwards. A low score this early "
             "is not evidence the token is clean, so it is not being read as one."
             % (normalised, "; ".join(held[:4]) if held else "no risk items",
-               seen, _RUGCHECK_SETTLING_MINUTES), "coverage"))
+               seen, _RUGCHECK_SETTLING_MINUTES))
         normalised = None
 
     evidence["rugcheck"] = {
@@ -3763,22 +3775,20 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
         # being filled on one evening's observation, two days after E27 fixed the number
         # of kinds at three; `docs/BACKLOG.md` W54 carries the experiment that would
         # settle its period and duty cycle first.
-        data_gaps.append({"dimension": "concentration", "source": "rugcheck",
-                          "reason": _gap(_NOT_COVERED,
-                                         "the report carried no holder distribution")})
-        # `coverage`, E24's rule for the signal beside our own gap: weight zero, so it scores
-        # the token nothing and can never be named the driver. E31 moved the gap to
-        # `_NOT_COVERED` and left this in `concentration` (weight 0.7), and on 2026-09-21 a
-        # clean, settled mint with no holder list came back score 4 with this as its driver
-        # -- the whole score, and the one reason given, were our coverage. F2 had already
-        # made the same correction on the EVM twin of E24's signal. The gap above still
-        # carries the dimension; the signal only has to say so.
-        signals.append(_sig(
-            "info", "Holder distribution unavailable",
+        # The signal is `coverage` -- E24's rule, which `_our_coverage_gap` now applies to
+        # every site. E31 moved this gap to `_NOT_COVERED` and left its signal in
+        # `concentration` (weight 0.7), and on 2026-09-21 a clean, settled mint with no
+        # holder list came back score 4 with this as its driver: the whole score, and the
+        # one reason given, were our coverage. The gap still carries the dimension; the
+        # signal only has to say so.
+        _our_coverage_gap(
+            data_gaps, signals, "concentration", "rugcheck",
+            "the report carried no holder distribution",
+            "Holder distribution unavailable",
             "RugCheck sent no holder list for this token, so concentration could not be "
             "checked. That is a gap in our coverage and says nothing about the token: "
             "this source carries holders for some mints and not others, and a retry does "
-            "not change which.", "coverage"))
+            "not change which.")
 
 
 # ---------------------------------------------------------------- the three tools

@@ -152,6 +152,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- The fourth-kind rationale says what the median can and cannot settle
 - "No trading pair found" reports an absence; it does not always observe one (W58)
 - An outage answer promises nothing about its retry, because the retry proved it wrong
 - An unknown with no gap at all no longer blames our coverage
@@ -159,9 +160,8 @@ problem looked like before it was fixed.
 - The settling durations in the engine are the re-run's, and the median is computed
 - Our missing Solana holder list was scoring the token and naming itself the driver
 - An unknown's guidance is composed per gap kind, and the whole table is generated
-- Regenerate the live unknown rate the production probe moved (49.6 -> 46.6)
 
-_98 more not shown (106 commits in total)._
+_99 more not shown (107 commits in total)._
 
 ## What I got wrong
 

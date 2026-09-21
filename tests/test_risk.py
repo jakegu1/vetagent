@@ -5542,35 +5542,38 @@ def test_every_data_gap_declares_which_of_three_things_it_is():
     # the EVM twin; E31 did not carry it to the holder list, and on 2026-09-21 a clean,
     # settled Solana mint with no holder list read `unknown` / score 4 with driver "Holder
     # distribution unavailable" (concentration, weight 0.7) -- our coverage gap as the
-    # named reason, and all four points. Third time on the same shape, so it is a rule now:
-    # every `_gap(_NOT_COVERED, ...)` site is found in the source, a sweep must reach each
-    # one, and the next signal filed from the same function call must be `coverage`.
-    sites = {}
-    for node in ast.walk(tree):
-        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
-                and node.func.id == "_gap" and node.args
-                and isinstance(node.args[0], ast.Name) and node.args[0].id == "_NOT_COVERED"):
-            stmt = min((s for s in ast.walk(tree) if isinstance(s, ast.stmt)
-                        and not isinstance(s, (ast.FunctionDef, ast.AsyncFunctionDef, ast.If,
-                                               ast.For, ast.While, ast.With, ast.Try))
-                        and s.lineno <= node.lineno <= (s.end_lineno or s.lineno)),
-                       key=lambda s: (s.end_lineno or s.lineno) - s.lineno)
-            sites[(stmt.lineno, stmt.end_lineno or stmt.lineno)] = None
-    check("the engine files our coverage gap from several sites", len(sites) >= 4,
-          str(sorted(sites)))
+    # named reason, and all four points. Third time on the same shape.
+    #
+    # The first guard for it traced each gap to the next signal its frame filed, and the
+    # E14 review showed that is not the same thing: move a site's signal above its gap and
+    # the rule blamed an unrelated signal; file a stray one first and it saw nothing.
+    # Pairing by order was a guess about which signal belongs to which gap. So nothing is
+    # paired any more: `_our_coverage_gap` files the gap and its signal as one act, with the
+    # severity and the category fixed, and no `_gap(_NOT_COVERED, ...)` may be written
+    # anywhere else.
+    def innermost(line):
+        fns = [f for f in ast.walk(tree) if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))
+               and f.lineno <= line <= (f.end_lineno or f.lineno)]
+        return min(fns, key=lambda f: (f.end_lineno or f.lineno) - f.lineno).name if fns else None
 
-    real_gap, real_sig = risk._gap, risk._sig
-    trail = []
-
-    def traced_gap(kind, detail=""):
-        trail.append((sys._getframe(1), "gap", kind, sys._getframe(1).f_lineno, None))
-        return real_gap(kind, detail)
-
-    def traced_sig(*a, **kw):
-        s = real_sig(*a, **kw)
-        trail.append((sys._getframe(1), "sig", s.get("category"), sys._getframe(1).f_lineno,
-                      s.get("name")))
-        return s
+    loose = ["risk.py:%d in %s" % (n.lineno, innermost(n.lineno)) for n in ast.walk(tree)
+             if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "_gap"
+             and n.args and isinstance(n.args[0], ast.Name) and n.args[0].id == "_NOT_COVERED"
+             and innermost(n.lineno) != "_our_coverage_gap"]
+    check("our coverage gap is filed only through _our_coverage_gap", not loose,
+          " | ".join(loose))
+    helper = getattr(risk, "_our_coverage_gap", None)
+    filed, said, alone = [], [], []
+    if helper:
+        helper(filed, said, "sellability", "x", "a detail", "A name", "A message.")
+        helper(None, alone, "contract", "x", "a detail", "A name", "A message.")
+    check("  and it files the gap with an info signal in the zero-weight coverage category",
+          len(filed) == 1 and str(filed[0].get("reason", "")).startswith(risk._NOT_COVERED)
+          and [(s["severity"], s["category"]) for s in said] == [("info", "coverage")]
+          and risk._CATEGORY_WEIGHT.get("coverage") == 0,
+          "%s / %s" % (filed, said))
+    check("  and files the signal even where there is no list to file the gap into",
+          [(s["severity"], s["category"]) for s in alone] == [("info", "coverage")], str(alone))
 
     unread = json.loads(json.dumps(_load("rc_pyusd.json")))
     unread["token_extensions"]["confidentialMintBurn"] = {
@@ -5584,31 +5587,29 @@ def test_every_data_gap_declares_which_of_three_things_it_is():
         ([("dexscreener", _load("ds_bonk.json")), ("rugcheck", unread)], PYUSD, None),
         ([("dexscreener", _load("ds_bonk.json")), ("rugcheck", no_holders)], BONK, None),
     ]
-    risk._gap, risk._sig = traced_gap, traced_sig
-    try:
-        for routes, address, hint in reach:
-            install_stub(routes, default=None)
-            run(risk.assess(address, chain_hint=hint))
-    finally:
-        risk._gap, risk._sig = real_gap, real_sig
-
-    beside = {}
-    for i, (frame, what, kind, line, _) in enumerate(trail):
-        if what != "gap" or kind != risk._NOT_COVERED:
-            continue
-        site = next((s for s in sites if s[0] <= line <= s[1]), ("?", line))
-        after = next((t for t in trail[i + 1:] if t[0] is frame), None)
-        beside[site] = (after[4], after[2]) if after and after[1] == "sig" else (None, None)
-    del trail[:]
-    unreached = sorted(s for s in sites if s not in beside)
-    check("  the sweep reaches every one of them", not unreached,
+    # Every place that files one is exercised, or a site could be dead code nobody tests.
+    # Asking this is what found that the sweep's "chain we do not cover" scenario had never
+    # reached that branch (section 4).
+    calls = sorted((n.lineno, n.end_lineno or n.lineno) for n in ast.walk(tree)
+                   if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+                   and n.func.id == "_our_coverage_gap")
+    check("  from several sites", len(calls) >= 4, str(calls))
+    reached = set()
+    if helper:
+        def traced(*a, **kw):
+            line = sys._getframe(1).f_lineno
+            reached.update(c for c in calls if c[0] <= line <= c[1])
+            return helper(*a, **kw)
+        risk._our_coverage_gap = traced
+        try:
+            for routes, address, hint in reach:
+                install_stub(routes, default=None)
+                run(risk.assess(address, chain_hint=hint))
+        finally:
+            risk._our_coverage_gap = helper
+    check("  and the sweep reaches every one of them", calls and set(calls) <= reached,
           "risk.py lines %s file our coverage gap and nothing here drives them -- add a "
-          "scenario, or this rule is blind there" % unreached)
-    wrong = ["risk.py:%s %r is %r" % (site[0], name, cat)
-             for site, (name, cat) in sorted(beside.items(), key=lambda kv: str(kv[0]))
-             if name is not None and cat != "coverage"]
-    check("  and every signal filed beside one is in the coverage category",
-          not wrong, " | ".join(wrong))
+          "scenario" % sorted(set(calls) - reached))
 
 
 # ---------------------------------------------------------------- main
