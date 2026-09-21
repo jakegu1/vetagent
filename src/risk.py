@@ -3516,8 +3516,9 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
     # live. How long is a distribution, not a number, and its two ends answer different
     # questions. On the six-hour re-run (bench/rugcheck_scores_rerun.jsonl, the 45 mints
     # caught within 10 minutes of their `detectedAt`) the median mint stopped changing band
-    # 12.7 minutes after it, and 22 of 45 never left their first band at all -- but a clean
-    # reading turned dangerous as late as 354 minutes, and that tail is right-censored
+    # 12.7 minutes after it, and 22 of 45 never left their first band at all (the 23 that
+    # moved took a median 63.4) -- but a clean reading turned dangerous as late as 354
+    # minutes, and that tail is right-censored
     # (W57). The window below is set by the tail, `_RUGCHECK_SETTLING_MINUTES`, because a
     # caller cannot be told which mint is a slow one. Two shapes from the first, 109-minute
     # run: one mint read 1 for four consecutive sweeps, about 45 minutes, and then 80;
@@ -3540,22 +3541,26 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
     # `established` below, whose third clause is `score_normalised <= 5`, gating permanent
     # delegate, pausable, close authority and freeze/mint between `critical` and `info`.
     #
-    # The prefix is `_NOT_COVERED` and not a fourth kind. **Not** on E31's ground, which
-    # was checked in the E14 review and does not transfer: E31 could show that its prefix
-    # changed nothing a caller acts on *because* `concentration` is not in
-    # `_CRITICAL_DIMENSIONS`, and this gap's dimension is `sellability`, which is. The
-    # ground is BACKLOG W54's own pre-registered bar -- propose a fourth kind if the
-    # *median* trough exceeds six hours, otherwise keep three and widen the wording -- read
-    # on the median, as it is written. Until 2026-09-21 the reason given here was the
-    # window: but the window is `_RUGCHECK_SETTLING_MINUTES`, exactly six hours, and it is
-    # the *maximum*, so it could not answer a bar set on the median. The median is 12.7
-    # minutes (above). It is censored like the maximum, so the honest statement is what it
-    # would take to be wrong: for the true median to reach six hours, 23 of the 45 would
-    # have to change band after the run ended -- when 22 of 45 never changed in six hours,
-    # and 3 moved at all in their last hour. W54 is still where a fourth kind is decided,
-    # and this gap is its first concrete instance: temporary, not closable by a retry, and
-    # with an expiry the engine already knows. So it states that expiry in the gap detail
-    # below rather than leaving a caller to infer a permanence that is not there.
+    # The prefix is `_NOT_COVERED` and not a fourth kind, and no measurement here settles
+    # that. **Not** on E31's ground, which was checked in the E14 review and does not
+    # transfer: E31 could show that its prefix changed nothing a caller acts on *because*
+    # `concentration` is not in `_CRITICAL_DIMENSIONS`, and this gap's dimension is
+    # `sellability`, which is. A fourth kind is BACKLOG W54's to propose, on a bar it
+    # pre-registered for holder coverage -- a *median* trough over six hours -- and a
+    # three-day run it has not made. Until 2026-09-21 the reason given here was this
+    # window, called well inside that bar: it is `_RUGCHECK_SETTLING_MINUTES`, exactly six
+    # hours, and it is the *maximum*, which cannot answer a bar set on a median.
+    #
+    # Read on its median, the phenomenon is far inside: 12.7 minutes (above). That median
+    # lands on the fastest mover, because 22 of 45 never moved; the 23 that moved took a
+    # median 63.4. It is censored like the maximum -- for the true median to reach six
+    # hours, 23 of the 45 would have to change band after the run ended, when 3 moved at
+    # all in their last hour. **But a caller does not wait out the phenomenon.** They wait
+    # out the window, the same for every fresh mint -- about six hours from `detectedAt`,
+    # sized by the slowest one -- and on that clock this gap sits at W54's bar, not under
+    # it. So it is recorded on W54 as that row's first concrete instance, one whose expiry
+    # the engine already knows, and it states that expiry in the gap detail below rather
+    # than leaving a caller to infer a permanence that is not there.
     age_minutes = _minutes_since_rugcheck_indexed(rc.get("detectedAt"))
     provisional = age_minutes is None or age_minutes < _RUGCHECK_SETTLING_MINUTES
     if normalised is not None and normalised < _RUGCHECK_WARN_BAND and provisional:

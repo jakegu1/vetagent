@@ -3909,7 +3909,7 @@ def _settling_figures():
             r = json.loads(line)
             if r.get("body") == "ok" and not r.get("immediate_retry"):
                 by.setdefault(r["mint"], []).append(r)
-    settle, never, late = [], 0, 0
+    settle, moved, never, late = [], [], 0, 0
     for g in by.values():
         g.sort(key=lambda r: r["sweep"])
         seen = datetime.datetime.fromtimestamp(g[0]["ts"], datetime.timezone.utc)
@@ -3922,10 +3922,13 @@ def _settling_figures():
         while k > 0 and bands[k - 1] == bands[-1]:
             k -= 1
         settle.append((g[k]["ts"] - born) / 60.0)
+        if len(set(bands)) > 1:
+            moved.append(settle[-1])
         never += len(set(bands)) == 1
         late += len(set(bands)) > 1 and g[k]["ts"] >= g[-1]["ts"] - 3600
     return {"n": len(settle), "median": statistics.median(settle), "max": max(settle),
-            "never": never, "late": late, "need": len(settle) // 2 + 1}
+            "never": never, "late": late, "need": len(settle) // 2 + 1,
+            "moved_median": statistics.median(moved), "moved": len(moved)}
 
 
 def test_the_settling_figures_in_the_engine_are_the_measured_ones():
@@ -3958,7 +3961,11 @@ def test_the_settling_figures_in_the_engine_are_the_measured_ones():
             ("how many never left their band", "%d of %d" % (f["never"], f["n"])),
             ("how many a six-hour median would need", "%d of the %d" % (f["need"], f["n"])),
             ("how many moved in their last hour", "%d moved at all" % f["late"]),
-            ("the latest change", "%d minutes" % int(f["max"]))):
+            ("the latest change", "%d minutes" % int(f["max"])),
+            # The E14 review of the first rewrite: with 22 of 45 never moving, the median
+            # of all 45 lands on the fastest mover, so the movers' own median is said too.
+            ("the median among the mints that moved",
+             "%d that moved took a median %.1f" % (f["moved"], f["moved_median"]))):
         check("the comment carries %s (%s)" % (what, text), text in block, block[:200])
     for stale in ("up to an hour", "far under six hours"):
         check("and no longer says %r" % stale, stale not in block, stale)

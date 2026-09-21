@@ -152,6 +152,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- "No trading pair found" reports an absence; it does not always observe one (W58)
 - An outage answer promises nothing about its retry, because the retry proved it wrong
 - An unknown with no gap at all no longer blames our coverage
 - W54: the provisional score is its first concrete instance, and its expiry is known
@@ -159,9 +160,8 @@ problem looked like before it was fixed.
 - Our missing Solana holder list was scoring the token and naming itself the driver
 - An unknown's guidance is composed per gap kind, and the whole table is generated
 - Regenerate the live unknown rate the production probe moved (49.6 -> 46.6)
-- A contract record we cannot read is not a record still to come
 
-_97 more not shown (105 commits in total)._
+_98 more not shown (106 commits in total)._
 
 ## What I got wrong
 
