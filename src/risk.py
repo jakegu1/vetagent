@@ -911,6 +911,21 @@ def _finalize(address, signals, evidence, data_gaps):
 # got 8 of 10 answered, and nothing shorter than the window can help.
 _RETRY_AFTER_SECONDS = 60
 
+# The one way a gap says when it closes on its own. `_rugcheck_signals` writes it and
+# `_unknown_guidance` reads it back, so the two cannot drift into different phrasings -- the
+# expiry was a pair of hand-typed fragments, one in each function, until 2026-09-21.
+_SETTLES = "settles about %d minutes from now"
+_SETTLES_READ = re.compile(r"settles about \d+ minutes? from now")
+
+
+def _expiry(gaps):
+    """The first expiry any of these gaps states, in its own words; "" when none does."""
+    for g in gaps:
+        m = _SETTLES_READ.search(str(g.get("reason", "")))
+        if m:
+            return m.group(0)
+    return ""
+
 
 def _unknown_guidance(result, data_gaps):
     """Say which kind of unknown this is, and what a caller should do about it.
@@ -921,65 +936,95 @@ def _unknown_guidance(result, data_gaps):
     apart learns to retry everything until an answer comes, and `unknown` stops meaning
     anything. The gap reasons already carry the distinction; `_finalize` uses the same
     prefix to decide the no-trace escalation. No new reason strings are invented here.
+
+    **Composed, not branched.** This was four branches, each written for one shape of gap
+    and each silent about the others, and the silence is where every defect in it lived.
+    F1 found the coverage branch swallowing an outage (Solana, RugCheck 503: 6e424a2 said
+    infrastructure/retry/60, 337b6b1 coverage/abstain/None). On 2026-09-21 the same shape
+    was still standing twice: an outage beside a fact about the token came back
+    `mixed`/`abstain` with no word about the outage -- 4 of the 36 production unknowns that
+    recorded a reason in the week to that day -- and an outage beside S6's provisional score
+    dropped the expiry, the one time the engine knew. And every branch that named two kinds
+    dropped a third: a fact about the token beside our coverage gap was never said at all.
+
+    So the triple is a function of which kinds are present and nothing else, and the
+    sentence is one clause per kind present -- no kind's clause can be removed by another
+    kind turning up. `test_every_data_gap_declares_which_of_three_things_it_is` generates
+    every combination and holds each to the rule and to its own sentence.
     """
     critical = [g for g in data_gaps if g.get("dimension") in _CRITICAL_DIMENSIONS] or \
         list(data_gaps)
-    ours = [g for g in critical if str(g.get("reason", "")).startswith(_OUR_GAP)]
-    # A chain we do not cover outranks everything else here, because it is the one gap no
-    # retry can close: telling a caller to retry a check this tool will never run on that
-    # chain spends their one retry (the /unknown page says "retry at most once") on nothing.
     not_covered = [g for g in critical
                    if str(g.get("reason", "")).startswith(_NOT_COVERED)]
     failed = [g for g in critical
               if str(g.get("reason", "")).startswith(_UPSTREAM_FAILED)]
-    # ...but "outranks" was written as "wins outright", and an answer can hold both at once.
-    # Solana is where it bites: the coverage gap is filed unconditionally on every answer
-    # (E24), so a RugCheck outage there arrived as coverage + infrastructure together and
-    # the coverage branch swallowed the whole thing -- `abstain`, no `retry_after_seconds`,
-    # and the sentence "a retry will not change it" with no mention that an upstream was
-    # down. On that chain RugCheck is the only source there is: it carries the Token-2022
-    # extensions, the mint and freeze authorities and the rug score, so retrying was not
-    # merely allowed, it was the one action worth taking, and the answer argued against it.
-    # Measured on RugCheck 503 + DexScreener 503: 6e424a2 infrastructure/retry/60,
-    # 337b6b1 coverage/abstain/None.
-    #
-    # Both are said, and the retry survives. The rating will stay `unknown` however the
-    # retry goes -- that is the coverage half -- so the sentence promises findings back,
-    # never a verdict.
-    if not_covered and failed:
-        result.update(unknown_kind="mixed", next_action="retry",
-                      retry_after_seconds=_RETRY_AFTER_SECONDS)
-        result["recommendation"] += (
-            " %s, so it cannot be rated here whatever else we learn: that is our coverage, "
-            "not a finding about the token. An upstream of ours also failed, which is "
-            "separate and temporary -- retry in about a minute to get back what it was "
-            "carrying, but the rating will still be `unknown`." % _not_covered_clause(not_covered))
-    elif not_covered:
+    # Everything that is not ours is the token's. E27 gave that a prefix of its own; a reason
+    # that forgot it is still read this way rather than dropped.
+    token = [g for g in critical if not str(g.get("reason", "")).startswith(_OUR_GAP)]
+
+    # The rule the /unknown page publishes: `retry` exactly when an upstream of ours failed,
+    # whatever else is missing beside it. A retry is worth making for what the outage hid,
+    # and it is not only findings that come back -- measured 2026-09-21 on the engine, an
+    # outage beside our Solana coverage gap retried into `high` ("Already rugged"), and an
+    # outage beside a token the simulator has no record of retried into `high` ("Nothing
+    # about this token can be verified"). Telling that caller to abstain threw the verdict
+    # away, on the half of this that was temporary.
+    if failed:
+        result.update(unknown_kind="mixed" if (not_covered or token) else "infrastructure",
+                      next_action="retry", retry_after_seconds=_RETRY_AFTER_SECONDS)
+    else:
         result.update(unknown_kind="coverage", next_action="abstain")
+
+    expiry = _expiry(not_covered)
+    if failed and not (not_covered or token):
+        result["recommendation"] += (" This was our upstream, not the token: retry in "
+                                     "about a minute.")
+        return
+    if not failed and not token:
+        # A chain we do not cover is the one gap no retry can close: telling a caller to
+        # retry a check this tool will never run spends their one retry (the /unknown page
+        # says "retry at most once") on nothing.
+        #
         # "A retry will not change it" is true of the retry a caller has -- about a minute
         # -- and it was the whole sentence until one of these gaps acquired a known expiry.
         # The provisional-score gap states when it settles, and the E14 review caught the
         # answer asserting flat permanence while its own `evidence.data_gaps` named the
         # number of minutes: the hedge had been added to the published page and not to the
         # sentence anyone actually reads. Same defect this file keeps writing down.
-        expiry = next((str(g.get("reason", "")).rsplit(", and ", 1)[-1]
-                       for g in not_covered if ", and settles about " in str(g.get("reason", ""))), "")
         result["recommendation"] += (
             " %s, so this cannot be rated: that is our coverage, not a finding about the "
             "token, and no retry you would make changes it%s."
             % (_not_covered_clause(not_covered),
                " (one part of it %s)" % expiry if expiry else ""))
-    elif critical and len(ours) == len(critical):
-        result.update(unknown_kind="infrastructure", next_action="retry",
-                      retry_after_seconds=_RETRY_AFTER_SECONDS)
-        result["recommendation"] += (" This was our upstream, not the token: retry in "
-                                     "about a minute.")
+        return
+    if not failed and not not_covered:
+        result["recommendation"] += " %s: do not retry into a trade." % _what_was_unseen(token)
+        return
+
+    # More than one kind: a clause for each, in the order a caller acts on them.
+    parts = []
+    if not_covered:
+        parts.append("%s: that is our coverage, not a finding about the token%s"
+                     % (_not_covered_clause(not_covered),
+                        ", and one part of it %s" % expiry if expiry else ""))
+    if token:
+        parts.append("%s: that is about the token, not us" % _what_was_unseen(token))
+    if failed:
+        parts.append("An upstream of ours also failed, which is separate and temporary -- "
+                     "retry in about a minute to get back what it was carrying")
+        # The floor, stated only where it holds. A gap on a critical dimension that no
+        # retry closes keeps this answer off `low` and `medium` whatever the retry brings;
+        # "the rating will still be `unknown`", which this said until 2026-09-21, was false
+        # -- see the two `high`s above. A gap with an expiry is not such a gap, and on its
+        # own does not earn the sentence.
+        if any(g.get("dimension") in _CRITICAL_DIMENSIONS and not _expiry([g])
+               for g in not_covered + token):
+            parts.append("That retry cannot make this `low` or `medium`, because the rest "
+                         "stays missing whatever it brings; it can bring back a finding, or "
+                         "a `high`")
     else:
-        result.update(unknown_kind="mixed" if ours else "coverage", next_action="abstain")
-        result["recommendation"] += (" %s: do not retry into a trade." % _what_was_unseen(critical)
-                                     if not ours else
-                                     " Part of this is the token itself: do not retry into "
-                                     "a trade.")
+        parts.append("No retry you would make changes either, so do not retry into a trade")
+    result["recommendation"] += " " + ". ".join(parts) + "."
 
 
 def _not_covered_clause(gaps):
@@ -996,6 +1041,14 @@ def _what_was_unseen(gaps):
 
     "No source can see this token" was said for all of them, including the commonest case in
     production -- a sell simulation that reverted on a pool a market source had just priced.
+
+    It is an observed absence of every market, and only one gap observes that: no trading
+    pair found. It was still the fallback until 2026-09-21, so a simulator with no record
+    got it too -- beside pools a source had priced (`coverage|sellability:no record`, twice
+    in production the week to that day) and, once an outage beside a fact about the token
+    started saying both halves, beside market sources that had not answered at all. Neither
+    is anyone seeing nothing. E11 in a sentence: an unobserved dimension in an observed
+    absence's words.
     """
     reasons = " ".join(str(g.get("reason", "")) for g in gaps)
     if "simulation failed" in reasons:
@@ -1004,7 +1057,12 @@ def _what_was_unseen(gaps):
     if _UNBACKED_REASON in reasons:
         return ("Its pools are priced only in assets whose value cannot be verified, so its "
                 "depth is unknown")
-    return "No source can see this token"
+    if "no trading pair found" in reasons:
+        return "No source can see this token"
+    if "has no record of this token" in reasons:
+        return ("The sell simulator has no record of this token, so it cannot be confirmed "
+                "sellable")
+    return "What came back about this token does not contain what the check needs"
 
 
 # ---------------------------------------------------------------- pool selection
@@ -3483,7 +3541,7 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
             # decision it is explaining: at 64.6 minutes a rounded "65" would tell a caller
             # the score had settled while the engine was withholding it.
             seen = "%d minutes ago" % int(age_minutes)
-            settles = ", and settles about %d minutes from now" % max(
+            settles = ", and " + _SETTLES % max(
                 1, int(_RUGCHECK_SETTLING_MINUTES - age_minutes))
         data_gaps.append({"dimension": "sellability", "source": "rugcheck",
                           "reason": _gap(_NOT_COVERED,

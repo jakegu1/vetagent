@@ -132,8 +132,9 @@ category. <code>null</code> when nothing above <code>ok</code> fired.</td></tr>
 <tr><td><code>confidence</code></td><td>How complete the input data was, not how safe the token
 is. An answer that leaned on cached data is at most <code>medium</code>.</td></tr>
 <tr><td><code>unknown_kind</code>, <code>next_action</code></td><td>Only on
-<code>unknown</code>: whether to retry (our upstream failed) or abstain (nothing can see the
-token, or we do not cover its chain). An answer can hold both, and then it says both.</td></tr>
+<code>unknown</code>: whether to retry (our upstream failed) or abstain (a fact about the token,
+or a chain we do not cover). An answer can hold both, and then it says both and retries for the
+half that is ours.</td></tr>
 <tr><td><code>checked_at</code>, <code>evidence_max_age_seconds</code></td><td>When the answer was
 made, and how old its oldest evidence is.</td></tr>
 </table>
@@ -204,7 +205,12 @@ will not change that. Either the token cannot be checked &mdash; no trading pair
 record, a sell simulation that reverted, no pool priced in an asset whose value can be verified
 &mdash; or this tool does not cover the chain, which is our gap and says nothing about the
 token: no sell simulator covers Solana. The recommendation names which.</td><td><code>abstain</code> &mdash; retrying will not change it</td></tr>
-<tr><td><code>mixed</code></td><td>Some of each. When one half is an upstream of ours that failed, <code>retry_after_seconds</code> is set and the retry is worth making for what it brings back &mdash; but if the other half is a chain we do not cover, or a fact about the token, the rating stays <code>unknown</code> however the retry goes. The recommendation says which halves are in play.</td><td><code>retry</code> when an upstream of ours failed, otherwise <code>abstain</code></td></tr>
+<tr><td><code>mixed</code></td><td>An upstream of ours failed, and beside it is something no retry
+closes: a chain we do not cover, or a fact about the token. The retry is worth making for what the
+outage hid, and it can change the answer &mdash; a finding, or a <code>high</code> &mdash; but it
+cannot make it <code>low</code> or <code>medium</code> while the other half is missing, and no retry
+closes that half. The recommendation says which halves are in play.</td><td><code>retry</code>, once,
+after <code>retry_after_seconds</code></td></tr>
 </table>
 <p>Retry at most once. An agent that retries every <code>unknown</code> until it gets an answer
 has turned "we could not check" into "we checked", which is exactly the mistake the verdict exists
@@ -270,7 +276,7 @@ daily reading of the live rate is in
 _UNKNOWN_JSONLD = """{"@context":"https://schema.org","@type":"FAQPage","url":"https://vetagent.dev/unknown",
 "mainEntity":[
 {"@type":"Question","name":"What does a risk_level of unknown mean in VetAgent?","acceptedAnswer":{"@type":"Answer","text":"A critical check - liquidity or sellability - could not be completed. It is not a low-risk result and must never be used to justify a trade."}},
-{"@type":"Question","name":"Should an AI agent retry an unknown answer?","acceptedAnswer":{"@type":"Answer","text":"Only when unknown_kind is infrastructure and next_action is retry, and only once, after retry_after_seconds. A coverage unknown will not change on retry: abstain. A mixed unknown sets retry_after_seconds when part of it was an upstream failure - that retry brings back what the outage hid, but the rating stays unknown."}},
+{"@type":"Question","name":"Should an AI agent retry an unknown answer?","acceptedAnswer":{"@type":"Answer","text":"Only when next_action is retry, which is exactly when an upstream of ours failed - unknown_kind infrastructure or mixed - and only once, after retry_after_seconds. A coverage unknown will not change on retry: abstain. A mixed unknown is that failure beside something no retry closes: the retry brings back what the outage hid, which can be a finding or a high, but never low or medium."}},
 {"@type":"Question","name":"Where does VetAgent say why an answer is unknown?","acceptedAnswer":{"@type":"Answer","text":"evidence.data_gaps lists each missing check with its reason. Every reason begins with one of three phrases: 'upstream request failed' (ours and temporary - retry once), 'our coverage gap' (ours not the token's - no retry you would make closes it, and the detail names an expiry when there is one) or 'about the token' (what came back does not contain it - do not retry)."}}]}"""
 
 UNKNOWN_HTML = _page(

@@ -3048,11 +3048,28 @@ def test_an_unknown_says_whether_to_retry_or_to_abstain():
     check("  and the sentence says not to retry into a trade",
           "do not retry" in r["recommendation"].lower(), r["recommendation"])
 
+    # Half ours and half the token's used to abstain, and this line pinned it as correct
+    # while the /unknown page said "retry when an upstream of ours failed". The page was
+    # right: a retry here is not only findings back. Measured 2026-09-21 on the engine, the
+    # same token with its market sources restored and still no simulator record came back
+    # `high` ("Nothing about this token can be verified"). Four of the 36 production
+    # unknowns with a recorded reason, in the week to that day, had exactly this shape --
+    # liquidity sources rate-limited, simulator no record -- and all four were told to
+    # abstain.
     r = finalize([ours[0], {"dimension": "sellability",
                             "reason": "the sell simulator has no record of this token"}])
-    check("half ours, half the token's is mixed, and abstains",
-          r.get("unknown_kind") == "mixed" and r.get("next_action") == "abstain",
-          "%s %s" % (r.get("unknown_kind"), r.get("next_action")))
+    check("half ours, half the token's is mixed, and retries for the half that is ours",
+          r.get("unknown_kind") == "mixed" and r.get("next_action") == "retry"
+          and r.get("retry_after_seconds") == 60,
+          "%s %s %s" % (r.get("unknown_kind"), r.get("next_action"),
+                        r.get("retry_after_seconds")))
+    check("  the sentence says both halves, and neither claims no source can see it",
+          "upstream" in r["recommendation"].lower()
+          and "no record" in r["recommendation"]
+          and "No source can see" not in r["recommendation"], r["recommendation"])
+    check("  and it states the floor rather than a rating it cannot promise",
+          "`low` or `medium`" in r["recommendation"]
+          and "still be `unknown`" not in r["recommendation"], r["recommendation"])
 
     # A permanent blind spot and a retryable outage in the SAME answer. Solana is where
     # this shape lives: the coverage gap is filed unconditionally, so every Solana answer
@@ -5045,35 +5062,219 @@ def test_every_data_gap_declares_which_of_three_things_it_is():
     check("no reason literal hand-writes one of the prefixes",
           not hand_written, " | ".join(hand_written))
 
-    # ---- 3. the prefix decides what the caller is told, and it decides it correctly ---
+    # ---- 3. every combination of kinds gets guidance that keeps its own promises -------
     #
-    # "The prefix matches the meaning" is only worth anything if the engine is actually
-    # reading it that way, so the truth table is checked against the engine, not asserted
-    # in prose.
-    def guidance(*reasons):
+    # This was five hand-written rows, and one of them pinned a defect as correct: "a
+    # finding plus an outage -> mixed / abstain", the shape the /unknown page says must
+    # retry, and the shape of 4 of the 36 production unknowns that recorded a reason in the
+    # week to 2026-09-21. Each gap shape added since -- F1's mixed retry, S6's provisional
+    # score -- was tested on its own row and nobody re-ran the table, which is how a gap
+    # carrying an expiry lost it the moment an outage stood next to it. So the rows are
+    # generated now: every non-empty subset of the atoms below, each held to the rule and to
+    # its own sentence. A new gap shape joins by being added to `atoms`; a new *kind*
+    # cannot exist (the checks at the top of this test).
+    #
+    # Not checked here, and open elsewhere: whether the clause naming a coverage gap names
+    # the right chain when the provisional gap stands alone (BACKLOG W55a), and whether an
+    # expiry should be a number rather than words (W54). This checks that the sentence
+    # carries what the gaps carry, and promises only what the triple does.
+    def guidance(gaps):
         r = {"recommendation": "x."}
-        risk._unknown_guidance(r, [{"dimension": "sellability", "reason": s} for s in reasons])
+        risk._unknown_guidance(r, [dict(g) for g in gaps])
         return r
 
-    covered = risk._gap(risk._NOT_COVERED, "the sell simulator does not cover solana")
-    outage = risk._gap(risk._UPSTREAM_FAILED)
-    finding = risk._gap(risk._ABOUT_TOKEN, "no trading pair found")
+    def kind_of(gap):
+        reason = str(gap.get("reason", ""))
+        return next((k for k in risk._GAP_KINDS if reason.startswith(k)), None)
 
-    table = [
-        ("our coverage gap alone", (covered,), "coverage", "abstain", False),
-        ("an outage alone", (outage,), "infrastructure", "retry", True),
-        ("a finding about the token alone", (finding,), "coverage", "abstain", False),
-        ("a blind spot plus an outage", (covered, outage), "mixed", "retry", True),
-        ("a finding plus an outage", (finding, outage), "mixed", "abstain", False),
-    ]
-    for label, reasons, kind, action, retries in table:
-        g = guidance(*reasons)
-        check("%s -> %s / %s" % (label, kind, action),
-              g.get("unknown_kind") == kind and g.get("next_action") == action,
-              "%s / %s" % (g.get("unknown_kind"), g.get("next_action")))
-        check("  and %s" % ("carries a retry time" if retries else "carries no retry time"),
-              (g.get("retry_after_seconds") == risk._RETRY_AFTER_SECONDS) == retries,
-              str(g.get("retry_after_seconds")))
+    # The engine's one way of stating an expiry. Read here rather than imported, so the
+    # guard does not go blind along with the engine if that phrase changes -- the positive
+    # control below fails instead.
+    expiry_of = re.compile(r"settles about \d+ minutes? from now")
+
+    # The provisional-score gap is taken from the engine, not typed here: its detail is
+    # built inline in `_rugcheck_signals`, and a hand-written copy is what drifts.
+    fresh = json.loads(json.dumps(_load("rc_pyusd.json")))
+    fresh["risks"], fresh["verification"], fresh["totalHolders"] = [], None, 0
+    fresh["score_normalised"] = 1
+    fresh["detectedAt"] = (datetime.datetime.now(datetime.timezone.utc)
+                           - datetime.timedelta(minutes=5)
+                           ).strftime("%Y-%m-%dT%H:%M:%S.000000000Z")
+    harvested = []
+    risk._rugcheck_signals(fresh, [], {}, harvested)
+    provisional = next((g for g in harvested if "provisional" in str(g.get("reason", ""))),
+                       None)
+    check("the engine still files a provisional-score gap to test with",
+          provisional is not None, str(harvested))
+    check("  and the guard can see the expiry it carries",
+          bool(provisional and expiry_of.search(str(provisional.get("reason", "")))),
+          str(provisional))
+    if provisional is None:
+        return
+
+    atoms = {
+        "coverage": {"dimension": "sellability", "source": "rugcheck",
+                     "reason": risk._gap(risk._NOT_COVERED,
+                                         "the sell simulator does not cover solana")},
+        "provisional": provisional,
+        "outage": {"dimension": "sellability", "source": "honeypot.is",
+                   "reason": risk._failed("honeypot.is")},
+        "no pair": {"dimension": "liquidity", "source": "dexscreener",
+                    "reason": risk._gap(risk._ABOUT_TOKEN, "no trading pair found")},
+        "no record": {"dimension": "sellability", "source": "honeypot.is",
+                      "reason": risk._gap(risk._ABOUT_TOKEN,
+                                          "the sell simulator has no record of this token")},
+        # W49's shape, and the one that reaches `_what_was_unseen`'s fallback: sources
+        # answered, and none stated a depth. Without it a mutant that put "No source can
+        # see this token" back as the fallback survived this whole table.
+        "no depth": {"dimension": "liquidity", "source": "dexscreener+geckoterminal",
+                     "reason": risk._gap(risk._ABOUT_TOKEN, "no source reported pool depth")},
+    }
+    # Outside the critical dimensions: the guidance must not move for it (E31's claim).
+    beside = {"dimension": "concentration", "source": "rugcheck",
+              "reason": risk._gap(risk._NOT_COVERED,
+                                  "the report carried no holder distribution")}
+    check("  every kind is represented among the atoms",
+          {kind_of(a) for a in atoms.values()} == set(risk._GAP_KINDS),
+          str({n: kind_of(a) for n, a in atoms.items()}))
+
+    import itertools
+    rows = [combo for n in range(1, len(atoms) + 1)
+            for combo in itertools.combinations(sorted(atoms), n)]
+    check("the table is every combination, not a sample",
+          len(rows) == 2 ** len(atoms) - 1, "%d rows" % len(rows))
+
+    broken = {k: [] for k in ("rule", "action", "named", "expiry", "rating", "unseen",
+                              "beside")}
+    for combo in rows:
+        gaps = [atoms[n] for n in combo]
+        g = guidance(gaps)
+        rec = g["recommendation"]
+        label = " + ".join(combo)
+        kinds = {kind_of(a) for a in gaps}
+        failed = risk._UPSTREAM_FAILED in kinds
+        rest = [a for a in gaps if kind_of(a) != risk._UPSTREAM_FAILED]
+
+        # The rule the /unknown page publishes: retry exactly when an upstream of ours
+        # failed; `infrastructure` when that is all there is, `mixed` when it is not.
+        want = ("infrastructure" if kinds == {risk._UPSTREAM_FAILED} else
+                "mixed" if failed else "coverage",
+                "retry" if failed else "abstain",
+                risk._RETRY_AFTER_SECONDS if failed else "absent")
+        got = (g.get("unknown_kind"), g.get("next_action"),
+               g.get("retry_after_seconds", "absent"))
+        if got != want:
+            broken["rule"].append("%s: %s, want %s" % (label, got, want))
+
+        # The sentence promises what the triple says, and nothing else.
+        # ("do not retry into a trade" contains "retry in", so the invitation is matched
+        # whole.)
+        invites = "retry in about a minute" in rec
+        if failed and not invites:
+            broken["action"].append("%s: an outage, and no retry offered with a time"
+                                    % label)
+        if not failed and (invites or not ("no retry you would make" in rec
+                                           or "do not retry" in rec)):
+            broken["action"].append("%s: abstain without saying a retry will not help"
+                                    % label)
+
+        # Every kind present is said. A branch that names one kind and drops another is
+        # F1's shape, and it is what this whole test exists to find.
+        missing = []
+        if risk._NOT_COVERED in kinds and "our coverage" not in rec:
+            missing.append("our coverage")
+        if failed and "upstream" not in rec.lower():
+            missing.append("the outage")
+        token = [a for a in gaps if kind_of(a) == risk._ABOUT_TOKEN]
+        if token and risk._what_was_unseen(token) not in rec:
+            missing.append("the token's own reason (%r)" % risk._what_was_unseen(token))
+        if missing:
+            broken["named"].append("%s: never says %s" % (label, ", ".join(missing)))
+
+        # An expiry the evidence names is an expiry the sentence names -- in every
+        # combination, not only in the one row that introduced it.
+        for a in gaps:
+            m = expiry_of.search(str(a.get("reason", "")))
+            if m and m.group(0) not in rec:
+                broken["expiry"].append("%s: drops %r" % (label, m.group(0)))
+
+        # What a retry can and cannot do to the rating, measured rather than asserted:
+        # after an outage beside our coverage gap, the retry came back `high` ("Already
+        # rugged"); beside a fact about the token, `high` as well ("Nothing about this
+        # token can be verified"). So "the rating will still be unknown" is false on both
+        # halves. What is true is that a gap no retry closes keeps it off `low`/`medium`.
+        holds = [a for a in rest if not expiry_of.search(str(a.get("reason", "")))]
+        if failed and holds and "`low` or `medium`" not in rec:
+            broken["rating"].append("%s: an outage beside a gap no retry closes, and "
+                                    "the floor not stated" % label)
+        if re.search(r"still be `?unknown|stays `?unknown|whatever else we learn", rec):
+            broken["rating"].append("%s: promises the rating stays unknown" % label)
+
+        # "No source can see this token" is an observed absence of every market source,
+        # and only one gap observes that. A simulator with no record, next to pools a
+        # source priced or sources that did not answer, is not it (E11).
+        if "No source can see" in rec and not any(
+                "no trading pair found" in str(a.get("reason", "")) for a in gaps):
+            broken["unseen"].append("%s: claims no source can see the token" % label)
+
+        if guidance(gaps + [beside]) != g:
+            broken["beside"].append("%s: moved by a non-critical gap" % label)
+
+    said = {
+        "rule": "the triple follows the published rule",
+        "action": "the sentence promises what next_action says",
+        "named": "every kind of gap present is named in the sentence",
+        "expiry": "every expiry in the evidence is in the sentence",
+        "rating": "a retry never promises the rating stays unknown, and states the floor",
+        "unseen": "'no source can see' only on an observed absence of every market",
+        "beside": "a gap outside the critical dimensions moves nothing",
+    }
+    for key, text in said.items():
+        check("%s, in all %d combinations" % (text, len(rows)), not broken[key],
+              " | ".join(broken[key]))
+
+    # ---- 3b. and the published rule is the one the engine runs ------------------------
+    #
+    # The table above is the engine. A caller reads the rule from elsewhere, and each place
+    # drifted on its own: the MCP tool description said "'coverage' or 'mixed' come with
+    # next_action 'abstain'" from before F1 until 2026-09-21, and the /unknown page
+    # promised "the rating stays unknown however the retry goes", which two retries that
+    # came back `high` disproved. So what each kind does is read off the generated rows,
+    # not typed here, and each surface that maps kinds to actions is held to it.
+    import pages
+    runs = {}
+    for combo in rows:
+        g = guidance([atoms[n] for n in combo])
+        runs.setdefault(g["unknown_kind"], set()).add(g["next_action"])
+    for kind in sorted(runs):
+        m = re.search(r"<tr><td><code>%s</code></td><td>.*?</td><td>(.*?)</td></tr>" % kind,
+                      pages.UNKNOWN_HTML, re.S)
+        stated = set(re.findall(r"<code>(retry|abstain)</code>", m.group(1))) if m else None
+        check("the /unknown table gives %s the action the engine runs" % kind,
+              stated == runs[kind], "page %s, engine %s" % (stated, sorted(runs[kind])))
+
+    desc = [t for t in mcp_server_tools() if t["name"] == "assess_token_risk"][0]["description"]
+    named = set()
+    for clause in desc.split(";"):
+        kinds = set(re.findall(r"'(infrastructure|coverage|mixed)'", clause))
+        acts = set(re.findall(r"'(retry|abstain)'", clause))
+        named |= kinds
+        for kind in kinds & set(runs):
+            check("the tool description gives %s the action the engine runs" % kind,
+                  not acts or acts == runs[kind],
+                  "clause %r says %s, engine %s" % (clause.strip()[:90], sorted(acts),
+                                                    sorted(runs[kind])))
+    check("  and it names every kind the engine produces", set(runs) <= named,
+          "missing %s" % sorted(set(runs) - named))
+
+    # What the retries measured, held on every surface that speaks for the engine.
+    for where, text in (("/unknown", pages.UNKNOWN_HTML), ("/api", pages.API_HTML),
+                        ("the tool description", desc)):
+        check("%s does not promise a retried answer stays unknown" % where,
+              not re.search(r"(stays|still be|remains?) (<code>)?`?unknown", text),
+              re.search(r".{60}(stays|still be|remains?) (<code>)?`?unknown.{20}", text,
+                        re.S).group(0) if re.search(r"(stays|still be|remains?) (<code>)?`?unknown",
+                                                    text) else "")
 
     # ---- 4. and the strings the engine really emits conform ---------------------------
     #
