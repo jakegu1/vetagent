@@ -80,14 +80,25 @@ def check(name, condition, detail=""):
         print("  FAIL  %s  %s" % (name, detail))
 
 
+# What `_load` returns for a record that exists and cannot be read.
+_UNREADABLE = object()
+
+
 def _load():
+    """The record; None when there is no file; `_UNREADABLE` when there is one we cannot read.
+
+    Those are different facts and they used to be one None, so a truncated or conflicted
+    record read as "no record yet" -- the absence of a file impersonated by a file we
+    failed to read.
+    """
     if not os.path.exists(STATUS):
         return None
     try:
         with open(STATUS, encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
     except (OSError, ValueError):
-        return None
+        return _UNREADABLE
+    return data if isinstance(data, dict) else _UNREADABLE
 
 
 def _today():
@@ -119,6 +130,11 @@ def test_the_contract_monitor_has_a_record():
     """
     print("\n[observed] the daily contract record exists and is current")
     data = _load()
+    if data is _UNREADABLE:
+        check("the record on disk can be read", False,
+              "%s exists but is not a JSON object -- a truncated write or a conflicted "
+              "merge, not a record still to come" % os.path.relpath(STATUS, ROOT))
+        return
     if data is None:
         where = os.path.relpath(STATUS, ROOT)
         late = (_today() - FIRST_RECORD_DUE).days
@@ -149,8 +165,9 @@ def test_no_upstream_has_been_unobserved_for_a_week():
     print("\n[observed] no upstream has gone unwatched for more than %d days"
           % MAX_BLIND_DAYS)
     data = _load()
-    if data is None:
-        print("  NOTE  no record yet; nothing to judge")
+    if data is None or data is _UNREADABLE:
+        # Nothing to judge here; the record check above says which of the two it is.
+        print("  NOTE  no readable record; nothing to judge")
         return
     history = [h for h in (data.get("history") or []) if isinstance(h, dict)]
     history.sort(key=lambda h: h.get("date") or "")
@@ -250,6 +267,29 @@ def test_a_record_that_never_arrives_goes_red_after_its_due_date():
           FIRST_RECORD_DUE.isoformat() in row,
           "E30 does not carry %s; a due date moved in one place only is a date moved "
           "silently" % FIRST_RECORD_DUE)
+
+
+def test_a_record_that_cannot_be_read_is_not_a_missing_one():
+    """A file we could not read is not the absence of a file.
+
+    Both used to come back from `_load` as None, so a truncated or conflicted record read
+    as "no record yet; production.yml writes it on its next run" -- inside the due window a
+    pass, after it a failure blaming a writer that had written. Judged inside the window
+    here, so the due date cannot be what makes it red.
+    """
+    import tempfile
+    print("\n[observed] an unreadable record is a failure, not a record still to come")
+    for label, body in (("not JSON", '{"date": "2026-09-2'), ("not an object", '["green"]')):
+        # Beside this file, not in the system temp dir: that can sit on another drive,
+        # where the path the check prints cannot be made relative to the repository.
+        fd, path = tempfile.mkstemp(suffix=".json", dir=HERE)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(body)
+            failed, said = _record_check_fails(FIRST_RECORD_DUE, path)
+        finally:
+            os.remove(path)
+        check("a record that is %s fails, even inside the due window" % label, failed, said)
 
 
 def main():
