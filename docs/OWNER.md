@@ -125,7 +125,7 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **17 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **18 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -152,6 +152,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- An outage answer promises nothing about its retry, because the retry proved it wrong
 - An unknown with no gap at all no longer blames our coverage
 - W54: the provisional score is its first concrete instance, and its expiry is known
 - The settling durations in the engine are the re-run's, and the median is computed
@@ -159,9 +160,8 @@ problem looked like before it was fixed.
 - An unknown's guidance is composed per gap kind, and the whole table is generated
 - Regenerate the live unknown rate the production probe moved (49.6 -> 46.6)
 - A contract record we cannot read is not a record still to come
-- The guard that watches for lasting blindness had no end to its own "not yet"
 
-_96 more not shown (104 commits in total)._
+_97 more not shown (105 commits in total)._
 
 ## What I got wrong
 

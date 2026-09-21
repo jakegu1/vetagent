@@ -5397,9 +5397,11 @@ def test_every_data_gap_declares_which_of_three_things_it_is():
                      r"|cannot make (this|it) `?low|never `?low", rec):
             broken["rating"].append("%s: promises a rating the retry may not return" % label)
 
-        # "No source can see this token" is an observed absence of every market source,
-        # and only one gap observes that. A simulator with no record, next to pools a
-        # source priced or sources that did not answer, is not it (E11).
+        # "No source can see this token" claims an observed absence of every market source,
+        # and only one gap reports that. A simulator with no record, next to pools a source
+        # priced or sources that did not answer, is not it (E11). This holds the sentence
+        # to the gap; whether the loader files that gap truthfully is BACKLOG W58, which
+        # this table cannot see.
         if "No source can see" in rec and not any(
                 "no trading pair found" in str(a.get("reason", "")) for a in gaps):
             broken["unseen"].append("%s: claims no source can see the token" % label)

@@ -1046,13 +1046,17 @@ def _what_was_unseen(gaps):
     "No source can see this token" was said for all of them, including the commonest case in
     production -- a sell simulation that reverted on a pool a market source had just priced.
 
-    It is an observed absence of every market, and only one gap observes that: no trading
-    pair found. It was still the fallback until 2026-09-21, so a simulator with no record
-    got it too -- beside pools a source had priced (`coverage|sellability:no record`, twice
-    in production the week to that day) and, once an outage beside a fact about the token
-    started saying both halves, beside market sources that had not answered at all. Neither
-    is anyone seeing nothing. E11 in a sentence: an unobserved dimension in an observed
-    absence's words.
+    It claims an observed absence of every market, and only one gap reports that: no
+    trading pair found. It was still the fallback until 2026-09-21, so a simulator with no
+    record got it too -- beside pools a source had priced (`coverage|sellability:no record`,
+    twice in production the week to that day) and, once an outage beside a fact about the
+    token started saying both halves, beside market sources that had not answered at all.
+    Neither is anyone seeing nothing. E11 in a sentence: an unobserved dimension in an
+    observed absence's words.
+
+    This function can only be as truthful as the gap it reads. `_load_pairs` also files "no
+    trading pair found" when DexScreener answered empty and every GeckoTerminal request
+    failed, so this sentence inherits that until the loader stops (BACKLOG W58).
     """
     reasons = " ".join(str(g.get("reason", "")) for g in gaps)
     if "simulation failed" in reasons:
