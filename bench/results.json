@@ -102,7 +102,7 @@
     "high_or_medium": 0.40974212034383956,
     "low": 0.32664756446991405,
     "unknown": 0.2636103151862464,
-    "mean_score": 25.828080229226362
+    "mean_score": 25.799426934097422
    }
   },
   "contract_only": {
@@ -1968,7 +1968,7 @@
    "liquidity_usd": 3.48586,
    "gap_reasons": [],
    "verdict": "medium",
-   "score": 58,
+   "score": 48,
    "confidence": "high",
    "verdict_ablated": "low",
    "score_ablated": 0,

@@ -450,6 +450,11 @@ _UPSTREAM_STATUS = re.compile(r"\b(dexscreener|coingecko|geckoterminal|honeypot\
 
 # Gap reasons, reduced to a fixed vocabulary. Order matters: the first phrase found wins.
 _GAP_CLASSES = (
+    # Before "does not cover", which would otherwise never be reached by this reason --
+    # and it must be reachable: this is the one instrument that can say how often the
+    # provisional-score gap fires, and an unnamed reason lands in `other` beside every
+    # future unclassified gap, which is the same shape as not measuring it at all.
+    ("score is provisional", "score provisional"),
     ("does not cover", "chain not covered"),
     ("distinct-seller", "contested"),
     ("no record", "no record"),

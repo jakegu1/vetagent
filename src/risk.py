@@ -12,7 +12,7 @@ import contextvars
 import statistics
 import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 try:  # Workers runtime
     from workers import fetch as cf_fetch
@@ -956,9 +956,19 @@ def _unknown_guidance(result, data_gaps):
             "carrying, but the rating will still be `unknown`." % _not_covered_clause(not_covered))
     elif not_covered:
         result.update(unknown_kind="coverage", next_action="abstain")
+        # "A retry will not change it" is true of the retry a caller has -- about a minute
+        # -- and it was the whole sentence until one of these gaps acquired a known expiry.
+        # The provisional-score gap states when it settles, and the E14 review caught the
+        # answer asserting flat permanence while its own `evidence.data_gaps` named the
+        # number of minutes: the hedge had been added to the published page and not to the
+        # sentence anyone actually reads. Same defect this file keeps writing down.
+        expiry = next((str(g.get("reason", "")).rsplit(", and ", 1)[-1]
+                       for g in not_covered if ", and settles about " in str(g.get("reason", ""))), "")
         result["recommendation"] += (
             " %s, so this cannot be rated: that is our coverage, not a finding about the "
-            "token, and a retry will not change it." % _not_covered_clause(not_covered))
+            "token, and no retry you would make changes it%s."
+            % (_not_covered_clause(not_covered),
+               " (one part of it %s)" % expiry if expiry else ""))
     elif critical and len(ours) == len(critical):
         result.update(unknown_kind="infrastructure", next_action="retry",
                       retry_after_seconds=_RETRY_AFTER_SECONDS)
@@ -3273,6 +3283,88 @@ def _token2022_signals(rc, signals, evidence, established=False, data_gaps=None)
             "units is not the quantity that transfers.", "contract"))
 
 
+# How long RugCheck's normalised score keeps moving after that upstream last indexed a
+# mint, and the band below which a score is a statement of safety rather than of danger.
+#
+# **This number was 65 for one afternoon and 65 was wrong by a factor of five.** It came
+# from a 109-minute run, and a 109-minute run cannot observe a six-hour effect -- the same
+# error the W52 row already confesses to once at three sweeps. The pre-registered six-hour
+# re-run (72 sweeps, 45 mints caught within 10 minutes of their own detectedAt, 2026-09-21)
+# measured it properly: **9 of those 45 read a clean 1/100 and later turned dangerous**,
+# and the latest such flip landed at **354 minutes**. At 65 minutes, five of those nine
+# would still have been handed to a caller as "RugCheck passed".
+#
+# 360 is the largest value this run can support and it is a **lower bound, not a settling
+# time**: three of the nine flips happened in the final 35 minutes of a 366-minute run, so
+# the distribution is right-censored and the true tail is unmeasured. BACKLOG W57 carries
+# the longer run that would find it. Set here rather than higher because a window beyond
+# the run length would be a number no measurement in this repository supports.
+#
+# What the number really says, and it is worth saying plainly: at 360 minutes this
+# withholds **99% of all clean readings on freshly indexed mints** (1747 of 1768 sub-20
+# observations). The threshold is not discriminating between good young mints and bad
+# ones -- it is recording that a clean RugCheck score carries no information about a mint
+# this upstream has only just indexed. Established mints are untouched: every one of the
+# 18 majors carries an index stamp months or years old.
+_RUGCHECK_SETTLING_MINUTES = 360
+_RUGCHECK_WARN_BAND = 20
+
+
+# A `detectedAt` slightly in the future is this machine and that upstream disagreeing about
+# the time. One far in the future is a value we cannot read, and treating it as "extremely
+# fresh" would pin a token provisional for as long as the stamp says, with nothing to
+# distinguish it from a genuinely new mint.
+_CLOCK_SKEW_MINUTES = 5
+
+# Deliberately strict, and it requires the offset. See `_minutes_since_rugcheck_indexed`.
+_ISO_STAMP = re.compile(r"^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})"
+                        r"(?:\.(\d+))?(Z|[+-]\d{2}:?\d{2})$")
+
+
+def _minutes_since_rugcheck_indexed(detected_at):
+    """Minutes since RugCheck last indexed this mint, or None if we could not read it.
+
+    **`detectedAt` is not the token's age**, and the name it is given upstream invites
+    exactly that reading. Measured 2026-09-21 across the 18 majors: USDC, WSOL and USDT
+    carry stamps from 2026-04-15 within nineteen seconds of each other, and WSOL is the
+    native SOL wrapper -- mints years older than the date they are stamped with. Ten more
+    majors share a single 2024-05-29 00:40-00:53 cluster. The field records when that
+    upstream last indexed a mint, which is the right clock for "has this score finished
+    moving" and the wrong one for "how old is this token". Only the first is asked here.
+
+    Two refusals, both in the fail-closed direction, both from the E14 review:
+
+    * **The offset is part of the instant.** This read `str(detected_at)[:19]` and declared
+      the remainder UTC, which moves a `-05:00` stamp five hours into the past -- far
+      enough to walk a genuinely fresh mint out of the settling window and hand back the
+      clean bill this whole guard exists to withhold. Every mint measured sends `Z` today;
+      that is a fact about one afternoon, and this file has been surprised by an upstream
+      changing a shape three times already.
+    * **A naive stamp is ambiguous, not UTC.** With no offset there is nothing to say which
+      clock it came from, so it is unreadable rather than assumed.
+
+    None means the age was not observed, which is never the same as observing a settled
+    mint. What that costs is the caller's decision, not this function's.
+    """
+    m = _ISO_STAMP.match(str(detected_at or "").strip())
+    if not m:
+        return None
+    year, mon, day, hh, mm, ss, frac, offset = m.groups()
+    try:
+        seen = datetime(int(year), int(mon), int(day), int(hh), int(mm), int(ss),
+                        int((frac or "0").ljust(6, "0")[:6]), tzinfo=timezone.utc)
+    except ValueError:
+        return None
+    if offset != "Z":
+        digits = offset[1:].replace(":", "")
+        shift = timedelta(hours=int(digits[:2]), minutes=int(digits[2:]))
+        seen = seen - shift if offset[0] == "+" else seen + shift
+    age = (datetime.now(timezone.utc) - seen).total_seconds() / 60.0
+    if age < -_CLOCK_SKEW_MINUTES:
+        return None
+    return max(age, 0.0)
+
+
 def _rugcheck_signals(rc, signals, evidence, data_gaps):
     """Read RugCheck (Solana).
 
@@ -3348,6 +3440,74 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
         normalised = None
     else:
         normalised = _num(raw_normalised)
+
+    # A clean score from a mint this upstream has only just seen is not a clean bill.
+    #
+    # `score_normalised` is provisional for up to an hour after RugCheck's own
+    # `detectedAt`, and only on mints it has just detected -- which is precisely the hour a
+    # permanent-delegate scam is live. Two measured shapes: one mint read 1 for four
+    # consecutive sweeps, about 45 minutes, and then 80; another read 80, 80, 1, 80, 80,
+    # leaving a band and coming back, which no genuine re-evaluation explains. `1` arrives
+    # with `risks: []`, so it is indistinguishable by shape or by type from a mint that was
+    # checked and is clean. That is the E11 failure on a *value* instead of a field.
+    #
+    # **One-directional, and that is the design.** Only the reassuring reading is withheld.
+    # A provisional score saying "dangerous" is still acted on, because acting on it is the
+    # conservative move and because in both measured cases the *clean* reading was the
+    # wrong one. Suppressing the alarming reading too would be fail-open, which is the one
+    # direction this file may never move in.
+    #
+    # `normalised` is reassigned rather than shadowed because every downstream reader wants
+    # the same thing: the score we are willing to act on. The number as sent stays in
+    # `evidence.rugcheck.score_normalised`, so a caller can always see what we were told.
+    # It reaches two readers, and the second is the one that made this worth fixing --
+    # `established` below, whose third clause is `score_normalised <= 5`, gating permanent
+    # delegate, pausable, close authority and freeze/mint between `critical` and `info`.
+    #
+    # The prefix is `_NOT_COVERED` and not a fourth kind. **Not** on E31's ground, which
+    # was checked in the E14 review and does not transfer: E31 could show that its prefix
+    # changed nothing a caller acts on *because* `concentration` is not in
+    # `_CRITICAL_DIMENSIONS`, and this gap's dimension is `sellability`, which is. The
+    # ground that does hold is BACKLOG W54's own pre-registered bar -- propose a fourth
+    # kind if the median trough exceeds six hours, otherwise keep three and widen the
+    # wording. This window is bounded by `_RUGCHECK_SETTLING_MINUTES` by construction, far
+    # under six hours, and the engine knows the bound -- so it states it in the gap detail
+    # below rather than leaving a caller to infer a permanence that is not there.
+    age_minutes = _minutes_since_rugcheck_indexed(rc.get("detectedAt"))
+    provisional = age_minutes is None or age_minutes < _RUGCHECK_SETTLING_MINUTES
+    if normalised is not None and normalised < _RUGCHECK_WARN_BAND and provisional:
+        if age_minutes is None:
+            seen, settles = "at a time we could not read", ""
+        else:
+            # Floored rather than rounded, so the sentence can never contradict the
+            # decision it is explaining: at 64.6 minutes a rounded "65" would tell a caller
+            # the score had settled while the engine was withholding it.
+            seen = "%d minutes ago" % int(age_minutes)
+            settles = ", and settles about %d minutes from now" % max(
+                1, int(_RUGCHECK_SETTLING_MINUTES - age_minutes))
+        data_gaps.append({"dimension": "sellability", "source": "rugcheck",
+                          "reason": _gap(_NOT_COVERED,
+                                         "RugCheck's score is provisional on a mint it "
+                                         "indexed %s%s" % (seen, settles))})
+        # The named risk items travel with this message, and they have to.
+        #
+        # A warn-level entry in `risks[]` reaches a caller **only** as the parenthesised
+        # detail on the band signal below -- that is deliberate, so one entry is not
+        # double-counted as its own signal. But withholding the score removed the band
+        # signal, and the names went with it: the E14 review measured "Fee config enabled"
+        # disappearing from a mint impersonating MSFT, and "Mutable metadata" from BONK.
+        # That is the opposite of one-directional. We decline to read this score as a
+        # statement of safety; RugCheck's stated concerns are not ours to drop, and a
+        # caller losing them is strictly worse off than before the change.
+        held = [_ascii_safe(r.get("name"), 60) for r in risks if r.get("name")]
+        signals.append(_sig(
+            "info", "RugCheck score is still provisional",
+            "RugCheck scored this %.0f/100 (%s), but it last indexed this mint %s and that "
+            "score keeps moving for about %d minutes afterwards. A low score this early is "
+            "not evidence the token is clean, so it is not being read as one."
+            % (normalised, "; ".join(held[:4]) if held else "no risk items",
+               seen, _RUGCHECK_SETTLING_MINUTES), "coverage"))
+        normalised = None
 
     evidence["rugcheck"] = {
         "rugged": rc.get("rugged"),

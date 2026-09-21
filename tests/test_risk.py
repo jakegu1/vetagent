@@ -3799,6 +3799,229 @@ def test_output_is_compact():
           str(risk._sig_round("0.000566716962961376896743")))
 
 
+def test_a_provisional_rugcheck_score_is_not_a_clean_bill_of_health():
+    """The clean reading from a mint RugCheck has only just seen is not evidence.
+
+    W52 measured `score_normalised` moving for up to an hour after that upstream's own
+    `detectedAt`, and only on freshly detected mints. W53 found the second reader of that
+    same number: `established`'s third clause, `score_normalised <= 5`, which gates
+    `permanentDelegate`, `pausableConfig`, `mintCloseAuthority` and freeze/mint between
+    `critical` and `info`. Reproduced on the PYUSD body with `risks` emptied and
+    `verification` nulled, moving nothing but that one integer: **6** gives `high` / 70
+    naming "An anonymous issuer can take your balance", **5** gives `unknown` / 4 with
+    every gated signal at `info` and a recommendation that names none of them.
+
+    The suppression here is deliberately **one-directional**, and that is the whole design.
+    A provisional score that says "dangerous" is still heeded: acting on it is the
+    conservative move, and both measured cases -- `dd` reading 1 for 45 minutes before
+    settling at 80, `wApe` reading 80, 80, 1, 80 -- had the *clean* reading as the wrong
+    one. Suppressing the alarming reading too would be fail-open, which is the direction
+    this file exists to refuse.
+
+    Nothing here touches established issuers. E9 rated Circle's USDC `high` / 80 on freeze
+    plus mint while RugCheck scored it 1/100, and `established` is what stopped that; the
+    18 majors were all `verification: true` when this was written, so that clause carries
+    them regardless of age or score.
+    """
+    print("\n[rugcheck] a score from a mint just detected is not a passing grade")
+
+    def fresh_body(score, minutes_old, **over):
+        rc = json.loads(json.dumps(_load("rc_pyusd.json")))
+        rc["risks"], rc["verification"], rc["totalHolders"] = [], None, 0
+        rc["score_normalised"] = score
+        rc["detectedAt"] = (datetime.datetime.now(datetime.timezone.utc)
+                            - datetime.timedelta(minutes=minutes_old)
+                            ).strftime("%Y-%m-%dT%H:%M:%S.000000000Z")
+        rc.update(over)
+        install_stub([("dexscreener", _load("ds_bonk.json")), ("rugcheck", rc)])
+        return run(risk.assess(BONK))
+
+    def sev(r, name):
+        return next((s["severity"] for s in r["signals"] if s["name"] == name), None)
+
+    # --- a clean score from a mint detected one minute ago -------------------------
+    r = fresh_body(1, 1)
+    names = [s["name"] for s in r["signals"]]
+    check("no passing grade is claimed on a provisional score",
+          not any("RugCheck passed" in n for n in names), str(names))
+    gaps = (r.get("evidence") or {}).get("data_gaps") or []
+    check("and it is filed as a gap",
+          any("provisional" in str(g.get("reason", "")) for g in gaps), str(gaps))
+    check("  filed as our coverage, not as a finding about the token",
+          any(str(g.get("reason", "")).startswith(risk._NOT_COVERED)
+              for g in gaps if "provisional" in str(g.get("reason", ""))), str(gaps))
+    check("the permanent delegate is not silenced by it",
+          sev(r, "An anonymous issuer can take your balance") == "critical",
+          str({s["name"]: s["severity"] for s in r["signals"]}))
+    check("nor is the retained admin authority",
+          sev(r, "Anonymous issuer retains admin authority") == "critical",
+          str({s["name"]: s["severity"] for s in r["signals"]}))
+    check("  so the answer is not a quiet unknown", r["risk_level"] == "high",
+          "%s / %s" % (r["risk_level"], r.get("risk_score")))
+
+    # --- the same body, old enough that the score has settled ----------------------
+    old = fresh_body(1, 60 * 48)
+    names = [s["name"] for s in old["signals"]]
+    check("a settled clean score still passes",
+          any("RugCheck passed" in n for n in names), str(names))
+    check("  and still grades the delegate as established",
+          sev(old, "A permanent delegate can move your balance") == "info",
+          str({s["name"]: s["severity"] for s in old["signals"]}))
+
+    # --- one-directional: a provisional *alarming* score is still heeded ------------
+    hot = fresh_body(80, 1)
+    check("a provisional dangerous score is NOT suppressed",
+          any("RugCheck rates this high risk" in s["name"] for s in hot["signals"]),
+          str([s["name"] for s in hot["signals"]]))
+
+    # --- E9 regression: a verified issuer is untouched by any of this ---------------
+    usdc = fresh_body(1, 1, verification={"jup_verified": True, "jup_strict": True})
+    check("a verified issuer is still established on a fresh report",
+          sev(usdc, "A permanent delegate can move your balance") == "info",
+          str({s["name"]: s["severity"] for s in usdc["signals"]}))
+    check("  and is never rated high on authorities alone",
+          usdc["risk_level"] != "high",
+          "%s / %s" % (usdc["risk_level"], usdc.get("risk_score")))
+
+    # --- an unreadable detectedAt is an unobserved age, not a settled one -----------
+    # `None` short-circuits before the parser, so a stamp that is present and unreadable
+    # is a different path and the one an upstream change would actually produce.
+    for label, stamp in (("missing", None),
+                         ("epoch seconds", "1789921280"),
+                         ("no offset at all", "2026-09-20T15:08:06"),
+                         ("not a date", "soon")):
+        blind = fresh_body(1, 1, detectedAt=stamp)
+        check("an unreadable detectedAt (%s) buys no passing grade" % label,
+              not any("RugCheck passed" in s["name"] for s in blind["signals"]),
+              str([s["name"] for s in blind["signals"]]))
+
+    # --- the offset is part of the instant -----------------------------------------
+    # This is the fail-open the E14 review measured: truncating `-05:00` and calling the
+    # rest UTC moves a two-minute-old mint five hours into the past, straight out of the
+    # settling window and back to a clean bill. Every mint measured sends `Z` today, which
+    # is a fact about one afternoon.
+    now = datetime.datetime.now(datetime.timezone.utc)
+    for off_label, delta, suffix in (("Z", 0, "Z"),
+                                     ("-05:00", -5, "-05:00"),
+                                     ("+08:00", 8, "+08:00")):
+        stamp = (now - datetime.timedelta(minutes=2)
+                 + datetime.timedelta(hours=delta)).strftime("%Y-%m-%dT%H:%M:%S") + suffix
+        r_off = fresh_body(1, 1, detectedAt=stamp)
+        check("a 2-minute-old mint stamped %s is still provisional" % off_label,
+              not any("RugCheck passed" in s["name"] for s in r_off["signals"]),
+              "%s -> %s" % (stamp, [s["name"] for s in r_off["signals"]]))
+
+    # --- both constants are pinned, or neither is guarded --------------------------
+    # 25 mutations were run against this test: it caught every structural one and missed
+    # *both numbers*, which are the entire content of W52 and W53. A guard that would not
+    # notice the settling window shrink to five minutes is not guarding W52. Ages and
+    # scores below are therefore derived from the constants, never written as literals.
+    settle = risk._RUGCHECK_SETTLING_MINUTES
+    band = risk._RUGCHECK_WARN_BAND
+    # Pinned to the measurement, not derived from the constant. Deriving the ages below
+    # from `settle` was the first attempt and it is worthless: the cases move with the
+    # constant, so the window can be set to 5 or to 2879 and every check stays green. The
+    # constant IS the measurement -- W52's last observed move lands 65 minutes after the
+    # mint's own detectedAt -- so the number is asserted here the way every other published
+    # figure in this repository is.
+    check("the settling window is still the measured 360 minutes", settle == 360,
+          "_RUGCHECK_SETTLING_MINUTES=%r; if a re-run moved it, move this with the "
+          "evidence" % settle)
+    # Literal ages that bracket the measured window from both sides. 354 minutes is the
+    # latest clean-to-dangerous flip the six-hour re-run observed (Lobby: a clean 1 for
+    # 354 minutes, then 75). A window that does not cover it does not cover the case it
+    # was built from -- and at 65 minutes, the value this carried for one afternoon, five
+    # of the nine observed flips were still handed over as "RugCheck passed".
+    for label, minutes in (("the 44-minute case from the first run", 44),
+                           ("the 128-minute TRILLIONS flip", 128),
+                           ("the 354-minute Lobby flip, the latest observed", 354)):
+        late = fresh_body(1, minutes)
+        check("%s is still provisional" % label,
+              not any("RugCheck passed" in s["name"] for s in late["signals"]),
+              str([s["name"] for s in late["signals"]]))
+    long_settled = fresh_body(1, 60 * 12)
+    check("a twelve-hour-old mint is settled and passes normally",
+          any("RugCheck passed" in s["name"] for s in long_settled["signals"]),
+          str([s["name"] for s in long_settled["signals"]]))
+
+    # The band must not swallow the warn signal: widening it past 20 is the fail-open
+    # direction, and nothing else in the suite would notice.
+    at_band = fresh_body(band, 1)
+    check("a provisional score AT the warn band still warns",
+          any("RugCheck rates this medium risk" in s["name"] for s in at_band["signals"]),
+          str([s["name"] for s in at_band["signals"]]))
+    under_band = fresh_body(band - 1, 1)
+    check("and one just under it is withheld",
+          not any("RugCheck passed" in s["name"] for s in under_band["signals"]),
+          str([s["name"] for s in under_band["signals"]]))
+
+    # The clause this exists to protect is `score_normalised <= 5`. If the withheld band
+    # ever stops covering it, a provisional score buys `established` again -- W53 restored.
+    check("the withheld band covers established's own clause", band > 5,
+          "_RUGCHECK_WARN_BAND=%r must exceed the <=5 clause" % band)
+    for edge in (5, 6):
+        r_edge = fresh_body(edge, 1)
+        check("a provisional %d does not silence the delegate" % edge,
+              sev(r_edge, "An anonymous issuer can take your balance") == "critical",
+              str({s["name"]: s["severity"] for s in r_edge["signals"]}))
+
+    # --- the gap must be said, and must score nothing ------------------------------
+    prov = next((s for s in r["signals"]
+                 if s["name"] == "RugCheck score is still provisional"), None)
+    check("the withheld score is announced, not silently dropped", prov is not None,
+          str([s["name"] for s in r["signals"]]))
+    if prov:
+        check("  as info, in the zero-weight coverage category",
+              (prov["severity"], prov["category"]) == ("info", "coverage"), str(prov))
+        check("  and it names when the score settles",
+              "settles about" in str([g.get("reason") for g in gaps]),
+              str([g.get("reason") for g in gaps]))
+    # Our own gap must not add a point to someone else's token (E24's lesson, measured).
+    settled_score = fresh_body(1, settle + 2).get("risk_score")
+    check("withholding the score adds nothing to the risk score",
+          r.get("risk_score") == 70 and settled_score == 4,
+          "provisional=%s settled=%s" % (r.get("risk_score"), settled_score))
+
+    # --- withholding the reassurance must not withhold the concerns ----------------
+    # The E14 review measured this: a warn-level `risks[]` entry reaches a caller only as
+    # the detail on the band signal, so dropping the band signal dropped the names too --
+    # "Fee config enabled" vanished from a mint impersonating MSFT. Suppressing RugCheck's
+    # concerns along with its reassurance is the opposite of one-directional, and leaves a
+    # caller strictly worse off than before the change.
+    named = fresh_body(10, 1, risks=[{"name": "Fee config enabled", "level": "warn"},
+                                     {"name": "Mutable metadata", "level": "warn"}])
+    text = " ".join(s.get("message", "") for s in named["signals"])
+    for item in ("Fee config enabled", "Mutable metadata"):
+        check("a withheld score still reports %r" % item, item in text, text[:240])
+
+    # --- the answer must not claim a permanence its own evidence contradicts -------
+    # Read on an answer that actually reaches `unknown`: `_unknown_guidance` writes this
+    # sentence, and the delegate body above fires `high` before it ever runs.
+    quiet = fresh_body(1, 3, token_extensions={}, freezeAuthority=None, mintAuthority=None)
+    rec = quiet.get("recommendation") or ""
+    q_reasons = " ".join(str(g.get("reason", ""))
+                         for g in (quiet["evidence"].get("data_gaps") or []))
+    check("the unknown verdict is what this reads", quiet["risk_level"] == "unknown",
+          "%s / %s" % (quiet["risk_level"], quiet.get("risk_score")))
+    check("the recommendation does not assert a flat 'retry will not change it'",
+          "a retry will not change it" not in rec, rec[:240])
+    check("  and when the evidence names an expiry, so does the sentence",
+          ("settles about" not in q_reasons) or ("settles about" in rec), rec[:240])
+
+    # --- the suppression is not quietly conditional on anything else ---------------
+    # Two plausible "refinements" that both restore the defect: only withhold when the
+    # report is otherwise empty. A provisional 1 with a decorative risk entry, or with a
+    # handful of holders, is still a provisional 1.
+    noisy = fresh_body(1, 1, risks=[{"name": "Low amount of LP Providers", "level": "warn"}])
+    check("a provisional score with a risk entry is still withheld",
+          not any("RugCheck passed" in s["name"] for s in noisy["signals"]),
+          str([s["name"] for s in noisy["signals"]]))
+    held = fresh_body(1, 1, totalHolders=42)
+    check("a provisional score with a few holders is still withheld",
+          not any("RugCheck passed" in s["name"] for s in held["signals"]),
+          str([s["name"] for s in held["signals"]]))
+
+
 def test_solana_rugcheck_signals():
     """Regression: the Solana path used to read one raw score on the wrong scale.
 

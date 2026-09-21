@@ -1,6 +1,6 @@
 {
- "engine_paths": 122,
- "measured_utc": "2026-09-20T08:57:44Z",
+ "engine_paths": 123,
+ "measured_utc": "2026-09-20T16:46:21Z",
  "rule": {
   "min_for_share": 8,
   "value_band": 0.4
@@ -248,6 +248,7 @@
     "data.[].attributes.base_token_price_quote_token": {
      "key": 0.875,
      "types": [
+      "null",
       "str"
      ],
      "value": 0.875
@@ -297,6 +298,7 @@
     "data.[].attributes.reserve_in_usd": {
      "key": 0.875,
      "types": [
+      "null",
       "str"
      ],
      "value": 0.875
@@ -617,6 +619,13 @@
   "rugcheck": {
    "asked": 16,
    "paths": {
+    "detectedAt": {
+     "key": 1.0,
+     "types": [
+      "str"
+     ],
+     "value": 1.0
+    },
     "freezeAuthority": {
      "key": 1.0,
      "types": [

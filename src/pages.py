@@ -225,9 +225,12 @@ your agent needs to decide what to do next. The detail after it is for a human r
 <tr><th>Reason begins with</th><th>Means</th><th>Worth retrying?</th></tr>
 <tr><td><code>upstream request failed</code></td><td>Ours, and temporary: a source did not answer.
 The parentheses say what each one returned.</td><td>Yes, once</td></tr>
-<tr><td><code>our coverage gap</code></td><td>Ours, and permanent: we do not run this check here.
-No sell simulator covers Solana, and honeypot.is covers only Ethereum, BSC and Base &mdash; on any
-other chain the sell test is a gap of ours and says nothing about the token.</td><td>No</td></tr>
+<tr><td><code>our coverage gap</code></td><td>Ours, not the token's, and it takes three shapes: we
+do not run this check here, or the one source that carries it has nothing for this mint, or what it
+sent is not yet usable. No sell simulator covers Solana, and honeypot.is covers only Ethereum, BSC
+and Base &mdash; on any other chain the sell test is a gap of ours and says nothing about the token.
+The detail after the prefix says which shape, and names an expiry when there is one.</td><td>No &mdash;
+not on any retry you would make</td></tr>
 <tr><td><code>about the token</code></td><td>What came back does not contain it. A finding, or the
 absence of one.</td><td>No</td></tr>
 </table>
@@ -268,7 +271,7 @@ _UNKNOWN_JSONLD = """{"@context":"https://schema.org","@type":"FAQPage","url":"h
 "mainEntity":[
 {"@type":"Question","name":"What does a risk_level of unknown mean in VetAgent?","acceptedAnswer":{"@type":"Answer","text":"A critical check - liquidity or sellability - could not be completed. It is not a low-risk result and must never be used to justify a trade."}},
 {"@type":"Question","name":"Should an AI agent retry an unknown answer?","acceptedAnswer":{"@type":"Answer","text":"Only when unknown_kind is infrastructure and next_action is retry, and only once, after retry_after_seconds. A coverage unknown will not change on retry: abstain. A mixed unknown sets retry_after_seconds when part of it was an upstream failure - that retry brings back what the outage hid, but the rating stays unknown."}},
-{"@type":"Question","name":"Where does VetAgent say why an answer is unknown?","acceptedAnswer":{"@type":"Answer","text":"evidence.data_gaps lists each missing check with its reason. Every reason begins with one of three phrases: 'upstream request failed' (ours and temporary - retry once), 'our coverage gap' (ours and permanent - do not retry) or 'about the token' (what came back does not contain it - do not retry)."}}]}"""
+{"@type":"Question","name":"Where does VetAgent say why an answer is unknown?","acceptedAnswer":{"@type":"Answer","text":"evidence.data_gaps lists each missing check with its reason. Every reason begins with one of three phrases: 'upstream request failed' (ours and temporary - retry once), 'our coverage gap' (ours not the token's - no retry you would make closes it, and the detail names an expiry when there is one) or 'about the token' (what came back does not contain it - do not retry)."}}]}"""
 
 UNKNOWN_HTML = _page(
     "/unknown", "What 'unknown' means in a token risk check, and what an AI agent should do - VetAgent",
