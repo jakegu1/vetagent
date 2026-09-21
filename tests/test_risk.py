@@ -3067,8 +3067,9 @@ def test_an_unknown_says_whether_to_retry_or_to_abstain():
           "upstream" in r["recommendation"].lower()
           and "no record" in r["recommendation"]
           and "No source can see" not in r["recommendation"], r["recommendation"])
-    check("  and it states the floor rather than a rating it cannot promise",
-          "`low` or `medium`" in r["recommendation"]
+    check("  and it promises no rating: the retry can change any of it",
+          "can change any of it" in r["recommendation"]
+          and "`low` or `medium`" not in r["recommendation"]
           and "still be `unknown`" not in r["recommendation"], r["recommendation"])
 
     # A permanent blind spot and a retryable outage in the SAME answer. Solana is where
@@ -3109,6 +3110,78 @@ def test_an_unknown_says_whether_to_retry_or_to_abstain():
 def mcp_server_tools():
     import mcp_server
     return mcp_server.TOOLS
+
+
+def test_what_an_outage_answer_promises_is_what_the_retry_returns():
+    """A sentence about what a retry will bring back is checked against the retry.
+
+    379e95f told every `mixed` caller "That retry cannot make this `low` or `medium`,
+    because the rest stays missing whatever it brings". The E14 review of it, before it was
+    pushed, retried and got `low` three ways on EVM -- because "the rest" was worked out
+    without what the outage hid. The chain and the pool the simulator is asked about come
+    from the market sources, so when those fail: with no hint it is asked with no chain and
+    says "no record"; with a hint its own pool reverts and there is no pool of ours for the
+    second chance; with a hint the observed pools would override, the coverage gap itself
+    is an artifact. The rating a retry returns can move either way, and the tests that
+    pinned the floor had asserted a sentence rather than asked a retry.
+
+    So each case below is asked twice -- the outage, then the same token with the failed
+    sources answering -- and whatever the first answer promises about the second has to
+    hold. Two retries measured `high` and three measured `low`, so the promise that survives
+    is none, and the first answer has to say so.
+    """
+    print("\n[unknown] what an outage answer promises is what the retry returns")
+    down = [("dexscreener", None), ("coingecko", None), ("geckoterminal", None)]
+    rugged = json.loads(json.dumps(_load("rc_bonk.json")))
+    rugged["rugged"] = True
+    cases = [
+        ("EVM, no hint: the simulator asked with no chain",
+         WETH, None,
+         down + [("chainID=", _load("hp_matic.json")), ("honeypot.is", risk.NO_DATA)],
+         [("dexscreener", _load("ds_weth.json")), ("chainID=", _load("hp_matic.json")),
+          ("honeypot.is", risk.NO_DATA)]),
+        ("EVM, hint ethereum: no pool of ours for the second chance",
+         WETH, "ethereum",
+         down + [("&pair=", _load("hp_matic.json")),
+                 ("honeypot.is", _load("hp_align_simfail.json"))],
+         [("dexscreener", _load("ds_weth.json")), ("&pair=", _load("hp_matic.json")),
+          ("honeypot.is", _load("hp_align_simfail.json"))]),
+        ("EVM, hint polygon: the coverage gap the outage made",
+         MATIC, "polygon",
+         down + [("honeypot.is", _load("hp_matic.json"))],
+         [("dexscreener", _load("ds_matic.json")), ("honeypot.is", _load("hp_matic.json"))]),
+        ("EVM, a token nothing lists once the market answers",
+         MATIC, "ethereum",
+         down + [("honeypot.is", risk.NO_DATA)],
+         [("dexscreener", {"schemaVersion": "1.0.0", "pairs": []}),
+          ("geckoterminal", {"data": []}), ("coingecko", {"data": []}),
+          ("honeypot.is", risk.NO_DATA)]),
+        ("Solana, RugCheck down, then a rugged report",
+         BONK, None, [], [("dexscreener", _load("ds_bonk.json")), ("rugcheck", rugged)]),
+    ]
+    outcomes = []
+    for label, address, hint, first, again in cases:
+        install_stub(first, default=None)
+        r1 = run(risk.assess(address, chain_hint=hint))
+        install_stub(again, default=None)
+        r2 = run(risk.assess(address, chain_hint=hint))
+        outcomes.append(r2["risk_level"])
+        rec = r1["recommendation"]
+        check("%s: the outage answer is a mixed retry" % label,
+              (r1["risk_level"], r1.get("unknown_kind"), r1.get("next_action"))
+              == ("unknown", "mixed", "retry"),
+              "%s / %s / %s" % (r1["risk_level"], r1.get("unknown_kind"), r1.get("next_action")))
+        floor = "cannot make this `low` or `medium`" in rec
+        stays = bool(re.search(r"(stays|still be|remains?) `?unknown", rec))
+        check("  and what it promises about the retry held (retry: %s)" % r2["risk_level"],
+              not (floor and r2["risk_level"] in ("low", "medium"))
+              and not (stays and r2["risk_level"] != "unknown"),
+              "promised %s, the retry returned %s: %s"
+              % ("never low/medium" if floor else "stays unknown", r2["risk_level"], rec))
+        check("  and it says the retry can change the rest",
+              "can change any of it" in rec, rec)
+    check("the retries really did move both ways",
+          "low" in outcomes and "high" in outcomes, str(outcomes))
 
 
 def test_turnover_is_measured_over_the_token_not_one_pool():
@@ -5311,17 +5384,18 @@ def test_every_data_gap_declares_which_of_three_things_it_is():
             if m and m.group(0) not in rec:
                 broken["expiry"].append("%s: drops %r" % (label, m.group(0)))
 
-        # What a retry can and cannot do to the rating, measured rather than asserted:
-        # after an outage beside our coverage gap, the retry came back `high` ("Already
-        # rugged"); beside a fact about the token, `high` as well ("Nothing about this
-        # token can be verified"). So "the rating will still be unknown" is false on both
-        # halves. What is true is that a gap no retry closes keeps it off `low`/`medium`.
-        holds = [a for a in rest if not expiry_of.search(str(a.get("reason", "")))]
-        if failed and holds and "`low` or `medium`" not in rec:
-            broken["rating"].append("%s: an outage beside a gap no retry closes, and "
-                                    "the floor not stated" % label)
-        if re.search(r"still be `?unknown|stays `?unknown|whatever else we learn", rec):
-            broken["rating"].append("%s: promises the rating stays unknown" % label)
+        # What a retry will return is not promised, because each promise tried here was
+        # measured false: "the rating will still be unknown" (retries came back `high`) and
+        # its replacement, "that retry cannot make this `low` or `medium`" (three EVM
+        # retries came back `low` -- the rest of the answer is worked out from what the
+        # outage hid). `test_what_an_outage_answer_promises_is_what_the_retry_returns` asks
+        # the retry itself; this holds every combination to what that found.
+        if failed and rest and "can change any of it" not in rec:
+            broken["rating"].append("%s: an outage beside other gaps, and no word that the "
+                                    "retry can change them" % label)
+        if re.search(r"(stays|still be|remains?) `?unknown|whatever else we learn"
+                     r"|cannot make (this|it) `?low|never `?low", rec):
+            broken["rating"].append("%s: promises a rating the retry may not return" % label)
 
         # "No source can see this token" is an observed absence of every market source,
         # and only one gap observes that. A simulator with no record, next to pools a
@@ -5340,7 +5414,7 @@ def test_every_data_gap_declares_which_of_three_things_it_is():
         "action": "the sentence promises what next_action says",
         "named": "every kind of gap present is named in the sentence, and none that is not",
         "expiry": "every expiry in the evidence is in the sentence",
-        "rating": "a retry never promises the rating stays unknown, and states the floor",
+        "rating": "an outage answer promises no rating for its retry, and says so",
         "unseen": "'no source can see' only on an observed absence of every market",
         "beside": "a gap outside the critical dimensions moves nothing",
     }
@@ -5382,14 +5456,19 @@ def test_every_data_gap_declares_which_of_three_things_it_is():
     check("  and it names every kind the engine produces", set(runs) <= named,
           "missing %s" % sorted(set(runs) - named))
 
-    # What the retries measured, held on every surface that speaks for the engine.
+    # What the retries measured, held on every surface that speaks for the engine: no
+    # sentence about a retry may promise what the retried answer will be, in either
+    # direction. Sentence by sentence, because "the answer is `unknown` -- never `low` or
+    # `medium`" is the fail-closed rule itself, true, and about no retry at all.
+    promise = re.compile(r"(stays|still be|remains?) (<code>)?`?unknown"
+                         r"|(cannot make (this|it)|never) (<code>)?`?low")
     for where, text in (("/unknown", pages.UNKNOWN_HTML), ("/api", pages.API_HTML),
                         ("the tool description", desc)):
-        check("%s does not promise a retried answer stays unknown" % where,
-              not re.search(r"(stays|still be|remains?) (<code>)?`?unknown", text),
-              re.search(r".{60}(stays|still be|remains?) (<code>)?`?unknown.{20}", text,
-                        re.S).group(0) if re.search(r"(stays|still be|remains?) (<code>)?`?unknown",
-                                                    text) else "")
+        flat = " ".join(re.sub(r"<[^>]+>", "", text).split())
+        said = [s for s in re.split(r"(?<=[.;])\s", flat)
+                if re.search(r"\bretr", s) and promise.search(s)]
+        check("%s promises no rating for a retried answer" % where, not said,
+              " | ".join(s[:160] for s in said))
 
     # ---- 4. and the strings the engine really emits conform ---------------------------
     #

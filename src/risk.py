@@ -965,10 +965,10 @@ def _unknown_guidance(result, data_gaps):
     # The rule the /unknown page publishes: `retry` exactly when an upstream of ours failed,
     # whatever else is missing beside it. A retry is worth making for what the outage hid,
     # and it is not only findings that come back -- measured 2026-09-21 on the engine, an
-    # outage beside our Solana coverage gap retried into `high` ("Already rugged"), and an
+    # outage beside our Solana coverage gap retried into `high` ("Already rugged"), an
     # outage beside a token the simulator has no record of retried into `high` ("Nothing
-    # about this token can be verified"). Telling that caller to abstain threw the verdict
-    # away, on the half of this that was temporary.
+    # about this token can be verified"), and three EVM outages retried into `low`. Telling
+    # those callers to abstain threw the verdict away, on the half that was temporary.
     if failed:
         result.update(unknown_kind="mixed" if (not_covered or token) else "infrastructure",
                       next_action="retry", retry_after_seconds=_RETRY_AFTER_SECONDS)
@@ -1013,18 +1013,19 @@ def _unknown_guidance(result, data_gaps):
     if token:
         parts.append("%s: that is about the token, not us" % _what_was_unseen(token))
     if failed:
+        # No promise about the rating the retry will return, because none survived being
+        # checked. "The rating will still be `unknown`" was false (the two `high`s above).
+        # Its replacement, "that retry cannot make this `low` or `medium`", lasted until the
+        # E14 review of it retried and got `low` three ways on EVM, before it was pushed:
+        # the rest of the answer is worked out *from* what the outage hid. The chain and the
+        # pool the simulator is asked about come from the market sources, so with those down
+        # it is asked with no chain ("no record"), or has no pool of ours for its second
+        # chance ("simulation failed"), or is told a hinted chain the observed pools would
+        # have overridden ("our coverage gap: ... does not cover polygon"). What is true is
+        # the one thing said: the retry can change any of it, in either direction.
         parts.append("An upstream of ours also failed, which is separate and temporary -- "
-                     "retry in about a minute to get back what it was carrying")
-        # The floor, stated only where it holds. A gap on a critical dimension that no
-        # retry closes keeps this answer off `low` and `medium` whatever the retry brings;
-        # "the rating will still be `unknown`", which this said until 2026-09-21, was false
-        # -- see the two `high`s above. A gap with an expiry is not such a gap, and on its
-        # own does not earn the sentence.
-        if any(g.get("dimension") in _CRITICAL_DIMENSIONS and not _expiry([g])
-               for g in not_covered + token):
-            parts.append("That retry cannot make this `low` or `medium`, because the rest "
-                         "stays missing whatever it brings; it can bring back a finding, or "
-                         "a `high`")
+                     "retry in about a minute. The rest of this answer was worked out "
+                     "without what it was carrying, so the retry can change any of it")
     else:
         parts.append("No retry you would make changes either, so do not retry into a trade")
     result["recommendation"] += " " + ". ".join(parts) + "."
