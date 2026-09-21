@@ -152,16 +152,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- W54: the provisional score is its first concrete instance, and its expiry is known
+- The settling durations in the engine are the re-run's, and the median is computed
 - Our missing Solana holder list was scoring the token and naming itself the driver
 - An unknown's guidance is composed per gap kind, and the whole table is generated
 - Regenerate the live unknown rate the production probe moved (49.6 -> 46.6)
 - A contract record we cannot read is not a record still to come
 - The guard that watches for lasting blindness had no end to its own "not yet"
 - A clean RugCheck score from a mint it has just indexed is not a clean bill
-- A missing Solana holder list is our coverage, and the share rule cannot fail on sight
-- The upstream-contract job can fail the build again (continue-on-error removed)
 
-_93 more not shown (101 commits in total)._
+_95 more not shown (103 commits in total)._
 
 ## What I got wrong
 

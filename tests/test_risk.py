@@ -5241,10 +5241,12 @@ def test_every_data_gap_declares_which_of_three_things_it_is():
           str({n: kind_of(a) for n, a in atoms.items()}))
 
     import itertools
-    rows = [combo for n in range(1, len(atoms) + 1)
+    # From zero: `_finalize` reaches this with no gaps at all when no signal was produced,
+    # and that row is as much a combination as any other.
+    rows = [combo for n in range(0, len(atoms) + 1)
             for combo in itertools.combinations(sorted(atoms), n)]
     check("the table is every combination, not a sample",
-          len(rows) == 2 ** len(atoms) - 1, "%d rows" % len(rows))
+          len(rows) == 2 ** len(atoms), "%d rows" % len(rows))
 
     broken = {k: [] for k in ("rule", "action", "named", "expiry", "rating", "unseen",
                               "beside")}
@@ -5252,7 +5254,7 @@ def test_every_data_gap_declares_which_of_three_things_it_is():
         gaps = [atoms[n] for n in combo]
         g = guidance(gaps)
         rec = g["recommendation"]
-        label = " + ".join(combo)
+        label = " + ".join(combo) or "no gaps at all"
         kinds = {kind_of(a) for a in gaps}
         failed = risk._UPSTREAM_FAILED in kinds
         rest = [a for a in gaps if kind_of(a) != risk._UPSTREAM_FAILED]
@@ -5292,6 +5294,15 @@ def test_every_data_gap_declares_which_of_three_things_it_is():
             missing.append("the token's own reason (%r)" % risk._what_was_unseen(token))
         if missing:
             broken["named"].append("%s: never says %s" % (label, ", ".join(missing)))
+        # ...and nothing is said that is not there: a sentence that blames our coverage
+        # or an outage with no such gap in the evidence is the same error the other way.
+        invented = []
+        if "our coverage" in rec and risk._NOT_COVERED not in kinds:
+            invented.append("our coverage")
+        if re.search(r"upstream of ours|our upstream", rec) and not failed:
+            invented.append("an outage")
+        if invented:
+            broken["named"].append("%s: says %s with no such gap" % (label, ", ".join(invented)))
 
         # An expiry the evidence names is an expiry the sentence names -- in every
         # combination, not only in the one row that introduced it.
@@ -5319,13 +5330,15 @@ def test_every_data_gap_declares_which_of_three_things_it_is():
                 "no trading pair found" in str(a.get("reason", "")) for a in gaps):
             broken["unseen"].append("%s: claims no source can see the token" % label)
 
-        if guidance(gaps + [beside]) != g:
+        # With no critical gap at all the guidance reads whatever gaps there are, by design,
+        # so the invariance is a claim about rows that have one.
+        if gaps and guidance(gaps + [beside]) != g:
             broken["beside"].append("%s: moved by a non-critical gap" % label)
 
     said = {
         "rule": "the triple follows the published rule",
         "action": "the sentence promises what next_action says",
-        "named": "every kind of gap present is named in the sentence",
+        "named": "every kind of gap present is named in the sentence, and none that is not",
         "expiry": "every expiry in the evidence is in the sentence",
         "rating": "a retry never promises the rating stays unknown, and states the floor",
         "unseen": "'no source can see' only on an observed absence of every market",

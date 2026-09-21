@@ -980,7 +980,7 @@ def _unknown_guidance(result, data_gaps):
         result["recommendation"] += (" This was our upstream, not the token: retry in "
                                      "about a minute.")
         return
-    if not failed and not token:
+    if not failed and not_covered and not token:
         # A chain we do not cover is the one gap no retry can close: telling a caller to
         # retry a check this tool will never run spends their one retry (the /unknown page
         # says "retry at most once") on nothing.
@@ -998,6 +998,9 @@ def _unknown_guidance(result, data_gaps):
                " (one part of it %s)" % expiry if expiry else ""))
         return
     if not failed and not not_covered:
+        # The token's alone -- or no gap at all, which `_finalize` reaches when no signal was
+        # produced: then nothing here is ours to name, and the token's clause says only that
+        # what came back does not settle it.
         result["recommendation"] += " %s: do not retry into a trade." % _what_was_unseen(token)
         return
 
