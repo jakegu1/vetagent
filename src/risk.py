@@ -3736,12 +3736,19 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
         data_gaps.append({"dimension": "concentration", "source": "rugcheck",
                           "reason": _gap(_NOT_COVERED,
                                          "the report carried no holder distribution")})
+        # `coverage`, E24's rule for the signal beside our own gap: weight zero, so it scores
+        # the token nothing and can never be named the driver. E31 moved the gap to
+        # `_NOT_COVERED` and left this in `concentration` (weight 0.7), and on 2026-09-21 a
+        # clean, settled mint with no holder list came back score 4 with this as its driver
+        # -- the whole score, and the one reason given, were our coverage. F2 had already
+        # made the same correction on the EVM twin of E24's signal. The gap above still
+        # carries the dimension; the signal only has to say so.
         signals.append(_sig(
             "info", "Holder distribution unavailable",
             "RugCheck sent no holder list for this token, so concentration could not be "
             "checked. That is a gap in our coverage and says nothing about the token: "
             "this source carries holders for some mints and not others, and a retry does "
-            "not change which.", "concentration"))
+            "not change which.", "coverage"))
 
 
 # ---------------------------------------------------------------- the three tools

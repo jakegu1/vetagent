@@ -152,6 +152,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- An unknown's guidance is composed per gap kind, and the whole table is generated
 - Regenerate the live unknown rate the production probe moved (49.6 -> 46.6)
 - A contract record we cannot read is not a record still to come
 - The guard that watches for lasting blindness had no end to its own "not yet"
@@ -159,9 +160,8 @@ problem looked like before it was fixed.
 - A missing Solana holder list is our coverage, and the share rule cannot fail on sight
 - The upstream-contract job can fail the build again (continue-on-error removed)
 - The upstream contract's field list is generated from the engine, not typed
-- F8: three surfaces named four extensions as "the Token-2022 extensions"
 
-_91 more not shown (99 commits in total)._
+_92 more not shown (100 commits in total)._
 
 ## What I got wrong
 

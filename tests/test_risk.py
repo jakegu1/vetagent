@@ -4791,9 +4791,22 @@ def test_a_missing_holder_list_is_our_coverage_not_a_fact_about_the_token():
           not reason.startswith(risk._ABOUT_TOKEN), reason)
     # The sentence the caller reads has to agree with the prefix, or the prefix is
     # bookkeeping. E24 set the wording for exactly this case on the sellability twin.
-    text = " ".join(s.get("message", "") for s in (r.get("signals") or [])
-                    if s.get("category") == "concentration")
+    # Found by name: this used to look it up by category `concentration`, which pinned the
+    # very category that let our gap score the token.
+    said = [s for s in (r.get("signals") or []) if s.get("name") == "Holder distribution unavailable"]
+    text = " ".join(s.get("message", "") for s in said)
     check("and the message says so in words", "our coverage" in text.lower(), text)
+    # ...and the category agrees with it. E24's rule, which F2 carried to the EVM twin and
+    # E31 did not carry here: measured 2026-09-21 on this body -- rc_bonk, settled, clean,
+    # no holder list -- the answer was `unknown` / score 4 / driver "Holder distribution
+    # unavailable" (concentration, weight 0.7): our coverage gap named as the reason, and
+    # all four points.
+    check("  in the zero-weight coverage category",
+          said and all(s.get("category") == "coverage" for s in said), str(said[:1]))
+    check("  so it scores nothing", r["risk_score"] == 0, str(r["risk_score"]))
+    check("  and is never the driver",
+          (r.get("driver") or {}).get("name") != "Holder distribution unavailable",
+          str(r.get("driver")))
 
 
 def test_our_coverage_gap_never_speaks_for_the_token():
@@ -5291,6 +5304,17 @@ def test_every_data_gap_declares_which_of_three_things_it_is():
     rc_no_score.pop("score_normalised", None)
     rc_no_holders = dict(_load("rc_bonk.json"))
     rc_no_holders["topHolders"] = None
+    # A priced pool on a chain the simulator does not cover. MATIC's recorded pools with a
+    # `polygon` hint are not this -- the engine settles on a covered chain and files "no
+    # record", so the scenario that carried this label until 2026-09-21 never reached the
+    # uncovered-chain branch it was named for. Section 5 found that, by asking.
+    on_polygon = {"pairs": [{
+        "chainId": "polygon", "dexId": "uniswap",
+        "baseToken": {"address": WETH, "symbol": "TKN"},
+        "quoteToken": {"address": "0xq"}, "priceUsd": "0.45",
+        "liquidity": {"usd": 3_000_000.0}, "volume": {"h24": 1_500_000.0},
+        "txns": {"h24": {"buys": 4000, "sells": 3800}},
+        "pairCreatedAt": 1589841515000}]}
 
     scenarios = [
         ("solana clean", [("dexscreener", _load("ds_bonk.json")),
@@ -5302,8 +5326,8 @@ def test_every_data_gap_declares_which_of_three_things_it_is():
                                     ("rugcheck", rc_no_holders)], BONK, None),
         ("solana, empty report", [("dexscreener", _load("ds_bonk.json")),
                                   ("rugcheck", {})], BONK, None),
-        ("evm, chain we do not cover", [("dexscreener", _load("ds_matic.json")),
-                                        ("honeypot.is", risk.NO_DATA)], MATIC, "polygon"),
+        ("evm, chain we do not cover", [("dex/tokens", on_polygon), ("dex/search", None),
+                                        ("honeypot.is", risk.NO_DATA)], WETH, "polygon"),
         ("evm, simulator has no record", [("dexscreener", _load("ds_matic.json")),
                                           ("honeypot.is", risk.NO_DATA)], MATIC, "ethereum"),
         ("evm, everything down", [], MATIC, "ethereum"),
@@ -5320,6 +5344,81 @@ def test_every_data_gap_declares_which_of_three_things_it_is():
     for kind in risk._GAP_KINDS:
         check("  the sweep produced at least one %r gap" % kind,
               any(r.startswith(kind) for r in emitted), str(sorted(emitted))[:200])
+
+    # ---- 5. a signal filed beside our own coverage gap is in the coverage category -----
+    #
+    # E24's rule: our gap scores the token nothing and never names the driver, so the
+    # signal that says so is `info` in the zero-weight `coverage` category. F2 carried it to
+    # the EVM twin; E31 did not carry it to the holder list, and on 2026-09-21 a clean,
+    # settled Solana mint with no holder list read `unknown` / score 4 with driver "Holder
+    # distribution unavailable" (concentration, weight 0.7) -- our coverage gap as the
+    # named reason, and all four points. Third time on the same shape, so it is a rule now:
+    # every `_gap(_NOT_COVERED, ...)` site is found in the source, a sweep must reach each
+    # one, and the next signal filed from the same function call must be `coverage`.
+    sites = {}
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                and node.func.id == "_gap" and node.args
+                and isinstance(node.args[0], ast.Name) and node.args[0].id == "_NOT_COVERED"):
+            stmt = min((s for s in ast.walk(tree) if isinstance(s, ast.stmt)
+                        and not isinstance(s, (ast.FunctionDef, ast.AsyncFunctionDef, ast.If,
+                                               ast.For, ast.While, ast.With, ast.Try))
+                        and s.lineno <= node.lineno <= (s.end_lineno or s.lineno)),
+                       key=lambda s: (s.end_lineno or s.lineno) - s.lineno)
+            sites[(stmt.lineno, stmt.end_lineno or stmt.lineno)] = None
+    check("the engine files our coverage gap from several sites", len(sites) >= 4,
+          str(sorted(sites)))
+
+    real_gap, real_sig = risk._gap, risk._sig
+    trail = []
+
+    def traced_gap(kind, detail=""):
+        trail.append((sys._getframe(1), "gap", kind, sys._getframe(1).f_lineno, None))
+        return real_gap(kind, detail)
+
+    def traced_sig(*a, **kw):
+        s = real_sig(*a, **kw)
+        trail.append((sys._getframe(1), "sig", s.get("category"), sys._getframe(1).f_lineno,
+                      s.get("name")))
+        return s
+
+    unread = json.loads(json.dumps(_load("rc_pyusd.json")))
+    unread["token_extensions"]["confidentialMintBurn"] = {
+        "authority": "2apBGMsS6ti9RyF5TwQTDswXBWskiJP2LD4cUEDqYJjk"}
+    no_holders = json.loads(json.dumps(_load("rc_bonk.json")))
+    no_holders["topHolders"], no_holders["totalHolders"] = None, 0
+    reach = [
+        ([("dex/tokens", on_polygon), ("dex/search", None), ("honeypot.is", risk.NO_DATA)],
+         WETH, "polygon"),
+        ([("dexscreener", _load("ds_bonk.json")), ("rugcheck", fresh)], BONK, None),
+        ([("dexscreener", _load("ds_bonk.json")), ("rugcheck", unread)], PYUSD, None),
+        ([("dexscreener", _load("ds_bonk.json")), ("rugcheck", no_holders)], BONK, None),
+    ]
+    risk._gap, risk._sig = traced_gap, traced_sig
+    try:
+        for routes, address, hint in reach:
+            install_stub(routes, default=None)
+            run(risk.assess(address, chain_hint=hint))
+    finally:
+        risk._gap, risk._sig = real_gap, real_sig
+
+    beside = {}
+    for i, (frame, what, kind, line, _) in enumerate(trail):
+        if what != "gap" or kind != risk._NOT_COVERED:
+            continue
+        site = next((s for s in sites if s[0] <= line <= s[1]), ("?", line))
+        after = next((t for t in trail[i + 1:] if t[0] is frame), None)
+        beside[site] = (after[4], after[2]) if after and after[1] == "sig" else (None, None)
+    del trail[:]
+    unreached = sorted(s for s in sites if s not in beside)
+    check("  the sweep reaches every one of them", not unreached,
+          "risk.py lines %s file our coverage gap and nothing here drives them -- add a "
+          "scenario, or this rule is blind there" % unreached)
+    wrong = ["risk.py:%s %r is %r" % (site[0], name, cat)
+             for site, (name, cat) in sorted(beside.items(), key=lambda kv: str(kv[0]))
+             if name is not None and cat != "coverage"]
+    check("  and every signal filed beside one is in the coverage category",
+          not wrong, " | ".join(wrong))
 
 
 # ---------------------------------------------------------------- main
