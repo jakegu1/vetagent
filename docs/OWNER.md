@@ -131,7 +131,7 @@ Rounded = parked by you. Hexagons are not work items -- they are what a row is w
 
 | | |
 |---|---|
-| Maturity score | 42 / 100 (`docs/SCORECARD.md`) |
+| Maturity score | 45 / 100 (`docs/SCORECARD.md`) |
 | Tokens measured | 576 |
 | False positives | 3.1% -- we called a healthy token dangerous |
 | Answers we refuse | 21.2% -- `unknown`, on purpose |
@@ -152,16 +152,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- A contract record we cannot read is not a record still to come
+- The guard that watches for lasting blindness had no end to its own "not yet"
+- A clean RugCheck score from a mint it has just indexed is not a clean bill
 - A missing Solana holder list is our coverage, and the share rule cannot fail on sight
 - The upstream-contract job can fail the build again (continue-on-error removed)
 - The upstream contract's field list is generated from the engine, not typed
 - F8: three surfaces named four extensions as "the Token-2022 extensions"
 - F7: the fee rating read the basis points and ignored the cap in the same dict
-- F6: the eighteenth extension would have arrived in silence, like the last eleven
-- F5: read: true covered six of the seventeen extension keys upstream sends
-- A sell simulation from a chain we did not ask about was being read as this token's
 
-_87 more not shown (95 commits in total)._
+_90 more not shown (98 commits in total)._
 
 ## What I got wrong
 
