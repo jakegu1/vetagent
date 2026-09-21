@@ -3816,6 +3816,95 @@ def test_output_is_compact():
           str(risk._sig_round("0.000566716962961376896743")))
 
 
+def _settling_figures():
+    """What the committed six-hour re-run says about how long RugCheck's score moves.
+
+    The cohort is the probe's own rule -- a mint is fresh when its first sweep read it within
+    10 minutes of its `detectedAt` -- using the probe's own `band` and `age_minutes`, so this
+    reproduces the 45 mints S6 decided on rather than a second opinion about them. A mint's
+    settling time is the minutes from its `detectedAt` to the first reading of the band it
+    ended the run in; one that never changed band is counted at its first reading.
+    """
+    import statistics
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "bench"))
+    import rugcheck_coverage_probe as probe
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "bench",
+                        "rugcheck_scores_rerun.jsonl")
+    by = {}
+    for line in open(path, encoding="utf-8"):
+        if line.strip():
+            r = json.loads(line)
+            if r.get("body") == "ok" and not r.get("immediate_retry"):
+                by.setdefault(r["mint"], []).append(r)
+    settle, never, late = [], 0, 0
+    for g in by.values():
+        g.sort(key=lambda r: r["sweep"])
+        seen = datetime.datetime.fromtimestamp(g[0]["ts"], datetime.timezone.utc)
+        age = probe.age_minutes(g[0].get("detectedAt"), seen)
+        if age is None or age > 10.0:
+            continue
+        born = seen.timestamp() - age * 60
+        bands = [probe.band(r.get("score_normalised")) for r in g]
+        k = len(bands) - 1
+        while k > 0 and bands[k - 1] == bands[-1]:
+            k -= 1
+        settle.append((g[k]["ts"] - born) / 60.0)
+        never += len(set(bands)) == 1
+        late += len(set(bands)) > 1 and g[k]["ts"] >= g[-1]["ts"] - 3600
+    return {"n": len(settle), "median": statistics.median(settle), "max": max(settle),
+            "never": never, "late": late, "need": len(settle) // 2 + 1}
+
+
+def test_the_settling_figures_in_the_engine_are_the_measured_ones():
+    """The durations the engine's comments give for RugCheck's score are read from the run.
+
+    Two sentences above the code that withholds a provisional score had outlived the
+    measurement they came from, the fourth time for a number about this one score. "Up to
+    an hour" sat directly over a 360-minute window. And the reason written down for refusing
+    a fourth kind of gap said the window was "far under six hours": it is exactly six, it is
+    the *maximum*, and BACKLOG W54's pre-registered bar is on the *median* -- a comparison
+    that could not have told anyone anything. The median was a number nobody had computed.
+
+    So the figures are recomputed here from the committed six-hour re-run and the comment
+    has to carry them; and if a longer run (W57) replaces the file, this goes red until the
+    sentence is re-derived from what it measured.
+    """
+    print("\n[Solana] the settling figures in the engine are the re-run's")
+    f = _settling_figures()
+    check("the re-run still yields S6's fresh cohort", f["n"] == 45, str(f))
+    src_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src", "risk.py")
+    with open(src_path, encoding="utf-8") as fh:
+        source = fh.read()
+    start = source.find("# A clean score from a mint this upstream has only just seen")
+    end = source.find("age_minutes = _minutes_since_rugcheck_indexed", start)
+    block = " ".join(source[start:end].replace("#", " ").split())
+    check("the comment is where this test reads it", start > 0 and end > start,
+          "%d..%d" % (start, end))
+    for what, text in (
+            ("the median settling time", "%.1f minutes" % f["median"]),
+            ("how many never left their band", "%d of %d" % (f["never"], f["n"])),
+            ("how many a six-hour median would need", "%d of the %d" % (f["need"], f["n"])),
+            ("how many moved in their last hour", "%d moved at all" % f["late"]),
+            ("the latest change", "%d minutes" % int(f["max"]))):
+        check("the comment carries %s (%s)" % (what, text), text in block, block[:200])
+    for stale in ("up to an hour", "far under six hours"):
+        check("and no longer says %r" % stale, stale not in block, stale)
+
+    # The same number reaches the caller, in the provisional signal's own sentence -- which
+    # said the score "keeps moving for about 360 minutes", the censored maximum stated as
+    # though it were the usual case. The median mint had stopped in 13.
+    rc = json.loads(json.dumps(_load("rc_pyusd.json")))
+    rc["risks"], rc["verification"], rc["totalHolders"] = [], None, 0
+    rc["score_normalised"] = 1
+    rc["detectedAt"] = (datetime.datetime.now(datetime.timezone.utc)
+                        - datetime.timedelta(minutes=5)).strftime("%Y-%m-%dT%H:%M:%S.000000000Z")
+    sigs = []
+    risk._rugcheck_signals(rc, sigs, {}, [])
+    said = " ".join(s["message"] for s in sigs if s["name"] == "RugCheck score is still provisional")
+    check("the signal gives the window as a bound, not as the usual duration",
+          ("%d minutes or more" % risk._RUGCHECK_SETTLING_MINUTES) in said, said[:200])
+
+
 def test_a_provisional_rugcheck_score_is_not_a_clean_bill_of_health():
     """The clean reading from a mint RugCheck has only just seen is not evidence.
 

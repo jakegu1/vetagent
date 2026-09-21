@@ -3341,8 +3341,10 @@ def _token2022_signals(rc, signals, evidence, established=False, data_gaps=None)
             "units is not the quantity that transfers.", "contract"))
 
 
-# How long RugCheck's normalised score keeps moving after that upstream last indexed a
-# mint, and the band below which a score is a statement of safety rather than of danger.
+# How long a clean RugCheck score is withheld after that upstream last indexed a mint --
+# set by how long the score *can* keep moving, the tail, not by how long it usually does
+# (the median is minutes; see `_rugcheck_signals`) -- and the band below which a score is a
+# statement of safety rather than of danger.
 #
 # **This number was 65 for one afternoon and 65 was wrong by a factor of five.** It came
 # from a 109-minute run, and a 109-minute run cannot observe a six-hour effect -- the same
@@ -3501,13 +3503,21 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
 
     # A clean score from a mint this upstream has only just seen is not a clean bill.
     #
-    # `score_normalised` is provisional for up to an hour after RugCheck's own
-    # `detectedAt`, and only on mints it has just detected -- which is precisely the hour a
-    # permanent-delegate scam is live. Two measured shapes: one mint read 1 for four
-    # consecutive sweeps, about 45 minutes, and then 80; another read 80, 80, 1, 80, 80,
-    # leaving a band and coming back, which no genuine re-evaluation explains. `1` arrives
-    # with `risks: []`, so it is indistinguishable by shape or by type from a mint that was
-    # checked and is clean. That is the E11 failure on a *value* instead of a field.
+    # `score_normalised` keeps moving for hours after RugCheck's own `detectedAt`, and only
+    # on mints it has just detected -- which is precisely when a permanent-delegate scam is
+    # live. How long is a distribution, not a number, and its two ends answer different
+    # questions. On the six-hour re-run (bench/rugcheck_scores_rerun.jsonl, the 45 mints
+    # caught within 10 minutes of their `detectedAt`) the median mint stopped changing band
+    # 12.7 minutes after it, and 22 of 45 never left their first band at all -- but a clean
+    # reading turned dangerous as late as 354 minutes, and that tail is right-censored
+    # (W57). The window below is set by the tail, `_RUGCHECK_SETTLING_MINUTES`, because a
+    # caller cannot be told which mint is a slow one. Two shapes from the first, 109-minute
+    # run: one mint read 1 for four consecutive sweeps, about 45 minutes, and then 80;
+    # another read 80, 80, 1, 80, 80, leaving a band and coming back, which no genuine
+    # re-evaluation explains. `1` arrives with `risks: []`, so it is indistinguishable by
+    # shape or by type from a mint that was checked and is clean. That is the E11 failure
+    # on a *value* instead of a field. `test_the_settling_figures_in_the_engine_are_the_
+    # measured_ones` recomputes every figure in this comment from that file.
     #
     # **One-directional, and that is the design.** Only the reassuring reading is withheld.
     # A provisional score saying "dangerous" is still acted on, because acting on it is the
@@ -3526,10 +3536,17 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
     # was checked in the E14 review and does not transfer: E31 could show that its prefix
     # changed nothing a caller acts on *because* `concentration` is not in
     # `_CRITICAL_DIMENSIONS`, and this gap's dimension is `sellability`, which is. The
-    # ground that does hold is BACKLOG W54's own pre-registered bar -- propose a fourth
-    # kind if the median trough exceeds six hours, otherwise keep three and widen the
-    # wording. This window is bounded by `_RUGCHECK_SETTLING_MINUTES` by construction, far
-    # under six hours, and the engine knows the bound -- so it states it in the gap detail
+    # ground is BACKLOG W54's own pre-registered bar -- propose a fourth kind if the
+    # *median* trough exceeds six hours, otherwise keep three and widen the wording -- read
+    # on the median, as it is written. Until 2026-09-21 the reason given here was the
+    # window: but the window is `_RUGCHECK_SETTLING_MINUTES`, exactly six hours, and it is
+    # the *maximum*, so it could not answer a bar set on the median. The median is 12.7
+    # minutes (above). It is censored like the maximum, so the honest statement is what it
+    # would take to be wrong: for the true median to reach six hours, 23 of the 45 would
+    # have to change band after the run ended -- when 22 of 45 never changed in six hours,
+    # and 3 moved at all in their last hour. W54 is still where a fourth kind is decided,
+    # and this gap is its first concrete instance: temporary, not closable by a retry, and
+    # with an expiry the engine already knows. So it states that expiry in the gap detail
     # below rather than leaving a caller to infer a permanence that is not there.
     age_minutes = _minutes_since_rugcheck_indexed(rc.get("detectedAt"))
     provisional = age_minutes is None or age_minutes < _RUGCHECK_SETTLING_MINUTES
@@ -3561,8 +3578,8 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
         signals.append(_sig(
             "info", "RugCheck score is still provisional",
             "RugCheck scored this %.0f/100 (%s), but it last indexed this mint %s and that "
-            "score keeps moving for about %d minutes afterwards. A low score this early is "
-            "not evidence the token is clean, so it is not being read as one."
+            "score can keep moving for %d minutes or more afterwards. A low score this early "
+            "is not evidence the token is clean, so it is not being read as one."
             % (normalised, "; ".join(held[:4]) if held else "no risk items",
                seen, _RUGCHECK_SETTLING_MINUTES), "coverage"))
         normalised = None
