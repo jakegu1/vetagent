@@ -152,6 +152,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- E14 review of W58: a fallback's 404 is an answer, and two tests guard their gate again
 - W59: the benchmark replays cached answers against today's clock
 - Production records why a high was high, as it already did for an unknown
 - An empty DexScreener listing the fallback never confirmed is not an absence (W58)
@@ -159,9 +160,8 @@ problem looked like before it was fixed.
 - Both bots regenerate what their data moves, after it, and test.yml runs after them (E34)
 - The live unknown rate is published with its own n and window, not a stale one
 - Our coverage gap and the signal that says so are filed as one act
-- The fourth-kind rationale says what the median can and cannot settle
 
-_68 more not shown (76 commits in total)._
+_64 more not shown (72 commits in total)._
 
 ## What I got wrong
 
