@@ -446,6 +446,87 @@ def test_an_empty_listing_nobody_confirmed_is_not_an_absence():
           "%s %s" % (r["risk_level"], r.get("driver")))
 
 
+def test_a_fallback_that_says_not_found_has_answered():
+    """E14 review of W58, 2026-09-22: a 404 from the fallback is an answer, not our outage.
+
+    GeckoTerminal answers a token it has never indexed with `404 {"errors":[{"title":"Not
+    Found"}]}` -- measured on base and eth that day. `_load_pairs` fetched the fallback
+    without `mark_missing`, so that 404 came back as None, "the fetch failed", and W58's
+    first cut counted the network as unanswered: a token no source has ever seen came back
+    `unknown`/retry -- "an upstream of ours also failed" -- and the retry gets the same
+    404. The error W58 was written to remove, turned the other way round: an observed
+    absence filed as an unobserved one. `install_stub` replaces `_fetch_json` itself and
+    so cannot model a 404; this drives the real `_fetch_json` through a fake runtime fetch
+    answering with the measured status and bodies.
+    """
+    print("\n[W58] a fallback's 404 Not Found is an answer; its 429 is not")
+
+    class Resp:
+        def __init__(self, status, body):
+            self.status, self._body = status, body
+
+        async def text(self):
+            return self._body
+
+    ds_null = (200, '{"schemaVersion":"1.0.0","pairs":null}')
+    gt_404 = (404, '{"errors":[{"status":"404","title":"Not Found"}]}')
+    gt_429 = (429, '{"status":{"error_code":429,"error_message":"rate limited"}}')
+    hp_404 = (404, '{"code":404,"error":"Token not found"}')
+
+    def upstreams(fallback):
+        async def fake(url, method="GET", body=None, headers=None, **kw):
+            if "dexscreener" in url:
+                return Resp(*ds_null)
+            if "geckoterminal" in url or "coingecko" in url:
+                return Resp(*fallback)
+            if "honeypot.is" in url:
+                return Resp(*hp_404)
+            return Resp(503, "")
+        return fake
+
+    async def no_sleep(*_a, **_k):
+        return None
+
+    async def no_cache(*_a, **_k):
+        return None, None
+
+    def liquidity_reasons(r):
+        return [str(g.get("reason")) for g in r.get("evidence", {}).get("data_gaps", [])
+                if g.get("dimension") == "liquidity"]
+
+    nobody = "0x" + "7a" * 20
+    saved = (risk.cf_fetch, risk._fetch_json, risk._cache_get, risk.asyncio.sleep)
+    risk._fetch_json, risk._cache_get, risk.asyncio.sleep = _ORIGINAL_FETCH_JSON, no_cache, no_sleep
+    try:
+        risk.cf_fetch = upstreams(gt_404)
+        r = run(risk.assess(nobody, chain_hint="base"))
+        check("never indexed, hinted: still the no-trace finding",
+              r["risk_level"] == "high"
+              and any("can be verified" in s["name"] for s in r["signals"]),
+              "%s %s" % (r["risk_level"], liquidity_reasons(r)))
+        check("  and the absence is filed as one, not as our outage",
+              any("no trading pair found" in x for x in liquidity_reasons(r)),
+              str(liquidity_reasons(r)))
+        r = run(risk.assess(nobody))
+        check("never indexed, no hint: no retry is offered for a 404",
+              not any(x.startswith(risk._UPSTREAM_FAILED) for x in liquidity_reasons(r)),
+              "%s %s" % (r.get("next_action"), liquidity_reasons(r)))
+        liq = run(risk.liquidity(nobody, chain_hint="base"))
+        check("  and get_token_liquidity says not_found, not unavailable",
+              liq.get("status") == "not_found", str(liq))
+
+        risk.cf_fetch = upstreams(gt_429)
+        r = run(risk.assess(nobody, chain_hint="base"))
+        check("rate-limited fallback: not high, because nobody answered",
+              r["risk_level"] != "high", "%s %s" % (r["risk_level"], liquidity_reasons(r)))
+        check("  and the caller is told to retry",
+              r.get("next_action") == "retry"
+              and any(x.startswith(risk._UPSTREAM_FAILED) for x in liquidity_reasons(r)),
+              "%s %s" % (r.get("next_action"), liquidity_reasons(r)))
+    finally:
+        risk.cf_fetch, risk._fetch_json, risk._cache_get, risk.asyncio.sleep = saved
+
+
 def test_chain_activity_overrules_a_honeypot_verdict():
     """A simulator saying "you cannot sell" loses to a chain showing thousands just did.
 
@@ -1510,9 +1591,13 @@ def test_an_unrecognised_chain_hint_is_not_a_chain():
     """
     print("\n[chain hint] a name we do not recognise is not a chain")
 
+    # "No pool anywhere" needs the fallback to have answered as well; left at the stub
+    # default it was a failed fetch, and the `unknown` below came from our outage instead
+    # of from the unrecognised chain this test is about (E14 review of W58, 2026-09-22).
     def assess_with(hint, pairs=None, hp=None):
         install_stub([("dex/tokens", pairs or {"pairs": []}),
                       ("dex/search", {"pairs": []}),
+                      ("geckoterminal", {"data": []}),
                       ("honeypot.is", risk.NO_DATA if hp is None else hp),
                       ("goplus", None), ("rugcheck", None)])
         return run(risk.assess(WETH, chain_hint=hint))
@@ -2433,7 +2518,12 @@ def test_a_chain_the_simulator_does_not_cover_is_our_gap():
             "liquidity": {"usd": 3_000_000.0}, "volume": {"h24": 1_500_000.0},
             "txns": {"h24": {"buys": 4000, "sells": 3800}},
             "pairCreatedAt": 1589841515000}]} if pairs else {"pairs": []}
+        # The fallback answers too, or `pairs=False` is DexScreener empty with the fallback
+        # failing -- our outage, which takes the answer to `unknown` before the escalation
+        # gate this test guards is ever reached (E14 review of W58, 2026-09-22: a mutation
+        # that disarms the gate was caught here before W58 and not after).
         install_stub([("dex/tokens", p), ("dex/search", None),
+                      ("geckoterminal", {"data": []}),
                       ("honeypot.is", risk.NO_DATA)])
         return run(risk.assess(WETH, chain_hint=chain))
 

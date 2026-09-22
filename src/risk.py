@@ -3896,7 +3896,15 @@ async def _load_pairs(address, chain_hint):
         for url, headers, name in _onchain_sources("networks/%s/tokens/%s/pools" % (net, address)):
             if name in refused:
                 continue
-            gt = await _fetch_json(url, headers=headers)
+            # `mark_missing`, because GeckoTerminal answers a token it has never indexed
+            # with 404 Not Found -- an answer, and the one that matters most here. Without
+            # it the 404 came back as None and was counted as silence, so W58's first cut
+            # told a caller about a token nobody has ever seen that "an upstream of ours
+            # failed, retry" -- and the retry gets the same 404 (E14 review, 2026-09-22).
+            gt = await _fetch_json(url, headers=headers, mark_missing=True)
+            if gt is NO_DATA:
+                answered = True
+                break           # "never seen it": the next source is the same data
             if gt is None:
                 if _failure_detail(name) in ("%s 429" % name, "%s error body 429" % name):
                     refused.add(name)

@@ -534,6 +534,11 @@ def _gap_tags(answer):
         statuses = ["%s %s" % m for m in _UPSTREAM_STATUS.findall(reason)]
         if statuses and reason.startswith("upstream request failed"):
             tag = ",".join(dict.fromkeys(statuses))
+            # W58's case keeps its statuses but is named first: read by status alone, a
+            # fallback 429 behind DexScreener's empty listing was recorded in exactly the
+            # words a plain outage uses, and the class below could never be reached by it.
+            if "fallback that would confirm" in reason:
+                tag = "unconfirmed " + tag
         else:
             tag = next((label for phrase, label in _GAP_CLASSES if phrase in reason), "other")
         per_dim.setdefault(dim, [])

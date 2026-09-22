@@ -214,6 +214,37 @@ def test_an_unknown_records_why_without_recording_what():
               all(ADDRESS.lower() not in str(x).lower() for x in whys), str(whys))
 
 
+def test_an_unconfirmed_absence_is_named_as_one():
+    """W58's reason must be countable in production, whatever status came with it.
+
+    `_gap_tags` labels an "upstream request failed" reason by its HTTP statuses and only
+    otherwise by phrase, so the `unconfirmed` class W58 added was reachable only by a
+    failure with no status at all: a 429 from the fallback read `liquidity:geckoterminal
+    429`, the same words a plain outage uses (E14 review, 2026-09-22). The case is named
+    now, and keeps its statuses.
+    """
+    print("\n[http] an unconfirmed absence is recorded as unconfirmed")
+    reason = ("upstream request failed: DexScreener lists no pair, and the fallback that "
+              "would confirm it did not answer")
+
+    def why(detail):
+        return entry._why_unknown({"risk_level": "unknown", "unknown_kind": "infrastructure",
+                                   "evidence": {"data_gaps": [
+                                       {"dimension": "liquidity", "reason": reason + detail}]}})
+    check("with a status: named, and the status kept",
+          why(" (geckoterminal 429)") == "infrastructure|liquidity:unconfirmed geckoterminal 429",
+          why(" (geckoterminal 429)"))
+    check("with none (a timeout): named",
+          why("") == "infrastructure|liquidity:unconfirmed", why(""))
+    plain = entry._why_unknown({"risk_level": "unknown", "unknown_kind": "infrastructure",
+                                "evidence": {"data_gaps": [
+                                    {"dimension": "liquidity",
+                                     "reason": "upstream request failed (dexscreener 429, "
+                                               "geckoterminal 429)"}]}})
+    check("and a plain outage is not called unconfirmed",
+          plain == "infrastructure|liquidity:dexscreener 429,geckoterminal 429", plain)
+
+
 def test_a_high_records_why_without_recording_what():
     """`high` is the verdict our own failure can turn against someone else's token, and
     until 2026-09-22 it was the one recorded as a bare count.
