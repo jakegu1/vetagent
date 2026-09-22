@@ -125,7 +125,7 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **17 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **18 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -152,6 +152,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Production records why a high was high, as it already did for an unknown
 - An empty DexScreener listing the fallback never confirmed is not an absence (W58)
 - A signal that weighs nothing is never named as what decided the verdict (W56)
 - Both bots regenerate what their data moves, after it, and test.yml runs after them (E34)
@@ -159,7 +160,6 @@ problem looked like before it was fixed.
 - Our coverage gap and the signal that says so are filed as one act
 - The fourth-kind rationale says what the median can and cannot settle
 - "No trading pair found" reports an absence; it does not always observe one (W58)
-- An outage answer promises nothing about its retry, because the retry proved it wrong
 
 _67 more not shown (75 commits in total)._
 
