@@ -131,7 +131,7 @@ Rounded = parked by you. Hexagons are not work items -- they are what a row is w
 
 | | |
 |---|---|
-| Maturity score | 45 / 100 (`docs/SCORECARD.md`) |
+| Maturity score | 44 / 100 (`docs/SCORECARD.md`) |
 | Tokens measured | 576 |
 | False positives | 3.1% -- we called a healthy token dangerous |
 | Answers we refuse | 21.2% -- `unknown`, on purpose |
@@ -161,7 +161,7 @@ problem looked like before it was fixed.
 - The live unknown rate is published with its own n and window, not a stale one
 - Our coverage gap and the signal that says so are filed as one act
 
-_64 more not shown (72 commits in total)._
+_57 more not shown (65 commits in total)._
 
 ## What I got wrong
 
