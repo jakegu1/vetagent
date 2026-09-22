@@ -5024,6 +5024,47 @@ def test_our_coverage_gap_never_speaks_for_the_token():
           and "cover" in rec.lower(), rec)
 
 
+def test_no_zero_weight_signal_is_ever_the_driver():
+    """`driver` is "the one signal that decided the verdict", and a signal weighing zero
+    decided nothing (BACKLOG W56).
+
+    `_driver` ranks by severity x category weight and breaks ties by position. A `coverage`
+    signal weighs 0.0 -- E24's rule is that our own gap scores nothing and is never the
+    driver -- so it ties with every `ok` signal, and whichever came first was named. Through
+    `assess` that has never happened, measured: 0 of 12 recorded real answers on eight
+    chains, because the market signals are appended before E24's. That protection was the
+    append order, which nobody chose for this and nothing tested. Called with the coverage
+    signal first, `_driver` named our gap as what decided the answer.
+    """
+    print("\n[driver] a signal weighing zero is never named as the driver")
+    gap = {"severity": "info", "name": "Sellability was not tested on this chain",
+           "category": "coverage", "message": "ours"}
+    ok = {"severity": "ok", "name": "RugCheck passed", "category": "rugcheck", "message": "ok"}
+    real = {"severity": "info", "name": "Ticker is shared with other contracts",
+            "category": "impersonation", "message": "x"}
+    for label, sigs in (("our gap first, then an ok", [gap, ok]),
+                        ("an ok first, then our gap", [ok, gap]),
+                        ("our gap alone", [gap])):
+        d = risk._driver(sigs)
+        check("%s: no driver" % label, d is None, str(d))
+    d = risk._driver([gap, ok, real])
+    check("a signal that weighs something still drives past a zero-weight one",
+          d is not None and d["name"] == real["name"], str(d))
+    # And through the engine: every signal's weight, on every order `assess` produces for a
+    # clean Solana mint, leaves `driver` either None or a signal that weighs something.
+    install_stub([("dexscreener", _load("ds_bonk.json")), ("rugcheck", _load("rc_bonk.json"))])
+    r = run(risk.assess(BONK))
+    drv = r.get("driver")
+    weigh = {s["name"]: _weight_of(s) for s in r["signals"]}
+    check("through assess, the driver weighs more than zero or is None",
+          drv is None or weigh.get(drv["name"], 0) > 0, "%s %s" % (drv, weigh.get((drv or {}).get("name"))))
+
+
+def _weight_of(s):
+    return (risk._SEVERITY_BASE.get(s["severity"], 0)
+            * risk._CATEGORY_WEIGHT.get(s["category"], 0.5))
+
+
 def test_a_coverage_gap_scores_nothing():
     """Our own gap must not add points to someone else's token.
 

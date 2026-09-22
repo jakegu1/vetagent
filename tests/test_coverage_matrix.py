@@ -310,6 +310,31 @@ OBSERVERS = {
 
 # ------------------------------------------------------------------ tests
 
+def test_no_answer_names_a_zero_weight_signal_as_its_driver():
+    """BACKLOG W56, on the signal orders the engine really produces.
+
+    `driver` is the one signal that decided a verdict, and our own coverage gap weighs 0.0.
+    `_driver` used to break a zero-weight tie by position, so which signal it named
+    depended on append order -- and `assess` stayed clean only because its market signals
+    come first. `tests/test_risk.py` drives `_driver` with constructed pairs; this runs the
+    same property over every recorded real answer on every advertised chain, which is the
+    only place a coverage signal exists. The benchmark's cached answers cannot carry this
+    check: they are base, ethereum and bsc, where no coverage signal is ever emitted.
+    """
+    print("\n[driver] no real answer's driver weighs zero")
+    for chain in scorecard.ADVERTISED_CHAINS:
+        for address, symbol, stem in references(chain):
+            if not os.path.exists(os.path.join(FIXTURES, "%s.json" % stem)):
+                continue
+            result, _ = _assess(chain, stem)
+            d = result.get("driver")
+            sig = next((s for s in result.get("signals", []) if d and s["name"] == d["name"]), None)
+            w = (risk._SEVERITY_BASE.get(sig["severity"], 0)
+                 * risk._CATEGORY_WEIGHT.get(sig["category"], 0.5)) if sig else None
+            check("%s %s: the driver is None or weighs something" % (chain, symbol),
+                  d is None or (w is not None and w > 0), "%s weighs %s" % (d, w))
+
+
 def test_every_advertised_chain_has_a_token():
     print("\n[matrix] a chain cannot be advertised without a token to check it on")
     for chain in scorecard.ADVERTISED_CHAINS:

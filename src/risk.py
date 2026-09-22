@@ -755,17 +755,26 @@ def _score(signals):
 def _driver(signals):
     """The one signal that decided the verdict: highest severity x category weight.
 
-    None when the top signal is `ok` -- nothing drove anything. This is the rule
-    `bench/run_benchmark.py` has always used to attribute verdicts; it lives here now and the
-    benchmark imports it, so the report and the product cannot name different drivers for
-    the same answer. Ties go to the earlier signal, as the benchmark's stable sort did.
+    None when the top signal weighs nothing -- nothing drove anything. That is an `ok`
+    signal, and it is also a signal in a zero-weight category: E24's rule is that our own
+    coverage gap scores nothing and is never the driver, and a gap at weight 0.0 ties with
+    every `ok` signal. Testing only for `ok` left that tie to the order signals were
+    appended in, so `_driver([coverage, ok])` named our gap as what decided the answer.
+    `assess` never produced it (0 of 12 recorded real answers, eight chains), only because
+    its market signals happen to come first -- a property nobody chose (BACKLOG W56).
+
+    This is the rule `bench/run_benchmark.py` has always used to attribute verdicts; it
+    lives here now and the benchmark imports it, so the report and the product cannot name
+    different drivers for the same answer. Ties go to the earlier signal, as the
+    benchmark's stable sort did.
     """
     if not signals:
         return None
-    ranked = sorted(signals, key=lambda s: _SEVERITY_BASE.get(s["severity"], 0)
-                    * _CATEGORY_WEIGHT.get(s["category"], 0.5), reverse=True)
+    weigh = lambda s: (_SEVERITY_BASE.get(s["severity"], 0)            # noqa: E731
+                       * _CATEGORY_WEIGHT.get(s["category"], 0.5))
+    ranked = sorted(signals, key=weigh, reverse=True)
     top = ranked[0]
-    if top["severity"] == "ok":
+    if top["severity"] == "ok" or weigh(top) <= 0:
         return None
     return {"name": top["name"], "category": top["category"]}
 
