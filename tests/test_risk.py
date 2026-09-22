@@ -384,6 +384,68 @@ def test_no_trace_is_high_but_our_outage_is_unknown():
           str([s["name"] for s in r2["signals"]]))
 
 
+def test_an_empty_listing_nobody_confirmed_is_not_an_absence():
+    """BACKLOG W58. DexScreener misses tokens, which is why the market fallback exists; an
+    empty DexScreener listing is only an absence once the fallback has been asked.
+
+    `_load_pairs` skipped a fallback request that failed (`if gt is None: continue`) and,
+    with nothing left, returned `[]` -- the value it also returns when every source really
+    answered empty. `assess` filed both as `about the token: no trading pair found`, so on
+    a hinted chain our own outage met the no-trace escalation and came back `high` 70,
+    "Nothing about this token can be verified": the one verdict `_finalize` says must never
+    fire on an outage of ours.
+    """
+    print("\n[W58] an empty listing the fallback never confirmed is not an absence")
+    nobody = "0x" + "5e" * 20
+    no_pair = {"summary": {}, "simulationSuccess": False,
+               "simulationError": "no pair to simulate against"}
+
+    def liquidity_gap(r):
+        return [g for g in r.get("evidence", {}).get("data_gaps", [])
+                if g.get("dimension") == "liquidity"]
+
+    # DexScreener answers empty, every fallback request fails.
+    install_stub([("dexscreener", {"pairs": []}), ("honeypot.is", no_pair)], default=None)
+    for hint in ("base", None):
+        r = run(risk.assess(nobody, chain_hint=hint))
+        gaps = liquidity_gap(r)
+        label = "hint %s" % (hint or "none")
+        check("%s: no 'no trading pair found' when the fallback never answered" % label,
+              not any("no trading pair found" in str(g.get("reason")) for g in gaps),
+              str(gaps))
+        check("  and the liquidity gap is ours and temporary",
+              gaps and all(str(g.get("reason", "")).startswith(risk._UPSTREAM_FAILED)
+                           for g in gaps), str(gaps))
+        check("  and it is not high", r["risk_level"] != "high",
+              "%s %s" % (r["risk_level"], r.get("driver")))
+        check("  and nothing claims the token has no trace",
+              not any("can be verified" in s["name"] for s in r["signals"])
+              and "No source can see this token" not in r.get("recommendation", ""),
+              r.get("recommendation", "")[:200])
+        check("  and the caller is told to retry",
+              r.get("next_action") == "retry" and r.get("retry_after_seconds"),
+              "%s %s" % (r.get("next_action"), r.get("retry_after_seconds")))
+
+    # No hint, so four networks are asked: one answers empty, three never answer. The token
+    # could be on any of the three; that is still not an observed absence.
+    install_stub([("dexscreener", {"pairs": []}), ("networks/eth/", {"data": []}),
+                  ("honeypot.is", no_pair)], default=None)
+    r = run(risk.assess(nobody))
+    check("partly answered: no 'no trading pair found' while a network went unasked",
+          not any("no trading pair found" in str(g.get("reason")) for g in liquidity_gap(r)),
+          str(liquidity_gap(r)))
+
+    # The control: both sources really answered empty. Still the absence, still escalated.
+    install_stub([("dexscreener", {"pairs": []}), ("geckoterminal", {"data": []}),
+                  ("honeypot.is", no_pair)], default=None)
+    r = run(risk.assess(nobody, chain_hint="base"))
+    check("both sources empty: still 'no trading pair found'",
+          any("no trading pair found" in str(g.get("reason")) for g in liquidity_gap(r)),
+          str(liquidity_gap(r)))
+    check("  and still escalated to high", r["risk_level"] == "high",
+          "%s %s" % (r["risk_level"], r.get("driver")))
+
+
 def test_chain_activity_overrules_a_honeypot_verdict():
     """A simulator saying "you cannot sell" loses to a chain showing thousands just did.
 
@@ -1088,8 +1150,15 @@ def test_liquidity_tool_tells_uncosted_from_empty():
         p["liquidity"] = {} if liq is None else {"usd": liq}
         return p
 
-    def ask(pairs):
-        install_stub([("dex/tokens", {"pairs": pairs}), ("dex/search", {"pairs": []})])
+    # The fallback answers empty too, or "no pairs at all" below would be DexScreener's
+    # empty listing with the fallback unasked -- an absence nobody observed (W58). Until
+    # 2026-09-22 this stub left the fallback at the default, a failed fetch, and the
+    # assertion that it reads `not_found` was pinning that bug.
+    def ask(pairs, fallback=True):
+        routes = [("dex/tokens", {"pairs": pairs}), ("dex/search", {"pairs": []})]
+        if fallback:
+            routes.append(("geckoterminal", {"data": []}))
+        install_stub(routes)
         return run(risk.liquidity(WETH, chain_hint="ethereum"))
 
     # -- The finding: three uncosted pools. ----------------------------------
@@ -1111,6 +1180,9 @@ def test_liquidity_tool_tells_uncosted_from_empty():
     n = ask([])
     check("no pairs is still not_found", n["status"] == "not_found", json.dumps(n))
     check("and counts zero pairs", n.get("pairs_total") == 0, json.dumps(n))
+    u = ask([], fallback=False)
+    check("an empty DexScreener listing the fallback never confirmed is unavailable, "
+          "not not_found (W58)", u["status"] == "unavailable", json.dumps(u))
 
     # -- A real pool is unaffected. ------------------------------------------
     ok = ask([pair(250_000)])
@@ -1274,8 +1346,12 @@ def test_the_escalation_must_know_where_it_looked():
     """
     print("\n[no-trace] a verdict about a token requires knowing where we looked")
 
+    # "No trace anywhere" needs the fallback to have answered too. This stub used to leave
+    # it at the default -- a failed fetch -- so case 2 below was asserting that our own
+    # outage on a hinted chain is `high`: BACKLOG W58, pinned as the expected behaviour.
     def assess(pairs, hint=None, addr=WETH):
         install_stub([("dex/tokens", {"pairs": pairs}), ("dex/search", {"pairs": []}),
+                      ("geckoterminal", {"data": []}),
                       ("honeypot.is", risk.NO_DATA), ("goplus", None),
                       ("rugcheck", risk.NO_DATA)])
         return run(risk.assess(addr, chain_hint=hint))

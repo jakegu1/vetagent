@@ -1084,9 +1084,11 @@ def _what_was_unseen(gaps):
     Neither is anyone seeing nothing. E11 in a sentence: an unobserved dimension in an
     observed absence's words.
 
-    This function can only be as truthful as the gap it reads. `_load_pairs` also files "no
-    trading pair found" when DexScreener answered empty and every GeckoTerminal request
-    failed, so this sentence inherits that until the loader stops (BACKLOG W58).
+    This function can only be as truthful as the gap it reads. Until 2026-09-22
+    `_load_pairs` also filed "no trading pair found" when DexScreener answered empty and
+    every fallback request failed, and this sentence inherited it (BACKLOG W58). The loader
+    now returns that case as its own outcome, filed as ours and temporary, so the gap is
+    only ever an absence every asked source reported.
     """
     reasons = " ".join(str(g.get("reason", "")) for g in gaps)
     if "simulation failed" in reasons:
@@ -3853,7 +3855,12 @@ async def _complete_home_chain(pairs, address, chain_hint):
 
 
 async def _load_pairs(address, chain_hint):
-    """Load pairs. Returns (pairs, source); pairs is None when both sources failed."""
+    """Load pairs. Returns (pairs, source).
+
+    pairs is None when both sources failed, and also when DexScreener answered empty but
+    the fallback could not be asked about a network the token might be on -- then source is
+    `_UNCONFIRMED`. `[]` means every source asked answered, and none lists a pair.
+    """
     ds = await _fetch_json("https://api.dexscreener.com/latest/dex/tokens/%s" % address)
     home_unreadable, want = False, ""
     if ds is not None:
@@ -3877,7 +3884,15 @@ async def _load_pairs(address, chain_hint):
     # CoinGecko with the key first when one is configured, then keyless GeckoTerminal. A host
     # that answered 429 is not asked about the next network: it is the same host.
     refused = set()
+    # Networks no fallback source answered for, empty or not. The fallback exists because
+    # DexScreener misses tokens, so an empty DexScreener listing is only an absence once it
+    # has been asked. A failed request used to be skipped by the `continue` below and the
+    # loop fell through to the `[]` every-source-answered-empty also returns -- so `assess`
+    # filed our own outage as "no trading pair found", and on a hinted chain the no-trace
+    # escalation turned it into `high` 70 (BACKLOG W58).
+    unanswered = []
     for net in networks:
+        answered = False
         for url, headers, name in _onchain_sources("networks/%s/tokens/%s/pools" % (net, address)):
             if name in refused:
                 continue
@@ -3886,15 +3901,26 @@ async def _load_pairs(address, chain_hint):
                 if _failure_detail(name) in ("%s 429" % name, "%s error body 429" % name):
                     refused.add(name)
                 continue
+            answered = True
             pools = gt.get("data") or []
             if pools:
                 return [_gt_to_pair(p, address, net) for p in pools], name
             break               # an answer, and it was empty: the next source is the same data
+        if not answered:
+            unanswered.append(net)
     if ds is None or home_unreadable:
         # The fetch failed, or the only pools we saw are fork copies and the token's own
         # chain could not be read: not "there really are no pools".
         return None, None
+    if unanswered:
+        # DexScreener answered and lists nothing; the fallback could not be asked about at
+        # least one network the token might be on. Nobody observed an absence there.
+        return None, _UNCONFIRMED
     return [], "dexscreener"
+
+
+# `_load_pairs`'s source when DexScreener's empty listing went unconfirmed (W58).
+_UNCONFIRMED = "unconfirmed"
 
 
 # evidence fields kept in slim mode
@@ -3937,7 +3963,20 @@ async def assess(address, chain_hint=None, verbose=False):
         claimed_chain = _canonical_chain(chain_hint)
         evidence["chain_searched"] = observed_chain or (
             claimed_chain if claimed_chain in _KNOWN_CHAINS else "")
-    if pairs is None:
+    if pairs is None and source == _UNCONFIRMED:
+        # Ours and temporary, so a retry can close it -- and never the token-side "no
+        # trading pair found", which the no-trace escalation reads as evidence (W58).
+        detail = _failure_detail("coingecko", "geckoterminal")
+        data_gaps.append({"dimension": "liquidity", "source": "dexscreener+geckoterminal",
+                          "reason": _gap(_UPSTREAM_FAILED,
+                                         "DexScreener lists no pair, and the fallback that "
+                                         "would confirm it did not answer")
+                                    + (" (%s)" % detail if detail else "")})
+        signals.append(_sig("warn", "Liquidity data unavailable",
+                            "DexScreener lists no pair for this address, and the market "
+                            "fallback -- asked because DexScreener misses tokens -- did not "
+                            "answer, so whether any pool exists is not known.", "no_liquidity"))
+    elif pairs is None:
         data_gaps.append({"dimension": "liquidity", "source": "dexscreener+geckoterminal",
                           "reason": _failed("dexscreener", "coingecko", "geckoterminal")})
         signals.append(_sig("warn", "Liquidity data unavailable",

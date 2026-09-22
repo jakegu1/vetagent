@@ -152,6 +152,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- A signal that weighs nothing is never named as what decided the verdict (W56)
 - Both bots regenerate what their data moves, after it, and test.yml runs after them (E34)
 - The live unknown rate is published with its own n and window, not a stale one
 - Our coverage gap and the signal that says so are filed as one act
@@ -159,9 +160,8 @@ problem looked like before it was fixed.
 - "No trading pair found" reports an absence; it does not always observe one (W58)
 - An outage answer promises nothing about its retry, because the retry proved it wrong
 - An unknown with no gap at all no longer blames our coverage
-- W54: the provisional score is its first concrete instance, and its expiry is known
 
-_66 more not shown (74 commits in total)._
+_67 more not shown (75 commits in total)._
 
 ## What I got wrong
 

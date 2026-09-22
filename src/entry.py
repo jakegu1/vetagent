@@ -463,6 +463,9 @@ _GAP_CLASSES = (
     ("no source reported pool depth", "no depth"),
     ("no pair with a sane price", "price outlier"),
     ("no trading pair found", "no pair"),
+    # W58: DexScreener empty and the fallback unasked. Named, so production can say how
+    # often an absence went unconfirmed instead of folding it into generic "failed".
+    ("fallback that would confirm", "unconfirmed"),
     ("upstream request failed", "failed"),
 )
 
