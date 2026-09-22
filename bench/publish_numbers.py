@@ -283,6 +283,14 @@ TARGETS = [
     ("docs/EXPERIMENT_C.md", r"- [\d.]+% \((\d+) of \d+\) of benchmark answers", "unknown_n"),
     ("docs/EXPERIMENT_C.md", r"- [\d.]+% \(\d+ of (\d+)\) of benchmark answers", "n"),
     ("docs/EXPERIMENT_C.md", r"the live service returned ([\d.]+)% of \d+ answers", "production_unknown_pct"),
+    # The rate's own n and window, or --write re-dates nothing and a newer rate lands in an
+    # older sentence (_production_window).
+    ("docs/EXPERIMENT_C.md", r"the live service returned [\d.]+% of (\d+) answers", "production_n"),
+    ("docs/EXPERIMENT_C.md", r"the live service returned [\d.]+% of \d+ answers from (\d{4}-\d\d-\d\d) to",
+     "production_from"),
+    ("docs/EXPERIMENT_C.md",
+     r"the live service returned [\d.]+% of \d+ answers from \d{4}-\d\d-\d\d to (\d\d-\d\d)",
+     "production_to_md"),
     ("docs/EXPERIMENT_C.md", r"(\d+) of the \d+ benchmark unknowns are one free upstream", "unknown_simulator_n"),
     ("docs/EXPERIMENT_C.md", r"\d+ of the (\d+) benchmark unknowns are one free upstream", "unknown_n"),
     ("docs/EXPERIMENT_C.md", r"\((\d+) tokens on Ethereum/BSC/Base; engine as of", "n"),
@@ -303,6 +311,8 @@ TARGETS = [
     ("docs/EXPERIMENT_C.md", r"took it from \d+ to (\d+); chosen with", "false_block_n"),
     ("docs/EXPERIMENT_C.md", r"`unknown`: \*\*([\d.]+)%\*\* in the benchmark", "unknown_pct"),
     ("docs/EXPERIMENT_C.md", r"in the benchmark; ([\d.]+)% live", "production_unknown_pct"),
+    ("docs/EXPERIMENT_C.md", r"in the benchmark; [\d.]+% live \((\d\d-\d\d) to", "production_from_md"),
+    ("docs/EXPERIMENT_C.md", r"in the benchmark; [\d.]+% live \(\d\d-\d\d to (\d\d-\d\d)", "production_to_md"),
     ("docs/EXPERIMENT_C.md", r"(\d+) of the \d+ benchmark unknowns trace to", "unknown_simulator_n"),
     ("docs/EXPERIMENT_C.md", r"\d+ of the (\d+) benchmark unknowns trace to", "unknown_n"),
     ("docs/EXPERIMENT_C.md", r"Healthy tokens rated high: \*\*([\d.]+)%\*\* \(\d+ of \d+\) against", "fp_pct"),
@@ -365,6 +375,35 @@ def _production_unknown_pct():
         return None
     n = sum(int(counts.get(k, 0)) for k in ("low", "medium", "high", "unknown"))
     return ("%.1f" % (100.0 * int(counts.get("unknown", 0)) / n)) if n else None
+
+
+def _production_window():
+    """The denominator and the window of that same rate, so a sentence quoting the rate
+    names the measurement it came from.
+
+    Every other figure here is guarded in all its parts -- the percentage, the "(k of n)",
+    the n -- and this one was guarded in one. So `--write` refreshed the percentage and left
+    "of 445 answers from 2026-09-12 to 09-19" standing around it: cfa42f6 and f399498 each
+    put a figure from a later window into a sentence dated to an earlier one, and this guard
+    passed both, because it was only ever asked about the number. The text is the draft
+    that goes to Reddit and the MCP Discord; a rate with the wrong denominator and dates is
+    a false sentence, however current the rate.
+    """
+    path = os.path.join(HERE, "production", "verdicts.json")
+    try:
+        with io.open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    counts = data.get("counts") or {}
+    n = sum(int(counts.get(k, 0)) for k in ("low", "medium", "high", "unknown"))
+    start, end = str(data.get("window_start") or ""), str(data.get("window_end") or "")
+    if not n or len(start) < 10 or len(end) < 10:
+        return {}          # absent means unguarded and visibly so, as for the rate itself
+    return {"production_n": "%d" % n,
+            "production_from": start[:10],
+            "production_from_md": start[5:10],
+            "production_to_md": end[5:10]}
 
 
 def _maturity():
@@ -750,6 +789,7 @@ def figures():
     # Same rule for the production artifact: absent means unguarded, not guarded against None.
     if _production_unknown_pct() is not None:
         out["production_unknown_pct"] = _production_unknown_pct()
+        out.update(_production_window())
     return out
 
 
