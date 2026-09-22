@@ -627,6 +627,21 @@ def production_verdicts(account, token):
     if why is not None:
         out["unknown_why"] = {(str(r.get("why") or "") or "(not recorded)"):
                               int(float(r.get("n") or 0)) for r in why}
+    # Why the highs were high, in the same words (src/entry.py `_why_high`). `high` is the
+    # verdict our own failure can turn against someone else's token -- BACKLOG W58 was an
+    # outage of ours escalated to `high` 70 -- and until 2026-09-22 it was stored as a count,
+    # so nothing here could say how often that happened. Same failure rule as above; rows
+    # written before the field existed read "(not recorded)".
+    high = rows_of(query(
+        "SELECT %s AS why, sum(_sample_interval) AS n FROM %s "
+        "WHERE timestamp > now() - INTERVAL '%d' DAY AND %s = 'assess_token_risk' "
+        "AND %s = 'high' AND %s NOT IN (%s) GROUP BY why ORDER BY n DESC LIMIT 40"
+        % (BLOB["why"], DATASET, PRODUCTION_WINDOW_DAYS, BLOB["tool"], BLOB["verdict"],
+           BLOB["client"], ", ".join("'%s'" % c for c in PRODUCTION_EXCLUDED_CLIENTS)),
+        account, token))
+    if high is not None:
+        out["high_why"] = {(str(r.get("why") or "") or "(not recorded)"):
+                           int(float(r.get("n") or 0)) for r in high}
     return out
 
 

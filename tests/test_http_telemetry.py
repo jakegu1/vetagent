@@ -214,6 +214,68 @@ def test_an_unknown_records_why_without_recording_what():
               all(ADDRESS.lower() not in str(x).lower() for x in whys), str(whys))
 
 
+def test_a_high_records_why_without_recording_what():
+    """`high` is the verdict our own failure can turn against someone else's token, and
+    until 2026-09-22 it was the one recorded as a bare count.
+
+    BACKLOG W58: DexScreener empty, the fallback unasked, and on a hinted chain the no-trace
+    escalation made our outage `high` 70. Nothing in production could have said how often,
+    because the reason field was filled only for `unknown`. It is now filled for `high` too,
+    from the same fixed vocabulary plus the driver's category -- never its name or message,
+    which carry figures and could carry an address.
+    """
+    print("\n[http] a high records why, from the same fixed vocabulary")
+    recorded = []
+    original_record, original_assess = entry._record, risk.assess
+
+    def _rec(env, blobs, doubles):
+        recorded.append(blobs)
+
+    no_trace = {"dimension": "liquidity", "source": "dexscreener",
+                "reason": "about the token: no trading pair found"}
+    no_record = {"dimension": "sellability", "source": "honeypot.is",
+                 "reason": "about the token: the sell simulator has no record of %s" % ADDRESS}
+    answers = [
+        {"risk_level": "high", "signals": [], "evidence": {"data_gaps": [no_trace, no_record]},
+         "driver": {"name": "Nothing about this token can be verified", "category": "no_liquidity"}},
+        {"risk_level": "high", "signals": [], "evidence": {"data_gaps": []},
+         "driver": {"name": "Deployer %s rugged before" % ADDRESS, "category": "honeypot"}},
+        {"risk_level": "high", "signals": [], "evidence": {"data_gaps": []},
+         "driver": {"name": "x", "category": "honeypot %s" % ADDRESS}},
+        {"risk_level": "high", "signals": [], "evidence": {"data_gaps": []}, "driver": None},
+        {"risk_level": "medium", "signals": [], "evidence": {"data_gaps": [no_trace]},
+         "driver": {"name": "Thin liquidity", "category": "liquidity"}},
+    ]
+    at = {"i": 0}
+
+    async def _assess(address, chain_hint=None, verbose=False):
+        return dict(answers[at["i"]], address=ADDRESS)
+
+    entry._record, risk.assess = _rec, _assess
+    try:
+        w = entry.Default()
+        for i in range(len(answers)):
+            at["i"] = i
+            asyncio.run(w.fetch(FakeRequest("https://vetagent.dev/assess/%s" % ADDRESS)))
+    finally:
+        entry._record, risk.assess = original_record, original_assess
+
+    whys = [b[5] if len(b) > 5 else None for b in recorded]
+    check("five answers recorded", len(whys) == len(answers), str(recorded))
+    if len(whys) == len(answers):
+        check("a no-trace high names its driver's category and its gap classes",
+              whys[0] == "driver=no_liquidity|liquidity:no pair|sellability:no record",
+              str(whys[0]))
+        check("a driver contributes its category, never its name",
+              whys[1] == "driver=honeypot", str(whys[1]))
+        check("a category that is not a plain word is recorded as `other`",
+              whys[2] == "driver=other", str(whys[2]))
+        check("a high with no driver says so", whys[3] == "driver=none", str(whys[3]))
+        check("a medium still records no reason", whys[4] == "", str(whys[4]))
+        check("and no reason carries the address, wherever the answer put it",
+              all(ADDRESS.lower() not in str(x).lower() for x in whys), str(whys))
+
+
 class FakeCf:
     """What `request.cf` actually is: a JsProxy of a plain JS object.
 

@@ -152,6 +152,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- An empty DexScreener listing the fallback never confirmed is not an absence (W58)
 - A signal that weighs nothing is never named as what decided the verdict (W56)
 - Both bots regenerate what their data moves, after it, and test.yml runs after them (E34)
 - The live unknown rate is published with its own n and window, not a stale one
@@ -159,7 +160,6 @@ problem looked like before it was fixed.
 - The fourth-kind rationale says what the median can and cannot settle
 - "No trading pair found" reports an absence; it does not always observe one (W58)
 - An outage answer promises nothing about its retry, because the retry proved it wrong
-- An unknown with no gap at all no longer blames our coverage
 
 _67 more not shown (75 commits in total)._
 

@@ -202,7 +202,7 @@ _PRIVACY_HTML = """<!doctype html>
  .sub{color:#8b949e;margin:0 0 2rem}
 </style>
 <h1>Privacy</h1>
-<p class="sub">VetAgent &middot; last updated 2026-09-04</p>
+<p class="sub">VetAgent &middot; last updated 2026-09-22</p>
 
 <h2>What we collect</h2>
 <p><strong>No accounts, no cookies, no browser tracking.</strong> VetAgent has no
@@ -216,8 +216,10 @@ consider that the correct side of the trade for a tool whose only asset is trust
 service. Each call records: which method and tool was invoked, the resulting risk
 level, whether it errored, a coarse client name taken from the user agent, the
 country code Cloudflare attaches at the edge, and -- only when the answer is
-<code>unknown</code> -- which check could not run and what the data source answered, in
-fixed words such as <code>liquidity:dexscreener 429</code>. <strong>No IP addresses, no full user
+<code>unknown</code> or <code>high</code> -- which check could not run and what the data
+source answered, and for a <code>high</code> the category of the signal that decided it, in
+fixed words such as <code>liquidity:dexscreener 429</code> or
+<code>driver=no_liquidity</code>. <strong>No IP addresses, no full user
 agents, no token addresses, nothing that identifies a person or a request.</strong></p>
 
 <h2>One thing we cannot promise for you</h2>
@@ -484,6 +486,43 @@ def _why_unknown(answer):
     kind = str(answer.get("unknown_kind") or "")
     if kind not in ("infrastructure", "coverage", "mixed"):
         kind = "unstated"
+    return "|".join([kind] + _gap_tags(answer))[:160]
+
+
+_CATEGORY_WORD = re.compile(r"^[a-z_]{1,24}$")
+
+
+def _why_high(answer):
+    """Why an answer is `high`, in the same words -- "" for any other answer.
+
+    "driver=no_liquidity|liquidity:no pair|sellability:no record".
+
+    `unknown` was the only verdict whose reason was recorded, and `high` is the one where
+    our own failure can convict someone else's token: on 2026-09-21 an outage of ours met
+    the no-trace escalation and came back `high` 70 (BACKLOG W58), and nothing in
+    production could have said how often, because a `high` was stored as a count. The
+    driver contributes only its category, an engine literal checked against a word
+    pattern -- never its name or message, which carry figures -- and the gaps use the
+    fixed classes above, so nothing an upstream wrote can reach this field.
+    """
+    if not isinstance(answer, dict) or answer.get("risk_level") != "high":
+        return ""
+    driver = answer.get("driver") if isinstance(answer.get("driver"), dict) else {}
+    category = str(driver.get("category") or "")
+    head = "driver=" + (category if _CATEGORY_WORD.match(category)
+                        else ("none" if not driver else "other"))
+    return "|".join([head] + _gap_tags(answer))[:160]
+
+
+def _why(answer):
+    """The reason field for one recorded call: an unknown's or a high's, else ""."""
+    return _why_unknown(answer) or _why_high(answer)
+
+
+def _gap_tags(answer):
+    """["liquidity:<class>", "sellability:<class>"] from an answer's data gaps, in the
+    fixed vocabulary of `_GAP_CLASSES` and `_UPSTREAM_STATUS` -- shared by every verdict
+    whose reason is recorded, so the two can never describe one gap in different words."""
     per_dim = {}
     for gap in ((answer.get("evidence") or {}).get("data_gaps") or []):
         if not isinstance(gap, dict):
@@ -500,8 +539,7 @@ def _why_unknown(answer):
         per_dim.setdefault(dim, [])
         if tag not in per_dim[dim]:
             per_dim[dim].append(tag)
-    parts = [kind] + ["%s:%s" % (d, "+".join(per_dim[d])) for d in sorted(per_dim)]
-    return "|".join(parts)[:160]
+    return ["%s:%s" % (d, "+".join(per_dim[d])) for d in sorted(per_dim)]
 
 
 def _caller_id(request):
@@ -1058,7 +1096,7 @@ class Default(WorkerEntrypoint):
         is_error = isinstance(result, dict) and bool(result.get("error"))
         _record(self.env,
                 ["http", tool, verdict, _caller_id(request), _country(request),
-                 _why_unknown(result)],
+                 _why(result)],
                 [1.0, 1.0 if is_error else 0.0])
         return result
 
@@ -1093,5 +1131,5 @@ class Default(WorkerEntrypoint):
             if isinstance(result, dict) else None
         _record(self.env,
                 [method, tool, verdict, _caller_id(request), _country(request),
-                 _why_unknown(sc)],
+                 _why(sc)],
                 [1.0, 1.0 if is_error else 0.0])
