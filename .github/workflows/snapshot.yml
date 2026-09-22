@@ -31,7 +31,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
+      # Full history: the last step regenerates docs/ROUNDS.md and docs/OWNER.md, which are
+      # read out of git log, and a depth-1 checkout would write a log of one commit.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -63,3 +67,14 @@ jobs:
       - name: Commit sellability
         continue-on-error: true
         run: bash .github/scripts/snapshot-commit.sh "sellability"
+
+      # Last, and in a commit of its own, because the rows above must never share a commit
+      # that can conflict. `bench/scorecard.py` counts snapshot days, so the first pass after
+      # midnight UTC moves docs/SCORECARD.md -- and until 2026-09-22 nothing regenerated it:
+      # 503b7a6 left master red for four hours, and no run noticed, because this push starts
+      # no test.yml. A failure here is reported loudly and costs no rows: they are already
+      # on origin.
+      - name: Regenerate the pages that quote the archive
+        env:
+          PYTHONIOENCODING: utf-8
+        run: bash .github/scripts/regenerate-derived.sh "Snapshot $(date -u +%F)"

@@ -66,22 +66,15 @@ jobs:
           python tests/test_upstream_contract.py \
             --status-json bench/production/upstream_contract.json || true
 
-      # Regenerate everything that quotes the score, in the same commit, or test.yml goes
-      # red on this bot's push.
-      - name: Regenerate the pages that read it
-        env:
-          PYTHONIOENCODING: utf-8
-        run: |
-          python bench/scorecard.py --write
-          python tools/owner.py --write
-          python tools/rounds.py --write
-
+      # The observations alone. The pages that quote them are regenerated after this, in a
+      # commit of their own (the step below), so a conflict on a page a human also
+      # regenerates can never cost the day's record.
       - name: Commit
         run: |
           git config user.name "vetagent-production[bot]"
           git config user.email "noreply@vetagent.dev"
           # Never anything under src/: a push touching it would trigger a deploy.
-          git add bench/production/ docs/SCORECARD.md docs/OWNER.md docs/ROUNDS.md
+          git add bench/production/
           if git diff --staged --quiet; then
             echo "nothing changed"
             exit 0
@@ -94,3 +87,15 @@ jobs:
           done
           echo "::error::could not push the production probe after 5 attempts"
           exit 1
+
+      # This used to be an inline list -- scorecard, owner, rounds -- under a comment saying
+      # "or test.yml goes red on this bot's push". The list was one generator short: it had
+      # no publish_numbers, so c66c6be left docs/EXPERIMENT_C.md quoting a stale live rate,
+      # the third time that happened. And the comment's premise was false: a GITHUB_TOKEN
+      # push starts no workflow, so test.yml never ran on this bot's push to go red on it.
+      # Both halves are fixed at the seam: one shared list, derived and checked by
+      # tests/test_bot_commits_stay_green.py, and test.yml runs after this workflow.
+      - name: Regenerate the pages that quote it
+        env:
+          PYTHONIOENCODING: utf-8
+        run: bash .github/scripts/regenerate-derived.sh "Production probe $(date -u +%F)"

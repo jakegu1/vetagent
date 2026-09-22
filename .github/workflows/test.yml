@@ -7,6 +7,14 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "17 3 * * 1"   # benchmark once a week, Monday 03:17 UTC
+  # The two scheduled bots push with GITHUB_TOKEN, and GitHub starts no workflow for such a
+  # push -- so until 2026-09-22 no bot commit had ever been tested. 503b7a6 and c66c6be each
+  # left master red and the only thing that noticed was this file's weekly schedule. On
+  # this trigger only the offline `test` job runs (the others are gated below); it checks
+  # out the default branch's head, which is the bot's commit plus its derived pages.
+  workflow_run:
+    workflows: [snapshot, production]
+    types: [completed]
 
 jobs:
   test:
@@ -186,6 +194,14 @@ jobs:
       - name: The upstream contract monitor is still monitoring
         run: python tests/test_upstream_contract_is_observed.py
 
+      # Both scheduled bots left master red on 2026-09-21, each by a different incomplete
+      # list of pages to regenerate, and neither was noticed because nothing tested a bot's
+      # commit. This pins the seam from the files: every pushing workflow is followed by
+      # this one, and every one regenerates -- after its data, through one shared script
+      # whose list is derived from the generators' own sources.
+      - name: A bot's commit regenerates what it moves, and is tested
+        run: python tests/test_bot_commits_stay_green.py
+
   # Upstream contract monitor: real API calls that check the fields we depend on still exist.
   # Separate from the unit tests: a third-party outage turns it red, which is the signal.
   # DECISIONS E30. This job was `continue-on-error: true` until 2026-09-20, for a reason
@@ -202,6 +218,9 @@ jobs:
   # did arrive. A job that fails only for reasons that are ours to fix does not need to be
   # soft-failed, so it is not.
   upstream-contract:
+    # Real upstream requests. Not on a bot's workflow_run: those come five times a day and
+    # can move nothing this job checks.
+    if: github.event_name != 'workflow_run'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -218,6 +237,7 @@ jobs:
   # E30 removes from the job above. It stays here, on its own, until it can tell them
   # apart; `docs/BACKLOG.md` carries the work.
   backfill-roundtrip:
+    if: github.event_name != 'workflow_run'
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
