@@ -5,7 +5,7 @@
 > page cannot quietly drift out of date. `tests/test_owner_page.py` fails the
 > build if it does.
 >
-> Generated 2026-09-21.
+> Generated 2026-09-22.
 
 ## The project in one paragraph
 
@@ -21,35 +21,35 @@ These are the things I cannot do. Everything else in this project is mine.
 
 | When | Due | # | What you do | Blocked? |
 |---|---|---|---|---|
-| **3 days OVERDUE** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
-| **3 days OVERDUE** | 2026-09-18 | W11 | Answer the 2026-09-18 gate | no |
-| in 25 days | 2026-10-16 | W5 | A second, independent sell-simulation source | **yes -- see below** |
-| in 25 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
+| **4 days OVERDUE** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
+| **4 days OVERDUE** | 2026-09-18 | W11 | Answer the 2026-09-18 gate | no |
+| in 24 days | 2026-10-16 | W5 | A second, independent sell-simulation source | **yes -- see below** |
+| in 24 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
 
 ### W10 Create the two accounts the remaining directories need
 
-- **When:** 2026-09-18 (**3 days OVERDUE**)
+- **When:** 2026-09-18 (**4 days OVERDUE**)
 - **Why then:** distribution is the whole of the gate's failing branch
 - **You know it is done when:** `CHANNELS` in `bench/scorecard.py`, updated only by someone who went and looked
 - **If you do nothing:** Nothing. Six submissions are already queued and the two parked ones are one signup away; waiting costs reach, not work.
 
 ### W11 Answer the 2026-09-18 gate
 
-- **When:** 2026-09-18 (**3 days OVERDUE**)
+- **When:** 2026-09-18 (**4 days OVERDUE**)
 - **Why then:** this IS the gate -- it has to be answered on the day
 - **You know it is done when:** `python bench/usage.py`, counting rule already fixed in code; then a `Resolved:` line in `STRATEGY.md` §8, which `test_gates_get_reviewed.py` requires once due
 - **If you do nothing:** A gate that passes its date in silence teaches everyone that gates are decoration, and this is the first one that can stop the project.
 
 ### W5 A second, independent sell-simulation source
 
-- **When:** 2026-10-16 (in 25 days)
+- **When:** 2026-10-16 (in 24 days)
 - **Why then:** needed for W3, which every accuracy claim rests on
 - **You know it is done when:** **Blocked** on a credential, not on engineering. Probed 2026-09-06: staysafu unreachable (SSL), quickintel 401, tokensniffer 401, de.fi public endpoint 404. Every candidate needed a paid key (**2026-09-15, from its pricing page:** Quick Intel now lists a free API Testing tier, 200 calls a month on approval, and a keyless pay-per-scan endpoint at $0.03 paid in USDC; whether its scan simulates a sell is not yet known; next owner step: apply for the testing tier) — this is a W9-shaped item that belongs to whoever holds the budget
 - **If you do nothing:** Every accuracy claim keeps resting on a single sell simulator. If it is wrong, we cannot tell, and neither can anyone reading the benchmark.
 
 ### W12 Decide the price-history trade-off
 
-- **When:** 2026-10-16 (in 25 days)
+- **When:** 2026-10-16 (in 24 days)
 - **Why then:** changes what the benchmark can measure, so before the D gate
 - **You know it is done when:** A decision recorded in `DECISIONS.md`, either way
 - **If you do nothing:** The 10-16 gate arrives with the measurement question still open, so that gate answers a smaller question than it was meant to.
@@ -62,10 +62,10 @@ next -- including stopping.
 
 | Date | When | The question | What happens |
 |---|---|---|---|
-| 2026-09-18 | **3 days OVERDUE** | Is anyone using it | Yes → continue; no → run only Experiment C, add no features. **Resolved:** `gate_verdict()` printed YES (usage.yml run 35374258574, 2026-09-18 17:25 UTC) on `curl` (14 calls over 4 days, JP on 14 of 14 rows: our own untagged probes from this machine's Tokyo egress, 63c485b; adding JP to OWNER_COUNTRIES turns it NEAR and does not change the verdict) and `mozilla` (23 calls over 9 days; its verdicts come from GET /assess, and the bucket is any `Mozilla/` user agent, crawlers included). Recorded as the frozen rule printed it, and read for what it is: **not evidence of adoption** -- no identified stranger received a verdict, and 3,169 of 3,259 attributable tool calls (97.2%) were ours -> continue per §7: Experiment C now; Experiment D (20 operators, the $99/month line, each with its own client tag) sent by 2026-09-23; E only when a D reply asks how to pay; no new features before 10-16 (fixes are not features). |
-| 2026-10-16 | in 25 days | Does anyone want to pay | Yes → build payments; no → pick a different customer segment and run D again |
-| 2026-12-04 | in 74 days | Is further investment worth it | Yes → continue per §7; no → move to low-maintenance mode |
-| 2027-03-04 | in 164 days | Does the data asset hold up | Yes → that becomes the main product; no → keep the tool, drop the data narrative |
+| 2026-09-18 | **4 days OVERDUE** | Is anyone using it | Yes → continue; no → run only Experiment C, add no features. **Resolved:** `gate_verdict()` printed YES (usage.yml run 35374258574, 2026-09-18 17:25 UTC) on `curl` (14 calls over 4 days, JP on 14 of 14 rows: our own untagged probes from this machine's Tokyo egress, 63c485b; adding JP to OWNER_COUNTRIES turns it NEAR and does not change the verdict) and `mozilla` (23 calls over 9 days; its verdicts come from GET /assess, and the bucket is any `Mozilla/` user agent, crawlers included). Recorded as the frozen rule printed it, and read for what it is: **not evidence of adoption** -- no identified stranger received a verdict, and 3,169 of 3,259 attributable tool calls (97.2%) were ours -> continue per §7: Experiment C now; Experiment D (20 operators, the $99/month line, each with its own client tag) sent by 2026-09-23; E only when a D reply asks how to pay; no new features before 10-16 (fixes are not features). |
+| 2026-10-16 | in 24 days | Does anyone want to pay | Yes → build payments; no → pick a different customer segment and run D again |
+| 2026-12-04 | in 73 days | Is further investment worth it | Yes → continue per §7; no → move to low-maintenance mode |
+| 2027-03-04 | in 163 days | Does the data asset hold up | Yes → that becomes the main product; no → keep the tool, drop the data narrative |
 
 ## The same thing as a picture
 
@@ -79,21 +79,21 @@ gantt
     todayMarker stroke-width:3px,stroke:#d33,stroke-dasharray:0
     title The dates that decide things (red line is today)
     section Decisions
-    Is anyone using it - 3 days OVERDUE :milestone, 2026-09-18, 0d
-    Does anyone want to pay - in 25 days :milestone, 2026-10-16, 0d
-    Is further investment worth it - in 74 days :milestone, 2026-12-04, 0d
-    Does the data asset hold up - in 164 days :milestone, 2027-03-04, 0d
+    Is anyone using it - 4 days OVERDUE :milestone, 2026-09-18, 0d
+    Does anyone want to pay - in 24 days :milestone, 2026-10-16, 0d
+    Is further investment worth it - in 73 days :milestone, 2026-12-04, 0d
+    Does the data asset hold up - in 163 days :milestone, 2027-03-04, 0d
 ```
 
 ### Is the archive still collecting?
 
 ```text
-··███████████████████   2026-09-01 -> 2026-09-21
+·████████████████████   2026-09-02 -> 2026-09-22
 ```
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**19 days, no gaps.** Newest is 2026-09-21, today.
+**20 days, no gaps.** Newest is 2026-09-22, today.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -152,16 +152,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Both bots regenerate what their data moves, after it, and test.yml runs after them (E34)
+- The live unknown rate is published with its own n and window, not a stale one
 - Our coverage gap and the signal that says so are filed as one act
 - The fourth-kind rationale says what the median can and cannot settle
 - "No trading pair found" reports an absence; it does not always observe one (W58)
 - An outage answer promises nothing about its retry, because the retry proved it wrong
 - An unknown with no gap at all no longer blames our coverage
 - W54: the provisional score is its first concrete instance, and its expiry is known
-- The settling durations in the engine are the re-run's, and the median is computed
-- Our missing Solana holder list was scoring the token and naming itself the driver
 
-_75 more not shown (83 commits in total)._
+_66 more not shown (74 commits in total)._
 
 ## What I got wrong
 
