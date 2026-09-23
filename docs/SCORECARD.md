@@ -10,7 +10,7 @@
 |---|---|---|
 | Correctness | 18.0 ⚠️ | 30 |
 | Coverage | 10.8 | 20 |
-| Credibility | 11.1 | 20 |
+| Credibility | 11.2 | 20 |
 | Distribution | 4.2 ⚠️ | 15 |
 | Demand | 0.0 | 15 |
 
@@ -35,7 +35,7 @@
 | Correctness | production guards observed live | 5.0 | 5 | 429 after 61 calls; batch of 11 -> HTTP 400; service 389ecbc on 2026-09-22 |
 | Coverage | risk dimensions covered, per advertised chain | 10.8 | 20 | 39 / 72 chain-dimension cells |
 | Credibility | recall is measurable | 10.0 | 10 | dead samples: 30 (need ≥20) |
-| Credibility | days of snapshots | 1.1 | 10 | 20 of 180 days |
+| Credibility | days of snapshots | 1.2 | 10 | 21 of 180 days |
 | Distribution | channels listed on | 4.2 | 10 | 5 / 12 |
 | Distribution | external callers | — | 5 | not measured (needs CLOUDFLARE_API_TOKEN, see bench/usage.py) |
 | Demand | paying users | 0.0 | 10 | 0 |
