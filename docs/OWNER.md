@@ -161,7 +161,7 @@ problem looked like before it was fixed.
 - The live unknown rate is published with its own n and window, not a stale one
 - Our coverage gap and the signal that says so are filed as one act
 
-_44 more not shown (52 commits in total)._
+_37 more not shown (45 commits in total)._
 
 ## What I got wrong
 
