@@ -42,9 +42,17 @@ TARGETS = [
     # guard fails instead of a reader noticing.
     ("docs/SCORECARD.md", r"false positive rate \(healthy rated high\) \| [\d.]+ \| 5 \| ([\d.]+)%",
      "fp_pct"),
+    # The production row has two forms and bench/scorecard.py picks one by its own rule
+    # (_scorecard_production_row). This guard knew only the figure, so when b051254 moved
+    # the window below the floor, the scorecard wrote "not measured" as it should and this
+    # target went red on every CI run from 2026-09-22 -- with no figure for --write to fix.
+    # Both forms are targets; the one the scorecard is not printing must be absent.
     ("docs/SCORECARD.md",
      r"unknown rate \(production, served answers\) \| [\d.]+ \| 5 \| ([\d.]+)% of",
-     "production_unknown_pct"),
+     "scorecard_production_pct"),
+    ("docs/SCORECARD.md",
+     r"unknown rate \(production, served answers\) \| — \| 5 \| not measured \((.+?)\) \|",
+     "scorecard_production_why"),
     ("docs/SCORECARD.md",
      r"false-block rate \(liquid healthy rated medium or high\) \| [\d.]+ \| 5 \| ([\d.]+)%",
      "false_block_pct"),
@@ -404,6 +412,28 @@ def _production_window():
             "production_from": start[:10],
             "production_from_md": start[5:10],
             "production_to_md": end[5:10]}
+
+
+# The expected value of a target whose form bench/scorecard.py is not printing right now: that
+# pattern must not match at all (scan()).
+ABSENT = "absent"
+
+
+def _scorecard_production_row():
+    """What docs/SCORECARD.md's production row must say, decided by bench/scorecard.py.
+
+    Asked at call time, never copied: the floor, the freshness rule and where the artifact
+    lives are the scorecard's (scorecard.production_verdicts). The rate is computed in the
+    scorecard's order too: 46 unknown of 160 prints 28.7 there and 28.8 in
+    _production_unknown_pct()'s order, which still feeds docs/EXPERIMENT_C.md.
+    """
+    import scorecard
+    verdicts, n, why = scorecard.production_verdicts()
+    if verdicts is None:
+        return {"scorecard_production_pct": ABSENT, "scorecard_production_why": why}
+    unknown = int((verdicts.get("counts") or {}).get("unknown", 0))
+    return {"scorecard_production_pct": "%.1f" % (unknown / float(n) * 100),
+            "scorecard_production_why": ABSENT}
 
 
 def _maturity():
@@ -790,6 +820,7 @@ def figures():
     if _production_unknown_pct() is not None:
         out["production_unknown_pct"] = _production_unknown_pct()
         out.update(_production_window())
+    out.update(_scorecard_production_row())
     return out
 
 
@@ -803,6 +834,13 @@ def scan(write):
             continue
         text = io.open(path, encoding="utf-8").read()
         m = re.search(pattern, text)
+        if vals[key] == ABSENT:
+            # Finding it is the error, and --write leaves it alone: the form is for
+            # `python bench/scorecard.py --write` to change, and splicing one form's value
+            # into the other would write a row that is neither.
+            if m:
+                stale.append((rel, pattern, m.group(1), ABSENT))
+            continue
         if not m:
             stale.append((rel, pattern, "pattern not found", vals[key]))
             continue
