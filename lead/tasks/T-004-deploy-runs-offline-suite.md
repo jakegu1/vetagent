@@ -164,4 +164,32 @@ list cannot be read, nothing is deployed.
 
 ## Amendments
 
-None yet.
+- **2026-09-29, before the reviews: two fail-open gaps in the moved runner are fixed in this
+  task.** The executor measured both at `521fc6c`. They are the threat model's own class (a
+  gate that passes having run less than the list), so they are in scope although the spec said
+  to move the runner unchanged:
+  1. A comment line at the jobs' indentation (two spaces) inside the `test` job ends the
+     runner's reading of the job: with one such comment, YAML sees 28 steps and the runner
+     reads 6, so the gate would pass and deploy while `tests` is red.
+  2. `run: python a.py && python b.py` runs `a.py` with the rest as arguments and reports ok;
+     the second command never runs.
+
+  Allowed changes:
+  - **Runner** (`.github/scripts/offline_suite.py`): the job ends only at the next job id (a
+    line with exactly two spaces of indentation followed by a name and a colon), never at a
+    comment or a blank line; a `run:` whose command contains a shell operator (`&&`, `||`, `;`,
+    `|`, a backtick, `$(`, `>`, `<`) is an unsupported step, reported red, and the run exits
+    non-zero. Each fix in its own commit, message saying what the red looked like.
+  - **Named change (a)**, `tests/test_deploy_gate.py`, the synthetic-workflow checks: add a
+    case with a comment at two-space indentation between two steps of the `test` job; the
+    runner must run the steps after the comment.
+  - **Named change (b)**, same file: add cases where a `run:` joins two commands with `&&`
+    and with `;`; each is reported red as unsupported, the run exits non-zero, and the other
+    steps still run.
+  - Named changes (a) and (b) go in one commit titled `T-004: named change (a, b) ...`, made
+    before the two runner fixes, so that commit shows both new cases red.
+
+  Decided, not required: the runner treating a failing `git status` as "no tracked file
+  changed" (pre-existing; the deploy job's checkout is always a repository). Moving the guard
+  step first in `test.yml` (rejected: a red guard would hide the rest of the `tests` job on
+  CI). Linux: the gate is observed on CI only after a push; the lead plans the push order.

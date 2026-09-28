@@ -49,7 +49,8 @@ Last updated: 2026-09-29 by lead session 2 (Claude Code desktop, local, opened i
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
 | Level 0: `CLAUDE.md` manual order | 0 | `task/l0-claude-md-order` at `3105940` | done on its branch; checks 27 of 27 | the Owner | Merge with `--no-ff` and push, in the next batch the Owner approves |
-| T-003 | 1 | `task/t-003-publish-numbers-report`, worktree `../vetagent-t-003`, based on `f400b60` | executor implementing (dispatched 2026-09-29) | executor subagent | Collect READY or BLOCKED. On READY: contract check and `python lead/checks.py` on the head, then one fresh-context review, then batch the merge with the Level 0 branch for the Owner's yes |
+| T-003 | 1 | `task/t-003-publish-numbers-report`, worktree `../vetagent-t-003`, based on `f400b60` | in review: READY at `7204454`, then named change (a) (spec Amendments, `46d48e1`) at `56105a7`; the lead reproduced CONTRACT HOLDS and 27 of 27 there | fresh-context reviewer subagent | Collect the verdict into `lead/reviews/T-003.md`; on a pass, batch the merge with the two Level 0 branches for the Owner's yes |
+| Level 0: ignore `bench/second_oracle.json` | 0 | `task/l0-ignore-second-oracle-output` at `4638f83` | done on its branch; checks 27 of 27 | the Owner | Merge with `--no-ff` in the next approved batch. Until then the file is not ignored on master: do not `git add -A` |
 | T-004 | 3 | `task/t-004-deploy-runs-offline-suite`, worktree `../vetagent-t-004` | executor implementing (dispatched 2026-09-29) | executor subagent | Collect READY or BLOCKED. On READY: contract check and checks on the head, then an independent review and a red-team review in parallel. Its push deploys production (`deploy.yml` is in its own trigger): say so when asking the Owner |
 
 ## Waiting on the Owner
