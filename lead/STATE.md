@@ -48,14 +48,16 @@ Last updated: 2026-09-29 by lead session 2 (Claude Code desktop, local, opened i
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| Level 0: `CLAUDE.md` manual order | 0 | `task/l0-claude-md-order` at `3105940` | done on its branch; checks 27 of 27 | the Owner | Merge with `--no-ff` and push, in the next batch the Owner approves |
-| T-003 | 1 | `task/t-003-publish-numbers-report`, worktree `../vetagent-t-003`, based on `f400b60` | in review: READY at `7204454`, then named change (a) (spec Amendments, `46d48e1`) at `56105a7`; the lead reproduced CONTRACT HOLDS and 27 of 27 there | fresh-context reviewer subagent | Collect the verdict into `lead/reviews/T-003.md`; on a pass, batch the merge with the two Level 0 branches for the Owner's yes |
-| Level 0: ignore `bench/second_oracle.json` | 0 | `task/l0-ignore-second-oracle-output` at `4638f83` | done on its branch; checks 27 of 27 | the Owner | Merge with `--no-ff` in the next approved batch. Until then the file is not ignored on master: do not `git add -A` |
-| T-004 | 3 | `task/t-004-deploy-runs-offline-suite`, worktree `../vetagent-t-004` | executor implementing (dispatched 2026-09-29) | executor subagent | Collect READY or BLOCKED. On READY: contract check and checks on the head, then an independent review and a red-team review in parallel. Its push deploys production (`deploy.yml` is in its own trigger): say so when asking the Owner |
+| T-003 | 1 | `task/t-003-publish-numbers-report`, worktree `../vetagent-t-003`, based on `f400b60` | review passed: 12 of 12, VERDICT ✅ at `56105a7` (`lead/reviews/T-003.md`); head unchanged since | the Owner | Ask to merge (`--no-ff`) and push in one batch with T-004 once its reviews pass |
+| T-004 | 3 | `task/t-004-deploy-runs-offline-suite`, worktree `../vetagent-t-004` | amendment round: READY at `521fc6c`; the executor is adding named change (a, b) and the two runner fixes (spec Amendments, `adc77cb`) | executor subagent | Collect READY; contract check and checks on the head; then an independent review and a red-team review in parallel. Its push deploys production (`deploy.yml` is in its own trigger): propose pushing the task branch first (tests on Linux, no deploy), then master |
+| W5 experiment (the Owner's) | — | none; `bench/second_oracle.py` on master | the Owner reruns the 143 calls with the User-Agent fix | the Owner | Analyse `bench/second_oracle.json` (ignored, local only): count answers, errors (for example HTTP 400 for an invalid contract) and empty payloads separately; an all-null payload with `isScam: false` is no answer, not a safe verdict |
 
 ## Waiting on the Owner
 
-- Nothing open.
+- Nothing open. Pushing master (the three Level 0 merges and the lead's bookkeeping) waits for
+  the batch with T-003 and T-004.
+- (H-8 answered 2026-09-29: merge the three Level 0 branches locally, no push. Merged as
+  `a8a758d`, `08915db`, `d592f8d`.)
 - (H-7 answered 2026-09-29: yes; applied after the clean merge. Autonomy A1.)
 - (H-6 done 2026-09-29: T-002 merged as `16e100e`; pushed `dc401b9..16e100e`; CI run
   36455682835 green; no deploy.)
@@ -74,6 +76,15 @@ a spec.
 Suggested order (lead #2): the two follow-ups that finish T-002 and the deploy gate (T-004) are
 in flight; after them, the Level 3 hardening of `regenerate-derived.sh` below.
 
+- Candidate, Level 1, from T-003's review: when the scorecard's production row is in the form
+  `bench/scorecard.py` is not printing, its two targets report `absent` and `pattern not found`,
+  and the second gets the "restore the sentence" advice, wrong for a generated row; three
+  surviving mutants (the owner-powers advice naming the wrong file, the advice for a key
+  nothing computes, a single rewrite listed); a line matching both retracted-claim patterns is
+  printed twice, so its count is untrue.
+- Candidate, Level 1: `bench/second_oracle.py`'s report counts a call that errored as a token
+  Quick Intel could not answer, so 143 blocked calls printed "0 of 122" and a zero rate. Report calls it
+  could not make as not measured, apart from answers, and print no rate over zero answers.
 - Candidate, Level 1: `_owner_power_figures()` raises on invalid JSON in
   `bench/owner_powers.json`, while the production readers treat an unreadable artifact as not
   measured. Same class as T-002.
@@ -167,6 +178,11 @@ hand and move on.
 
 ## Log (newest first; keep the last ~20 lines)
 
+- 2026-09-29: W5 support. The Owner's first Quick Intel run (real key) got HTTP 403 on all
+  143 calls: Cloudflare error 1010 bans Python's default User-Agent. Fixed by naming the
+  script; the Owner's probe then got HTTP 200 and 400 from the gateway. With the Owner's yes
+  (H-8), three Level 0 branches merged locally; checks 27 of 27 after fixing a digit-percent
+  quote in this file that the checks caught before commit.
 - 2026-09-29: H-6 and H-7 yes. T-002 merged (`16e100e`); checks 27 of 27 on master; pushed
   `dc401b9..16e100e` (12 commits, nothing under `src/`); CI run 36455682835 green; worktree and
   branch removed. Autonomy A1.
