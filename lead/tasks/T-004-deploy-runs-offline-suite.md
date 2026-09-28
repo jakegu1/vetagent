@@ -223,3 +223,15 @@ list cannot be read, nothing is deployed.
   turn the guard red; the real `test.yml` reads 28 commands with nothing unrecognised;
   `python lead/checks.py` 28 of 28, exit 0; contract holds with named changes (a, b) and (c)
   listed as allowed; nothing outside the five files in scope changes.
+
+- **2026-09-29, round 2 after the reviews** (independent pass 11 of 12; red-team 2 material).
+  The lead decision, with its threat model, required fixes and bar, is in
+  `lead/reviews/T-004.md` under "Round 1 · lead decision". It allows named changes to
+  `tests/test_deploy_gate.py`, each in its own commit titled `T-004: named change (<letter>) ...`
+  and made before the code it tests: **(d)** the wrapper check says "not checked here" when
+  `lead/` is absent; **(e)** the guard reads a multi-line `deploy.yml` value whole and matches
+  status functions without regard to case; **(f)** the new refusal cases (unclosed quote or
+  bracket, folded `run:`, unapplied step keys, `uses:` outside the allowlist, stray line-break
+  characters, every operator, a job key after `steps:`, a bad line under `with:`/`env:`), plus,
+  if trivial, the same Python version in both workflows. The runner changes the decision lists
+  are allowed in `.github/scripts/offline_suite.py`.
