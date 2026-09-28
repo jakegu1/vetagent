@@ -49,13 +49,16 @@ Last updated: 2026-09-29 by lead session 2 (Claude Code desktop, local, opened i
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
 | T-003 | 1 | `task/t-003-publish-numbers-report`, worktree `../vetagent-t-003`, based on `f400b60` | review passed: 12 of 12, VERDICT ✅ at `56105a7` (`lead/reviews/T-003.md`); head unchanged since | the Owner | Ask to merge (`--no-ff`) and push in one batch with T-004 once its reviews pass |
-| T-004 | 3 | `task/t-004-deploy-runs-offline-suite`, worktree `../vetagent-t-004` | amendment round: READY at `521fc6c`; the executor is adding named change (a, b) and the two runner fixes (spec Amendments, `adc77cb`) | executor subagent | Collect READY; contract check and checks on the head; then an independent review and a red-team review in parallel. Its push deploys production (`deploy.yml` is in its own trigger): propose pushing the task branch first (tests on Linux, no deploy), then master |
-| W5 experiment (the Owner's) | — | none; `bench/second_oracle.py` on master | the Owner reruns the 143 calls with the User-Agent fix | the Owner | Analyse `bench/second_oracle.json` (ignored, local only): count answers, errors (for example HTTP 400 for an invalid contract) and empty payloads separately; an all-null payload with `isScam: false` is no answer, not a safe verdict |
+| T-004 | 3 | `task/t-004-deploy-runs-offline-suite`, worktree `../vetagent-t-004` | amendment 2: READY at `521fc6c`, then `09f3803` after amendment 1 (named change (a, b), two runner fixes); the executor is now doing amendment 2 (`da6d7d5`: named change (c), accept `- run:`, red on any unrecognised line after `steps:`) | executor subagent | Collect READY; contract check and checks on the head; then an independent review and a red-team review in parallel. Its push deploys production (`deploy.yml` is in its own trigger): propose pushing the task branch first (tests on Linux, no deploy), then master |
+| Level 0: W5 row after the Quick Intel run | 0 | `task/l0-backlog-w5` at `8eb7395` (`docs/BACKLOG.md`, regenerated `docs/OWNER.md`) | done on its branch; checks 27 of 27 | the Owner | Merge with T-003 and T-004 in the next approved batch (the Owner asked for that, H-9). If a bot regenerates `docs/OWNER.md` first, resolve by regenerating |
 
 ## Waiting on the Owner
 
 - Nothing open. Pushing master (the three Level 0 merges and the lead's bookkeeping) waits for
   the batch with T-003 and T-004.
+- (H-9 answered 2026-09-29: update W5 with the method and the direction of the result, no
+  figures, merged with T-003 and T-004. Figures derived from Quick Intel's answers stay out of
+  this public repository, `lead/` included, until the Owner has read Quick Intel's terms.)
 - (H-8 answered 2026-09-29: merge the three Level 0 branches locally, no push. Merged as
   `a8a758d`, `08915db`, `d592f8d`.)
 - (H-7 answered 2026-09-29: yes; applied after the clean merge. Autonomy A1.)
@@ -178,6 +181,10 @@ hand and move on.
 
 ## Log (newest first; keep the last ~20 lines)
 
+- 2026-09-29: W5 run finished. The first real run was rate limited on every other call (the
+  free tier allows about one a second); a paced re-ask of those rows completed the set. The
+  analysis (in chat, figures kept out of the repository) classes each answer as error, static
+  audit only, or a simulation dated by `lastUpdatedTimestamp`. W5 updated on a branch (H-9).
 - 2026-09-29: W5 support. The Owner's first Quick Intel run (real key) got HTTP 403 on all
   143 calls: Cloudflare error 1010 bans Python's default User-Agent. Fixed by naming the
   script; the Owner's probe then got HTTP 200 and 400 from the gateway. With the Owner's yes
