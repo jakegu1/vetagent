@@ -105,6 +105,14 @@ API = "https://api.quickintel.io/v1/getquickiauditfull"
 # Their chain names differ from DexScreener's.
 CHAIN = {"ethereum": "eth", "bsc": "bsc", "base": "base"}
 
+# Name ourselves. Cloudflare in front of the API bans Python's default User-Agent
+# ("Python-urllib/3.x") with HTTP 403 "error code: 1010" before a request reaches Quick
+# Intel's gateway, so the key is never even checked. The first run with a real key, on
+# 2026-09-29, came back 403 on all 143 calls for exactly that reason, and the report printed
+# "0 of 122 (0%)" as if Quick Intel had answered nothing. Measured the same day with a fake
+# key: the default User-Agent gets 403/1010; this one gets 401 Unauthorized from the gateway.
+USER_AGENT = "vetagent-benchmark/1.0"
+
 # The free API Testing tier is 200 calls/month. Refuse to exceed it by accident: an
 # overrun on a free tier is how you lose the free tier.
 FREE_TIER_MONTHLY = 200
@@ -147,7 +155,8 @@ def fetch(address, chain, key):
     body = json.dumps({"chain": chain, "tokenAddress": address}).encode("utf-8")
     req = urllib.request.Request(
         API, data=body,
-        headers={"content-type": "application/json", "X-QKNTL-KEY": key})
+        headers={"content-type": "application/json", "X-QKNTL-KEY": key,
+                 "User-Agent": USER_AGENT})
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             return json.loads(resp.read().decode("utf-8")), None
