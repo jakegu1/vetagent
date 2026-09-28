@@ -142,16 +142,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- lead: remove the CJK quote f38ce82 put in lead/STATE.md; tripwire Q1
+- lead: H-3 done; the rotation rule fired
+- T-001: judge the scorecard's production row by the scorecard's own rule
+- T-001: acceptance tests (red)
+- W11 is done: the 2026-09-18 gate was answered in f962aad
 - lead: start T-001; the Owner approved H-1 and H-2
 - lead: adopt the lead workflow
 - E14 review of W58: a fallback's 404 is an answer, and two tests guard their gate again
-- W59: the benchmark replays cached answers against today's clock
-- Production records why a high was high, as it already did for an unknown
-- An empty DexScreener listing the fallback never confirmed is not an absence (W58)
-- A signal that weighs nothing is never named as what decided the verdict (W56)
-- Both bots regenerate what their data moves, after it, and test.yml runs after them (E34)
 
-_1 more not shown (9 commits in total)._
+_6 more not shown (14 commits in total)._
 
 ## What I got wrong
 
