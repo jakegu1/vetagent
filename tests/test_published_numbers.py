@@ -19,6 +19,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import traceback
@@ -658,6 +659,316 @@ def check_write_fails_with_no_production_artifact():
                   "returned %r; the text said %r and says %r" % (status, was, now))
         agrees_with_check_mode(status)
     in_a_copy(run, artifact=False)
+
+
+# ------------------------------------------ the report: what --write changed, and what is left
+#
+# T-003. T-002 made the exit statuses honest and left the report around them as it was. Under
+# --write it named only the files it rewrote (`Rewrote: README.md`), so nothing said which
+# figure moved from what to what, and T-002's reviewer found that printing `Rewrote:` with
+# nothing rewritten passed every check (the T-001 symptom was an empty `Rewrote: ` line). Check
+# mode put every stale entry under one heading, `<n> published figure(s) disagree with
+# bench/results.json:`, with one piece of advice, to run --write, which is wrong for every entry
+# --write cannot fix; with only an unclaimed percentage left it printed that heading with a count
+# of 0; and the module docstring's usage showed a `--check` flag that argparse rejects.
+#
+# The rule: each figure --write rewrites is named with the value it found and the value it
+# wrote, and nothing announces a rewrite that did not happen; check mode lists what --write can
+# rewrite apart from what it cannot fix, advises running --write only for the first, and says
+# once per kind what to do about the second; no line reports a count of zero; and every flag the
+# docstring's usage shows is one the script accepts. The checks read the report as blocks: a
+# block opens with a heading, a line that is not indented and ends with a colon, and every line
+# belongs to the nearest heading at or above it. Exit statuses are T-002's; they are checked here
+# only to show that they did not move.
+
+REWRITE_SAID = re.compile(r"(?i)\b(?:rewrote|rewritten)\b")
+ZERO_COUNT = re.compile(r"(?<![\w.,-])0 +[A-Za-z(]")     # "0 published figure(s)", "Rewrote 0 ..."
+WRITE_ADVICE = "publish_numbers.py --write"
+CAN_REWRITE = "--write can rewrite"
+CANNOT_FIX = "--write cannot fix"
+REGENERATE = "bash .github/scripts/regenerate-derived.sh regenerate"
+
+
+def is_heading(line):
+    """A line that opens a block of the report: not indented, and ending with a colon."""
+    return bool(line.strip()) and not line[0].isspace() and line.rstrip().endswith(":")
+
+
+def heading_of(lines, i):
+    """The heading lines[i] belongs to: the nearest heading at or above it, or None."""
+    return next((line.strip() for line in reversed(lines[:i + 1]) if is_heading(line)), None)
+
+
+def under(out, keep):
+    """(line, the heading it belongs to) for each output line for which keep(line) is true."""
+    lines = out.splitlines()
+    return [(line.strip(), heading_of(lines, i)) for i, line in enumerate(lines) if keep(line)]
+
+
+def in_order(*values):
+    """A test for a line that names every one of values, each as a whole token, in this order."""
+    pattern = re.compile(".*?".join(r"(?<![\w.])%s(?![\w.])" % re.escape(v) for v in values))
+    return lambda line: pattern.search(line) is not None
+
+
+def advice(out, kind):
+    """The advice lines for one kind of entry --write cannot fix, each with its heading: the
+    indented lines that start with the kind and a colon."""
+    return under(out, lambda line: line[:1].isspace() and line.strip().startswith(kind + ":"))
+
+
+def kinds_of(stale):
+    """The kinds of entry --write cannot fix among scan()'s stale entries, read from the entries
+    themselves: `pattern not found` or `file missing` as the found value, `absent` or
+    `not measured (<key>)` as the expected one."""
+    kinds = set()
+    for _, _, found, want in stale or []:
+        if str(want).startswith("not measured ("):
+            kinds.add("not measured")
+        if found in ("pattern not found", "file missing"):
+            kinds.add(found)
+        if want == publish_numbers.ABSENT:
+            kinds.add("absent")
+    return kinds
+
+
+def empty_blocks(out):
+    """The headings with no indented line under them before the next heading."""
+    lines, empty = out.splitlines(), []
+    for i, line in enumerate(lines):
+        if not is_heading(line):
+            continue
+        body = []
+        for later in lines[i + 1:]:
+            if is_heading(later):
+                break
+            body.append(later)
+        if not any(b.strip() and b[0].isspace() for b in body):
+            empty.append(line.strip())
+    return empty
+
+
+def set_figure(t, text, value):
+    """Target t's figure in text, replaced by value."""
+    m = re.search(t[1], text)
+    return text[:m.start(1)] + value + text[m.end(1):]
+
+
+def only_what_write_cannot_fix(tmp):
+    """In a copy without bench/production/verdicts.json (in_a_copy(fn, artifact=False)), put
+    docs/SCORECARD.md's production row in the form bench/scorecard.py prints for a missing
+    artifact, as check_a_missing_production_artifact_is_reported does. Every entry left is then a
+    figure with no measurement. Without this the row still gives the committed reason, which
+    differs from the one for a missing artifact, and --write rewrites that."""
+    set_production_row(tmp, not_measured_row(scorecard.production_verdicts()[2]))
+
+
+@recorded
+def check_write_names_each_figure_it_rewrote():
+    print("\n[report] --write with two stale figures in README.md, both of the kind it rewrites")
+
+    def run(tmp):
+        fp, fp_right = stale_figure(tmp)
+        n = target("README.md", "healthy_n")
+        n_right = publish_numbers.figures()["healthy_n"]
+        edit(tmp, n[0], lambda text: set_figure(n, text, "%d" % (int(n_right) + 1)))
+        moved = [(t, published(tmp, t), right) for t, right in ((fp, fp_right), (n, n_right))]
+        status, out = run_main("--write")
+        check("--write returns 0 and rewrites both, as before",
+              status == 0 and all(published(tmp, t) == right for t, _, right in moved),
+              "returned %r: %s" % (status, tail(out)))
+        for t, found, wrote in moved:
+            got = under(out, in_order(t[0], found, wrote))
+            check("one line names %s, the %s it found and the %s it wrote, as a rewrite"
+                  % (t[0], found, wrote),
+                  len(got) == 1 and any(REWRITE_SAID.search(s or "") for s in got[0]),
+                  "got %r: %s" % (got, tail(out)))
+    in_a_copy(run)
+
+
+@recorded
+def check_write_announces_no_rewrite_when_it_rewrote_nothing():
+    print("\n[report] --write with nothing it can rewrite: the current tree, then one reworded "
+          "sentence")
+
+    def run(tmp):
+        status, out = run_main("--write")
+        said = under(out, REWRITE_SAID.search)
+        check("the current tree: no line announces a rewrite", not said,
+              "returned %r; %r" % (status, said))
+        s = target("README.md", "adversarial_n")
+        edit(tmp, s[0], lambda text: reword(s, text))
+        status, out = run_main("--write")
+        check("one reworded sentence: --write returns 1, as before", status == 1,
+              "returned %r: %s" % (status, tail(out)))
+        said = under(out, REWRITE_SAID.search)
+        check("one reworded sentence: no line announces a rewrite", not said, "%r" % said)
+    in_a_copy(run)
+
+
+@recorded
+def check_check_mode_lists_what_write_can_rewrite_apart_from_what_it_cannot_fix():
+    print("\n[report] check mode: one figure --write can rewrite, and one reworded sentence it "
+          "cannot fix")
+
+    def run(tmp):
+        t, right = stale_figure(tmp)
+        found = published(tmp, t)
+        s = target("README.md", "adversarial_n")
+        edit(tmp, s[0], lambda text: reword(s, text))
+        status, out = run_main()
+        check("check mode returns 1, as before", status == 1,
+              "returned %r: %s" % (status, tail(out)))
+        fig = under(out, in_order(t[0], found, right))
+        check("the figure is listed once, under a heading saying `%s` it" % CAN_REWRITE,
+              len(fig) == 1 and CAN_REWRITE in (fig[0][1] or ""), "got %r" % fig)
+        tip = under(out, lambda line: WRITE_ADVICE in line)
+        check("the advice to run `python bench/%s` is given in that block" % WRITE_ADVICE,
+              bool(tip) and all(CAN_REWRITE in (h or "") for _, h in tip), "got %r" % tip)
+        gone = under(out, lambda line: s[0] in line and "pattern not found" in line)
+        check("the reworded sentence is listed once, separately, under a heading saying `%s` it"
+              % CANNOT_FIX,
+              len(gone) == 1 and CANNOT_FIX in (gone[0][1] or "")
+              and CAN_REWRITE not in (gone[0][1] or ""), "got %r" % gone)
+    in_a_copy(run)
+
+
+@recorded
+def check_no_write_advice_when_only_entries_it_cannot_fix_are_left():
+    print("\n[report] only entries --write cannot fix: bench/production/verdicts.json absent, and "
+          "docs/SCORECARD.md's row as bench/scorecard.py prints it for that")
+
+    def run(tmp):
+        only_what_write_cannot_fix(tmp)
+        stale, err = scan_entries(write=False)
+        check("every entry scan() finds is a figure with no measurement, and there are some",
+              err is None and bool(stale)
+              and all(str(e[3]).startswith("not measured (") for e in stale),
+              err or "got %r" % stale)
+        for mode, argv in (("check mode", ()), ("--write", ("--write",))):
+            status, out = run_main(*argv)
+            check("%s returns 1, as before" % mode, status == 1,
+                  "returned %r: %s" % (status, tail(out)))
+            tip = under(out, lambda line: WRITE_ADVICE in line)
+            check("%s: the advice to run --write does not appear" % mode, not tip,
+                  "got %r" % tip)
+    in_a_copy(run, artifact=False)
+
+
+@recorded
+def check_each_kind_of_entry_write_cannot_fix_gets_one_line_of_advice():
+    print("\n[report] check mode with each kind of entry --write cannot fix: bench/production/"
+          "verdicts.json absent, a figure row in docs/SCORECARD.md, a reworded sentence, and "
+          "docs/OWNER.md missing")
+    # Each kind, and what its line has to name: the measurement file the missing keys come from;
+    # the TARGETS pattern to update if the sentence is not restored; nothing prescribed; and the
+    # command that regenerates docs/SCORECARD.md in the form bench/scorecard.py prints now.
+    says = (("not measured", "bench/production/verdicts.json"), ("pattern not found", "TARGETS"),
+            ("file missing", ""), ("absent", REGENERATE))
+
+    def every_kind(tmp):
+        set_production_row(tmp, figure_row(verdicts(20, 200)))
+        s = target("README.md", "adversarial_n")
+        edit(tmp, s[0], lambda text: reword(s, text))
+        os.remove(os.path.join(tmp, "docs", "OWNER.md"))
+        stale, err = scan_entries(write=False)
+        check("scan() finds an entry of each kind, several of them not measured",
+              err is None and kinds_of(stale) == set(k for k, _ in says)
+              and len([e for e in stale if str(e[3]).startswith("not measured (")]) > 1,
+              err or "kinds: %s" % sorted(kinds_of(stale)))
+        status, out = run_main()
+        check("check mode returns 1, as before", status == 1,
+              "returned %r: %s" % (status, tail(out)))
+        for kind, name in says:
+            got = advice(out, kind)
+            check("one line says what to do about `%s`%s, under the heading saying `%s`"
+                  % (kind, ", naming %s" % name if name else "", CANNOT_FIX),
+                  len(got) == 1 and got[0][0] != kind + ":" and name in got[0][0]
+                  and CANNOT_FIX in (got[0][1] or ""), "got %r" % got)
+        wrong = [line for line, _ in under(out, is_heading) if "bench/results.json" in line]
+        check("no heading attributes every entry to bench/results.json", not wrong,
+              "got %r" % wrong)
+    in_a_copy(every_kind, artifact=False)
+
+    def one_kind(tmp):
+        stale_figure(tmp)
+        s = target("README.md", "adversarial_n")
+        edit(tmp, s[0], lambda text: reword(s, text))
+        status, out = run_main()
+        for kind, _ in says:
+            want = 1 if kind == "pattern not found" else 0
+            got = advice(out, kind)
+            check("a figure it can rewrite and a reworded sentence: %d line(s) about `%s`"
+                  % (want, kind), len(got) == want, "got %r" % got)
+    in_a_copy(one_kind)
+
+
+@recorded
+def check_no_line_reports_a_count_of_zero():
+    print("\n[report] no count of zero and no empty block: only an unclaimed percentage left, "
+          "then only entries --write cannot fix")
+
+    def judged(state, mode, out):
+        zero = [line.strip() for line in out.splitlines() if ZERO_COUNT.search(line)]
+        check("%s, %s: no line reports a count of zero, and none says `0 published figure(s)`"
+              % (state, mode), not zero and "0 published figure(s)" not in out, "got %r" % zero)
+        check("%s, %s: every heading has an entry under it" % (state, mode),
+              not empty_blocks(out), "empty: %r" % empty_blocks(out))
+
+    def loose(tmp):
+        rel = "README.md"
+        with io.open(os.path.join(tmp, rel), encoding="utf-8") as f:
+            original = f.read()
+        pct = next(v for v in ("97.3", "96.4", "95.7", "94.6") if v not in original)
+        # Placed as check_write_fails_on_an_unclaimed_percentage places it, away from any
+        # citation or vendor name its neighbours could lend it.
+        edit(tmp, rel, lambda text: text + "\n\n\nAn unguarded figure: %s%% of nothing.\n" % pct)
+        stale, err = scan_entries(write=False)
+        check("only %s%% unclaimed: scan() finds no stale entry" % pct, err is None and not stale,
+              err or "got %r" % stale)
+        for mode, argv in (("check mode", ()), ("--write", ("--write",))):
+            status, out = run_main(*argv)
+            check("only %s%% unclaimed, %s: returns 1, as before" % (pct, mode), status == 1,
+                  "returned %r: %s" % (status, tail(out)))
+            judged("only %s%% unclaimed" % pct, mode, out)
+    in_a_copy(loose)
+
+    def unfixable(tmp):
+        only_what_write_cannot_fix(tmp)
+        for mode, argv in (("check mode", ()), ("--write", ("--write",))):
+            judged("only entries --write cannot fix", mode, run_main(*argv)[1])
+    in_a_copy(unfixable, artifact=False)
+
+
+@recorded
+def check_the_docstring_usage_is_true():
+    print("\n[report] the module docstring's usage lines, against "
+          "`python bench/publish_numbers.py --help`")
+    doc = (publish_numbers.__doc__ or "").splitlines()
+    at = next((i for i, line in enumerate(doc) if line.strip().startswith("Usage:")), None)
+    usage = []
+    if at is not None:
+        first = doc[at].strip()[len("Usage:"):].strip()
+        usage = [first] if first else []
+        for line in doc[at + 1:]:
+            if not line.strip():
+                break
+            usage.append(line.strip())
+    commands = [line.split("#")[0].split() for line in usage]
+    check("the module docstring shows usage lines", bool(commands),
+          "no lines under `Usage:` in the module docstring")
+    shown = subprocess.run([sys.executable, os.path.join(REPO, "bench", "publish_numbers.py"),
+                            "--help"], cwd=REPO, capture_output=True, encoding="utf-8",
+                           errors="replace")
+    flags = sorted({word for command in commands for word in command if word.startswith("-")})
+    unlisted = [f for f in flags
+                if not re.search(r"(?<![\w-])%s(?![\w-])" % re.escape(f), shown.stdout)]
+    check("every flag the usage lines show is one `--help` lists",
+          shown.returncode == 0 and not unlisted,
+          "--help returned %r; flags shown %s, not listed %s"
+          % (shown.returncode, flags, unlisted))
+    check("check mode is shown as the script with no flag",
+          ["python", "bench/publish_numbers.py"] in commands, "usage lines: %r" % usage)
 
 
 def main():
