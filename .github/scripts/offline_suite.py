@@ -16,7 +16,9 @@ could say whether they passed. This runs every step anyway, so one known red can
 new one, and prints one line per step.
 
 The step list is read from `.github/workflows/test.yml` every time, never typed here, so it
-cannot drift from what CI runs. It refuses loudly rather than guessing:
+cannot drift from what CI runs. The `test` job is read to the next job's id; a comment or a
+blank line does not end it, because YAML reads both as still inside the job. It refuses
+loudly rather than guessing:
 
 - no `test:` job, or no steps found in it          -> exit 2 (a runner that finds nothing
                                                        would pass vacuously);
@@ -53,7 +55,11 @@ def steps_from_workflow(text):
         return None
     block = []
     for line in lines[start:]:
-        if re.match(r"^  \S", line):          # the next job, or a comment between jobs
+        # The job ends at the next job's id: exactly two spaces, a name, a colon. Never at a
+        # comment or a blank line, which YAML reads as still inside the job. Ending at any
+        # two-space line, one comment between two steps made this read 6 of 28 steps
+        # (measured 2026-09-29), and the gate would have passed on those 6.
+        if re.match(r"^  [A-Za-z0-9_-]+:(\s|$)", line):
             break
         block.append(line)
 
