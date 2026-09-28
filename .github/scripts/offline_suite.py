@@ -37,7 +37,8 @@ step, a `run:` value continued on the next line, a folded `run: >` that YAML mak
 of -- come out as fewer or other commands than GitHub runs, so the class is refused rather
 than taught one shape at a time. A value that opens a quote, `[` or `{` must close it on the
 same line. `env:`, `working-directory:` and `shell:` on a step are refused too: this does not
-apply them.
+apply them. So is a `uses:` other than actions/checkout and actions/setup-python, the two it
+stands in for.
 
 It also fails if the run modified a tracked file. A check that edits the tree and puts it back
 is safe only if it puts it back exactly. Until 2026-09-29 `tests/test_number_coverage.py`
@@ -71,6 +72,10 @@ STEP_KEY = re.compile(r"^(name|id|if|uses|with|env|run|shell|working-directory|"
                       r"continue-on-error|timeout-minutes):(?:\s+(.*?))?\s*$")
 ENTRY = re.compile(r"^[A-Za-z0-9_.-]+:(\s|$)")
 BLOCK = re.compile(r"^[|>][0-9+-]*$")
+
+# The two actions this stands in for, by running in a checked-out repository, on Python. Any
+# other action runs code this never runs.
+ALLOWED_USES = re.compile(r"^actions/(checkout|setup-python)@[^\s#]+(\s+#.*)?$")
 
 
 def _indent(line):
@@ -119,8 +124,9 @@ def steps_from_workflow(text):
     nothing to run. The second has every line after `steps:` that is not a blank line, a
     comment, a step's first line (`- ` and a step key), a step key at the step's indentation,
     a `key: value` under `with:` or `env:`, or a line of a `run: |` block, and every line with
-    a key this does not apply (`env`, `working-directory`, `shell`). A step holding such a line
-    gives no command: this cannot say what GitHub would run for it.
+    a key this does not apply (`env`, `working-directory`, `shell`) or an action other than
+    the two it stands in for. A step holding such a line gives no command: this cannot say
+    what GitHub would run for it.
     """
     lines = text.splitlines()
     try:
@@ -225,6 +231,8 @@ def _step(lines, item, dash):
             nested = at if key == "env" and not value else None
         elif key == "with" and not value:
             nested = at
+        elif key == "uses" and not ALLOWED_USES.match(value):
+            refused.append(i)
     return name, [cmd for run in runs for cmd in (run or [None])], refused
 
 
