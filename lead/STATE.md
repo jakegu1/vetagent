@@ -68,6 +68,11 @@ No task is specced. Candidates below; at A1 the lead may spec and dispatch any o
 merge and push wait for the Owner's yes. Items marked "Owner's call first" need the Owner before
 a spec.
 
+Suggested order (lead #2): first the two small follow-ups that finish T-002 (the `CLAUDE.md`
+manual order, Level 0; then the report wording, Level 1), because the docs still describe the
+old `--write`; then the deploy gate (a deploy does not wait for the full offline suite), the
+largest remaining risk to production, as a Level 3 area task.
+
 - Candidate, Level 1, from T-002's review and executor: `publish_numbers.py`'s report.
   `--write` lists only the files it rewrote, not each figure's old and new value; check mode's
   advice ("Run `--write`, then redeploy") and heading ("disagree with bench/results.json")
