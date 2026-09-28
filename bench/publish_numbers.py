@@ -1,8 +1,8 @@
 """publish_numbers.py -- write the measured accuracy figures into what users read.
 
 Usage:
-    python bench/publish_numbers.py --check    # go red if anything is stale
-    python bench/publish_numbers.py --write    # rewrite them from bench/results.json
+    python bench/publish_numbers.py            # check mode: go red if anything is stale
+    python bench/publish_numbers.py --write    # rewrite what it can, then check what is left
 
 Why this exists
 ---------------
@@ -14,7 +14,7 @@ rate, 21.0% unknown and "recall not measurable", while `bench/results.md` said 5
 17.2% and a measured recall.
 
 Publishing a checkable number is only worth something if it survives being checked. So
-the figures are generated from `results.json` rather than typed, and `--check` runs in the
+the figures are generated from `results.json` rather than typed, and check mode runs in the
 test suite: the moment the benchmark moves, the copy that has not been regenerated goes
 red rather than quietly becoming a false claim.
 """
@@ -1244,7 +1244,7 @@ def _advice(kind, entries):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--write", action="store_true",
-                    help="rewrite the published figures from results.json")
+                    help="rewrite what it can, then check what is left")
     args = ap.parse_args()
 
     if not os.path.exists(RESULTS):
