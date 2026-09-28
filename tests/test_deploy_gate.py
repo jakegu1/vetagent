@@ -595,6 +595,12 @@ def test_one_list_read_at_run_time():
 def test_the_wrapper_is_the_same_tool():
     """Criterion 2: python lead/checks.py prints what the runner prints and exits as it exits."""
     print("\n[gate] lead/checks.py is the same tool as the runner")
+    # Named change (d). lead/ is the lead workflow's folder, and removing it is how that
+    # workflow is undone. Without it there is no wrapper to compare; that must not fail the
+    # guard, or undoing the workflow would block every deploy.
+    if not os.path.isdir(os.path.join(ROOT, "lead")):
+        print("  ----  lead/checks.py  (not checked here: there is no lead/ folder)")
+        return
     if not os.path.isfile(RUNNER):
         check("the runner is at %s" % RUNNER_REL, False, "not found")
         return
