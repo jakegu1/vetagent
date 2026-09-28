@@ -124,6 +124,12 @@ def test_the_shortest_draft_is_actually_guarded():
     rel = "docs/EXPERIMENT_C.md"
     path = os.path.join(ROOT, rel)
     orig = io.open(path, encoding="utf-8").read()
+    # The bytes, for the restore. `orig` is text read with universal newlines, so writing it
+    # back turned a Windows checkout's CRLF into LF: every local run left this file modified,
+    # a side effect everyone learned to restore by hand and nobody could tell apart from a
+    # mutation left behind. lead/checks.py fails a run that modifies a tracked file.
+    with io.open(path, "rb") as f:
+        raw = f.read()
     try:
         a = orig.index("## The short version")
         b = orig.index("## Hacker News")
@@ -156,7 +162,8 @@ def test_the_shortest_draft_is_actually_guarded():
             else:
                 print("       MISSED %s -- unguarded in the shortest draft" % val)
     finally:
-        io.open(path, "w", encoding="utf-8", newline="").write(orig)
+        with io.open(path, "wb") as f:
+            f.write(raw)
 
     check("every number in it fails the build when changed", caught == len(nums),
           "%d of %d caught" % (caught, len(nums)))
