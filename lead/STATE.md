@@ -21,7 +21,7 @@ Last updated: 2026-09-28 by lead session 1 (Claude Code desktop, local).
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-001 | 1 | `task/t-001-production-row-floor`, worktree `../vetagent-t-001` | implementing | executor subagent (lead session 1) | On READY: run `python lead/checks.py` on the head and the kit's `contract_check.py --base master`, then one fresh-context review. If the session died: read the branch's commits and continue from the spec. |
+| T-001 | 1 | `task/t-001-production-row-floor` at `0648d3b`, worktree `../vetagent-t-001` | in review (round 1) | fresh reviewer subagent (lead session 1) | READY received; the lead reproduced 27 of 27 and CONTRACT HOLDS on `0648d3b`. On a pass: save the verdict to `lead/reviews/T-001.md`, `git merge --no-ff`, post-merge regenerate and checks, then the approved H-1 push. If the session died: start a fresh reviewer on the same head (prompt template in the kit's `prompts.md`). |
 
 ## Next up
 
@@ -44,7 +44,7 @@ Last updated: 2026-09-28 by lead session 1 (Claude Code desktop, local).
 - H-1: **approved 2026-09-28.** Push master once, after T-001 merges (adoption, W11 closure,
   T-001, and the bot merges in between). Fetch and merge origin first; never rebase.
 - H-2: **approved and done 2026-09-28.** Backlog W11 closed as Done R23 (Level 0).
-- H-3: **done 2026-09-28**, at the Owner's request ("你来建"): the SessionStart hook lives in
+- H-3: **done 2026-09-28**, at the Owner's explicit request: the SessionStart hook lives in
   `.claude/settings.local.json` (this project, this machine only; git-ignored by the Owner's
   global ignore file). It runs only in sessions whose project folder is this repository.
 
@@ -71,6 +71,11 @@ LF line endings. Restore it with `git checkout -- docs/EXPERIMENT_C.md` only aft
 
 ## Recent decisions
 
+- 2026-09-28: tripwire Q1 fired. The lead's own commit `f38ce82` put a CJK quote into
+  `lead/STATE.md`, which broke the English-only rule on master; it was committed without a
+  checks run and found by the T-001 reviewer. Fixed in the next commit. **Autonomy demoted
+  A1 to A0** (`lead/config.yml`): the lead proposes, the Owner approves each step. H-1's
+  explicit approval (merge and push T-001) still stands. The Owner may restore A1 (H-4).
 - 2026-09-28: adopted the lead workflow (`lead/decisions/0001-adopt-lead-workflow.md`): lead/
   public and English, local-branches, A1, merge commits instead of squash; `docs/OWNER.md`,
   `docs/BACKLOG.md` and `docs/DECISIONS.md` stay the project's records.
