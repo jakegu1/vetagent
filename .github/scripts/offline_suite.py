@@ -22,6 +22,9 @@ loudly rather than guessing:
 
 - no `test:` job, or no steps found in it          -> exit 2 (a runner that finds nothing
                                                        would pass vacuously);
+- a character that ends a line for Python but      -> exit 2, naming it and its line;
+  not for YAML (U+000B, U+000C, U+001C to U+001E,
+  U+0085, U+2028, U+2029)
 - a `run:` it cannot turn into a python command    -> that step is reported red;
 - a line after `steps:` that it does not recognise -> that line is reported red, and the
                                                        step it is in does not run.
@@ -76,6 +79,13 @@ BLOCK = re.compile(r"^[|>][0-9+-]*$")
 # The two actions this stands in for, by running in a checked-out repository, on Python. Any
 # other action runs code this never runs.
 ALLOWED_USES = re.compile(r"^actions/(checkout|setup-python)@[^\s#]+(\s+#.*)?$")
+
+# The characters str.splitlines() ends a line at besides \n and \r. YAML 1.2 ends a line at
+# none of them, so a line read here could be half of one GitHub reads: one of them in a
+# comment, followed by `  name:`, ended the job here after its first step (measured
+# 2026-09-29). A test.yml holding one is not read at all.
+STRAY_BREAK = re.compile("[%s]" % "".join(
+    chr(c) for c in (0x0B, 0x0C, 0x1C, 0x1D, 0x1E, 0x85, 0x2028, 0x2029)))
 
 
 def _indent(line):
@@ -248,7 +258,16 @@ def main():
     except (AttributeError, ValueError):
         pass
     with open(WORKFLOW, encoding="utf-8") as f:
-        steps, unknown = steps_from_workflow(f.read()) or ([], [])
+        text = f.read()
+    stray = [(text.count("\n", 0, m.start()) + 1, ord(m.group()))
+             for m in STRAY_BREAK.finditer(text)]
+    for n, code in stray:
+        print("RED   unrecognised line break U+%04X in line %d of .github/workflows/test.yml: "
+              "Python ends a line there and YAML does not -- refusing to read the file"
+              % (code, n))
+    if stray:
+        return 2
+    steps, unknown = steps_from_workflow(text) or ([], [])
     if steps:
         print("%d steps from job '%s' in .github/workflows/test.yml" % (len(steps), JOB))
     else:
