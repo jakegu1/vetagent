@@ -135,6 +135,26 @@ def _production_artifact(name, date_field):
     return data, None
 
 
+def production_verdicts():
+    """(verdicts, n, why_not) for the production unknown-rate item.
+
+    `verdicts` is bench/production/verdicts.json when it is fresh (_production_artifact) and
+    holds at least PRODUCTION_MIN_ROWS answers; otherwise None, and `why_not` is what the row
+    prints inside "not measured (...)". `n` is the answers it holds, or 0 when it is absent,
+    unreadable, undated or stale.
+
+    A function, not a block inside score(), so that bench/publish_numbers.py asks this rule
+    instead of keeping its own: it guards the row, and knowing only the figure, it went red
+    on every CI run from 2026-09-22 while the window sat below the floor.
+    """
+    verdicts, why = _production_artifact("verdicts.json", "window_end")
+    counts = (verdicts or {}).get("counts") or {}
+    n = sum(int(counts.get(k, 0)) for k in ("low", "medium", "high", "unknown"))
+    if verdicts is not None and n < PRODUCTION_MIN_ROWS:
+        verdicts, why = None, "%d answers in the window, need %d" % (n, PRODUCTION_MIN_ROWS)
+    return verdicts, n, why
+
+
 def snapshot_days():
     if not os.path.isdir(SNAPSHOTS):
         return 0
@@ -412,11 +432,8 @@ def score():
                   None if ur_pts is None else ur_pts * 0.5,
                   "%.1f%%" % (ur * 100) if ur is not None else UNMEASURED))
 
-    verdicts, why = _production_artifact("verdicts.json", "window_end")
+    verdicts, n_prod, why = production_verdicts()
     counts = (verdicts or {}).get("counts") or {}
-    n_prod = sum(int(counts.get(k, 0)) for k in ("low", "medium", "high", "unknown"))
-    if verdicts is not None and n_prod < PRODUCTION_MIN_ROWS:
-        verdicts, why = None, "%d answers in the window, need %d" % (n_prod, PRODUCTION_MIN_ROWS)
     if verdicts is None:
         items.append(("Correctness", "unknown rate (production, served answers)", 5, None,
                       UNMEASURED + " (%s)" % why))
