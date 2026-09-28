@@ -1196,7 +1196,18 @@ def main():
         print("bench/results.json is missing -- run bench/run_benchmark.py first")
         return 2
 
-    vals, stale, changed = scan(args.write)
+    # --write rewrites what it can, then answers exactly as check mode does on the files it
+    # leaves behind. It used to return 0 whenever anything had been stale, entries it could not
+    # rewrite and unclaimed percentages (which it never rewrites) included, and
+    # .github/scripts/regenerate-derived.sh commits and pushes on that status: from 2026-09-22
+    # to 2026-09-28 every scheduled bot run succeeded while every `tests` run failed on this
+    # guard.
+    if args.write:
+        _, _, changed = scan(write=True)
+        if changed:
+            print("Rewrote: %s" % ", ".join(sorted(set(changed))))
+
+    vals, stale, _ = scan(write=False)
     print("Measured: n=%s, false positives %s%% on %s healthy tokens, unknown %s%%"
           % (vals["n"], vals["fp_pct"], vals["healthy_n"], vals["unknown_pct"]))
 
@@ -1245,8 +1256,8 @@ def main():
         print("  %-18s found %-8s expected %-8s  (%s)"
               % (rel, found, want, pattern[:44]))
     if args.write:
-        print("\nRewrote: %s" % ", ".join(sorted(set(changed))))
-        return 0
+        print("\n--write has rewritten every figure it can; it cannot fix what is listed above.")
+        return 1
     print("\nRun `python bench/publish_numbers.py --write`, then redeploy.")
     return 1
 
