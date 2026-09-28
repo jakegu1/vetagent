@@ -1261,17 +1261,17 @@ def main():
         print("Everything published matches the benchmark.")
         return 0
 
-    if (dead or unsourced) and not stale and not loose:
-        return 1
-
-    print("\n%d published figure(s) disagree with bench/results.json:" % len(stale))
-    for rel, pattern, found, want in stale:
-        print("  %-18s found %-8s expected %-8s  (%s)"
-              % (rel, found, want, pattern[:44]))
-    if args.write:
-        print("\n--write cannot fix what is listed above.")
-        return 1
-    print("\nRun `python bench/publish_numbers.py --write`, then redeploy.")
+    # Only a block with something in it: with only an unclaimed percentage left, this printed
+    # `0 published figure(s) disagree` and the advice to run --write, which fixes neither.
+    if stale:
+        print("\n%d published figure(s) disagree with bench/results.json:" % len(stale))
+        for rel, pattern, found, want in stale:
+            print("  %-18s found %-8s expected %-8s  (%s)"
+                  % (rel, found, want, pattern[:44]))
+        if args.write:
+            print("\n--write cannot fix what is listed above.")
+        else:
+            print("\nRun `python bench/publish_numbers.py --write`, then redeploy.")
     return 1
 
 
