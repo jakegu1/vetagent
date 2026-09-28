@@ -1318,17 +1318,17 @@ def main():
     # percentage left it printed that heading with a count of 0.
     fixable = [entry for entry in stale if not _cannot_fix(entry)]
     unfixable = [entry for entry in stale if _cannot_fix(entry)]
-    line = "  %-18s found %-8s expected %-8s  (%s)"
+    fmt = "  %-18s found %-8s expected %-8s  (%s)"
     if fixable:
         print("\n%d published figure(s) differ from their measurement, and --write can rewrite "
               "them:" % len(fixable))
         for rel, pattern, found, want in fixable:
-            print(line % (rel, found, want, pattern[:44]))
+            print(fmt % (rel, found, want, pattern[:44]))
         print("\nRun `python bench/publish_numbers.py --write`, then redeploy.")
     if unfixable:
         print("\n%d guarded figure(s) that --write cannot fix:" % len(unfixable))
         for rel, pattern, found, want in unfixable:
-            print(line % (rel, found, want, pattern[:44]))
+            print(fmt % (rel, found, want, pattern[:44]))
         # Then what to do: one line per kind present, however many entries it has, in the order
         # the kinds first appear above.
         kinds = []
