@@ -122,13 +122,22 @@ After any change touching the engine or the benchmark:
 
 ```bash
 python bench/run_benchmark.py          # ~10-20 min, refetches on any URL change
-python bench/publish_numbers.py --write
-python bench/scorecard.py --write
+bash .github/scripts/regenerate-derived.sh regenerate   # every page generator, to a fixed point
 for f in tests/test_*.py; do python "$f"; done   # ~56s
 ```
 
 Then commit, then deploy. Publishing before re-measuring puts a stale number on a live
 page, and `test_published_numbers.py` will fail the build for it.
+
+The middle line used to be `publish_numbers.py --write` then `scorecard.py --write`, once
+each. One pass in either order can leave one of them a step behind: `publish_numbers` reads
+the maturity total out of `docs/SCORECARD.md`, which `scorecard.py` rewrites. And since T-002,
+`publish_numbers.py --write` exits 1 when it leaves something it cannot fix, so run first it
+could fail halfway. The script runs the scorecard first and repeats until nothing moves, the
+same pass the bots run.
+**Only ever with the argument `regenerate`.** Any other argument is the bots' mode: it
+rewrites this clone's git identity, resets to origin (discarding uncommitted work), commits
+and pushes.
 
 **Check every workflow, not the one you were thinking about.** There are six —
 `deploy.yml`, `test.yml`, `snapshot.yml`, `usage.yml`, `production.yml`, and the
