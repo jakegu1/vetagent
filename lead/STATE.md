@@ -48,14 +48,20 @@ Last updated: 2026-09-29 by lead session 2 (Claude Code desktop, local, opened i
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-003 | 1 | `task/t-003-publish-numbers-report`, worktree `../vetagent-t-003`, based on `f400b60` | review passed: 12 of 12, VERDICT ✅ at `56105a7` (`lead/reviews/T-003.md`); head unchanged since | the Owner | Ask to merge (`--no-ff`) and push in one batch with T-004 once its reviews pass |
-| T-004 | 3 | `task/t-004-deploy-runs-offline-suite`, worktree `../vetagent-t-004` | round 2 in re-review: READY at `c577f69` (named changes (d), (e), (f) and five runner refusals); the lead reproduced CONTRACT HOLDS, 28 of 28 and ASCII-only changed code there. Round 1 at `92a818d`: independent 11 of 12, red-team 2 material; lead decision and bar in `lead/reviews/T-004.md` | one combined re-reviewer (independent and red-team) | On a pass: batch the merge and push with T-003 and the W5 branch; propose pushing the task branch first | Collect READY; contract check and checks on the head; then an independent review and a red-team review in parallel. Its push deploys production (`deploy.yml` is in its own trigger): propose pushing the task branch first (tests on Linux, no deploy), then master |
-| Level 0: W5 row after the Quick Intel run | 0 | `task/l0-backlog-w5` at `8eb7395` (`docs/BACKLOG.md`, regenerated `docs/OWNER.md`) | done on its branch; checks 27 of 27 | the Owner | Merge with T-003 and T-004 in the next approved batch (the Owner asked for that, H-9). If a bot regenerates `docs/OWNER.md` first, resolve by regenerating |
+| T-003 | 1 | `task/t-003-publish-numbers-report` at `56105a7`, worktree `../vetagent-t-003`, based on `f400b60` | review passed: 12 of 12 (`lead/reviews/T-003.md`); head unchanged since | the Owner (H-10) | Merge `--no-ff` in the H-10 batch |
+| T-004 | 3 | `task/t-004-deploy-runs-offline-suite` at `c577f69`, worktree `../vetagent-t-004`, based on `a3c9db0` | review passed in round 2: combined re-review 11 of 12, VERDICT ✅, RED-TEAM none (`lead/reviews/T-004.md`); head unchanged since | the Owner (H-10) | Merge `--no-ff` in the H-10 batch; its push to master deploys production (`deploy.yml` is in its own trigger) |
+| Level 0: W5 row after the Quick Intel run | 0 | `task/l0-backlog-w5` at `8eb7395` (`docs/BACKLOG.md`, regenerated `docs/OWNER.md`) | done on its branch; checks 27 of 27 | the Owner (H-10) | Merge in the H-10 batch (H-9 asked for it). If a bot regenerated `docs/OWNER.md` meanwhile, resolve by regenerating |
 
 ## Waiting on the Owner
 
-- Nothing open. Pushing master (the three Level 0 merges and the lead's bookkeeping) waits for
-  the batch with T-003 and T-004.
+- **H-10 (asked 2026-09-29):** merge T-003, T-004 and the W5 row into master and push, in two
+  steps. (1) Fetch and merge origin (3 bot commits behind at 21:17 UTC), merge the three
+  branches, regenerate the derived pages, run the checks (28 steps), then push the merged
+  `master` to a preflight branch: `test.yml` runs every step on Linux, nothing deploys.
+  (2) If that run is green, push `master`: `test.yml` runs again and `deploy.yml` runs the new
+  gate on CI for the first time; if the gate is green it redeploys the unchanged `src/` and the
+  smoke test makes its tagged production calls; if red, nothing deploys. Then delete the
+  preflight branch. Default if unanswered: nothing is merged or pushed.
 - (H-9 answered 2026-09-29: update W5 with the method and the direction of the result, no
   figures, merged with T-003 and T-004. Figures derived from Quick Intel's answers stay out of
   this public repository, `lead/` included, until the Owner has read Quick Intel's terms.)
@@ -79,6 +85,12 @@ a spec.
 Suggested order (lead #2): the two follow-ups that finish T-002 and the deploy gate (T-004) are
 in flight; after them, the Level 3 hardening of `regenerate-derived.sh` below.
 
+- Candidate, Level 3 area (the deploy gate), from T-004's round-2 re-review: a YAML node
+  property (`&anchor` or `!tag`) before an unclosed quote still ends the job early in the
+  runner and the guard's reader (a one-line fix is in `lead/reviews/T-004.md`, follow-up 1);
+  test gaps: an unclosed value under `with:`, escaped and doubled quotes, and the reader's own
+  refusal pinned to the named line; the guard's `if:` reader misses a double-quoted value
+  continued at six spaces (deliberate-edit class).
 - Candidate, Level 1, from T-003's review: when the scorecard's production row is in the form
   `bench/scorecard.py` is not printing, its two targets report `absent` and `pattern not found`,
   and the second gets the "restore the sentence" advice, wrong for a generated row; three

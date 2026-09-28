@@ -7,19 +7,21 @@
 
 ## Status in one line
 
-T-002 is merged and pushed, CI is green on it, and M1's 7-day clock keeps running. Autonomy is
-back to A1: you approve merges and pushes; the lead decides the rest.
+T-003 and T-004 passed their reviews; with the W5 row they wait for one merge and push
+(H-10). M1's 7-day clock keeps running.
 
 ## Needs you
 
 | ID | What | Why it's yours | Recommendation | Needed by |
 |---|---|---|---|---|
-| — | Nothing open. | | | |
+| H-10 | Merge T-003, T-004 and the W5 row, and push in two steps: the merged tree to a preflight branch first (tests on Linux, no deploy), then `master` (tests, and a deploy: `deploy.yml` changed, so the new gate runs on CI for the first time and redeploys the unchanged `src/`; a red gate deploys nothing) | Every merge and push is yours; this push also deploys | Yes. Default if unanswered: nothing is merged or pushed | When convenient |
 
 ## Done / answered
 
 | Item | Outcome | Recorded in |
 |---|---|---|
+| H-9 Update W5 after the Quick Intel run (2026-09-29) | Method and direction only, no figures, on a branch for the next merge | `docs/BACKLOG.md` (branch `task/l0-backlog-w5`) |
+| H-8 Merge three Level 0 fixes locally (2026-09-29) | Merged, not pushed: the `CLAUDE.md` manual order, the ignore rule for Quick Intel's raw answers, the benchmark script's User-Agent | `lead/STATE.md` |
 | H-7 Autonomy after a clean merge (2026-09-29) | Yes; applied once T-002's merge was clean. Autonomy A1 | `lead/config.yml`, `lead/STATE.md` |
 | H-6 Merge T-002 and push (2026-09-29) | Merged as `16e100e`; pushed `dc401b9..16e100e`; CI run 36455682835 green; no deploy | `lead/STATE.md` |
 | T-002 (2026-09-29) | Merged as `16e100e` after a fresh review, 12 of 12 | `lead/reviews/T-002.md` |
@@ -35,7 +37,8 @@ back to A1: you approve merges and pushes; the lead decides the rest.
 
 | Task | Level | Status | Notes |
 |---|---|---|---|
-| — | | | No task in flight; candidates are listed in `lead/STATE.md` |
+| T-003 | 1 | review passed 12 of 12; waiting on H-10 | `lead/reviews/T-003.md` |
+| T-004 | 3 | review passed in round 2 (11 of 12, red-team none); waiting on H-10 | `lead/reviews/T-004.md` |
 
 ## Milestones
 
