@@ -142,16 +142,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- lead: remove the CJK quote f38ce82 put in lead/STATE.md; tripwire Q1
-- lead: H-3 done; the rotation rule fired
-- T-001: judge the scorecard's production row by the scorecard's own rule
-- T-001: acceptance tests (red)
-- W11 is done: the 2026-09-18 gate was answered in f962aad
-- lead: start T-001; the Owner approved H-1 and H-2
-- lead: adopt the lead workflow
-- E14 review of W58: a fallback's 404 is an answer, and two tests guard their gate again
+- lead: T-002 review passed (12 of 12); H-6 and H-7 asked
+- T-002: --write exits 0 exactly when check mode would on the files it leaves
+- T-002: scan() reports a target with no measurement instead of raising KeyError
+- T-002: acceptance tests
+- lead: H-5 answered; Level 0 merged; T-002 in progress
+- W21 draft test: restore docs/EXPERIMENT_C.md byte for byte
+- lead/checks.py: fail when a run modifies a tracked file
+- lead: check-in #2; T-002 specced, H-5 asked
 
-_6 more not shown (14 commits in total)._
+_18 more not shown (26 commits in total)._
 
 ## What I got wrong
 
