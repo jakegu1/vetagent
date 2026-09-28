@@ -24,6 +24,10 @@ loudly rather than guessing:
                                                        would pass vacuously);
 - a `run:` it cannot turn into a python command    -> that step is reported red.
 
+That includes a `run:` joining commands with a shell operator (&&, ||, ;, |, &, a backtick,
+$(, >, <): GitHub's shell runs every command, while this would run the first with the rest as
+its arguments and report a pass on half the step.
+
 It also fails if the run modified a tracked file. A check that edits the tree and puts it back
 is safe only if it puts it back exactly. Until 2026-09-29 `tests/test_number_coverage.py`
 restored `docs/EXPERIMENT_C.md` from a text-mode read, which turned a Windows checkout's CRLF
@@ -44,6 +48,11 @@ import time
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 WORKFLOW = os.path.join(ROOT, ".github", "workflows", "test.yml")
 JOB = "test"
+
+# A shell operator joins, pipes or redirects commands. The shell runs them all; a command
+# split on spaces, as below, would run the first with the rest as its arguments. On
+# 2026-09-29 `python a.py && python b.py` passed here with b.py never run.
+SHELL_OPERATOR = re.compile(r"[&;|`<>]|\$\(")
 
 
 def steps_from_workflow(text):
@@ -110,7 +119,7 @@ def main():
     before = tracked_changes()
     red, t_all = [], time.time()
     for name, cmd in steps:
-        if not cmd or not cmd.startswith("python "):
+        if not cmd or not cmd.startswith("python ") or SHELL_OPERATOR.search(cmd):
             red.append(name)
             print("RED   unsupported step %r: %r -- teach .github/scripts/offline_suite.py "
                   "this shape" % (name, cmd))
