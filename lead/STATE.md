@@ -43,7 +43,7 @@ Last updated: 2026-09-28 by lead session 1 (Claude Code desktop, local).
 
 - H-1: **approved 2026-09-28.** Push master once, after T-001 merges (adoption, W11 closure,
   T-001, and the bot merges in between). Fetch and merge origin first; never rebase.
-- H-2: **approved 2026-09-28.** The lead closes backlog W11 as a Level 0 change.
+- H-2: **approved and done 2026-09-28.** Backlog W11 closed as Done R23 (Level 0).
 - H-3 (optional): the SessionStart hook. The Owner could not find where to add it and asked
   whether it applies to all projects or only this one; answered in chat on 2026-09-28.
 
@@ -75,6 +75,9 @@ LF line endings. Restore it with `git checkout -- docs/EXPERIMENT_C.md` only aft
 
 ## Log (newest first; keep the last ~20 lines)
 
+- 2026-09-28: H-2 done (Level 0): W11 marked Done R23; its orphaned `COST_OF_WAITING` entry
+  removed from `tools/owner.py` (the rendered page is identical); `docs/OWNER.md` regenerated.
+  Checks back at the baseline, 26 of 27.
 - 2026-09-28: the Owner said "continue" and approved H-1 and H-2. Merged origin (production
   probe, still below the floor, CI red on the same step). T-001 dispatched to an executor in
   worktree `../vetagent-t-001`.

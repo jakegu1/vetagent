@@ -22,7 +22,6 @@ These are the things I cannot do. Everything else in this project is mine.
 | When | Due | # | What you do | Blocked? |
 |---|---|---|---|---|
 | **10 days OVERDUE** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
-| **10 days OVERDUE** | 2026-09-18 | W11 | Answer the 2026-09-18 gate | no |
 | in 18 days | 2026-10-16 | W5 | A second, independent sell-simulation source | **yes -- see below** |
 | in 18 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
 
@@ -32,13 +31,6 @@ These are the things I cannot do. Everything else in this project is mine.
 - **Why then:** distribution is the whole of the gate's failing branch
 - **You know it is done when:** `CHANNELS` in `bench/scorecard.py`, updated only by someone who went and looked
 - **If you do nothing:** Nothing. Six submissions are already queued and the two parked ones are one signup away; waiting costs reach, not work.
-
-### W11 Answer the 2026-09-18 gate
-
-- **When:** 2026-09-18 (**10 days OVERDUE**)
-- **Why then:** this IS the gate -- it has to be answered on the day
-- **You know it is done when:** `python bench/usage.py`, counting rule already fixed in code; then a `Resolved:` line in `STRATEGY.md` §8, which `test_gates_get_reviewed.py` requires once due
-- **If you do nothing:** A gate that passes its date in silence teaches everyone that gates are decoration, and this is the first one that can stop the project.
 
 ### W5 A second, independent sell-simulation source
 
@@ -109,7 +101,6 @@ flowchart LR
     W40[W40 Label new pools while they still hold...]
     W5[W5 A second, independent sell-simulation...]
     W10([W10 Create the two accounts the remaining...])
-    W11[W11 Answer the 2026-09-18 gate]
     E1{{not a work item - DECISIONS.md B2 — the field...}}
     E2{{not a work item - archive depth needs ≥60...}}
     E3{{not a work item - the 2026-09-18 gate}}
@@ -121,7 +112,6 @@ flowchart LR
     E3 -->|blocks| W38
     W3 -->|blocks| W40
     E4 -->|blocks| W5
-    W11 -->|answers| GATE
     W10 -->|answers| GATE
 ```
 
@@ -152,13 +142,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- lead: start T-001; the Owner approved H-1 and H-2
+- lead: adopt the lead workflow
 - E14 review of W58: a fallback's 404 is an answer, and two tests guard their gate again
 - W59: the benchmark replays cached answers against today's clock
 - Production records why a high was high, as it already did for an unknown
 - An empty DexScreener listing the fallback never confirmed is not an absence (W58)
 - A signal that weighs nothing is never named as what decided the verdict (W56)
 - Both bots regenerate what their data moves, after it, and test.yml runs after them (E34)
-- The live unknown rate is published with its own n and window, not a stale one
+
+_1 more not shown (9 commits in total)._
 
 ## What I got wrong
 

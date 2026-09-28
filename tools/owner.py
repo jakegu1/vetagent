@@ -66,8 +66,6 @@ OWNER_DUE = {
 # slips. Guessing that needs the domain knowledge they do not have, which is the whole
 # reason this page exists. So it is stated, per item, in the same place as the deadline.
 COST_OF_WAITING = {
-    "W11": "A gate that passes its date in silence teaches everyone that gates are "
-           "decoration, and this is the first one that can stop the project.",
     "W10": "Nothing. Six submissions are already queued and the two parked ones are one "
            "signup away; waiting costs reach, not work.",
     "W5": "Every accuracy claim keeps resting on a single sell simulator. If it is wrong, "
