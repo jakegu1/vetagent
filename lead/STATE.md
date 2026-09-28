@@ -19,6 +19,24 @@ Last updated: 2026-09-28 by lead session 1 (Claude Code desktop, local).
 5. Run `python lead/checks.py` before every commit to master, lead bookkeeping included.
 6. Check the rotation rule (`lead-handoff`). Update this file and commit.
 
+## Handoff notes for lead #2
+
+- **Open the session with this repository as the project folder** (not its parent). Only then do
+  `CLAUDE.md`'s lead block, the untagged-probe hook in `.claude/settings.json` and the
+  SessionStart hook in `.claude/settings.local.json` load. Lead #1 ran from the parent folder.
+  If this file appeared on its own at session start, the SessionStart hook works: say so to the
+  Owner, because nobody has seen it fire yet.
+- **Autonomy is A0.** Propose each step and wait for the Owner's yes; H-4 asks whether to
+  restore A1.
+- **Suggested next proposal:** the second candidate below (`--write` exiting 0 on a stale entry
+  it cannot rewrite, and `KeyError` when `verdicts.json` is absent). It is the class of silent
+  failure that kept both bots green while `tests` was red for six days. Level 1.
+- **M1's clock is running** since run 36445100361 (2026-09-28 15:38 UTC, head `dc401b9`).
+  Check `gh run list --workflow=test.yml` at each check-in; any red run on master restarts it
+  and stops new work until green (tripwire Q4).
+- `master` is one commit ahead of `origin` after the handoff commit. Push it with the next batch
+  the Owner approves; fetch and merge origin first, never rebase.
+
 ## In flight
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
@@ -48,20 +66,21 @@ No task is specced. Candidates, each needing a spec (`lead-spec`) and, at A0, th
 - Candidate, investigate first: deploy tooling is unpinned (`uv.lock` and `pylock.toml` are
   gitignored as build artifacts). Whether to commit a lock is a decision for
   `docs/DECISIONS.md`.
+- Candidate, Level 0: `CLAUDE.md` says `.mcp.json` is untagged ("so `claude-code` is the
+  owner"), but `.mcp.json` sends `x-mcp-client: vetagent-owner-editor`, as the probe hook's
+  docstring also says. The note is stale; check which is true in the usage data before editing.
 
 ## Waiting on the Owner
 
-- H-1: **approved 2026-09-28.** One push of master now that T-001 has merged (adoption, W11,
-  T-001, derived pages, and the bot merges in between). Fetch and merge origin first; never
-  rebase. Being done by lead session 1 right after this commit.
 - H-4: autonomy after tripwire Q1. Recommendation and default: stay at A0 for the next task;
   the lead proposes A1 again after one clean merge. "restore A1" restores it now.
+- (H-1 done 2026-09-28: pushed `c954f43..dc401b9`; CI green on it.)
 
 ## Rotation
 
 The rule fired on 2026-09-28: lead session 1 measured its context at 50 of 100 parts of the
-window (the threshold in `lead/config.yml` is 0.4). T-001 has merged, so the natural boundary
-is reached once the H-1 push is done: **rotate then** (`lead-handoff`).
+window (the threshold in `lead/config.yml` is 0.4). It rotated at the natural boundary after
+T-001 merged, the H-1 push landed and CI came back green.
 
 ## Baseline
 
@@ -70,8 +89,11 @@ Python 3.13.4, 19.0 s): 26 of 27 steps passed; the red one was `tests/test_publi
 **After T-001 (`0a3098d`, 2026-09-28): 27 of 27. No failure is known.**
 Not part of the baseline: `tests/test_upstream_contract.py` and `tests/test_backfill.py`
 (network; CI jobs `upstream-contract` and `backfill-roundtrip`).
-On CI, `tests` had been red since 2026-09-22 12:05 UTC; the first run after the H-1 push is the
-first CI observation of steps 7 to 27 since then. Side effect of a local run on Windows:
+**On CI:** `tests` had been red since 2026-09-22 12:05 UTC. Run 36445100361 on `dc401b9`
+(2026-09-28 15:38 UTC) is green: job `test` 27 of 27 steps succeeded, none skipped (steps 7 to
+27 ran on CI for the first time since the red began), and `upstream-contract` and
+`backfill-roundtrip` succeeded. No deploy ran (nothing under `src/` changed). Side effect of a
+local run on Windows:
 `docs/EXPERIMENT_C.md` is rewritten with LF line endings. Restore it with
 `git checkout -- docs/EXPERIMENT_C.md` only after `git diff --ignore-cr-at-eol` on it shows nothing.
 
@@ -91,9 +113,13 @@ first CI observation of steps 7 to 27 since then. Side effect of a local run on 
 
 | # | Session | From | To | Why it ended |
 |---|---|---|---|---|
-| 1 | Claude Code desktop, local | 2026-09-28 | | |
+| 1 | Claude Code desktop, local (opened in the parent folder) | 2026-09-28 | 2026-09-28 | Rotation rule: context at 50 of 100 parts of the window |
+| 2 | next session, opened in this repository | | | |
 
 ## Log (newest first; keep the last ~20 lines)
+
+- 2026-09-28: H-1 push `c954f43..dc401b9`; CI run 36445100361 green (27 of 27 steps, both
+  network jobs green, no deploy). M1 clock started. Lead #1 hands off to lead #2.
 
 - 2026-09-28: T-001 merged as `0a3098d` after a fresh review (12 of 12). Post-merge
   regeneration changed only the recent-commit list in `docs/OWNER.md` (`9e81c01`; its checks

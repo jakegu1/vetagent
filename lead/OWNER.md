@@ -7,8 +7,8 @@
 
 ## Status in one line
 
-T-001 merged: the offline checks are 27 of 27 on master, for the first time since 2026-09-22.
-The approved push follows; CI's first run on it will show whether steps 7 to 27 also pass there.
+CI is green on master again, for the first time since 2026-09-22: all 27 steps ran and passed
+on the pushed head. M1's 7-day clock is running. The lead has rotated to a fresh session.
 
 ## Needs you
 
@@ -23,7 +23,7 @@ The approved push follows; CI's first run on it will show whether steps 7 to 27 
 | T-001 (2026-09-28) | Merged as `0a3098d` after a fresh review, 12 of 12 | `lead/reviews/T-001.md` |
 | H-3 SessionStart hook (2026-09-28) | Created by the lead at the Owner's request in `.claude/settings.local.json`: this project and this machine only, not committed. Works only in sessions opened with this repository as the project folder | `lead/STATE.md` |
 | H-2 Close backlog W11 (2026-09-28) | Approved and done: Done R23; its orphaned `COST_OF_WAITING` entry removed; `docs/OWNER.md` regenerated | commit `23157f9` |
-| H-1 Push after T-001 (2026-09-28) | Approved: one push once T-001 has merged | `lead/STATE.md` |
+| H-1 Push after T-001 (2026-09-28) | Pushed `c954f43..dc401b9`; CI run 36445100361 green, no deploy | `lead/STATE.md` |
 | Adoption questions (2026-09-28) | All accepted as recommended: milestone M1, invariants and sign-off list, autonomy A1, `lead/` public and English, local branches without pull requests, Chinese in chat | `lead/decisions/0001-adopt-lead-workflow.md` |
 
 ## Current tasks
@@ -37,10 +37,12 @@ The approved push follows; CI's first run on it will show whether steps 7 to 27 
 | Milestone | Exit criteria | Status |
 |---|---|---|
 | M0 Loop proven | T-001 merged through the whole loop, checks green on master | **done 2026-09-28** |
-| M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock starts with the H-1 push |
+| M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
 
+- **2026-09-28** · lead · Pushed; CI green on all 27 steps. Lead rotated to #2 (context at 50
+  of 100 parts of the window). Open the next session in this repository's folder and type /lead.
 - **2026-09-28** · lead · T-001 merged after a fresh review (12 of 12); checks 27 of 27 on
   master. M0 reached.
 - **2026-09-28** · lead · My own bookkeeping commit broke the English-only rule on master
