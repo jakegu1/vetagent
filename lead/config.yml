@@ -10,11 +10,12 @@ runtime: "claude-code-local"
 repo_mode: "local-branches"        # task branches merged locally, no pull requests: agent text in
                                    # PR comments would be published under the Owner's GitHub account
 main_branch: "master"
-autonomy: "A0"                     # A0 since 2026-09-28 (tripwire Q1: the lead's own commit f38ce82 broke
-                                   # the English-only rule on master). A0: the lead proposes, the Owner approves
-                                   # each step. Was A1 (the Owner approves every merge and every push).
-                                   # Confirmed by the Owner (H-4): A0 for the next task, then the lead
-                                   # proposes A1 again after one clean merge.
+autonomy: "A1"                     # A1 again since 2026-09-29 (H-7): restored after T-002 merged cleanly
+                                   # (checks 27 of 27 on master; CI run 36455682835 green on 16e100e).
+                                   # A1: the lead specs, dispatches, reviews and decides; the Owner approves
+                                   # every merge to master and every push.
+                                   # History: A1 at adoption; A0 from 2026-09-28 (tripwire Q1: the lead's own
+                                   # commit f38ce82 broke the English-only rule on master) until H-7.
 spec_language: "en"
 
 checks:                            # must pass (or match the baseline in lead/STATE.md) before READY and after merge
@@ -45,7 +46,7 @@ merge:                             # project convention; replaces the kit's defa
   after:
     - "bash .github/scripts/regenerate-derived.sh regenerate"   # ONLY with 'regenerate': any other argument resets to origin, commits and pushes
     - "python lead/checks.py"
-    - "commit regenerated pages separately if the merge moved them (a change that is only the date and the recent-commit list can wait for the next regeneration before a push)"
+    - "commit regenerated pages separately if the merge moved them; a change that is only the date and the recent-commit list is left to the bots, which regenerate on the UTC date (a local-date commit would be reverted by their next run)"
   push: "only with the Owner's yes, batched; fetch and merge origin/master first (bots push several times a day)"
 
 sign_off:                          # always the Owner's decision, at every autonomy level

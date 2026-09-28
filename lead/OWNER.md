@@ -7,20 +7,22 @@
 
 ## Status in one line
 
-CI is green on master and M1's 7-day clock is running. T-002 passed a fresh review (12 of 12).
-Two questions for you: merge and push (H-6), and autonomy after a clean merge (H-7).
+T-002 is merged and pushed, CI is green on it, and M1's 7-day clock keeps running. Autonomy is
+back to A1: you approve merges and pushes; the lead decides the rest.
 
 ## Needs you
 
 | ID | What | Why it's yours | Recommendation | Needed by |
 |---|---|---|---|---|
-| H-6 | Merge T-002 and push master: the Level 0 fix, T-002, and the lead's bookkeeping since the last push. Nothing touches `src/`, so nothing deploys | Every push is yours (`lead/config.yml`), and at A0 so is every merge | Yes. Default if you don't answer: nothing is merged or pushed | When convenient |
-| H-7 | Autonomy back to A1 once the merge is clean (checks green on master, CI green on the pushed head). At A1 the lead specs, dispatches and reviews on its own; you still approve every merge and push | The autonomy level is yours | Yes, as H-4 foresaw. Default: stay at A0 | With H-6 |
+| — | Nothing open. | | | |
 
 ## Done / answered
 
 | Item | Outcome | Recorded in |
 |---|---|---|
+| H-7 Autonomy after a clean merge (2026-09-29) | Yes; applied once T-002's merge was clean. Autonomy A1 | `lead/config.yml`, `lead/STATE.md` |
+| H-6 Merge T-002 and push (2026-09-29) | Merged as `16e100e`; pushed `dc401b9..16e100e`; CI run 36455682835 green; no deploy | `lead/STATE.md` |
+| T-002 (2026-09-29) | Merged as `16e100e` after a fresh review, 12 of 12 | `lead/reviews/T-002.md` |
 | H-5 Start the Level 0 fix and T-002 (2026-09-29) | Yes to both, as recommended. The Level 0 fix merged locally as `82acff3`; T-002 dispatched | `lead/STATE.md` |
 | H-4 Autonomy after tripwire Q1 (2026-09-28) | Stay at A0 for the next task; the lead proposes A1 again after one clean merge | `lead/STATE.md`, `lead/config.yml` |
 | T-001 (2026-09-28) | Merged as `0a3098d` after a fresh review, 12 of 12 | `lead/reviews/T-001.md` |
@@ -33,17 +35,19 @@ Two questions for you: merge and push (H-6), and autonomy after a clean merge (H
 
 | Task | Level | Status | Notes |
 |---|---|---|---|
-| T-002 | 1 | review passed 12 of 12; waiting on H-6 | `lead/reviews/T-002.md` |
+| — | | | No task in flight; candidates are listed in `lead/STATE.md` |
 
 ## Milestones
 
 | Milestone | Exit criteria | Status |
 |---|---|---|
 | M0 Loop proven | T-001 merged through the whole loop, checks green on master | **done 2026-09-28** |
-| M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC; done on 2026-10-05 if no run goes red |
+| M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the T-002 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
 
+- **2026-09-29** · lead · You approved H-6 and H-7. T-002 merged and pushed; CI green on the
+  pushed head, nothing deployed. Autonomy back to A1.
 - **2026-09-29** · lead · T-002 passed a fresh review, 12 of 12, with no required changes. Asked
   H-6 (merge and push) and H-7 (A1 after a clean merge).
 - **2026-09-29** · lead · You approved H-5. The Level 0 fix is merged locally: a check run that
