@@ -824,7 +824,11 @@ def figures():
     return out
 
 
-def scan(write):
+def scan(write, rewritten=None):
+    """(figures(), stale entries, files rewritten); a stale entry is (file, pattern, found,
+    expected). With `write`, every figure that differs from its measurement is rewritten, and
+    when `rewritten` is a list its entry is appended there too, so main() can say what moved
+    from what to what. The three return values stay as the callers that unpack them expect."""
     vals = figures()
     stale, changed = [], []
     for rel, pattern, key in TARGETS:
@@ -861,6 +865,8 @@ def scan(write):
                 io.open(path, "w", encoding="utf-8", newline="").write(
                     text[:start] + vals[key] + text[end:])
                 changed.append(rel)
+                if rewritten is not None:
+                    rewritten.append(stale[-1])
     return vals, stale, changed
 
 
@@ -1203,9 +1209,16 @@ def main():
     # to 2026-09-28 every scheduled bot run succeeded while every `tests` run failed on this
     # guard.
     if args.write:
-        _, _, changed = scan(write=True)
-        if changed:
-            print("Rewrote: %s" % ", ".join(sorted(set(changed))))
+        rewritten = []
+        scan(write=True, rewritten=rewritten)
+        # Each figure with the value it found and the value it wrote: file names alone said
+        # nothing about what moved. Nothing at all when nothing was rewritten; an empty
+        # `Rewrote: ` line was the T-001 symptom.
+        if rewritten:
+            print("Rewrote %d figure(s):" % len(rewritten))
+            for rel, pattern, found, wrote in rewritten:
+                print("  %-18s found %-8s wrote %-8s  (%s)" % (rel, found, wrote, pattern[:44]))
+            print()
 
     vals, stale, _ = scan(write=False)
     print("Measured: n=%s, false positives %s%% on %s healthy tokens, unknown %s%%"
@@ -1256,7 +1269,7 @@ def main():
         print("  %-18s found %-8s expected %-8s  (%s)"
               % (rel, found, want, pattern[:44]))
     if args.write:
-        print("\n--write has rewritten every figure it can; it cannot fix what is listed above.")
+        print("\n--write cannot fix what is listed above.")
         return 1
     print("\nRun `python bench/publish_numbers.py --write`, then redeploy.")
     return 1
