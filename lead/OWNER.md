@@ -3,18 +3,18 @@
 > This page holds only what the lead needs from you. The project's own dashboard, with its
 > deadlines and gates, is `docs/OWNER.md` (generated). Messages to you are in Chinese; files
 > here are English because the repository is English-only. Maintained by the project lead (AI).
-> Last updated: 2026-09-28
+> Last updated: 2026-09-29
 
 ## Status in one line
 
-CI is green on master again, for the first time since 2026-09-22: all 27 steps ran and passed
-on the pushed head. M1's 7-day clock is running. The lead has rotated to a fresh session.
+CI is green on master and M1's 7-day clock is running. Lead #2 has checked in and proposes the
+next two items (H-5); nothing starts until you say yes.
 
 ## Needs you
 
-| ID | What | Why it's yours | Recommendation (also the default) | Needed by |
+| ID | What | Why it's yours | Recommendation | Needed by |
 |---|---|---|---|---|
-| — | Nothing open. | | | |
+| H-5 | Start two items. (1) Level 0, done by the lead: `python lead/checks.py` fails when a run modifies a tracked file, and the test that rewrites `docs/EXPERIMENT_C.md` with LF endings on Windows restores it byte for byte instead. (2) T-002, Level 1, executor plus a fresh review: `publish_numbers.py` reports a missing measurement instead of crashing, and `--write` fails when it leaves work undone (why the bots stayed green while `tests` was red). | Autonomy is A0: each step needs your yes | Yes to both. I come back for a separate yes to merge and push. If you don't answer, nothing starts | Now |
 
 ## Done / answered
 
@@ -31,7 +31,7 @@ on the pushed head. M1's 7-day clock is running. The lead has rotated to a fresh
 
 | Task | Level | Status | Notes |
 |---|---|---|---|
-| — | | | No task in flight; candidates are listed in `lead/STATE.md` |
+| T-002 | 1 | ready, waiting on H-5 | `lead/tasks/T-002-publish-numbers-honest-exit.md` |
 
 ## Milestones
 
@@ -42,6 +42,9 @@ on the pushed head. M1's 7-day clock is running. The lead has rotated to a fresh
 
 ## Log (newest first)
 
+- **2026-09-29** · lead · Lead #2 checked in: the SessionStart hook works, nothing new on
+  origin, all six workflows green, checks 27 of 27. Corrected one handoff note (the line-ending
+  side effect comes from a test, not from `publish_numbers.py`). Asked H-5.
 - **2026-09-28** · lead · Pushed; CI green on all 27 steps. Lead rotated to #2 (context at 50
   of 100 parts of the window). Open the next session in this repository's folder and type /lead.
 - **2026-09-28** · lead · T-001 merged after a fresh review (12 of 12); checks 27 of 27 on
