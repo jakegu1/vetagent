@@ -7,14 +7,15 @@
 
 ## Status in one line
 
-CI is green on master and M1's 7-day clock is running. The Level 0 fix is merged locally; T-002
-is with an executor. Your next decision: merge and push, after T-002's review.
+CI is green on master and M1's 7-day clock is running. T-002 passed a fresh review (12 of 12).
+Two questions for you: merge and push (H-6), and autonomy after a clean merge (H-7).
 
 ## Needs you
 
 | ID | What | Why it's yours | Recommendation | Needed by |
 |---|---|---|---|---|
-| — | Nothing open. The next question (merge and push T-002) comes after its review. | | | |
+| H-6 | Merge T-002 and push master: the Level 0 fix, T-002, and the lead's bookkeeping since the last push. Nothing touches `src/`, so nothing deploys | Every push is yours (`lead/config.yml`), and at A0 so is every merge | Yes. Default if you don't answer: nothing is merged or pushed | When convenient |
+| H-7 | Autonomy back to A1 once the merge is clean (checks green on master, CI green on the pushed head). At A1 the lead specs, dispatches and reviews on its own; you still approve every merge and push | The autonomy level is yours | Yes, as H-4 foresaw. Default: stay at A0 | With H-6 |
 
 ## Done / answered
 
@@ -32,7 +33,7 @@ is with an executor. Your next decision: merge and push, after T-002's review.
 
 | Task | Level | Status | Notes |
 |---|---|---|---|
-| T-002 | 1 | in progress (executor) | `lead/tasks/T-002-publish-numbers-honest-exit.md` |
+| T-002 | 1 | review passed 12 of 12; waiting on H-6 | `lead/reviews/T-002.md` |
 
 ## Milestones
 
@@ -43,6 +44,8 @@ is with an executor. Your next decision: merge and push, after T-002's review.
 
 ## Log (newest first)
 
+- **2026-09-29** · lead · T-002 passed a fresh review, 12 of 12, with no required changes. Asked
+  H-6 (merge and push) and H-7 (A1 after a clean merge).
 - **2026-09-29** · lead · You approved H-5. The Level 0 fix is merged locally: a check run that
   modifies a tracked file now fails, and the test that caused it restores its file exactly.
   T-002 is with an executor. Nothing pushed.

@@ -43,11 +43,15 @@ Last updated: 2026-09-29 by lead session 2 (Claude Code desktop, local, opened i
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-002 | 1 | `task/t-002-publish-numbers-honest-exit`, worktree `../vetagent-t-002`, based on `82acff3` | executor implementing (dispatched 2026-09-29) | executor subagent | Collect READY or BLOCKED. On READY: contract check and `python lead/checks.py` on the head, then one fresh-context review (`lead-review`), then ask the Owner to merge and push |
+| T-002 | 1 | `task/t-002-publish-numbers-honest-exit`, worktree `../vetagent-t-002`, based on `f05df56` (worktree baseline 27 of 27, clean) | review passed: 12 of 12, VERDICT ✅ at `0848ff3` (`lead/reviews/T-002.md`); head unchanged since | the Owner (H-6) | On the Owner's yes: fetch and merge origin into master; `git merge --no-ff task/t-002-publish-numbers-honest-exit -m "T-002: Make publish_numbers.py report what it could not do, instead of crashing or exiting 0"`; `merge.after`; checks; push; watch CI on all six workflows; then remove the worktree and branch |
 
 ## Waiting on the Owner
 
-- Nothing open. Next touchpoint: after T-002's review, a yes to merge and push.
+- **H-6 (asked 2026-09-29):** merge T-002 and push master (the local commits since `dc401b9`
+  plus the merge). Nothing in it touches `src/`, so no deploy. Default if unanswered: nothing
+  is merged or pushed.
+- **H-7 (asked 2026-09-29):** restore autonomy A1 once the merge is clean (checks green on
+  master and CI green on the pushed head), as H-4 foresaw. Default if unanswered: stay A0.
 - (H-5 answered 2026-09-29: yes to both items, as recommended. Item 1, the Level 0 fix, merged
   as `82acff3`; item 2 is T-002, in flight.)
 - (H-4 answered 2026-09-28: stay at A0 for the next task; the lead proposes A1 again after one
@@ -57,6 +61,25 @@ Last updated: 2026-09-29 by lead session 2 (Claude Code desktop, local, opened i
 ## Next up
 
 No task is specced beyond T-002. Candidates, each needing a spec and the Owner's yes:
+
+- Candidate, Level 1, from T-002's review and executor: `publish_numbers.py`'s report.
+  `--write` lists only the files it rewrote, not each figure's old and new value; check mode's
+  advice ("Run `--write`, then redeploy") and heading ("disagree with bench/results.json")
+  mislead for not-measured entries; no test pins that `--write` never prints an empty
+  `Rewrote:` line (a surviving mutant); the module docstring advertises `--check`, which
+  argparse rejects with exit 2; "0 published figure(s) disagree" is printed when only
+  unclaimed percentages remain.
+- Candidate, Level 1: `_owner_power_figures()` raises on invalid JSON in
+  `bench/owner_powers.json`, while the production readers treat an unreadable artifact as not
+  measured. Same class as T-002.
+- Candidate, Level 0: `CLAUDE.md` ("The order that matters") runs `publish_numbers.py --write`
+  before `scorecard.py --write`. After T-002, `--write` can exit 1 at that point when only the
+  scorecard's rewrite would fix what is left. Point it at
+  `bash .github/scripts/regenerate-derived.sh regenerate`, which runs the scorecard first and
+  repeats to a fixed point.
+- Candidate, Level 3 area (CI script): `regenerate-derived.sh` sends each generator's output to
+  `/dev/null`, so a failing bot run shows only `::error::publish_numbers.py failed`, not what
+  is left to fix.
 
 - Candidate, Owner's call first (public text): the `docs/EXPERIMENT_C.md` production sentences
   quote the live rate even below the scorecard's 100-answer floor, and compute it as
@@ -133,6 +156,9 @@ hand and move on.
 
 ## Log (newest first; keep the last ~20 lines)
 
+- 2026-09-29: T-002 READY at `0848ff3`; the lead reproduced CONTRACT HOLDS and 27 of 27. Fresh
+  review: 12 of 12, VERDICT ✅, no required changes; four optional notes filed as candidates.
+  Asked H-6 (merge and push) and H-7 (A1 after a clean merge).
 - 2026-09-29: H-5 yes. Level 0 merged (`82acff3`); checks on master 27 of 27 with a clean tree.
   T-002 dispatched to an executor in worktree `../vetagent-t-002`.
 - 2026-09-29: lead #2 check-in. Origin had nothing new; all six workflows' latest runs green;
