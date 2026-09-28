@@ -100,6 +100,38 @@ def _indent(line):
     return len(line) - len(line.lstrip(" "))
 
 
+# Named change (f). What the runner must refuse after `steps:` in test.yml's `test` job, known
+# here apart from the runner so the two can be compared: the keys GitHub allows on a step, the
+# three of them the runner does not apply, the two actions it stands in for, and the characters
+# str.splitlines() ends a line at where YAML does not -- derived from Python, not typed.
+STEP_KEYS = {"name", "id", "if", "uses", "with", "env", "run", "shell", "working-directory",
+             "continue-on-error", "timeout-minutes"}
+NOT_APPLIED = {"env", "working-directory", "shell"}
+ALLOWED_USES = re.compile(r"^actions/(checkout|setup-python)@[\w.-]+(\s+#.*)?$")
+SPLIT_ONLY = "".join(c for c in map(chr, range(0x110000))
+                     if c not in "\n\r" and len(("x%sx" % c).splitlines()) > 1)
+_TOKENS = re.compile(r"""("(?:[^"\\]|\\.)*"|'(?:[^']|'')*'|["'\[\]{}])""")
+
+
+def _closed(value):
+    """False when a value opens a quote, `[` or `{` that its own line does not close."""
+    v = value.strip()
+    if v[:1] == '"':
+        return re.match(r'"(?:[^"\\]|\\.)*"', v) is not None
+    if v[:1] == "'":
+        return re.match(r"'(?:[^']|'')*'", v) is not None
+    if v[:1] in ("[", "{"):
+        depth = 0
+        for token in _TOKENS.findall(v):
+            if token in ('"', "'"):
+                return False                       # a quote inside it that does not close
+            depth += (token in ("[", "{")) - (token in ("]", "}"))
+            if depth == 0:
+                return True
+        return False
+    return True
+
+
 def jobs(text):
     """{job id: its lines} under the top-level `jobs:`, without comment or blank lines."""
     out, current, inside = {}, None, False
@@ -119,14 +151,17 @@ def jobs(text):
     return out
 
 
-def steps(job_lines):
-    """The job's steps in order, each {"keys": {key: value}, "run": [commands], "with": {}}."""
+def steps(job_lines, outside=None):
+    """The job's steps in order, each {"keys": {key: value}, "run": [commands], "with": {},
+    "refused": [lines]}. Lines after `steps:` in no step go to `outside`, when it is given."""
     at = [i for i, l in enumerate(job_lines) if re.match(r"^\s*steps:\s*$", l)]
     if not at:
         return []
     base, items = _indent(job_lines[at[0]]), []
-    for line in job_lines[at[0] + 1:]:
+    for k, line in enumerate(job_lines[at[0] + 1:], at[0] + 1):
         if _indent(line) <= base:
+            if outside is not None:                # named change (f): e.g. a job key
+                outside += [l.strip() for l in job_lines[k:]]
             break
         item = re.match(r"^( *)- (.*)$", line)
         if item and (not items or len(item.group(1)) == items[0][0]):
@@ -134,16 +169,20 @@ def steps(job_lines):
             items.append((dash, [" " * (dash + 2) + item.group(2)]))
         elif items:
             items[-1][1].append(line)
+        elif outside is not None:                  # named change (f): before the first step
+            outside.append(line.strip())
     return [_step(lines, dash + 2) for dash, lines in items]
 
 
 def _step(lines, at):
-    step, i = {"keys": {}, "run": [], "with": {}}, 0
+    step, i = {"keys": {}, "run": [], "with": {}, "refused": []}, 0
     while i < len(lines):
-        m = re.match(r"^ *([A-Za-z0-9_-]+):\s*(.*?)\s*$", lines[i])
-        mine = m is not None and _indent(lines[i]) == at
+        line = lines[i]
+        m = re.match(r"^ *([A-Za-z0-9_-]+):\s*(.*?)\s*$", line)
+        mine = m is not None and _indent(line) == at
         i += 1
         if not mine:
+            step["refused"].append(line.strip())   # named change (f): not a key of the step
             continue
         key, value, children = m.group(1), m.group(2), []
         while i < len(lines) and _indent(lines[i]) > at:
@@ -155,6 +194,13 @@ def _step(lines, at):
         block = re.match(r"^[|>][0-9+-]*$", value) is not None
         whole = " ".join(children if block or not value else [value] + children)
         step["keys"][key] = value if key in ("with", "env") else whole
+        # Named change (f): what the runner must refuse, found here on this reader's own terms.
+        if (key not in STEP_KEYS or key in NOT_APPLIED or not _closed(value)
+                or key == "uses" and not ALLOWED_USES.match(value)
+                or key == "run" and value.startswith(">")):
+            step["refused"].append(line.strip())
+        if children and key not in ("with", "env") and not (key == "run" and block):
+            step["refused"] += children            # a value continued on the next lines
         if key == "run":
             step["run"] = children if block or not value else [whole]
         elif key == "with":
@@ -162,11 +208,25 @@ def _step(lines, at):
                 kv = re.match(r"^([A-Za-z0-9_-]+):\s*(.*?)\s*$", c)
                 if kv:
                     step["with"][kv.group(1)] = kv.group(2).strip("\"'")
+                entry = re.match(r"^[A-Za-z0-9_.-]+:(?:\s+(.*))?$", c)
+                if not entry or not _closed(entry.group(1) or ""):
+                    step["refused"].append(c)      # named change (f): not `key: value`
     return step
 
 
 def commands(text, job):
     return [c for s in steps(jobs(text).get(job, [])) for c in s["run"]]
+
+
+def refusals(text, job="test"):
+    """Named change (f). What this reader refuses after `steps:` in the job -- each step's
+    refused lines and every line in no step -- and every character, anywhere in the file, that
+    str.splitlines() ends a line at other than a newline or a carriage return."""
+    out = ["U+%04X" % ord(c) for c in text if c in SPLIT_ONLY]
+    outside = []
+    for s in steps(jobs(text).get(job, []), outside):
+        out += s["refused"]
+    return out + outside
 
 
 def _cond(value):
@@ -293,6 +353,16 @@ def printed_commands(out):
 
 def untimed(out):
     return re.sub(r" *\d+\.\ds\b", " #s", out)
+
+
+def run_workflow(tree, workflow):
+    """Named change (f): (exit status, output, what ran) for the runner on `workflow`, in a
+    scratch repository used for several workflows in turn."""
+    _write(os.path.join(tree, ".github", "workflows", "test.yml"), workflow)
+    if os.path.exists(os.path.join(tree, "ran.txt")):
+        os.remove(os.path.join(tree, "ran.txt"))
+    code, out = run(tree, RUNNER_REL)
+    return code, out, ran(tree)
 
 
 # ---------------------------------------------------------------- synthetic workflows
@@ -523,6 +593,70 @@ jobs:
 """
 
 
+# Named change (f). The rest of the class: shapes after `steps:` that the runner would read as
+# fewer or other commands than GitHub runs. Each must be refused -- red, named by its line
+# number and text, the run exiting non-zero -- by the runner and by the reader above alike.
+def _job(*lines):
+    """A test.yml whose test job runs `mark.py one`, then `lines`, then `mark.py four`."""
+    return "\n".join(["name: tests", "on: push", "jobs:", "  test:",
+                      "    runs-on: ubuntu-latest", "    steps:",
+                      "      - name: first", "        run: python mark.py one"]
+                     + list(lines) + ["      - name: last", "        run: python mark.py four", ""])
+
+
+# (what, the workflow, the line to be named, what must still run -- None where the rest of the
+# job cannot be read: a line at the jobs' indentation ends it for the runner, as it should)
+REFUSED = [
+    ("a double-quoted value left open on its line",
+     _job('      - name: "a name that goes on', '  continued: here"',
+          "        run: python mark.py two"), '- name: "a name that goes on', None),
+    ("a single-quoted value left open on its line",
+     _job("      - name: 'a name that goes on", "  continued: here'",
+          "        run: python mark.py two"), "- name: 'a name that goes on", None),
+    ("a flow sequence left open on its line",
+     _job("      - name: [a name that goes on,", "  continued: here]",
+          "        run: python mark.py two"), "- name: [a name that goes on,", None),
+    ("a flow mapping left open on its line",
+     _job("      - uses: actions/setup-python@v5", "        with: {python-version: 3.12,",
+          "  continued: here}"), "with: {python-version: 3.12,", None),
+    ("a folded `run: >`, which YAML reads as one command",
+     _job("      - name: folded", "        run: >", "          python mark.py two",
+          "          python mark.py three"), "run: >", ["one", "four"]),
+    ("a folded `run: >-`",
+     _job("      - name: folded", "        run: >-", "          python mark.py two",
+          "          python mark.py three"), "run: >-", ["one", "four"]),
+    ("a folded `run: >+`",
+     _job("      - name: folded", "        run: >+", "          python mark.py two",
+          "          python mark.py three"), "run: >+", ["one", "four"]),
+    ("`env:` on a step, which the runner does not apply",
+     _job("      - name: with env", "        env:", "          MODE: fast",
+          "        run: python mark.py two"), "env:", ["one", "four"]),
+    ("`working-directory:` on a step, which the runner does not apply",
+     _job("      - name: elsewhere", "        working-directory: tests",
+          "        run: python mark.py two"), "working-directory: tests", ["one", "four"]),
+    ("`shell:` on a step, which the runner does not apply",
+     _job("      - name: another shell", "        shell: bash",
+          "        run: python mark.py two"), "shell: bash", ["one", "four"]),
+    ("a `uses:` other than actions/checkout and actions/setup-python",
+     _job("      - uses: actions/cache@v4", "        with:", "          path: x"),
+     "- uses: actions/cache@v4", ["one", "four"]),
+    ("a job key after `steps:`",
+     "\n".join(["name: tests", "on: push", "jobs:", "  test:", "    runs-on: ubuntu-latest",
+                "    steps:", "      - name: first", "        run: python mark.py one",
+                "    timeout-minutes: 5", ""]), "timeout-minutes: 5", ["one"]),
+    ("a line under `with:` that is not `key: value`",
+     _job("      - uses: actions/setup-python@v5", "        with:",
+          '          python-version: "3.12"', "          args:", "            - an item"),
+     "- an item", ["one", "four"]),
+]
+
+# Every operator in the runner's set, each joining two commands (or redirecting one).
+OPERATORS = (("&&", "two && python quiet.py three"), ("||", "two || python quiet.py three"),
+             (";", "two; python quiet.py three"), ("|", "two | python quiet.py three"),
+             ("&", "two & python quiet.py three"), ("a backtick", "two `python quiet.py three`"),
+             ("$(", "two $(python quiet.py three)"), (">", "two > out.txt"), ("<", "two < in.txt"))
+
+
 # ---------------------------------------------------------------- the checks
 
 def test_one_list_read_at_run_time():
@@ -555,6 +689,9 @@ def test_one_list_read_at_run_time():
     refused = [l.strip() for l in out.splitlines() if "unrecognised" in l]
     check("  and it recognises every line of that job's steps: none is refused",
           not refused, str(refused[:3]))
+    # Named change (f): nor does the independent reader.
+    mine = refusals(text)
+    check("  and the independent reader refuses none of it either", not mine, str(mine[:3]))
 
     with scratch(GREEN) as tree:
         code, out = run(tree, RUNNER_REL)
@@ -708,6 +845,44 @@ def test_the_runner_fails_closed():
         check("  the run exits non-zero; that step does not run, the steps around it do",
               code != 0 and done == around, "exit %d, ran %s" % (code, done))
 
+    # Named change (f).
+    with scratch(None) as tree:
+        _write(os.path.join(tree, "quiet.py"), QUIET)
+        for label, workflow, line, around in REFUSED:
+            number = [l.strip() for l in workflow.splitlines()].index(line) + 1
+            code, out, done = run_workflow(tree, workflow)
+            named = [l for l in out.splitlines() if l.startswith("RED") and "unrecognised" in l
+                     and ("line %d " % number) in l and line in l]
+            check("%s is red, named by its line number (%d) and its text" % (label, number),
+                  len(named) == 1, _tail(out))
+            check("  the run exits non-zero" + (", and the steps around it run" if around else ""),
+                  code != 0 and (around is None or done == around),
+                  "exit %d, ran %s" % (code, done))
+            check("  and the independent reader refuses it too", bool(refusals(workflow)),
+                  "the reader refuses nothing in it")
+        for c in SPLIT_ONLY:
+            workflow = _job("      # a comment%s  name: after the break" % c,
+                            "      - name: second", "        run: python mark.py two")
+            code, out, done = run_workflow(tree, workflow)
+            named = [l for l in out.splitlines() if l.startswith("RED")
+                     and ("U+%04X" % ord(c)) in l and "line 9 " in l]
+            check("a U+%04X in test.yml, where str.splitlines() ends a line and YAML does not, is "
+                  "refused: exit 2, nothing run, the character and its line named" % ord(c),
+                  code == 2 and done == [] and len(named) == 1,
+                  "exit %d, ran %s: %s" % (code, done, _tail(out)))
+            check("  and the independent reader refuses it too",
+                  "U+%04X" % ord(c) in refusals(workflow), str(refusals(workflow)[:3]))
+        for op, rest in OPERATORS:
+            workflow = _job("      - name: joined with %s" % op,
+                            "        run: python quiet.py %s" % rest)
+            code, out, done = run_workflow(tree, workflow)
+            red = [l for l in out.splitlines() if l.startswith("RED") and "unsupported" in l
+                   and ("joined with %s" % op) in l]
+            check("a `run:` joining commands with %s is a red step, reported unsupported" % op,
+                  len(red) == 1, _tail(out))
+            check("  the run exits non-zero, and the steps around it run",
+                  code != 0 and done == ["one", "four"], "exit %d, ran %s" % (code, done))
+
 
 def test_the_deploy_is_gated():
     """Criterion 4: the deploy job runs the runner before it deploys, and a red gate stops it."""
@@ -749,6 +924,12 @@ def test_the_deploy_is_gated():
           "step %d, checkout %s" % (i_gate + 1, [i + 1 for i in checkout]))
     check("  after Python is set up", bool(setup) and i_gate > setup[0],
           "step %d, setup-python %s" % (i_gate + 1, [i + 1 for i in setup]))
+    # Named change (f): on the Python version that test.yml's test job runs the same list on.
+    ours = [ss[i]["with"].get("python-version") for i in setup]
+    theirs = [s["with"].get("python-version") for s in steps(jobs(read(TEST_YML)).get("test", []))
+              if s["keys"].get("uses", "").startswith("actions/setup-python@")]
+    check("  on the Python version test.yml's test job sets up (%s)" % ", ".join(map(str, theirs)),
+          bool(ours) and ours == theirs, "deploy.yml %s, test.yml %s" % (ours, theirs))
     check("  before uv is installed, dependencies are synced and pywrangler deploy runs",
           bool(tooling) and i_gate < min(tooling) and i_gate < i_deploy,
           "step %d; tooling at %s, deploy at %d"
