@@ -13,6 +13,8 @@ main_branch: "master"
 autonomy: "A0"                     # A0 since 2026-09-28 (tripwire Q1: the lead's own commit f38ce82 broke
                                    # the English-only rule on master). A0: the lead proposes, the Owner approves
                                    # each step. Was A1 (the Owner approves every merge and every push).
+                                   # Confirmed by the Owner (H-4): A0 for the next task, then the lead
+                                   # proposes A1 again after one clean merge.
 spec_language: "en"
 
 checks:                            # must pass (or match the baseline in lead/STATE.md) before READY and after merge

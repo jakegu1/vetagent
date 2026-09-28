@@ -14,12 +14,13 @@ on the pushed head. M1's 7-day clock is running. The lead has rotated to a fresh
 
 | ID | What | Why it's yours | Recommendation (also the default) | Needed by |
 |---|---|---|---|---|
-| H-4 | Autonomy after tripwire Q1: stay at A0, or restore A1 | Autonomy is yours to set | Stay at A0 for the next task, and the lead proposes A1 again after one clean merge. Reply "restore A1" to restore it now. Default: A0 | Before the next task starts |
+| — | Nothing open. | | | |
 
 ## Done / answered
 
 | Item | Outcome | Recorded in |
 |---|---|---|
+| H-4 Autonomy after tripwire Q1 (2026-09-28) | Stay at A0 for the next task; the lead proposes A1 again after one clean merge | `lead/STATE.md`, `lead/config.yml` |
 | T-001 (2026-09-28) | Merged as `0a3098d` after a fresh review, 12 of 12 | `lead/reviews/T-001.md` |
 | H-3 SessionStart hook (2026-09-28) | Created by the lead at the Owner's request in `.claude/settings.local.json`: this project and this machine only, not committed. Works only in sessions opened with this repository as the project folder | `lead/STATE.md` |
 | H-2 Close backlog W11 (2026-09-28) | Approved and done: Done R23; its orphaned `COST_OF_WAITING` entry removed; `docs/OWNER.md` regenerated | commit `23157f9` |

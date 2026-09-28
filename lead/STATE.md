@@ -26,16 +26,16 @@ Last updated: 2026-09-28 by lead session 1 (Claude Code desktop, local).
   SessionStart hook in `.claude/settings.local.json` load. Lead #1 ran from the parent folder.
   If this file appeared on its own at session start, the SessionStart hook works: say so to the
   Owner, because nobody has seen it fire yet.
-- **Autonomy is A0.** Propose each step and wait for the Owner's yes; H-4 asks whether to
-  restore A1.
+- **Autonomy is A0, confirmed by the Owner (H-4).** Propose each step and wait for the
+  Owner's yes. After the next task merges cleanly, propose restoring A1.
 - **Suggested next proposal:** the second candidate below (`--write` exiting 0 on a stale entry
   it cannot rewrite, and `KeyError` when `verdicts.json` is absent). It is the class of silent
   failure that kept both bots green while `tests` was red for six days. Level 1.
 - **M1's clock is running** since run 36445100361 (2026-09-28 15:38 UTC, head `dc401b9`).
   Check `gh run list --workflow=test.yml` at each check-in; any red run on master restarts it
   and stops new work until green (tripwire Q4).
-- `master` is one commit ahead of `origin` after the handoff commit. Push it with the next batch
-  the Owner approves; fetch and merge origin first, never rebase.
+- `master` has two unpushed lead commits (the handoff, and the H-4 answer). Push them with the
+  next batch the Owner approves; fetch and merge origin first, never rebase.
 
 ## In flight
 
@@ -72,8 +72,9 @@ No task is specced. Candidates, each needing a spec (`lead-spec`) and, at A0, th
 
 ## Waiting on the Owner
 
-- H-4: autonomy after tripwire Q1. Recommendation and default: stay at A0 for the next task;
-  the lead proposes A1 again after one clean merge. "restore A1" restores it now.
+- Nothing open.
+- (H-4 answered 2026-09-28: stay at A0 for the next task; the lead proposes A1 again after one
+  clean merge.)
 - (H-1 done 2026-09-28: pushed `c954f43..dc401b9`; CI green on it.)
 
 ## Rotation
@@ -99,6 +100,8 @@ local run on Windows:
 
 ## Recent decisions
 
+- 2026-09-28: the Owner answered H-4 as recommended: autonomy stays A0 for the next task, and
+  the lead proposes A1 again after one clean merge.
 - 2026-09-28: T-001 merged (`0a3098d`, `git merge --no-ff`, the tests-first commit kept):
   review 12 of 12, verdict pass (`lead/reviews/T-001.md`). Milestone M0 (loop proven) reached.
 - 2026-09-28: tripwire Q1 fired. The lead's own commit `f38ce82` put a CJK quote into
