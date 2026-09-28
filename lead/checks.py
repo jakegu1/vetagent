@@ -1,6 +1,7 @@
 """checks.py -- run every step of CI's offline `test` job, in order, and report each one.
 
-Usage:  python lead/checks.py          (from the repository root; exit 0 only if every step passed)
+Usage:  python lead/checks.py          (from the repository root; exit 0 only if every step passed
+                                        and the run left every tracked file as it found it)
 
 Why this exists. GitHub stops a job at its first failing step. On 2026-09-22 step 6 of 27
 went red and stayed red, so for the next six days steps 7 to 27 never ran on CI and nobody
@@ -14,9 +15,12 @@ cannot drift from what CI runs. It refuses loudly rather than guessing:
                                                        would pass vacuously);
 - a `run:` it cannot turn into a python command    -> that step is reported red.
 
-It also lists tracked files the run modified. On Windows the suite rewrites
-`docs/EXPERIMENT_C.md` with LF line endings (content unchanged); that is a side effect to
-restore before committing, not work to commit.
+It also fails if the run modified a tracked file. A check that edits the tree and puts it back
+is safe only if it puts it back exactly. Until 2026-09-29 `tests/test_number_coverage.py`
+restored `docs/EXPERIMENT_C.md` from a text-mode read, which turned a Windows checkout's CRLF
+into LF, and this runner listed that file after every run as a known side effect to restore by
+hand. A line that is always there is a line nobody reads, and it was the only line that would
+show a mutated published number left behind.
 
 The two network tests (`test_upstream_contract.py`, `test_backfill.py`) live in other jobs
 and are not run here. The lead kit reads this command from `lead/config.yml`.
@@ -113,14 +117,17 @@ def main():
 
     moved = sorted(tracked_changes() - before)
     if moved:
-        print("\ntracked files this run modified (restore side effects before committing):")
+        print("\nRED   tracked files this run modified (a check must leave the tree as it "
+              "found it):")
         for l in moved:
             print("  " + l)
     print("\n%d of %d steps passed in %.1fs" % (len(steps) - len(red), len(steps),
                                                time.time() - t_all))
     for name in red:
         print("  RED  %s" % name)
-    return 1 if red else 0
+    if moved:
+        print("  RED  the run modified %d tracked file(s)" % len(moved))
+    return 1 if red or moved else 0
 
 
 if __name__ == "__main__":
