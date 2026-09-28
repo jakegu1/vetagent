@@ -900,6 +900,9 @@ def check_each_kind_of_entry_write_cannot_fix_gets_one_line_of_advice():
             got = advice(out, kind)
             check("a figure it can rewrite and a reworded sentence: %d line(s) about `%s`"
                   % (want, kind), len(got) == want, "got %r" % got)
+        wrong = [line for line, _ in under(out, is_heading) if "bench/results.json" in line]
+        check("a figure it can rewrite and a reworded sentence: no heading attributes every "
+              "entry to bench/results.json", not wrong, "got %r" % wrong)
     in_a_copy(one_kind)
 
 
