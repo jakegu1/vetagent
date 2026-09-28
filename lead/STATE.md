@@ -14,24 +14,34 @@ Last updated: 2026-09-28 by lead session 1 (Claude Code desktop, local).
    day; when behind, merge (never rebase) before starting work.
 3. Reconcile: for each in-flight row, check the real branch, worktree or subagent result, and
    CI (`gh run list --workflow=test.yml`). Fix this file if it drifted.
-4. Act on each row's next action. Then start the next ready task if WIP allows.
-5. Check the rotation rule (`lead-handoff`). Update this file and commit.
+4. Act on each row's next action. Then start the next ready task if WIP allows. Autonomy is
+   **A0** (`lead/config.yml`): propose each step and wait for the Owner's yes.
+5. Run `python lead/checks.py` before every commit to master, lead bookkeeping included.
+6. Check the rotation rule (`lead-handoff`). Update this file and commit.
 
 ## In flight
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-001 | 1 | `task/t-001-production-row-floor` at `0648d3b`, worktree `../vetagent-t-001` | in review (round 1) | fresh reviewer subagent (lead session 1) | READY received; the lead reproduced 27 of 27 and CONTRACT HOLDS on `0648d3b`. On a pass: save the verdict to `lead/reviews/T-001.md`, `git merge --no-ff`, post-merge regenerate and checks, then the approved H-1 push. If the session died: start a fresh reviewer on the same head (prompt template in the kit's `prompts.md`). |
+| — | | | | | No task in flight. |
 
 ## Next up
+
+No task is specced. Candidates, each needing a spec (`lead-spec`) and, at A0, the Owner's yes:
 
 - Candidate, Level 1: `bench/publish_numbers.py --write` rewrites `docs/EXPERIMENT_C.md` with LF
   line endings on Windows, so every local test run leaves a modified file; write it back with
   the line endings it had.
-- Candidate, Level 1: `publish_numbers.scan()` raises `KeyError` on production-keyed targets
-  when `bench/production/verdicts.json` is absent, although its comment says absent means
-  unguarded (verified in memory, 2026-09-28); separately, `--write` exits 0 while a stale entry
-  it cannot rewrite remains, which is why the bots stayed green while `tests` was red.
+- Candidate, Level 1: `publish_numbers.scan()` raises `KeyError` on the `docs/EXPERIMENT_C.md`
+  production targets when `bench/production/verdicts.json` is absent, although the code's
+  comment says absent means unguarded (verified on disk by the T-001 reviewer); separately,
+  `--write` exits 0 while a stale entry it cannot rewrite remains, which is why the bots stayed
+  green while `tests` was red.
+- Candidate, Owner's call first (public text): the `docs/EXPERIMENT_C.md` production sentences
+  quote the live rate even below the scorecard's 100-answer floor, and compute it as
+  `100*u/n` while the scorecard row now uses `(u/n)*100`; the two round differently on 314 of
+  about two million (u, n) pairs (T-001 review, problem 4). Whether a below-floor rate belongs
+  in that text is a public-claim decision.
 - Candidate, Level 2 (Level 3 area: deploy workflow): a deploy does not wait for the full
   offline suite (`deploy.yml` runs only `test_risk.py` and `test_mcp.py`), so a red `tests`
   does not stop a deploy. Make the deploy run the same list or depend on it.
@@ -41,43 +51,40 @@ Last updated: 2026-09-28 by lead session 1 (Claude Code desktop, local).
 
 ## Waiting on the Owner
 
-- H-1: **approved 2026-09-28.** Push master once, after T-001 merges (adoption, W11 closure,
-  T-001, and the bot merges in between). Fetch and merge origin first; never rebase.
-- H-2: **approved and done 2026-09-28.** Backlog W11 closed as Done R23 (Level 0).
-- H-3: **done 2026-09-28**, at the Owner's explicit request: the SessionStart hook lives in
-  `.claude/settings.local.json` (this project, this machine only; git-ignored by the Owner's
-  global ignore file). It runs only in sessions whose project folder is this repository.
+- H-1: **approved 2026-09-28.** One push of master now that T-001 has merged (adoption, W11,
+  T-001, derived pages, and the bot merges in between). Fetch and merge origin first; never
+  rebase. Being done by lead session 1 right after this commit.
+- H-4: autonomy after tripwire Q1. Recommendation and default: stay at A0 for the next task;
+  the lead proposes A1 again after one clean merge. "restore A1" restores it now.
 
 ## Rotation
 
 The rule fired on 2026-09-28: lead session 1 measured its context at 50 of 100 parts of the
-window (the threshold in `lead/config.yml` is 0.4). Not rotated yet because T-001 is mid-flight
-with an executor bound to this session. **Rotate at the next natural boundary: right after
-T-001 merges and the H-1 push is done** (`lead-handoff`).
+window (the threshold in `lead/config.yml` is 0.4). T-001 has merged, so the natural boundary
+is reached once the H-1 push is done: **rotate then** (`lead-handoff`).
 
-## Baseline (before the lead kit)
+## Baseline
 
-Recorded 2026-09-28 on `f6c7c06` with `python lead/checks.py` (Windows, Python 3.13.4,
-19.0 s): **26 of 27 steps pass.**
-Known failures that tasks don't own: `tests/test_published_numbers.py` ("docs/SCORECARD.md
-published pattern not found" for the production row). T-001 owns it; after T-001 no failure
-is known.
+Before the lead kit, recorded 2026-09-28 on `f6c7c06` with `python lead/checks.py` (Windows,
+Python 3.13.4, 19.0 s): 26 of 27 steps passed; the red one was `tests/test_published_numbers.py`.
+**After T-001 (`0a3098d`, 2026-09-28): 27 of 27. No failure is known.**
 Not part of the baseline: `tests/test_upstream_contract.py` and `tests/test_backfill.py`
 (network; CI jobs `upstream-contract` and `backfill-roundtrip`).
-On CI, `tests` has been red since 2026-09-22 12:05 UTC, so steps 7 to 27 are unobserved there
-since that time. Side effect of a local run on Windows: `docs/EXPERIMENT_C.md` is rewritten with
-LF line endings. Restore it with `git checkout -- docs/EXPERIMENT_C.md` only after
-`git diff --ignore-cr-at-eol docs/EXPERIMENT_C.md` shows nothing.
+On CI, `tests` had been red since 2026-09-22 12:05 UTC; the first run after the H-1 push is the
+first CI observation of steps 7 to 27 since then. Side effect of a local run on Windows:
+`docs/EXPERIMENT_C.md` is rewritten with LF line endings. Restore it with
+`git checkout -- docs/EXPERIMENT_C.md` only after `git diff --ignore-cr-at-eol` on it shows nothing.
 
 ## Recent decisions
 
+- 2026-09-28: T-001 merged (`0a3098d`, `git merge --no-ff`, the tests-first commit kept):
+  review 12 of 12, verdict pass (`lead/reviews/T-001.md`). Milestone M0 (loop proven) reached.
 - 2026-09-28: tripwire Q1 fired. The lead's own commit `f38ce82` put a CJK quote into
   `lead/STATE.md`, which broke the English-only rule on master; it was committed without a
-  checks run and found by the T-001 reviewer. Fixed in the next commit. **Autonomy demoted
-  A1 to A0** (`lead/config.yml`): the lead proposes, the Owner approves each step. H-1's
-  explicit approval (merge and push T-001) still stands. The Owner may restore A1 (H-4).
+  checks run and found by the T-001 reviewer. Fixed in `5959a8b`. **Autonomy demoted A1 to
+  A0** (`lead/config.yml`). H-1's explicit approval (merge and push T-001) still stands.
 - 2026-09-28: adopted the lead workflow (`lead/decisions/0001-adopt-lead-workflow.md`): lead/
-  public and English, local-branches, A1, merge commits instead of squash; `docs/OWNER.md`,
+  public and English, local-branches, merge commits instead of squash; `docs/OWNER.md`,
   `docs/BACKLOG.md` and `docs/DECISIONS.md` stay the project's records.
 
 ## Lead history
@@ -88,13 +95,18 @@ LF line endings. Restore it with `git checkout -- docs/EXPERIMENT_C.md` only aft
 
 ## Log (newest first; keep the last ~20 lines)
 
+- 2026-09-28: T-001 merged as `0a3098d` after a fresh review (12 of 12). Post-merge
+  regeneration changed only the recent-commit list in `docs/OWNER.md` (`9e81c01`; its checks
+  ran just after that commit rather than before it: 27 of 27). Checks on master: 27 of 27.
+- 2026-09-28: the T-001 reviewer found that the lead's `f38ce82` broke the English-only rule on
+  master; fixed in `5959a8b`; tripwire Q1 demoted autonomy to A0.
+- 2026-09-28: H-3 done at the Owner's request (SessionStart hook in `.claude/settings.local.json`).
+  The rotation rule fired (context at 50 of 100 parts of the window).
 - 2026-09-28: H-2 done (Level 0): W11 marked Done R23; its orphaned `COST_OF_WAITING` entry
   removed from `tools/owner.py` (the rendered page is identical); `docs/OWNER.md` regenerated.
-  Checks back at the baseline, 26 of 27.
 - 2026-09-28: the Owner said "continue" and approved H-1 and H-2. Merged origin (production
   probe, still below the floor, CI red on the same step). T-001 dispatched to an executor in
   worktree `../vetagent-t-001`.
 - 2026-09-28: adoption. Audit in `lead/AUDIT.md`. The Owner accepted every recommendation.
   Local master fast-forwarded to `f6c7c06` (66 bot commits). `lead/checks.py` added and watched
-  failing on purpose (two mutants, both red). T-001 written, ready, not started. Adoption
-  committed on master and not pushed (H-1).
+  failing on purpose (two mutants, both red). T-001 written. Adoption committed on master.

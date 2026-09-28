@@ -1,7 +1,7 @@
 ---
 id: T-001
 title: Judge the scorecard's production row by the scorecard's own measured/not-measured rule
-status: in_review        # draft | ready | in_progress | in_review | changes_requested | done | dropped
+status: done             # draft | ready | in_progress | in_review | changes_requested | done | dropped
 level: 1                 # 0 direct | 1 light | 2 standard | 3 high risk
 size: S                  # S | M (split anything larger)
 depends_on: []
