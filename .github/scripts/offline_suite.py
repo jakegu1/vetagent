@@ -22,11 +22,19 @@ loudly rather than guessing:
 
 - no `test:` job, or no steps found in it          -> exit 2 (a runner that finds nothing
                                                        would pass vacuously);
-- a `run:` it cannot turn into a python command    -> that step is reported red.
+- a `run:` it cannot turn into a python command    -> that step is reported red;
+- a line after `steps:` that it does not recognise -> that line is reported red, and the
+                                                       step it is in does not run.
 
-That includes a `run:` joining commands with a shell operator (&&, ||, ;, |, &, a backtick,
-$(, >, <): GitHub's shell runs every command, while this would run the first with the rest as
-its arguments and report a pass on half the step.
+A `run:` joining commands with a shell operator (&&, ||, ;, |, &, a backtick, $(, >, <) is one
+it cannot turn into a python command: GitHub's shell runs every command, while this would run
+the first with the rest as its arguments and report a pass on half the step.
+
+The lines it recognises after `steps:` are blank lines and comments, a step's first line (`- `
+and a step key), a step key at the step's indentation, a `key: value` under `with:` or `env:`,
+and the lines of a `run: |` or `run: >` block. Read line by line, other shapes YAML allows --
+a flow-style step, a `run:` value continued on the next line -- come out as fewer commands
+than GitHub runs, so the class is refused rather than taught one shape at a time.
 
 It also fails if the run modified a tracked file. A check that edits the tree and puts it back
 is safe only if it puts it back exactly. Until 2026-09-29 `tests/test_number_coverage.py`
@@ -54,53 +62,117 @@ JOB = "test"
 # 2026-09-29 `python a.py && python b.py` passed here with b.py never run.
 SHELL_OPERATOR = re.compile(r"[&;|`<>]|\$\(")
 
+# What may follow `steps:` in the job: GitHub's keys for a step, a `key: value` under `with:`
+# or `env:`, and a block scalar's indicator (`|` or `>`, with chomping or indentation).
+STEP_KEY = re.compile(r"^(name|id|if|uses|with|env|run|shell|working-directory|"
+                      r"continue-on-error|timeout-minutes):(?:\s+(.*?))?\s*$")
+ENTRY = re.compile(r"^[A-Za-z0-9_.-]+:(\s|$)")
+BLOCK = re.compile(r"^[|>][0-9+-]*$")
+
+
+def _indent(line):
+    return len(line) - len(line.lstrip(" "))
+
 
 def steps_from_workflow(text):
-    """[(name, command or None)] for every `run:` in the job, in file order."""
+    """([(name, command or None)], [(line number, line)]) for the job, or None without one.
+
+    The first list has every command of every step, in file order; None is a `run:` with
+    nothing to run. The second has every line after `steps:` that is not a blank line, a
+    comment, a step's first line (`- ` and a step key), a step key at the step's indentation,
+    a `key: value` under `with:` or `env:`, or a line of a `run: |` or `run: >` block. A step
+    holding such a line gives no command: this cannot say what GitHub would run for it.
+    """
     lines = text.splitlines()
     try:
         start = lines.index("  %s:" % JOB) + 1
     except ValueError:
         return None
-    block = []
-    for line in lines[start:]:
-        # The job ends at the next job's id: exactly two spaces, a name, a colon. Never at a
-        # comment or a blank line, which YAML reads as still inside the job. Ending at any
-        # two-space line, one comment between two steps made this read 6 of 28 steps
-        # (measured 2026-09-29), and the gate would have passed on those 6.
-        if re.match(r"^  [A-Za-z0-9_-]+:(\s|$)", line):
-            break
-        block.append(line)
+    # The job ends at the next job's id: exactly two spaces, a name, a colon. Never at a
+    # comment or a blank line, which YAML reads as still inside the job. Ending at any
+    # two-space line, one comment between two steps made this read 6 of 28 steps
+    # (measured 2026-09-29), and the gate would have passed on those 6.
+    end = start
+    while end < len(lines) and not re.match(r"^  [A-Za-z0-9_-]+:(\s|$)", lines[end]):
+        end += 1
+    body = [i for i in range(start, end)
+            if lines[i].strip() and not lines[i].lstrip().startswith("#")]
+    at = [i for i in body if _indent(lines[i]) == _indent(lines[body[0]])
+          and re.match(r"^\s*steps:\s*$", lines[i])] if body else []
+    if not at:
+        return [], []
 
-    steps, name, i = [], None, 0
-    while i < len(block):
-        line = block[i]
-        if re.match(r"^\s*- ", line):
-            name = None                   # a new step: the name of the one before is not its own
-        m = re.match(r"^\s*- name:\s*(.+?)\s*$", line)
-        if m:
-            name = m.group(1)
-        # `run` can be a step's first key (`- run: ...`); the key then sits two columns right of
-        # the dash, and a block under it is indented past that. Such a step used to be skipped:
-        # with the guard's own step written so, the gate passed 27 of 27 without running it
-        # (measured 2026-09-29). A step with no name is called what GitHub calls it.
-        m = re.match(r"^(\s*)(- )?run:\s*(.*?)\s*$", line)
-        if m:
-            indent, value = len(m.group(1)) + len(m.group(2) or ""), m.group(3)
-            if value in ("|", ">", "|-", ">-"):
-                cmds = []
-                i += 1
-                while i < len(block) and (not block[i].strip()
-                                          or len(block[i]) - len(block[i].lstrip()) > indent):
-                    if block[i].strip() and not block[i].strip().startswith("#"):
-                        cmds.append(block[i].strip())
-                    i += 1
-                for cmd in cmds or [None]:
-                    steps.append((name or "Run %s" % (cmds[0] if cmds else ""), cmd))
+    # Every line after `steps:` belongs to the step whose dash, in the steps' column, came
+    # last before it, or is refused.
+    items, unknown, dash = [], [], None
+    for i in range(at[0] + 1, end):
+        line = lines[i]
+        if not line.strip() or line.lstrip().startswith("#"):
+            if items:
+                items[-1].append(i)
+            continue
+        ind, starts = _indent(line), re.match(r"^\s*-(\s|$)", line) is not None
+        if starts and dash is None and ind >= _indent(lines[at[0]]):
+            dash = ind
+        if starts and ind == dash:
+            items.append([i])
+        elif items and ind > dash:
+            items[-1].append(i)
+        else:
+            unknown.append(i)
+
+    steps = []
+    for item in items:
+        name, commands, refused = _step(lines, item, dash)
+        unknown += refused
+        if commands and not refused:
+            label = name if name is not None else "Run %s" % (commands[0] or "")
+            steps += [(label, cmd) for cmd in commands]
+    return steps, [(i + 1, lines[i]) for i in sorted(unknown)]
+
+
+def _step(lines, item, dash):
+    """(name, [commands], [line indexes it refuses]) for the lines of one step."""
+    at = dash + 2                          # the column of a step's keys
+    name, runs, refused = None, [], []
+    block = nested = None                  # the column of an open `run: |`, `with:` or `env:`
+    for k, i in enumerate(item):
+        if k == 0:
+            # The first key follows the dash and can be any step key: `- run: ...` is a step
+            # like the others. Skipped until 2026-09-29, it let the gate pass 27 of 27 with the
+            # guard's own step written so, and never run it.
+            text, ind = lines[i][dash + 1:].strip(), at
+        else:
+            text, ind = lines[i].strip(), _indent(lines[i])
+            if not text:
                 continue
-            steps.append((name or "Run %s" % value, value or None))
-        i += 1
-    return steps
+            if block is not None and ind > block:          # a line of a `run: |` block
+                if not text.startswith("#"):
+                    runs[-1].append(text)
+                continue
+            block = None
+            if text.startswith("#"):
+                continue
+            if nested is not None and ind > nested:        # under `with:` or `env:`
+                if not ENTRY.match(text):
+                    refused.append(i)
+                continue
+            nested = None
+        m = STEP_KEY.match(text) if ind == at else None
+        if m is None:
+            refused.append(i)
+            continue
+        key, value = m.group(1), m.group(2) or ""
+        if key == "name":
+            name = value
+        elif key == "run" and BLOCK.match(value):
+            block = at
+            runs.append([])
+        elif key == "run":
+            runs.append([value or None])
+        elif key in ("with", "env") and not value:
+            nested = at
+    return name, [cmd for run in runs for cmd in (run or [None])], refused
 
 
 def tracked_changes():
@@ -115,11 +187,17 @@ def main():
     except (AttributeError, ValueError):
         pass
     with open(WORKFLOW, encoding="utf-8") as f:
-        steps = steps_from_workflow(f.read())
-    if not steps:
+        steps, unknown = steps_from_workflow(f.read()) or ([], [])
+    if steps:
+        print("%d steps from job '%s' in .github/workflows/test.yml" % (len(steps), JOB))
+    else:
         print("no steps found in job '%s' of %s -- refusing to report a pass" % (JOB, WORKFLOW))
+    for n, line in unknown:
+        print("RED   unrecognised line %d of .github/workflows/test.yml: %r -- teach "
+              ".github/scripts/offline_suite.py this shape; its step does not run"
+              % (n, line.strip()))
+    if not steps:
         return 2
-    print("%d steps from job '%s' in .github/workflows/test.yml" % (len(steps), JOB))
 
     env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
     before = tracked_changes()
@@ -154,9 +232,11 @@ def main():
                                                time.time() - t_all))
     for name in red:
         print("  RED  %s" % name)
+    for n, _ in unknown:
+        print("  RED  unrecognised line %d of .github/workflows/test.yml" % n)
     if moved:
         print("  RED  the run modified %d tracked file(s)" % len(moved))
-    return 1 if red or moved else 0
+    return 1 if red or moved or unknown else 0
 
 
 if __name__ == "__main__":
