@@ -145,4 +145,12 @@ committed file.
 
 ## Amendments
 
-None yet.
+- **2026-09-29, named change (a), before the review.** The executor found a mutant that
+  survives the acceptance tests: a heading over the "can rewrite" block that names
+  `bench/results.json` again passes, because the heading check runs only in the state where
+  every kind of unfixable entry is present, which has no rewritable block. Allowed change, in
+  `tests/test_published_numbers.py`, `check_each_kind_of_entry_write_cannot_fix_gets_one_line_of_advice`:
+  in its one-kind state (a rewritable figure plus a reworded sentence), also assert that no
+  heading line contains `bench/results.json`. Nothing else in that file changes. Its own
+  commit, titled `T-003: named change (a) ...`; the executor verified it in a scratch clone
+  (111 of 111, and the mutant goes red).
