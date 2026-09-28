@@ -21,6 +21,7 @@ import re
 import shutil
 import sys
 import tempfile
+import traceback
 from contextlib import redirect_stdout
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "bench"))
@@ -264,6 +265,399 @@ def check_write():
     check("at the floor: --write corrects a wrong rate to the artifact's %s%%" % rate_of(v),
           "| 5 | %s%% of %d, " % (rate_of(v), floor) in after,
           str([line for line in after.splitlines() if line.startswith(PRODUCTION_ROW)]))
+
+
+# ------------------------------------ a figure with no measurement, and what --write returns
+#
+# T-002. figures() leaves a key out when the measurement behind it is absent or unusable, on
+# purpose: "absent means unguarded, not guarded against None". scan() read vals[key]
+# directly, so with bench/production/verdicts.json moved away the first docs/EXPERIMENT_C.md
+# production target raised KeyError and nothing after it was reported. And --write returned
+# 0 whenever anything had been stale, including entries it could not rewrite and unclaimed
+# percentages it never rewrites, while .github/scripts/regenerate-derived.sh trusts that
+# status before it commits and pushes: from 2026-09-22 to 2026-09-28 every scheduled bot run
+# succeeded while every `tests` run failed on this file.
+#
+# The rule: a target with no measurement is reported as not measured, and the run fails;
+# --write returns 0 exactly when check mode, run on the files it leaves behind, returns 0.
+# Each check below works in a temporary copy of the files publish_numbers.main() reads
+# (in_a_copy), so no committed file is written, and turns an exception into a recorded
+# failure (recorded), so the checks after it still run.
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+EXPERIMENT_C = "docs/EXPERIMENT_C.md"
+# The keys figures() takes from bench/production/verdicts.json. All five go missing when the
+# artifact is absent, unreadable or empty; the last four also when it has no window dates.
+PRODUCTION_KEYS = ("production_unknown_pct", "production_n", "production_from",
+                   "production_from_md", "production_to_md")
+
+
+def raised():
+    """The exception being handled, in one line: `raised KeyError: 'production_n'`."""
+    return "raised " + traceback.format_exception_only(*sys.exc_info()[:2])[-1].strip()
+
+
+def recorded(fn):
+    """A check that meets an exception records one failure instead of stopping the file."""
+    def run():
+        try:
+            fn()
+        except Exception:
+            check("%s ran to the end" % fn.__name__, False, raised())
+    run.__name__ = fn.__name__
+    return run
+
+
+def files_main_reads():
+    """Every file publish_numbers.main() reads under ROOT, from the module's own lists: each
+    target's file, LIVE_CLAIM_FILES and FROZEN_LOG_FILES (every file main() hands to
+    retracted() and unsourced_competitor_figures() is in one of the two), and
+    bench/owner_powers.json, which _owner_power_figures() reads by a name no list holds."""
+    return sorted({rel for rel, _, _ in publish_numbers.TARGETS}
+                  | set(publish_numbers.LIVE_CLAIM_FILES)
+                  | set(publish_numbers.FROZEN_LOG_FILES)
+                  | {"bench/owner_powers.json"})
+
+
+def in_a_copy(fn, artifact=True):
+    """fn(tmp), where tmp is a temporary copy of files_main_reads() and publish_numbers.ROOT
+    points at it, with publish_numbers.HERE and scorecard.PRODUCTION at its bench/ and
+    bench/production/, the two places bench/production/verdicts.json is read from. The
+    committed artifact is copied there when `artifact` is true, and is absent otherwise.
+    bench/results.json is read where it is (publish_numbers.RESULTS is fixed at import) and
+    never written. Every patched global is restored and the copy removed, whatever fn does."""
+    tmp = tempfile.mkdtemp()
+    saved = (publish_numbers.ROOT, publish_numbers.HERE, scorecard.PRODUCTION)
+    try:
+        for rel in files_main_reads():
+            if os.path.exists(os.path.join(REPO, rel)):
+                os.makedirs(os.path.dirname(os.path.join(tmp, rel)), exist_ok=True)
+                shutil.copyfile(os.path.join(REPO, rel), os.path.join(tmp, rel))
+        production = os.path.join(tmp, "bench", "production")
+        os.makedirs(production, exist_ok=True)
+        if artifact:
+            shutil.copyfile(os.path.join(REPO, "bench", "production", "verdicts.json"),
+                            os.path.join(production, "verdicts.json"))
+        publish_numbers.ROOT = tmp
+        publish_numbers.HERE = os.path.join(tmp, "bench")
+        scorecard.PRODUCTION = production
+        return fn(tmp)
+    finally:
+        publish_numbers.ROOT, publish_numbers.HERE, scorecard.PRODUCTION = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def run_main(*argv):
+    """(status, output) of publish_numbers.main() with these arguments, run in this process.
+    If it raises, the status is the exception in one line and the output ends with the
+    traceback."""
+    saved, out = sys.argv, io.StringIO()
+    sys.argv = ["publish_numbers.py"] + list(argv)
+    try:
+        with redirect_stdout(out):
+            status = publish_numbers.main()
+    except Exception:
+        return raised(), out.getvalue() + traceback.format_exc()
+    finally:
+        sys.argv = saved
+    return status, out.getvalue()
+
+
+def scan_entries(write):
+    """(the stale entries of publish_numbers.scan(write), None), or (None, the exception)."""
+    try:
+        return publish_numbers.scan(write=write)[1], None
+    except Exception:
+        return None, raised()
+
+
+def tail(out, n=6):
+    """The last lines of an output, for a failure's detail."""
+    return " | ".join([line.strip() for line in out.splitlines() if line.strip()][-n:])
+
+
+def target(rel, key):
+    """The first TARGETS entry for `key` in `rel`."""
+    found = [t for t in publish_numbers.TARGETS if t[0] == rel and t[2] == key]
+    if not found:
+        raise AssertionError("no target for %s in %s" % (key, rel))
+    return found[0]
+
+
+def production_targets():
+    """The docs/EXPERIMENT_C.md targets on the five production keys."""
+    return [t for t in publish_numbers.TARGETS
+            if t[0] == EXPERIMENT_C and t[2] in PRODUCTION_KEYS]
+
+
+def label(t):
+    """A target, named in a check: its key and the start of its pattern."""
+    return "%s (%s...)" % (t[2], t[1][:28])
+
+
+def entries(stale, t):
+    """scan()'s stale entries, (file, pattern, found, expected), for target t."""
+    return [s for s in stale or [] if (s[0], s[1]) == (t[0], t[1])]
+
+
+def not_measured(got, key):
+    """Exactly one entry, whose expected value says the figure is not measured and names its
+    key: a string, so never None, and never a number."""
+    return (len(got) == 1 and isinstance(got[0][3], str) and "not measured" in got[0][3]
+            and re.search(r"\b%s\b" % re.escape(key), got[0][3]) is not None)
+
+
+def published(tmp, t):
+    """What the copy says in target t's capture group; None where its pattern no longer
+    matches."""
+    with io.open(os.path.join(tmp, t[0]), encoding="utf-8") as f:
+        m = re.search(t[1], f.read())
+    return m.group(1) if m else None
+
+
+def edit(tmp, rel, change):
+    """Rewrite one file of the copy as change(text)."""
+    path = os.path.join(tmp, rel)
+    with io.open(path, encoding="utf-8") as f:
+        text = f.read()
+    with io.open(path, "w", encoding="utf-8", newline="") as f:
+        f.write(change(text))
+
+
+def stale_figure(tmp):
+    """Make one figure stale in the copy, of the kind --write rewrites: README.md's
+    false-positive rate, one point above the measurement. Returns the target and the
+    measured value."""
+    t = target("README.md", "fp_pct")
+    right = publish_numbers.figures()["fp_pct"]
+
+    def change(text):
+        m = re.search(t[1], text)
+        return text[:m.start(1)] + "%.1f" % (float(right) + 1) + text[m.end(1):]
+    edit(tmp, t[0], change)
+    return t, right
+
+
+def reword(t, text):
+    """Target t's sentence with a word put before its number, so that its pattern no longer
+    matches and --write has nothing to rewrite."""
+    m = re.search(t[1], text)
+    return text[:m.start(1)] + "about " + text[m.start(1):]
+
+
+def set_production_row(tmp, row):
+    """docs/SCORECARD.md's production row in the copy, replaced by `row`, as judge() does."""
+    def change(text):
+        lines = text.splitlines()
+        at = [i for i, line in enumerate(lines) if line.startswith(PRODUCTION_ROW)]
+        if len(at) != 1:
+            raise AssertionError("docs/SCORECARD.md has %d production rows, not 1" % len(at))
+        lines[at[0]] = row
+        return "\n".join(lines) + "\n"
+    edit(tmp, "docs/SCORECARD.md", change)
+
+
+def agrees_with_check_mode(status):
+    """The rule: --write returns 0 exactly when check mode, on the files it left, returns 0."""
+    after, out = run_main()
+    check("--write returns 0 exactly when check mode on the files it left returns 0",
+          isinstance(status, int) and isinstance(after, int) and (status == 0) == (after == 0),
+          "--write returned %r, check mode %r: %s" % (status, after, tail(out)))
+
+
+@recorded
+def check_the_current_tree_passes_in_both_modes():
+    print("\n[check mode and --write] the current tree, in a copy of every file main() reads")
+
+    def run(tmp):
+        def contents():
+            out = {}
+            for rel in files_main_reads():
+                if os.path.exists(os.path.join(tmp, rel)):
+                    with io.open(os.path.join(tmp, rel), "rb") as f:
+                        out[rel] = f.read()
+            return out
+        before = contents()
+        for mode, argv in (("check mode", ()), ("--write", ("--write",))):
+            status, out = run_main(*argv)
+            check("%s returns 0 and prints `Everything published matches the benchmark.`" % mode,
+                  status == 0 and "Everything published matches the benchmark." in out,
+                  "returned %r: %s" % (status, tail(out)))
+        after = contents()
+        check("--write leaves every file as it was, byte for byte",
+              after == before, ", ".join(sorted(r for r in before if after.get(r) != before[r])))
+    in_a_copy(run)
+
+
+@recorded
+def check_a_missing_production_artifact_is_reported():
+    print("\n[not measured] bench/production/verdicts.json absent where the module reads it")
+    targets = production_targets()
+    check("docs/EXPERIMENT_C.md has 7 targets on the 5 production keys",
+          len(targets) == 7 and set(t[2] for t in targets) == set(PRODUCTION_KEYS),
+          "%d targets on %s" % (len(targets), sorted(set(t[2] for t in targets))))
+    keys = set(publish_numbers.figures())
+
+    def run(tmp):
+        dropped = keys - set(publish_numbers.figures())
+        check("figures() leaves out exactly the 5 production keys, with no placeholder",
+              dropped == set(PRODUCTION_KEYS), "left out %s" % sorted(dropped))
+        stale, err = scan_entries(write=False)
+        check("scan(write=False) returns without raising", err is None, err)
+        for t in targets:
+            check("one entry for %s, expected `not measured`, naming the key" % label(t),
+                  not_measured(entries(stale, t), t[2]), err or "got %r" % entries(stale, t))
+        # The two docs/SCORECARD.md production targets use ABSENT and a reason, not a missing
+        # key, and keep the rule they have today: the row bench/scorecard.py writes for a
+        # missing artifact passes, and a figure row fails on the form that must be absent.
+        why = scorecard.production_verdicts()[2]
+        rows = [t for t in publish_numbers.TARGETS if t[0] == "docs/SCORECARD.md"
+                and t[2] in ("scorecard_production_pct", "scorecard_production_why")]
+        set_production_row(tmp, not_measured_row(why))
+        stale, err = scan_entries(write=False)
+        got = [s for t in rows for s in entries(stale, t)]
+        check("docs/SCORECARD.md `not measured (%s)` is accepted, as today" % why,
+              len(rows) == 2 and err is None and not got, err or "got %r" % got)
+        set_production_row(tmp, figure_row(verdicts(20, 200)))
+        stale, err = scan_entries(write=False)
+        got = {t[2]: [s[3] for s in entries(stale, t)] for t in rows}
+        check("docs/SCORECARD.md with a figure row: expected absent, and the reason, as today",
+              err is None and got == {"scorecard_production_pct": [publish_numbers.ABSENT],
+                                      "scorecard_production_why": [why]},
+              err or "got %r" % got)
+    in_a_copy(run, artifact=False)
+
+
+@recorded
+def check_any_missing_key_is_reported():
+    key = "power_pooled_oos_pct"
+    print("\n[not measured] figures() wrapped in memory to drop %s" % key)
+    targets = [t for t in publish_numbers.TARGETS if t[2] == key]
+    check("a target uses %s" % key, bool(targets), "none: pick a key that a target uses")
+    real = publish_numbers.figures
+
+    def run(tmp):
+        before = [published(tmp, t) for t in targets]
+        stale, err = scan_entries(write=False)
+        check("scan(write=False) returns without raising", err is None, err)
+        for t in targets:
+            check("one entry for %s in %s, expected `not measured`, naming the key"
+                  % (label(t), t[0]),
+                  not_measured(entries(stale, t), key), err or "got %r" % entries(stale, t))
+        stale, err = scan_entries(write=True)
+        after = [published(tmp, t) for t in targets]
+        check("scan(write=True) returns without raising and leaves the text of each as it was",
+              err is None and None not in before and after == before,
+              err or "the text said %r and says %r" % (before, after))
+
+    publish_numbers.figures = lambda: {k: v for k, v in real().items() if k != key}
+    try:
+        in_a_copy(run)
+    finally:
+        publish_numbers.figures = real
+
+
+@recorded
+def check_check_mode_names_what_is_not_measured():
+    print("\n[not measured] check mode, with bench/production/verdicts.json absent")
+
+    def run(tmp):
+        status, out = run_main()
+        check("check mode returns 1, with no traceback",
+              status == 1 and "Traceback" not in out, "returned %r: %s" % (status, tail(out)))
+        for key in PRODUCTION_KEYS:
+            n = len([t for t in production_targets() if t[2] == key])
+            named = [line for line in out.splitlines() if EXPERIMENT_C in line
+                     and "not measured" in line and re.search(r"\b%s\b" % key, line)]
+            check("the output names %s and %s for each of its %d target(s)"
+                  % (EXPERIMENT_C, key, n), n > 0 and len(named) >= n,
+                  "%d line(s) name them" % len(named))
+    in_a_copy(run, artifact=False)
+
+
+@recorded
+def check_write_returns_0_when_it_fixed_everything():
+    print("\n[--write] one stale figure, which --write can rewrite")
+
+    def run(tmp):
+        t, right = stale_figure(tmp)
+        status, out = run_main("--write")
+        check("--write returns 0", status == 0, "returned %r: %s" % (status, tail(out)))
+        check("--write rewrote %s's figure to the measured %s" % (t[0], right),
+              published(tmp, t) == right, "the text says %r" % published(tmp, t))
+        after, out = run_main()
+        check("check mode afterwards returns 0", after == 0,
+              "returned %r: %s" % (after, tail(out)))
+    in_a_copy(run)
+
+
+@recorded
+def check_write_fails_on_a_sentence_it_cannot_find():
+    print("\n[--write] that figure, plus a guarded sentence reworded so its pattern no longer "
+          "matches")
+
+    def run(tmp):
+        t, right = stale_figure(tmp)
+        s = target("README.md", "adversarial_n")
+        edit(tmp, s[0], lambda text: reword(s, text))
+        check("the reworded sentence no longer matches its pattern", published(tmp, s) is None,
+              "it still reads %r" % published(tmp, s))
+        status, out = run_main("--write")
+        check("--write still rewrites the figure", published(tmp, t) == right,
+              "the text says %r" % published(tmp, t))
+        check("--write returns non-zero", isinstance(status, int) and status != 0,
+              "returned %r: %s" % (status, tail(out)))
+        named = [line for line in out.splitlines()
+                 if s[0] in line and "pattern not found" in line]
+        check("--write names the entry it could not fix", bool(named), tail(out))
+        agrees_with_check_mode(status)
+    in_a_copy(run)
+
+
+@recorded
+def check_write_fails_on_an_unclaimed_percentage():
+    print("\n[--write] that figure, plus a new unclaimed percentage in a live-claim file")
+    rel = "README.md"
+
+    def run(tmp):
+        t, right = stale_figure(tmp)
+        with io.open(os.path.join(tmp, rel), encoding="utf-8") as f:
+            original = f.read()
+        pct = next(v for v in ("97.3", "96.4", "95.7", "94.6") if v not in original)
+        # Three line breaks first: the scan reads two lines either side of a figure, and the
+        # new line must not borrow a citation or a vendor's name from its neighbours.
+        edit(tmp, rel, lambda text: text + "\n\n\nAn unguarded figure: %s%% of nothing.\n" % pct)
+        loose = [(r, p) for r, p, _ in publish_numbers.unclaimed_percentages()]
+        check("%s%% is unclaimed in %s before --write" % (pct, rel), (rel, pct) in loose,
+              "unclaimed: %r" % loose)
+        status, out = run_main("--write")
+        check("--write still rewrites the figure", published(tmp, t) == right,
+              "the text says %r" % published(tmp, t))
+        check("--write returns non-zero", isinstance(status, int) and status != 0,
+              "returned %r: %s" % (status, tail(out)))
+        listed = [line for line in out.splitlines() if rel in line and pct + "%" in line]
+        check("--write lists the unclaimed %s%%" % pct, bool(listed), tail(out))
+        agrees_with_check_mode(status)
+    in_a_copy(run)
+
+
+@recorded
+def check_write_fails_with_no_production_artifact():
+    print("\n[--write] with bench/production/verdicts.json absent")
+    targets = production_targets()
+
+    def run(tmp):
+        before = [published(tmp, t) for t in targets]
+        status, out = run_main("--write")
+        check("--write returns non-zero", isinstance(status, int) and status != 0,
+              "returned %r: %s" % (status, tail(out)))
+        for t, was in zip(targets, before):
+            now = published(tmp, t)
+            check("--write, run to the end, leaves the text at %s as it was" % label(t),
+                  isinstance(status, int) and was is not None and now == was,
+                  "returned %r; the text said %r and says %r" % (status, was, now))
+        agrees_with_check_mode(status)
+    in_a_copy(run, artifact=False)
 
 
 def main():
