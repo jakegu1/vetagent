@@ -1,7 +1,14 @@
-"""checks.py -- run every step of CI's offline `test` job, in order, and report each one.
+"""offline_suite.py -- run every step of CI's offline `test` job, in order, and report each one.
 
-Usage:  python lead/checks.py          (from the repository root; exit 0 only if every step passed
-                                        and the run left every tracked file as it found it)
+Usage:  python .github/scripts/offline_suite.py   (from the repository root; exit 0 only if
+                                                   every step passed and the run left every
+                                                   tracked file as it found it)
+
+deploy.yml runs this before every deploy, so production ships only from a commit on which
+every step of that job passed; `tests/test_deploy_gate.py` pins that seam. The lead workflow
+runs it as `python lead/checks.py`, a wrapper around this file. It lived at that path until
+2026-09-29 and moved here because the product's deploy must not depend on `lead/`, a folder
+that is meant to be removable.
 
 Why this exists. GitHub stops a job at its first failing step. On 2026-09-22 step 6 of 27
 went red and stayed red, so for the next six days steps 7 to 27 never ran on CI and nobody
@@ -23,7 +30,7 @@ hand. A line that is always there is a line nobody reads, and it was the only li
 show a mutated published number left behind.
 
 The two network tests (`test_upstream_contract.py`, `test_backfill.py`) live in other jobs
-and are not run here. The lead kit reads this command from `lead/config.yml`.
+and are not run here: a third party's outage must not block a deploy.
 """
 
 import os
@@ -32,7 +39,7 @@ import subprocess
 import sys
 import time
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 WORKFLOW = os.path.join(ROOT, ".github", "workflows", "test.yml")
 JOB = "test"
 
@@ -99,7 +106,8 @@ def main():
     for name, cmd in steps:
         if not cmd or not cmd.startswith("python "):
             red.append(name)
-            print("RED   unsupported step %r: %r -- teach lead/checks.py this shape" % (name, cmd))
+            print("RED   unsupported step %r: %r -- teach .github/scripts/offline_suite.py "
+                  "this shape" % (name, cmd))
             continue
         args = [sys.executable] + cmd.split()[1:]
         t0 = time.time()
