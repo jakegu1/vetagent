@@ -48,7 +48,8 @@ Last updated: 2026-09-29 by lead session 2 (Claude Code desktop, local, opened i
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| — | | | | | No task in flight. |
+| Level 0: `CLAUDE.md` manual order | 0 | `task/l0-claude-md-order` at `3105940` | done on its branch; checks 27 of 27 | the Owner | Merge with `--no-ff` and push, in the next batch the Owner approves |
+| T-003 | 1 | `task/t-003-publish-numbers-report`, worktree `../vetagent-t-003` | executor implementing (dispatched 2026-09-29) | executor subagent | Collect READY or BLOCKED. On READY: contract check and `python lead/checks.py` on the head, then one fresh-context review, then batch the merge with the Level 0 branch for the Owner's yes |
 
 ## Waiting on the Owner
 
@@ -68,26 +69,17 @@ No task is specced. Candidates below; at A1 the lead may spec and dispatch any o
 merge and push wait for the Owner's yes. Items marked "Owner's call first" need the Owner before
 a spec.
 
-Suggested order (lead #2): first the two small follow-ups that finish T-002 (the `CLAUDE.md`
-manual order, Level 0; then the report wording, Level 1), because the docs still describe the
-old `--write`; then the deploy gate (a deploy does not wait for the full offline suite), the
-largest remaining risk to production, as a Level 3 area task.
+Suggested order (lead #2): the two follow-ups that finish T-002 are in flight (the `CLAUDE.md`
+manual order, and T-003); next is the deploy gate (a deploy does not wait for the full offline
+suite), the largest remaining risk to production, as a Level 3 area task.
 
-- Candidate, Level 1, from T-002's review and executor: `publish_numbers.py`'s report.
-  `--write` lists only the files it rewrote, not each figure's old and new value; check mode's
-  advice ("Run `--write`, then redeploy") and heading ("disagree with bench/results.json")
-  mislead for not-measured entries; no test pins that `--write` never prints an empty
-  `Rewrote:` line (a surviving mutant); the module docstring advertises `--check`, which
-  argparse rejects with exit 2; "0 published figure(s) disagree" is printed when only
-  unclaimed percentages remain.
 - Candidate, Level 1: `_owner_power_figures()` raises on invalid JSON in
   `bench/owner_powers.json`, while the production readers treat an unreadable artifact as not
   measured. Same class as T-002.
-- Candidate, Level 0: `CLAUDE.md` ("The order that matters") runs `publish_numbers.py --write`
-  before `scorecard.py --write`. After T-002, `--write` can exit 1 at that point when only the
-  scorecard's rewrite would fix what is left. Point it at
-  `bash .github/scripts/regenerate-derived.sh regenerate`, which runs the scorecard first and
-  repeats to a fixed point.
+- Candidate, Level 3 area (CI script): `regenerate-derived.sh` runs in the bots' mode with any
+  argument other than `regenerate`, and that mode rewrites the clone's git identity, resets to
+  origin and pushes. A typo on a laptop does all of that. Require the CI environment
+  (`GITHUB_ACTIONS`) for that mode.
 - Candidate, Level 3 area (CI script): `regenerate-derived.sh` sends each generator's output to
   `/dev/null`, so a failing bot run shows only `::error::publish_numbers.py failed`, not what
   is left to fix.

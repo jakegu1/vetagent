@@ -8,3 +8,4 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 |---|---|---|---|---|---|
 | T-001 | Judge the scorecard's production row by the scorecard's own measured/not-measured rule | 1 | S | — | done (`0a3098d`) |
 | T-002 | Make publish_numbers.py report what it could not do, instead of crashing or exiting 0 | 1 | S | — | done (`16e100e`) |
+| T-003 | Make publish_numbers.py's report say what changed and what to do about what is left | 1 | S | T-002 | in_progress (executor, since 2026-09-29) |
