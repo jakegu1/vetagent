@@ -56,7 +56,8 @@ THIS_STEP = "python tests/test_deploy_gate.py"
 # as `success() && (...)`; with one, that default is gone -- `success() || x` included.
 DEPLOYS = re.compile(r"wrangler\b.*\bdeploy\b")
 TOOLING = re.compile(r"\buv\b|astral\.sh|wrangler")
-STATUS_FUNCTIONS = re.compile(r"\b(always|failure|cancelled|success)\s*\(")
+STATUS_FUNCTIONS = re.compile(r"\b(always|failure|cancelled|success)\s*\(",
+                              re.I)                 # named change (e): GitHub ignores the case
 
 _FAILS = []
 _PASSED = 0
@@ -148,10 +149,14 @@ def _step(lines, at):
         while i < len(lines) and _indent(lines[i]) > at:
             children.append(lines[i].strip())
             i += 1
-        step["keys"][key] = value
+        # Named change (e). A value is every line of it, as GitHub reads it: a block scalar's
+        # lines, or a plain value with the lines that continue it. Read by its first line
+        # alone, `|| true` on the next line, or an `if: >-`, passed the checks below.
+        block = re.match(r"^[|>][0-9+-]*$", value) is not None
+        whole = " ".join(children if block or not value else [value] + children)
+        step["keys"][key] = value if key in ("with", "env") else whole
         if key == "run":
-            block = not value or re.match(r"^[|>][+-]?\d*$", value)
-            step["run"] = children if block else [value]
+            step["run"] = children if block or not value else [whole]
         elif key == "with":
             for c in children:
                 kv = re.match(r"^([A-Za-z0-9_-]+):\s*(.*?)\s*$", c)
