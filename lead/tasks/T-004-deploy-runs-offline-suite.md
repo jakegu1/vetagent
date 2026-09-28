@@ -193,3 +193,33 @@ list cannot be read, nothing is deployed.
   changed" (pre-existing; the deploy job's checkout is always a repository). Moving the guard
   step first in `test.yml` (rejected: a red guard would hide the rest of the `tests` job on
   CI). Linux: the gate is observed on CI only after a push; the lead plans the push order.
+
+- **2026-09-29, second amendment, still before the reviews: close the class, not the next
+  instance.** At `09f3803` the executor measured three more shapes the runner reads as fewer
+  commands than GitHub runs: a step whose first key is `run:` (`- run: python ...`, skipped; if
+  the guard's own step is written so, the gate passes 27 of 27 without running the guard); a
+  flow-style step (`- { name: x, run: ... }`); and a plain `run:` value continued on the next,
+  more indented line. Adding one shape at a time leaves the next one open. The rule instead:
+  **after `steps:` in the `test` job, the runner goes red on any line it does not recognise.**
+  Recognised: blank lines and comments; a step start (`- ` followed by one of the step keys);
+  a step key at the step's indentation (`name`, `id`, `if`, `uses`, `with`, `env`, `run`,
+  `shell`, `working-directory`, `continue-on-error`, `timeout-minutes`); `key: value` lines
+  nested under `with:` or `env:`; the lines of a `run: |` or `run: >` block. Anything else,
+  including a line more indented than a single-line `run:` value, is red and named.
+
+  Allowed changes:
+  - **Named change (c)**, `tests/test_deploy_gate.py`, the synthetic-workflow checks: a job
+    whose steps are written `- run: python ...` has them run (including a guard-like step
+    written so); a flow-style step is red, named, and the run exits non-zero; a plain `run:`
+    value continued on the next line is red, named, and the run exits non-zero; the real
+    `test.yml` has no unrecognised line and still reads 28 commands. One commit titled
+    `T-004: named change (c) ...`, made before the runner changes, showing the new cases red.
+  - **Runner**: accept `- run:`; go red on unrecognised lines after `steps:` as above. One
+    commit per change, each message saying what the red looked like.
+  - The lone `&` the previous round added to the operator set stays: it joins commands too.
+
+  Bar for the reviews: the three shapes red before and green after (or red by design, for the
+  two that must be refused); mutants "skip `- run:` steps" and "ignore unrecognised lines" each
+  turn the guard red; the real `test.yml` reads 28 commands with nothing unrecognised;
+  `python lead/checks.py` 28 of 28, exit 0; contract holds with named changes (a, b) and (c)
+  listed as allowed; nothing outside the five files in scope changes.
