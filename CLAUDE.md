@@ -185,3 +185,11 @@ bots regenerate on their own (`snapshot.yml`, `production.yml`, through
 `.github/scripts/regenerate-derived.sh`, DECISIONS E34). Its ceiling for pure engineering is about 70 — the
 rest needs users, who do not exist yet.
 The live question is the 2026-09-18 gate in `docs/STRATEGY.md` §8.
+
+<!-- lead-kit:start — managed by the lead kit -->
+## Lead workflow
+
+@AGENTS.md
+
+Start each working session with `/lead`. Project state is in `lead/STATE.md`.
+<!-- lead-kit:end -->

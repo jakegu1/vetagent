@@ -1,0 +1,55 @@
+# Lead kit settings for this project. The lead reads this at every check-in.
+kit_version: "1.0"
+
+owner:
+  name: "jakegu1 (repository owner)"
+  language: "zh-CN"                # messages to the Owner. Files in this repository stay English:
+                                   # tests/test_english_only.py walks the working tree, untracked files too.
+
+runtime: "claude-code-local"
+repo_mode: "local-branches"        # task branches merged locally, no pull requests: agent text in
+                                   # PR comments would be published under the Owner's GitHub account
+main_branch: "master"
+autonomy: "A1"                     # the Owner approves every merge to master and every push
+spec_language: "en"
+
+checks:                            # must pass (or match the baseline in lead/STATE.md) before READY and after merge
+  test: "python lead/checks.py"    # every step of test.yml's offline `test` job; does not stop at the first red
+  lint: "python -m compileall -q src tests"   # CI's syntax check, also step 1 of lead/checks.py
+  build: "none"                    # no local build; deploy.yml deploys from CI on a push to master touching src/**
+
+acceptance_tests:                  # globs; used by the kit's scripts/contract_check.py
+  - "tests/test_*.py"
+  - "tests/fixtures/**"
+
+wip:
+  total: 3                         # parallel only when files in scope don't overlap
+
+review:
+  max_rounds: 2                    # after this, only invariants, security, privacy, data loss or regressions bounce
+
+rotation:
+  context_fraction: 0.4
+  max_hours: 72
+
+merge:                             # project convention; replaces the kit's default squash merge
+  method: "git merge --no-ff task/t-NNN-slug -m 'T-NNN: <title>'"
+  why: "keeps the tests-first commit, which the project requires to be red before the fix"
+  never:
+    - "squash"
+    - "rebase or amend anything already pushed (tools/rounds.py pins round commits by SHA)"
+  after:
+    - "bash .github/scripts/regenerate-derived.sh regenerate"   # ONLY with 'regenerate': any other argument resets to origin, commits and pushes
+    - "python lead/checks.py"
+    - "commit regenerated pages separately if any changed; restore docs/EXPERIMENT_C.md if only its line endings changed"
+  push: "only with the Owner's yes, batched; fetch and merge origin/master first (bots push several times a day)"
+
+sign_off:                          # always the Owner's decision, at every autonomy level
+  - spending money or adding a paid service
+  - legal, privacy or licence text, including an upstream data source's terms of use
+  - publishing anything under the Owner's name (posts, replies, pull request comments)
+  - deleting or migrating production data
+  - irreversible actions (history rewrites, public releases, making the repository private or public, deleting Actions logs)
+  - changing agent permission files
+  - changing a pre-registered gate, floor, band or threshold (fix the data, never the bar)
+  - pushing to origin (every push; a push touching src/ also deploys to production)
