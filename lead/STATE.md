@@ -49,7 +49,8 @@ Last updated: 2026-09-29 by lead session 2 (Claude Code desktop, local, opened i
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
 | Level 0: `CLAUDE.md` manual order | 0 | `task/l0-claude-md-order` at `3105940` | done on its branch; checks 27 of 27 | the Owner | Merge with `--no-ff` and push, in the next batch the Owner approves |
-| T-003 | 1 | `task/t-003-publish-numbers-report`, worktree `../vetagent-t-003` | executor implementing (dispatched 2026-09-29) | executor subagent | Collect READY or BLOCKED. On READY: contract check and `python lead/checks.py` on the head, then one fresh-context review, then batch the merge with the Level 0 branch for the Owner's yes |
+| T-003 | 1 | `task/t-003-publish-numbers-report`, worktree `../vetagent-t-003`, based on `f400b60` | executor implementing (dispatched 2026-09-29) | executor subagent | Collect READY or BLOCKED. On READY: contract check and `python lead/checks.py` on the head, then one fresh-context review, then batch the merge with the Level 0 branch for the Owner's yes |
+| T-004 | 3 | `task/t-004-deploy-runs-offline-suite`, worktree `../vetagent-t-004` | executor implementing (dispatched 2026-09-29) | executor subagent | Collect READY or BLOCKED. On READY: contract check and checks on the head, then an independent review and a red-team review in parallel. Its push deploys production (`deploy.yml` is in its own trigger): say so when asking the Owner |
 
 ## Waiting on the Owner
 
@@ -69,9 +70,8 @@ No task is specced. Candidates below; at A1 the lead may spec and dispatch any o
 merge and push wait for the Owner's yes. Items marked "Owner's call first" need the Owner before
 a spec.
 
-Suggested order (lead #2): the two follow-ups that finish T-002 are in flight (the `CLAUDE.md`
-manual order, and T-003); next is the deploy gate (a deploy does not wait for the full offline
-suite), the largest remaining risk to production, as a Level 3 area task.
+Suggested order (lead #2): the two follow-ups that finish T-002 and the deploy gate (T-004) are
+in flight; after them, the Level 3 hardening of `regenerate-derived.sh` below.
 
 - Candidate, Level 1: `_owner_power_figures()` raises on invalid JSON in
   `bench/owner_powers.json`, while the production readers treat an unreadable artifact as not
@@ -88,9 +88,6 @@ suite), the largest remaining risk to production, as a Level 3 area task.
   `100*u/n` while the scorecard row now uses `(u/n)*100`; the two round differently on 314 of
   about two million (u, n) pairs (T-001 review, problem 4). Whether a below-floor rate belongs
   in that text is a public-claim decision.
-- Candidate, Level 2 (Level 3 area: deploy workflow): a deploy does not wait for the full
-  offline suite (`deploy.yml` runs only `test_risk.py` and `test_mcp.py`), so a red `tests`
-  does not stop a deploy. Make the deploy run the same list or depend on it.
 - Candidate, investigate first: deploy tooling is unpinned (`uv.lock` and `pylock.toml` are
   gitignored as build artifacts). Whether to commit a lock is a decision for
   `docs/DECISIONS.md`.
