@@ -465,6 +465,58 @@ jobs:
         run: python mark.py four
 """
 
+# Named change (c). Three shapes valid YAML allows that a runner reading line by line can take
+# for fewer commands than GitHub runs. A step whose first key is `run` must run, a last,
+# guard-like step included; a flow-style step and a `run:` value continued on the next line
+# must be refused and named, not skipped.
+DASH_RUN = """\
+name: tests
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python mark.py one
+      - name: a named step between them
+        run: python mark.py two
+      - run: |
+          python mark.py three
+          python mark.py four
+        name: a block whose name comes after it
+      - run: python mark.py guard
+"""
+
+FLOW_STEP = """\
+name: tests
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: before
+        run: python mark.py one
+      - { name: flow, run: python mark.py two }
+      - name: after
+        run: python mark.py three
+"""
+
+CONTINUED = """\
+name: tests
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: before
+        run: python mark.py one
+      - name: continued
+        run: python mark.py two
+          && python mark.py three
+      - name: after
+        run: python mark.py four
+"""
+
 
 # ---------------------------------------------------------------- the checks
 
@@ -494,6 +546,10 @@ def test_one_list_read_at_run_time():
           % (len(got), len(expected), _first_difference(got, expected), _tail(out, 3)))
     check("  and one of them runs this file, so every deploy runs this guard too",
           THIS_STEP in got, "no `run: %s` in the `test` job" % THIS_STEP)
+    # Named change (c): the runner refuses no line of the real job.
+    refused = [l.strip() for l in out.splitlines() if "unrecognised" in l]
+    check("  and it recognises every line of that job's steps: none is refused",
+          not refused, str(refused[:3]))
 
     with scratch(GREEN) as tree:
         code, out = run(tree, RUNNER_REL)
@@ -522,6 +578,17 @@ def test_one_list_read_at_run_time():
           done == ["one", "two", "three"], "ran %s" % done)
     check("  and the run reports all three steps and passes",
           code == 0 and "3 steps from job 'test'" in out and "3 of 3 steps passed" in out,
+          "exit %d: %s" % (code, _tail(out)))
+
+    # Named change (c).
+    with scratch(DASH_RUN) as tree:
+        code, out = run(tree, RUNNER_REL)
+        done = ran(tree)
+    check("steps written `- run: python ...` run, in file order, a block and a last "
+          "guard-like step included", done == ["one", "two", "three", "four", "guard"],
+          "ran %s" % done)
+    check("  and the run reports all five and passes",
+          code == 0 and "5 steps from job 'test'" in out and "5 of 5 steps passed" in out,
           "exit %d: %s" % (code, _tail(out)))
 
 
@@ -612,6 +679,23 @@ def test_the_runner_fails_closed():
               len(red) == 1 and "two commands joined" in red[0], _tail(out))
         check("  the run exits non-zero, and the steps around it still run",
               code != 0 and done == ["one", "four"], "exit %d, ran %s" % (code, done))
+
+    # Named change (c).
+    for label, workflow, text, around in (
+            ("a flow-style step", FLOW_STEP, "- { name: flow, run: python mark.py two }",
+             ["one", "three"]),
+            ("a plain `run:` value continued on the next line", CONTINUED,
+             "&& python mark.py three", ["one", "four"])):
+        number = [l.strip() for l in workflow.splitlines()].index(text) + 1
+        with scratch(workflow) as tree:
+            code, out = run(tree, RUNNER_REL)
+            done = ran(tree)
+        named = [l for l in out.splitlines() if l.startswith("RED") and "unrecognised" in l
+                 and ("line %d " % number) in l and text in l]
+        check("%s is red, named by its line number (%d) and its text" % (label, number),
+              len(named) == 1, _tail(out))
+        check("  the run exits non-zero; that step does not run, the steps around it do",
+              code != 0 and done == around, "exit %d, ran %s" % (code, done))
 
 
 def test_the_deploy_is_gated():
