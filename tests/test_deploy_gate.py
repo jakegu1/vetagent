@@ -399,6 +399,72 @@ jobs:
         run: python mark.py one
 """
 
+# Named change (a). A comment at the jobs' indentation between two steps is still inside the
+# job, and so is a blank line: YAML, and so GitHub, reads every step after them.
+COMMENTED = """\
+name: tests
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: before the comment
+        run: python mark.py one
+  # a comment at the jobs' indentation, between two steps of the test job
+      - name: after the comment
+        run: python mark.py two
+
+      - name: after a blank line
+        run: python mark.py three
+
+  # a comment between two jobs
+  other:
+    runs-on: ubuntu-latest
+    steps:
+      - name: a step of another job
+        run: python mark.py other
+"""
+
+# Named change (b). A `run:` that joins two commands: GitHub's shell runs both, and a runner
+# that splits on spaces runs the first with the rest as its arguments. The helper ignores
+# arguments it does not expect, as most test files here do, so nothing goes red by itself.
+QUIET = "\n".join([           # python quiet.py NAME ...: record NAME, ignore the rest, pass
+    "import sys",
+    "with open('ran.txt', 'a') as f:",
+    "    print(sys.argv[1], file=f)",
+    "",
+])
+
+CHAINED_AND = """\
+name: tests
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: before
+        run: python mark.py one
+      - name: two commands joined with &&
+        run: python quiet.py two && python quiet.py three
+      - name: after
+        run: python mark.py four
+"""
+
+CHAINED_SEMICOLON = """\
+name: tests
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: before
+        run: python mark.py one
+      - name: two commands joined with ;
+        run: python quiet.py two; python quiet.py three
+      - name: after
+        run: python mark.py four
+"""
+
 
 # ---------------------------------------------------------------- the checks
 
@@ -445,6 +511,17 @@ def test_one_list_read_at_run_time():
         code, out = run(tree, RUNNER_REL)
     check("  and exit 1 when a step modified a tracked file, although every step passed",
           code == 1 and "2 of 2 steps passed" in out and "tracked.txt" in out,
+          "exit %d: %s" % (code, _tail(out)))
+
+    # Named change (a).
+    with scratch(COMMENTED) as tree:
+        code, out = run(tree, RUNNER_REL)
+        done = ran(tree)
+    check("a comment at the jobs' indentation between two steps does not end the job: the "
+          "steps after it and after a blank line run, the next job's do not",
+          done == ["one", "two", "three"], "ran %s" % done)
+    check("  and the run reports all three steps and passes",
+          code == 0 and "3 steps from job 'test'" in out and "3 of 3 steps passed" in out,
           "exit %d: %s" % (code, _tail(out)))
 
 
@@ -523,6 +600,18 @@ def test_the_runner_fails_closed():
     check("  the run exits non-zero, and the steps around them still run",
           code != 0 and done == ["one", "two"] and statuses(out) == ["ok", "RED", "RED", "ok"],
           "exit %d, ran %s" % (code, done))
+
+    # Named change (b).
+    for op, workflow in (("&&", CHAINED_AND), (";", CHAINED_SEMICOLON)):
+        with scratch(workflow) as tree:
+            _write(os.path.join(tree, "quiet.py"), QUIET)
+            code, out = run(tree, RUNNER_REL)
+            done = ran(tree)
+        red = [l for l in out.splitlines() if l.startswith("RED") and "unsupported" in l]
+        check("a `run:` joining two commands with %s is a red step, reported unsupported" % op,
+              len(red) == 1 and "two commands joined" in red[0], _tail(out))
+        check("  the run exits non-zero, and the steps around it still run",
+              code != 0 and done == ["one", "four"], "exit %d, ran %s" % (code, done))
 
 
 def test_the_deploy_is_gated():
