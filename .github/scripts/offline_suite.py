@@ -75,12 +75,18 @@ def steps_from_workflow(text):
     steps, name, i = [], None, 0
     while i < len(block):
         line = block[i]
+        if re.match(r"^\s*- ", line):
+            name = None                   # a new step: the name of the one before is not its own
         m = re.match(r"^\s*- name:\s*(.+?)\s*$", line)
         if m:
             name = m.group(1)
-        m = re.match(r"^(\s*)run:\s*(.*?)\s*$", line)
+        # `run` can be a step's first key (`- run: ...`); the key then sits two columns right of
+        # the dash, and a block under it is indented past that. Such a step used to be skipped:
+        # with the guard's own step written so, the gate passed 27 of 27 without running it
+        # (measured 2026-09-29). A step with no name is called what GitHub calls it.
+        m = re.match(r"^(\s*)(- )?run:\s*(.*?)\s*$", line)
         if m:
-            indent, value = len(m.group(1)), m.group(2)
+            indent, value = len(m.group(1)) + len(m.group(2) or ""), m.group(3)
             if value in ("|", ">", "|-", ">-"):
                 cmds = []
                 i += 1
@@ -90,9 +96,9 @@ def steps_from_workflow(text):
                         cmds.append(block[i].strip())
                     i += 1
                 for cmd in cmds or [None]:
-                    steps.append((name, cmd))
+                    steps.append((name or "Run %s" % (cmds[0] if cmds else ""), cmd))
                 continue
-            steps.append((name, value or None))
+            steps.append((name or "Run %s" % value, value or None))
         i += 1
     return steps
 
