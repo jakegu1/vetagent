@@ -21,15 +21,10 @@ Last updated: 2026-09-28 by lead session 1 (Claude Code desktop, local).
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| — | | | | | No task started. The Owner has no work in progress in the repository. |
+| T-001 | 1 | `task/t-001-production-row-floor`, worktree `../vetagent-t-001` | implementing | executor subagent (lead session 1) | On READY: run `python lead/checks.py` on the head and the kit's `contract_check.py --base master`, then one fresh-context review. If the session died: read the branch's commits and continue from the spec. |
 
 ## Next up
 
-- **T-001** (ready, Level 1): judge the scorecard's production row by the scorecard's own
-  measured/not-measured rule. Turns CI's `tests` green (27 of 27) and makes steps 7 to 27
-  visible on CI again. Spec: `lead/tasks/T-001-production-row-floor.md`. Next action: dispatch
-  an executor on `task/t-001-production-row-floor` in its own worktree (the Owner wants to see
-  the loop run on this task first).
 - Candidate, Level 1: `bench/publish_numbers.py --write` rewrites `docs/EXPERIMENT_C.md` with LF
   line endings on Windows, so every local test run leaves a modified file; write it back with
   the line endings it had.
@@ -46,10 +41,11 @@ Last updated: 2026-09-28 by lead session 1 (Claude Code desktop, local).
 
 ## Waiting on the Owner
 
-- H-1: approve one push of master once T-001 has merged (adoption commit plus T-001).
-- H-2: close backlog W11 (gate answered in `f962aad`, row still Open, so `docs/OWNER.md` shows
-  it overdue).
-- H-3 (optional): add the SessionStart hook from `lead/decisions/0001-adopt-lead-workflow.md`.
+- H-1: **approved 2026-09-28.** Push master once, after T-001 merges (adoption, W11 closure,
+  T-001, and the bot merges in between). Fetch and merge origin first; never rebase.
+- H-2: **approved 2026-09-28.** The lead closes backlog W11 as a Level 0 change.
+- H-3 (optional): the SessionStart hook. The Owner could not find where to add it and asked
+  whether it applies to all projects or only this one; answered in chat on 2026-09-28.
 
 ## Baseline (before the lead kit)
 
@@ -79,6 +75,9 @@ LF line endings. Restore it with `git checkout -- docs/EXPERIMENT_C.md` only aft
 
 ## Log (newest first; keep the last ~20 lines)
 
+- 2026-09-28: the Owner said "continue" and approved H-1 and H-2. Merged origin (production
+  probe, still below the floor, CI red on the same step). T-001 dispatched to an executor in
+  worktree `../vetagent-t-001`.
 - 2026-09-28: adoption. Audit in `lead/AUDIT.md`. The Owner accepted every recommendation.
   Local master fast-forwarded to `f6c7c06` (66 bot commits). `lead/checks.py` added and watched
   failing on purpose (two mutants, both red). T-001 written, ready, not started. Adoption
