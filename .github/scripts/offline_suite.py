@@ -32,10 +32,11 @@ the first with the rest as its arguments and report a pass on half the step.
 
 The lines it recognises after `steps:` are blank lines and comments, a step's first line (`- `
 and a step key), a step key at the step's indentation, a `key: value` under `with:` or `env:`,
-and the lines of a `run: |` or `run: >` block. Read line by line, other shapes YAML allows --
-a flow-style step, a `run:` value continued on the next line -- come out as fewer commands
-than GitHub runs, so the class is refused rather than taught one shape at a time. A value that
-opens a quote, `[` or `{` must close it on the same line.
+and the lines of a `run: |` block. Read line by line, other shapes YAML allows -- a flow-style
+step, a `run:` value continued on the next line, a folded `run: >` that YAML makes one command
+of -- come out as fewer or other commands than GitHub runs, so the class is refused rather
+than taught one shape at a time. A value that opens a quote, `[` or `{` must close it on the
+same line.
 
 It also fails if the run modified a tracked file. A check that edits the tree and puts it back
 is safe only if it puts it back exactly. Until 2026-09-29 `tests/test_number_coverage.py`
@@ -116,7 +117,7 @@ def steps_from_workflow(text):
     The first list has every command of every step, in file order; None is a `run:` with
     nothing to run. The second has every line after `steps:` that is not a blank line, a
     comment, a step's first line (`- ` and a step key), a step key at the step's indentation,
-    a `key: value` under `with:` or `env:`, or a line of a `run: |` or `run: >` block. A step
+    a `key: value` under `with:` or `env:`, or a line of a `run: |` block. A step
     holding such a line gives no command: this cannot say what GitHub would run for it.
     """
     lines = text.splitlines()
@@ -208,6 +209,10 @@ def _step(lines, item, dash):
         elif key == "run" and BLOCK.match(value):
             block = at
             runs.append([])
+            if value.startswith(">"):
+                # Folded: YAML joins its lines into one command, which this would run as
+                # several, and pass where the one command GitHub runs fails.
+                refused.append(i)
         elif key == "run":
             runs.append([value or None])
         elif key in ("with", "env") and not value:
