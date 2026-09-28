@@ -44,8 +44,16 @@ Last updated: 2026-09-28 by lead session 1 (Claude Code desktop, local).
 - H-1: **approved 2026-09-28.** Push master once, after T-001 merges (adoption, W11 closure,
   T-001, and the bot merges in between). Fetch and merge origin first; never rebase.
 - H-2: **approved and done 2026-09-28.** Backlog W11 closed as Done R23 (Level 0).
-- H-3 (optional): the SessionStart hook. The Owner could not find where to add it and asked
-  whether it applies to all projects or only this one; answered in chat on 2026-09-28.
+- H-3: **done 2026-09-28**, at the Owner's request ("你来建"): the SessionStart hook lives in
+  `.claude/settings.local.json` (this project, this machine only; git-ignored by the Owner's
+  global ignore file). It runs only in sessions whose project folder is this repository.
+
+## Rotation
+
+The rule fired on 2026-09-28: lead session 1 measured its context at 50 of 100 parts of the
+window (the threshold in `lead/config.yml` is 0.4). Not rotated yet because T-001 is mid-flight
+with an executor bound to this session. **Rotate at the next natural boundary: right after
+T-001 merges and the H-1 push is done** (`lead-handoff`).
 
 ## Baseline (before the lead kit)
 

@@ -14,14 +14,15 @@ it and is ready to run.
 
 | ID | What | Why it's yours | Recommendation (also the default) | Needed by |
 |---|---|---|---|---|
-| H-1 | Approve one push of master once T-001 has merged: the adoption commit plus T-001 | Every push is yours (A1), and this one publishes `lead/` in the public repository | Yes, push both together, so the first CI run on the pushed head is the one that should turn green. Default: nothing is pushed | When T-001 passes review |
-| H-2 | Close backlog W11 ("Answer the 2026-09-18 gate") | It is your row, in your table of `docs/BACKLOG.md` | Yes. The gate was answered in `f962aad` (the `Resolved` line in `docs/STRATEGY.md` §8), but the row is still Open, so `docs/OWNER.md` shows it overdue. The lead marks it done and regenerates the page (Level 0). Default: left as is | Any time |
-| H-3 | Optional: a SessionStart hook that shows `lead/STATE.md` at every session start | Agents may not edit their own permission files | Paste the snippet in `lead/decisions/0001-adopt-lead-workflow.md` into `.claude/settings.json`. Default: not added | When convenient |
+| — | Nothing open. | | | |
 
 ## Done / answered
 
 | Item | Outcome | Recorded in |
 |---|---|---|
+| H-3 SessionStart hook (2026-09-28) | Created by the lead at the Owner's request in `.claude/settings.local.json`: this project and this machine only, not committed. Works only in sessions opened with this repository as the project folder | `lead/STATE.md` |
+| H-2 Close backlog W11 (2026-09-28) | Approved and done: Done R23; its orphaned `COST_OF_WAITING` entry removed; `docs/OWNER.md` regenerated | commit `23157f9` |
+| H-1 Push after T-001 (2026-09-28) | Approved: one push once T-001 has merged (adoption, W11, T-001) | `lead/STATE.md` |
 | Adoption questions (2026-09-28) | All accepted as recommended: milestone M1, invariants and sign-off list, autonomy A1, `lead/` public and English, local branches without pull requests, Chinese in chat | `lead/decisions/0001-adopt-lead-workflow.md` |
 
 ## Current tasks
