@@ -1206,6 +1206,41 @@ def _cannot_fix(entry):
                                    (ABSENT, want == ABSENT)) if hit]
 
 
+# The file each key that figures() can leave out is measured in, by the key's prefix:
+# production_* from _production_unknown_pct() and _production_window(), power_* from
+# _owner_power_figures(). Every other key is computed from bench/results.json, which main()
+# requires before it scans, so such a key is missing only when nothing computes it.
+_MEASURED_IN = (("production_", "bench/production/verdicts.json"),
+                ("power_", "bench/owner_powers.json"))
+
+
+def _advice(kind, entries):
+    """What to do about the stale entries of one kind --write cannot fix, in one line."""
+    if kind == "pattern not found":
+        return ("the guarded sentence changed, so --write cannot find its figure. Restore the "
+                "sentence, or update its TARGETS pattern.")
+    if kind == "file missing":
+        return ("a file TARGETS guards is gone. Restore it, or update the TARGETS entries that "
+                "name it.")
+    if kind == ABSENT:
+        return ("docs/SCORECARD.md shows the form of its production row that bench/scorecard.py "
+                "is not printing now. Run `bash .github/scripts/regenerate-derived.sh "
+                "regenerate`.")
+    # Not measured. The entries name their keys; a reader needs the file to restore.
+    keys = sorted({str(want)[len("not measured ("):-1] for _, _, _, want in entries})
+    files = sorted({f for key in keys for prefix, f in _MEASURED_IN if key.startswith(prefix)})
+    unknown = [key for key in keys if not any(key.startswith(p) for p, _ in _MEASURED_IN)]
+    said = []
+    if files:
+        said.append("%s %s absent or unusable, so these figures have no measurement to check or "
+                    "to write. Restore or regenerate %s."
+                    % (" and ".join(files), "is" if len(files) == 1 else "are",
+                       "it" if len(files) == 1 else "them"))
+    if unknown:
+        said.append("Nothing computes %s: correct the key in TARGETS." % ", ".join(unknown))
+    return " ".join(said)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--write", action="store_true",
@@ -1294,6 +1329,15 @@ def main():
         print("\n%d guarded figure(s) that --write cannot fix:" % len(unfixable))
         for rel, pattern, found, want in unfixable:
             print(line % (rel, found, want, pattern[:44]))
+        # Then what to do: one line per kind present, however many entries it has, in the order
+        # the kinds first appear above.
+        kinds = []
+        for entry in unfixable:
+            kinds += [kind for kind in _cannot_fix(entry) if kind not in kinds]
+        print()
+        for kind in kinds:
+            print("  %s: %s" % (kind, _advice(kind, [entry for entry in unfixable
+                                                     if kind in _cannot_fix(entry)])))
     return 1
 
 
