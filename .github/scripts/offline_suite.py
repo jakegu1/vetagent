@@ -36,7 +36,8 @@ and the lines of a `run: |` block. Read line by line, other shapes YAML allows -
 step, a `run:` value continued on the next line, a folded `run: >` that YAML makes one command
 of -- come out as fewer or other commands than GitHub runs, so the class is refused rather
 than taught one shape at a time. A value that opens a quote, `[` or `{` must close it on the
-same line.
+same line. `env:`, `working-directory:` and `shell:` on a step are refused too: this does not
+apply them.
 
 It also fails if the run modified a tracked file. A check that edits the tree and puts it back
 is safe only if it puts it back exactly. Until 2026-09-29 `tests/test_number_coverage.py`
@@ -117,8 +118,9 @@ def steps_from_workflow(text):
     The first list has every command of every step, in file order; None is a `run:` with
     nothing to run. The second has every line after `steps:` that is not a blank line, a
     comment, a step's first line (`- ` and a step key), a step key at the step's indentation,
-    a `key: value` under `with:` or `env:`, or a line of a `run: |` block. A step
-    holding such a line gives no command: this cannot say what GitHub would run for it.
+    a `key: value` under `with:` or `env:`, or a line of a `run: |` block, and every line with
+    a key this does not apply (`env`, `working-directory`, `shell`). A step holding such a line
+    gives no command: this cannot say what GitHub would run for it.
     """
     lines = text.splitlines()
     try:
@@ -215,7 +217,13 @@ def _step(lines, item, dash):
                 refused.append(i)
         elif key == "run":
             runs.append([value or None])
-        elif key in ("with", "env") and not value:
+        elif key in ("env", "working-directory", "shell"):
+            # Keys this does not apply: it runs every command from the repository's root, in
+            # its own environment and without a shell, so such a step could run differently
+            # here than on GitHub.
+            refused.append(i)
+            nested = at if key == "env" and not value else None
+        elif key == "with" and not value:
             nested = at
     return name, [cmd for run in runs for cmd in (run or [None])], refused
 
