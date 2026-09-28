@@ -46,8 +46,12 @@ jobs:
             echo "ready=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # The whole history, as test.yml checks out: the offline suite below reads it, and at
+      # the default depth of 1 its rounds check fails on every run.
       - if: steps.creds.outputs.ready == 'true'
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - if: steps.creds.outputs.ready == 'true'
         uses: actions/setup-python@v5
@@ -61,11 +65,17 @@ jobs:
 
       # Tests first. Shipping a risk-screening tool without them puts silent failure
       # right back in.
-      - name: Regression tests
+      #
+      # All of them: every step of test.yml's offline `test` job, read from test.yml when this
+      # runs, so the deploy and CI keep one list. Until 2026-09-29 this step ran two test files
+      # by hand, and the tests workflow starts beside this one rather than before it, so a push
+      # that broke any other step deployed anyway. The runner runs every step even after a red
+      # one, and exits non-zero if any failed, if it found no steps, or if a step modified a
+      # tracked file. Its condition is the deploy step's, so the deploy cannot run while it is
+      # skipped. The network jobs stay out: a third party's outage must not block a deploy.
+      - name: Offline test suite (every step of test.yml's test job)
         if: steps.creds.outputs.ready == 'true'
-        run: |
-          python tests/test_risk.py
-          python tests/test_mcp.py
+        run: python .github/scripts/offline_suite.py
 
       - name: Install uv
         if: steps.creds.outputs.ready == 'true'
