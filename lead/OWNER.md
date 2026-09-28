@@ -7,19 +7,20 @@
 
 ## Status in one line
 
-CI is green on master and M1's 7-day clock is running. Lead #2 has checked in and proposes the
-next two items (H-5); nothing starts until you say yes.
+CI is green on master and M1's 7-day clock is running. The Level 0 fix is merged locally; T-002
+is with an executor. Your next decision: merge and push, after T-002's review.
 
 ## Needs you
 
 | ID | What | Why it's yours | Recommendation | Needed by |
 |---|---|---|---|---|
-| H-5 | Start two items. (1) Level 0, done by the lead: `python lead/checks.py` fails when a run modifies a tracked file, and the test that rewrites `docs/EXPERIMENT_C.md` with LF endings on Windows restores it byte for byte instead. (2) T-002, Level 1, executor plus a fresh review: `publish_numbers.py` reports a missing measurement instead of crashing, and `--write` fails when it leaves work undone (why the bots stayed green while `tests` was red). | Autonomy is A0: each step needs your yes | Yes to both. I come back for a separate yes to merge and push. If you don't answer, nothing starts | Now |
+| — | Nothing open. The next question (merge and push T-002) comes after its review. | | | |
 
 ## Done / answered
 
 | Item | Outcome | Recorded in |
 |---|---|---|
+| H-5 Start the Level 0 fix and T-002 (2026-09-29) | Yes to both, as recommended. The Level 0 fix merged locally as `82acff3`; T-002 dispatched | `lead/STATE.md` |
 | H-4 Autonomy after tripwire Q1 (2026-09-28) | Stay at A0 for the next task; the lead proposes A1 again after one clean merge | `lead/STATE.md`, `lead/config.yml` |
 | T-001 (2026-09-28) | Merged as `0a3098d` after a fresh review, 12 of 12 | `lead/reviews/T-001.md` |
 | H-3 SessionStart hook (2026-09-28) | Created by the lead at the Owner's request in `.claude/settings.local.json`: this project and this machine only, not committed. Works only in sessions opened with this repository as the project folder | `lead/STATE.md` |
@@ -31,7 +32,7 @@ next two items (H-5); nothing starts until you say yes.
 
 | Task | Level | Status | Notes |
 |---|---|---|---|
-| T-002 | 1 | ready, waiting on H-5 | `lead/tasks/T-002-publish-numbers-honest-exit.md` |
+| T-002 | 1 | in progress (executor) | `lead/tasks/T-002-publish-numbers-honest-exit.md` |
 
 ## Milestones
 
@@ -42,6 +43,9 @@ next two items (H-5); nothing starts until you say yes.
 
 ## Log (newest first)
 
+- **2026-09-29** · lead · You approved H-5. The Level 0 fix is merged locally: a check run that
+  modifies a tracked file now fails, and the test that caused it restores its file exactly.
+  T-002 is with an executor. Nothing pushed.
 - **2026-09-29** · lead · Lead #2 checked in: the SessionStart hook works, nothing new on
   origin, all six workflows green, checks 27 of 27. Corrected one handoff note (the line-ending
   side effect comes from a test, not from `publish_numbers.py`). Asked H-5.

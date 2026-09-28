@@ -45,7 +45,7 @@ merge:                             # project convention; replaces the kit's defa
   after:
     - "bash .github/scripts/regenerate-derived.sh regenerate"   # ONLY with 'regenerate': any other argument resets to origin, commits and pushes
     - "python lead/checks.py"
-    - "commit regenerated pages separately if any changed; restore docs/EXPERIMENT_C.md if only its line endings changed"
+    - "commit regenerated pages separately if the merge moved them (a change that is only the date and the recent-commit list can wait for the next regeneration before a push)"
   push: "only with the Owner's yes, batched; fetch and merge origin/master first (bots push several times a day)"
 
 sign_off:                          # always the Owner's decision, at every autonomy level
