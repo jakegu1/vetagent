@@ -1192,6 +1192,20 @@ def _is_cited_competitor_figure(line, all_lines, i, window=2):
     return bool(re.search(cite, near))
 
 
+def _cannot_fix(entry):
+    """Why --write cannot fix a stale entry from scan(), as the kinds main() reports: read from
+    what scan() puts in it, "pattern not found" or "file missing" as the value found, and
+    "not measured (<key>)" or ABSENT as the value expected. Empty for a figure that differs from
+    its measurement, which --write rewrites. A figure with no measurement whose sentence is gone
+    as well is of two kinds."""
+    _, _, found, want = entry
+    want = str(want)
+    return [kind for kind, hit in (("not measured", want.startswith("not measured (")),
+                                   ("pattern not found", found == "pattern not found"),
+                                   ("file missing", found == "file missing"),
+                                   (ABSENT, want == ABSENT)) if hit]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--write", action="store_true",
@@ -1261,17 +1275,25 @@ def main():
         print("Everything published matches the benchmark.")
         return 0
 
-    # Only a block with something in it: with only an unclaimed percentage left, this printed
-    # `0 published figure(s) disagree` and the advice to run --write, which fixes neither.
-    if stale:
-        print("\n%d published figure(s) disagree with bench/results.json:" % len(stale))
-        for rel, pattern, found, want in stale:
-            print("  %-18s found %-8s expected %-8s  (%s)"
-                  % (rel, found, want, pattern[:44]))
-        if args.write:
-            print("\n--write cannot fix what is listed above.")
-        else:
-            print("\nRun `python bench/publish_numbers.py --write`, then redeploy.")
+    # What --write can rewrite, apart from what it cannot fix, each block printed only with
+    # something in it. One heading, `disagree with bench/results.json`, and one piece of advice,
+    # run --write, used to cover every entry: wrong for a sentence --write cannot find and a
+    # figure with no measurement, and wrong about the source of every figure taken from the
+    # production artifact, bench/owner_powers.json or docs/SCORECARD.md. With only an unclaimed
+    # percentage left it printed that heading with a count of 0.
+    fixable = [entry for entry in stale if not _cannot_fix(entry)]
+    unfixable = [entry for entry in stale if _cannot_fix(entry)]
+    line = "  %-18s found %-8s expected %-8s  (%s)"
+    if fixable:
+        print("\n%d published figure(s) differ from their measurement, and --write can rewrite "
+              "them:" % len(fixable))
+        for rel, pattern, found, want in fixable:
+            print(line % (rel, found, want, pattern[:44]))
+        print("\nRun `python bench/publish_numbers.py --write`, then redeploy.")
+    if unfixable:
+        print("\n%d guarded figure(s) that --write cannot fix:" % len(unfixable))
+        for rel, pattern, found, want in unfixable:
+            print(line % (rel, found, want, pattern[:44]))
     return 1
 
 
