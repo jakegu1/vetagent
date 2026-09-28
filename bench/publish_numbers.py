@@ -834,6 +834,16 @@ def scan(write):
             continue
         text = io.open(path, encoding="utf-8").read()
         m = re.search(pattern, text)
+        if key not in vals:
+            # figures() leaves a key out when the measurement behind it is absent or unusable
+            # (no bench/production/verdicts.json, a null in bench/owner_powers.json): the
+            # figure is unguarded, and has to be seen to be. So every target on that key is
+            # reported, and none is written, because there is nothing to write. This read
+            # vals[key] until 2026-09-29, and with the production artifact moved away the
+            # KeyError stopped the scan at the first such target: nothing after it was checked.
+            stale.append((rel, pattern, m.group(1) if m else "pattern not found",
+                          "not measured (%s)" % key))
+            continue
         if vals[key] == ABSENT:
             # Finding it is the error, and --write leaves it alone: the form is for
             # `python bench/scorecard.py --write` to change, and splicing one form's value
