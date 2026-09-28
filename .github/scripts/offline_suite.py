@@ -34,7 +34,8 @@ The lines it recognises after `steps:` are blank lines and comments, a step's fi
 and a step key), a step key at the step's indentation, a `key: value` under `with:` or `env:`,
 and the lines of a `run: |` or `run: >` block. Read line by line, other shapes YAML allows --
 a flow-style step, a `run:` value continued on the next line -- come out as fewer commands
-than GitHub runs, so the class is refused rather than taught one shape at a time.
+than GitHub runs, so the class is refused rather than taught one shape at a time. A value that
+opens a quote, `[` or `{` must close it on the same line.
 
 It also fails if the run modified a tracked file. A check that edits the tree and puts it back
 is safe only if it puts it back exactly. Until 2026-09-29 `tests/test_number_coverage.py`
@@ -72,6 +73,41 @@ BLOCK = re.compile(r"^[|>][0-9+-]*$")
 
 def _indent(line):
     return len(line) - len(line.lstrip(" "))
+
+
+def _closed(value):
+    """False when a value opens a quote, `[` or `{` and does not close it on its own line.
+
+    Such a value goes on over the next lines, and one of them at the jobs' indentation ends the
+    job for this reader: a quoted step name continued so made the real test.yml read as 6 of 28
+    steps, with nothing refused (measured 2026-09-29). So the line that opens it is refused.
+    """
+    v = value.strip()
+    if v[:1] not in ("'", '"', "[", "{"):
+        return True
+    depth, quote, i = 0, None, 0
+    while i < len(v):
+        c = v[i]
+        if quote == '"':
+            if c == "\\":
+                i += 1                             # an escaped character
+            elif c == '"':
+                quote = None
+        elif quote == "'":
+            if c == "'" and v[i + 1:i + 2] == "'":
+                i += 1                             # '' is a quote inside the string
+            elif c == "'":
+                quote = None
+        elif c in "\"'":
+            quote = c
+        elif c in "[{":
+            depth += 1
+        elif c in "]}":
+            depth -= 1
+        i += 1
+        if quote is None and depth <= 0:
+            return True
+    return False
 
 
 def steps_from_workflow(text):
@@ -154,7 +190,8 @@ def _step(lines, item, dash):
             if text.startswith("#"):
                 continue
             if nested is not None and ind > nested:        # under `with:` or `env:`
-                if not ENTRY.match(text):
+                entry = ENTRY.match(text)
+                if not entry or not _closed(text[entry.end():]):
                     refused.append(i)
                 continue
             nested = None
@@ -163,6 +200,9 @@ def _step(lines, item, dash):
             refused.append(i)
             continue
         key, value = m.group(1), m.group(2) or ""
+        if not _closed(value):
+            refused.append(i)
+            continue
         if key == "name":
             name = value
         elif key == "run" and BLOCK.match(value):
