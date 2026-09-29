@@ -4,7 +4,7 @@
 > session starts by reading it. Durable rules live in `AGENTS.md`, `lead/QUALITY.md` and
 > `lead/decisions/`. Test for this file: could a stranger act on every row below?
 
-Last updated: 2026-09-29 by lead session 2 (Claude Code desktop, local, opened in this repository).
+Last updated: 2026-09-29 by lead session 3 (Claude Code desktop, local, opened in this repository).
 
 ## Starting a lead session
 
@@ -48,7 +48,7 @@ Last updated: 2026-09-29 by lead session 2 (Claude Code desktop, local, opened i
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| — | | | | | No task in flight. |
+| T-005 | 2 | `task/t-005-second-oracle-adversarial`, worktree `../vetagent-t-005` | executing | executor subagent | Collect READY or BLOCKED; then a fresh independent review |
 
 ## Waiting on the Owner
 
@@ -221,10 +221,15 @@ hand and move on.
 |---|---|---|---|---|
 | 1 | Claude Code desktop, local (opened in the parent folder) | 2026-09-28 | 2026-09-28 | Rotation rule: context at 50 of 100 parts of the window |
 | 2 | Claude Code desktop, local (opened in this repository) | 2026-09-29 | 2026-09-29 | Rotation rule at a natural boundary after H-10; context judged past the threshold (not measured) |
-| 3 | next session, opened in this repository | | | |
+| 3 | Claude Code desktop, local (opened in this repository) | 2026-09-29 | | |
 
 ## Log (newest first; keep the last ~20 lines)
 
+- 2026-09-29: lead #3 check-in. Merged origin (two production-probe bot commits) as `b1ecff6`;
+  checks 28 of 28, tree clean; the latest run of all six workflows green; M1 still running.
+  Wrote T-005 (Level 2): the Owner's remaining W5 step cannot be run safely today, because
+  `bench/second_oracle.py` cannot select the adversarial cohort, paces calls faster than the
+  free tier allows, and would overwrite the only copy of the earlier answers. Dispatched it.
 - 2026-09-29: lead #2 hands off to lead #3 (rotation rule, natural boundary, nothing in flight).
 - 2026-09-29: H-10 done. Merged origin, T-003, T-004, the W5 row; 28 of 28. Preflight run
   green; pushed `8daa0f7..6c8b785`; `tests` and `deploy` green, the gate 28 of 28 on CI; all
