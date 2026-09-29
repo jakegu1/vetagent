@@ -71,7 +71,7 @@ if [ "${GITHUB_ACTIONS:-}" != "true" ]; then
   echo "regenerate-derived.sh: refusing '${mode}': any argument but 'regenerate' is the bots' mode," >&2
   echo "  which writes the bot's identity into this clone's git config, resets it to origin," >&2
   echo "  commits and pushes; it runs only on GitHub Actions, where GITHUB_ACTIONS is 'true'." >&2
-  echo "  To regenerate the derived pages here: bash .github/scripts/regenerate-derived.sh regenerate" >&2
+  echo "  To update the derived pages here, run: bash .github/scripts/regenerate-derived.sh regenerate" >&2
   exit 2
 fi
 
