@@ -490,11 +490,24 @@ def _report_set(name, rows, selected, stream):
     if isinstance(selected, bool) or not isinstance(selected, int):
         selected = None
     not_asked = None if selected is None else max(selected - len(rows), 0)
+    answered = len(rows) - n[NOT_MEASURED]
+    stated = honeypot + sellable
+    # Every "k of n" this set's report prints, as (k, n), and each n is exactly the rows that
+    # could answer its question. A share over rows that could not answer it reads as a
+    # measured absence: the "0 of 122" of 2026-09-29 was one.
+    shares = {}
+    if selected is not None:
+        shares["asked"] = (len(rows), selected)
+    if answered:
+        shares["sell_simulated"] = (len(sims), answered)
+    if stated:
+        shares["honeypot"] = (honeypot, stated)
     counts = {"rows": len(rows), "not_measured": n[NOT_MEASURED],
               "no_sell_simulation": n[NO_SELL_SIMULATION], "sell_simulated": len(sims),
               "honeypot": honeypot, "sellable": sellable,
-              "honeypot_not_stated": len(sims) - honeypot - sellable,
-              "reasons": dict(reasons), "selected": selected, "not_asked": not_asked}
+              "honeypot_not_stated": len(sims) - stated,
+              "reasons": dict(reasons), "selected": selected, "not_asked": not_asked,
+              "shares": shares}
 
     title = "%s: %d rows" % (name.upper(), len(rows))
     if selected is not None:
@@ -509,14 +522,17 @@ def _report_set(name, rows, selected, stream):
     _say("  %-19s %4d   is_Honeypot true %d, false %d, not stated %d"
          % (SELL_SIMULATED, len(sims), honeypot, sellable, counts["honeypot_not_stated"]),
          stream)
-    answered = len(rows) - n[NOT_MEASURED]
-    if not answered:
+    if "sell_simulated" not in shares:
         _say("  no row was answered, so no rate is printed", stream)
     else:
-        line = "  of the %d answered, %s sell simulated" % (answered, _share(len(sims), answered))
-        if sims:
-            line += "; of those, %s honeypots" % _share(honeypot, len(sims))
-        _say(line, stream)
+        _say("  of the %d answered: %s sell simulated"
+             % (answered, _share(*shares["sell_simulated"])), stream)
+        if "honeypot" in shares:
+            _say("  of the %d sell simulated that state is_Honeypot: %s honeypots"
+                 % (stated, _share(*shares["honeypot"])), stream)
+        elif sims:
+            _say("  none of the %d sell simulated states is_Honeypot, so no honeypot share is"
+                 " printed" % len(sims), stream)
     if name in PER_TOKEN:
         for row, cls, detail in classed:
             _say(_token_line(row, cls, detail), stream)
@@ -528,7 +544,12 @@ def report(rows, selected=None, stream=None):
 
         {set: {"rows", "not_measured", "no_sell_simulation", "sell_simulated", "honeypot",
                "sellable", "honeypot_not_stated", "reasons" (not measured, by reason),
-               "selected", "not_asked"}}
+               "selected", "not_asked", "shares"}}
+
+    "shares" holds every "k of n" the set's report prints, as (k, n): "asked" (rows of the
+    selected), "sell_simulated" (of the answered rows) and "honeypot" (of the simulations that
+    state is_Honeypot). A share with no row that could answer it is neither printed nor
+    returned.
 
     `selected` is the output file's count of rows each set had when the run started; with it,
     rows the run never reached are counted as not asked. Without it (a file written by an
@@ -554,6 +575,9 @@ def report(rows, selected=None, stream=None):
     _say("  %-19s dated by lastUpdatedTimestamp (UTC), aged from the time the row was"
          % SELL_SIMULATED, stream)
     _say("  %-19s asked. A time that was not recorded reads unknown." % "", stream)
+    _say("Each share is over the rows that could answer it: sell simulated over the answered",
+         stream)
+    _say("rows, honeypots over the simulations that state is_Honeypot.", stream)
     counts = {}
     for name in order:
         _say(stream=stream)
