@@ -149,7 +149,7 @@ problem looked like before it was fixed.
 - T-004: the runner refuses a value that opens a quote, [ or { and does not close it on its line
 - T-004: named change (f) the rest of the class is refused, by the runner and the reader alike
 
-_53 more not shown (61 commits in total)._
+_54 more not shown (62 commits in total)._
 
 ## What I got wrong
 
