@@ -272,13 +272,13 @@ def _refuse(path):
     return 2
 
 
-def _saved_row(set_name, row, payload, err):
-    """One row of the output file, in today's fields."""
+def _saved_row(set_name, row, asked_ms, payload, err):
+    """One row of the output file: today's fields, and when the call started."""
     return {"address": row.get("address"), "symbol": row.get("symbol"),
             "chain": row.get("chain"), "set": set_name,
             "our_verdict": row.get("verdict"), "our_driver": row.get("driver"),
             "goplus": row.get("goplus_label"), "outcome": row.get("outcome_label"),
-            "quickintel": payload, "error": err}
+            "asked_ms": asked_ms, "quickintel": payload, "error": err}
 
 
 def _save(path, which, selected, rows, first=False):
@@ -325,7 +325,7 @@ def run(max_calls, which=None):
         for set_name, row in todo:
             chain = CHAIN.get(row.get("chain"))
             if chain is None:
-                out.append(_saved_row(set_name, row, None,
+                out.append(_saved_row(set_name, row, None, None,
                                       "chain %r has no entry in CHAIN: not asked"
                                       % row.get("chain")))
             elif made >= max_calls:
@@ -333,9 +333,10 @@ def run(max_calls, which=None):
                 break
             else:
                 last = _pace(last)
+                asked_ms = int(round(time.time() * 1000))
                 payload, err = fetch(row.get("address"), chain, key)
                 made += 1
-                out.append(_saved_row(set_name, row, payload, err))
+                out.append(_saved_row(set_name, row, asked_ms, payload, err))
                 if made % 10 == 0:
                     _say("  [%d/%d calls]" % (made, calls))
             _save(path, which, selected, out)
