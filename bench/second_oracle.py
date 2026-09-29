@@ -487,7 +487,7 @@ def _report_set(name, rows, selected, stream):
     sims = [d for _, cls, d in classed if cls == SELL_SIMULATED]
     honeypot = sum(1 for d in sims if d["is_honeypot"] is True)
     sellable = sum(1 for d in sims if d["is_honeypot"] is False)
-    if isinstance(selected, bool) or not isinstance(selected, int):
+    if isinstance(selected, bool) or not isinstance(selected, int) or selected < 0:
         selected = None
     not_asked = None if selected is None else max(selected - len(rows), 0)
     answered = len(rows) - n[NOT_MEASURED]
@@ -496,7 +496,7 @@ def _report_set(name, rows, selected, stream):
     # could answer its question. A share over rows that could not answer it reads as a
     # measured absence: the "0 of 122" of 2026-09-29 was one.
     shares = {}
-    if selected is not None:
+    if selected:
         shares["asked"] = (len(rows), selected)
     if answered:
         shares["sell_simulated"] = (len(sims), answered)
@@ -509,8 +509,15 @@ def _report_set(name, rows, selected, stream):
               "reasons": dict(reasons), "selected": selected, "not_asked": not_asked,
               "shares": shares}
 
+    if not rows and selected is not None:
+        # A selected set the file holds no row of: the run stopped before it, or before its
+        # first answer was saved. Every one of its rows is accounted for, as never asked.
+        _say("%s: none of the %d selected rows was asked; the run stopped before it reached them"
+             % (name.upper(), selected) if selected else
+             "%s: the selection held no rows, so none was asked" % name.upper(), stream)
+        return counts
     title = "%s: %d rows" % (name.upper(), len(rows))
-    if selected is not None:
+    if "asked" in shares:
         title += " of the %d selected" % selected
         if not_asked:
             title += "; %d never asked, because the run stopped before them" % not_asked
@@ -552,17 +559,22 @@ def report(rows, selected=None, stream=None):
     returned.
 
     `selected` is the output file's count of rows each set had when the run started; with it,
-    rows the run never reached are counted as not asked. Without it (a file written by an
-    earlier version of this script has none) both are None.
+    rows the run never reached are counted as not asked, and a selected set the file holds no
+    row of is reported as never asked, so that every selected row is accounted for. Without it
+    (a file written by an earlier version of this script has none) both are None.
     """
     groups = {}
     for row in rows:
         name = row.get("set") if isinstance(row, dict) else None
         groups.setdefault(name if isinstance(name, str) and name else "(no set)",
                           []).append(row)
+    selected = selected if isinstance(selected, dict) else {}
+    for name, count in selected.items():
+        if (isinstance(name, str) and name and isinstance(count, int)
+                and not isinstance(count, bool) and count >= 0):
+            groups.setdefault(name, [])
     order = ([s for s in REPORT_ORDER if s in groups]
              + sorted(s for s in groups if s not in REPORT_ORDER))
-    selected = selected if isinstance(selected, dict) else {}
     _say("%d rows in %d set%s: %s." % (len(rows), len(order), "" if len(order) == 1 else "s",
                                        ", ".join(order) or "none"), stream)
     _say("Each row is in one class:", stream)
