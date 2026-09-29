@@ -95,11 +95,15 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 RESULTS = os.path.join(HERE, "results.json")
 
-# One output file per selection, so that no run can write over another's answers. Git
-# ignores both (W5): a raw answer does not enter the repository until the owner has read
-# Quick Intel's terms.
+# One output file per selection, so that no run can write over another's answers, and --run
+# refuses to start when its own exists. Git ignores both (W5): a raw answer does not enter
+# the repository until the owner has read Quick Intel's terms.
 OUT = os.path.join(HERE, "second_oracle.json")
 OUT_ADVERSARIAL = os.path.join(HERE, "second_oracle_adversarial.json")
+
+# Each save writes the whole file to this copy beside it, then renames the copy over it, so
+# an interrupt in the middle of a write leaves the previous version whole. Git ignores it too.
+PARTIAL = ".partial"
 
 # Quick Intel's honeypot endpoint runs a real transaction simulation -- their docs:
 # "Based on the simulation results, the buy, sell, and transfer taxes of that token are
@@ -267,37 +271,77 @@ def _refuse(path):
     return 2
 
 
+def _saved_row(set_name, row, payload, err):
+    """One row of the output file, in today's fields."""
+    return {"address": row.get("address"), "symbol": row.get("symbol"),
+            "chain": row.get("chain"), "set": set_name,
+            "our_verdict": row.get("verdict"), "our_driver": row.get("driver"),
+            "goplus": row.get("goplus_label"), "outcome": row.get("outcome_label"),
+            "quickintel": payload, "error": err}
+
+
+def _save(path, which, selected, rows, first=False):
+    """Write every row so far. The first write creates the file and fails if it exists; every
+    later one goes through a copy renamed over the file, so an interrupt mid-write leaves the
+    previous version whole."""
+    doc = {"n": len(rows), "selection": which or "default", "selected": selected,
+           "results": rows}
+    if first:
+        with open(path, "x", encoding="utf-8") as f:
+            json.dump(doc, f, indent=2)
+        return
+    with open(path + PARTIAL, "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=2)
+    os.replace(path + PARTIAL, path)
+
+
 def run(max_calls, which=None):
+    """Ask Quick Intel about a selection, saving after every call. Needs the key."""
     key = os.environ.get("QUICKINTEL_API_KEY")
     if not key:
-        print("Set QUICKINTEL_API_KEY. Apply for the free API Testing tier at")
-        print("https://quickintel.io/developers -- 200 calls/month, approval required.")
+        _say("Set QUICKINTEL_API_KEY. Apply for the free API Testing tier at")
+        _say("https://quickintel.io/developers -- 200 calls/month, approval required.")
         return 2
     path = output_path(which)
     if os.path.exists(path):
         return _refuse(path)
 
-    todo =[(set_name, row) for set_name, rows in select(which) for row in rows][:max_calls]
+    sets = select(which)
+    selected = dict((name, len(rows)) for name, rows in sets)
+    todo = [(name, row) for name, rows in sets for row in rows]
+    try:
+        _save(path, which, selected, [], first=True)
+    except FileExistsError:
+        return _refuse(path)
 
-    out, last = [], None
-    for i, (set_name, row) in enumerate(todo, 1):
-        chain = CHAIN.get(row["chain"])
-        if not chain:
-            continue
-        last = _pace(last)
-        payload, err = fetch(row["address"], chain, key)
-        out.append({"address": row["address"], "symbol": row.get("symbol"),
-                    "chain": row["chain"], "set": set_name,
-                    "our_verdict": row.get("verdict"), "our_driver": row.get("driver"),
-                    "goplus": row.get("goplus_label"),
-                    "outcome": row.get("outcome_label"),
-                    "quickintel": payload, "error": err})
-        if i % 10 == 0:
-            print("  [%d/%d]" % (i, len(todo)))
-
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump({"n": len(out), "results": out}, f, indent=2)
-    print("\nWrote %s (%d calls)" % (path, len(out)))
+    calls = min(sum(1 for _, r in todo if CHAIN.get(r.get("chain"))), max(max_calls, 0))
+    _say("Asking Quick Intel about %d rows (%s): %d calls, one every %.1f s, about %s."
+         % (len(todo), ", ".join("%s %d" % kv for kv in selected.items()), calls,
+            PACE_SECONDS, _duration(calls * PACE_SECONDS)))
+    _say("Each answer is saved to %s as it arrives." % path)
+    out, made, saved, last = [], 0, 0, None
+    try:
+        for set_name, row in todo:
+            chain = CHAIN.get(row.get("chain"))
+            if chain is None:
+                continue
+            if made >= max_calls:
+                _say("--max-calls %d reached: the rows after this are not asked." % max_calls)
+                break
+            last = _pace(last)
+            payload, err = fetch(row.get("address"), chain, key)
+            made += 1
+            out.append(_saved_row(set_name, row, payload, err))
+            if made % 10 == 0:
+                _say("  [%d/%d calls]" % (made, calls))
+            _save(path, which, selected, out)
+            saved = len(out)
+    except KeyboardInterrupt:
+        _say()
+        _say("Interrupted: %s holds the %d rows saved before it; the rest were not asked."
+             % (path, saved))
+        return 130
+    _say("Wrote %s: %d rows, %d calls." % (path, len(out), made))
     report(out)
     return 0
 
