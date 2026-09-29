@@ -48,8 +48,9 @@ Last updated: 2026-09-29 by lead session 3 (Claude Code desktop, local, opened i
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-005 | 2 | `task/t-005-second-oracle-adversarial`, worktree `../vetagent-t-005` | executing | executor subagent | Collect READY or BLOCKED; then a fresh independent review |
-| T-006 | 3 | `task/t-006-regenerate-ci-only`, worktree `../vetagent-t-006` | executing | executor subagent | Collect READY or BLOCKED; then a fresh independent review and a red-team review |
+| T-005 | 2 | `task/t-005-second-oracle-adversarial` at `5bba390`, worktree `../vetagent-t-005` | passed: round-2 re-review ✅ 12 of 12; decision: merge | lead, on the Owner's yes | Merge with the batch the Owner approves (H-11), `--no-ff`, then the post-merge steps |
+| T-006 | 3 | `task/t-006-regenerate-ci-only`, worktree `../vetagent-t-006` | round 2 executing (round 1 at `e46cddc`: independent ✅ 12 of 12, red-team none; the lead bounced once on "not run here" passing on CI, named changes (a) to (c)) | the round-1 executor, resumed | Collect READY (round 2); then a fresh combined re-review (independent and red-team) of the bar in `lead/reviews/T-006.md` |
+| L0 | 0 | `task/l0-claude-md-mcp-note` at `dcf3dfc`, worktree `../vetagent-l0` | done on its branch (checks 28 of 28): `0c6be16` the `CLAUDE.md` client-name note; `dcf3dfc` the W5 row names the adversarial-check command (with `docs/OWNER.md` regenerated) | lead | After T-006 passes, add its document updates (`CLAUDE.md`); merge with the batch the Owner approves (H-11), after T-005 |
 
 ## Waiting on the Owner
 
@@ -226,6 +227,20 @@ hand and move on.
 
 ## Log (newest first; keep the last ~20 lines)
 
+- 2026-09-30: T-005 round 2 passed its fresh re-review (12 of 12); decision: merge in the batch.
+  T-006 round 1 passed both reviews (independent 12 of 12, red-team none) and went back once
+  anyway: both reviewers found that "not run here" still lets the CI step pass. Two spec lessons
+  added to `lead/PITFALLS.md`. Level 0 branch gained the W5 command line (`dcf3dfc`).
+  Observed, cause not found: a reviewer's first local clone of this repository reached only 170
+  of 651 commits (a missing parent object); a second clone minutes later was complete, and the
+  main checkout's `git fsck --connectivity-only` is clean. A hypothesis, not a finding: a
+  concurrent automatic gc while agents committed in worktrees. `git clone --no-local` avoids
+  the hardlinked objects.
+- 2026-09-30: T-006 READY at `e46cddc` (tests-first `0d9b8f7`, red on all 15 refused calls:
+  the scratch identity rewritten and its uncommitted change gone). The lead saw CONTRACT HOLDS
+  and only the two files in scope. Independent and red-team reviews dispatched in parallel.
+  Level 0 committed on its branch as `0c6be16`: the `CLAUDE.md` note about the editor's
+  client name was stale since `82e2470` (checks 28 of 28).
 - 2026-09-29: lead #3 check-in. Merged origin (two production-probe bot commits) as `b1ecff6`;
   checks 28 of 28, tree clean; the latest run of all six workflows green; M1 still running.
   Wrote T-005 (Level 2): the Owner's remaining W5 step cannot be run safely today, because

@@ -136,4 +136,12 @@ environment variable with a similar name; a test whose scratch isolation depends
 
 ## Amendments
 
-None yet.
+- **2026-09-30, round 1 lead decision** (`lead/reviews/T-006.md`): back to the executor for one
+  round. Required: (1) on GitHub Actions (`GITHUB_ACTIONS` exactly `true`) a check that could not
+  run makes the test file exit 1; off Actions it behaves as today; (2) the refusal checks also
+  cover `" true"`, `"true "` and `"TRUE"`; (3) the canary's failure detail names the changed
+  `user.*` keys, never their values. Named changes to `tests/test_bot_commits_stay_green.py`,
+  each in its own commit: **(a)** a check that the file exits 1 on Actions and 0 off it when a
+  group could not run (red first), then the summary change that turns it green; **(b)** the three
+  near-miss values join the off-Actions values; **(c)** the canary's detail lists key names only.
+  Nothing else in the test file changes.

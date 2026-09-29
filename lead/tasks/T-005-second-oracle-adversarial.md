@@ -168,4 +168,14 @@ the new test file and its step in `test.yml`.
 
 ## Amendments
 
-None yet.
+- **2026-09-30, round 1 lead decision** (`lead/reviews/T-005.md`): back to the executor for one
+  round. Required: (1) the honeypot share is taken over the sell-simulated rows that state
+  `is_Honeypot`, none is printed when none states it, and `report()` returns each printed share's
+  numerator and denominator; (2) a saved file with a recorded selection and no rows reports each
+  selected set as never asked. Named changes to `tests/test_second_oracle.py`, each in its own
+  commit before its fix: **(a)** a mixed set (6 not measured, 2 with no sell simulation, 3 sell
+  simulated: `is_Honeypot` true, false and unstated) returns the sell-simulated share as 3 of 5
+  and the honeypot share as 1 of 2, and a set whose simulations all leave `is_Honeypot` unstated
+  has no honeypot share; **(b)** a file recording a selection of 17 adversarial rows and holding
+  none returns that set with 17 selected, 0 rows and 17 not asked, and the printed report says
+  so. Nothing else in the test file changes.
