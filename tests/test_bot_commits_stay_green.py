@@ -69,8 +69,9 @@ def check(label, ok, detail=""):
 
 
 def not_run(label, why):
-    """A check this machine cannot run. It is said, and it never counts as passed."""
-    _NOT_RUN.append(label)
+    """A check this machine cannot run. It is said, and it never counts as passed; on GitHub
+    Actions it fails the file (see main)."""
+    _NOT_RUN.append((label, why))
     print("  NOT RUN HERE  %s  (%s)" % (label, why))
 
 
@@ -816,7 +817,14 @@ def main():
     print("\n" + "=" * 68)
     print("%d passed, %d failed%s" % (_PASSED, len(_FAILS),
                                       ", %d not run here" % len(_NOT_RUN) if _NOT_RUN else ""))
-    if _FAILS:
+    # On GitHub Actions bash always exists, so a check that could not run there is not a
+    # machine's limit but a guard that declined to look, and an ok step would hide it.
+    blind = bool(_NOT_RUN) and os.environ.get("GITHUB_ACTIONS") == "true"
+    if blind:
+        print("FAILED: on GitHub Actions every check must run, and %d could not:" % len(_NOT_RUN))
+        for why in sorted(set(why for _, why in _NOT_RUN)):
+            print("  " + why)
+    if _FAILS or blind:
         sys.exit(1)
     if _NOT_RUN:
         print("everything that ran passed; %d check(s) could not run here and are not passed"
