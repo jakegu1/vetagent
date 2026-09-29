@@ -1,7 +1,7 @@
 ---
 id: T-004
 title: Run the whole offline suite before every deploy
-status: in_progress      # draft | ready | in_progress | in_review | changes_requested | done | dropped
+status: done             # draft | ready | in_progress | in_review | changes_requested | done | dropped
 level: 3                 # 0 direct | 1 light | 2 standard | 3 high risk
 size: M                  # S | M (split anything larger)
 depends_on: []

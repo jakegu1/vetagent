@@ -1,7 +1,7 @@
 ---
 id: T-003
 title: Make publish_numbers.py's report say what changed and what to do about what is left
-status: in_progress      # draft | ready | in_progress | in_review | changes_requested | done | dropped
+status: done             # draft | ready | in_progress | in_review | changes_requested | done | dropped
 level: 1                 # 0 direct | 1 light | 2 standard | 3 high risk
 size: S                  # S | M (split anything larger)
 depends_on: [T-002]

@@ -7,19 +7,22 @@
 
 ## Status in one line
 
-T-003 and T-004 passed their reviews; with the W5 row they wait for one merge and push
-(H-10). M1's 7-day clock keeps running.
+Everything is merged and pushed. CI and the deploy are green, and every deploy now runs all 28
+offline steps first. M1's 7-day clock keeps running; nothing is in flight.
 
 ## Needs you
 
 | ID | What | Why it's yours | Recommendation | Needed by |
 |---|---|---|---|---|
-| H-10 | Merge T-003, T-004 and the W5 row, and push in two steps: the merged tree to a preflight branch first (tests on Linux, no deploy), then `master` (tests, and a deploy: `deploy.yml` changed, so the new gate runs on CI for the first time and redeploys the unchanged `src/`; a red gate deploys nothing) | Every merge and push is yours; this push also deploys | Yes. Default if unanswered: nothing is merged or pushed | When convenient |
+| — | Nothing open for the lead. Your own W5 steps are in `docs/OWNER.md`. | | | |
 
 ## Done / answered
 
 | Item | Outcome | Recorded in |
 |---|---|---|
+| H-10 Merge T-003, T-004, the W5 row; push in two steps (2026-09-29) | Preflight on Linux green; pushed `8daa0f7..6c8b785`; tests and deploy green; the gate ran 28 of 28 on CI | `lead/STATE.md` |
+| T-004 (2026-09-29) | Merged as `d0eb7e8`: round 2 combined re-review 11 of 12, red-team none | `lead/reviews/T-004.md` |
+| T-003 (2026-09-29) | Merged as `fec26df` after a fresh review, 12 of 12 | `lead/reviews/T-003.md` |
 | H-9 Update W5 after the Quick Intel run (2026-09-29) | Method and direction only, no figures, on a branch for the next merge | `docs/BACKLOG.md` (branch `task/l0-backlog-w5`) |
 | H-8 Merge three Level 0 fixes locally (2026-09-29) | Merged, not pushed: the `CLAUDE.md` manual order, the ignore rule for Quick Intel's raw answers, the benchmark script's User-Agent | `lead/STATE.md` |
 | H-7 Autonomy after a clean merge (2026-09-29) | Yes; applied once T-002's merge was clean. Autonomy A1 | `lead/config.yml`, `lead/STATE.md` |
@@ -37,18 +40,19 @@ T-003 and T-004 passed their reviews; with the W5 row they wait for one merge an
 
 | Task | Level | Status | Notes |
 |---|---|---|---|
-| T-003 | 1 | review passed 12 of 12; waiting on H-10 | `lead/reviews/T-003.md` |
-| T-004 | 3 | review passed in round 2 (11 of 12, red-team none); waiting on H-10 | `lead/reviews/T-004.md` |
+| — | | | No task in flight; candidates are listed in `lead/STATE.md` |
 
 ## Milestones
 
 | Milestone | Exit criteria | Status |
 |---|---|---|
 | M0 Loop proven | T-001 merged through the whole loop, checks green on master | **done 2026-09-28** |
-| M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the T-002 push; done on 2026-10-05 if no run goes red |
+| M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
 
+- **2026-09-29** · lead · H-10 done: T-003, T-004 and the W5 row merged and pushed. The first
+  deploy since 2026-09-22 ran all 28 offline steps before shipping, then passed its smoke test.
 - **2026-09-29** · lead · You approved H-6 and H-7. T-002 merged and pushed; CI green on the
   pushed head, nothing deployed. Autonomy back to A1.
 - **2026-09-29** · lead · T-002 passed a fresh review, 12 of 12, with no required changes. Asked

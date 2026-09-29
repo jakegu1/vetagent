@@ -52,7 +52,9 @@ Level 3 in this project:
   (`src/entry.py`);
 - changing a published figure or public claim, or removing the only guard over one (README,
   landing page, `/llms.txt`, `docs/EXPERIMENT_C.md`, `docs/SCORECARD.md`);
-- deploy and CI workflows, secrets, the rate limiter;
+- deploy and CI workflows, the step runner the deploy runs before it ships
+  (`.github/scripts/offline_suite.py`) and its guard (`tests/test_deploy_gate.py`), secrets,
+  the rate limiter;
 - adding or changing an upstream data source (its terms are legal text);
 - the usage gate and every pre-registered rule;
 - anything that changes what this public repository exposes.

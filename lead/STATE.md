@@ -29,10 +29,10 @@ Last updated: 2026-09-29 by lead session 2 (Claude Code desktop, local, opened i
   the start of lead session 2 the first 80 lines of this file appeared on their own.
 - **Autonomy is A1 again (H-7, 2026-09-29).** The lead specs, dispatches, reviews and decides
   on its own; every merge to master and every push waits for the Owner's yes. A2 needs five
-  clean merges in a row (`method.md` §12); the streak is 1 (T-002). Any escaped defect demotes
-  one level (tripwire Q1).
+  clean merges in a row (`method.md` §12); the streak is 3 (T-002, T-003, T-004). Any escaped
+  defect demotes one level (tripwire Q1).
 - **M1's clock is running** since run 36445100361 (2026-09-28 15:38 UTC, head `dc401b9`); still
-  green on run 36455682835 (head `16e100e`). At each check-in, check
+  green on run 36557714268 (head `6c8b785`, 2026-09-29). At each check-in, check
   `gh run list --workflow=test.yml`; any red run on master restarts it and stops new work until
   green (tripwire Q4).
 - Pushing: fetch and merge origin first (never rebase), regenerate the derived pages
@@ -48,20 +48,18 @@ Last updated: 2026-09-29 by lead session 2 (Claude Code desktop, local, opened i
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-003 | 1 | `task/t-003-publish-numbers-report` at `56105a7`, worktree `../vetagent-t-003`, based on `f400b60` | review passed: 12 of 12 (`lead/reviews/T-003.md`); head unchanged since | the Owner (H-10) | Merge `--no-ff` in the H-10 batch |
-| T-004 | 3 | `task/t-004-deploy-runs-offline-suite` at `c577f69`, worktree `../vetagent-t-004`, based on `a3c9db0` | review passed in round 2: combined re-review 11 of 12, VERDICT ✅, RED-TEAM none (`lead/reviews/T-004.md`); head unchanged since | the Owner (H-10) | Merge `--no-ff` in the H-10 batch; its push to master deploys production (`deploy.yml` is in its own trigger) |
-| Level 0: W5 row after the Quick Intel run | 0 | `task/l0-backlog-w5` at `8eb7395` (`docs/BACKLOG.md`, regenerated `docs/OWNER.md`) | done on its branch; checks 27 of 27 | the Owner (H-10) | Merge in the H-10 batch (H-9 asked for it). If a bot regenerated `docs/OWNER.md` meanwhile, resolve by regenerating |
+| — | | | | | No task in flight. |
 
 ## Waiting on the Owner
 
-- **H-10 (asked 2026-09-29):** merge T-003, T-004 and the W5 row into master and push, in two
-  steps. (1) Fetch and merge origin (3 bot commits behind at 21:17 UTC), merge the three
-  branches, regenerate the derived pages, run the checks (28 steps), then push the merged
-  `master` to a preflight branch: `test.yml` runs every step on Linux, nothing deploys.
-  (2) If that run is green, push `master`: `test.yml` runs again and `deploy.yml` runs the new
-  gate on CI for the first time; if the gate is green it redeploys the unchanged `src/` and the
-  smoke test makes its tagged production calls; if red, nothing deploys. Then delete the
-  preflight branch. Default if unanswered: nothing is merged or pushed.
+- Nothing open for the lead. The Owner's own W5 steps (read Quick Intel's terms; the 17-call
+  check on W3's adversarial cohort) are in `docs/BACKLOG.md` and `docs/OWNER.md`.
+- (H-10 done 2026-09-29: merged origin (six bot commits), T-003 as `fec26df`, T-004 as
+  `d0eb7e8`, the W5 row as `6c8b785` (its `docs/OWNER.md` conflict resolved by regenerating);
+  checks 28 of 28. Preflight branch run 36557264402 green on Linux; pushed
+  `8daa0f7..6c8b785` (50 commits); `tests` run 36557714268 green; `deploy` run 36557714265
+  green: the gate reported "28 of 28 steps passed" in its log, then the deploy, the smoke test
+  and IndexNow passed. Preflight branch deleted.)
 - (H-9 answered 2026-09-29: update W5 with the method and the direction of the result, no
   figures, merged with T-003 and T-004. Figures derived from Quick Intel's answers stay out of
   this public repository, `lead/` included, until the Owner has read Quick Intel's terms.)
@@ -82,8 +80,9 @@ No task is specced. Candidates below; at A1 the lead may spec and dispatch any o
 merge and push wait for the Owner's yes. Items marked "Owner's call first" need the Owner before
 a spec.
 
-Suggested order (lead #2): the two follow-ups that finish T-002 and the deploy gate (T-004) are
-in flight; after them, the Level 3 hardening of `regenerate-derived.sh` below.
+Suggested order (lead #2): first the T-004 follow-up (the node-property variant, a one-line fix
+with its tests; the deploy gate is production-critical now), then the `second_oracle.py`
+report, then the Level 3 hardening of `regenerate-derived.sh` (its bots' mode on any argument).
 
 - Candidate, Level 3 area (the deploy gate), from T-004's round-2 re-review: a YAML node
   property (`&anchor` or `!tag`) before an unclosed quote still ends the job early in the
@@ -140,7 +139,8 @@ Python 3.13.4, 19.0 s): 26 of 27 steps passed; the red one was `tests/test_publi
 After T-001 (`0a3098d`, 2026-09-28): 27 of 27. **Lead session 2 at `24a0a73` (2026-09-29):
 27 of 27 in 19.0 s. After the Level 0 merge (`82acff3`): 27 of 27, and the run leaves the tree
 clean. After T-002 (`16e100e`): 27 of 27, clean tree; `tests/test_published_numbers.py` 70 of
-70. No failure is known.**
+70. After H-10 (`6c8b785`): 28 of 28 (T-004 added `tests/test_deploy_gate.py`, 125 of 125);
+`tests/test_published_numbers.py` 111 of 111; about 55 s locally. No failure is known.**
 Not part of the baseline: `tests/test_upstream_contract.py` and `tests/test_backfill.py`
 (network; CI jobs `upstream-contract` and `backfill-roundtrip`).
 **On CI:** `tests` was red from 2026-09-22 12:05 UTC to 2026-09-28: 32 runs, every one failing
@@ -149,8 +149,11 @@ at the step "Published accuracy figures match the benchmark". Run 36445100361 on
 `upstream-contract` and `backfill-roundtrip` succeeded. Run 36455682835 on `16e100e`
 (2026-09-28 17:05 UTC, the H-6 push) is green: `test`, `upstream-contract` and
 `backfill-roundtrip` succeeded; `benchmark` was skipped, as on every push (it runs only on a
-schedule or a manual dispatch). No deploy ran. After it, the latest run of each of the six
-workflows had succeeded.
+schedule or a manual dispatch). No deploy ran. On `6c8b785` (2026-09-29 10:47 UTC, the H-10
+push): `tests` run 36557714268 green, and `deploy` run 36557714265 green, the first deploy since
+2026-09-22 and the first to run the whole offline suite first: its gate step logged "28 steps
+from job 'test'" and "28 of 28 steps passed in 25.2s" before `pywrangler deploy`, the smoke
+test and IndexNow. After it, the latest run of each of the six workflows had succeeded.
 **No local side effect since `82acff3`:** `tests/test_number_coverage.py` restores
 `docs/EXPERIMENT_C.md` byte for byte, and `python lead/checks.py` now exits 1 when a run
 modifies a tracked file. If it lists one, find the step that wrote it; do not restore it by
@@ -158,6 +161,11 @@ hand and move on.
 
 ## Recent decisions
 
+- 2026-09-29: H-10 done as recommended: T-003, T-004 and the W5 row merged and pushed in two
+  steps, a preflight branch first (Linux, no deploy), then `master` (tests and a deploy). The
+  deploy now runs every offline step before it ships; `.github/scripts/offline_suite.py` and
+  its guard join the Level 3 list in `lead/QUALITY.md`. The T-004 round-2 residuals are one
+  follow-up candidate, per the round cap.
 - 2026-09-29: T-002 merged as `16e100e` (`--no-ff`, the tests-first commit kept) after a fresh
   review, 12 of 12 (`lead/reviews/T-002.md`), and pushed with the Owner's yes (H-6). The merge
   was clean (checks 27 of 27 on master, CI green on the pushed head), so autonomy is back to A1
@@ -193,6 +201,9 @@ hand and move on.
 
 ## Log (newest first; keep the last ~20 lines)
 
+- 2026-09-29: H-10 done. Merged origin, T-003, T-004, the W5 row; 28 of 28. Preflight run
+  green; pushed `8daa0f7..6c8b785`; `tests` and `deploy` green, the gate 28 of 28 on CI; all
+  six workflows green. Worktrees, task branches and the preflight branch removed.
 - 2026-09-29: W5 run finished. The first real run was rate limited on every other call (the
   free tier allows about one a second); a paced re-ask of those rows completed the set. The
   analysis (in chat, figures kept out of the repository) classes each answer as error, static
