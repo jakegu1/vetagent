@@ -209,9 +209,10 @@ def plan(which=None):
             _say("%17s simulation can settle -- do not pay expecting an answer on them" % "")
         unnamed = [r for r in rows if not CHAIN.get(r.get("chain"))]
         if unnamed:
-            _say("%17s %d on a chain with no entry in CHAIN (%s): no call is made for them"
+            _say("%17s %d on a chain with no entry in CHAIN (%s): recorded as not measured,"
                  % ("", len(unnamed), ", ".join(sorted(set(str(r.get("chain"))
                                                            for r in unnamed)))))
+            _say("%17s and no call is made for them" % "")
     calls = sum(1 for _, rows in sets for r in rows if CHAIN.get(r.get("chain")))
     spare = FREE_TIER_MONTHLY - calls
     _say()
@@ -324,16 +325,19 @@ def run(max_calls, which=None):
         for set_name, row in todo:
             chain = CHAIN.get(row.get("chain"))
             if chain is None:
-                continue
-            if made >= max_calls:
+                out.append(_saved_row(set_name, row, None,
+                                      "chain %r has no entry in CHAIN: not asked"
+                                      % row.get("chain")))
+            elif made >= max_calls:
                 _say("--max-calls %d reached: the rows after this are not asked." % max_calls)
                 break
-            last = _pace(last)
-            payload, err = fetch(row.get("address"), chain, key)
-            made += 1
-            out.append(_saved_row(set_name, row, payload, err))
-            if made % 10 == 0:
-                _say("  [%d/%d calls]" % (made, calls))
+            else:
+                last = _pace(last)
+                payload, err = fetch(row.get("address"), chain, key)
+                made += 1
+                out.append(_saved_row(set_name, row, payload, err))
+                if made % 10 == 0:
+                    _say("  [%d/%d calls]" % (made, calls))
             _save(path, which, selected, out)
             saved = len(out)
     except KeyboardInterrupt:
