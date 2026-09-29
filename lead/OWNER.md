@@ -51,6 +51,8 @@ offline steps first. M1's 7-day clock keeps running; nothing is in flight.
 
 ## Log (newest first)
 
+- **2026-09-29** · lead · Lead rotated to #3 at a clean boundary. Nothing for you to do: open a
+  new conversation in this repository's folder and type /lead when you want to continue.
 - **2026-09-29** · lead · H-10 done: T-003, T-004 and the W5 row merged and pushed. The first
   deploy since 2026-09-22 ran all 28 offline steps before shipping, then passed its smoke test.
 - **2026-09-29** · lead · You approved H-6 and H-7. T-002 merged and pushed; CI green on the

@@ -126,11 +126,34 @@ report, then the Level 3 hardening of `regenerate-derived.sh` (its bots' mode on
 
 ## Rotation
 
-Lead session 2 started 2026-09-29. The rule (`lead/config.yml`): rotate at about 0.4 of the
-context window or 72 hours, at a natural boundary. Lead session 2's context size was not
-measured (the lead has no reading of it); it reached a natural boundary after T-002 merged and
-CI came back green, with nothing in flight, so a rotation there costs nothing but a new session. Lead session 1 rotated on 2026-09-28 at
-50 of 100 parts of the window, after T-001 merged and CI came back green.
+The rule (`lead/config.yml`): rotate at about 0.4 of the context window or 72 hours, at a
+natural boundary. Lead session 2 rotated on 2026-09-29 after H-10 (everything merged, pushed and
+green, nothing in flight). Its context size could not be read from inside the session; it was
+judged past the threshold (two executors, five reviewers, one resume), an estimate and not a
+measurement. Lead session 1 rotated on 2026-09-28 at 50 of 100 parts of the window.
+
+## Handoff notes for lead #3
+
+- **Open the session in this repository's folder and type /lead.** Nothing is in flight and
+  nothing waits on the Owner; start from Next up (its suggested order is current).
+- **Unpushed:** `master` is ahead of origin by the lead's bookkeeping after `6c8b785` (the H-10
+  record and this handoff). Push them with the next batch the Owner approves.
+- **Every push that touches `src/`, `pyproject.toml`, `wrangler.jsonc` or `deploy.yml` now runs
+  the whole offline suite before deploying.** A red step, including a date-driven one (the next
+  is the 2026-10-16 parked-item review in `tests/test_gates_get_reviewed.py`), blocks deploys.
+  Plan a preflight branch push before any push that deploys, as H-10 did.
+- **M1 completes on 2026-10-05** if no `tests` run on master goes red; record it then in
+  `lead/QUALITY.md`'s milestone table and `lead/OWNER.md`.
+- **A2:** the clean-merge streak is 3 (T-002, T-003, T-004); propose A2 to the Owner after two
+  more.
+- **W5 is the Owner's.** Raw Quick Intel answers stay local and git-ignored; no figure derived
+  from them goes into this repository until the Owner has read Quick Intel's terms. The
+  remaining measurement (W3's 17-token adversarial cohort) needs a way to select those tokens
+  in `bench/second_oracle.py`, which does not exist yet, and uses the Owner's key: the Owner
+  runs it. Quick Intel's free tier allows about one call a second; pace calls at two seconds.
+- **Agents in parallel:** give each executor and reviewer its own scratchpad subfolder by name
+  (`lead/PITFALLS.md`). The Write and Edit tools decode backslash-u escapes into real
+  characters; scan `lead/` for non-ASCII control characters before committing.
 
 ## Baseline
 
@@ -197,10 +220,12 @@ hand and move on.
 | # | Session | From | To | Why it ended |
 |---|---|---|---|---|
 | 1 | Claude Code desktop, local (opened in the parent folder) | 2026-09-28 | 2026-09-28 | Rotation rule: context at 50 of 100 parts of the window |
-| 2 | Claude Code desktop, local (opened in this repository) | 2026-09-29 | | |
+| 2 | Claude Code desktop, local (opened in this repository) | 2026-09-29 | 2026-09-29 | Rotation rule at a natural boundary after H-10; context judged past the threshold (not measured) |
+| 3 | next session, opened in this repository | | | |
 
 ## Log (newest first; keep the last ~20 lines)
 
+- 2026-09-29: lead #2 hands off to lead #3 (rotation rule, natural boundary, nothing in flight).
 - 2026-09-29: H-10 done. Merged origin, T-003, T-004, the W5 row; 28 of 28. Preflight run
   green; pushed `8daa0f7..6c8b785`; `tests` and `deploy` green, the gate 28 of 28 on CI; all
   six workflows green. Worktrees, task branches and the preflight branch removed.
