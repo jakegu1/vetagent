@@ -202,6 +202,15 @@ jobs:
       - name: A bot's commit regenerates what it moves, and is tested
         run: python tests/test_bot_commits_stay_green.py
 
+      # deploy.yml ran two of the files above by hand before it deployed, and this workflow
+      # starts beside it rather than before it, so a push to src/ that broke any other step
+      # shipped anyway. The deploy job now runs every step of this job, read from this file
+      # by .github/scripts/offline_suite.py, before it installs its tooling. This pins that
+      # seam: the gate's place and condition, the full history it needs, one list, and the
+      # runner's fail-closed exits, shown on synthetic workflows.
+      - name: The deploy runs every step of this job before it deploys
+        run: python tests/test_deploy_gate.py
+
   # Upstream contract monitor: real API calls that check the fields we depend on still exist.
   # Separate from the unit tests: a third-party outage turns it red, which is the signal.
   # DECISIONS E30. This job was `continue-on-error: true` until 2026-09-20, for a reason
