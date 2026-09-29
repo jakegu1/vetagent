@@ -953,6 +953,67 @@ def test_no_rate_is_printed_over_zero_measured_rows():
               repr(got))
 
 
+def test_each_share_is_taken_over_the_rows_that_could_answer_it():
+    """Named change (a), T-005 round 2. A share printed over rows that could not answer its
+    question reads as a measured absence, which is the "0 of 122" this task replaces. The
+    sell-simulated share is over the answered rows; the honeypot share is over the simulations
+    that state is_Honeypot, and there is none when no simulation states it. report() returns
+    each printed share as (numerator, denominator). Every value here is invented."""
+    print("\n[report] each share is over the rows that could answer it, and returned as data")
+
+    def printed(text, k, n, word):
+        """True when one line carries `k of n` as whole numbers and names `word`."""
+        share = re.compile(r"(?<!\d)%d of %d(?!\d)" % (k, n))
+        return any(share.search(ln) and word in ln.lower() for ln in text.splitlines())
+
+    mixed = [
+        saved_row("MXNA", "adversarial", error="http 429"),
+        saved_row("MXNB", "adversarial", error="http 403"),
+        saved_row("MXNC", "adversarial", error="URLError"),
+        saved_row("MXND", "adversarial"),
+        saved_row("MXNE", "adversarial", answer={"tokenDetails": {"tokenName": "Synthetic"}}),
+        saved_row("MXNF", "adversarial", chain="unlisted-chain",
+                  error="chain 'unlisted-chain' has no entry in CHAIN: not asked",
+                  asked_ms=None),
+        saved_row("MXSA", "adversarial", answer=static_audit(True)),
+        saved_row("MXSB", "adversarial", answer=static_audit(False)),
+        saved_row("MXHT", "adversarial", answer=simulated(ASKED_MS - DAY_MS, True, "0", "95")),
+        saved_row("MXHF", "adversarial", answer=simulated(ASKED_MS - DAY_MS, False)),
+        saved_row("MXHU", "adversarial", answer=simulated(ASKED_MS - DAY_MS, None, "1", "2")),
+    ]
+    counts, out = capture(so.report, mixed, None)
+    adv = (counts or {}).get("adversarial") or {}
+    shares = adv.get("shares") or {}
+    check("the mixed set: 11 rows, 6 not measured, 2 without a sell simulation, 3 simulated",
+          (adv.get("rows"), adv.get("not_measured"), adv.get("no_sell_simulation"),
+           adv.get("sell_simulated")) == (11, 6, 2, 3), repr(adv))
+    check("returned: the sell-simulated share is 3 of the 5 answered",
+          tuple(shares.get("sell_simulated") or ()) == (3, 5), repr(adv.get("shares")))
+    check("returned: the honeypot share is 1 of the 2 simulations that state is_Honeypot",
+          tuple(shares.get("honeypot") or ()) == (1, 2), repr(adv.get("shares")))
+    check("printed: 3 of 5 sell simulated", printed(out, 3, 5, SS), out[-700:])
+    check("printed: 1 of 2 honeypots", printed(out, 1, 2, "honeypot"), out[-700:])
+
+    unstated = [
+        saved_row("USTA", "disputed", answer=simulated(ASKED_MS - DAY_MS, None)),
+        saved_row("USTB", "disputed", answer=simulated(ASKED_MS - 2 * DAY_MS, None, "1", "2")),
+        saved_row("USTC", "disputed", answer=static_audit(True)),
+        saved_row("USTD", "disputed", error="http 429"),
+    ]
+    counts, out = capture(so.report, unstated, None)
+    dis = (counts or {}).get("disputed") or {}
+    shares = dis.get("shares")
+    check("simulations that all leave is_Honeypot unstated: the shares are returned as data",
+          isinstance(shares, dict), repr(dis))
+    shares = shares if isinstance(shares, dict) else {}
+    check("... the sell-simulated share is 2 of the 3 answered",
+          tuple(shares.get("sell_simulated") or ()) == (2, 3), repr(shares))
+    check("... no honeypot share is returned", shares.get("honeypot") is None, repr(shares))
+    over = [ln for ln in out.splitlines()
+            if "honeypot" in ln.lower() and re.search(r"(?<!\d)\d+ of \d+(?!\d)", ln)]
+    check("... and none is printed", not over, over)
+
+
 def test_a_symbol_the_console_cannot_encode_does_not_crash_the_report():
     print("\n[report] a symbol outside the console's encoding is escaped, not fatal")
     sym = "X" + chr(0x4E2D) + chr(0x1F680)
