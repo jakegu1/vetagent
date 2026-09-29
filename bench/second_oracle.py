@@ -373,9 +373,9 @@ def run(max_calls, which=None):
             saved = len(out)
     except KeyboardInterrupt:
         _say()
-        _say("Interrupted: %s holds the %d rows saved before it; the rest were not asked."
-             % (path, saved))
-        _say("`--report %s` prints what they say." % path)
+        _say("Interrupted. %s holds the %d rows saved before it." % (path, saved))
+        _say("A call in progress at that moment may have been spent; its answer and every row")
+        _say("after it are not in the file. `--report %s` prints what the file says." % path)
         return 130
     _say("Wrote %s: %d rows, %d calls." % (path, len(out), made))
     _say()
