@@ -80,8 +80,36 @@ are disjoint at runtime, and this script must never be imported from the engine.
 
 USAGE
 
-    python bench/second_oracle.py --plan          # costs nothing, needs no key
-    QUICKINTEL_API_KEY=... python bench/second_oracle.py --run --max-calls 121
+    python bench/second_oracle.py --plan                     # costs nothing, needs no key
+    python bench/second_oracle.py --plan --set adversarial   # W3's cohort: GoPlus `unsafe`
+    QUICKINTEL_API_KEY=... python bench/second_oracle.py --run --set adversarial
+    python bench/second_oracle.py --report bench/second_oracle_adversarial.json
+
+In PowerShell, set the key first: $env:QUICKINTEL_API_KEY = "..."
+
+Without --set, --plan and --run take the disputed set, then the unknown set, as they always
+did, and --run writes bench/second_oracle.json. --set adversarial takes the rows of
+bench/results.json whose goplus_label is `unsafe`, the cohort W3 rests on, and --run writes
+bench/second_oracle_adversarial.json. Git ignores both (W5). --run:
+
+  - refuses to start, with exit status 2 and before any call, when its output file exists.
+    That file is the only copy of an earlier run's answers, each of which spent a call of a
+    small monthly allowance: move or rename it first;
+  - starts one call every PACE_SECONDS (2.0 s). The free tier allows about one a second, and
+    the first real run, paced at 0.25 s, was rate limited on about every other call;
+  - rewrites its file after every call, through a copy renamed over it, so an interrupted run
+    keeps every answer it was given, each with the time it was asked (`asked_ms`, epoch
+    milliseconds, UTC). A row on a chain with no entry in CHAIN is recorded as not measured,
+    and no call is made for it;
+  - stops at --max-calls, a hard ceiling (default: the free tier's monthly allowance);
+  - ends by printing the report that --report PATH prints from a saved file, which needs no
+    key and makes no call.
+
+The report puts each row in one class. "not measured": the call failed, or the answer holds
+no tokenDynamicDetails; counted apart, with its reason, and never inside a rate. "no sell
+simulation": tokenDynamicDetails.sell_Tax is null, a static audit, whose is_Honeypot is not
+read. "sell simulated": dated by lastUpdatedTimestamp, and aged from the time the row was
+asked; a missing time reads unknown, never 0 days.
 """
 
 import argparse
