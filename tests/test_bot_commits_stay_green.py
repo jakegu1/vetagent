@@ -28,11 +28,24 @@ So this pins the whole seam, derived from the files rather than typed:
     move -- read from each generator's own source, so a new generator that reads the
     archive, or the production artifacts, or git history, is required automatically;
   * and it refuses to commit anything under src/, because a bot push there would deploy.
+
+The script is also run for real (T-006). Any argument but `regenerate` is the bots' mode: it
+writes the bot's identity into the clone's git config, which every worktree of the clone
+shares, resets the checkout to origin, commits and pushes. On a laptop that is always an
+accident -- a typo, a case change, the CI line pasted from the script's header -- so off GitHub
+Actions it must be refused before a single git command, while the bots, `regenerate` and the
+usage stay as they were. Every call runs in a scratch repository that cannot reach this one
+(`_Scratch` says how), and where no usable bash exists those checks say they were not run.
 """
 import io
 import os
 import re
+import shutil
+import stat
+import subprocess
 import sys
+import tempfile
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -42,6 +55,7 @@ REGEN = ".github/scripts/regenerate-derived.sh"
 
 _FAILS = []
 _PASSED = 0
+_NOT_RUN = []
 
 
 def check(label, ok, detail=""):
@@ -52,6 +66,12 @@ def check(label, ok, detail=""):
     else:
         _FAILS.append(label)
         print("  FAIL  " + label + ("  " + detail if detail else ""))
+
+
+def not_run(label, why):
+    """A check this machine cannot run. It is said, and it never counts as passed."""
+    _NOT_RUN.append(label)
+    print("  NOT RUN HERE  %s  (%s)" % (label, why))
 
 
 def read(path):
@@ -221,6 +241,516 @@ def test_the_shared_script_runs_every_generator_a_bot_can_stale():
           re.search(r"rev-list --count", script) is not None)
 
 
+# ---------------------------------------------------------------------------------------------
+# T-006. The script, run for real. Any argument but `regenerate` is the bots' mode: it writes the
+# bot's identity into the clone's git config (every worktree of the clone shares it), resets the
+# checkout to origin, commits and pushes. Off GitHub Actions that is always an accident, so it
+# must be refused there before a single git command, and nothing else may change.
+# ---------------------------------------------------------------------------------------------
+
+# Off GitHub Actions: GITHUB_ACTIONS as a laptop has it (unset), and values that are not exactly
+# `true`. And what a person types by accident: a typo, a case change, and the CI usage line
+# pasted from the script's own header.
+OFF_ACTIONS = ((None, "GITHUB_ACTIONS unset"), ("1", "GITHUB_ACTIONS=1"),
+               ("false", "GITHUB_ACTIONS=false"), ("", "GITHUB_ACTIONS empty"),
+               ("True", "GITHUB_ACTIONS=True"))
+MISTAKES = ("regenrate", "Regenerate", "Snapshot 2026-09-22")
+# Variables close to GITHUB_ACTIONS in meaning or in name; GitHub sets both. Every refused call
+# sets them to the value that would open a check reading them instead, and the call on Actions
+# sets neither, so a check on the wrong variable fails both ways.
+DECOYS = {"CI": "true", "GITHUB_ACTION": "true"}
+
+SCRATCH_IDENTITY = {"user.name": "Scratch Repository", "user.email": "scratch@example.invalid"}
+TRACKED, COMMITTED, UNCOMMITTED = "notes.txt", "committed\n", "an uncommitted change\n"
+GENERATOR_LOG_VAR = "REGEN_TEST_GENERATOR_LOG"
+GENERATOR_STUB = '''"""A generator's stub in a scratch repository: it changes nothing, and says it ran."""
+import os
+import sys
+
+log = os.environ.get("%s")
+if log:
+    with open(log, "a") as f:
+        f.write(" ".join(sys.argv).replace(os.sep, "/") + chr(10))
+''' % GENERATOR_LOG_VAR
+
+# `regenerate` on its own, not as part of the script's name or of a path.
+REGENERATE_WORD = re.compile(r"(?<![\w./-])regenerate(?![\w./-])")
+# What `regenerate` must never run: the identity, fetch, reset, commit, push and their kin.
+WRITES = {"config", "fetch", "pull", "reset", "checkout", "switch", "restore", "clean", "stash",
+          "add", "commit", "push", "merge", "rebase", "update-ref"}
+CALL_TIMEOUT = 120
+
+
+def _no_git_vars():
+    """This process's environment without any GIT_* variable, so nothing inherited can point
+    git at another repository, work tree, index or config."""
+    return {k: v for k, v in os.environ.items() if not k.upper().startswith("GIT_")}
+
+
+def _write(path, text):
+    folder = os.path.dirname(path)
+    if not os.path.isdir(folder):
+        os.makedirs(folder)
+    with io.open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write(text)
+
+
+def _read_text(path):
+    with io.open(path, encoding="utf-8", errors="replace") as f:
+        return f.read()
+
+
+def _remove(tree):
+    # git writes its objects read-only, and on Windows rmtree cannot delete those.
+    for folder, dirs, files in os.walk(tree):
+        for name in dirs + files:
+            try:
+                os.chmod(os.path.join(folder, name), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+            except OSError:
+                pass
+    shutil.rmtree(tree, ignore_errors=True)
+
+
+def _same(path, other):
+    try:
+        return bool(path) and os.path.samefile(path, other)
+    except OSError:
+        return False
+
+
+def _inside(child, parent):
+    child, parent = [os.path.normcase(os.path.realpath(p)) for p in (child, parent)]
+    return child == parent or child.startswith(parent.rstrip(os.sep) + os.sep)
+
+
+def _short(text):
+    return " | ".join(l.strip() for l in text.strip().splitlines())[:400]
+
+
+def _git_commands(trace):
+    """The git commands a GIT_TRACE log shows, in order: "config", "fetch", ..."""
+    return re.findall(r"trace: built-in: git '?([a-z][a-z-]*)", trace)
+
+
+def _find_bash():
+    """(bash, folders to put first on PATH, None), or (None, [], why no bash is usable here).
+
+    On Windows the bash.exe that PATH finds is usually the one in the system directory, which
+    starts WSL: another machine, with its own git, Python and files. Git for Windows ships its
+    own bash, found here from git's own install (`git --exec-path`, up to three folders up),
+    never from PATH.
+    """
+    if os.name != "nt":
+        bash = shutil.which("bash")
+        return (bash, [], None) if bash else (None, [], "no bash on PATH")
+    try:
+        p = subprocess.run(["git", "--exec-path"], capture_output=True, encoding="utf-8",
+                           errors="replace", env=_no_git_vars(), timeout=60)
+    except (OSError, subprocess.SubprocessError) as e:
+        return None, [], "git could not be run to find its install (%s)" % e.__class__.__name__
+    folder = os.path.normpath(p.stdout.strip()) if p.returncode == 0 else ""
+    if not folder or folder == ".":
+        return None, [], "`git --exec-path` named no folder"
+    windows = os.path.normcase(os.environ.get("SystemRoot") or os.environ.get("WINDIR")
+                               or "C:/Windows")
+    for _ in range(3):
+        folder = os.path.dirname(folder)
+        for rel in (("bin", "bash.exe"), ("usr", "bin", "bash.exe")):
+            bash = os.path.join(folder, *rel)
+            low = os.path.normcase(bash)
+            if (os.path.isfile(bash) and not _inside(low, windows)
+                    and "windowsapps" not in low):
+                return bash, [os.path.dirname(bash)], None
+    return None, [], ("git's install has no bash.exe, and the one on PATH starts WSL, "
+                      "another machine")
+
+
+def _this_repository():
+    """This repository's git identity as git resolves it here, and its HEAD: the first things
+    the bots' mode would change if a call ever reached it."""
+    out = []
+    for args in (["config", "--get-regexp", "^user[.]"], ["rev-parse", "-q", "--verify", "HEAD"]):
+        try:
+            p = subprocess.run(["git"] + args, cwd=ROOT, env=_no_git_vars(), capture_output=True,
+                               encoding="utf-8", errors="replace", timeout=60)
+            out.append((p.returncode, p.stdout.strip()))
+        except (OSError, subprocess.SubprocessError) as e:
+            out.append((None, e.__class__.__name__))
+    return out
+
+
+class _Call(object):
+    """One run of the script: its exit status and output, the git commands it ran (GIT_TRACE),
+    the generators it ran, the scratch repository afterwards, and what changed there in words
+    ("" when nothing did)."""
+
+    def __init__(self, code, out, err, trace, generators, after, changed):
+        self.code, self.out, self.err = code, out, err
+        self.trace, self.git = trace, _git_commands(trace)
+        self.generators = generators
+        self.after, self.changed = after, changed
+
+
+class _Scratch(object):
+    """A scratch repository that cannot reach this one.
+
+    It is created under the system temporary directory, outside this repository, with a local
+    bare repository beside it as its origin. Every git command, the script's and this test's,
+    runs with the scratch directory as its working directory AND with GIT_DIR and GIT_WORK_TREE
+    naming it, so even a wrong working directory reaches no other repository (git itself unsets
+    both for the local transport to origin), after every GIT_* variable this process inherited
+    is dropped. It has its own identity, no commit signing and an empty hooks folder, and the
+    machine's global and system git config are not read (GIT_CONFIG_GLOBAL names an empty file,
+    GIT_CONFIG_NOSYSTEM=1).
+
+    It holds the real script, copied byte for byte to the same path; a stub for every generator
+    the script names, which changes nothing and records that it ran; and one tracked file with
+    an uncommitted change. Its one commit is on origin too. `base` is that state.
+    """
+
+    def __init__(self, script, generators):
+        self.root = tempfile.mkdtemp(prefix="regenerate-derived-")
+        try:
+            self._build(script, generators)
+        except BaseException:
+            self.remove()
+            raise
+
+    def _build(self, script, generators):
+        self.work = os.path.join(self.root, "work")
+        self.origin = os.path.join(self.root, "origin.git")
+        self.empty_config = os.path.join(self.root, "empty.gitconfig")
+        self.trace = os.path.join(self.root, "git-trace.log")
+        self.generator_log = os.path.join(self.root, "generators.log")
+        hooks = os.path.join(self.root, "no-hooks")
+        os.makedirs(hooks)
+        _write(self.empty_config, "")
+        self.must(["init", "-q", "--bare", self.origin], pinned=False)
+        self.must(["--git-dir=" + self.origin, "symbolic-ref", "HEAD", "refs/heads/master"],
+                  pinned=False)
+        self.must(["init", "-q", self.work], pinned=False)
+        self.must(["symbolic-ref", "HEAD", "refs/heads/master"])
+        for key, value in (("user.name", SCRATCH_IDENTITY["user.name"]),
+                           ("user.email", SCRATCH_IDENTITY["user.email"]),
+                           ("commit.gpgsign", "false"), ("core.hooksPath", hooks),
+                           ("maintenance.auto", "false")):
+            self.must(["config", key, value])
+        path = os.path.join(self.work, *REGEN.split("/"))
+        os.makedirs(os.path.dirname(path))
+        with open(path, "wb") as f:
+            f.write(script)
+        for gen in generators:
+            _write(os.path.join(self.work, *gen.split("/")), GENERATOR_STUB)
+        _write(os.path.join(self.work, TRACKED), COMMITTED)
+        self.must(["add", "-A"])
+        self.must(["commit", "-q", "-m", "scratch base"])
+        self.must(["remote", "add", "origin", self.origin])
+        self.must(["push", "-q", "origin", "master:master"])
+        _write(os.path.join(self.work, TRACKED), UNCOMMITTED)
+        self.base = self.state()
+
+    def env(self, pinned=True):
+        env = _no_git_vars()
+        env["GIT_CONFIG_GLOBAL"] = self.empty_config
+        env["GIT_CONFIG_NOSYSTEM"] = "1"
+        env["GIT_TERMINAL_PROMPT"] = "0"
+        if pinned:
+            env["GIT_DIR"] = os.path.join(self.work, ".git")
+            env["GIT_WORK_TREE"] = self.work
+        return env
+
+    def git(self, args, pinned=True, cwd=None):
+        """(exit status, stdout, stderr) of git; pinned to the scratch repository unless told."""
+        p = subprocess.run(["git"] + args, cwd=cwd or (self.work if pinned else self.root),
+                           env=self.env(pinned), capture_output=True, encoding="utf-8",
+                           errors="replace", timeout=60)
+        return p.returncode, p.stdout, p.stderr
+
+    def must(self, args, pinned=True):
+        code, out, err = self.git(args, pinned)
+        if code:
+            raise RuntimeError("git %s failed: %s" % (
+                next(a for a in args if not a.startswith("-")), _short(err)))
+        return out
+
+    def isolated(self):
+        """"" when this is its own repository, outside this one; otherwise what is wrong."""
+        wrong = []
+        if not _inside(self.root, tempfile.gettempdir()):
+            wrong.append("it is not under the system temporary directory")
+        if _inside(self.root, ROOT) or _inside(ROOT, self.root):
+            wrong.append("it overlaps this repository")
+        # Found from the working directory alone, as git would find it without GIT_DIR ...
+        code, out, _ = self.git(["rev-parse", "--show-toplevel"], pinned=False, cwd=self.work)
+        if code or not _same(out.strip(), self.work):
+            wrong.append("found from its directory, `git rev-parse --show-toplevel` is not it")
+        # ... and as every call pins it.
+        code, out, _ = self.git(["rev-parse", "--show-toplevel", "--absolute-git-dir"])
+        lines = out.splitlines()
+        if (code or len(lines) != 2 or not _same(lines[0], self.work)
+                or not _same(lines[1], os.path.join(self.work, ".git"))):
+            wrong.append("pinned by GIT_DIR and GIT_WORK_TREE, git names another repository")
+        code, out, _ = self.git(["config", "--get", "remote.origin.url"])
+        if code or not _same(out.strip(), self.origin):
+            wrong.append("its origin is not the bare repository beside it")
+        return "; ".join(wrong)
+
+    def state(self):
+        """What a refused call must leave as it was."""
+        _, ident, _ = self.git(["config", "--get-regexp", "^user[.]"])
+        pairs = dict(l.split(" ", 1) for l in ident.splitlines() if " " in l)
+        _, head, _ = self.git(["rev-parse", "-q", "--verify", "HEAD"])
+        _, commits, _ = self.git(["--git-dir=" + self.origin, "rev-list", "--all"], pinned=False)
+        try:
+            with io.open(os.path.join(self.work, TRACKED), encoding="utf-8", newline="") as f:
+                text = f.read()
+        except (IOError, OSError):
+            text = None
+        return {"user.name": pairs.get("user.name"), "user.email": pairs.get("user.email"),
+                TRACKED: text, "HEAD": head.strip(), "origin": sorted(commits.split())}
+
+    def changes(self, after):
+        """What differs from `base`, in words; "" when nothing does."""
+        base, out = self.base, []
+        for key in ("user.name", "user.email"):
+            if after[key] != base[key]:
+                out.append("%s is %r, was %r" % (key, after[key], base[key]))
+        if after[TRACKED] == COMMITTED:
+            out.append("the uncommitted change is gone (%s is back to its committed text)"
+                       % TRACKED)
+        elif after[TRACKED] != base[TRACKED]:
+            out.append("%s reads %r, not the uncommitted change" % (TRACKED, after[TRACKED]))
+        if after["HEAD"] != base["HEAD"]:
+            out.append("HEAD moved from %s to %s" % (base["HEAD"][:7], after["HEAD"][:7] or "?"))
+        new = sorted(set(after["origin"]) - set(base["origin"]))
+        if new or set(base["origin"]) - set(after["origin"]):
+            out.append("origin's commits changed (%d new)" % len(new))
+        return "; ".join(out)
+
+    def script_env(self, github_actions, decoys, path_first):
+        """The environment of one call: pinned git, GITHUB_REF_NAME=master, GITHUB_ACTIONS as
+        given (None: unset), the decoys if asked, and nothing else from GitHub."""
+        env = self.env(pinned=True)
+        for name in list(env):
+            if name.upper().startswith("GITHUB_") or name.upper() == "CI":
+                del env[name]
+        env["GITHUB_REF_NAME"] = "master"
+        if github_actions is not None:
+            env["GITHUB_ACTIONS"] = github_actions
+        if decoys:
+            env.update(DECOYS)
+        env["GIT_TRACE"] = self.trace
+        env[GENERATOR_LOG_VAR] = self.generator_log
+        env["PATH"] = os.pathsep.join(path_first + [env.get("PATH", "")])
+        return env
+
+    def run(self, bash, args, env):
+        for path in (self.trace, self.generator_log):
+            if os.path.exists(path):
+                os.remove(path)
+        try:
+            p = subprocess.run([bash, REGEN] + list(args), cwd=self.work, env=env,
+                               capture_output=True, encoding="utf-8", errors="replace",
+                               timeout=CALL_TIMEOUT)
+            code, out, err = p.returncode, p.stdout or "", p.stderr or ""
+        except subprocess.TimeoutExpired:
+            code, out, err = None, "", "no exit: timed out after %ds" % CALL_TIMEOUT
+        trace = _read_text(self.trace) if os.path.exists(self.trace) else ""
+        ran = (_read_text(self.generator_log).splitlines()
+               if os.path.exists(self.generator_log) else [])
+        after = self.state()
+        return _Call(code, out, err, trace, ran, after, self.changes(after))
+
+    def remove(self):
+        _remove(self.root)
+
+
+class _Harness(object):
+    """Finds a usable bash and runs the script in scratch repositories: a fresh one before the
+    first call and after any call that changed the last. When nothing can be run here, `bash`
+    is None and `why` says why."""
+
+    def __init__(self):
+        with open(os.path.join(ROOT, *REGEN.split("/")), "rb") as f:
+            self.script = f.read()
+        text = self.script.decode("utf-8", "replace")
+        self.generators = sorted(set(re.findall(
+            r"python ((?:bench|tools)/[a-z_]+\.py) --write", text)))
+        self.bot = {}
+        for key in ("user.name", "user.email"):
+            m = re.search(r'git config %s "([^"]+)"' % re.escape(key), text)
+            self.bot[key] = m.group(1) if m else None
+        self.scratch, self.dirty, self.calls, self.built = None, False, 0, 0
+        self.this_repository = _this_repository()
+        self.bash, first, self.why = _find_bash()
+        self.path_first = [os.path.dirname(sys.executable)] + first
+        if self.bash:
+            self.why = self._probe()
+            if self.why:
+                self.bash = None
+
+    def _probe(self):
+        """None when the bash found finds what the script runs: git, md5sum and python."""
+        env = _no_git_vars()
+        env["PATH"] = os.pathsep.join(self.path_first + [env.get("PATH", "")])
+        try:
+            p = subprocess.run([self.bash, "-c", "command -v git && command -v md5sum && "
+                                "command -v python"], cwd=tempfile.gettempdir(), env=env,
+                               capture_output=True, encoding="utf-8", errors="replace",
+                               timeout=60)
+        except (OSError, subprocess.SubprocessError) as e:
+            return "%s could not be started (%s)" % (self.bash, e.__class__.__name__)
+        if p.returncode:
+            return "%s does not find git, md5sum and python" % self.bash
+        return None
+
+    def fresh(self):
+        """A new scratch repository, checked before its first call. False when there is none,
+        and then nothing more is run."""
+        self.close()
+        self.built += 1
+        try:
+            scratch = _Scratch(self.script, self.generators)
+        except (OSError, RuntimeError, subprocess.SubprocessError) as e:
+            check("scratch repository %d can be built" % self.built, False, str(e))
+            self.bash, self.why = None, "no scratch repository could be built"
+            return False
+        wrong = scratch.isolated()
+        check("scratch repository %d is its own, before its first call: `git rev-parse "
+              "--show-toplevel` there is its directory, found and pinned; it is outside this "
+              "repository, in the system temporary directory; its origin is a bare repository "
+              "beside it" % self.built, not wrong, wrong)
+        if wrong:
+            scratch.remove()
+            self.bash, self.why = None, "a scratch repository failed its isolation check"
+            return False
+        self.scratch, self.dirty = scratch, False
+        return True
+
+    def call(self, args, github_actions=None, decoys=False):
+        """One run of the script as a _Call, or None when it cannot run here."""
+        if not self.bash:
+            return None
+        if (self.scratch is None or self.dirty) and not self.fresh():
+            return None
+        env = self.scratch.script_env(github_actions, decoys, self.path_first)
+        self.calls += 1
+        r = self.scratch.run(self.bash, args, env)
+        self.dirty = bool(r.changed)
+        return r
+
+    def close(self):
+        if self.scratch is not None:
+            self.scratch.remove()
+            self.scratch = None
+
+
+def test_the_calls_run_in_a_scratch_repository(h):
+    print("\n[bots] the script's modes run for real, in a scratch repository and nowhere else")
+    if not h.bash:
+        not_run("the script's modes, run in a scratch repository", h.why)
+        return
+    print("  bash: %s" % h.bash)
+    h.fresh()
+
+
+def test_off_actions_the_bots_mode_is_refused(h):
+    print("\n[bots] off GitHub Actions, any argument but `regenerate` is refused before any "
+          "git command")
+    print("  (every call here also has %s, which must not open it)"
+          % " and ".join("%s=%s" % kv for kv in sorted(DECOYS.items())))
+    if not h.bash:
+        not_run("%d calls off GitHub Actions" % (len(OFF_ACTIONS) * len(MISTAKES)), h.why)
+        return
+    for value, where in OFF_ACTIONS:
+        for arg in MISTAKES:
+            label = "%s, argument %r" % (where, arg)
+            r = h.call([arg], github_actions=value, decoys=True)
+            if r is None:
+                not_run(label, h.why)
+                continue
+            check(label + ": exit 2, and the error names GITHUB_ACTIONS and `regenerate`",
+                  r.code == 2 and "GITHUB_ACTIONS" in r.err
+                  and REGENERATE_WORD.search(r.err) is not None,
+                  "exit %s; stderr %r" % (r.code, _short(r.err)))
+            check("  and no git command ran", not r.trace.strip(),
+                  "git ran: %s" % " ".join(r.git))
+            check("  and the scratch repository is as it was: user.name and user.email, the "
+                  "uncommitted change, HEAD, origin", not r.changed, r.changed)
+
+
+def test_the_local_modes_are_unchanged(h):
+    print("\n[bots] no argument still prints the usage, and `regenerate` still only regenerates")
+    if not h.bash:
+        not_run("the usage and `regenerate`, on and off GitHub Actions", h.why)
+        return
+    wanted = sorted("%s --write" % g for g in h.generators)
+    for value, where in ((None, "GITHUB_ACTIONS unset"), ("true", "GITHUB_ACTIONS=true")):
+        label = "%s, no argument" % where
+        r = h.call([], github_actions=value)
+        if r is None:
+            not_run(label, h.why)
+            continue
+        check(label + ": the usage, exit 2", r.code == 2 and "usage:" in r.err,
+              "exit %s; stderr %r" % (r.code, _short(r.err)))
+        check("  and no git command ran, and nothing in the scratch repository changed",
+              not r.trace.strip() and not r.changed,
+              r.changed or "git ran: %s" % " ".join(r.git))
+    for value, where in ((None, "GITHUB_ACTIONS unset"), ("true", "GITHUB_ACTIONS=true")):
+        label = "%s, argument 'regenerate'" % where
+        r = h.call(["regenerate"], github_actions=value)
+        if r is None:
+            not_run(label, h.why)
+            continue
+        check(label + ": exit 0, having run every generator the script names",
+              r.code == 0 and sorted(set(r.generators)) == wanted,
+              "exit %s; ran %s; stderr %r" % (r.code, r.generators, _short(r.err)))
+        check("  and no git identity, reset, commit or push: user.name and user.email, the "
+              "uncommitted change, HEAD and origin as they were", not r.changed, r.changed)
+        wrote = sorted(set(r.git) & WRITES)
+        check("  and git ran only to read (the trace shows `diff`, and nothing that writes)",
+              "diff" in r.git and not wrote, "git ran: %s" % (" ".join(r.git) or "nothing"))
+
+
+def test_on_actions_the_bots_still_run(h):
+    print("\n[bots] on GitHub Actions the bots' mode still runs, and ends as it does today")
+    label = "GITHUB_ACTIONS=true, argument 'Snapshot 2026-09-22'"
+    if not h.bash:
+        not_run(label, h.why)
+        return
+    r = h.call(["Snapshot 2026-09-22"], github_actions="true")
+    if r is None:
+        not_run(label, h.why)
+        return
+    ident = {k: r.after[k] for k in ("user.name", "user.email")}
+    check(label + ": it gets past the check, and writes the bot's identity into the scratch "
+          "repository's config", all(h.bot.values()) and ident == h.bot,
+          "identity %s; the script's bot is %s; stderr %r" % (ident, h.bot, _short(r.err)))
+    check("  and the git trace saw it run git, so an empty trace above means no git ran",
+          "config" in r.git, "git ran: %s" % (" ".join(r.git) or "nothing"))
+    check("  and it ends as today with generators that change nothing: exit 0, \"the derived "
+          "pages are already current\"",
+          r.code == 0 and "the derived pages are already current" in r.out,
+          "exit %s; stdout %r; stderr %r" % (r.code, _short(r.out), _short(r.err)))
+    check("  and it ran the generators",
+          sorted(set(r.generators)) == sorted("%s --write" % g for g in h.generators),
+          "ran %s" % r.generators)
+    check("  and nothing was committed or pushed: HEAD unchanged, and origin has no new commit",
+          r.after["HEAD"] == h.scratch.base["HEAD"]
+          and r.after["origin"] == h.scratch.base["origin"], r.changed)
+
+
+def test_this_repository_was_not_reached(h):
+    print("\n[bots] this repository is as it was before the calls")
+    if not h.calls:
+        not_run("this repository's identity and HEAD after the calls",
+                h.why or "the script was not run")
+        return
+    now = _this_repository()
+    check("its git identity and HEAD are what they were before the first call",
+          now == h.this_repository, "before %s, after %s" % (h.this_repository, now))
+
+
 def main():
     print("=" * 68)
     print("A bot's commit regenerates what it moves, and is tested")
@@ -228,11 +758,28 @@ def main():
     test_every_pushing_workflow_is_tested_after()
     test_every_pushing_workflow_regenerates_after_its_data()
     test_the_shared_script_runs_every_generator_a_bot_can_stale()
+    started = time.time()
+    h = _Harness()
+    try:
+        test_the_calls_run_in_a_scratch_repository(h)
+        test_off_actions_the_bots_mode_is_refused(h)
+        test_the_local_modes_are_unchanged(h)
+        test_on_actions_the_bots_still_run(h)      # last: it writes the bot's identity
+    finally:
+        h.close()
+    test_this_repository_was_not_reached(h)
+    print("\n  the script ran %d times in %d scratch repositories; %.1fs"
+          % (h.calls, h.built, time.time() - started))
     print("\n" + "=" * 68)
-    print("%d passed, %d failed" % (_PASSED, len(_FAILS)))
+    print("%d passed, %d failed%s" % (_PASSED, len(_FAILS),
+                                      ", %d not run here" % len(_NOT_RUN) if _NOT_RUN else ""))
     if _FAILS:
         sys.exit(1)
-    print("all passed")
+    if _NOT_RUN:
+        print("everything that ran passed; %d check(s) could not run here and are not passed"
+              % len(_NOT_RUN))
+    else:
+        print("all passed")
 
 
 if __name__ == "__main__":
