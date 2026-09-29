@@ -751,6 +751,48 @@ def test_this_repository_was_not_reached(h):
           now == h.this_repository, "before %s, after %s" % (h.this_repository, now))
 
 
+# Named change (a), T-006 round 2. On GitHub Actions bash always exists, so a check that could
+# not run there is a guard that silently declined to look, and an ok step would hide it.
+SIMULATED_NO_BASH = "simulated here: no usable bash"
+
+
+def test_on_actions_a_check_that_could_not_run_fails_this_file():
+    print("\n[bots] on GitHub Actions a check that could not run fails this file; elsewhere "
+          "it is said")
+    # A child process runs this file with no usable bash, simulated where the file decides it
+    # (_find_bash reports none), once on GitHub Actions and once off it. The child skips this
+    # check, which would otherwise start another child.
+    me = test_on_actions_a_check_that_could_not_run_fails_this_file.__name__
+    module = os.path.splitext(os.path.basename(os.path.abspath(__file__)))[0]
+    child = ("import sys; sys.path.insert(0, %r); import %s as t; "
+             "t._find_bash = lambda: (None, [], %r); t.%s = lambda: None; t.main()"
+             % (HERE, module, SIMULATED_NO_BASH, me))
+    for value, where, want in (("true", "GITHUB_ACTIONS=true", 1),
+                               (None, "GITHUB_ACTIONS unset", 0)):
+        env = {k: v for k, v in os.environ.items() if k.upper() != "GITHUB_ACTIONS"}
+        env["PYTHONIOENCODING"] = "utf-8"
+        if value is not None:
+            env["GITHUB_ACTIONS"] = value
+        try:
+            p = subprocess.run([sys.executable, "-c", child], cwd=ROOT, env=env,
+                               capture_output=True, encoding="utf-8", errors="replace",
+                               timeout=CALL_TIMEOUT)
+            code, out = p.returncode, (p.stdout or "") + (p.stderr or "")
+        except subprocess.TimeoutExpired:
+            code, out = None, "no exit: timed out after %ds" % CALL_TIMEOUT
+        printed = "NOT RUN HERE" in out and SIMULATED_NO_BASH in out
+        summary = out.rsplit("=" * 68, 1)[-1]
+        if want:
+            says_why = "GitHub Actions" in summary and SIMULATED_NO_BASH in summary
+            check("%s, no usable bash: this file exits 1, prints the not-run lines, and its "
+                  "summary says why" % where, code == 1 and printed and says_why,
+                  "exit %s; not-run lines %s; summary %r" % (code, printed, _short(summary)))
+        else:
+            check("%s, no usable bash: this file exits 0 and prints the not-run lines" % where,
+                  code == 0 and printed,
+                  "exit %s; not-run lines %s; summary %r" % (code, printed, _short(summary)))
+
+
 def main():
     print("=" * 68)
     print("A bot's commit regenerates what it moves, and is tested")
@@ -770,6 +812,7 @@ def main():
     test_this_repository_was_not_reached(h)
     print("\n  the script ran %d times in %d scratch repositories; %.1fs"
           % (h.calls, h.built, time.time() - started))
+    test_on_actions_a_check_that_could_not_run_fails_this_file()
     print("\n" + "=" * 68)
     print("%d passed, %d failed%s" % (_PASSED, len(_FAILS),
                                       ", %d not run here" % len(_NOT_RUN) if _NOT_RUN else ""))
