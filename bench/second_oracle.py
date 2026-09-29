@@ -85,6 +85,8 @@ USAGE
 """
 
 import argparse
+import collections
+import datetime
 import json
 import os
 import sys
@@ -347,30 +349,188 @@ def run(max_calls, which=None):
              % (path, saved))
         return 130
     _say("Wrote %s: %d rows, %d calls." % (path, len(out), made))
-    report(out)
+    _say()
+    report(out, selected)
     return 0
 
 
-def report(out):
-    """The two numbers this whole exercise exists to produce."""
-    unknown = [r for r in out if r["set"] == "unknown"]
-    answered = [r for r in unknown if r.get("quickintel") and not r.get("error")]
-    print("\n--- ENGINE ROLE ---")
-    print("unknowns a second simulator could answer: %d of %d (%.0f%%)"
-          % (len(answered), len(unknown),
-             100.0 * len(answered) / max(len(unknown), 1)))
-    print("  -> if this is low, $79.99/month buys very little and the unknown rate")
-    print("     is not a data-source problem.")
+NOT_MEASURED = "not measured"
+NO_SELL_SIMULATION = "no sell simulation"
+SELL_SIMULATED = "sell simulated"
 
-    disputed = [r for r in out if r["set"] == "disputed"
-                and r.get("our_driver") == "honeypot"]
-    print("\n--- ORACLE ROLE ---")
-    print("simulator-adjudicable disputes checked: %d" % len(disputed))
-    print("  Read each by hand. If Quick Intel agrees with US against GoPlus, the")
-    print("  published false-positive rate is overstated and those were true")
-    print("  positives. If it agrees with GoPlus, the rate is real and the")
-    print("  head-to-head framing has to go. Either answer is worth having;")
-    print("  the current position is that we do not know which.")
+# Sets in the order the report prints them. A line per token for the first two: they are
+# small, and each of their tokens is read on its own. The unknown set is counted only.
+REPORT_ORDER = ("adversarial", "disputed", "unknown")
+PER_TOKEN = ("adversarial", "disputed")
+
+DAY_MS = 86400000
+_EPOCH = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
+_YEAR_10000_MS = 253402300800000
+
+
+def _epoch_ms(value):
+    """`value` as epoch milliseconds, or None when it is not a time: missing, not a number,
+    a bool, NaN, or outside the years 1970 to 9999."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return value if 0 < value < _YEAR_10000_MS else None
+
+
+def classify(row):
+    """(class, detail) for one saved row; every row is in exactly one of the three classes.
+
+    not measured       the call errored, or the answer is not a dict holding a
+                       tokenDynamicDetails dict. detail["reason"] says which.
+    no sell simulation tokenDynamicDetails.sell_Tax is null: a static audit. Its is_Honeypot
+                       is not read, so the row is never a honeypot and never sellable.
+    sell simulated     otherwise. detail carries sim_ms (lastUpdatedTimestamp, epoch ms, UTC),
+                       age_days (asked_ms minus sim_ms, in days), is_honeypot (a bool, or
+                       None when not stated), buy_tax and sell_tax. A time that is missing
+                       leaves sim_ms or age_days None: unknown, never 0.
+    """
+    detail = {"reason": None, "sim_ms": None, "age_days": None, "is_honeypot": None,
+              "buy_tax": None, "sell_tax": None}
+    if not isinstance(row, dict):
+        detail["reason"] = "the row is not a JSON object"
+        return NOT_MEASURED, detail
+    if row.get("error"):
+        detail["reason"] = str(row["error"])
+        return NOT_MEASURED, detail
+    answer = row.get("quickintel")
+    if answer is None:
+        detail["reason"] = "no answer recorded"
+        return NOT_MEASURED, detail
+    if not isinstance(answer, dict):
+        detail["reason"] = "the answer is not a JSON object"
+        return NOT_MEASURED, detail
+    dynamic = answer.get("tokenDynamicDetails")
+    if not isinstance(dynamic, dict):
+        detail["reason"] = "the answer holds no tokenDynamicDetails"
+        return NOT_MEASURED, detail
+    if dynamic.get("sell_Tax") is None:
+        return NO_SELL_SIMULATION, detail
+    sim = _epoch_ms(dynamic.get("lastUpdatedTimestamp"))
+    asked = _epoch_ms(row.get("asked_ms"))
+    honeypot = dynamic.get("is_Honeypot")
+    detail.update(sim_ms=sim,
+                  age_days=None if sim is None or asked is None else (asked - sim) / DAY_MS,
+                  is_honeypot=honeypot if isinstance(honeypot, bool) else None,
+                  buy_tax=dynamic.get("buy_Tax"), sell_tax=dynamic.get("sell_Tax"))
+    return SELL_SIMULATED, detail
+
+
+def _null(value):
+    return "null" if value is None else str(value)
+
+
+def _token_line(row, cls, detail):
+    """One token of the adversarial or disputed set: chain, symbol, the engine's verdict and
+    driver, the class, and the reason, or for a simulation its date, age and answer."""
+    row = row if isinstance(row, dict) else {}
+    line = "    %-9s %-10s %-8s %-14s %-19s" % (
+        _null(row.get("chain")), _null(row.get("symbol")), _null(row.get("our_verdict")),
+        _null(row.get("our_driver") or "-"), cls)
+    if cls == NOT_MEASURED:
+        return "%s %s" % (line, detail["reason"])
+    if cls == NO_SELL_SIMULATION:
+        return line.rstrip()
+    sim, age = detail["sim_ms"], detail["age_days"]
+    date = "date unknown" if sim is None else (
+        _EPOCH + datetime.timedelta(milliseconds=sim)).strftime("%Y-%m-%d %H:%M UTC")
+    if age is not None:
+        age = "age %.1f days" % (round(age, 1) + 0.0)       # + 0.0: never "-0.0"
+    elif sim is None:
+        age = "age unknown"
+    else:
+        age = "age unknown (no ask time recorded)"
+    honeypot = "not stated" if detail["is_honeypot"] is None else detail["is_honeypot"]
+    return "%s %s, %s; is_Honeypot %s, buy_Tax %s, sell_Tax %s" % (
+        line, date, age, honeypot, _null(detail["buy_tax"]), _null(detail["sell_tax"]))
+
+
+def _share(part, whole):
+    return "%d of %d (%.0f%%)" % (part, whole, 100.0 * part / whole)
+
+
+def _report_set(name, rows, selected, stream):
+    classed = [(row,) + classify(row) for row in rows]
+    n = collections.Counter(cls for _, cls, _ in classed)
+    reasons = collections.Counter(d["reason"] for _, cls, d in classed if cls == NOT_MEASURED)
+    sims = [d for _, cls, d in classed if cls == SELL_SIMULATED]
+    honeypot = sum(1 for d in sims if d["is_honeypot"] is True)
+    sellable = sum(1 for d in sims if d["is_honeypot"] is False)
+    if isinstance(selected, bool) or not isinstance(selected, int):
+        selected = None
+    not_asked = None if selected is None else max(selected - len(rows), 0)
+    counts = {"rows": len(rows), "not_measured": n[NOT_MEASURED],
+              "no_sell_simulation": n[NO_SELL_SIMULATION], "sell_simulated": len(sims),
+              "honeypot": honeypot, "sellable": sellable,
+              "honeypot_not_stated": len(sims) - honeypot - sellable,
+              "reasons": dict(reasons), "selected": selected, "not_asked": not_asked}
+
+    title = "%s: %d rows" % (name.upper(), len(rows))
+    if selected is not None:
+        title += " of the %d selected" % selected
+        if not_asked:
+            title += "; %d never asked, because the run stopped before them" % not_asked
+    _say(title, stream)
+    _say("  %-19s %4d   %s" % (NOT_MEASURED, n[NOT_MEASURED], "; ".join(
+        "%s x%d" % rk for rk in sorted(reasons.items(), key=lambda rk: (-rk[1], rk[0])))
+        or "-"), stream)
+    _say("  %-19s %4d" % (NO_SELL_SIMULATION, n[NO_SELL_SIMULATION]), stream)
+    _say("  %-19s %4d   is_Honeypot true %d, false %d, not stated %d"
+         % (SELL_SIMULATED, len(sims), honeypot, sellable, counts["honeypot_not_stated"]),
+         stream)
+    answered = len(rows) - n[NOT_MEASURED]
+    if not answered:
+        _say("  no row was answered, so no rate is printed", stream)
+    else:
+        line = "  of the %d answered, %s sell simulated" % (answered, _share(len(sims), answered))
+        if sims:
+            line += "; of those, %s honeypots" % _share(honeypot, len(sims))
+        _say(line, stream)
+    if name in PER_TOKEN:
+        for row, cls, detail in classed:
+            _say(_token_line(row, cls, detail), stream)
+    return counts
+
+
+def report(rows, selected=None, stream=None):
+    """Print the report on saved rows and return its counts, per set, as data:
+
+        {set: {"rows", "not_measured", "no_sell_simulation", "sell_simulated", "honeypot",
+               "sellable", "honeypot_not_stated", "reasons" (not measured, by reason),
+               "selected", "not_asked"}}
+
+    `selected` is the output file's count of rows each set had when the run started; with it,
+    rows the run never reached are counted as not asked. Without it (a file written by an
+    earlier version of this script has none) both are None.
+    """
+    groups = {}
+    for row in rows:
+        name = row.get("set") if isinstance(row, dict) else None
+        groups.setdefault(name if isinstance(name, str) and name else "(no set)",
+                          []).append(row)
+    order = ([s for s in REPORT_ORDER if s in groups]
+             + sorted(s for s in groups if s not in REPORT_ORDER))
+    selected = selected if isinstance(selected, dict) else {}
+    _say("%d rows in %d set%s: %s." % (len(rows), len(order), "" if len(order) == 1 else "s",
+                                       ", ".join(order) or "none"), stream)
+    _say("Each row is in one class:", stream)
+    _say("  %-19s the call failed, or the answer holds no tokenDynamicDetails. Counted"
+         % NOT_MEASURED, stream)
+    _say("  %-19s apart, with its reason, and never inside a rate." % "", stream)
+    _say("  %-19s tokenDynamicDetails.sell_Tax is null: a static audit. Its is_Honeypot is"
+         % NO_SELL_SIMULATION, stream)
+    _say("  %-19s not read: it is neither a honeypot nor sellable here." % "", stream)
+    _say("  %-19s dated by lastUpdatedTimestamp (UTC), aged from the time the row was"
+         % SELL_SIMULATED, stream)
+    _say("  %-19s asked. A time that was not recorded reads unknown." % "", stream)
+    counts = {}
+    for name in order:
+        _say(stream=stream)
+        counts[name] = _report_set(name, groups[name], selected.get(name), stream)
+    return counts
 
 
 def main(argv=None):
