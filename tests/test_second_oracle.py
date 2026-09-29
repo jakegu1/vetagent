@@ -1061,6 +1061,38 @@ def test_report_reads_a_saved_file_in_todays_shape():
           d.get("not_asked") is None and u.get("not_asked") is None, repr((d, u)))
 
 
+def test_a_selected_set_with_no_rows_is_reported_as_never_asked():
+    """Named change (b), T-005 round 2. A run interrupted during its first call, or run with
+    --max-calls 0, leaves a file that records its selection and holds no rows. The report must
+    account for every selected row: it names each selected set with its count as never asked,
+    and never prints "0 rows in 0 sets: none." for such a file. Every count is invented."""
+    print("\n[report] a selected set with no rows in the file is reported as never asked")
+    doc = {"n": 0, "selection": "adversarial", "selected": {"adversarial": 17}, "results": []}
+    with Sandbox(key=False) as sb:
+        path = sb.write("stopped.json", doc)
+        status, out = cli("--report", path)
+        check("--report exits 0 on a file with a selection and no rows", status == 0,
+              "status %r: %s" % (status, out[-300:]))
+        check("it does not print 0 rows in 0 sets", "0 sets" not in out, out[-300:])
+        never = [ln for ln in out.splitlines()
+                 if "adversarial" in ln.lower() and re.search(r"(?<![\w.])17(?![\w.])", ln)
+                 and re.search(r"\b(none|not|never)\b", ln.lower()) and "asked" in ln]
+        check("a line names the adversarial set, its 17 selected rows, and none of them asked",
+              bool(never), out[-400:])
+    adv = (report_counts([], {"adversarial": 17}) or {}).get("adversarial") or {}
+    check("report() returns the adversarial set: 17 selected, 0 rows, 17 not asked",
+          (adv.get("selected"), adv.get("rows"), adv.get("not_asked")) == (17, 0, 17),
+          repr(adv))
+    rows = [saved_row("PSDA", "disputed", error="http 429"),
+            saved_row("PSDB", "disputed", answer=static_audit(False))]
+    counts = report_counts(rows, {"disputed": 3, "unknown": 4}) or {}
+    unk = counts.get("unknown") or {}
+    check("stopped inside the disputed set: the unknown set is returned, 4 selected, 0 rows, "
+          "4 not asked",
+          (unk.get("selected"), unk.get("rows"), unk.get("not_asked")) == (4, 0, 4),
+          repr(sorted(counts)))
+
+
 def test_run_ends_with_the_report_that_report_prints():
     print("\n[report] --run prints, when it finishes, the report --report prints")
     with Sandbox() as sb:
