@@ -1,8 +1,8 @@
 """publish_numbers.py -- write the measured accuracy figures into what users read.
 
 Usage:
-    python bench/publish_numbers.py --check    # go red if anything is stale
-    python bench/publish_numbers.py --write    # rewrite them from bench/results.json
+    python bench/publish_numbers.py            # check mode: go red if anything is stale
+    python bench/publish_numbers.py --write    # rewrite what it can, then check what is left
 
 Why this exists
 ---------------
@@ -14,7 +14,7 @@ rate, 21.0% unknown and "recall not measurable", while `bench/results.md` said 5
 17.2% and a measured recall.
 
 Publishing a checkable number is only worth something if it survives being checked. So
-the figures are generated from `results.json` rather than typed, and `--check` runs in the
+the figures are generated from `results.json` rather than typed, and check mode runs in the
 test suite: the moment the benchmark moves, the copy that has not been regenerated goes
 red rather than quietly becoming a false claim.
 """
@@ -824,7 +824,11 @@ def figures():
     return out
 
 
-def scan(write):
+def scan(write, rewritten=None):
+    """(figures(), stale entries, files rewritten); a stale entry is (file, pattern, found,
+    expected). With `write`, every figure that differs from its measurement is rewritten, and
+    when `rewritten` is a list its entry is appended there too, so main() can say what moved
+    from what to what. The three return values stay as the callers that unpack them expect."""
     vals = figures()
     stale, changed = [], []
     for rel, pattern, key in TARGETS:
@@ -861,6 +865,8 @@ def scan(write):
                 io.open(path, "w", encoding="utf-8", newline="").write(
                     text[:start] + vals[key] + text[end:])
                 changed.append(rel)
+                if rewritten is not None:
+                    rewritten.append(stale[-1])
     return vals, stale, changed
 
 
@@ -1186,10 +1192,59 @@ def _is_cited_competitor_figure(line, all_lines, i, window=2):
     return bool(re.search(cite, near))
 
 
+def _cannot_fix(entry):
+    """Why --write cannot fix a stale entry from scan(), as the kinds main() reports: read from
+    what scan() puts in it, "pattern not found" or "file missing" as the value found, and
+    "not measured (<key>)" or ABSENT as the value expected. Empty for a figure that differs from
+    its measurement, which --write rewrites. A figure with no measurement whose sentence is gone
+    as well is of two kinds."""
+    _, _, found, want = entry
+    want = str(want)
+    return [kind for kind, hit in (("not measured", want.startswith("not measured (")),
+                                   ("pattern not found", found == "pattern not found"),
+                                   ("file missing", found == "file missing"),
+                                   (ABSENT, want == ABSENT)) if hit]
+
+
+# The file each key that figures() can leave out is measured in, by the key's prefix:
+# production_* from _production_unknown_pct() and _production_window(), power_* from
+# _owner_power_figures(). Every other key is computed from bench/results.json, which main()
+# requires before it scans, so such a key is missing only when nothing computes it.
+_MEASURED_IN = (("production_", "bench/production/verdicts.json"),
+                ("power_", "bench/owner_powers.json"))
+
+
+def _advice(kind, entries):
+    """What to do about the stale entries of one kind --write cannot fix, in one line."""
+    if kind == "pattern not found":
+        return ("the guarded sentence changed, so --write cannot find its figure. Restore the "
+                "sentence, or update its TARGETS pattern.")
+    if kind == "file missing":
+        return ("a file TARGETS guards is gone. Restore it, or update the TARGETS entries that "
+                "name it.")
+    if kind == ABSENT:
+        return ("docs/SCORECARD.md shows the form of its production row that bench/scorecard.py "
+                "is not printing now. Run `bash .github/scripts/regenerate-derived.sh "
+                "regenerate`.")
+    # Not measured. The entries name their keys; a reader needs the file to restore.
+    keys = sorted({str(want)[len("not measured ("):-1] for _, _, _, want in entries})
+    files = sorted({f for key in keys for prefix, f in _MEASURED_IN if key.startswith(prefix)})
+    unknown = [key for key in keys if not any(key.startswith(p) for p, _ in _MEASURED_IN)]
+    said = []
+    if files:
+        said.append("%s %s absent or unusable, so these figures have no measurement to check or "
+                    "to write. Restore or regenerate %s."
+                    % (" and ".join(files), "is" if len(files) == 1 else "are",
+                       "it" if len(files) == 1 else "them"))
+    if unknown:
+        said.append("Nothing computes %s: correct the key in TARGETS." % ", ".join(unknown))
+    return " ".join(said)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--write", action="store_true",
-                    help="rewrite the published figures from results.json")
+                    help="rewrite what it can, then check what is left")
     args = ap.parse_args()
 
     if not os.path.exists(RESULTS):
@@ -1203,9 +1258,16 @@ def main():
     # to 2026-09-28 every scheduled bot run succeeded while every `tests` run failed on this
     # guard.
     if args.write:
-        _, _, changed = scan(write=True)
-        if changed:
-            print("Rewrote: %s" % ", ".join(sorted(set(changed))))
+        rewritten = []
+        scan(write=True, rewritten=rewritten)
+        # Each figure with the value it found and the value it wrote: file names alone said
+        # nothing about what moved. Nothing at all when nothing was rewritten; an empty
+        # `Rewrote: ` line was the T-001 symptom.
+        if rewritten:
+            print("Rewrote %d figure(s):" % len(rewritten))
+            for rel, pattern, found, wrote in rewritten:
+                print("  %-18s found %-8s wrote %-8s  (%s)" % (rel, found, wrote, pattern[:44]))
+            print()
 
     vals, stale, _ = scan(write=False)
     print("Measured: n=%s, false positives %s%% on %s healthy tokens, unknown %s%%"
@@ -1248,17 +1310,34 @@ def main():
         print("Everything published matches the benchmark.")
         return 0
 
-    if (dead or unsourced) and not stale and not loose:
-        return 1
-
-    print("\n%d published figure(s) disagree with bench/results.json:" % len(stale))
-    for rel, pattern, found, want in stale:
-        print("  %-18s found %-8s expected %-8s  (%s)"
-              % (rel, found, want, pattern[:44]))
-    if args.write:
-        print("\n--write has rewritten every figure it can; it cannot fix what is listed above.")
-        return 1
-    print("\nRun `python bench/publish_numbers.py --write`, then redeploy.")
+    # What --write can rewrite, apart from what it cannot fix, each block printed only with
+    # something in it. One heading, `disagree with bench/results.json`, and one piece of advice,
+    # run --write, used to cover every entry: wrong for a sentence --write cannot find and a
+    # figure with no measurement, and wrong about the source of every figure taken from the
+    # production artifact, bench/owner_powers.json or docs/SCORECARD.md. With only an unclaimed
+    # percentage left it printed that heading with a count of 0.
+    fixable = [entry for entry in stale if not _cannot_fix(entry)]
+    unfixable = [entry for entry in stale if _cannot_fix(entry)]
+    fmt = "  %-18s found %-8s expected %-8s  (%s)"
+    if fixable:
+        print("\n%d published figure(s) differ from their measurement, and --write can rewrite "
+              "them:" % len(fixable))
+        for rel, pattern, found, want in fixable:
+            print(fmt % (rel, found, want, pattern[:44]))
+        print("\nRun `python bench/publish_numbers.py --write`, then redeploy.")
+    if unfixable:
+        print("\n%d guarded figure(s) that --write cannot fix:" % len(unfixable))
+        for rel, pattern, found, want in unfixable:
+            print(fmt % (rel, found, want, pattern[:44]))
+        # Then what to do: one line per kind present, however many entries it has, in the order
+        # the kinds first appear above.
+        kinds = []
+        for entry in unfixable:
+            kinds += [kind for kind in _cannot_fix(entry) if kind not in kinds]
+        print()
+        for kind in kinds:
+            print("  %s: %s" % (kind, _advice(kind, [entry for entry in unfixable
+                                                     if kind in _cannot_fix(entry)])))
     return 1
 
 
