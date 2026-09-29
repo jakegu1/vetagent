@@ -117,6 +117,12 @@ USER_AGENT = "vetagent-benchmark/1.0"
 # overrun on a free tier is how you lose the free tier.
 FREE_TIER_MONTHLY = 200
 
+# Consecutive calls start at least this far apart. The free tier allows about one call a
+# second: the first real run, on 2026-09-29, slept 0.25 s between calls and was rate limited
+# on about every other one, and each of those was a call of the month's allowance spent for
+# nothing and asked again by hand.
+PACE_SECONDS = 2.0
+
 
 def load_sets():
     """The two sets worth spending calls on, and nothing else."""
@@ -166,6 +172,17 @@ def fetch(address, chain, key):
         return None, type(e).__name__
 
 
+def _pace(last_start):
+    """Wait until PACE_SECONDS after the previous call started; return this call's start."""
+    if last_start is not None:
+        while True:
+            wait = last_start + PACE_SECONDS - time.monotonic()
+            if wait <= 0:
+                break
+            time.sleep(max(wait, 0.01))
+    return time.monotonic()
+
+
 def run(max_calls):
     key = os.environ.get("QUICKINTEL_API_KEY")
     if not key:
@@ -177,11 +194,12 @@ def run(max_calls):
     todo = ([dict(r, _set="disputed") for r in disputed]
             + [dict(r, _set="unknown") for r in unknown])[:max_calls]
 
-    out = []
+    out, last = [], None
     for i, row in enumerate(todo, 1):
         chain = CHAIN.get(row["chain"])
         if not chain:
             continue
+        last = _pace(last)
         payload, err = fetch(row["address"], chain, key)
         out.append({"address": row["address"], "symbol": row.get("symbol"),
                     "chain": row["chain"], "set": row["_set"],
@@ -191,7 +209,6 @@ def run(max_calls):
                     "quickintel": payload, "error": err})
         if i % 10 == 0:
             print("  [%d/%d]" % (i, len(todo)))
-        time.sleep(0.25)          # 5 calls/sec ceiling even on paid tiers
 
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump({"n": len(out), "results": out}, f, indent=2)
