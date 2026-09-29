@@ -94,7 +94,12 @@ import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RESULTS = os.path.join(HERE, "results.json")
+
+# One output file per selection, so that no run can write over another's answers. Git
+# ignores both (W5): a raw answer does not enter the repository until the owner has read
+# Quick Intel's terms.
 OUT = os.path.join(HERE, "second_oracle.json")
+OUT_ADVERSARIAL = os.path.join(HERE, "second_oracle_adversarial.json")
 
 # Quick Intel's honeypot endpoint runs a real transaction simulation -- their docs:
 # "Based on the simulation results, the buy, sell, and transfer taxes of that token are
@@ -124,35 +129,104 @@ FREE_TIER_MONTHLY = 200
 PACE_SECONDS = 2.0
 
 
-def load_sets():
-    """The two sets worth spending calls on, and nothing else."""
+def _disputed(row):
+    return row.get("goplus_label") == "safe" and row.get("verdict") == "high"
+
+
+def _unknown(row):
+    return row.get("verdict") == "unknown"
+
+
+def _adversarial(row):
+    return row.get("goplus_label") == "unsafe"
+
+
+# What --plan and --run ask about, set by set, in asking order. Without --set: the two sets
+# this script was written for. --set adversarial: the rows GoPlus labels `unsafe`, the cohort
+# W3 rests on, which neither of those two covers.
+SELECTIONS = {
+    None: (("disputed", _disputed), ("unknown", _unknown)),
+    "adversarial": (("adversarial", _adversarial),),
+}
+
+ABOUT = {
+    "disputed": "the published false-positive rate is made of these",
+    "unknown": "measures the engine role directly",
+    "adversarial": "GoPlus labels them `unsafe`: the cohort W3 rests on",
+}
+
+
+def output_path(which=None):
+    """A selection's fixed output file, read from the constants when called."""
+    return {None: OUT, "adversarial": OUT_ADVERSARIAL}[which]
+
+
+def _results_rows():
     with open(RESULTS, encoding="utf-8") as f:
-        rows = json.load(f)["rows"]
-    disputed = [r for r in rows
-                if r.get("goplus_label") == "safe" and r.get("verdict") == "high"]
-    unknown = [r for r in rows if r.get("verdict") == "unknown"]
-    return disputed, unknown
+        return json.load(f)["rows"]
 
 
-def plan():
-    disputed, unknown = load_sets()
-    adjudicable = [r for r in disputed if r.get("driver") == "honeypot"]
-    print("DISPUTED  %3d tokens -- the 6.0%% false-positive rate is made of these"
-          % len(disputed))
-    print("            of which simulator-adjudicable (driver=honeypot): %d"
-          % len(adjudicable))
-    print("            the other %d fire on impersonation/liquidity, which no sell"
-          % (len(disputed) - len(adjudicable)))
-    print("            simulation can settle -- do not pay expecting an answer on them")
-    print("UNKNOWN   %3d tokens -- measures the engine role directly" % len(unknown))
-    print()
-    print("TOTAL     %3d calls" % (len(disputed) + len(unknown)))
-    print("free API Testing tier: %d calls/month -> fits, %d to spare"
-          % (FREE_TIER_MONTHLY, FREE_TIER_MONTHLY - len(disputed) - len(unknown)))
-    print()
-    print("Full second-oracle labelling of all 576 tokens would be 576 calls:")
-    print("  three months of the free tier, or one month of Starter at $79.99.")
-    print("  Worth doing only if these 121 calls show the disagreement is real.")
+def select(which=None, rows=None):
+    """[(set name, its rows of bench/results.json)] for a selection, in asking order."""
+    rows = _results_rows() if rows is None else rows
+    return [(name, [r for r in rows if keep(r)]) for name, keep in SELECTIONS[which]]
+
+
+def _say(text="", stream=None):
+    """print(), except that a character the console cannot encode is escaped, not fatal.
+
+    The Owner's Windows console is GBK, and a token symbol outside it would otherwise raise
+    UnicodeEncodeError halfway through a report, after the calls were spent."""
+    stream = sys.stdout if stream is None else stream
+    encoding = getattr(stream, "encoding", None) or "ascii"
+    try:
+        text = text.encode(encoding, "backslashreplace").decode(encoding)
+    except LookupError:
+        text = text.encode("ascii", "backslashreplace").decode("ascii")
+    stream.write(text + "\n")
+
+
+def _duration(seconds):
+    return "%d s" % round(seconds) if seconds < 120 else "%d min" % round(seconds / 60.0)
+
+
+def plan(which=None):
+    """What a run would ask about and what it would cost. Costs nothing, needs no key."""
+    everything = _results_rows()
+    sets = select(which, everything)
+    for name, rows in sets:
+        _say("%-11s %4d tokens -- %s" % (name.upper(), len(rows), ABOUT[name]))
+        if name == "disputed":
+            adjudicable = [r for r in rows if r.get("driver") == "honeypot"]
+            _say("%17s of which simulator-adjudicable (driver=honeypot): %d"
+                 % ("", len(adjudicable)))
+            _say("%17s the other %d fire on impersonation/liquidity, which no sell"
+                 % ("", len(rows) - len(adjudicable)))
+            _say("%17s simulation can settle -- do not pay expecting an answer on them" % "")
+        unnamed = [r for r in rows if not CHAIN.get(r.get("chain"))]
+        if unnamed:
+            _say("%17s %d on a chain with no entry in CHAIN (%s): no call is made for them"
+                 % ("", len(unnamed), ", ".join(sorted(set(str(r.get("chain"))
+                                                           for r in unnamed)))))
+    calls = sum(1 for _, rows in sets for r in rows if CHAIN.get(r.get("chain")))
+    spare = FREE_TIER_MONTHLY - calls
+    _say()
+    _say("TOTAL       %4d calls, one every %.1f s: about %s"
+         % (calls, PACE_SECONDS, _duration(calls * PACE_SECONDS)))
+    _say("free API Testing tier: %d calls/month -> %s" % (
+        FREE_TIER_MONTHLY,
+        "fits, %d to spare" % spare if spare >= 0 else "does not fit: %d over" % -spare))
+    _say("  (what this month has already spent is not known here)")
+    if which is None:
+        months = -(-len(everything) // FREE_TIER_MONTHLY)
+        _say()
+        _say("Full second-oracle labelling of all %d tokens would be %d calls:"
+             % (len(everything), len(everything)))
+        _say("  %d month%s of the free tier, or one month of Starter at $79.99."
+             % (months, "" if months == 1 else "s"))
+        _say("  Worth doing only if these %d calls show the disagreement is real." % calls)
+    _say()
+    _say("--run writes %s" % output_path(which))
     return 0
 
 
@@ -183,26 +257,25 @@ def _pace(last_start):
     return time.monotonic()
 
 
-def run(max_calls):
+def run(max_calls, which=None):
     key = os.environ.get("QUICKINTEL_API_KEY")
     if not key:
         print("Set QUICKINTEL_API_KEY. Apply for the free API Testing tier at")
         print("https://quickintel.io/developers -- 200 calls/month, approval required.")
         return 2
 
-    disputed, unknown = load_sets()
-    todo = ([dict(r, _set="disputed") for r in disputed]
-            + [dict(r, _set="unknown") for r in unknown])[:max_calls]
+    path = output_path(which)
+    todo = [(set_name, row) for set_name, rows in select(which) for row in rows][:max_calls]
 
     out, last = [], None
-    for i, row in enumerate(todo, 1):
+    for i, (set_name, row) in enumerate(todo, 1):
         chain = CHAIN.get(row["chain"])
         if not chain:
             continue
         last = _pace(last)
         payload, err = fetch(row["address"], chain, key)
         out.append({"address": row["address"], "symbol": row.get("symbol"),
-                    "chain": row["chain"], "set": row["_set"],
+                    "chain": row["chain"], "set": set_name,
                     "our_verdict": row.get("verdict"), "our_driver": row.get("driver"),
                     "goplus": row.get("goplus_label"),
                     "outcome": row.get("outcome_label"),
@@ -210,9 +283,9 @@ def run(max_calls):
         if i % 10 == 0:
             print("  [%d/%d]" % (i, len(todo)))
 
-    with open(OUT, "w", encoding="utf-8") as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump({"n": len(out), "results": out}, f, indent=2)
-    print("\nWrote %s (%d calls)" % (OUT, len(out)))
+    print("\nWrote %s (%d calls)" % (path, len(out)))
     report(out)
     return 0
 
@@ -239,17 +312,21 @@ def report(out):
     print("  the current position is that we do not know which.")
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--plan", action="store_true",
-                    help="print the call budget and exit; costs nothing, needs no key")
-    ap.add_argument("--run", action="store_true", help="spend calls")
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--plan", action="store_true",
+                      help="print the call budget and exit; costs nothing, needs no key")
+    mode.add_argument("--run", action="store_true", help="spend calls")
+    ap.add_argument("--set", choices=sorted(k for k in SELECTIONS if k),
+                    help="for --plan and --run: this set instead of the disputed and "
+                         "unknown sets. adversarial: the rows GoPlus labels unsafe")
     ap.add_argument("--max-calls", type=int, default=FREE_TIER_MONTHLY,
                     help="hard ceiling; defaults to the free tier's monthly allowance")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
     if args.run:
-        return run(args.max_calls)
-    return plan()
+        return run(args.max_calls, args.set)
+    return plan(args.set)
 
 
 if __name__ == "__main__":
