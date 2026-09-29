@@ -22,7 +22,7 @@ These are the things I cannot do. Everything else in this project is mine.
 | When | Due | # | What you do | Blocked? |
 |---|---|---|---|---|
 | **11 days OVERDUE** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
-| in 17 days | 2026-10-16 | W5 | A second, independent sell-simulation source | **yes -- see below** |
+| in 17 days | 2026-10-16 | W5 | A second, independent sell-simulation source | no |
 | in 17 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
 
 ### W10 Create the two accounts the remaining directories need
@@ -36,7 +36,7 @@ These are the things I cannot do. Everything else in this project is mine.
 
 - **When:** 2026-10-16 (in 17 days)
 - **Why then:** needed for W3, which every accuracy claim rests on
-- **You know it is done when:** **Blocked** on a credential, not on engineering. Probed 2026-09-06: staysafu unreachable (SSL), quickintel 401, tokensniffer 401, de.fi public endpoint 404. Every candidate needed a paid key (**2026-09-15, from its pricing page:** Quick Intel now lists a free API Testing tier, 200 calls a month on approval, and a keyless pay-per-scan endpoint at $0.03 paid in USDC; whether its scan simulates a sell is not yet known; next owner step: apply for the testing tier) — this is a W9-shaped item that belongs to whoever holds the budget
+- **You know it is done when:** **Measured 2026-09-29; the credential no longer blocks it.** Probed 2026-09-06: staysafu unreachable (SSL), quickintel 401, tokensniffer 401, de.fi public endpoint 404; on 2026-09-15 Quick Intel added a free testing tier, and the owner obtained it. `python bench/second_oracle.py --run` then asked it about its 143-token set (21 disputed, 122 engine unknowns), paced to about one call a second after faster calls were rate limited; the raw answers stay local and git-ignored until the owner has read Quick Intel's terms. Each answer is classed as an error, a static audit only (no buy or sell tax, so no simulation), or a simulation dated by its `lastUpdatedTimestamp`, because it also returns months-old cached scans. Direction, figures withheld until the terms are read: it adds a recent sell simulation for part of the engine's unknowns, mostly on BSC and rarely on Base, every one of them sellable; on the honeypot disputes it simulated too few tokens recently to say whether the published false-positive rate is overstated. Not measured yet: the 17-token adversarial cohort W3 needs, mostly thin Base pools, where it rarely simulated; 17 calls of the remaining monthly quota would say. Done when that is measured and the owner has read the terms and decided whether to pay for it as an engine upstream (the lead recommends not before there are users)
 - **If you do nothing:** Every accuracy claim keeps resting on a single sell simulator. If it is wrong, we cannot tell, and neither can anyone reading the benchmark.
 
 ### W12 Decide the price-history trade-off
@@ -104,14 +104,12 @@ flowchart LR
     E1{{not a work item - DECISIONS.md B2 — the field...}}
     E2{{not a work item - archive depth needs ≥60...}}
     E3{{not a work item - the 2026-09-18 gate}}
-    E4{{not a work item - a credential, not on...}}
     GATE{{2026-09-18 gate - is anyone using it}}
     W5 -->|blocks| W4
     E1 -->|blocks| W6
     E2 -->|blocks| W7
     E3 -->|blocks| W38
     W3 -->|blocks| W40
-    E4 -->|blocks| W5
     W10 -->|answers| GATE
 ```
 
@@ -142,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- lead: T-002 review passed (12 of 12); H-6 and H-7 asked
-- T-002: --write exits 0 exactly when check mode would on the files it leaves
-- T-002: scan() reports a target with no measurement instead of raising KeyError
-- T-002: acceptance tests
-- lead: H-5 answered; Level 0 merged; T-002 in progress
-- W21 draft test: restore docs/EXPERIMENT_C.md byte for byte
-- lead/checks.py: fail when a run modifies a tracked file
-- lead: check-in #2; T-002 specced, H-5 asked
+- lead: T-004 passed round 2 (11 of 12, red-team none); H-10 asked
+- lead: T-004 round 2 in re-review; a pitfall the lead repeated while writing it
+- T-004: the runner refuses a test.yml holding a character Python ends a line at and YAML does not
+- T-004: the runner refuses a uses: other than actions/checkout and actions/setup-python
+- T-004: the runner refuses env:, working-directory: and shell: on a step
+- T-004: the runner refuses a folded run: block
+- T-004: the runner refuses a value that opens a quote, [ or { and does not close it on its line
+- T-004: named change (f) the rest of the class is refused, by the runner and the reader alike
 
-_11 more not shown (19 commits in total)._
+_53 more not shown (61 commits in total)._
 
 ## What I got wrong
 
