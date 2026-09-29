@@ -72,6 +72,7 @@ if [ "${GITHUB_ACTIONS:-}" != "true" ]; then
   echo "  which writes the bot's identity into this clone's git config, resets it to origin," >&2
   echo "  commits and pushes; it runs only on GitHub Actions, where GITHUB_ACTIONS is 'true'." >&2
   echo "  To update the derived pages here, run: bash .github/scripts/regenerate-derived.sh regenerate" >&2
+  echo "  Do not set GITHUB_ACTIONS by hand to get past this: that runs the bots' mode on this clone." >&2
   exit 2
 fi
 
