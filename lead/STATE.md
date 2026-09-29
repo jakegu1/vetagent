@@ -49,6 +49,7 @@ Last updated: 2026-09-29 by lead session 3 (Claude Code desktop, local, opened i
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
 | T-005 | 2 | `task/t-005-second-oracle-adversarial`, worktree `../vetagent-t-005` | executing | executor subagent | Collect READY or BLOCKED; then a fresh independent review |
+| T-006 | 3 | `task/t-006-regenerate-ci-only`, worktree `../vetagent-t-006` | executing | executor subagent | Collect READY or BLOCKED; then a fresh independent review and a red-team review |
 
 ## Waiting on the Owner
 
@@ -230,6 +231,11 @@ hand and move on.
   Wrote T-005 (Level 2): the Owner's remaining W5 step cannot be run safely today, because
   `bench/second_oracle.py` cannot select the adversarial cohort, paces calls faster than the
   free tier allows, and would overwrite the only copy of the earlier answers. Dispatched it.
+  Wrote T-006 (Level 3) and dispatched it in parallel (no file in common): the regeneration
+  script's bots' mode refuses to run outside GitHub Actions. Reordered from lead #2's list on
+  purpose: a mistyped argument there is a plausible accident that rewrites the clone's git
+  identity, can discard uncommitted work and pushes; the deploy gate's node-property variant
+  needs a contrived edit and `tests` catches it.
 - 2026-09-29: lead #2 hands off to lead #3 (rotation rule, natural boundary, nothing in flight).
 - 2026-09-29: H-10 done. Merged origin, T-003, T-004, the W5 row; 28 of 28. Preflight run
   green; pushed `8daa0f7..6c8b785`; `tests` and `deploy` green, the gate 28 of 28 on CI; all
