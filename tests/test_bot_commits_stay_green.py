@@ -250,11 +250,13 @@ def test_the_shared_script_runs_every_generator_a_bot_can_stale():
 # ---------------------------------------------------------------------------------------------
 
 # Off GitHub Actions: GITHUB_ACTIONS as a laptop has it (unset), and values that are not exactly
-# `true`. And what a person types by accident: a typo, a case change, and the CI usage line
-# pasted from the script's own header.
+# `true`, near misses included (named change (b)): a space before or after it and all capitals,
+# so a comparison on a prefix, a suffix or without case fails here. And what a person types by
+# accident: a typo, a case change, and the CI usage line pasted from the script's own header.
 OFF_ACTIONS = ((None, "GITHUB_ACTIONS unset"), ("1", "GITHUB_ACTIONS=1"),
                ("false", "GITHUB_ACTIONS=false"), ("", "GITHUB_ACTIONS empty"),
-               ("True", "GITHUB_ACTIONS=True"))
+               ("True", "GITHUB_ACTIONS=True"), (" true", "GITHUB_ACTIONS=' true'"),
+               ("true ", "GITHUB_ACTIONS='true '"), ("TRUE", "GITHUB_ACTIONS=TRUE"))
 MISTAKES = ("regenrate", "Regenerate", "Snapshot 2026-09-22")
 # Variables close to GITHUB_ACTIONS in meaning or in name; GitHub sets both. Every refused call
 # sets them to the value that would open a check reading them instead, and the call on Actions
