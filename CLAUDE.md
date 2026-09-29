@@ -49,9 +49,11 @@ landing page sends `vetagent-landing-demo`. Hand-run probes were the only untagg
 left, and they are the ones aimed at the endpoint most often. Anything `vetagent-*` is
 filtered as ours.
 
-Two more of ours that are not tagged and should be watched: `.mcp.json` points the owner's
-editor at production, so `claude-code` is the owner -- it is in `AMBIGUOUS_CLIENTS` too, and
-it is connect-only today, but one real `assess_token_risk` from the editor enters the gate's
+Two more of ours should be watched. `.mcp.json` points the owner's editor at production, and
+since 82e2470 it sends `x-mcp-client: vetagent-owner-editor`, so the editor's calls are filed
+under a `vetagent-*` name and filtered as ours. That is read from the configuration; the usage
+data has not been checked for it. Without the header the editor arrives as `claude-code`, which
+is in `AMBIGUOUS_CLIENTS` too, and one real `assess_token_risk` from it would enter the gate's
 evidence as a stranger. And a browser opened on the landing page without the demo button
 arrives as `mozilla`.
 
