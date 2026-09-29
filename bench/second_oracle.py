@@ -225,8 +225,10 @@ def plan(which=None):
         _say("  %d month%s of the free tier, or one month of Starter at $79.99."
              % (months, "" if months == 1 else "s"))
         _say("  Worth doing only if these %d calls show the disagreement is real." % calls)
+    path = output_path(which)
     _say()
-    _say("--run writes %s" % output_path(which))
+    _say("--run writes %s%s" % (path, " -- it exists, so --run refuses to start until it is"
+                                      " moved" if os.path.exists(path) else ""))
     return 0
 
 
@@ -257,15 +259,25 @@ def _pace(last_start):
     return time.monotonic()
 
 
+def _refuse(path):
+    _say("Refusing to start: %s already exists." % path)
+    _say("It holds an earlier run's answers, and nothing else keeps a copy: git ignores it.")
+    _say("Move or rename it to keep it, or delete it if it holds nothing worth keeping, then")
+    _say("run again. This script never writes over it.")
+    return 2
+
+
 def run(max_calls, which=None):
     key = os.environ.get("QUICKINTEL_API_KEY")
     if not key:
         print("Set QUICKINTEL_API_KEY. Apply for the free API Testing tier at")
         print("https://quickintel.io/developers -- 200 calls/month, approval required.")
         return 2
-
     path = output_path(which)
-    todo = [(set_name, row) for set_name, rows in select(which) for row in rows][:max_calls]
+    if os.path.exists(path):
+        return _refuse(path)
+
+    todo =[(set_name, row) for set_name, rows in select(which) for row in rows][:max_calls]
 
     out, last = [], None
     for i, (set_name, row) in enumerate(todo, 1):
