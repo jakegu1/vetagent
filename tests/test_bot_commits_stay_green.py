@@ -749,7 +749,30 @@ def test_this_repository_was_not_reached(h):
         return
     now = _this_repository()
     check("its git identity and HEAD are what they were before the first call",
-          now == h.this_repository, "before %s, after %s" % (h.this_repository, now))
+          now == h.this_repository, _what_moved(h.this_repository, now))
+
+
+def _what_moved(before, after):
+    """What differs between two readings of _this_repository(), in words: the names of the
+    user.* keys that changed, never their values, which on a laptop are the owner's own and
+    would travel with any output pasted into a public file (named change (c))."""
+    def keys(reading):
+        code, text = reading
+        found = {}
+        if code is not None:
+            for line in text.splitlines():
+                key, _, value = line.partition(" ")
+                found.setdefault(key, []).append(value)
+        return found
+    b, a = keys(before[0]), keys(after[0])
+    moved = [k for k in sorted(set(b) | set(a)) if b.get(k) != a.get(k)]
+    out = ["changed: %s (values not shown)" % ", ".join(moved)] if moved else []
+    if not moved and before[0] != after[0]:
+        out.append("reading its user.* config went differently (exit %s, then %s)"
+                   % (before[0][0], after[0][0]))
+    if before[1] != after[1]:
+        out.append("HEAD moved")
+    return "; ".join(out)
 
 
 # Named change (a), T-006 round 2. On GitHub Actions bash always exists, so a check that could
