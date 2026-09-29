@@ -347,11 +347,11 @@ def run(max_calls, which=None):
         _say()
         _say("Interrupted: %s holds the %d rows saved before it; the rest were not asked."
              % (path, saved))
+        _say("`--report %s` prints what they say." % path)
         return 130
     _say("Wrote %s: %d rows, %d calls." % (path, len(out), made))
     _say()
-    report(out, selected)
-    return 0
+    return report_file(path)
 
 
 NOT_MEASURED = "not measured"
@@ -533,18 +533,47 @@ def report(rows, selected=None, stream=None):
     return counts
 
 
+def load_results(path):
+    """(rows, selected) from a saved file: today's {"n", "results"} object, a later one with
+    "selected", or a bare list of rows. Raises OSError or ValueError when it is none of those."""
+    with open(path, encoding="utf-8") as f:
+        doc = json.load(f)
+    rows = doc.get("results") if isinstance(doc, dict) else doc
+    if not isinstance(rows, list):
+        raise ValueError("it holds no list of results")
+    selected = doc.get("selected") if isinstance(doc, dict) else None
+    return rows, selected if isinstance(selected, dict) else None
+
+
+def report_file(path, stream=None):
+    """--report PATH: the report on a saved file. Needs no key and makes no call."""
+    try:
+        rows, selected = load_results(path)
+    except (OSError, ValueError) as e:
+        _say("Cannot report on %s: %s" % (path, e), stream)
+        return 2
+    _say("Report on %s" % path, stream)
+    report(rows, selected, stream)
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     mode = ap.add_mutually_exclusive_group()
     mode.add_argument("--plan", action="store_true",
                       help="print the call budget and exit; costs nothing, needs no key")
     mode.add_argument("--run", action="store_true", help="spend calls")
+    mode.add_argument("--report", metavar="PATH",
+                      help="print the report on a saved results file; costs nothing, "
+                           "needs no key")
     ap.add_argument("--set", choices=sorted(k for k in SELECTIONS if k),
                     help="for --plan and --run: this set instead of the disputed and "
                          "unknown sets. adversarial: the rows GoPlus labels unsafe")
     ap.add_argument("--max-calls", type=int, default=FREE_TIER_MONTHLY,
                     help="hard ceiling; defaults to the free tier's monthly allowance")
     args = ap.parse_args(argv)
+    if args.report is not None:
+        return report_file(args.report)
     if args.run:
         return run(args.max_calls, args.set)
     return plan(args.set)
