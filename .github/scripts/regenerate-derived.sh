@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Regenerate every page that quotes something a bot collects, and push it as its own commit.
 #
-#   bash .github/scripts/regenerate-derived.sh "Snapshot 2026-09-22"   # CI: commit + push
+#   bash .github/scripts/regenerate-derived.sh "Snapshot 2026-09-22"   # CI only: commit + push
 #   bash .github/scripts/regenerate-derived.sh regenerate               # local: files only
 #
 # WHY THIS EXISTS. On 2026-09-21 each scheduled bot left master red, differently:
@@ -23,6 +23,15 @@
 # commit away, takes origin's head, and regenerates. It refuses to start if the runner
 # holds a commit that never reached origin: that could only be data whose push failed, and
 # a reset would destroy the only copy.
+#
+# WHY IT REFUSES OFF GITHUB ACTIONS. Any argument but `regenerate` is the bots' mode, and its
+# first act is to write the bot's identity into this clone's git config, which every worktree
+# of the clone shares. Then, unless the checkout holds a commit origin lacks, it resets the
+# checkout to origin, discarding uncommitted work, and commits and pushes what regenerating
+# moved. On a laptop that is always an accident -- a typo, a case change, the CI line above
+# pasted -- so the bots' mode runs only where GitHub Actions sets GITHUB_ACTIONS=true, and
+# anywhere else it stops with exit 2 before the first git command.
+# tests/test_bot_commits_stay_green.py runs both sides for real, in scratch repositories.
 set -uo pipefail
 
 mode="${1:-}"
@@ -54,6 +63,15 @@ if [ "$mode" = "regenerate" ]; then
 fi
 if [ -z "$mode" ]; then
   echo "usage: regenerate-derived.sh '<commit subject prefix>' | regenerate" >&2
+  exit 2
+fi
+
+# The bots' mode from here on, so nothing below runs off GitHub Actions (see the header).
+if [ "${GITHUB_ACTIONS:-}" != "true" ]; then
+  echo "regenerate-derived.sh: refusing '${mode}': any argument but 'regenerate' is the bots' mode," >&2
+  echo "  which writes the bot's identity into this clone's git config, resets it to origin," >&2
+  echo "  commits and pushes; it runs only on GitHub Actions, where GITHUB_ACTIONS is 'true'." >&2
+  echo "  To regenerate the derived pages here: bash .github/scripts/regenerate-derived.sh regenerate" >&2
   exit 2
 fi
 
