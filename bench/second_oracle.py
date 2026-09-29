@@ -1,5 +1,8 @@
 """second_oracle.py — buy the two answers that decide whether a second judge is worth paying for.
 
+The analysis down to USAGE was written on 2026-09-06, its two corrections on 2026-09-07, and its
+figures are kept as they were then; `--plan` prints today's counts from bench/results.json.
+
 WHAT THIS IS FOR
 
 VetAgent has one sell simulator (honeypot.is) and one labelling oracle (GoPlus). Both are
