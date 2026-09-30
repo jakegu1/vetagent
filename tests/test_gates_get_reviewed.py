@@ -33,16 +33,20 @@ OPPS = os.path.join(ROOT, "docs", "OPPORTUNITIES.md")
 
 # The gates that must exist, pinned here so removing one is itself a failure.
 #
-# An external audit forced today = 2026-09-19 in a scratch copy and tried four ways to
-# escape the overdue gate. Three failed correctly: no Resolved line -> RED, a bare
-# "Resolved:" -> RED, "Resolved: no" -> RED. Two succeeded:
+# An external audit forced today = 2026-09-19 in a scratch copy and tried to escape the
+# overdue gate. This comment used to say three escapes were refused: no Resolved line, a
+# bare "Resolved:", and "Resolved: no". Only the first ever was. The due-gate check
+# looked for the word and nothing after it, so until T-007 a bare and a "no" resolution
+# both passed, as did any placeholder (measured 2026-09-30, today forced to 2026-10-16).
+# Both are refused since: gate_row_answered() wants a finding, an arrow and a decision,
+# and the self-tests below show those refusals on every run. Two escapes worked, and
+# would again without this list:
 #
 #     deleting the 2026-09-18 row entirely      -> GREEN
 #     changing its date to 2027-09-18           -> GREEN
 #
-# So the check was sound against a lazy answer and defenceless against removing the
-# question. That is the more likely failure of the two: nobody writes "Resolved: no" to
-# dodge a gate, but a table row quietly disappears during an edit and nothing notices.
+# So a lazy answer and a removed question were both open, and this list closes the
+# second: a table row can quietly disappear during an edit and nothing would notice.
 # test_rounds.py already pins every commit; this file pinned nothing.
 #
 # Changing this list is allowed. Doing it silently is not -- it now requires a commit
@@ -89,6 +93,33 @@ STRATEGY = os.path.join(ROOT, "docs", "STRATEGY.md")
 # added there without also becoming enforceable here.
 _GATE_ROW = re.compile(r"^\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*([^|]+?)\s*\|", re.M)
 
+# The arrow between a finding and a decision: the ASCII one the due-gate check's failure
+# message asks for, and U+2192, the one the table's own action column uses.
+_ARROWS = ("->", chr(0x2192))
+
+
+def gate_row_answered(row):
+    """True when a gate row carries a written conclusion. The one statement of the rule.
+
+    The conclusion is the text after the row's first "Resolved:". It must hold an arrow,
+    "->" or U+2192, with at least one letter or digit on each side of it, both sides
+    within that text: "Resolved: <what the measurement said> -> <decision>". The arrows of
+    the action column come before "Resolved:" and answer nothing. Markdown emphasis,
+    backticks, pipes and whitespace are not content, so a bare "Resolved:", a one-word
+    "Resolved: no", "Resolved: TBD", "Resolved: -> continue" and "**Resolved:** ** -> **"
+    are all refused. Undecided is an answer ("... -> undecided"); silence is not.
+
+    The due-gate check below calls it. Keep its name and signature: T-009 relies on them.
+    """
+    _, found, conclusion = row.partition("Resolved:")
+    content = [i for i, ch in enumerate(conclusion) if ch.isalnum()]
+    if not found or not content:
+        return False
+    # An arrow lying between the first letter or digit and the last one has content on
+    # both sides of it.
+    between = conclusion[content[0] + 1:content[-1]]
+    return any(arrow in between for arrow in _ARROWS)
+
 
 def test_strategy_gates_are_answered_when_they_fall_due():
     """A gate nobody is obliged to answer is not a gate.
@@ -98,8 +129,9 @@ def test_strategy_gates_are_answered_when_they_fall_due():
     and this test kept it live, and neither covered it. STRATEGY.md said "skipping one
     silently isn't allowed" and nothing enforced that sentence.
 
-    A gate that is due must carry a "Resolved:" line in the same table row, stating what
-    the measurement said and what was decided. Undecided is allowed; silent is not.
+    A gate that is due must carry a written conclusion in its own table row, stating what
+    the measurement said and what was decided: "Resolved: <finding> -> <decision>", as
+    gate_row_answered() defines it. Undecided is allowed; silent is not.
 
     The counting rule that would answer this gate was broken at the other end. It read
     "more than one client or more than one country", and this repository ships a
@@ -107,10 +139,16 @@ def test_strategy_gates_are_answered_when_they_fall_due():
     one curl from anywhere came to two "clients": two self-generated data points about
     to answer "is anyone using it" with yes. Forcing a written conclusion is only half
     of the fix. The instrument that produces the conclusion is pinned separately, in
-    tests/test_usage_gate.py.  This check was watched failing before it was trusted.
-    With today forced to 2026-09-19 in a scratch copy, an overdue gate carrying no
-    Resolved line turned it red, so did a bare "Resolved:", and so did "Resolved: no" --
-    the three escapes listed against PINNED_GATES above.
+    tests/test_usage_gate.py.
+
+    This docstring used to say the check was watched failing before it was trusted: with
+    today forced to 2026-09-19, no Resolved line turned it red, so did a bare
+    "Resolved:", and so did "Resolved: no". Only the first ever did. The check looked for
+    the word and nothing after it, so until T-007 a bare and a "no" resolution both
+    passed, as did any placeholder (measured 2026-09-30, today forced to 2026-10-16).
+    Both are refused since, and the refusals are no longer prose: the self-tests below
+    run this function against a synthetic table on every run, and the file fails if one
+    of those escapes goes green.
     """
     print("\n[gates] STRATEGY decision gates are answered on time")
     whole = io.open(STRATEGY, encoding="utf-8").read()
@@ -131,7 +169,7 @@ def test_strategy_gates_are_answered_when_they_fall_due():
     for date_str, name in rows:
         due = datetime.date.fromisoformat(date_str)
         line = [ln for ln in text.splitlines() if ln.startswith("| " + date_str)]
-        resolved = any("Resolved:" in ln for ln in line)
+        resolved = any(gate_row_answered(ln) for ln in line)
         if due <= today:
             check("gate %s (%s) is due and carries a written conclusion"
                   % (date_str, name[:34]), resolved,
