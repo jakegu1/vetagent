@@ -182,14 +182,18 @@ def test_strategy_gates_are_answered_when_they_fall_due():
         return
     end = whole.find("\n## ", start + 1)
     text = whole[start:end if end > 0 else len(whole)]
-    rows = _GATE_ROW.findall(text)
+    rows = list(_GATE_ROW.finditer(text))
     check("the gate table is still parseable", len(rows) >= 3, "%d rows" % len(rows))
 
     today = datetime.date.today()
-    for date_str, name in rows:
+    for match in rows:
+        date_str, name = match.groups()
         due = datetime.date.fromisoformat(date_str)
-        line = [ln for ln in text.splitlines() if ln.startswith("| " + date_str)]
-        resolved = any(gate_row_answered(ln) for ln in line)
+        # The gate's own row: the line its match starts, up to the next newline. Not every
+        # line that starts "| " and the date: a second table's row could answer the gate,
+        # and a row spaced "|2026-10-16 |" was judged by no line at all.
+        stop = text.find("\n", match.start())
+        resolved = gate_row_answered(text[match.start():stop if stop >= 0 else len(text)])
         if due <= today:
             check("gate %s (%s) is due and carries a written conclusion"
                   % (date_str, name[:34]), resolved,
