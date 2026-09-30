@@ -139,7 +139,9 @@ could fail halfway. The script runs the scorecard first and repeats until nothin
 same pass the bots run.
 **Only ever with the argument `regenerate`.** Any other argument is the bots' mode: it
 rewrites this clone's git identity, resets to origin (discarding uncommitted work), commits
-and pushes.
+and pushes. Since T-006 the script refuses that mode unless `GITHUB_ACTIONS` is exactly
+`true`, so here a mistyped argument exits 2 before any git command runs. Never set that
+variable by hand to get past the refusal.
 
 **Check every workflow, not the one you were thinking about.** There are six —
 `deploy.yml`, `test.yml`, `snapshot.yml`, `usage.yml`, `production.yml`, and the
