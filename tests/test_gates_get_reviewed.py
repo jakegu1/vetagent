@@ -545,6 +545,60 @@ def test_guard_counts_only_the_gates_own_row():
               False not in verdict and error is None, _said(verdict, error))
 
 
+def _verdict_of(verdicts, date_str, question):
+    """The check's verdicts on the gate with this date and this question: two rows of
+    section 8 may share a date."""
+    head = "gate %s (%s)" % (date_str, question[:34])
+    return [v[1] for v in verdicts if v[0].startswith(head)]
+
+
+def _respaced(text, prefix):
+    """(`text` with the 2026-10-16 row's first cell written as `prefix`, that row)."""
+    lines = text.split("\n")
+    at = [i for i, ln in enumerate(lines) if ln.startswith("| 2026-10-16 |")][0]
+    lines[at] = prefix + lines[at][len("| 2026-10-16 |"):]
+    return "\n".join(lines), lines[at]
+
+
+def test_guard_judges_each_gate_by_its_own_row():
+    """T-007, named change (e): a gate is judged by its own row, however it is spaced.
+
+    Found by the round 1 red-team (minor 1) and the independent review (optional 3): the
+    check judged every line of section 8 that starts with "| " and the date, so a second
+    table's row with that date could answer the gate, and a gate row spaced
+    "|2026-10-16 |" or "|  2026-10-16 |" was found by the table's pattern but judged by
+    no line at all.
+    """
+    print("\n[gates] self-test: a gate is judged by its own row")
+    question = _ROW_1016[1]
+    rule = globals().get("gate_row_answered")
+    second_table = "\n".join([
+        "| Date | Note |", "|---|---|",
+        "| 2026-10-16 | Resolved: 0 commitments -> pick a different segment |"])
+    strategy = _synthetic_strategy(below=second_table)
+    verdicts, error, _ = _run_due_gate_check(strategy, _GATE_DAY)
+    verdict = _verdict_of(verdicts, "2026-10-16", question)
+    check("a second table's row in section 8 does not answer the unanswered gate",
+          verdict == [False] and error is None, _said(verdict, error))
+    row = [ln for ln in strategy.split("\n")
+           if ln.startswith("| 2026-10-16 | %s |" % question)][0]
+    got = rule(row) if callable(rule) else "gate_row_answered is not defined"
+    check("gate_row_answered is False for that unanswered gate row", got is False,
+          "returned %r" % (got,))
+    for prefix in ("|2026-10-16 |", "|  2026-10-16 |"):
+        for text, answered in ((_A_CONCLUSION[0], True), ("", False)):
+            strategy, row = _respaced(_synthetic_strategy({"2026-10-16": text}), prefix)
+            verdicts, error, _ = _run_due_gate_check(strategy, _GATE_DAY)
+            verdict = _verdict_of(verdicts, "2026-10-16", question)
+            label = "a gate row written %s, %s" % (
+                ascii(prefix), "with a conclusion" if answered else "without one")
+            check("%s on its due date: %s" % ("accepted" if answered else "refused", label),
+                  verdict == [answered] and error is None, _said(verdict, error))
+            got = rule(row) if callable(rule) else "gate_row_answered is not defined"
+            check("gate_row_answered is %s for %s" % (answered, label), got is answered,
+                  "returned %r" % (got,))
+
+
 def test_guard_takes_its_verdict_from_gate_row_answered():
     """T-007, AC 5: the rule is written once, in gate_row_answered, and the check uses it.
 
