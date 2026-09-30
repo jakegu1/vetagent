@@ -44,7 +44,7 @@ merge:                             # project convention; replaces the kit's defa
     - "squash"
     - "rebase or amend anything already pushed (tools/rounds.py pins round commits by SHA)"
   after:
-    - "bash .github/scripts/regenerate-derived.sh regenerate"   # ONLY with 'regenerate': any other argument resets to origin, commits and pushes
+    - "bash .github/scripts/regenerate-derived.sh regenerate"   # ONLY with 'regenerate': any other argument is the bots' mode, refused off GitHub Actions since T-006
     - "python lead/checks.py"
     - "commit regenerated pages separately if the merge moved them; a change that is only the date and the recent-commit list is left to the bots, which regenerate on the UTC date (a local-date commit would be reverted by their next run)"
   push: "only with the Owner's yes, batched; fetch and merge origin/master first (bots push several times a day)"

@@ -1,7 +1,7 @@
 ---
 id: T-005
 title: Make second_oracle.py ready for the Owner's W5 check on the adversarial cohort
-status: in_progress      # draft | ready | in_progress | in_review | changes_requested | done | dropped
+status: done             # draft | ready | in_progress | in_review | changes_requested | done | dropped
 level: 2                 # 0 direct | 1 light | 2 standard | 3 high risk
 size: M                  # S | M (split anything larger)
 depends_on: []

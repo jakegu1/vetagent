@@ -48,14 +48,16 @@ Last updated: 2026-09-29 by lead session 3 (Claude Code desktop, local, opened i
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-005 | 2 | `task/t-005-second-oracle-adversarial` at `5bba390`, worktree `../vetagent-t-005` | passed: round-2 re-review ✅ 12 of 12; decision: merge | lead, on the Owner's yes | Merge with the batch the Owner approves (H-11), `--no-ff`, then the post-merge steps |
-| T-006 | 3 | `task/t-006-regenerate-ci-only`, worktree `../vetagent-t-006` | round 2 executing (round 1 at `e46cddc`: independent ✅ 12 of 12, red-team none; the lead bounced once on "not run here" passing on CI, named changes (a) to (c)) | the round-1 executor, resumed | Collect READY (round 2); then a fresh combined re-review (independent and red-team) of the bar in `lead/reviews/T-006.md` |
-| L0 | 0 | `task/l0-claude-md-mcp-note` at `dcf3dfc`, worktree `../vetagent-l0` | done on its branch (checks 28 of 28): `0c6be16` the `CLAUDE.md` client-name note; `dcf3dfc` the W5 row names the adversarial-check command (with `docs/OWNER.md` regenerated) | lead | After T-006 passes, add its document updates (`CLAUDE.md`); merge with the batch the Owner approves (H-11), after T-005 |
+| H-11 | — | `master` at the merges `0fa831a` (T-005), `053fe0a` (T-006), `b29c424` (Level 0) | merged locally; checks 29 of 29 on master; push step 1 (preflight branch) next | lead, on the Owner's yes (H-11) | Fetch and merge origin; push the merged tree to `preflight-2026-09-30`; when its `tests` run is green, push `master`; watch `tests`; delete the preflight branch; remove the three worktrees and task branches |
 
 ## Waiting on the Owner
 
 - Nothing open for the lead. The Owner's own W5 steps (read Quick Intel's terms; the 17-call
   check on W3's adversarial cohort) are in `docs/BACKLOG.md` and `docs/OWNER.md`.
+- (H-11 answered 2026-09-30: as recommended. Once T-006's round-2 re-review passes, merge
+  T-005, T-006 and the Level 0 branch into local `master`, then push in two steps: the merged
+  tree to a preflight branch first (`test.yml` on Linux, no deploy), then `master` once that is
+  green. If T-006 does not pass, ask again before merging the other two alone.)
 - (H-10 done 2026-09-29: merged origin (six bot commits), T-003 as `fec26df`, T-004 as
   `d0eb7e8`, the W5 row as `6c8b785` (its `docs/OWNER.md` conflict resolved by regenerating);
   checks 28 of 28. Preflight branch run 36557264402 green on Linux; pushed
@@ -82,32 +84,41 @@ No task is specced. Candidates below; at A1 the lead may spec and dispatch any o
 merge and push wait for the Owner's yes. Items marked "Owner's call first" need the Owner before
 a spec.
 
-Suggested order (lead #2): first the T-004 follow-up (the node-property variant, a one-line fix
-with its tests; the deploy gate is production-critical now), then the `second_oracle.py`
-report, then the Level 3 hardening of `regenerate-derived.sh` (its bots' mode on any argument).
+**Dated:** `tests/test_gates_get_reviewed.py` turns red on 2026-10-16 unless the parked items it
+names are reviewed, and a red step there also blocks every deploy (T-004). Check what it needs
+by 2026-10-14 and put any part that is the Owner's to them in good time.
 
+Suggested order (lead #3): first the same guard for `.github/scripts/snapshot-commit.sh` (the
+class T-006 closed, still open next door), then the T-004 node-property follow-up, then the
+T-006 follow-up.
+
+- Candidate, Level 3 area (CI script), from T-006's round-1 red-team (minor note 5): with any
+  argument or none, `.github/scripts/snapshot-commit.sh` writes `vetagent-snapshot[bot]` into the
+  clone's shared git config, then commits and pushes whatever is staged under
+  `bench/snapshots/`. It has no local mode, so it is less likely to be typed by accident; the
+  same four-line `GITHUB_ACTIONS` guard closes the class. Pair it with a scratch-run test of the
+  bots' full path (a page changes, a commit, a push), which no test runs today (T-006 round-1
+  independent review, optional 2); milestone M1's clock depends on that push.
 - Candidate, Level 3 area (the deploy gate), from T-004's round-2 re-review: a YAML node
   property (`&anchor` or `!tag`) before an unclosed quote still ends the job early in the
   runner and the guard's reader (a one-line fix is in `lead/reviews/T-004.md`, follow-up 1);
   test gaps: an unclosed value under `with:`, escaped and doubled quotes, and the reader's own
   refusal pinned to the named line; the guard's `if:` reader misses a double-quoted value
   continued at six spaces (deliberate-edit class).
+- Candidate, test file only, from T-006's round-2 re-review: AC 6's 15 s bound on Windows is
+  not met (median 15.2 s); run each near-miss value of `GITHUB_ACTIONS` with one argument
+  instead of three (about 1.7 s), bring the file's own timing line over the child check, make
+  `_what_moved` say that a failed read is a failed read, and bring the module docstring up to
+  the Actions rule (`lead/reviews/T-006.md`, round 2 lead decision).
 - Candidate, Level 1, from T-003's review: when the scorecard's production row is in the form
   `bench/scorecard.py` is not printing, its two targets report `absent` and `pattern not found`,
   and the second gets the "restore the sentence" advice, wrong for a generated row; three
   surviving mutants (the owner-powers advice naming the wrong file, the advice for a key
   nothing computes, a single rewrite listed); a line matching both retracted-claim patterns is
   printed twice, so its count is untrue.
-- Candidate, Level 1: `bench/second_oracle.py`'s report counts a call that errored as a token
-  Quick Intel could not answer, so 143 blocked calls printed "0 of 122" and a zero rate. Report calls it
-  could not make as not measured, apart from answers, and print no rate over zero answers.
 - Candidate, Level 1: `_owner_power_figures()` raises on invalid JSON in
   `bench/owner_powers.json`, while the production readers treat an unreadable artifact as not
   measured. Same class as T-002.
-- Candidate, Level 3 area (CI script): `regenerate-derived.sh` runs in the bots' mode with any
-  argument other than `regenerate`, and that mode rewrites the clone's git identity, resets to
-  origin and pushes. A typo on a laptop does all of that. Require the CI environment
-  (`GITHUB_ACTIONS`) for that mode.
 - Candidate, Level 3 area (CI script): `regenerate-derived.sh` sends each generator's output to
   `/dev/null`, so a failing bot run shows only `::error::publish_numbers.py failed`, not what
   is left to fix.
@@ -119,12 +130,12 @@ report, then the Level 3 hardening of `regenerate-derived.sh` (its bots' mode on
 - Candidate, investigate first: deploy tooling is unpinned (`uv.lock` and `pylock.toml` are
   gitignored as build artifacts). Whether to commit a lock is a decision for
   `docs/DECISIONS.md`.
-- Candidate, Level 0: `CLAUDE.md` says `.mcp.json` is untagged ("so `claude-code` is the
-  owner"), but `.mcp.json` sends `x-mcp-client: vetagent-owner-editor`, as the probe hook's
-  docstring also says. The note is stale; check which is true in the usage data before editing.
 - Candidate, check mode vs the suite: `unsourced_competitor_figures()` fails check mode (and,
   after T-002, `--write`), but no test in the suite runs it, so CI would not see an undated
   competitor figure. Decide whether a test should, or whether check mode should not.
+- Done this session and removed from this list: the `second_oracle.py` report (T-005), the
+  regeneration script's bots' mode (T-006), and the stale `CLAUDE.md` note on the editor's
+  client name (Level 0, `0c6be16`).
 
 ## Rotation
 
@@ -166,6 +177,7 @@ After T-001 (`0a3098d`, 2026-09-28): 27 of 27. **Lead session 2 at `24a0a73` (20
 clean. After T-002 (`16e100e`): 27 of 27, clean tree; `tests/test_published_numbers.py` 70 of
 70. After H-10 (`6c8b785`): 28 of 28 (T-004 added `tests/test_deploy_gate.py`, 125 of 125);
 `tests/test_published_numbers.py` 111 of 111; about 55 s locally. No failure is known.**
+**After H-11 (`b29c424`, 2026-09-30): 29 of 29 in 63.0 s. T-005 added `tests/test_second_oracle.py` (216 of 216, 0.5 s); after T-006 `tests/test_bot_commits_stay_green.py` runs the real script in scratch repositories (118 of 118, 13.2 s on Windows).**
 Not part of the baseline: `tests/test_upstream_contract.py` and `tests/test_backfill.py`
 (network; CI jobs `upstream-contract` and `backfill-roundtrip`).
 **On CI:** `tests` was red from 2026-09-22 12:05 UTC to 2026-09-28: 32 runs, every one failing
@@ -227,6 +239,17 @@ hand and move on.
 
 ## Log (newest first; keep the last ~20 lines)
 
+- 2026-09-30: T-006 round 2 passed its combined re-review (pass, RED-TEAM none); AC 6's 15 s
+  bound on Windows is not met (median 15.2 s) and is recorded, not moved (lead decision in
+  `lead/reviews/T-006.md`). The Owner approved H-11 as recommended. Merged T-005 as `0fa831a`,
+  T-006 as `053fe0a` and the Level 0 branch as `b29c424` (a third commit, `893892b`, says in
+  `CLAUDE.md` that the script now refuses its bots' mode off CI). Regeneration moved only the
+  recent-commit list (left to the bots). Checks on master: 29 of 29, exit 0, tree clean.
+- 2026-09-30: the session was resumed after the Claude Code process ended mid-round. T-006's
+  executor had committed all of round 2 (`613f5bd`, `2958fc2`, `5d89eba`, `91e5d72`, `7a1a81a`)
+  and left a clean worktree, but no READY report; the lead verified CONTRACT HOLDS and 118 of
+  118 on the test file and dispatched the combined re-review. This clone's `user.name` checked
+  unchanged. Merged origin's four snapshot commits as `0c02090`.
 - 2026-09-30: T-005 round 2 passed its fresh re-review (12 of 12); decision: merge in the batch.
   T-006 round 1 passed both reviews (independent 12 of 12, red-team none) and went back once
   anyway: both reviewers found that "not run here" still lets the CI step pass. Two spec lessons

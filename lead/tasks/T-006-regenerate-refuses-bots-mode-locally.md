@@ -1,7 +1,7 @@
 ---
 id: T-006
 title: Refuse regenerate-derived.sh's bots' mode outside GitHub Actions
-status: in_progress      # draft | ready | in_progress | in_review | changes_requested | done | dropped
+status: done             # draft | ready | in_progress | in_review | changes_requested | done | dropped
 level: 3                 # 0 direct | 1 light | 2 standard | 3 high risk
 size: S                  # S | M (split anything larger)
 depends_on: []
