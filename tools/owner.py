@@ -98,8 +98,8 @@ EXTRA_ACTIONS = []
 CORRECTION_WINDOW = 14
 CORRECTIONS = [
     ("2026-09-30",
-     "This page showed the 2026-09-18 gate as twelve days overdue, in bold, in the gate "
-     "table and on the timeline.",
+     "This page showed the 2026-09-18 gate as twelve days overdue, in bold in the gate "
+     "table, and on the timeline.",
      "That gate has carried a written conclusion since 2026-09-18: tools/owner.py labelled "
      "every past gate with its countdown, answered or not, so the alarm that matters on a "
      "gate's day looked like the ones that do not. Since T-009 an answered gate reads "
