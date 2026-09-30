@@ -16,8 +16,9 @@ Last updated: 2026-09-30 by lead session 4 (Claude Code desktop, local, opened i
    CI for all six workflows, not only `test.yml` (the command is in `CLAUDE.md`). Fix this file
    if it drifted.
 4. Act on each row's next action. Then start the next ready task if WIP allows. Autonomy is
-   **A1** (`lead/config.yml`): spec, dispatch, review and decide; ask the Owner before every
-   merge to master and every push, batched.
+   **A2** (`lead/config.yml`): spec, dispatch, review and decide; merge Level 0 to 2 tasks after
+   passing reviews and tell the Owner afterwards; ask the Owner before every Level 3 merge and
+   every push, batched.
 5. Run `python lead/checks.py` before every commit to master, lead bookkeeping included.
 6. Check the rotation rule (`lead-handoff`). Update this file and commit.
 
@@ -27,11 +28,11 @@ Last updated: 2026-09-30 by lead session 4 (Claude Code desktop, local, opened i
   `CLAUDE.md`'s lead block, the untagged-probe hook in `.claude/settings.json` and the
   SessionStart hook in `.claude/settings.local.json` load. **The SessionStart hook works:** at
   the start of lead session 2 the first 80 lines of this file appeared on their own.
-- **Autonomy is A1 again (H-7, 2026-09-29).** The lead specs, dispatches, reviews and decides
-  on its own; every merge to master and every push waits for the Owner's yes. A2 needs five
-  clean merges in a row (`method.md` §12); the streak is 5 (T-002 to T-006; T-005 and T-006
-  merged 2026-09-30, CI green on `3db4bf5`). A2 proposed to the Owner as H-12 on 2026-09-30;
-  default if no answer: stay at A1. Any escaped defect demotes one level (tripwire Q1).
+- **Autonomy is A2 (H-12, approved 2026-09-30).** The lead specs, dispatches, reviews and
+  decides on its own, and merges Level 0 to 2 tasks into local `master` after passing reviews;
+  each such merge is reported to the Owner afterwards. Level 3 merges (T-007, T-008) and every
+  push wait for the Owner's yes. Any escaped defect demotes one level (tripwire Q1), and the
+  lead says so.
 - **M1's clock is running** since run 36445100361 (2026-09-28 15:38 UTC, head `dc401b9`); still
   green on run 36669385087 (head `3db4bf5`, 2026-09-30). At each check-in, check
   `gh run list --workflow=test.yml`; any red run on master restarts it and stops new work until
@@ -54,16 +55,15 @@ Last updated: 2026-09-30 by lead session 4 (Claude Code desktop, local, opened i
 
 ## Waiting on the Owner
 
-- **H-12 (asked 2026-09-30): move to autonomy A2?** Recommendation yes; default if no answer:
-  stay at A1. Under A2 the lead merges Level 0 to 2 tasks after passing reviews; Level 3 merges
-  (T-007, T-008) and every push still need the Owner.
-- **H-13 (told 2026-09-30, needed by 2026-10-16): the 2026-10-16 gate.** From 00:00 UTC that day
-  `tests/test_gates_get_reviewed.py` is red, and so are `tests` and every deploy, until (a) the
-  gate's row in `docs/STRATEGY.md` section 8 carries `Resolved: <what Experiment D measured> ->
-  <decision>` and (b) O2, O8, O9 and O11 in `docs/OPPORTUNITIES.md` are decided and moved under
-  "Reviewed and closed". The first bot run that day is `snapshot.yml` at 02:23 UTC. The reading
-  and the decisions are the Owner's; the lead offers to draft both edits from a one-line answer.
-  Nothing needed from the Owner before then.
+- **H-13 (told 2026-09-30, needed by 2026-10-16; the Owner agreed to the plan): the 2026-10-16
+  gate.** From 00:00 UTC that day `tests/test_gates_get_reviewed.py` is red, and so are `tests`
+  and every deploy, until (a) the gate's row in `docs/STRATEGY.md` section 8 carries
+  `Resolved: <what Experiment D measured> -> <decision>` and (b) O2, O8, O9 and O11 in
+  `docs/OPPORTUNITIES.md` are decided and moved under "Reviewed and closed". The first bot run
+  that day is `snapshot.yml` at 02:23 UTC. The plan: that morning the Owner gives the lead the
+  result in one line, and the lead drafts both edits for the Owner's yes (the reading and the
+  decisions are the Owner's). Nothing needed from the Owner before then.
+- (H-12 answered 2026-09-30: yes, as recommended. Autonomy A2, applied in `lead/config.yml`.)
 - The Owner's own W5 steps (read Quick Intel's terms; the 17-call check on W3's adversarial
   cohort) are in `docs/BACKLOG.md` and `docs/OWNER.md`.
 - (H-11 done 2026-09-30: merged T-005 as `0fa831a`, T-006 as `053fe0a`, the Level 0 branch as
@@ -97,8 +97,9 @@ Last updated: 2026-09-30 by lead session 4 (Claude Code desktop, local, opened i
 
 **T-009 is specced and ready** (`lead/tasks/T-009-owner-page-answered-gates.md`, Level 1):
 dispatch it once T-007 is merged, because it calls T-007's `gate_row_answered`. Other candidates
-below; at A1 the lead may spec and dispatch any of them, and the merge and push wait for the
-Owner's yes. Items marked "Owner's call first" need the Owner before a spec.
+below; at A2 the lead may spec, dispatch and (Levels 0 to 2, after passing reviews) merge any of
+them; Level 3 merges and every push wait for the Owner's yes. Items marked "Owner's call first"
+need the Owner before a spec.
 
 **Dated, checked 2026-09-30:** on 2026-10-16 `tests/test_gates_get_reviewed.py` turns red unless
 the gate's row carries a conclusion and O2, O8, O9 and O11 are decided (H-13, told to the Owner).
@@ -217,6 +218,10 @@ hand and move on.
 
 ## Recent decisions
 
+- 2026-09-30: the Owner answered H-12 as recommended: autonomy A2. The lead now merges Level 0
+  to 2 tasks after passing reviews and reports each merge afterwards; Level 3 merges and every
+  push still wait for the Owner (`lead/config.yml`).
+
 - 2026-09-30: lead #4 put a new finding ahead of lead #3's list: the gate guard that decides
   whether the build goes red on 2026-10-16 accepts a placeholder conclusion (T-007, Level 3,
   because it enforces a pre-registered rule). The rule it enforces is the form its own failure
@@ -277,6 +282,9 @@ hand and move on.
 | 4 | Claude Code desktop, local (opened in this repository) | 2026-09-30 | | |
 
 ## Log (newest first; keep the last ~20 lines)
+
+- 2026-09-30: H-12 yes (as recommended): autonomy A2. The Owner also agreed to H-13's plan for
+  2026-10-16.
 
 - 2026-09-30: T-007 READY at `8e14f10` (tests-first `521dfa6`: 12 red at that commit, no
   traceback; fix `37a9f3f`; stray line `8e14f10`); the lead saw 29 of 29 claimed and the contract

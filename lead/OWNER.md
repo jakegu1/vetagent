@@ -8,20 +8,20 @@
 ## Status in one line
 
 All six workflows are green and M1's 7-day clock keeps running (done 2026-10-05 if nothing goes
-red). Two fixes are with executors (T-007, T-008), a third waits for the first (T-009). One
-question for you now (H-12) and one date to keep (H-13, 2026-10-16).
+red). Two fixes are with executors (T-007, T-008), a third waits for the first (T-009).
+Autonomy is A2 (H-12). One date to keep: H-13, 2026-10-16.
 
 ## Needs you
 
 | ID | What | Why it's yours | Recommendation | Needed by |
 |---|---|---|---|---|
-| H-12 | Move the lead to autonomy A2: it merges Level 0 to 2 tasks after passing reviews without asking; Level 3 merges and every push still come to you | Autonomy is your setting (`lead/config.yml`) | Yes: five clean merges in a row (T-002 to T-006), which is the bar; it removes about half of the approvals you have been asked for. Default if no answer: stay at A1 | Any time |
 | H-13 | On 2026-10-16, write the gate's conclusion in `docs/STRATEGY.md` section 8 as `Resolved: <what Experiment D measured> -> <decision>`, and decide O2, O8, O9 and O11 in `docs/OPPORTUNITIES.md` | The gate's reading and the product decisions are yours | Give the lead the result in one line that morning; it drafts both edits for your yes. Otherwise the build is red, and every deploy blocked, from 00:00 UTC that day until both are done | 2026-10-16, before 02:23 UTC (the first bot run) |
 
 ## Done / answered
 
 | Item | Outcome | Recorded in |
 |---|---|---|
+| H-12 Autonomy A2 (2026-09-30) | Approved as recommended: the lead merges Level 0 to 2 tasks after passing reviews and tells you afterwards; Level 3 merges and every push still come to you | `lead/config.yml`, `lead/STATE.md` |
 | H-11 Merge T-005, T-006 and the Level 0 branch; push in two steps (2026-09-30) | Approved as recommended; merged as `0fa831a`, `053fe0a`, `b29c424`; checks 29 of 29; preflight green on Linux; pushed `d5bb216..3db4bf5`; `tests` green; no deploy | `lead/STATE.md` |
 | T-006 (2026-09-30) | Merged as `053fe0a`: round 2 combined re-review pass, red-team none; its 15 s Windows time bound is not met (median 15.2 s), recorded rather than moved | `lead/reviews/T-006.md` |
 | T-005 (2026-09-30) | Merged as `0fa831a`: round 2 re-review 12 of 12 | `lead/reviews/T-005.md` |
@@ -57,6 +57,9 @@ question for you now (H-12) and one date to keep (H-13, 2026-10-16).
 | M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
+
+- **2026-09-30** · lead · You approved H-12: autonomy A2. You will hear about Level 0 to 2 merges
+  afterwards; Level 3 merges and pushes still come to you. H-13's plan for 2026-10-16 stands.
 
 - **2026-09-30** · lead · Lead #4 checked in: all six workflows green, origin merged, checks 29 of
   29. Found that the guard for the 2026-10-16 gate accepts an empty conclusion (T-007) and that

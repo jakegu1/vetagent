@@ -10,12 +10,15 @@ runtime: "claude-code-local"
 repo_mode: "local-branches"        # task branches merged locally, no pull requests: agent text in
                                    # PR comments would be published under the Owner's GitHub account
 main_branch: "master"
-autonomy: "A1"                     # A1 again since 2026-09-29 (H-7): restored after T-002 merged cleanly
-                                   # (checks 27 of 27 on master; CI run 36455682835 green on 16e100e).
-                                   # A1: the lead specs, dispatches, reviews and decides; the Owner approves
-                                   # every merge to master and every push.
+autonomy: "A2"                     # A2 since 2026-09-30 (H-12, approved as recommended): five clean merges
+                                   # in a row, T-002 to T-006 (CI green on 3db4bf5, run 36669385087).
+                                   # A2: the lead merges Level 0 to 2 tasks into local master after passing
+                                   # reviews, and reports them to the Owner afterwards. Level 3 merges and
+                                   # every push still wait for the Owner's yes (sign_off below).
+                                   # Any escaped defect demotes one level (tripwire Q1).
                                    # History: A1 at adoption; A0 from 2026-09-28 (tripwire Q1: the lead's own
-                                   # commit f38ce82 broke the English-only rule on master) until H-7.
+                                   # commit f38ce82 broke the English-only rule on master); A1 again from
+                                   # 2026-09-29 (H-7) until H-12.
 spec_language: "en"
 
 checks:                            # must pass (or match the baseline in lead/STATE.md) before READY and after merge
