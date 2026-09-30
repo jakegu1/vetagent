@@ -21,6 +21,9 @@ audit found drift in almost all of them and none in the two that are generated.
 So this is generated from the files that are already the source of truth:
 
     docs/STRATEGY.md    the dated decision gates
+    tests/test_gates_get_reviewed.py
+                        whether a gate's row carries a written conclusion -- the build's
+                        own rule, called here, not copied
     docs/BACKLOG.md     the "Yours" section -- items only the owner can do
     docs/SCORECARD.md   the score
     bench/results.json  the published accuracy numbers
@@ -273,14 +276,44 @@ def _read(rel):
     return io.open(p, encoding="utf-8").read()
 
 
+# Whether a gate is answered is the build's call, not this page's. From a gate's date
+# tests/test_gates_get_reviewed.py fails the build until the gate's row carries a written
+# conclusion, and its gate_row_answered() is the one statement of what counts as one (T-007).
+# This page loads that file and calls it. A copy of the rule here could call a gate answered
+# on the day the build refuses it. Before T-009 the page had no rule at all: generated on
+# 2026-09-30, it showed the answered 2026-09-18 gate as "12 days OVERDUE" in bold, the same
+# alarm as a gate nobody had answered.
+GATE_GUARD = os.path.join(ROOT, "tests", "test_gates_get_reviewed.py")
+_GUARD = []
+
+
+def gate_guard():
+    """The build's gate guard, tests/test_gates_get_reviewed.py, loaded from its file once.
+
+    Loading it runs no check: the file defines functions and constants, and runs its checks
+    only as __main__.
+    """
+    if not _GUARD:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gate_guard", GATE_GUARD)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _GUARD.append(module)
+    return _GUARD[0]
+
+
 def gates():
-    """The dated decision gates, straight out of STRATEGY's own table."""
+    """The dated decision gates, straight out of STRATEGY's own table.
+
+    `answered` is the build guard's verdict on the gate's whole row (gate_guard()).
+    """
     out = []
     for line in _read("docs/STRATEGY.md").splitlines():
         m = re.match(r"^\|\s*(20\d\d-\d\d-\d\d)\s*\|(.+?)\|(.+?)\|(.+?)\|\s*$", line)
         if m:
             out.append({"date": m.group(1), "gate": m.group(2).strip(),
-                        "test": m.group(3).strip(), "action": m.group(4).strip()})
+                        "test": m.group(3).strip(), "action": m.group(4).strip(),
+                        "answered": gate_guard().gate_row_answered(line) is True})
     return sorted(out, key=lambda g: g["date"])
 
 
@@ -344,6 +377,15 @@ def _when(days):
     if days <= 14:
         return "**in %d days**" % days
     return "in %d days" % days
+
+
+def _gate_when(g, today):
+    """A gate's label in the gate table and on the timeline: answered, or its countdown.
+
+    An answered gate is not counting down to anything, so it carries no OVERDUE, TODAY or
+    "in N days": the one alarm that matters on a gate's day must not look like the others.
+    """
+    return "answered" if g["answered"] else _when(_days(g["date"], today))
 
 
 def changed_recently(days=7, cap=8):
@@ -432,8 +474,7 @@ def mermaid_gate_timeline(today):
          "    section Decisions"]
     for g in gates():
         L.append("    %s :milestone, %s, 0d"
-                 % (_label("%s - %s" % (g["gate"], _when(_days(g["date"], today))), 52),
-                    g["date"]))
+                 % (_label("%s - %s" % (g["gate"], _gate_when(g, today)), 52), g["date"]))
     L.append("```")
     return L
 
@@ -635,8 +676,7 @@ def render(today=None):
     w("| Date | When | The question | What happens |")
     w("|---|---|---|---|")
     for g in gates():
-        w("| %s | %s | %s | %s |"
-          % (g["date"], _when(_days(g["date"], today)), g["gate"], g["action"]))
+        w("| %s | %s | %s | %s |" % (g["date"], _gate_when(g, today), g["gate"], g["action"]))
     w("")
 
     # ------------------------------------------------------------------- the pictures
