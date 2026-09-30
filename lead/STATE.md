@@ -50,8 +50,8 @@ Last updated: 2026-09-30 by lead session 4 (Claude Code desktop, local, opened i
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-007 | 3 | `task/t-007-gate-guard-needs-a-conclusion`, worktree `../vetagent-t-007`, from `de567c0` | round 2 executing (round 1 at `5bd3f28`: independent 12 of 12 pass; red-team 2 material) | executor subagent (resumed 2026-09-30) | The lead decision in `lead/reviews/T-007.md` (named changes (c), (d), (e); markup removed before judging; each gate judged by its own row). On READY: one combined re-review against that bar (the last round). Pass: ask the Owner to merge (Level 3). If the session ended first, look for commits on the branch past `5bd3f28` |
-| T-008 | 3 | `task/t-008-snapshot-commit-refuses-locally`, worktree `../vetagent-t-008`, from `de567c0` | in review at `1f9fba8` (round 1; tests-first `94c00bf`, fix `2a13cda`, acceptance-test fix `1f9fba8`: a label string only; CONTRACT HOLDS) | independent reviewer and red-team reviewer (background, started 2026-09-30) | Save both verdicts to `lead/reviews/T-008.md`. Pass: ask the Owner to merge (Level 3). Also confirm `git config user.name` in the main checkout is still `jakegu1` after the reviews. The new checks' Windows time is a reported target (median 9.85 s, over 10 s in 4 of 10 runs) |
+| T-007 | 3 | `task/t-007-gate-guard-needs-a-conclusion`, worktree `../vetagent-t-007`, from `de567c0` | round 2 combined re-review at `19e3c60` (the last round; round 1 at `5bd3f28`: independent 12 of 12, red-team 2 material) | combined re-reviewer (background, started 2026-09-30) | Save the verdict to `lead/reviews/T-007.md`. Pass: ask the Owner to merge (Level 3). After round 2 only an invariant, security, privacy, data loss or a regression sends it back; anything else becomes a follow-up. If the session ended first, re-dispatch the re-review: the head is unchanged |
+| T-008 | 3 | `task/t-008-snapshot-commit-refuses-locally`, worktree `../vetagent-t-008`, from `de567c0` | in review at `1f9fba8` (round 1: independent 12 of 12, pass; red-team pending) | red-team reviewer (background, started 2026-09-30) | Save its report to `lead/reviews/T-008.md` (the independent review is saved). Pass: ask the Owner to merge (Level 3). Also confirm `git config user.name` in the main checkout is still `jakegu1` after the reviews. The new checks' Windows time is a reported target (median 9.95 s, over 10 s in 4 of 10 runs; the whole file now about 25.7 s, was 13.2 s) |
 
 ## Waiting on the Owner
 
@@ -121,7 +121,16 @@ parallel with T-008).
   not met (median 15.2 s); run each near-miss value of `GITHUB_ACTIONS` with one argument
   instead of three (about 1.7 s), bring the file's own timing line over the child check, make
   `_what_moved` say that a failed read is a failed read, and bring the module docstring up to
-  the Actions rule (`lead/reviews/T-006.md`, round 2 lead decision).
+  the Actions rule (`lead/reviews/T-006.md`, round 2 lead decision). T-008's independent review
+  adds to the same file (do it after T-008 merges): the status canary shares the failed-read
+  blind spot (a missing `.git` read twice compares equal); the docstring should cover T-008's
+  runs; the whole file now takes about 25.7 s on Windows (was 13.2 s).
+- Candidate, from T-008's independent review (optional 1): mutant R4 survives (the nothing-new
+  branch losing its `exit 0` still meets AC 2's outcomes); also require that `commit` and `push`
+  are absent from that call's git trace, which the test already captures.
+- Candidate, from T-007's round 2 (lead decision, `lead/reviews/T-007.md`): "variant B", typing
+  `Resolved:` and pasting the whole failure message after it, is still accepted; judging the text
+  after each `Resolved:` up to the next one closes it (measured by the executor, not applied).
 - Candidate, Level 1, from T-003's review: when the scorecard's production row is in the form
   `bench/scorecard.py` is not printing, its two targets report `absent` and `pattern not found`,
   and the second gets the "restore the sentence" advice, wrong for a generated row; three
@@ -282,6 +291,11 @@ hand and move on.
 | 4 | Claude Code desktop, local (opened in this repository) | 2026-09-30 | | |
 
 ## Log (newest first; keep the last ~20 lines)
+
+- 2026-09-30: T-008 independent review 12 of 12, pass (`lead/reviews/T-008.md`); red-team
+  pending. T-007 round 2 READY at `19e3c60` (98 passed; named changes (c), (d), (e) each red
+  first, as shown); the lead decided its two residuals before the re-review (variant B a
+  follow-up; a line separator in a row fails closed) and dispatched the combined re-review.
 
 - 2026-09-30: T-007 round 1 reviews: independent 12 of 12, pass; red-team 2 material. The guard
   accepted its own template and message pasted back, and markup that never renders (an HTML
