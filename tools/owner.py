@@ -21,6 +21,11 @@ audit found drift in almost all of them and none in the two that are generated.
 So this is generated from the files that are already the source of truth:
 
     docs/STRATEGY.md    the dated decision gates
+    tests/test_gates_get_reviewed.py
+                        whether a gate's row carries a written conclusion -- the build's
+                        own rule, called here, not copied
+    docs/OPPORTUNITIES.md
+                        the entries parked until each gate, read with that file's parser
     docs/BACKLOG.md     the "Yours" section -- items only the owner can do
     docs/SCORECARD.md   the score
     bench/results.json  the published accuracy numbers
@@ -92,6 +97,26 @@ EXTRA_ACTIONS = []
 # claim, which is itself a thing that can turn out to be false.
 CORRECTION_WINDOW = 14
 CORRECTIONS = [
+    ("2026-09-30",
+     "This page showed the 2026-09-18 gate as twelve days overdue, in bold in the gate "
+     "table, and on the timeline.",
+     "That gate has carried a written conclusion since 2026-09-18: tools/owner.py labelled "
+     "every past gate with its countdown, answered or not, so the alarm that matters on a "
+     "gate's day looked like the ones that do not. Since T-009 an answered gate reads "
+     "'answered', and an unanswered gate 14 days out or less is listed under Needs you with "
+     "what to write and which parked entries to decide.",
+     "Found by the lead reading this page at a check-in on 2026-09-30. Its own test compared "
+     "the page with its generator, which was wrong in the same way, so nothing could go red."),
+    ("2026-09-30",
+     "tests/test_gates_get_reviewed.py said, from 2026-09-07, that an audit had watched a "
+     "bare 'Resolved:' and 'Resolved: no' turn the due-gate check red.",
+     "Neither ever did. The check had only looked for the word 'Resolved:' since 1762bd3 "
+     "(2026-09-05); with the date forced to 2026-10-16 both passed, so a placeholder written "
+     "on that gate's day would have skipped it without a sound. Since T-007 a due gate needs "
+     "its own row to carry `Resolved: <what the measurement said> -> <decision>`, and the "
+     "guard's own template pasted back is refused.",
+     "The lead ran the check with the date forced to 2026-10-16 while working out what that "
+     "gate would need, instead of reading its docstring."),
     ("2026-09-19",
      "The Experiment C post as it went live on dev.to (2026-09-19): 'the engine as of "
      "2026-09-18', and a re-run paragraph with no false-block figure.",
@@ -273,15 +298,107 @@ def _read(rel):
     return io.open(p, encoding="utf-8").read()
 
 
+# Whether a gate is answered is the build's call, not this page's. From a gate's date
+# tests/test_gates_get_reviewed.py fails the build until the gate's row carries a written
+# conclusion, and its gate_row_answered() is the one statement of what counts as one (T-007).
+# This page loads that file and calls it. A copy of the rule here could call a gate answered
+# on the day the build refuses it. Before T-009 the page had no rule at all: generated on
+# 2026-09-30, it showed the answered 2026-09-18 gate as "12 days OVERDUE" in bold, the same
+# alarm as a gate nobody had answered.
+GATE_GUARD = os.path.join(ROOT, "tests", "test_gates_get_reviewed.py")
+_GUARD = []
+
+# From this many days before an unanswered gate's date, on it and after it, the gate is a row
+# of "Needs you". From its date the guard fails the build, and so every deploy, until the
+# gate's row carries a conclusion and each entry of docs/OPPORTUNITIES.md parked until it is
+# decided, and only the owner can do either.
+GATE_NOTICE_DAYS = 14
+
+
+def gate_guard():
+    """The build's gate guard, tests/test_gates_get_reviewed.py, loaded from its file once.
+
+    Loading it runs no check: the file defines functions and constants, and runs its checks
+    only as __main__.
+    """
+    if not _GUARD:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gate_guard", GATE_GUARD)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _GUARD.append(module)
+    return _GUARD[0]
+
+
 def gates():
-    """The dated decision gates, straight out of STRATEGY's own table."""
+    """The dated decision gates, straight out of STRATEGY's own table.
+
+    `answered` is the build guard's verdict on the gate's whole row (gate_guard()).
+    """
     out = []
     for line in _read("docs/STRATEGY.md").splitlines():
         m = re.match(r"^\|\s*(20\d\d-\d\d-\d\d)\s*\|(.+?)\|(.+?)\|(.+?)\|\s*$", line)
         if m:
             out.append({"date": m.group(1), "gate": m.group(2).strip(),
-                        "test": m.group(3).strip(), "action": m.group(4).strip()})
+                        "test": m.group(3).strip(), "action": m.group(4).strip(),
+                        "answered": gate_guard().gate_row_answered(line) is True})
     return sorted(out, key=lambda g: g["date"])
+
+
+def parked_until(date_str):
+    """The entries of docs/OPPORTUNITIES.md parked until the gate on `date_str`, by id.
+
+    Read with the guard's own parse_entries(), so this is the list it fails the build on
+    from that date: entries above "## Reviewed and closed" whose "Blocked until: gate
+    <date>" is this one. An entry with no O-number is named by its heading, not dropped.
+    """
+    out = []
+    for heading, gate, unblocked in gate_guard().parse_entries(_read("docs/OPPORTUNITIES.md")):
+        if gate == date_str and not unblocked:
+            m = re.match(r"(O\d+)\b", heading)
+            out.append(m.group(1) if m else heading)
+    return out
+
+
+def _and(items):
+    """Ids joined as prose: O2; O2 and O8; O2, O8 and O9."""
+    return items[0] if len(items) == 1 else "%s and %s" % (", ".join(items[:-1]), items[-1])
+
+
+def gates_coming_due(today):
+    """Unanswered gates from GATE_NOTICE_DAYS before their date on, as rows of "Needs you".
+
+    Each carries its own cost of waiting: a gate is not a backlog item, so it has no entry
+    in COST_OF_WAITING, and "_not stated" would be the one line the owner most needs.
+    """
+    out = []
+    for g in gates():
+        days = _days(g["date"], today)
+        if g["answered"] or days is None or days > GATE_NOTICE_DAYS:
+            continue
+        ids = parked_until(g["date"])
+        if ids:
+            entries = ("and %s, the entries of `docs/OPPORTUNITIES.md` parked until this "
+                       "gate, are each decided and moved under `## Reviewed and closed`"
+                       % _and(ids))
+        else:
+            entries = ("and nothing else: no entry of `docs/OPPORTUNITIES.md` is parked "
+                       "until this gate")
+        out.append({
+            "id": "gate", "what": "Answer the gate: %s" % g["gate"],
+            "heading": "The %s gate: %s" % (g["date"], g["gate"]),
+            "due": g["date"], "days": days, "state": "Open",
+            "do": "Read the gate's question and its test in `docs/STRATEGY.md` section 8, "
+                  "then write its conclusion into the gate's row: what the measurement said, "
+                  "and what the gate's rule decides. The arrow between them is a hyphen "
+                  "followed by a greater-than sign; the table's own arrows do not count.",
+            "why": "it is the gate's own date, written down before anyone could know the "
+                   "answer; on it the rule is read",
+            "done": "its row in `docs/STRATEGY.md` section 8 carries "
+                    "`Resolved: <what the measurement said> -> <decision>`, %s." % entries,
+            "cost": "From %s, `tests/test_gates_get_reviewed.py` fails the build, and so "
+                    "blocks every deploy, until it is done." % g["date"]})
+    return out
 
 
 def yours():
@@ -344,6 +461,15 @@ def _when(days):
     if days <= 14:
         return "**in %d days**" % days
     return "in %d days" % days
+
+
+def _gate_when(g, today):
+    """A gate's label in the gate table and on the timeline: answered, or its countdown.
+
+    An answered gate is not counting down to anything, so it carries no OVERDUE, TODAY or
+    "in N days": the one alarm that matters on a gate's day must not look like the others.
+    """
+    return "answered" if g["answered"] else _when(_days(g["date"], today))
 
 
 def changed_recently(days=7, cap=8):
@@ -432,8 +558,7 @@ def mermaid_gate_timeline(today):
          "    section Decisions"]
     for g in gates():
         L.append("    %s :milestone, %s, 0d"
-                 % (_label("%s - %s" % (g["gate"], _when(_days(g["date"], today))), 52),
-                    g["date"]))
+                 % (_label("%s - %s" % (g["gate"], _gate_when(g, today)), 52), g["date"]))
     L.append("```")
     return L
 
@@ -590,7 +715,10 @@ def render(today=None):
     w("")
 
     # ---------------------------------------------------------------- needs you
-    todo = []
+    #
+    # A gate coming due goes first, so on its own date it sorts ahead of the items that
+    # feed it: it is the one that turns the build red.
+    todo = gates_coming_due(today)
     for item in yours():
         due, reason = OWNER_DUE.get(item["id"], ("", "not dated"))
         todo.append({"id": item["id"], "what": item["item"], "due": due,
@@ -615,13 +743,17 @@ def render(today=None):
              "**yes -- see below**" if t["state"].lower().startswith("blocked") else "no"))
     w("")
     for t in todo:
-        w("### %s %s" % (t["id"] if t["id"] != "--" else "", t["what"]))
+        w("### %s" % (t.get("heading")
+                      or "%s %s" % (t["id"] if t["id"] != "--" else "", t["what"])))
         w("")
         w("- **When:** %s%s" % (t["due"] or "no deadline",
                                 " (%s)" % _when(t["days"]) if t["days"] is not None else ""))
+        if t.get("do"):
+            w("- **What you do:** %s" % t["do"])
         w("- **Why then:** %s" % t["why"])
         w("- **You know it is done when:** %s" % t["done"])
-        cost = COST_OF_WAITING.get(t["id"]) or COST_OF_WAITING.get(t["what"])
+        cost = (t.get("cost") or COST_OF_WAITING.get(t["id"])
+                or COST_OF_WAITING.get(t["what"]))
         w("- **If you do nothing:** %s" % (cost or "_not stated -- ask me, that is a gap_"))
         w("")
 
@@ -635,8 +767,7 @@ def render(today=None):
     w("| Date | When | The question | What happens |")
     w("|---|---|---|---|")
     for g in gates():
-        w("| %s | %s | %s | %s |"
-          % (g["date"], _when(_days(g["date"], today)), g["gate"], g["action"]))
+        w("| %s | %s | %s | %s |" % (g["date"], _gate_when(g, today), g["gate"], g["action"]))
     w("")
 
     # ------------------------------------------------------------------- the pictures
