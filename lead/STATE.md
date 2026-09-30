@@ -4,7 +4,8 @@
 > session starts by reading it. Durable rules live in `AGENTS.md`, `lead/QUALITY.md` and
 > `lead/decisions/`. Test for this file: could a stranger act on every row below?
 
-Last updated: 2026-09-30 by lead session 4 (Claude Code desktop, local, opened in this repository).
+Last updated: 2026-10-01 by lead session 4 at its handoff (Claude Code desktop, local, opened in
+this repository).
 
 ## Starting a lead session
 
@@ -30,11 +31,11 @@ Last updated: 2026-09-30 by lead session 4 (Claude Code desktop, local, opened i
   the start of lead session 2 the first 80 lines of this file appeared on their own.
 - **Autonomy is A2 (H-12, approved 2026-09-30).** The lead specs, dispatches, reviews and
   decides on its own, and merges Level 0 to 2 tasks into local `master` after passing reviews;
-  each such merge is reported to the Owner afterwards. Level 3 merges (T-007, T-008) and every
-  push wait for the Owner's yes. Any escaped defect demotes one level (tripwire Q1), and the
+  each such merge is reported to the Owner afterwards. Level 3 merges and every push wait for
+  the Owner's yes. Any escaped defect demotes one level (tripwire Q1), and the
   lead says so.
 - **M1's clock is running** since run 36445100361 (2026-09-28 15:38 UTC, head `dc401b9`); still
-  green on run 36744975640 (head `26392ab`, 2026-09-30 UTC, the H-14 push). At each check-in, check
+  green on run 36754083925 (head `d033c90`, 2026-09-30 UTC, T-009's push). At each check-in, check
   `gh run list --workflow=test.yml`; any red run on master restarts it and stops new work until
   green (tripwire Q4).
 - Pushing: fetch and merge origin first (never rebase), regenerate the derived pages
@@ -50,17 +51,9 @@ Last updated: 2026-09-30 by lead session 4 (Claude Code desktop, local, opened i
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| Push of T-009 (H-14) | - | `master` at the bookkeeping commit after `235b20c`, to preflight branch `preflight/h-14-t009`, then `master` | pushing | the lead (approved under H-14) | T-009 merged as `235b20c` (review 12 of 12; checks 29 of 29). Scan the outgoing messages, push the preflight branch, watch `tests`; when green, fetch (merge origin if it moved), push `master`, watch `tests`, delete the preflight branch. **Must land before 2026-10-04 02:23 UTC** (the corrections window). Anything red: stop, tell the Owner |
+| — | | | | | No task in flight. `master` is `d033c90` on origin (T-007, T-008, T-009 pushed and green) plus this handoff commit, which is local only. |
 
 ## Waiting on the Owner
-
-- (H-14 answered 2026-10-01, as recommended: merge T-007 and T-008, then push in two steps (a
-  preflight branch on Linux first, then `master`), and push T-009 the same way once it passes its
-  review and the lead has merged it, without asking again; anything red stops the push. Merged
-  as `3fb1d3d` and `f1a767d`; checks on master 29 of 29. Preflight run 36744394310 green on Linux
-  (the gate guard 98 of 98; the bot-commits file 164 of 164, `snapshot-commit.sh` run 12 times in
-  0.5 s); pushed `a5bcce5..26392ab` (27 commits, messages scanned clean); `tests` run 36744975640
-  green; no deploy. Preflight branch deleted. T-009's push is still to come under the same yes.)
 
 - **H-13 (told 2026-09-30, needed by 2026-10-16; the Owner agreed to the plan): the 2026-10-16
   gate.** From 00:00 UTC that day `tests/test_gates_get_reviewed.py` is red, and so are `tests`
@@ -69,7 +62,18 @@ Last updated: 2026-09-30 by lead session 4 (Claude Code desktop, local, opened i
   `docs/OPPORTUNITIES.md` are decided and moved under "Reviewed and closed". The first bot run
   that day is `snapshot.yml` at 02:23 UTC. The plan: that morning the Owner gives the lead the
   result in one line, and the lead drafts both edits for the Owner's yes (the reading and the
-  decisions are the Owner's). Nothing needed from the Owner before then.
+  decisions are the Owner's). Nothing needed from the Owner before then. Since T-007 the
+  conclusion needs an ASCII `->` with words on both sides, after `Resolved:`, in the gate's own
+  row; a placeholder, U+2192, markup or the template pasted back is refused. Draft it that way,
+  run `python tests/test_gates_get_reviewed.py` with the date forced to 2026-10-16 on the draft,
+  and push it before 02:23 UTC (every push needs the Owner's yes).
+- (H-14 done 2026-10-01, as recommended: T-007 merged as `3fb1d3d`, T-008 as `f1a767d`, then
+  pushed after preflight run 36744394310 was green on Linux: `a5bcce5..26392ab`, `tests` run
+  36744975640 green. T-009 merged by the lead under A2 as `235b20c`, pushed the same way after
+  preflight run 36753548989 was green (the Owner page 379 of 379 on Linux, with the page's date a
+  day ahead of UTC): `26392ab..d033c90`, `tests` run 36754083925 green. No deploy either time:
+  nothing under `src/`. Both preflight branches deleted. Outgoing commit messages were scanned
+  for local paths, addresses and non-ASCII: 27 and 13, clean.)
 - (H-12 answered 2026-09-30: yes, as recommended. Autonomy A2, applied in `lead/config.yml`.)
 - The Owner's own W5 steps (read Quick Intel's terms; the 17-call check on W3's adversarial
   cohort) are in `docs/BACKLOG.md` and `docs/OWNER.md`.
@@ -102,11 +106,18 @@ Last updated: 2026-09-30 by lead session 4 (Claude Code desktop, local, opened i
 
 ## Next up
 
-**T-009 is specced and ready** (`lead/tasks/T-009-owner-page-answered-gates.md`, Level 1):
-dispatch it once T-007 is merged, because it calls T-007's `gate_row_answered`. Other candidates
-below; at A2 the lead may spec, dispatch and (Levels 0 to 2, after passing reviews) merge any of
-them; Level 3 merges and every push wait for the Owner's yes. Items marked "Owner's call first"
-need the Owner before a spec.
+No task is specced. Candidates below; at A2 the lead may spec, dispatch and (Levels 0 to 2, after
+passing reviews) merge any of them; Level 3 merges and every push wait for the Owner's yes. Items
+marked "Owner's call first" need the Owner before a spec.
+
+**The dates, in order** (all measured or read on 2026-10-01):
+1. **2026-10-05 15:38 UTC: M1 completes** if no `tests` run on `master` goes red; record it in
+   `lead/QUALITY.md`'s milestone table and `lead/OWNER.md`.
+2. **About 2026-10-05: the first weekly pass** (`lead-weekly`; none since the adoption on
+   2026-09-28). Tripwire Q3 is over its threshold (H-12, H-13, H-14 in two days after H-5 to H-11
+   in three); A2 took the Level 0 to 2 merges off the Owner.
+3. **By 2026-10-14: a new correction** (below), or the build is red on 2026-10-15 UTC.
+4. **2026-10-16: the gate** (H-13). The Owner's page lists it under "Needs you" from 2026-10-02.
 
 **Every check that can go red on the calendar alone** (a scan of `tests/` for `date.today()`,
 2026-10-01): the gates and their parked entries in `tests/test_gates_get_reviewed.py`
@@ -123,13 +134,15 @@ the 2026-09-19 entry would have turned master red on 2026-10-04, one day before 
 
 **Dated, checked 2026-09-30:** on 2026-10-16 `tests/test_gates_get_reviewed.py` turns red unless
 the gate's row carries a conclusion and O2, O8, O9 and O11 are decided (H-13, told to the Owner).
-T-007 makes a placeholder conclusion red as well, so the Owner must write it as
-`Resolved: <what the measurement said> -> <decision>`. Check on 2026-10-14 that H-13 is on
-track; if T-009 has merged by then, the Owner's own page lists it from 2026-10-02.
+T-007 makes a placeholder conclusion red as well, so it must be written as
+`Resolved: <what the measurement said> -> <decision>` with real words on both sides. Check on
+2026-10-14 that H-13 is on track.
 
-Suggested order (lead #4): T-009 after T-007; then the T-004 node-property follow-up, then the
-T-006 follow-up (it touches `tests/test_bot_commits_stay_green.py`, as T-008 does: not in
-parallel with T-008).
+Suggested order (lead #4, for lead #5): the dates above first. Then, if cheap before 2026-10-16,
+T-007's follow-ups (decoding HTML entities before the markup step is measured at 98 of 98 still
+passing). Then the two test-only follow-ups on `tests/test_bot_commits_stay_green.py` (T-008's
+surviving mutants; T-006's speed and failed-read items), one after the other, never in parallel
+(same file). Then the T-004 node-property follow-up.
 
 - Candidate, Level 3 area (the deploy gate), from T-004's round-2 re-review: a YAML node
   property (`&anchor` or `!tag`) before an unclosed quote still ends the job early in the
@@ -198,24 +211,36 @@ parallel with T-008).
 ## Rotation
 
 The rule (`lead/config.yml`): rotate at about 0.4 of the context window or 72 hours, at a
-natural boundary. Lead session 3 rotated on 2026-09-30 after H-11 (everything merged, pushed and
-green, nothing in flight). Its context size could not be read from inside the session; it was
-judged past the threshold (two executors each resumed once, five reviewers, one session resume,
-every review record pasted in full), an estimate and not a measurement. Lead session 2 rotated
-on 2026-09-29 on the same kind of estimate; lead session 1 on 2026-09-28 at 50 of 100 parts of
-the window.
+natural boundary. **The context can be measured:** the desktop app's `get_usage` session tool
+(load it with ToolSearch, `mcp__ccd_session_mgmt__get_usage`, session "self") returns tokens used
+and the window. Lead session 4 rotated on 2026-10-01 after H-14 at 549,497 of 1,000,000 tokens
+(55 of 100 parts), measured; it had passed the threshold unnoticed while reviews were running,
+so check it at each natural boundary rather than once. Lead session 3 rotated on 2026-09-30 and
+session 2 on 2026-09-29 on estimates; session 1 on 2026-09-28 at 50 of 100 parts.
 
-## Handoff notes (from lead #3; still true)
+## Handoff notes for lead #5
 
-- **H-12 asked** (lead #4, 2026-09-30); see Waiting on the Owner.
-- **Tripwire Q3 is over its threshold** (more than 2 Owner interruptions a week: H-5 to H-11 in
-  three days). Most were merge-and-push approvals that A1 and the sign-off list require; A2
-  removes the merge half. Look at it in the next weekly pass (`lead-weekly`), due about
-  2026-10-05 (none has run since the adoption on 2026-09-28).
-- **M1 completes on 2026-10-05** if no `tests` run on master goes red; record it then in
-  `lead/QUALITY.md`'s milestone table and `lead/OWNER.md`. Push only after a green preflight
-  branch run until then.
-- **Dated: 2026-10-16.** Checked 2026-09-30; see H-13 and Next up.
+- **Open the session in this repository's folder and type /lead.** Nothing is in flight:
+  `master` is `d033c90` on origin (T-007, T-008 and T-009 pushed; `tests` green; no deploy) plus
+  the handoff commit, which is local and goes out with the next approved push.
+- **Your first job is the dates** in Next up: M1 on 2026-10-05, the first weekly pass, a new
+  correction by 2026-10-14, the gate on 2026-10-16. Nothing needs the Owner before 2026-10-16
+  except pushes.
+- **Autonomy is A2** (H-12): merge Level 0 to 2 after passing reviews and tell the Owner
+  afterwards; Level 3 merges and every push are the Owner's. H-14's approval is used up.
+- **Before every push**, scan the outgoing commit messages for local paths, e-mail addresses and
+  non-ASCII (lead #4 did it with a short script in its scratchpad, which is gone: rewrite it, and
+  watch it find something in older history before trusting a clean result). Push a preflight
+  branch first while M1 runs; `test.yml` runs on every branch, `deploy.yml` only on `master`
+  pushes touching `src/**`, `pyproject.toml` or `wrangler.jsonc`.
+- **Two traps that bit lead #4:** a bash heredoc with quotes and backticks in a review record
+  (nothing ran, but use the Write or Edit tool for every record), and a correction sentence of
+  its own that a reviewer found not quite true (a correction entry has to be true in every word;
+  have it reviewed).
+- **A local date ahead of UTC** (after 16:00 UTC here) makes regenerated pages carry tomorrow's
+  local date. T-009's review proved the Owner page is fully determined by its stamped date, so
+  such a page passes on CI; a change that is only the date and the recent-commit list is still
+  left to the bots (`merge.after`).
 - **W5 is the Owner's, and it can be run now.** `python bench/second_oracle.py --plan --set
   adversarial`, then `--run --set adversarial` with their key: 17 calls, about 34 s, written to
   `bench/second_oracle_adversarial.json` (git-ignored); it refuses to start over an existing file.
@@ -240,6 +265,9 @@ After T-001 (`0a3098d`, 2026-09-28): 27 of 27. **Lead session 2 at `24a0a73` (20
 clean. After T-002 (`16e100e`): 27 of 27, clean tree; `tests/test_published_numbers.py` 70 of
 70. After H-10 (`6c8b785`): 28 of 28 (T-004 added `tests/test_deploy_gate.py`, 125 of 125);
 `tests/test_published_numbers.py` 111 of 111; about 55 s locally. No failure is known.**
+**After T-009 (`235b20c`, 2026-10-01): 29 of 29 in 87.2 s, tree clean; `tests/test_owner_page.py`
+379 of 379 (T-009; 3.1 s, was 0.7 s). On CI, preflight 36753548989 and `master` 36754083925 on
+`d033c90`: `test`, `upstream-contract` and `backfill-roundtrip` green.**
 **After H-14's merges (`f1a767d`, 2026-10-01): 29 of 29 in 96.1 s, tree clean;
 `tests/test_gates_get_reviewed.py` 98 of 98 (T-007), `tests/test_bot_commits_stay_green.py` 164
 of 164 in about 25 to 30 s on Windows (T-008; was 13.2 s).**
@@ -338,9 +366,15 @@ hand and move on.
 | 1 | Claude Code desktop, local (opened in the parent folder) | 2026-09-28 | 2026-09-28 | Rotation rule: context at 50 of 100 parts of the window |
 | 2 | Claude Code desktop, local (opened in this repository) | 2026-09-29 | 2026-09-29 | Rotation rule at a natural boundary after H-10; context judged past the threshold (not measured) |
 | 3 | Claude Code desktop, local (opened in this repository) | 2026-09-29 | 2026-09-30 | Rotation rule at a natural boundary after H-11; context judged past the threshold (not measured) |
-| 4 | Claude Code desktop, local (opened in this repository) | 2026-09-30 | | |
+| 4 | Claude Code desktop, local (opened in this repository) | 2026-09-30 | 2026-10-01 | Rotation rule at a natural boundary after H-14 (T-007, T-008, T-009 pushed, nothing in flight); context measured at 55 of 100 parts of the window |
+| 5 | next session, opened in this repository | | | |
 
 ## Log (newest first; keep the last ~20 lines)
+
+- 2026-10-01: T-009 pushed: preflight run 36753548989 green (the Owner page 379 of 379 on Linux
+  with its date a day ahead of UTC); `master` `26392ab..d033c90`; `tests` run 36754083925 green;
+  no deploy; preflight branch deleted. Lead #4 hands off to lead #5 (rotation rule: context
+  measured at 549,497 of 1,000,000 tokens; natural boundary, nothing in flight).
 
 - 2026-10-01: T-009 review 12 of 12 (11 mutants caught; 101 forced dates; Python 3.12 run; the
   page proven independent of the clock). The lead fixed one sentence of its own correction text,
@@ -446,44 +480,3 @@ hand and move on.
   identity, can discard uncommitted work and pushes; the deploy gate's node-property variant
   needs a contrived edit and `tests` catches it.
 - 2026-09-29: lead #2 hands off to lead #3 (rotation rule, natural boundary, nothing in flight).
-- 2026-09-29: H-10 done. Merged origin, T-003, T-004, the W5 row; 28 of 28. Preflight run
-  green; pushed `8daa0f7..6c8b785`; `tests` and `deploy` green, the gate 28 of 28 on CI; all
-  six workflows green. Worktrees, task branches and the preflight branch removed.
-- 2026-09-29: W5 run finished. The first real run was rate limited on every other call (the
-  free tier allows about one a second); a paced re-ask of those rows completed the set. The
-  analysis (in chat, figures kept out of the repository) classes each answer as error, static
-  audit only, or a simulation dated by `lastUpdatedTimestamp`. W5 updated on a branch (H-9).
-- 2026-09-29: W5 support. The Owner's first Quick Intel run (real key) got HTTP 403 on all
-  143 calls: Cloudflare error 1010 bans Python's default User-Agent. Fixed by naming the
-  script; the Owner's probe then got HTTP 200 and 400 from the gateway. With the Owner's yes
-  (H-8), three Level 0 branches merged locally; checks 27 of 27 after fixing a digit-percent
-  quote in this file that the checks caught before commit.
-- 2026-09-29: H-6 and H-7 yes. T-002 merged (`16e100e`); checks 27 of 27 on master; pushed
-  `dc401b9..16e100e` (12 commits, nothing under `src/`); CI run 36455682835 green; worktree and
-  branch removed. Autonomy A1.
-- 2026-09-29: T-002 READY at `0848ff3`; the lead reproduced CONTRACT HOLDS and 27 of 27. Fresh
-  review: 12 of 12, VERDICT ✅, no required changes; four optional notes filed as candidates.
-  Asked H-6 (merge and push) and H-7 (A1 after a clean merge).
-- 2026-09-29: H-5 yes. Level 0 merged (`82acff3`); checks on master 27 of 27 with a clean tree.
-  T-002 dispatched to an executor in worktree `../vetagent-t-002`.
-- 2026-09-29: lead #2 check-in. Origin had nothing new; all six workflows' latest runs green;
-  checks 27 of 27. Corrected a handoff candidate: the LF rewrite of `docs/EXPERIMENT_C.md` comes
-  from `tests/test_number_coverage.py`, not from `publish_numbers.py --write`. Reproduced the
-  `scan()` `KeyError`. Wrote T-002; asked H-5.
-- 2026-09-28: H-1 push `c954f43..dc401b9`; CI run 36445100361 green (27 of 27 steps, both
-  network jobs green, no deploy). M1 clock started. Lead #1 hands off to lead #2.
-- 2026-09-28: T-001 merged as `0a3098d` after a fresh review (12 of 12). Post-merge
-  regeneration changed only the recent-commit list in `docs/OWNER.md` (`9e81c01`; its checks
-  ran just after that commit rather than before it: 27 of 27). Checks on master: 27 of 27.
-- 2026-09-28: the T-001 reviewer found that the lead's `f38ce82` broke the English-only rule on
-  master; fixed in `5959a8b`; tripwire Q1 demoted autonomy to A0.
-- 2026-09-28: H-3 done at the Owner's request (SessionStart hook in `.claude/settings.local.json`).
-  The rotation rule fired (context at 50 of 100 parts of the window).
-- 2026-09-28: H-2 done (Level 0): W11 marked Done R23; its orphaned `COST_OF_WAITING` entry
-  removed from `tools/owner.py` (the rendered page is identical); `docs/OWNER.md` regenerated.
-- 2026-09-28: the Owner said "continue" and approved H-1 and H-2. Merged origin (production
-  probe, still below the floor, CI red on the same step). T-001 dispatched to an executor in
-  worktree `../vetagent-t-001`.
-- 2026-09-28: adoption. Audit in `lead/AUDIT.md`. The Owner accepted every recommendation.
-  Local master fast-forwarded to `f6c7c06` (66 bot commits). `lead/checks.py` added and watched
-  failing on purpose (two mutants, both red). T-001 written. Adoption committed on master.
