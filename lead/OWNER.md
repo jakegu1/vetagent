@@ -7,15 +7,16 @@
 
 ## Status in one line
 
-Everything is merged and pushed (H-11): CI is green on Linux and nothing deployed. Your W5
-check on the adversarial cohort can be run now. M1's 7-day clock keeps running; nothing is in
-flight.
+All six workflows are green and M1's 7-day clock keeps running (done 2026-10-05 if nothing goes
+red). Two fixes are with executors (T-007, T-008), a third waits for the first (T-009). One
+question for you now (H-12) and one date to keep (H-13, 2026-10-16).
 
 ## Needs you
 
 | ID | What | Why it's yours | Recommendation | Needed by |
 |---|---|---|---|---|
-| — | Nothing open for the lead. Your own W5 steps are in `docs/OWNER.md`. | | | |
+| H-12 | Move the lead to autonomy A2: it merges Level 0 to 2 tasks after passing reviews without asking; Level 3 merges and every push still come to you | Autonomy is your setting (`lead/config.yml`) | Yes: five clean merges in a row (T-002 to T-006), which is the bar; it removes about half of the approvals you have been asked for. Default if no answer: stay at A1 | Any time |
+| H-13 | On 2026-10-16, write the gate's conclusion in `docs/STRATEGY.md` section 8 as `Resolved: <what Experiment D measured> -> <decision>`, and decide O2, O8, O9 and O11 in `docs/OPPORTUNITIES.md` | The gate's reading and the product decisions are yours | Give the lead the result in one line that morning; it drafts both edits for your yes. Otherwise the build is red, and every deploy blocked, from 00:00 UTC that day until both are done | 2026-10-16, before 02:23 UTC (the first bot run) |
 
 ## Done / answered
 
@@ -44,7 +45,9 @@ flight.
 
 | Task | Level | Status | Notes |
 |---|---|---|---|
-| — | | | No task in flight; candidates are listed in `lead/STATE.md` |
+| T-007 | 3 | executing | The check that forces a written conclusion on a gate's date accepts an empty or placeholder one (measured with the date forced to 2026-10-16); after this it will not |
+| T-008 | 3 | executing | `snapshot-commit.sh`, run by hand, would rewrite this clone's git identity and push; after this it refuses off GitHub Actions |
+| T-009 | 1 | ready, after T-007 | Your page (`docs/OWNER.md`) shows the answered 2026-09-18 gate as "12 days OVERDUE"; after this an answered gate reads as answered, and a gate 14 days out appears in "Needs you" |
 
 ## Milestones
 
@@ -54,6 +57,11 @@ flight.
 | M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
+
+- **2026-09-30** · lead · Lead #4 checked in: all six workflows green, origin merged, checks 29 of
+  29. Found that the guard for the 2026-10-16 gate accepts an empty conclusion (T-007) and that
+  your page shows the answered 2026-09-18 gate as overdue (T-009); started T-007 and T-008. Asked
+  H-12 (A2) and wrote down what 2026-10-16 needs from you (H-13).
 
 - **2026-09-30** · lead · Lead rotated to #4 at a clean boundary. Nothing for you to do: open a
   new conversation in this repository's folder and type /lead when you want to continue. The

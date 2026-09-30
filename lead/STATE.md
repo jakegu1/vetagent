@@ -4,7 +4,7 @@
 > session starts by reading it. Durable rules live in `AGENTS.md`, `lead/QUALITY.md` and
 > `lead/decisions/`. Test for this file: could a stranger act on every row below?
 
-Last updated: 2026-09-30 by lead session 3 (Claude Code desktop, local, opened in this repository).
+Last updated: 2026-09-30 by lead session 4 (Claude Code desktop, local, opened in this repository).
 
 ## Starting a lead session
 
@@ -29,8 +29,9 @@ Last updated: 2026-09-30 by lead session 3 (Claude Code desktop, local, opened i
   the start of lead session 2 the first 80 lines of this file appeared on their own.
 - **Autonomy is A1 again (H-7, 2026-09-29).** The lead specs, dispatches, reviews and decides
   on its own; every merge to master and every push waits for the Owner's yes. A2 needs five
-  clean merges in a row (`method.md` §12); the streak is 5 (T-002 to T-006; T-005 and T-006 merged 2026-09-30, CI green on `3db4bf5`), so A2 is due to be proposed (H-12, lead #4's first question). Any escaped
-  defect demotes one level (tripwire Q1).
+  clean merges in a row (`method.md` §12); the streak is 5 (T-002 to T-006; T-005 and T-006
+  merged 2026-09-30, CI green on `3db4bf5`). A2 proposed to the Owner as H-12 on 2026-09-30;
+  default if no answer: stay at A1. Any escaped defect demotes one level (tripwire Q1).
 - **M1's clock is running** since run 36445100361 (2026-09-28 15:38 UTC, head `dc401b9`); still
   green on run 36669385087 (head `3db4bf5`, 2026-09-30). At each check-in, check
   `gh run list --workflow=test.yml`; any red run on master restarts it and stops new work until
@@ -48,12 +49,23 @@ Last updated: 2026-09-30 by lead session 3 (Claude Code desktop, local, opened i
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| — | | | | | No task in flight. |
+| T-007 | 3 | `task/t-007-gate-guard-needs-a-conclusion`, worktree `../vetagent-t-007`, from `de567c0` | executing | executor subagent (background, started 2026-09-30) | On READY: check the contract and the checks, then an independent and a red-team review in parallel. If the session ended first, look for commits on the branch before assuming nothing landed |
+| T-008 | 3 | `task/t-008-snapshot-commit-refuses-locally`, worktree `../vetagent-t-008`, from `de567c0` | executing | executor subagent (background, started 2026-09-30) | Same as T-007. Also confirm `git config user.name` in the main checkout is still `jakegu1` |
 
 ## Waiting on the Owner
 
-- Nothing open for the lead. The Owner's own W5 steps (read Quick Intel's terms; the 17-call
-  check on W3's adversarial cohort) are in `docs/BACKLOG.md` and `docs/OWNER.md`.
+- **H-12 (asked 2026-09-30): move to autonomy A2?** Recommendation yes; default if no answer:
+  stay at A1. Under A2 the lead merges Level 0 to 2 tasks after passing reviews; Level 3 merges
+  (T-007, T-008) and every push still need the Owner.
+- **H-13 (told 2026-09-30, needed by 2026-10-16): the 2026-10-16 gate.** From 00:00 UTC that day
+  `tests/test_gates_get_reviewed.py` is red, and so are `tests` and every deploy, until (a) the
+  gate's row in `docs/STRATEGY.md` section 8 carries `Resolved: <what Experiment D measured> ->
+  <decision>` and (b) O2, O8, O9 and O11 in `docs/OPPORTUNITIES.md` are decided and moved under
+  "Reviewed and closed". The first bot run that day is `snapshot.yml` at 02:23 UTC. The reading
+  and the decisions are the Owner's; the lead offers to draft both edits from a one-line answer.
+  Nothing needed from the Owner before then.
+- The Owner's own W5 steps (read Quick Intel's terms; the 17-call check on W3's adversarial
+  cohort) are in `docs/BACKLOG.md` and `docs/OWNER.md`.
 - (H-11 done 2026-09-30: merged T-005 as `0fa831a`, T-006 as `053fe0a`, the Level 0 branch as
   `b29c424`; checks 29 of 29. Preflight run 36669036422 green on Linux; pushed `d5bb216..3db4bf5`;
   `tests` run 36669385087 green; no deploy (nothing under `src/`). Preflight branch deleted.)
@@ -83,25 +95,21 @@ Last updated: 2026-09-30 by lead session 3 (Claude Code desktop, local, opened i
 
 ## Next up
 
-No task is specced. Candidates below; at A1 the lead may spec and dispatch any of them, and the
-merge and push wait for the Owner's yes. Items marked "Owner's call first" need the Owner before
-a spec.
+**T-009 is specced and ready** (`lead/tasks/T-009-owner-page-answered-gates.md`, Level 1):
+dispatch it once T-007 is merged, because it calls T-007's `gate_row_answered`. Other candidates
+below; at A1 the lead may spec and dispatch any of them, and the merge and push wait for the
+Owner's yes. Items marked "Owner's call first" need the Owner before a spec.
 
-**Dated:** `tests/test_gates_get_reviewed.py` turns red on 2026-10-16 unless the parked items it
-names are reviewed, and a red step there also blocks every deploy (T-004). Check what it needs
-by 2026-10-14 and put any part that is the Owner's to them in good time.
+**Dated, checked 2026-09-30:** on 2026-10-16 `tests/test_gates_get_reviewed.py` turns red unless
+the gate's row carries a conclusion and O2, O8, O9 and O11 are decided (H-13, told to the Owner).
+T-007 makes a placeholder conclusion red as well, so the Owner must write it as
+`Resolved: <what the measurement said> -> <decision>`. Check on 2026-10-14 that H-13 is on
+track; if T-009 has merged by then, the Owner's own page lists it from 2026-10-02.
 
-Suggested order (lead #3): first the same guard for `.github/scripts/snapshot-commit.sh` (the
-class T-006 closed, still open next door), then the T-004 node-property follow-up, then the
-T-006 follow-up.
+Suggested order (lead #4): T-009 after T-007; then the T-004 node-property follow-up, then the
+T-006 follow-up (it touches `tests/test_bot_commits_stay_green.py`, as T-008 does: not in
+parallel with T-008).
 
-- Candidate, Level 3 area (CI script), from T-006's round-1 red-team (minor note 5): with any
-  argument or none, `.github/scripts/snapshot-commit.sh` writes `vetagent-snapshot[bot]` into the
-  clone's shared git config, then commits and pushes whatever is staged under
-  `bench/snapshots/`. It has no local mode, so it is less likely to be typed by accident; the
-  same four-line `GITHUB_ACTIONS` guard closes the class. Pair it with a scratch-run test of the
-  bots' full path (a page changes, a commit, a push), which no test runs today (T-006 round-1
-  independent review, optional 2); milestone M1's clock depends on that push.
 - Candidate, Level 3 area (the deploy gate), from T-004's round-2 re-review: a YAML node
   property (`&anchor` or `!tag`) before an unclosed quote still ends the job early in the
   runner and the guard's reader (a one-line fix is in `lead/reviews/T-004.md`, follow-up 1);
@@ -136,9 +144,10 @@ T-006 follow-up.
 - Candidate, check mode vs the suite: `unsourced_competitor_figures()` fails check mode (and,
   after T-002, `--write`), but no test in the suite runs it, so CI would not see an undated
   competitor figure. Decide whether a test should, or whether check mode should not.
-- Done this session and removed from this list: the `second_oracle.py` report (T-005), the
-  regeneration script's bots' mode (T-006), and the stale `CLAUDE.md` note on the editor's
-  client name (Level 0, `0c6be16`).
+- Taken by lead #4 and removed from this list: the `snapshot-commit.sh` guard (now T-008, with
+  a behavioural test of its retry path). The stray line 123 in `tests/test_gates_get_reviewed.py`
+  (a mangled-heredoc leftover, a comment) is removed inside T-007 in its own commit; a scan of the
+  repository for the same shape found no other.
 
 ## Rotation
 
@@ -150,23 +159,17 @@ every review record pasted in full), an estimate and not a measurement. Lead ses
 on 2026-09-29 on the same kind of estimate; lead session 1 on 2026-09-28 at 50 of 100 parts of
 the window.
 
-## Handoff notes for lead #4
+## Handoff notes (from lead #3; still true)
 
-- **Open the session in this repository's folder and type /lead.** Nothing is in flight and
-  nothing is pushed-but-unwatched: `master` is `3db4bf5` on origin plus this handoff commit.
-- **First question for the Owner, H-12: propose autonomy A2.** The clean-merge streak reached 5
-  on 2026-09-30 (T-002 to T-006; CI green on `3db4bf5`, run 36669385087), which is the bar in
-  `method.md` §12. A2 lets the lead merge Level 0 to 2 tasks after passing reviews without
-  asking; Level 3 merges and every push stay with the Owner (`sign_off`). Recommendation: yes;
-  default if no answer: stay at A1. Batch it with anything else you need from them.
+- **H-12 asked** (lead #4, 2026-09-30); see Waiting on the Owner.
 - **Tripwire Q3 is over its threshold** (more than 2 Owner interruptions a week: H-5 to H-11 in
   three days). Most were merge-and-push approvals that A1 and the sign-off list require; A2
-  removes the merge half. Look at it in the next weekly pass (`lead-weekly`).
+  removes the merge half. Look at it in the next weekly pass (`lead-weekly`), due about
+  2026-10-05 (none has run since the adoption on 2026-09-28).
 - **M1 completes on 2026-10-05** if no `tests` run on master goes red; record it then in
-  `lead/QUALITY.md`'s milestone table and `lead/OWNER.md`.
-- **Dated: 2026-10-16.** `tests/test_gates_get_reviewed.py` turns red that day unless its
-  parked items are reviewed, and a red step blocks every deploy. Check what it needs by
-  2026-10-14 (Next up).
+  `lead/QUALITY.md`'s milestone table and `lead/OWNER.md`. Push only after a green preflight
+  branch run until then.
+- **Dated: 2026-10-16.** Checked 2026-09-30; see H-13 and Next up.
 - **W5 is the Owner's, and it can be run now.** `python bench/second_oracle.py --plan --set
   adversarial`, then `--run --set adversarial` with their key: 17 calls, about 34 s, written to
   `bench/second_oracle_adversarial.json` (git-ignored); it refuses to start over an existing file.
@@ -213,6 +216,14 @@ modifies a tracked file. If it lists one, find the step that wrote it; do not re
 hand and move on.
 
 ## Recent decisions
+
+- 2026-09-30: lead #4 put a new finding ahead of lead #3's list: the gate guard that decides
+  whether the build goes red on 2026-10-16 accepts a placeholder conclusion (T-007, Level 3,
+  because it enforces a pre-registered rule). The rule it enforces is the form its own failure
+  message already asks for (`<what the measurement said> -> <decision>`), so no gate, test or
+  threshold changes and no sign-off is needed; the Owner is told the form in H-13. T-008 (lead
+  #3's first item) runs beside it. T-009 waits for T-007 so the Owner page and the guard share one
+  rule instead of two.
 
 - 2026-09-30: H-11 done as recommended: T-005, T-006 and the Level 0 branch merged and pushed
   in two steps (a preflight branch, then `master`); no deploy. T-006's AC 6 (15 s on Windows)
@@ -263,9 +274,19 @@ hand and move on.
 | 1 | Claude Code desktop, local (opened in the parent folder) | 2026-09-28 | 2026-09-28 | Rotation rule: context at 50 of 100 parts of the window |
 | 2 | Claude Code desktop, local (opened in this repository) | 2026-09-29 | 2026-09-29 | Rotation rule at a natural boundary after H-10; context judged past the threshold (not measured) |
 | 3 | Claude Code desktop, local (opened in this repository) | 2026-09-29 | 2026-09-30 | Rotation rule at a natural boundary after H-11; context judged past the threshold (not measured) |
-| 4 | next session, opened in this repository | | | |
+| 4 | Claude Code desktop, local (opened in this repository) | 2026-09-30 | | |
 
 ## Log (newest first; keep the last ~20 lines)
+
+- 2026-09-30: lead #4 check-in. The latest run of each of the six workflows succeeded. Merged
+  origin (five bot commits) as `c597846`; checks 29 of 29, tree clean. Checked the 2026-10-16
+  item early and measured its guard: with today forced to 2026-10-16, a bare `Resolved:` and
+  `Resolved: no` both pass `tests/test_gates_get_reviewed.py`, whose docstrings say an audit
+  watched both turn it red (the check is a substring test since `1762bd3`). Wrote T-007 (that
+  guard, Level 3) and T-008 (the `snapshot-commit.sh` guard, Level 3), committed as `de567c0`,
+  dispatched both in parallel (no file in common). Wrote T-009 (Level 1, the Owner page shows
+  the answered 2026-09-18 gate as 12 days overdue in bold; after T-007). Asked H-12 (A2) and
+  told H-13 (what 2026-10-16 needs).
 
 - 2026-09-30: lead #3 hands off to lead #4 (rotation rule, natural boundary, nothing in flight).
 - 2026-09-30: H-11 done. Preflight run 36669036422 green on Linux; pushed `d5bb216..3db4bf5`
