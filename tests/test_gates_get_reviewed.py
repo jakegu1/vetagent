@@ -38,9 +38,9 @@ OPPS = os.path.join(ROOT, "docs", "OPPORTUNITIES.md")
 # bare "Resolved:", and "Resolved: no". Only the first ever was. The due-gate check
 # looked for the word and nothing after it, so until T-007 a bare and a "no" resolution
 # both passed, as did any placeholder (measured 2026-09-30, today forced to 2026-10-16).
-# Both are refused since: gate_row_answered() wants a finding, an arrow and a decision,
-# and the self-tests below show those refusals on every run. Two escapes worked, and
-# would again without this list:
+# Both are refused since: gate_row_answered() wants a finding, an ASCII arrow and a
+# decision, and the self-tests below show those refusals on every run. Two escapes
+# worked, and would again without this list:
 #
 #     deleting the 2026-09-18 row entirely      -> GREEN
 #     changing its date to 2027-09-18           -> GREEN
@@ -93,21 +93,29 @@ STRATEGY = os.path.join(ROOT, "docs", "STRATEGY.md")
 # added there without also becoming enforceable here.
 _GATE_ROW = re.compile(r"^\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*([^|]+?)\s*\|", re.M)
 
-# The arrow between a finding and a decision: the ASCII one the due-gate check's failure
-# message asks for, and U+2192, the one the table's own action column uses.
-_ARROWS = ("->", chr(0x2192))
+# The arrow between a finding and a decision: the ASCII "->" that the due-gate check's
+# failure message asks for, and nothing else. U+2192 does not count because the table's
+# own pre-registered action text is written with it ("Yes <U+2192> build payments; no
+# <U+2192> ..."), so a placeholder put before that text, or in the test cell, would be
+# answered by the table's arrows rather than by a conclusion. Measured on 8e14f10, while
+# U+2192 still counted: "Resolved: TBD" at the start of the 2026-10-16 row's action cell
+# passed, and so did "Resolved: TBD" in its test cell.
+_ARROWS = ("->",)
 
 
 def gate_row_answered(row):
     """True when a gate row carries a written conclusion. The one statement of the rule.
 
-    The conclusion is the text after the row's first "Resolved:". It must hold an arrow,
-    "->" or U+2192, with at least one letter or digit on each side of it, both sides
-    within that text: "Resolved: <what the measurement said> -> <decision>". The arrows of
-    the action column come before "Resolved:" and answer nothing. Markdown emphasis,
-    backticks, pipes and whitespace are not content, so a bare "Resolved:", a one-word
-    "Resolved: no", "Resolved: TBD", "Resolved: -> continue" and "**Resolved:** ** -> **"
-    are all refused. Undecided is an answer ("... -> undecided"); silence is not.
+    The conclusion is the text after the row's first "Resolved:". It must hold an ASCII
+    arrow, "->", with at least one letter or digit on each side of it, both sides within
+    that text: "Resolved: <what the measurement said> -> <decision>". U+2192 is not the
+    conclusion's arrow: the table's own action text uses it, so a placeholder put before
+    that text, or in the test cell, would be answered by the table's pre-registered arrows
+    (measured on 8e14f10, while it counted). A conclusion written with U+2192 is refused,
+    and the failure message says why. Markdown emphasis, backticks, pipes and whitespace
+    are not content, so a bare "Resolved:", a one-word "Resolved: no", "Resolved: TBD",
+    "Resolved: -> continue" and "**Resolved:** ** -> **" are all refused. Undecided is an
+    answer ("... -> undecided"); silence is not.
 
     The due-gate check below calls it. Keep its name and signature: T-009 relies on them.
     """
@@ -172,7 +180,8 @@ def test_strategy_gates_are_answered_when_they_fall_due():
         if due <= today:
             check("gate %s (%s) is due and carries a written conclusion"
                   % (date_str, name[:34]), resolved,
-                  "add 'Resolved: <what the measurement said> -> <decision>' to its row")
+                  "add 'Resolved: <what the measurement said> -> <decision>' to its row "
+                  "(the arrow is an ASCII '->'; the table's own U+2192 arrows do not count)")
         else:
             days = (due - today).days
             print("  ..    gate %s (%s) due in %d days" % (date_str, name[:34], days))
