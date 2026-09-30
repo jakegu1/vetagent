@@ -80,12 +80,12 @@ gantt
 ### Is the archive still collecting?
 
 ```text
-█████████████████████   2026-09-09 -> 2026-09-29
+█████████████████████   2026-09-10 -> 2026-09-30
 ```
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**27 days, no gaps.** Newest is 2026-09-29, yesterday.
+**28 days, no gaps.** Newest is 2026-09-30, today.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- Level 0: CLAUDE.md no longer says the owner's editor reaches production untagged
-- lead: T-006 specced (regenerate-derived.sh refuses its bots' mode off CI)
-- lead: T-005 specced (second_oracle.py for the Owner's W5 check); lead #3 check-in
-- lead: handoff to lead #3
-- lead: H-10 done; T-003 and T-004 done; the deploy gate ran 28 of 28 on CI
-- lead: T-004 passed round 2 (11 of 12, red-team none); H-10 asked
-- lead: T-004 round 2 in re-review; a pitfall the lead repeated while writing it
-- T-004: the runner refuses a test.yml holding a character Python ends a line at and YAML does not
+- lead: H-11 merges done (T-005, T-006, Level 0); T-006 time bound recorded as unmet
+- Level 0: CLAUDE.md says the regeneration script refuses its bots' mode off CI
+- lead: T-005 passes round 2; T-006 back for one round; two spec lessons
+- Level 0: the W5 row names the command for the adversarial-cohort check
+- T-006: named change (b) near misses of "true" join the off-Actions values
+- T-006: the refusal says not to set GITHUB_ACTIONS by hand to get past it
+- T-006: named change (c) the canary names the user.* keys that changed, not their values
+- T-006: named change (a) on GitHub Actions a check that could not run fails the file
 
-_59 more not shown (67 commits in total)._
+_89 more not shown (97 commits in total)._
 
 ## What I got wrong
 
