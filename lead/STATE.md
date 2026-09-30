@@ -4,7 +4,7 @@
 > session starts by reading it. Durable rules live in `AGENTS.md`, `lead/QUALITY.md` and
 > `lead/decisions/`. Test for this file: could a stranger act on every row below?
 
-Last updated: 2026-09-29 by lead session 3 (Claude Code desktop, local, opened in this repository).
+Last updated: 2026-09-30 by lead session 3 (Claude Code desktop, local, opened in this repository).
 
 ## Starting a lead session
 
@@ -29,10 +29,10 @@ Last updated: 2026-09-29 by lead session 3 (Claude Code desktop, local, opened i
   the start of lead session 2 the first 80 lines of this file appeared on their own.
 - **Autonomy is A1 again (H-7, 2026-09-29).** The lead specs, dispatches, reviews and decides
   on its own; every merge to master and every push waits for the Owner's yes. A2 needs five
-  clean merges in a row (`method.md` §12); the streak is 3 (T-002, T-003, T-004). Any escaped
+  clean merges in a row (`method.md` §12); the streak is 5 (T-002 to T-006; T-005 and T-006 merged 2026-09-30, CI green on `3db4bf5`), so A2 is due to be proposed (H-12, lead #4's first question). Any escaped
   defect demotes one level (tripwire Q1).
 - **M1's clock is running** since run 36445100361 (2026-09-28 15:38 UTC, head `dc401b9`); still
-  green on run 36557714268 (head `6c8b785`, 2026-09-29). At each check-in, check
+  green on run 36669385087 (head `3db4bf5`, 2026-09-30). At each check-in, check
   `gh run list --workflow=test.yml`; any red run on master restarts it and stops new work until
   green (tripwire Q4).
 - Pushing: fetch and merge origin first (never rebase), regenerate the derived pages
@@ -48,12 +48,15 @@ Last updated: 2026-09-29 by lead session 3 (Claude Code desktop, local, opened i
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| H-11 | — | `master` at the merges `0fa831a` (T-005), `053fe0a` (T-006), `b29c424` (Level 0) | merged locally; checks 29 of 29 on master; push step 1 (preflight branch) next | lead, on the Owner's yes (H-11) | Fetch and merge origin; push the merged tree to `preflight-2026-09-30`; when its `tests` run is green, push `master`; watch `tests`; delete the preflight branch; remove the three worktrees and task branches |
+| — | | | | | No task in flight. |
 
 ## Waiting on the Owner
 
 - Nothing open for the lead. The Owner's own W5 steps (read Quick Intel's terms; the 17-call
   check on W3's adversarial cohort) are in `docs/BACKLOG.md` and `docs/OWNER.md`.
+- (H-11 done 2026-09-30: merged T-005 as `0fa831a`, T-006 as `053fe0a`, the Level 0 branch as
+  `b29c424`; checks 29 of 29. Preflight run 36669036422 green on Linux; pushed `d5bb216..3db4bf5`;
+  `tests` run 36669385087 green; no deploy (nothing under `src/`). Preflight branch deleted.)
 - (H-11 answered 2026-09-30: as recommended. Once T-006's round-2 re-review passes, merge
   T-005, T-006 and the Level 0 branch into local `master`, then push in two steps: the merged
   tree to a preflight branch first (`test.yml` on Linux, no deploy), then `master` once that is
@@ -140,30 +143,41 @@ T-006 follow-up.
 ## Rotation
 
 The rule (`lead/config.yml`): rotate at about 0.4 of the context window or 72 hours, at a
-natural boundary. Lead session 2 rotated on 2026-09-29 after H-10 (everything merged, pushed and
+natural boundary. Lead session 3 rotated on 2026-09-30 after H-11 (everything merged, pushed and
 green, nothing in flight). Its context size could not be read from inside the session; it was
-judged past the threshold (two executors, five reviewers, one resume), an estimate and not a
-measurement. Lead session 1 rotated on 2026-09-28 at 50 of 100 parts of the window.
+judged past the threshold (two executors each resumed once, five reviewers, one session resume,
+every review record pasted in full), an estimate and not a measurement. Lead session 2 rotated
+on 2026-09-29 on the same kind of estimate; lead session 1 on 2026-09-28 at 50 of 100 parts of
+the window.
 
-## Handoff notes for lead #3
+## Handoff notes for lead #4
 
 - **Open the session in this repository's folder and type /lead.** Nothing is in flight and
-  nothing waits on the Owner; start from Next up (its suggested order is current).
-- **Unpushed:** `master` is ahead of origin by the lead's bookkeeping after `6c8b785` (the H-10
-  record and this handoff). Push them with the next batch the Owner approves.
-- **Every push that touches `src/`, `pyproject.toml`, `wrangler.jsonc` or `deploy.yml` now runs
-  the whole offline suite before deploying.** A red step, including a date-driven one (the next
-  is the 2026-10-16 parked-item review in `tests/test_gates_get_reviewed.py`), blocks deploys.
-  Plan a preflight branch push before any push that deploys, as H-10 did.
+  nothing is pushed-but-unwatched: `master` is `3db4bf5` on origin plus this handoff commit.
+- **First question for the Owner, H-12: propose autonomy A2.** The clean-merge streak reached 5
+  on 2026-09-30 (T-002 to T-006; CI green on `3db4bf5`, run 36669385087), which is the bar in
+  `method.md` §12. A2 lets the lead merge Level 0 to 2 tasks after passing reviews without
+  asking; Level 3 merges and every push stay with the Owner (`sign_off`). Recommendation: yes;
+  default if no answer: stay at A1. Batch it with anything else you need from them.
+- **Tripwire Q3 is over its threshold** (more than 2 Owner interruptions a week: H-5 to H-11 in
+  three days). Most were merge-and-push approvals that A1 and the sign-off list require; A2
+  removes the merge half. Look at it in the next weekly pass (`lead-weekly`).
 - **M1 completes on 2026-10-05** if no `tests` run on master goes red; record it then in
   `lead/QUALITY.md`'s milestone table and `lead/OWNER.md`.
-- **A2:** the clean-merge streak is 3 (T-002, T-003, T-004); propose A2 to the Owner after two
-  more.
-- **W5 is the Owner's.** Raw Quick Intel answers stay local and git-ignored; no figure derived
-  from them goes into this repository until the Owner has read Quick Intel's terms. The
-  remaining measurement (W3's 17-token adversarial cohort) needs a way to select those tokens
-  in `bench/second_oracle.py`, which does not exist yet, and uses the Owner's key: the Owner
-  runs it. Quick Intel's free tier allows about one call a second; pace calls at two seconds.
+- **Dated: 2026-10-16.** `tests/test_gates_get_reviewed.py` turns red that day unless its
+  parked items are reviewed, and a red step blocks every deploy. Check what it needs by
+  2026-10-14 (Next up).
+- **W5 is the Owner's, and it can be run now.** `python bench/second_oracle.py --plan --set
+  adversarial`, then `--run --set adversarial` with their key: 17 calls, about 34 s, written to
+  `bench/second_oracle_adversarial.json` (git-ignored); it refuses to start over an existing file.
+  `--report bench/second_oracle.json` re-reads the earlier answers with the new classes. Raw
+  answers and any figure derived from them stay out of this repository until the Owner has read
+  Quick Intel's terms (H-9). The script cannot see how much of the month's allowance is spent.
+- **Resuming an interrupted executor:** the previous process can end mid-round (it did on
+  2026-09-30). Check the task branch and worktree for commits before assuming nothing landed;
+  T-006's round 2 was complete on its branch with no READY report.
+- **Scratch clones:** use `git clone --no-local`. A reviewer's hardlinked local clone reached only
+  170 of 651 commits once (cause not found; see the log).
 - **Agents in parallel:** give each executor and reviewer its own scratchpad subfolder by name
   (`lead/PITFALLS.md`). The Write and Edit tools decode backslash-u escapes into real
   characters; scan `lead/` for non-ASCII control characters before committing.
@@ -177,7 +191,9 @@ After T-001 (`0a3098d`, 2026-09-28): 27 of 27. **Lead session 2 at `24a0a73` (20
 clean. After T-002 (`16e100e`): 27 of 27, clean tree; `tests/test_published_numbers.py` 70 of
 70. After H-10 (`6c8b785`): 28 of 28 (T-004 added `tests/test_deploy_gate.py`, 125 of 125);
 `tests/test_published_numbers.py` 111 of 111; about 55 s locally. No failure is known.**
-**After H-11 (`b29c424`, 2026-09-30): 29 of 29 in 63.0 s. T-005 added `tests/test_second_oracle.py` (216 of 216, 0.5 s); after T-006 `tests/test_bot_commits_stay_green.py` runs the real script in scratch repositories (118 of 118, 13.2 s on Windows).**
+**After H-11 (`b29c424`, 2026-09-30): 29 of 29 in 63.0 s. T-005 added `tests/test_second_oracle.py` (216 of 216, 0.5 s); after T-006 `tests/test_bot_commits_stay_green.py` runs the real script in scratch repositories (118 of 118, 13.2 s on Windows).** On CI (Linux), preflight run 36669036422 and `master` run
+36669385087 on `3db4bf5`: `test`, `upstream-contract` and `backfill-roundtrip` green; the
+regeneration script's 29 calls took 0.4 s there, so T-006 costs the deploy gate almost nothing.
 Not part of the baseline: `tests/test_upstream_contract.py` and `tests/test_backfill.py`
 (network; CI jobs `upstream-contract` and `backfill-roundtrip`).
 **On CI:** `tests` was red from 2026-09-22 12:05 UTC to 2026-09-28: 32 runs, every one failing
@@ -198,6 +214,17 @@ hand and move on.
 
 ## Recent decisions
 
+- 2026-09-30: H-11 done as recommended: T-005, T-006 and the Level 0 branch merged and pushed
+  in two steps (a preflight branch, then `master`); no deploy. T-006's AC 6 (15 s on Windows)
+  is recorded as unmet (median 15.2 s) and not moved: the overrun came from the lead's own
+  round-1 decision, and a slower local suite is not a blocking class under the round cap.
+- 2026-09-30: both tasks went back for one round although their first verdicts passed, because
+  each lost points in the class it existed to close (T-005: a share over rows that could not
+  answer it; T-006: a check that could not run still passing the CI step). Both lessons are in
+  `lead/PITFALLS.md` as spec-writing rules.
+- 2026-09-29: lead #3 reordered lead #2's list: T-005 first (it unblocked the Owner's W5 step,
+  due 2026-10-16), T-006 beside it (a plausible accident with data loss and an unapproved push),
+  and the deploy gate's node-property variant later (a contrived edit that `tests` catches).
 - 2026-09-29: H-10 done as recommended: T-003, T-004 and the W5 row merged and pushed in two
   steps, a preflight branch first (Linux, no deploy), then `master` (tests and a deploy). The
   deploy now runs every offline step before it ships; `.github/scripts/offline_suite.py` and
@@ -235,10 +262,15 @@ hand and move on.
 |---|---|---|---|---|
 | 1 | Claude Code desktop, local (opened in the parent folder) | 2026-09-28 | 2026-09-28 | Rotation rule: context at 50 of 100 parts of the window |
 | 2 | Claude Code desktop, local (opened in this repository) | 2026-09-29 | 2026-09-29 | Rotation rule at a natural boundary after H-10; context judged past the threshold (not measured) |
-| 3 | Claude Code desktop, local (opened in this repository) | 2026-09-29 | | |
+| 3 | Claude Code desktop, local (opened in this repository) | 2026-09-29 | 2026-09-30 | Rotation rule at a natural boundary after H-11; context judged past the threshold (not measured) |
+| 4 | next session, opened in this repository | | | |
 
 ## Log (newest first; keep the last ~20 lines)
 
+- 2026-09-30: lead #3 hands off to lead #4 (rotation rule, natural boundary, nothing in flight).
+- 2026-09-30: H-11 done. Preflight run 36669036422 green on Linux; pushed `d5bb216..3db4bf5`
+  (40 commits); `tests` run 36669385087 green; no deploy. Preflight branch deleted; the three
+  worktrees and task branches removed.
 - 2026-09-30: T-006 round 2 passed its combined re-review (pass, RED-TEAM none); AC 6's 15 s
   bound on Windows is not met (median 15.2 s) and is recorded, not moved (lead decision in
   `lead/reviews/T-006.md`). The Owner approved H-11 as recommended. Merged T-005 as `0fa831a`,

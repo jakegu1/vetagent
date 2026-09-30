@@ -7,9 +7,9 @@
 
 ## Status in one line
 
-T-005 and T-006 are merged locally (checks 29 of 29) and being pushed in two steps, as you
-approved (H-11): a preflight branch first, then `master`. Nothing deploys. M1's clock keeps
-running.
+Everything is merged and pushed (H-11): CI is green on Linux and nothing deployed. Your W5
+check on the adversarial cohort can be run now. M1's 7-day clock keeps running; nothing is in
+flight.
 
 ## Needs you
 
@@ -21,7 +21,7 @@ running.
 
 | Item | Outcome | Recorded in |
 |---|---|---|
-| H-11 Merge T-005, T-006 and the Level 0 branch; push in two steps (2026-09-30) | Approved as recommended; merged as `0fa831a`, `053fe0a`, `b29c424`; checks 29 of 29; the push is under way | `lead/STATE.md` |
+| H-11 Merge T-005, T-006 and the Level 0 branch; push in two steps (2026-09-30) | Approved as recommended; merged as `0fa831a`, `053fe0a`, `b29c424`; checks 29 of 29; preflight green on Linux; pushed `d5bb216..3db4bf5`; `tests` green; no deploy | `lead/STATE.md` |
 | T-006 (2026-09-30) | Merged as `053fe0a`: round 2 combined re-review pass, red-team none; its 15 s Windows time bound is not met (median 15.2 s), recorded rather than moved | `lead/reviews/T-006.md` |
 | T-005 (2026-09-30) | Merged as `0fa831a`: round 2 re-review 12 of 12 | `lead/reviews/T-005.md` |
 | H-10 Merge T-003, T-004, the W5 row; push in two steps (2026-09-29) | Preflight on Linux green; pushed `8daa0f7..6c8b785`; tests and deploy green; the gate ran 28 of 28 on CI | `lead/STATE.md` |
@@ -55,6 +55,11 @@ running.
 
 ## Log (newest first)
 
+- **2026-09-30** · lead · Lead rotated to #4 at a clean boundary. Nothing for you to do: open a
+  new conversation in this repository's folder and type /lead when you want to continue. The
+  next lead's first question will be whether to move to autonomy A2 (five clean merges in a row).
+- **2026-09-30** · lead · H-11 done: pushed after a green preflight on Linux; `tests` green on
+  `master`, nothing deployed.
 - **2026-09-30** · lead · You approved H-11. T-005 (your W5 check on the adversarial cohort can
   now be run safely: `python bench/second_oracle.py --plan --set adversarial`, then `--run`
   with your key) and T-006 (the regeneration script refuses its bots' mode off GitHub Actions)
