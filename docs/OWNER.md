@@ -119,7 +119,7 @@ Rounded = parked by you. Hexagons are not work items -- they are what a row is w
 
 | | |
 |---|---|
-| Maturity score | 42 / 100 (`docs/SCORECARD.md`) |
+| Maturity score | 45 / 100 (`docs/SCORECARD.md`) |
 | Tokens measured | 576 |
 | False positives | 3.1% -- we called a healthy token dangerous |
 | Answers we refuse | 21.2% -- `unknown`, on purpose |
