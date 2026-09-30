@@ -50,7 +50,7 @@ Last updated: 2026-09-30 by lead session 4 (Claude Code desktop, local, opened i
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-009 | 1 | `task/t-009-owner-page-answered-gates`, worktree `../vetagent-t-009`, from the bookkeeping commit after the merges | executing | executor subagent (background, started 2026-10-01) | On READY: contract and checks, then one fresh review (Level 1). Pass: the lead merges (A2), then pushes it the H-14 way (a preflight branch, then `master`) without asking again. If the session ended first, look for commits on the branch |
+| T-009 | 1 | `task/t-009-owner-page-answered-gates`, worktree `../vetagent-t-009`, from `26392ab` | executing the amendment (first READY at `3af074d`: 363 passed, CONTRACT HOLDS) | executor subagent (resumed 2026-10-01) | Amendment (spec): two `CORRECTIONS` entries dated 2026-09-30, because `tests/test_owner_page.py` goes red on 2026-10-04 UTC without one (M1 completes 2026-10-05). On READY: one fresh review (Level 1); pass: the lead merges (A2) and pushes the H-14 way, **before 2026-10-04 02:23 UTC**. If the session ended first, look for commits on the branch past `3af074d` |
 
 ## Waiting on the Owner
 
@@ -108,6 +108,19 @@ below; at A2 the lead may spec, dispatch and (Levels 0 to 2, after passing revie
 them; Level 3 merges and every push wait for the Owner's yes. Items marked "Owner's call first"
 need the Owner before a spec.
 
+**Every check that can go red on the calendar alone** (a scan of `tests/` for `date.today()`,
+2026-10-01): the gates and their parked entries in `tests/test_gates_get_reviewed.py`
+(2026-10-16, 2026-12-04, 2027-03-04); in `tests/test_owner_page.py` the corrections window
+(below), the page's age (7 days) and the newest snapshot's age (2 days), the last two kept fresh
+by the bots. `tests/test_coverage_matrix.py` only prints fixture ages. Re-scan when a test is
+added.
+
+**Dated: the corrections window.** `tests/test_owner_page.py` requires an entry in `CORRECTIONS`
+(`tools/owner.py`) dated within 14 days. After T-009 the newest is 2026-09-30, so the test goes
+red on **2026-10-15 UTC** unless a newer entry exists: by 2026-10-14, add a real correction, or a
+dated "nothing to report" (the test's own words), on a branch and pushed. It went unwatched once:
+the 2026-09-19 entry would have turned master red on 2026-10-04, one day before M1 completes.
+
 **Dated, checked 2026-09-30:** on 2026-10-16 `tests/test_gates_get_reviewed.py` turns red unless
 the gate's row carries a conclusion and O2, O8, O9 and O11 are decided (H-13, told to the Owner).
 T-007 makes a placeholder conclusion red as well, so the Owner must write it as
@@ -139,6 +152,9 @@ parallel with T-008).
   push fails: exit 1, `LOST`, five attempts, sleeps 10 to 50); `date` without `-u` (run the
   calls on Actions under a `TZ` whose date differs from UTC's). Not in parallel with the T-006
   follow-up (same file).
+- Candidate, Level 1, from T-009's executor (note 2): once a gate is answered but its parked
+  entries are still open, it leaves "Needs you", although from its date the guard fails the build
+  on those entries. Keep the row until both are done, listing what is left.
 - Candidate, Level 0 or 1: nothing pins `.github/scripts/*.sh` to LF (no `.gitattributes`); a
   script committed with CRLF would stop the bots on Linux (T-008 red-team note 3, emulated).
   One line: `*.sh text eol=lf`. Check what it does to this Windows checkout first.
@@ -316,6 +332,13 @@ hand and move on.
 | 4 | Claude Code desktop, local (opened in this repository) | 2026-09-30 | | |
 
 ## Log (newest first; keep the last ~20 lines)
+
+- 2026-10-01: T-009 READY at `3af074d` (363 passed; CONTRACT HOLDS; acceptance-test fix
+  `e3f3204` accepted: a synthetic gate's name contained "tomorrow"). Its executor found that
+  master goes red on 2026-10-04 UTC: the Owner page's corrections list must have an entry within
+  14 days and the newest was 2026-09-19. Measured by the lead (green to 2026-10-03, red on
+  10-04). Two real, unentered mistakes fit: the page's answered gate shown overdue, and T-007's
+  false "watched red" claim. Amended into T-009 before review; the lead wrote the text.
 
 - 2026-10-01: H-14 pushed. Preflight run 36744394310 green on Linux; `master` pushed
   `a5bcce5..26392ab`; `tests` run 36744975640 green (`test`, `upstream-contract`,

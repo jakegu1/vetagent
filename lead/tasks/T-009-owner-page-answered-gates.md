@@ -137,3 +137,19 @@ an entry), and every other file.
   template in AC 3's "You know it is done when" line is written **inside a code span** (backticks),
   never with `&lt;` or `&gt;`, and a test pins that the rendered page carries it that way. Added
   to AC 3; everything else stands.
+- **2026-10-01, lead decision on the first READY (`3af074d`), before review.** The executor
+  found, and the lead measured, that `test_the_page_admits_recent_mistakes` turns red on
+  2026-10-04 (UTC on CI): the newest entry in `CORRECTIONS` is dated 2026-09-19 and the window is
+  14 days. That would break milestone M1 one day before it completes and block every deploy.
+  Two real mistakes told to the Owner in that window were never entered: the Owner page showing
+  the answered 2026-09-18 gate as overdue (this task's own finding), and the gate guard's claim
+  that a bare and a "no" resolution had been watched turning it red (T-007). **Added to scope:**
+  both entries, at the top of `CORRECTIONS` (newest first, dated 2026-09-30, the date they were
+  found; not 2026-10-01, which is still in the future on CI in UTC), in their own commit, with
+  the text the lead supplied; shown red first by running the existing test with the date forced
+  to 2026-10-04, and green after; then `docs/OWNER.md` regenerated again. No test changes. The
+  acceptance-test fix `e3f3204` (a synthetic gate renamed from "Gate due tomorrow", a name that
+  made the AC 1 label check impossible for any implementation; no date, text or assertion
+  changed, the same 26 checks red at both commits) is accepted by the lead. Decided, not in
+  scope: an answered gate whose parked entries are still open leaves "Needs you" (executor note
+  2); a follow-up.
