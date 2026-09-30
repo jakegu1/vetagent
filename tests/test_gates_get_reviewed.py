@@ -99,8 +99,17 @@ _GATE_ROW = re.compile(r"^\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*([^|]+?)\s*\|", re.M)
 # <U+2192> ..."), so a placeholder put before that text, or in the test cell, would be
 # answered by the table's arrows rather than by a conclusion. Measured on 8e14f10, while
 # U+2192 still counted: "Resolved: TBD" at the start of the 2026-10-16 row's action cell
-# passed, and so did "Resolved: TBD" in its test cell.
+# passed, and so did "Resolved: TBD" in its test cell. The protection relies on the action
+# text keeping U+2192: rewritten with ASCII arrows, it would answer those placeholders
+# again.
 _ARROWS = ("->",)
+
+# Markup a reader never sees: HTML comments, tags and entities. gate_row_answered removes
+# it before judging, so "<what the measurement said> -> <decision>", "<br> -> <br>" and
+# "&nbsp; -> &nbsp;" have nothing on either side of the arrow, and an HTML comment's
+# closing "-->" is not an arrow (round 1 red-team, M1). A tag starts with a letter or "/"
+# and does not end in "-", so "<3 commitments -> ..." and an arrow before ">" survive.
+_MARKUP = re.compile(r"<!--.*?-->|<[A-Za-z/](?:[^<>]*[^<>-])?>|&#?\w+;")
 
 
 def gate_row_answered(row):
@@ -112,13 +121,17 @@ def gate_row_answered(row):
     conclusion's arrow: the table's own action text uses it, so a placeholder put before
     that text, or in the test cell, would be answered by the table's pre-registered arrows
     (measured on 8e14f10, while it counted). A conclusion written with U+2192 is refused,
-    and the failure message says why. Markdown emphasis, backticks, pipes and whitespace
-    are not content, so a bare "Resolved:", a one-word "Resolved: no", "Resolved: TBD",
-    "Resolved: -> continue" and "**Resolved:** ** -> **" are all refused. Undecided is an
-    answer ("... -> undecided"); silence is not.
+    and the failure message says why. HTML comments, tags and entities are removed from
+    the row first (_MARKUP): a reader never sees them, so the failure message's own
+    template "<what the measurement said> -> <decision>" is not a conclusion, and a
+    comment's closing "-->" is not an arrow. Markdown emphasis, backticks, pipes and
+    whitespace are not content, so a bare "Resolved:", a one-word "Resolved: no",
+    "Resolved: TBD", "Resolved: -> continue" and "**Resolved:** ** -> **" are all refused.
+    Undecided is an answer ("... -> undecided"); silence is not.
 
     The due-gate check below calls it. Keep its name and signature: T-009 relies on them.
     """
+    row = _MARKUP.sub(" ", row)
     _, found, conclusion = row.partition("Resolved:")
     content = [i for i, ch in enumerate(conclusion) if ch.isalnum()]
     if not found or not content:
@@ -181,7 +194,8 @@ def test_strategy_gates_are_answered_when_they_fall_due():
             check("gate %s (%s) is due and carries a written conclusion"
                   % (date_str, name[:34]), resolved,
                   "add 'Resolved: <what the measurement said> -> <decision>' to its row "
-                  "(the arrow is an ASCII '->'; the table's own U+2192 arrows do not count)")
+                  "(the arrow is an ASCII hyphen followed by a greater-than sign; the "
+                  "table's own U+2192 arrows do not count)")
         else:
             days = (due - today).days
             print("  ..    gate %s (%s) due in %d days" % (date_str, name[:34], days))
