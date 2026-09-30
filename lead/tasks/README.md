@@ -14,4 +14,4 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-006 | Refuse regenerate-derived.sh's bots' mode outside GitHub Actions | 3 | S | — | done (`053fe0a`) |
 | T-007 | Make the gate guard require a written conclusion, as its docstrings say it does | 3 | S | — | done (`3fb1d3d`) |
 | T-008 | Refuse snapshot-commit.sh outside GitHub Actions, and pin its push path | 3 | S | — | done (`f1a767d`) |
-| T-009 | Show answered gates as answered, and put a gate that is coming due in Needs you | 1 | S | T-007 | in_progress |
+| T-009 | Show answered gates as answered, and put a gate that is coming due in Needs you | 1 | S | T-007 | done (`235b20c`) |

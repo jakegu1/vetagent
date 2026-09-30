@@ -50,7 +50,7 @@ Last updated: 2026-09-30 by lead session 4 (Claude Code desktop, local, opened i
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-009 | 1 | `task/t-009-owner-page-answered-gates`, worktree `../vetagent-t-009`, from `26392ab` | executing the amendment (first READY at `3af074d`: 363 passed, CONTRACT HOLDS) | executor subagent (resumed 2026-10-01) | Amendment (spec): two `CORRECTIONS` entries dated 2026-09-30, because `tests/test_owner_page.py` goes red on 2026-10-04 UTC without one (M1 completes 2026-10-05). On READY: one fresh review (Level 1); pass: the lead merges (A2) and pushes the H-14 way, **before 2026-10-04 02:23 UTC**. If the session ended first, look for commits on the branch past `3af074d` |
+| Push of T-009 (H-14) | - | `master` at the bookkeeping commit after `235b20c`, to preflight branch `preflight/h-14-t009`, then `master` | pushing | the lead (approved under H-14) | T-009 merged as `235b20c` (review 12 of 12; checks 29 of 29). Scan the outgoing messages, push the preflight branch, watch `tests`; when green, fetch (merge origin if it moved), push `master`, watch `tests`, delete the preflight branch. **Must land before 2026-10-04 02:23 UTC** (the corrections window). Anything red: stop, tell the Owner |
 
 ## Waiting on the Owner
 
@@ -152,9 +152,12 @@ parallel with T-008).
   push fails: exit 1, `LOST`, five attempts, sleeps 10 to 50); `date` without `-u` (run the
   calls on Actions under a `TZ` whose date differs from UTC's). Not in parallel with the T-006
   follow-up (same file).
-- Candidate, Level 1, from T-009's executor (note 2): once a gate is answered but its parked
-  entries are still open, it leaves "Needs you", although from its date the guard fails the build
-  on those entries. Keep the row until both are done, listing what is left.
+- Candidate, Level 1, T-009's follow-ups (`lead/reviews/T-009.md`): once a gate is answered but
+  its parked entries are still open, it leaves "Needs you", although from its date the guard fails
+  the build on those entries (keep the row until both are done, listing what is left); the page's
+  `gates()` takes any four-cell dated row anywhere in `docs/STRATEGY.md` while the guard reads
+  section 8 only (limit the page to section 8); with exactly one parked entry the "done" line's
+  grammar reads as a list.
 - Candidate, Level 0 or 1: nothing pins `.github/scripts/*.sh` to LF (no `.gitattributes`); a
   script committed with CRLF would stop the bots on Linux (T-008 red-team note 3, emulated).
   One line: `*.sh text eol=lf`. Check what it does to this Windows checkout first.
@@ -263,6 +266,12 @@ hand and move on.
 
 ## Recent decisions
 
+- 2026-10-01: T-009 merged by the lead under A2 as `235b20c` after a fresh review (12 of 12, no
+  required changes). The reviewer found one sentence of the lead's own correction text not quite
+  true (only the table cell was bold); the lead fixed it on the branch before merging (`f53417b`,
+  `78c9275`), without a second review: a text fix in the reviewer's own words. Pushed under the
+  Owner's H-14.
+
 - 2026-10-01: H-14 approved as recommended. T-007 merged as `3fb1d3d` and T-008 as `f1a767d`
   (`--no-ff`, the tests-first commits kept). The post-merge regeneration moved only date-driven
   lines and the recent-commit list of `docs/OWNER.md` (local date 2026-10-01, UTC still
@@ -332,6 +341,12 @@ hand and move on.
 | 4 | Claude Code desktop, local (opened in this repository) | 2026-09-30 | | |
 
 ## Log (newest first; keep the last ~20 lines)
+
+- 2026-10-01: T-009 review 12 of 12 (11 mutants caught; 101 forced dates; Python 3.12 run; the
+  page proven independent of the clock). The lead fixed one sentence of its own correction text,
+  then merged T-009 as `235b20c` (A2). Checks on master 29 of 29; `tests/test_owner_page.py` 379
+  of 379. Regeneration moved only the recent-commit list (left to the bots). Worktree and branch
+  removed. Pushing through a preflight branch (H-14).
 
 - 2026-10-01: T-009 READY at `3af074d` (363 passed; CONTRACT HOLDS; acceptance-test fix
   `e3f3204` accepted: a synthetic gate's name contained "tomorrow"). Its executor found that

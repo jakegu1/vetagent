@@ -1,7 +1,7 @@
 ---
 id: T-009
 title: Show answered gates as answered, and put a gate that is coming due in Needs you
-status: in_progress      # draft | ready | in_progress | in_review | changes_requested | done | dropped
+status: done             # draft | ready | in_progress | in_review | changes_requested | done | dropped
 level: 1                 # 0 direct | 1 light | 2 standard | 3 high risk
 size: S                  # S | M (split anything larger)
 depends_on: [T-007]      # calls gate_row_answered, which T-007 adds; dispatch after T-007 merges

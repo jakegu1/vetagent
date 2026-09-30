@@ -7,9 +7,9 @@
 
 ## Status in one line
 
-T-007 and T-008 are merged and pushed (H-14): green on Linux, nothing deployed. T-009 is with an
-executor. M1's 7-day clock keeps running (done 2026-10-05 if nothing goes red). Autonomy is A2.
-One date to keep: H-13, 2026-10-16.
+T-007 and T-008 are merged and pushed (H-14): green on Linux, nothing deployed. T-009 is merged
+(by the lead, A2) and being pushed the same way. M1's 7-day clock keeps running (done 2026-10-05
+if nothing goes red). Autonomy is A2. One date to keep: H-13, 2026-10-16.
 
 ## Needs you
 
@@ -21,6 +21,7 @@ One date to keep: H-13, 2026-10-16.
 
 | Item | Outcome | Recorded in |
 |---|---|---|
+| T-009 (2026-10-01) | Merged by the lead under A2 as `235b20c`: fresh review 12 of 12; the lead fixed one sentence of its own correction text first | `lead/reviews/T-009.md` |
 | H-14 Merge T-007 and T-008, push them, then T-009 the same way (2026-10-01) | Approved as recommended; merged as `3fb1d3d` and `f1a767d`; checks 29 of 29; preflight green on Linux; pushed `a5bcce5..26392ab`; `tests` green; no deploy. T-009's push follows under the same yes | `lead/STATE.md` |
 | T-008 (2026-10-01) | Merged as `f1a767d`: independent 12 of 12, red-team none | `lead/reviews/T-008.md` |
 | T-007 (2026-10-01) | Merged as `3fb1d3d`: round 1 red-team 2 material, fixed; round 2 combined 12 of 12, red-team none | `lead/reviews/T-007.md` |
@@ -50,7 +51,7 @@ One date to keep: H-13, 2026-10-16.
 |---|---|---|---|
 | T-007 | 3 | merged `3fb1d3d`, pushed | The check that forces a written conclusion on a gate's date accepted an empty or placeholder one, and its own template pasted back; now it does not |
 | T-008 | 3 | merged `f1a767d`, pushed | `snapshot-commit.sh`, run by hand, would rewrite this clone's git identity and push; now it refuses off GitHub Actions |
-| T-009 | 1 | executing | Your page (`docs/OWNER.md`) shows the answered 2026-09-18 gate as "12 days OVERDUE"; after this an answered gate reads as answered, and a gate 14 days out appears in "Needs you" |
+| T-009 | 1 | merged `235b20c` by the lead (A2); push in progress | Your page (`docs/OWNER.md`) showed the answered 2026-09-18 gate as twelve days overdue; now an answered gate reads "answered", and a gate 14 days out appears in "Needs you" with what to write. It also adds two corrections the page owed, without which the build would have gone red on 2026-10-04 |
 
 ## Milestones
 
@@ -60,6 +61,11 @@ One date to keep: H-13, 2026-10-16.
 | M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
+
+- **2026-10-01** · lead · Merged T-009 myself (A2), after its review passed 12 of 12. Your page
+  now shows the 2026-09-18 gate as answered, and from 2026-10-02 lists the 2026-10-16 gate under
+  "Needs you". Its test would have turned the build red on 2026-10-04 (no correction newer than
+  2026-09-19); two real ones were added. Pushing it under H-14.
 
 - **2026-10-01** · lead · H-14 pushed: the preflight branch was green on Linux, then `master`;
   `tests` green, nothing deployed. The guard for 2026-10-16 is live on `master`.
