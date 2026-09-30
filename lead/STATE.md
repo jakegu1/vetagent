@@ -50,8 +50,8 @@ Last updated: 2026-09-30 by lead session 4 (Claude Code desktop, local, opened i
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-007 | 3 | `task/t-007-gate-guard-needs-a-conclusion`, worktree `../vetagent-t-007`, from `de567c0` | executing, second pass before review (first READY at `8e14f10`) | executor subagent (resumed 2026-09-30) | The lead's amendment (spec, Amendments): only the ASCII arrow answers a gate, with two named changes. On READY: check the contract (the kit script flags every commit touching the one file; judge by hunks: the self-test block added in `521dfa6` changes only in the named-change commits) and the checks, then an independent and a red-team review in parallel. If the session ended first, look for commits on the branch before assuming nothing landed |
-| T-008 | 3 | `task/t-008-snapshot-commit-refuses-locally`, worktree `../vetagent-t-008`, from `de567c0` | executing | executor subagent (background, started 2026-09-30) | Same as T-007. Also confirm `git config user.name` in the main checkout is still `jakegu1` |
+| T-007 | 3 | `task/t-007-gate-guard-needs-a-conclusion`, worktree `../vetagent-t-007`, from `de567c0` | round 2 executing (round 1 at `5bd3f28`: independent 12 of 12 pass; red-team 2 material) | executor subagent (resumed 2026-09-30) | The lead decision in `lead/reviews/T-007.md` (named changes (c), (d), (e); markup removed before judging; each gate judged by its own row). On READY: one combined re-review against that bar (the last round). Pass: ask the Owner to merge (Level 3). If the session ended first, look for commits on the branch past `5bd3f28` |
+| T-008 | 3 | `task/t-008-snapshot-commit-refuses-locally`, worktree `../vetagent-t-008`, from `de567c0` | in review at `1f9fba8` (round 1; tests-first `94c00bf`, fix `2a13cda`, acceptance-test fix `1f9fba8`: a label string only; CONTRACT HOLDS) | independent reviewer and red-team reviewer (background, started 2026-09-30) | Save both verdicts to `lead/reviews/T-008.md`. Pass: ask the Owner to merge (Level 3). Also confirm `git config user.name` in the main checkout is still `jakegu1` after the reviews. The new checks' Windows time is a reported target (median 9.85 s, over 10 s in 4 of 10 runs) |
 
 ## Waiting on the Owner
 
@@ -282,6 +282,14 @@ hand and move on.
 | 4 | Claude Code desktop, local (opened in this repository) | 2026-09-30 | | |
 
 ## Log (newest first; keep the last ~20 lines)
+
+- 2026-09-30: T-007 round 1 reviews: independent 12 of 12, pass; red-team 2 material. The guard
+  accepted its own template and message pasted back, and markup that never renders (an HTML
+  comment's `-->` taken as the arrow); a leak of `check` in the self-test harness would hide
+  every red. Also a second table's same-dated row could answer a gate, against AC 4. Back for
+  round 2, the last (lead decision in `lead/reviews/T-007.md`). T-008 READY at `1f9fba8`
+  (CONTRACT HOLDS; the new checks' Windows median 9.85 s against a 10 s target, over it in 4 of
+  10 runs); its independent and red-team reviews dispatched.
 
 - 2026-09-30: H-12 yes (as recommended): autonomy A2. The Owner also agreed to H-13's plan for
   2026-10-16.

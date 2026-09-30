@@ -192,3 +192,12 @@ bar (a minor note at most): deliberate gaming such as `Resolved: x -> y`.
   fails in on purpose. A colon outside the bold (`**Resolved**:`) is refused, visibly; the
   failure message names the form. Bar for the review: mutants (a), (b) and (c) under "Evidence
   required" still make the file exit 1, and so does U+2192 put back into `_ARROWS`.
+- **2026-09-30, round 1 lead decision** (`lead/reviews/T-007.md`): back for round 2, the last.
+  The red-team found that the guard accepted its own template and message pasted back, and
+  markup that never renders (an HTML comment's `-->` was taken as the arrow), and that a leak of
+  `check` in the self-test harness would hide every red; a second table's row with the same date
+  could answer a gate, against AC 4. Required: markup removed before judging, and the failure
+  message's parenthetical no longer writes the arrow; the leave-no-trace self-test records a leak
+  directly; each gate judged by its own matched row. **Named changes (c), (d) and (e)** to the
+  self-tests, each in its own commit, are listed in the lead decision; nothing else in the
+  self-tests changes.
