@@ -140,6 +140,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- T-009: Regenerate docs/OWNER.md with the two corrections
 - T-009: two corrections the page owed, dated 2026-09-30
 - T-009: Regenerate docs/OWNER.md
 - T-009: A gate coming due is a row in "Needs you"
@@ -147,9 +148,8 @@ problem looked like before it was fixed.
 - T-009: acceptance test fix (a synthetic gate's name held the countdown word "tomorrow")
 - T-009: acceptance tests
 - lead: H-14 merges done (T-007, T-008); T-009 starts; push goes via preflight
-- lead: T-007 passes round 2; H-14 asks to merge T-007 and T-008 and push
 
-_119 more not shown (127 commits in total)._
+_120 more not shown (128 commits in total)._
 
 ## What I got wrong
 
@@ -159,7 +159,7 @@ were genuinely no mistakes, saying so is itself a dated claim on the record.
 
 Newest first.
 
-**2026-09-30** &mdash; I said: *This page showed the 2026-09-18 gate as twelve days overdue, in bold, in the gate table and on the timeline.*
+**2026-09-30** &mdash; I said: *This page showed the 2026-09-18 gate as twelve days overdue, in bold in the gate table, and on the timeline.*
 
 > That gate has carried a written conclusion since 2026-09-18: tools/owner.py labelled every past gate with its countdown, answered or not, so the alarm that matters on a gate's day looked like the ones that do not. Since T-009 an answered gate reads 'answered', and an unanswered gate 14 days out or less is listed under Needs you with what to write and which parked entries to decide.
 
