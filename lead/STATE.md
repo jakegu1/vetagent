@@ -51,7 +51,7 @@ Last updated: 2026-09-30 by lead session 4 (Claude Code desktop, local, opened i
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
 | T-007 | 3 | `task/t-007-gate-guard-needs-a-conclusion`, worktree `../vetagent-t-007`, from `de567c0` | round 2 combined re-review at `19e3c60` (the last round; round 1 at `5bd3f28`: independent 12 of 12, red-team 2 material) | combined re-reviewer (background, started 2026-09-30) | Save the verdict to `lead/reviews/T-007.md`. Pass: ask the Owner to merge (Level 3). After round 2 only an invariant, security, privacy, data loss or a regression sends it back; anything else becomes a follow-up. If the session ended first, re-dispatch the re-review: the head is unchanged |
-| T-008 | 3 | `task/t-008-snapshot-commit-refuses-locally`, worktree `../vetagent-t-008`, from `de567c0` | in review at `1f9fba8` (round 1: independent 12 of 12, pass; red-team pending) | red-team reviewer (background, started 2026-09-30) | Save its report to `lead/reviews/T-008.md` (the independent review is saved). Pass: ask the Owner to merge (Level 3). Also confirm `git config user.name` in the main checkout is still `jakegu1` after the reviews. The new checks' Windows time is a reported target (median 9.95 s, over 10 s in 4 of 10 runs; the whole file now about 25.7 s, was 13.2 s) |
+| T-008 | 3 | `task/t-008-snapshot-commit-refuses-locally`, worktree `../vetagent-t-008`, from `de567c0` | reviews passed at `1f9fba8` (independent 12 of 12; red-team none); decision: merge | the Owner (Level 3 merge), batched with T-007 | Ask the Owner once T-007's re-review is in: merge both, then push through a preflight branch (Linux is not yet measured for the new harness steps). `git config user.name` in the main checkout checked `jakegu1` after both reviews |
 
 ## Waiting on the Owner
 
@@ -125,9 +125,16 @@ parallel with T-008).
   adds to the same file (do it after T-008 merges): the status canary shares the failed-read
   blind spot (a missing `.git` read twice compares equal); the docstring should cover T-008's
   runs; the whole file now takes about 25.7 s on Windows (was 13.2 s).
-- Candidate, from T-008's independent review (optional 1): mutant R4 survives (the nothing-new
-  branch losing its `exit 0` still meets AC 2's outcomes); also require that `commit` and `push`
-  are absent from that call's git trace, which the test already captures.
+- Candidate, test file only, from T-008's reviews: four surviving mutants of
+  `snapshot-commit.sh` (`lead/reviews/T-008.md`): the nothing-new branch without `exit 0`
+  (require no `commit` or `push` in that call's git trace, already captured); a `[Tt]rue` match
+  (add `True` to the refused values); the retry loop cut to two attempts (add a case where every
+  push fails: exit 1, `LOST`, five attempts, sleeps 10 to 50); `date` without `-u` (run the
+  calls on Actions under a `TZ` whose date differs from UTC's). Not in parallel with the T-006
+  follow-up (same file).
+- Candidate, Level 0 or 1: nothing pins `.github/scripts/*.sh` to LF (no `.gitattributes`); a
+  script committed with CRLF would stop the bots on Linux (T-008 red-team note 3, emulated).
+  One line: `*.sh text eol=lf`. Check what it does to this Windows checkout first.
 - Candidate, from T-007's round 2 (lead decision, `lead/reviews/T-007.md`): "variant B", typing
   `Resolved:` and pasting the whole failure message after it, is still accepted; judging the text
   after each `Resolved:` up to the next one closes it (measured by the executor, not applied).
@@ -291,6 +298,10 @@ hand and move on.
 | 4 | Claude Code desktop, local (opened in this repository) | 2026-09-30 | | |
 
 ## Log (newest first; keep the last ~20 lines)
+
+- 2026-09-30: T-008 red-team: none (15 of 19 mutants caught; 31 near-miss values and names, 18
+  invocations, CRLF emulated, `GIT_*` decoys: all held). Both reviews pass; decision: merge,
+  waiting for the Owner with T-007. Four surviving mutants and an LF pin filed as candidates.
 
 - 2026-09-30: T-008 independent review 12 of 12, pass (`lead/reviews/T-008.md`); red-team
   pending. T-007 round 2 READY at `19e3c60` (98 passed; named changes (c), (d), (e) each red
