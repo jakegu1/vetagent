@@ -460,7 +460,7 @@ _NOT_ANSWERS = ("", "Resolved:", "**Resolved:**", "Resolved: TBD", "Resolved: ->
 _DAY = datetime.date(2026, 10, 16)
 _DISTANCES = (("2026-10-15", "Gate one day past", "**1 days OVERDUE**"),
               ("2026-10-16", "Gate due today", "**TODAY**"),
-              ("2026-10-17", "Gate due tomorrow", "**tomorrow**"),
+              ("2026-10-17", "Gate due the next day", "**tomorrow**"),
               ("2026-10-26", "Gate in ten days", "**in 10 days**"),
               ("2026-10-30", "Gate in fourteen days", "**in 14 days**"),
               ("2026-10-31", "Gate in fifteen days", "in 15 days"))
