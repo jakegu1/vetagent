@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- T-009: two corrections the page owed, dated 2026-09-30
+- T-009: Regenerate docs/OWNER.md
 - T-009: A gate coming due is a row in "Needs you"
 - T-009: An answered gate reads as answered on the Owner page
 - T-009: acceptance test fix (a synthetic gate's name held the countdown word "tomorrow")
 - T-009: acceptance tests
 - lead: H-14 merges done (T-007, T-008); T-009 starts; push goes via preflight
 - lead: T-007 passes round 2; H-14 asks to merge T-007 and T-008 and push
-- lead: T-008 passes both reviews; merge waits for the Owner
-- lead: T-008 independent review passes; T-007 round 2 goes to re-review
 
-_117 more not shown (125 commits in total)._
+_119 more not shown (127 commits in total)._
 
 ## What I got wrong
 
@@ -158,6 +158,18 @@ costs me something. A build check requires an entry here every 14 days: if there
 were genuinely no mistakes, saying so is itself a dated claim on the record.
 
 Newest first.
+
+**2026-09-30** &mdash; I said: *This page showed the 2026-09-18 gate as twelve days overdue, in bold, in the gate table and on the timeline.*
+
+> That gate has carried a written conclusion since 2026-09-18: tools/owner.py labelled every past gate with its countdown, answered or not, so the alarm that matters on a gate's day looked like the ones that do not. Since T-009 an answered gate reads 'answered', and an unanswered gate 14 days out or less is listed under Needs you with what to write and which parked entries to decide.
+
+> How it surfaced: Found by the lead reading this page at a check-in on 2026-09-30. Its own test compared the page with its generator, which was wrong in the same way, so nothing could go red.
+
+**2026-09-30** &mdash; I said: *tests/test_gates_get_reviewed.py said, from 2026-09-07, that an audit had watched a bare 'Resolved:' and 'Resolved: no' turn the due-gate check red.*
+
+> Neither ever did. The check had only looked for the word 'Resolved:' since 1762bd3 (2026-09-05); with the date forced to 2026-10-16 both passed, so a placeholder written on that gate's day would have skipped it without a sound. Since T-007 a due gate needs its own row to carry `Resolved: <what the measurement said> -> <decision>`, and the guard's own template pasted back is refused.
+
+> How it surfaced: The lead ran the check with the date forced to 2026-10-16 while working out what that gate would need, instead of reading its docstring.
 
 **2026-09-19** &mdash; I said: *The Experiment C post as it went live on dev.to (2026-09-19): 'the engine as of 2026-09-18', and a re-run paragraph with no false-block figure.*
 
