@@ -49,7 +49,7 @@ Last updated: 2026-09-30 by lead session 4 (Claude Code desktop, local, opened i
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-007 | 3 | `task/t-007-gate-guard-needs-a-conclusion`, worktree `../vetagent-t-007`, from `de567c0` | executing | executor subagent (background, started 2026-09-30) | On READY: check the contract and the checks, then an independent and a red-team review in parallel. If the session ended first, look for commits on the branch before assuming nothing landed |
+| T-007 | 3 | `task/t-007-gate-guard-needs-a-conclusion`, worktree `../vetagent-t-007`, from `de567c0` | executing, second pass before review (first READY at `8e14f10`) | executor subagent (resumed 2026-09-30) | The lead's amendment (spec, Amendments): only the ASCII arrow answers a gate, with two named changes. On READY: check the contract (the kit script flags every commit touching the one file; judge by hunks: the self-test block added in `521dfa6` changes only in the named-change commits) and the checks, then an independent and a red-team review in parallel. If the session ended first, look for commits on the branch before assuming nothing landed |
 | T-008 | 3 | `task/t-008-snapshot-commit-refuses-locally`, worktree `../vetagent-t-008`, from `de567c0` | executing | executor subagent (background, started 2026-09-30) | Same as T-007. Also confirm `git config user.name` in the main checkout is still `jakegu1` |
 
 ## Waiting on the Owner
@@ -277,6 +277,13 @@ hand and move on.
 | 4 | Claude Code desktop, local (opened in this repository) | 2026-09-30 | | |
 
 ## Log (newest first; keep the last ~20 lines)
+
+- 2026-09-30: T-007 READY at `8e14f10` (tests-first `521dfa6`: 12 red at that commit, no
+  traceback; fix `37a9f3f`; stray line `8e14f10`); the lead saw 29 of 29 claimed and the contract
+  holding by hunks (the kit script says BROKEN because the guard and its self-tests share one
+  file). The executor measured a residual the threat model names: U+2192 counted as the
+  conclusion's arrow, so a placeholder placed before the action text was answered by the
+  table's own arrows. Amended before review (ASCII arrow only; named changes (a) and (b)).
 
 - 2026-09-30: lead #4 check-in. The latest run of each of the six workflows succeeded. Merged
   origin (five bot commits) as `c597846`; checks 29 of 29, tree clean. Checked the 2026-10-16

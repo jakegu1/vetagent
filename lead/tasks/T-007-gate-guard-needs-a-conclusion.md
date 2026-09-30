@@ -168,4 +168,27 @@ bar (a minor note at most): deliberate gaming such as `Resolved: x -> y`.
 
 ## Amendments
 
-None yet.
+- **2026-09-30, lead decision on the first READY (`8e14f10`), before review.** The executor
+  measured a residual that the threat model names ("the arrows already in the action cell being
+  taken for the conclusion's"): because U+2192 counts as the conclusion's arrow, `Resolved: TBD`
+  placed before the action text, or in the test cell, is accepted, answered by the table's own
+  pre-registered U+2192 arrows. AC 2's U+2192 case, written by the lead, opened it. Decision:
+  **the conclusion's arrow is the ASCII `->` only; U+2192 never counts**, so the table's own
+  arrows cannot answer anything wherever a placeholder is put. A conclusion written with U+2192
+  is refused, visibly, and the failure message says why. Required, each in its own commit:
+  1. **Named change (a)** to the self-tests: AC 2's U+2192 case moves to the refused cases (in
+     every self-test that judges it, including the direct calls).
+  2. **Named change (b)** to the self-tests: three new refused cases: `Resolved: TBD` at the start
+     of the action cell, before its text; `Resolved: TBD` in the test cell; and `Resolved: no`
+     after the action text in a row whose test cell carries an ASCII `->` (so that an arrow
+     accepted anywhere in the row stays a caught mutant).
+  3. The fix: `_ARROWS` holds `->` only; the failure message keeps its words and adds that the
+     arrow is an ASCII `->` and the table's own arrows do not count; the docstring of
+     `gate_row_answered` and the comment over `_ARROWS` say why U+2192 does not count.
+
+  ACs 1 and 2 read accordingly: U+2192 as the conclusion's arrow is refused. **Decided, not to be
+  reopened:** AC 3 reads every real row that carries `Resolved:`, due or not, so a placeholder
+  written early on a future gate's row turns the file red; that is the direction this guard
+  fails in on purpose. A colon outside the bold (`**Resolved**:`) is refused, visibly; the
+  failure message names the form. Bar for the review: mutants (a), (b) and (c) under "Evidence
+  required" still make the file exit 1, and so does U+2192 put back into `_ARROWS`.
