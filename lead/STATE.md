@@ -34,7 +34,7 @@ Last updated: 2026-09-30 by lead session 4 (Claude Code desktop, local, opened i
   push wait for the Owner's yes. Any escaped defect demotes one level (tripwire Q1), and the
   lead says so.
 - **M1's clock is running** since run 36445100361 (2026-09-28 15:38 UTC, head `dc401b9`); still
-  green on run 36669385087 (head `3db4bf5`, 2026-09-30). At each check-in, check
+  green on run 36744975640 (head `26392ab`, 2026-09-30 UTC, the H-14 push). At each check-in, check
   `gh run list --workflow=test.yml`; any red run on master restarts it and stops new work until
   green (tripwire Q4).
 - Pushing: fetch and merge origin first (never rebase), regenerate the derived pages
@@ -51,14 +51,16 @@ Last updated: 2026-09-30 by lead session 4 (Claude Code desktop, local, opened i
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
 | T-009 | 1 | `task/t-009-owner-page-answered-gates`, worktree `../vetagent-t-009`, from the bookkeeping commit after the merges | executing | executor subagent (background, started 2026-10-01) | On READY: contract and checks, then one fresh review (Level 1). Pass: the lead merges (A2), then pushes it the H-14 way (a preflight branch, then `master`) without asking again. If the session ended first, look for commits on the branch |
-| Push (H-14) | - | preflight branch `preflight/h-14`, then `master` | pushing the merged tree to the preflight branch | the lead (approved) | Watch `tests` on the preflight branch; when green, fetch (merge origin if it moved), push `master`, watch `tests` on it, then delete the preflight branch. Anything red: stop and tell the Owner |
 
 ## Waiting on the Owner
 
 - (H-14 answered 2026-10-01, as recommended: merge T-007 and T-008, then push in two steps (a
   preflight branch on Linux first, then `master`), and push T-009 the same way once it passes its
   review and the lead has merged it, without asking again; anything red stops the push. Merged
-  as `3fb1d3d` and `f1a767d`; checks on master 29 of 29.)
+  as `3fb1d3d` and `f1a767d`; checks on master 29 of 29. Preflight run 36744394310 green on Linux
+  (the gate guard 98 of 98; the bot-commits file 164 of 164, `snapshot-commit.sh` run 12 times in
+  0.5 s); pushed `a5bcce5..26392ab` (27 commits, messages scanned clean); `tests` run 36744975640
+  green; no deploy. Preflight branch deleted. T-009's push is still to come under the same yes.)
 
 - **H-13 (told 2026-09-30, needed by 2026-10-16; the Owner agreed to the plan): the 2026-10-16
   gate.** From 00:00 UTC that day `tests/test_gates_get_reviewed.py` is red, and so are `tests`
@@ -314,6 +316,10 @@ hand and move on.
 | 4 | Claude Code desktop, local (opened in this repository) | 2026-09-30 | | |
 
 ## Log (newest first; keep the last ~20 lines)
+
+- 2026-10-01: H-14 pushed. Preflight run 36744394310 green on Linux; `master` pushed
+  `a5bcce5..26392ab`; `tests` run 36744975640 green (`test`, `upstream-contract`,
+  `backfill-roundtrip`); no deploy. Preflight branch deleted. M1 still running.
 
 - 2026-10-01: H-14 yes. Origin had nothing new. Merged T-007 (`3fb1d3d`) and T-008 (`f1a767d`)
   at their reviewed heads; checks on master 29 of 29, exit 0, tree clean. Next: T-009 dispatched

@@ -7,7 +7,7 @@
 
 ## Status in one line
 
-T-007 and T-008 are merged (H-14) and being pushed through a preflight branch; T-009 is with an
+T-007 and T-008 are merged and pushed (H-14): green on Linux, nothing deployed. T-009 is with an
 executor. M1's 7-day clock keeps running (done 2026-10-05 if nothing goes red). Autonomy is A2.
 One date to keep: H-13, 2026-10-16.
 
@@ -21,7 +21,7 @@ One date to keep: H-13, 2026-10-16.
 
 | Item | Outcome | Recorded in |
 |---|---|---|
-| H-14 Merge T-007 and T-008, push them, then T-009 the same way (2026-10-01) | Approved as recommended; merged as `3fb1d3d` and `f1a767d`; checks 29 of 29; push in progress | `lead/STATE.md` |
+| H-14 Merge T-007 and T-008, push them, then T-009 the same way (2026-10-01) | Approved as recommended; merged as `3fb1d3d` and `f1a767d`; checks 29 of 29; preflight green on Linux; pushed `a5bcce5..26392ab`; `tests` green; no deploy. T-009's push follows under the same yes | `lead/STATE.md` |
 | T-008 (2026-10-01) | Merged as `f1a767d`: independent 12 of 12, red-team none | `lead/reviews/T-008.md` |
 | T-007 (2026-10-01) | Merged as `3fb1d3d`: round 1 red-team 2 material, fixed; round 2 combined 12 of 12, red-team none | `lead/reviews/T-007.md` |
 | H-12 Autonomy A2 (2026-09-30) | Approved as recommended: the lead merges Level 0 to 2 tasks after passing reviews and tells you afterwards; Level 3 merges and every push still come to you | `lead/config.yml`, `lead/STATE.md` |
@@ -48,8 +48,8 @@ One date to keep: H-13, 2026-10-16.
 
 | Task | Level | Status | Notes |
 |---|---|---|---|
-| T-007 | 3 | merged `3fb1d3d`; push in progress | The check that forces a written conclusion on a gate's date accepted an empty or placeholder one, and its own template pasted back; now it does not |
-| T-008 | 3 | merged `f1a767d`; push in progress | `snapshot-commit.sh`, run by hand, would rewrite this clone's git identity and push; now it refuses off GitHub Actions |
+| T-007 | 3 | merged `3fb1d3d`, pushed | The check that forces a written conclusion on a gate's date accepted an empty or placeholder one, and its own template pasted back; now it does not |
+| T-008 | 3 | merged `f1a767d`, pushed | `snapshot-commit.sh`, run by hand, would rewrite this clone's git identity and push; now it refuses off GitHub Actions |
 | T-009 | 1 | executing | Your page (`docs/OWNER.md`) shows the answered 2026-09-18 gate as "12 days OVERDUE"; after this an answered gate reads as answered, and a gate 14 days out appears in "Needs you" |
 
 ## Milestones
@@ -60,6 +60,9 @@ One date to keep: H-13, 2026-10-16.
 | M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
+
+- **2026-10-01** · lead · H-14 pushed: the preflight branch was green on Linux, then `master`;
+  `tests` green, nothing deployed. The guard for 2026-10-16 is live on `master`.
 
 - **2026-10-01** · lead · You approved H-14. T-007 and T-008 are merged (checks 29 of 29) and
   go out through a preflight branch first; T-009 has started.
