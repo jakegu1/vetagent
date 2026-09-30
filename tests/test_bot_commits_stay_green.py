@@ -819,6 +819,604 @@ def test_on_actions_a_check_that_could_not_run_fails_this_file():
                   "exit %s; not-run lines %s; summary %r" % (code, printed, _short(summary)))
 
 
+# ---------------------------------------------------------------------------------------------
+# T-008. .github/scripts/snapshot-commit.sh, run for real. It has no local mode: with any argument
+# or none it writes the snapshot bot's identity into the clone's git config (every worktree of
+# the clone shares it), commits what is under bench/snapshots/ and pushes, and when the push is
+# rejected it rebases onto origin and retries. Off GitHub Actions that is always an accident, so
+# it must be refused there before a single git command. On Actions its three paths are pinned:
+# nothing new, a commit and a push, and a rejected push that is rebased and retried.
+# ---------------------------------------------------------------------------------------------
+
+SNAPSHOT = ".github/scripts/snapshot-commit.sh"
+SNAPSHOT_BOT = ("vetagent-snapshot[bot]", "noreply@vetagent.dev")
+# Off GitHub Actions: unset, as a laptop has it, and values that are not exactly `true`: empty,
+# two other words, all capitals, and `true` with a space before or after it, so a comparison on
+# a prefix, a suffix or without case fails here.
+SNAPSHOT_OFF_ACTIONS = ((None, "GITHUB_ACTIONS unset"), ("", "GITHUB_ACTIONS empty"),
+                        ("false", "GITHUB_ACTIONS=false"), ("1", "GITHUB_ACTIONS=1"),
+                        ("TRUE", "GITHUB_ACTIONS=TRUE"), (" true", "GITHUB_ACTIONS=' true'"),
+                        ("true ", "GITHUB_ACTIONS='true '"))
+# What a refusal says on stderr: the variable it reads, what running would have done, and that
+# setting the variable by hand is not the way past it.
+SNAPSHOT_REFUSAL = ("GITHUB_ACTIONS", "push", "by hand")
+
+SNAPSHOTS = "bench/snapshots/"
+# The scratch archive: a day of pool rows and a day of sellability rows, committed and on origin
+# (the script counts pool files and pool rows only); then a second day of pool rows, NEW_DAY,
+# staged, with one more row written after it and not staged, as the collector appending to the
+# day's file would leave it; and, later, a third day, NEXT_DAY, written and not staged.
+BASE_ROWS = (("bench/snapshots/pools-2026-09-01.ndjson", 3),
+             ("bench/snapshots/sellability-2026-09-01.ndjson", 2))
+NEW_DAY = "bench/snapshots/pools-2026-09-02.ndjson"
+NEW_ROWS_STAGED, NEW_ROWS_WRITTEN = 2, 3
+NEXT_DAY, NEXT_ROWS = "bench/snapshots/pools-2026-09-03.ndjson", 2
+# What another clone pushes to origin meanwhile: one file, outside bench/snapshots/.
+UNRELATED = ("docs/elsewhere.md", "Pushed by someone else while the snapshot bot ran.\n",
+             "An unrelated commit, pushed meanwhile")
+# What each kind of call needs the scratch repository to hold before it, besides what every
+# call needs: master tracking origin's, and an uncommitted change to TRACKED.
+NEEDS = {
+    "staged": "%s staged, and one more row written to it and not staged; origin's master is "
+              "HEAD" % NEW_DAY,
+    "nothing new": "nothing new under %s; origin's master is HEAD" % SNAPSHOTS,
+    "ahead": "%s written and not staged; origin's master one unrelated commit ahead of HEAD, "
+             "and not fetched here" % NEXT_DAY,
+}
+# Bash reads the file that BASH_ENV names before it runs the script, and a function shadows the
+# command of the same name wherever PATH would find it. A stub first on PATH is not enough: Git
+# for Windows' bash puts its own /usr/bin first on PATH, ahead of anything set from here.
+SLEEP_LOG_VAR = "SNAPSHOT_TEST_SLEEP_LOG"
+SLEEP_STUB = ("# snapshot-commit.sh in a scratch repository: its sleeps are recorded, not slept.\n"
+              "sleep() { echo \"$*\" >> \"$%s\"; }\n" % SLEEP_LOG_VAR)
+# `git log` fields and records, split without guessing at what a subject may contain.
+FIELD, RECORD = chr(0x1f), chr(0x1e)
+
+
+def _rows(name, count):
+    """`count` rows of the snapshot file `name`, one JSON object a line, as the collector writes."""
+    return "".join('{"file": "%s", "row": %d}\n' % (name.rsplit("/", 1)[-1], i + 1)
+                   for i in range(count))
+
+
+def _utc_date():
+    """Today in UTC, as the script's `date -u +%F` writes it."""
+    return time.strftime("%Y-%m-%d", time.gmtime())
+
+
+def _entries(status):
+    """{path: XY} from `git status --porcelain=v2` lines: "AM" staged and then modified, ".M"
+    modified and not staged, "??" untracked."""
+    out = {}
+    for line in status:
+        fields = line.split(" ")
+        if line[:2] in ("1 ", "2 ", "u "):
+            out[fields[-1].split("\t")[0]] = fields[1]
+        elif line.startswith("? "):
+            out[line[2:]] = "??"
+    return out
+
+
+def _brief(status):
+    """`git status --porcelain=v2 --branch` lines, short: "XY path" for each entry, and how far
+    the branch is ahead of and behind the origin branch it tracks."""
+    out = ["%s %s" % (xy, path) for path, xy in sorted(_entries(status).items())]
+    out += ["ahead/behind " + l[len("# branch.ab "):] for l in status
+            if l.startswith("# branch.ab ")]
+    return ", ".join(out) or "nothing"
+
+
+def _refs(refs):
+    return ", ".join("%s %s" % (name.rsplit("/", 1)[-1], sha[:7])
+                     for name, sha in sorted(refs.items())) or "none"
+
+
+class _Commit(object):
+    """One commit read from `git log`: its SHA, parents, author, subject and the files it touches."""
+
+    def __init__(self, sha, parents, name, email, subject, files):
+        self.sha, self.parents, self.name, self.email = sha, parents, name, email
+        self.subject, self.files = subject, files
+
+
+class _SnapshotScratch(_Scratch):
+    """A scratch repository for snapshot-commit.sh that cannot reach this one. Its isolation is
+    _Scratch's, unchanged: its env, git, must, isolated and remove are inherited. It is built
+    here, not by _Scratch's constructor, which builds one for the other script.
+
+    Its base commit, on origin too, holds the real script, copied byte for byte to the same path,
+    BASE_ROWS and a tracked file. After it, as a runner has it, `master` tracks origin's, so the
+    script's bare `git push` pushes there, and the tracked file has an uncommitted change. With
+    `staged`, NEW_DAY is staged, and one more row is then written to it and not staged. `move_on`
+    later has another clone push an unrelated commit to origin's master, which this one does not
+    fetch, and writes NEXT_DAY. `base` is the state a call is judged against; `after` is the
+    state the last call left.
+
+    Every call also has BASH_ENV naming SLEEP_STUB, so a retry's sleep returns at once and is seen.
+    """
+
+    def __init__(self, script, staged):
+        self.root = tempfile.mkdtemp(prefix="snapshot-commit-")
+        try:
+            self._build(script, staged)
+        except BaseException:
+            self.remove()
+            raise
+
+    def _build(self, script, staged):
+        self.work = os.path.join(self.root, "work")
+        self.origin = os.path.join(self.root, "origin.git")
+        self.empty_config = os.path.join(self.root, "empty.gitconfig")
+        self.trace = os.path.join(self.root, "git-trace.log")
+        self.generator_log = None       # _Scratch.script_env names it; this script runs none
+        self.sleep_stub = os.path.join(self.root, "sleep-stub.sh")
+        self.sleep_log = os.path.join(self.root, "sleep.log")
+        hooks = os.path.join(self.root, "no-hooks")
+        os.makedirs(hooks)
+        _write(self.empty_config, "")
+        _write(self.sleep_stub, SLEEP_STUB)
+        self.must(["init", "-q", "--bare", self.origin], pinned=False)
+        self.must(["--git-dir=" + self.origin, "symbolic-ref", "HEAD", "refs/heads/master"],
+                  pinned=False)
+        self.must(["init", "-q", self.work], pinned=False)
+        self.must(["symbolic-ref", "HEAD", "refs/heads/master"])
+        for key, value in (("user.name", SCRATCH_IDENTITY["user.name"]),
+                           ("user.email", SCRATCH_IDENTITY["user.email"]),
+                           ("commit.gpgsign", "false"), ("core.hooksPath", hooks),
+                           ("maintenance.auto", "false")):
+            self.must(["config", key, value])
+        path = os.path.join(self.work, *SNAPSHOT.split("/"))
+        os.makedirs(os.path.dirname(path))
+        with open(path, "wb") as f:
+            f.write(script)
+        for name, count in BASE_ROWS:
+            _write(os.path.join(self.work, *name.split("/")), _rows(name, count))
+        _write(os.path.join(self.work, TRACKED), COMMITTED)
+        self.must(["add", "-A"])
+        self.must(["commit", "-q", "-m", "scratch base"])
+        self.must(["remote", "add", "origin", self.origin])
+        self.must(["push", "-q", "-u", "origin", "master:master"])
+        _write(os.path.join(self.work, TRACKED), UNCOMMITTED)
+        if staged:
+            new = os.path.join(self.work, *NEW_DAY.split("/"))
+            _write(new, _rows(NEW_DAY, NEW_ROWS_STAGED))
+            self.must(["add", "--", NEW_DAY])
+            _write(new, _rows(NEW_DAY, NEW_ROWS_WRITTEN))
+        self.base = self.after = self.state()
+
+    def settle(self):
+        """The next call is judged against what the last one left."""
+        self.base = self.after
+
+    def move_on(self):
+        """Origin's master moves on without this clone, as it does when someone else pushes while
+        the bot runs, and the collector writes NEXT_DAY."""
+        other = os.path.join(self.root, "other")
+        self.must(["clone", "-q", self.origin, other], pinned=False)
+        name, text, subject = UNRELATED
+        _write(os.path.join(other, *name.split("/")), text)
+        pin = ["--git-dir=" + os.path.join(other, ".git"), "--work-tree=" + other,
+               "-c", "user.name=Someone Else", "-c", "user.email=someone@example.invalid"]
+        for args in (["add", "--", name], ["commit", "-q", "-m", subject],
+                     ["push", "-q", "origin", "master"]):
+            code, _, err = self.git(pin + args, pinned=False, cwd=other)
+            if code:
+                raise RuntimeError("git %s in another clone failed: %s" % (args[0], _short(err)))
+        _write(os.path.join(self.work, *NEXT_DAY.split("/")), _rows(NEXT_DAY, NEXT_ROWS))
+        self.base = self.after = self.state()
+
+    def state(self):
+        """What a refused call must leave as it was: the identity; HEAD, the index and the work
+        tree (`git status`, untracked files included); and origin's refs."""
+        ident, status, refs = self._read_at_once((
+            (["config", "--get-regexp", "^user[.]"], True),
+            (["status", "--porcelain=v2", "--branch", "--untracked-files=all"], True),
+            (["--git-dir=" + self.origin, "for-each-ref", "--format=%(refname) %(objectname)"],
+             False)))
+        pairs = dict(l.split(" ", 1) for l in ident.splitlines() if " " in l)
+        lines = status.splitlines()
+        head = [l.split(" ", 2)[2] for l in lines if l.startswith("# branch.oid ")]
+        return {"user.name": pairs.get("user.name"), "user.email": pairs.get("user.email"),
+                "HEAD": head[0] if head else "",
+                "status": sorted(l for l in lines if not l.startswith("# branch.oid ")),
+                "origin": dict(l.split(" ", 1) for l in refs.splitlines() if " " in l)}
+
+    def _read_at_once(self, reads):
+        """The stdout of each (git arguments, pinned) in `reads`, started together: they only
+        read, and one after another they cost a third of every call on Windows. Each runs as
+        `git` does (the same environment and working directory); "" when one fails."""
+        procs = []
+        try:
+            for args, pinned in reads:
+                procs.append(subprocess.Popen(
+                    ["git"] + args, cwd=self.work if pinned else self.root,
+                    env=self.env(pinned), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                    encoding="utf-8", errors="replace"))
+            outs = [p.communicate(timeout=60)[0] for p in procs]
+            return [out if p.returncode == 0 else "" for p, out in zip(procs, outs)]
+        finally:
+            for p in procs:
+                if p.poll() is None:
+                    p.kill()
+                    p.wait()
+
+    def changes(self, after):
+        """What differs from `base`, in words; "" when nothing does."""
+        base, out = self.base, []
+        for key in ("user.name", "user.email"):
+            if after[key] != base[key]:
+                out.append("%s is %r, was %r" % (key, after[key], base[key]))
+        if after["HEAD"] != base["HEAD"]:
+            out.append("HEAD moved from %s to %s" % (base["HEAD"][:7], after["HEAD"][:7] or "?"))
+        if after["status"] != base["status"]:
+            out.append("git status reads %s, was %s"
+                       % (_brief(after["status"]), _brief(base["status"])))
+        if after["origin"] != base["origin"]:
+            out.append("origin's refs are %s, were %s"
+                       % (_refs(after["origin"]), _refs(base["origin"])))
+        return "; ".join(out)
+
+    def lacks(self, need):
+        """"" when `base` holds what a call of this kind needs (NEEDS); otherwise what it lacks."""
+        base, wrong = self.base, []
+        if "# branch.upstream origin/master" not in base["status"]:
+            wrong.append("master does not track origin's")
+        entries = _entries(base["status"])
+        if entries.get(TRACKED) != ".M":
+            wrong.append("%s has no uncommitted change" % TRACKED)
+        rows = dict((p, xy) for p, xy in entries.items() if p.startswith(SNAPSHOTS))
+        want = {"staged": {NEW_DAY: "AM"}, "nothing new": {}, "ahead": {NEXT_DAY: "??"}}[need]
+        if rows != want:
+            wrong.append("under %s git status reads %s, not %s"
+                         % (SNAPSHOTS, rows or "nothing", want or "nothing"))
+        tip = base["origin"].get("refs/heads/master")
+        if need == "ahead":
+            above = self.new_on_origin(base["HEAD"])
+            if len(above) != 1 or above[0].parents != [base["HEAD"]] or above[0].sha != tip:
+                wrong.append("origin's master is not one commit ahead of HEAD")
+            if "# branch.ab +0 -0" not in base["status"]:
+                wrong.append("this clone has fetched from origin since HEAD")
+        elif tip != base["HEAD"]:
+            wrong.append("origin's master is not HEAD")
+        return "; ".join(wrong)
+
+    def counts(self):
+        """(days, rows) as the script counts them: the pool files under bench/snapshots/ (`ls`),
+        and the lines in them (`cat | wc -l`)."""
+        folder = os.path.join(self.work, *SNAPSHOTS.rstrip("/").split("/"))
+        pools = [n for n in os.listdir(folder)
+                 if n.startswith("pools-") and n.endswith(".ndjson")]
+        rows = 0
+        for name in pools:
+            with open(os.path.join(folder, name), "rb") as f:
+                rows += f.read().count(b"\n")
+        return len(pools), rows
+
+    def new_on_origin(self, since):
+        """The commits on origin's master that `since` does not have, newest first."""
+        _, out, _ = self.git(["--git-dir=" + self.origin, "log", "--name-only",
+                              "--format=%x1e%H%x1f%P%x1f%an%x1f%ae%x1f%s",
+                              since + "..refs/heads/master"], pinned=False)
+        commits = []
+        for record in out.split(RECORD)[1:]:
+            head, _, files = record.partition("\n")
+            fields = head.split(FIELD)
+            if len(fields) != 5:
+                continue
+            sha, parents, name, email, subject = fields
+            commits.append(_Commit(sha, parents.split(), name, email, subject,
+                                   [f for f in files.splitlines() if f.strip()]))
+        return commits
+
+    def script_env(self, github_actions, decoys, path_first):
+        """_Scratch's environment for one call (pinned git; GITHUB_ACTIONS as given, and nothing
+        else from GitHub but GITHUB_REF_NAME=master; the decoys if asked; GIT_TRACE), with no
+        generator log, and BASH_ENV naming the sleep stub."""
+        env = _Scratch.script_env(self, github_actions, decoys, path_first)
+        env.pop(GENERATOR_LOG_VAR, None)
+        env["BASH_ENV"] = self.sleep_stub.replace(os.sep, "/")
+        env[SLEEP_LOG_VAR] = self.sleep_log.replace(os.sep, "/")
+        return env
+
+    def run(self, bash, args, env):
+        for path in (self.trace, self.sleep_log):
+            if os.path.exists(path):
+                os.remove(path)
+        try:
+            p = subprocess.run([bash, SNAPSHOT] + list(args), cwd=self.work, env=env,
+                               capture_output=True, encoding="utf-8", errors="replace",
+                               timeout=CALL_TIMEOUT)
+            code, out, err = p.returncode, p.stdout or "", p.stderr or ""
+        except subprocess.TimeoutExpired:
+            code, out, err = None, "", "no exit: timed out after %ds" % CALL_TIMEOUT
+        trace = _read_text(self.trace) if os.path.exists(self.trace) else ""
+        slept = _read_text(self.sleep_log).split() if os.path.exists(self.sleep_log) else []
+        self.after = self.state()
+        call = _Call(code, out, err, trace, [], self.after, self.changes(self.after))
+        call.slept = slept
+        return call
+
+
+class _SnapshotHarness(object):
+    """Runs snapshot-commit.sh in _SnapshotScratch repositories with the bash that T-006's
+    harness found. The calls follow on from each other where they can, as a runner's steps and
+    passes do: the refused calls and the commit share the repository built for the first of
+    them; the call with nothing new runs where the commit left it; the retry runs where that one
+    left it, once another clone has pushed. Before each kind of call the repository is checked
+    for what the call needs (NEEDS), and a fresh one is built when a refused call changed it or
+    what a call left is not what the next one follows on from. When nothing can be run here,
+    `bash` is None and `why` says why."""
+
+    def __init__(self, bash, path_first, why):
+        with open(os.path.join(ROOT, *SNAPSHOT.split("/")), "rb") as f:
+            self.script = f.read()
+        self.bash, self.path_first, self.why = bash, path_first, why
+        self.scratch, self.need, self.dirty, self.calls, self.built = None, None, False, 0, 0
+        self.this_repository = None     # read before the first scratch repository is built
+
+    def ready(self, need):
+        """True when the scratch repository holds what a call of this kind needs (NEEDS); False
+        when there is none, and then nothing more is run."""
+        if not self.bash:
+            return False
+        if self.scratch is not None and self.need == need and not self.dirty:
+            return True                 # the next refused call, or the commit after them
+        scratch = None
+        if self.scratch is not None and need != "staged":
+            self.scratch.settle()
+            if not self.scratch.lacks("nothing new"):
+                scratch = self.scratch
+        if scratch is None:
+            scratch = self._fresh(staged=(need == "staged"))
+            if scratch is None:
+                return False
+        if need == "ahead":
+            try:
+                scratch.move_on()
+            except (OSError, RuntimeError, subprocess.SubprocessError) as e:
+                check("another clone can push to scratch repository %d's origin" % self.built,
+                      False, str(e))
+                self._stop("another clone could not push to a scratch origin")
+                return False
+        lacks = scratch.lacks(need)
+        check("  and it holds what the call needs: %s" % NEEDS[need], not lacks, lacks)
+        if lacks:
+            self._stop("a scratch repository did not hold what its call needs")
+            return False
+        self.need, self.dirty = need, False
+        return True
+
+    def _fresh(self, staged):
+        self.close()
+        if self.this_repository is None:
+            self.this_repository = _this_repository_with_status()
+        self.built += 1
+        try:
+            self.scratch = _SnapshotScratch(self.script, staged)
+        except (OSError, RuntimeError, subprocess.SubprocessError) as e:
+            check("snapshot-commit.sh's scratch repository %d can be built" % self.built, False,
+                  str(e))
+            return self._stop("no scratch repository could be built")
+        wrong = self.scratch.isolated()
+        check("snapshot-commit.sh's scratch repository %d is its own, before its first call: "
+              "`git rev-parse --show-toplevel` there is its directory, found and pinned; it is "
+              "outside this repository, in the system temporary directory; its origin is a bare "
+              "repository beside it" % self.built, not wrong, wrong)
+        if wrong:
+            return self._stop("a scratch repository failed its isolation check")
+        return self.scratch
+
+    def _stop(self, why):
+        """Nothing more is run: every check still to come says it was not run, and why."""
+        self.close()
+        self.bash, self.why = None, why
+        return None
+
+    def call(self, args, github_actions=None, decoys=False):
+        """One run of the script in the repository `ready` made, as a _Call with `slept`, the
+        arguments of every sleep the script asked for."""
+        env = self.scratch.script_env(github_actions, decoys, self.path_first)
+        self.calls += 1
+        r = self.scratch.run(self.bash, args, env)
+        self.dirty = bool(r.changed)
+        return r
+
+    def close(self):
+        if self.scratch is not None:
+            self.scratch.remove()
+            self.scratch = None
+
+
+def _this_repository_with_status():
+    """_this_repository(), and this repository's `git status` for tracked files: what a call that
+    reached it would change first. Untracked files are left out, because an editor makes them
+    while this runs; a call that reached this repository would stage them, which shows here."""
+    out = _this_repository()
+    try:
+        p = subprocess.run(["git", "--no-optional-locks", "status", "--porcelain",
+                            "--untracked-files=no"], cwd=ROOT, env=_no_git_vars(),
+                           capture_output=True, encoding="utf-8", errors="replace", timeout=60)
+        out.append((p.returncode, p.stdout))
+    except (OSError, subprocess.SubprocessError) as e:
+        out.append((None, e.__class__.__name__))
+    return out
+
+
+def _what_moved_here(before, after):
+    """_what_moved(), which names the user.* keys that changed and never their values, and the
+    status lines that changed: paths in this repository and their state."""
+    out = [_what_moved(before, after)]
+    if before[2] != after[2]:
+        b, a = set(before[2][1].splitlines()), set(after[2][1].splitlines())
+        out.append("its status changed: %s" % _short("\n".join(sorted(a ^ b))))
+    return "; ".join(o for o in out if o)
+
+
+def test_snapshot_commit_is_refused_off_actions(s):
+    print("\n[snapshot] off GitHub Actions, snapshot-commit.sh is refused before any git command")
+    print("  (every call here also has %s, which must not open it)"
+          % " and ".join("%s=%s" % kv for kv in sorted(DECOYS.items())))
+    cases = [(value, where, ["pools"]) for value, where in SNAPSHOT_OFF_ACTIONS]
+    cases += [(None, "GITHUB_ACTIONS unset", []),
+              (None, "GITHUB_ACTIONS unset", ["sellability"])]
+    if not s.bash:
+        not_run("%d calls of snapshot-commit.sh off GitHub Actions" % len(cases), s.why)
+        return
+    for value, where, args in cases:
+        label = "%s, %s" % (where, "argument %r" % args[0] if args else "no argument")
+        if not s.ready("staged"):
+            not_run(label, s.why)
+            continue
+        r = s.call(args, github_actions=value, decoys=True)
+        check(label + ": exit 2, and on stderr alone an error that names GITHUB_ACTIONS, says "
+              "the script would push, and says not to set GITHUB_ACTIONS by hand",
+              r.code == 2 and not r.out.strip() and all(w in r.err for w in SNAPSHOT_REFUSAL),
+              "exit %s; stdout %r; stderr %r" % (r.code, _short(r.out), _short(r.err)))
+        check("  and no git command ran", not r.trace.strip(),
+              "git ran: %s" % " ".join(r.git))
+        check("  and the scratch repository is as it was: user.name and user.email; the new "
+              "rows still staged and not committed; HEAD; origin", not r.changed, r.changed)
+
+
+def test_snapshot_commit_on_actions_commits_and_pushes(s):
+    print("\n[snapshot] on GitHub Actions, new rows are committed as the bot and pushed")
+    label = "GITHUB_ACTIONS=true, argument 'pools', new rows under %s" % SNAPSHOTS
+    if not s.ready("staged"):
+        not_run(label, s.why)
+        return
+    days, rows = s.scratch.counts()
+    since = s.scratch.base["HEAD"]
+    dates = [_utc_date()]
+    r = s.call(["pools"], github_actions="true")
+    dates.append(_utc_date())
+    new = s.scratch.new_on_origin(since)
+    check(label + ": exit 0, and \"pushed on attempt 1\"",
+          r.code == 0 and "pushed on attempt 1" in r.out,
+          "exit %s; stdout %r; stderr %r" % (r.code, _short(r.out), _short(r.err)))
+    check("  and the git trace saw it run git (config, add, commit, push), so an empty trace "
+          "above means no git ran", set(["config", "add", "commit", "push"]) <= set(r.git),
+          "git ran: %s" % (" ".join(r.git) or "nothing"))
+    check("  and origin's master has exactly one new commit", len(new) == 1,
+          "%d new: %s" % (len(new), [c.subject for c in new]))
+    if len(new) != 1:
+        return
+    c = new[0]
+    check("  authored by %s <%s>" % SNAPSHOT_BOT, (c.name, c.email) == SNAPSHOT_BOT,
+          "author %s <%s>" % (c.name, c.email))
+    wanted = ["Snapshot %s (pools): %d days, %d rows total" % (d, days, rows) for d in dates]
+    check("  with the subject %r: the UTC date, and the %d pool files and %d rows in the scratch "
+          "archive" % (wanted[0], days, rows), c.subject in wanted, "subject %r" % c.subject)
+    check("  touching only files under %s, the new day's among them" % SNAPSHOTS,
+          NEW_DAY in c.files and all(f.startswith(SNAPSHOTS) for f in c.files),
+          "files %s" % c.files)
+    left = sorted(p for p in _entries(r.after["status"]) if p.startswith(SNAPSHOTS))
+    check("  and every row on disk went into it: nothing under %s is left staged or modified, "
+          "and HEAD is the commit origin has" % SNAPSHOTS,
+          not left and r.after["HEAD"] == c.sha,
+          "left %s; HEAD %s" % (left, r.after["HEAD"][:7]))
+
+
+def test_snapshot_commit_on_actions_with_nothing_new(s):
+    print("\n[snapshot] on GitHub Actions, with nothing new under %s: a warning, and nothing "
+          "committed" % SNAPSHOTS)
+    label = "GITHUB_ACTIONS=true, argument 'pools', nothing new under %s" % SNAPSHOTS
+    if not s.ready("nothing new"):
+        not_run(label, s.why)
+        return
+    base = s.scratch.base
+    r = s.call(["pools"], github_actions="true")
+    warned = [l for l in r.out.splitlines() if l.startswith("::warning::no pools rows collected")]
+    check(label + ": exit 0, and the line \"::warning::no pools rows collected\"",
+          r.code == 0 and len(warned) == 1,
+          "exit %s; stdout %r; stderr %r" % (r.code, _short(r.out), _short(r.err)))
+    check("  and nothing was committed or pushed: HEAD unchanged, and origin has no new commit",
+          r.after["HEAD"] == base["HEAD"] and r.after["origin"] == base["origin"], r.changed)
+
+
+def test_snapshot_commit_on_actions_retries_a_rejected_push(s):
+    print("\n[snapshot] on GitHub Actions, a rejected push is rebased onto origin and retried")
+    label = ("GITHUB_ACTIONS=true, argument 'pools', new rows, and origin's master ahead by an "
+             "unrelated commit")
+    if not s.ready("ahead"):
+        not_run(label, s.why)
+        return
+    upstream = s.scratch.base["origin"].get("refs/heads/master", "")
+    days, rows = s.scratch.counts()
+    dates = [_utc_date()]
+    r = s.call(["pools"], github_actions="true")
+    dates.append(_utc_date())
+    new = s.scratch.new_on_origin(upstream)
+    check(label + ": exit 0, and the output says the first push was rejected and the second "
+          "pushed", r.code == 0 and "push rejected (attempt 1)" in r.out
+          and "pushed on attempt 2" in r.out,
+          "exit %s; stdout %r; stderr %r" % (r.code, _short(r.out), _short(r.err)))
+    wanted = ["Snapshot %s (pools): %d days, %d rows total" % (d, days, rows) for d in dates]
+    check("  and origin's master holds both commits: the snapshot commit, on top of the "
+          "unrelated one", len(new) == 1 and new[0].parents == [upstream]
+          and new[0].subject in wanted,
+          "above the unrelated commit: %s" % ["%s (parents %s)" % (
+              c.subject, " ".join(p[:7] for p in c.parents)) for c in new])
+    check("  and nothing slept: the script's one sleep, `sleep 10`, went to the stub",
+          r.slept == ["10"], "the stub saw %s" % (r.slept or "nothing"))
+
+
+def test_snapshot_commit_did_not_reach_this_repository(s):
+    print("\n[snapshot] this repository is as it was before snapshot-commit.sh's calls")
+    if not s.calls:
+        not_run("this repository's identity, HEAD and status after snapshot-commit.sh's calls",
+                s.why or "the script was not run")
+        return
+    now = _this_repository_with_status()
+    check("its git identity, HEAD and status (tracked files) are what they were before the "
+          "first call", now == s.this_repository, _what_moved_here(s.this_repository, now))
+
+
+# The groups that run the script, in the order they follow on from each other (see
+# _SnapshotHarness): the rows the refused calls left staged are the rows committed on Actions,
+# the call with nothing new runs after that commit, and the retry after that call.
+SNAPSHOT_CALLS = (test_snapshot_commit_is_refused_off_actions,
+                  test_snapshot_commit_on_actions_commits_and_pushes,
+                  test_snapshot_commit_on_actions_with_nothing_new,
+                  test_snapshot_commit_on_actions_retries_a_rejected_push)
+SNAPSHOT_GROUPS = SNAPSHOT_CALLS + (test_snapshot_commit_did_not_reach_this_repository,)
+
+
+def test_snapshot_checks_say_when_they_could_not_run():
+    print("\n[snapshot] where no usable bash exists, each group above says it was not run, and "
+          "none of it counts as passed")
+    # Each group runs here against a harness with no bash (simulated), its output captured, and
+    # what it recorded is taken back afterwards, so only this check's verdict counts. On GitHub
+    # Actions a check that was not run makes this file exit 1: main's rule, checked above by
+    # running this whole file with no bash.
+    global _PASSED
+    blind = _SnapshotHarness(None, [], SIMULATED_NO_BASH)
+    mark = (_PASSED, len(_FAILS), len(_NOT_RUN))
+    said, printed, real = [], io.StringIO(), sys.stdout
+    sys.stdout = printed
+    try:
+        for group in SNAPSHOT_GROUPS:
+            before = len(_NOT_RUN)
+            group(blind)
+            said.append((group.__name__, _NOT_RUN[before:]))
+    finally:
+        sys.stdout = real
+        passed, failed = _PASSED - mark[0], _FAILS[mark[1]:]
+        _PASSED = mark[0]
+        del _FAILS[mark[1]:]
+        del _NOT_RUN[mark[2]:]
+    silent = [name for name, entries in said if not entries]
+    whys = sorted(set(why for _, entries in said for _, why in entries))
+    lines = printed.getvalue().count("NOT RUN HERE")
+    check("with no usable bash (simulated), each of the %d groups prints a NOT RUN HERE line "
+          "that says why" % len(said),
+          not silent and whys == [SIMULATED_NO_BASH]
+          and lines == sum(len(entries) for _, entries in said),
+          "silent: %s; reasons %s; %d NOT RUN HERE lines" % (silent, whys, lines))
+    check("  and none of it counts as passed or failed, and nothing was built or run",
+          passed == 0 and not failed and not blind.built and not blind.calls,
+          "%d passed, failed %s, %d built, %d run" % (passed, failed, blind.built, blind.calls))
+
+
 def main():
     print("=" * 68)
     print("A bot's commit regenerates what it moves, and is tested")
@@ -839,6 +1437,17 @@ def main():
     print("\n  the script ran %d times in %d scratch repositories; %.1fs"
           % (h.calls, h.built, time.time() - started))
     test_on_actions_a_check_that_could_not_run_fails_this_file()
+    started = time.time()
+    s = _SnapshotHarness(h.bash, h.path_first, h.why)
+    try:
+        for group in SNAPSHOT_CALLS:
+            group(s)
+    finally:
+        s.close()
+    test_snapshot_commit_did_not_reach_this_repository(s)
+    test_snapshot_checks_say_when_they_could_not_run()
+    print("\n  snapshot-commit.sh ran %d times in %d scratch repositories; these checks took "
+          "%.1fs" % (s.calls, s.built, time.time() - started))
     print("\n" + "=" * 68)
     print("%d passed, %d failed%s" % (_PASSED, len(_FAILS),
                                       ", %d not run here" % len(_NOT_RUN) if _NOT_RUN else ""))
