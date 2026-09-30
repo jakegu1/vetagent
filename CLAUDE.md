@@ -49,9 +49,11 @@ landing page sends `vetagent-landing-demo`. Hand-run probes were the only untagg
 left, and they are the ones aimed at the endpoint most often. Anything `vetagent-*` is
 filtered as ours.
 
-Two more of ours that are not tagged and should be watched: `.mcp.json` points the owner's
-editor at production, so `claude-code` is the owner -- it is in `AMBIGUOUS_CLIENTS` too, and
-it is connect-only today, but one real `assess_token_risk` from the editor enters the gate's
+Two more of ours should be watched. `.mcp.json` points the owner's editor at production, and
+since 82e2470 it sends `x-mcp-client: vetagent-owner-editor`, so the editor's calls are filed
+under a `vetagent-*` name and filtered as ours. That is read from the configuration; the usage
+data has not been checked for it. Without the header the editor arrives as `claude-code`, which
+is in `AMBIGUOUS_CLIENTS` too, and one real `assess_token_risk` from it would enter the gate's
 evidence as a stranger. And a browser opened on the landing page without the demo button
 arrives as `mozilla`.
 
@@ -137,7 +139,9 @@ could fail halfway. The script runs the scorecard first and repeats until nothin
 same pass the bots run.
 **Only ever with the argument `regenerate`.** Any other argument is the bots' mode: it
 rewrites this clone's git identity, resets to origin (discarding uncommitted work), commits
-and pushes.
+and pushes. Since T-006 the script refuses that mode unless `GITHUB_ACTIONS` is exactly
+`true`, so here a mistyped argument exits 2 before any git command runs. Never set that
+variable by hand to get past the refusal.
 
 **Check every workflow, not the one you were thinking about.** There are six —
 `deploy.yml`, `test.yml`, `snapshot.yml`, `usage.yml`, `production.yml`, and the

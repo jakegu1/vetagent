@@ -5,7 +5,7 @@
 > page cannot quietly drift out of date. `tests/test_owner_page.py` fails the
 > build if it does.
 >
-> Generated 2026-09-29.
+> Generated 2026-09-30.
 
 ## The project in one paragraph
 
@@ -21,27 +21,27 @@ These are the things I cannot do. Everything else in this project is mine.
 
 | When | Due | # | What you do | Blocked? |
 |---|---|---|---|---|
-| **11 days OVERDUE** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
-| in 17 days | 2026-10-16 | W5 | A second, independent sell-simulation source | no |
-| in 17 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
+| **12 days OVERDUE** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
+| in 16 days | 2026-10-16 | W5 | A second, independent sell-simulation source | no |
+| in 16 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
 
 ### W10 Create the two accounts the remaining directories need
 
-- **When:** 2026-09-18 (**11 days OVERDUE**)
+- **When:** 2026-09-18 (**12 days OVERDUE**)
 - **Why then:** distribution is the whole of the gate's failing branch
 - **You know it is done when:** `CHANNELS` in `bench/scorecard.py`, updated only by someone who went and looked
 - **If you do nothing:** Nothing. Six submissions are already queued and the two parked ones are one signup away; waiting costs reach, not work.
 
 ### W5 A second, independent sell-simulation source
 
-- **When:** 2026-10-16 (in 17 days)
+- **When:** 2026-10-16 (in 16 days)
 - **Why then:** needed for W3, which every accuracy claim rests on
-- **You know it is done when:** **Measured 2026-09-29; the credential no longer blocks it.** Probed 2026-09-06: staysafu unreachable (SSL), quickintel 401, tokensniffer 401, de.fi public endpoint 404; on 2026-09-15 Quick Intel added a free testing tier, and the owner obtained it. `python bench/second_oracle.py --run` then asked it about its 143-token set (21 disputed, 122 engine unknowns), paced to about one call a second after faster calls were rate limited; the raw answers stay local and git-ignored until the owner has read Quick Intel's terms. Each answer is classed as an error, a static audit only (no buy or sell tax, so no simulation), or a simulation dated by its `lastUpdatedTimestamp`, because it also returns months-old cached scans. Direction, figures withheld until the terms are read: it adds a recent sell simulation for part of the engine's unknowns, mostly on BSC and rarely on Base, every one of them sellable; on the honeypot disputes it simulated too few tokens recently to say whether the published false-positive rate is overstated. Not measured yet: the 17-token adversarial cohort W3 needs, mostly thin Base pools, where it rarely simulated; 17 calls of the remaining monthly quota would say. Done when that is measured and the owner has read the terms and decided whether to pay for it as an engine upstream (the lead recommends not before there are users)
+- **You know it is done when:** **Measured 2026-09-29; the credential no longer blocks it.** Probed 2026-09-06: staysafu unreachable (SSL), quickintel 401, tokensniffer 401, de.fi public endpoint 404; on 2026-09-15 Quick Intel added a free testing tier, and the owner obtained it. `python bench/second_oracle.py --run` then asked it about its 143-token set (21 disputed, 122 engine unknowns), paced to about one call a second after faster calls were rate limited; the raw answers stay local and git-ignored until the owner has read Quick Intel's terms. Each answer is classed as an error, a static audit only (no buy or sell tax, so no simulation), or a simulation dated by its `lastUpdatedTimestamp`, because it also returns months-old cached scans. Direction, figures withheld until the terms are read: it adds a recent sell simulation for part of the engine's unknowns, mostly on BSC and rarely on Base, every one of them sellable; on the honeypot disputes it simulated too few tokens recently to say whether the published false-positive rate is overstated. Not measured yet: the 17-token adversarial cohort W3 needs, mostly thin Base pools, where it rarely simulated; 17 calls of the remaining monthly quota would say: `python bench/second_oracle.py --plan --set adversarial`, then the same with `--run` and the owner's key, which paces its calls for the free tier, writes its own git-ignored file and will not start over an existing one. Done when that is measured and the owner has read the terms and decided whether to pay for it as an engine upstream (the lead recommends not before there are users)
 - **If you do nothing:** Every accuracy claim keeps resting on a single sell simulator. If it is wrong, we cannot tell, and neither can anyone reading the benchmark.
 
 ### W12 Decide the price-history trade-off
 
-- **When:** 2026-10-16 (in 17 days)
+- **When:** 2026-10-16 (in 16 days)
 - **Why then:** changes what the benchmark can measure, so before the D gate
 - **You know it is done when:** A decision recorded in `DECISIONS.md`, either way
 - **If you do nothing:** The 10-16 gate arrives with the measurement question still open, so that gate answers a smaller question than it was meant to.
@@ -54,10 +54,10 @@ next -- including stopping.
 
 | Date | When | The question | What happens |
 |---|---|---|---|
-| 2026-09-18 | **11 days OVERDUE** | Is anyone using it | Yes → continue; no → run only Experiment C, add no features. **Resolved:** `gate_verdict()` printed YES (usage.yml run 35374258574, 2026-09-18 17:25 UTC) on `curl` (14 calls over 4 days, JP on 14 of 14 rows: our own untagged probes from this machine's Tokyo egress, 63c485b; adding JP to OWNER_COUNTRIES turns it NEAR and does not change the verdict) and `mozilla` (23 calls over 9 days; its verdicts come from GET /assess, and the bucket is any `Mozilla/` user agent, crawlers included). Recorded as the frozen rule printed it, and read for what it is: **not evidence of adoption** -- no identified stranger received a verdict, and 3,169 of 3,259 attributable tool calls (97.2%) were ours -> continue per §7: Experiment C now; Experiment D (20 operators, the $99/month line, each with its own client tag) sent by 2026-09-23; E only when a D reply asks how to pay; no new features before 10-16 (fixes are not features). |
-| 2026-10-16 | in 17 days | Does anyone want to pay | Yes → build payments; no → pick a different customer segment and run D again |
-| 2026-12-04 | in 66 days | Is further investment worth it | Yes → continue per §7; no → move to low-maintenance mode |
-| 2027-03-04 | in 156 days | Does the data asset hold up | Yes → that becomes the main product; no → keep the tool, drop the data narrative |
+| 2026-09-18 | **12 days OVERDUE** | Is anyone using it | Yes → continue; no → run only Experiment C, add no features. **Resolved:** `gate_verdict()` printed YES (usage.yml run 35374258574, 2026-09-18 17:25 UTC) on `curl` (14 calls over 4 days, JP on 14 of 14 rows: our own untagged probes from this machine's Tokyo egress, 63c485b; adding JP to OWNER_COUNTRIES turns it NEAR and does not change the verdict) and `mozilla` (23 calls over 9 days; its verdicts come from GET /assess, and the bucket is any `Mozilla/` user agent, crawlers included). Recorded as the frozen rule printed it, and read for what it is: **not evidence of adoption** -- no identified stranger received a verdict, and 3,169 of 3,259 attributable tool calls (97.2%) were ours -> continue per §7: Experiment C now; Experiment D (20 operators, the $99/month line, each with its own client tag) sent by 2026-09-23; E only when a D reply asks how to pay; no new features before 10-16 (fixes are not features). |
+| 2026-10-16 | in 16 days | Does anyone want to pay | Yes → build payments; no → pick a different customer segment and run D again |
+| 2026-12-04 | in 65 days | Is further investment worth it | Yes → continue per §7; no → move to low-maintenance mode |
+| 2027-03-04 | in 155 days | Does the data asset hold up | Yes → that becomes the main product; no → keep the tool, drop the data narrative |
 
 ## The same thing as a picture
 
@@ -71,10 +71,10 @@ gantt
     todayMarker stroke-width:3px,stroke:#d33,stroke-dasharray:0
     title The dates that decide things (red line is today)
     section Decisions
-    Is anyone using it - 11 days OVERDUE :milestone, 2026-09-18, 0d
-    Does anyone want to pay - in 17 days :milestone, 2026-10-16, 0d
-    Is further investment worth it - in 66 days :milestone, 2026-12-04, 0d
-    Does the data asset hold up - in 156 days :milestone, 2027-03-04, 0d
+    Is anyone using it - 12 days OVERDUE :milestone, 2026-09-18, 0d
+    Does anyone want to pay - in 16 days :milestone, 2026-10-16, 0d
+    Is further investment worth it - in 65 days :milestone, 2026-12-04, 0d
+    Does the data asset hold up - in 155 days :milestone, 2027-03-04, 0d
 ```
 
 ### Is the archive still collecting?
@@ -85,7 +85,7 @@ gantt
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**27 days, no gaps.** Newest is 2026-09-29, today.
+**27 days, no gaps.** Newest is 2026-09-29, yesterday.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Level 0: CLAUDE.md no longer says the owner's editor reaches production untagged
+- lead: T-006 specced (regenerate-derived.sh refuses its bots' mode off CI)
+- lead: T-005 specced (second_oracle.py for the Owner's W5 check); lead #3 check-in
+- lead: handoff to lead #3
+- lead: H-10 done; T-003 and T-004 done; the deploy gate ran 28 of 28 on CI
 - lead: T-004 passed round 2 (11 of 12, red-team none); H-10 asked
 - lead: T-004 round 2 in re-review; a pitfall the lead repeated while writing it
 - T-004: the runner refuses a test.yml holding a character Python ends a line at and YAML does not
-- T-004: the runner refuses a uses: other than actions/checkout and actions/setup-python
-- T-004: the runner refuses env:, working-directory: and shell: on a step
-- T-004: the runner refuses a folded run: block
-- T-004: the runner refuses a value that opens a quote, [ or { and does not close it on its line
-- T-004: named change (f) the rest of the class is refused, by the runner and the reader alike
 
-_54 more not shown (62 commits in total)._
+_59 more not shown (67 commits in total)._
 
 ## What I got wrong
 
