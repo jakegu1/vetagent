@@ -18,7 +18,25 @@
 #
 # Rebase is safe here: the bot only ever APPENDS to files under bench/snapshots/, which no
 # human edits, so there is no semantic conflict to resolve.
+#
+# WHY IT REFUSES OFF GITHUB ACTIONS. It has no local mode: with any argument or none, its first
+# act is to write the snapshot bot's identity into this clone's git config, which every worktree
+# of the clone shares; then it commits whatever is under bench/snapshots/ and pushes. On a
+# laptop that is always an accident -- run by hand to see what it does, or from a task
+# worktree -- so it runs only where GitHub Actions sets GITHUB_ACTIONS=true, and anywhere else
+# it stops with exit 2 before the first git command. tests/test_bot_commits_stay_green.py runs
+# both sides for real, in scratch repositories: the refusal, and on Actions nothing new, a
+# commit and a push, and a rejected push that is rebased and retried.
 set -uo pipefail
+
+# Everything below commits and pushes, so none of it runs off GitHub Actions (see the header).
+if [ "${GITHUB_ACTIONS:-}" != "true" ]; then
+  echo "snapshot-commit.sh: refusing to run: it writes the snapshot bot's identity into this" >&2
+  echo "  clone's git config, commits what is under bench/snapshots/ and pushes; it runs only on" >&2
+  echo "  GitHub Actions, where GITHUB_ACTIONS is 'true'." >&2
+  echo "  Do not set GITHUB_ACTIONS by hand to get past this: that commits and pushes from this clone as the bot." >&2
+  exit 2
+fi
 
 what="${1:-snapshot}"
 
