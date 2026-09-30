@@ -130,4 +130,10 @@ an entry), and every other file.
 
 ## Amendments
 
-None yet.
+- **2026-09-30, before dispatch** (T-007's round-2 re-review, minor note 1,
+  `lead/reviews/T-007.md`): T-007's guard removes HTML entities without decoding them, so
+  `Resolved: &lt;what the measurement said&gt; -> &lt;decision&gt;` written with entity-escaped
+  brackets is accepted as a conclusion, and it renders as the template. So on the Owner page the
+  template in AC 3's "You know it is done when" line is written **inside a code span** (backticks),
+  never with `&lt;` or `&gt;`, and a test pins that the rendered page carries it that way. Added
+  to AC 3; everything else stands.

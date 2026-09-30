@@ -15,6 +15,7 @@ Autonomy is A2 (H-12). One date to keep: H-13, 2026-10-16.
 
 | ID | What | Why it's yours | Recommendation | Needed by |
 |---|---|---|---|---|
+| H-14 | Merge T-007 (the gate guard) and T-008 (`snapshot-commit.sh` refuses off GitHub Actions), and push them, then T-009 when it passes | Level 3 merges and every push are yours | Yes: both passed their reviews (T-007 after a second round). Push in two steps: a preflight branch on Linux first, then `master` once green (no deploy: nothing under `src/`). T-009 is pushed the same way after its review, without asking again; anything red stops it. Default: nothing merged or pushed | Any time; T-007 matters before 2026-10-16 |
 | H-13 | On 2026-10-16, write the gate's conclusion in `docs/STRATEGY.md` section 8 as `Resolved: <what Experiment D measured> -> <decision>`, and decide O2, O8, O9 and O11 in `docs/OPPORTUNITIES.md` | The gate's reading and the product decisions are yours | Give the lead the result in one line that morning; it drafts both edits for your yes. Otherwise the build is red, and every deploy blocked, from 00:00 UTC that day until both are done | 2026-10-16, before 02:23 UTC (the first bot run) |
 
 ## Done / answered
@@ -45,8 +46,8 @@ Autonomy is A2 (H-12). One date to keep: H-13, 2026-10-16.
 
 | Task | Level | Status | Notes |
 |---|---|---|---|
-| T-007 | 3 | executing | The check that forces a written conclusion on a gate's date accepts an empty or placeholder one (measured with the date forced to 2026-10-16); after this it will not |
-| T-008 | 3 | executing | `snapshot-commit.sh`, run by hand, would rewrite this clone's git identity and push; after this it refuses off GitHub Actions |
+| T-007 | 3 | reviews passed; waiting for your merge (H-14) | The check that forces a written conclusion on a gate's date accepted an empty or placeholder one, and its own template pasted back; after this it does not |
+| T-008 | 3 | reviews passed; waiting for your merge (H-14) | `snapshot-commit.sh`, run by hand, would rewrite this clone's git identity and push; after this it refuses off GitHub Actions |
 | T-009 | 1 | ready, after T-007 | Your page (`docs/OWNER.md`) shows the answered 2026-09-18 gate as "12 days OVERDUE"; after this an answered gate reads as answered, and a gate 14 days out appears in "Needs you" |
 
 ## Milestones
@@ -57,6 +58,9 @@ Autonomy is A2 (H-12). One date to keep: H-13, 2026-10-16.
 | M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
+
+- **2026-09-30** · lead · T-007 passed its second review round and T-008 its first; both are
+  Level 3, so their merge and the push are yours (H-14).
 
 - **2026-09-30** · lead · You approved H-12: autonomy A2. You will hear about Level 0 to 2 merges
   afterwards; Level 3 merges and pushes still come to you. H-13's plan for 2026-10-16 stands.

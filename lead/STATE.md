@@ -50,10 +50,17 @@ Last updated: 2026-09-30 by lead session 4 (Claude Code desktop, local, opened i
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-007 | 3 | `task/t-007-gate-guard-needs-a-conclusion`, worktree `../vetagent-t-007`, from `de567c0` | round 2 combined re-review at `19e3c60` (the last round; round 1 at `5bd3f28`: independent 12 of 12, red-team 2 material) | combined re-reviewer (background, started 2026-09-30) | Save the verdict to `lead/reviews/T-007.md`. Pass: ask the Owner to merge (Level 3). After round 2 only an invariant, security, privacy, data loss or a regression sends it back; anything else becomes a follow-up. If the session ended first, re-dispatch the re-review: the head is unchanged |
-| T-008 | 3 | `task/t-008-snapshot-commit-refuses-locally`, worktree `../vetagent-t-008`, from `de567c0` | reviews passed at `1f9fba8` (independent 12 of 12; red-team none); decision: merge | the Owner (Level 3 merge), batched with T-007 | Ask the Owner once T-007's re-review is in: merge both, then push through a preflight branch (Linux is not yet measured for the new harness steps). `git config user.name` in the main checkout checked `jakegu1` after both reviews |
+| T-007 | 3 | `task/t-007-gate-guard-needs-a-conclusion`, worktree `../vetagent-t-007`, from `de567c0` | reviews passed at `19e3c60` (round 2 combined 12 of 12, red-team none); decision: merge | the Owner (H-14) | On the Owner's yes: fetch and merge origin, then `git merge --no-ff` T-007 and T-008, regenerate, checks, then dispatch T-009 and push per H-14 |
+| T-008 | 3 | `task/t-008-snapshot-commit-refuses-locally`, worktree `../vetagent-t-008`, from `de567c0` | reviews passed at `1f9fba8` (independent 12 of 12; red-team none); decision: merge | the Owner (H-14) | As T-007. `git config user.name` in the main checkout checked `jakegu1` after both reviews |
 
 ## Waiting on the Owner
+
+- **H-14 (asked 2026-09-30): merge T-007 and T-008, and push.** Both passed their reviews
+  (Level 3). Recommendation: merge both into local `master` (`--no-ff`); push in two steps, the
+  merged tree to a preflight branch first (`test.yml` on Linux; no deploy, nothing under `src/`),
+  then `master` once green, then delete the preflight branch; and push T-009 the same way once it
+  passes its review and the lead has merged it (Level 1, A2), without asking again. Anything red
+  stops the push and goes to the Owner. Default if no answer: nothing merged or pushed.
 
 - **H-13 (told 2026-09-30, needed by 2026-10-16; the Owner agreed to the plan): the 2026-10-16
   gate.** From 00:00 UTC that day `tests/test_gates_get_reviewed.py` is red, and so are `tests`
@@ -135,9 +142,12 @@ parallel with T-008).
 - Candidate, Level 0 or 1: nothing pins `.github/scripts/*.sh` to LF (no `.gitattributes`); a
   script committed with CRLF would stop the bots on Linux (T-008 red-team note 3, emulated).
   One line: `*.sh text eol=lf`. Check what it does to this Windows checkout first.
-- Candidate, from T-007's round 2 (lead decision, `lead/reviews/T-007.md`): "variant B", typing
-  `Resolved:` and pasting the whole failure message after it, is still accepted; judging the text
-  after each `Resolved:` up to the next one closes it (measured by the executor, not applied).
+- Candidate, Level 3 area (the gate guard), T-007's follow-ups (`lead/reviews/T-007.md`): "variant
+  B", typing `Resolved:` and pasting the whole failure message after it, is still accepted
+  (judging the text after each `Resolved:` up to the next one closes it, measured, not applied);
+  the template with entity-escaped brackets is accepted (decode with `html.unescape` before the
+  markup step, measured: 98 of 98 still pass); three surviving mutants of the markup step and the
+  row lookup need self-tests. Before 2026-10-16 if cheap; none of them is live today.
 - Candidate, Level 1, from T-003's review: when the scorecard's production row is in the form
   `bench/scorecard.py` is not printing, its two targets report `absent` and `pattern not found`,
   and the second gets the "restore the sentence" advice, wrong for a generated row; three
@@ -298,6 +308,12 @@ hand and move on.
 | 4 | Claude Code desktop, local (opened in this repository) | 2026-09-30 | | |
 
 ## Log (newest first; keep the last ~20 lines)
+
+- 2026-09-30: T-007 round 2 combined re-review: 12 of 12, pass, red-team none (50 markup texts,
+  20 row-lookup scenarios, 15 mutants of round 2's code). Decision: merge. Both Level 3 tasks
+  wait for the Owner: asked H-14 (merge both, push through a preflight branch, then T-009 the
+  same way). T-009's spec amended before dispatch: the template on the Owner page goes in a code
+  span (entity-escaped brackets are still accepted by the guard; a follow-up).
 
 - 2026-09-30: T-008 red-team: none (15 of 19 mutants caught; 31 near-miss values and names, 18
   invocations, CRLF emulated, `GIT_*` decoys: all held). Both reviews pass; decision: merge,
