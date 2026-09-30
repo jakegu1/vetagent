@@ -202,6 +202,16 @@ jobs:
       - name: A bot's commit regenerates what it moves, and is tested
         run: python tests/test_bot_commits_stay_green.py
 
+      # W5. bench/second_oracle.py spends the owner's small Quick Intel allowance and keeps the
+      # answers in a git-ignored file that nothing else copies. Its first real run paced calls
+      # about four times faster than the free tier allows, wrote its file once, at the end, over
+      # whatever was there, and printed a rate over the unknown set's 122 of its 143 calls,
+      # though none of the 143 had reached Quick Intel.
+      # This pins the pacing, the refusal to overwrite, the save after every call and the
+      # report's classes, on synthetic data with the network and the clock replaced.
+      - name: The second-oracle script spends calls safely and reports only what it measured
+        run: python tests/test_second_oracle.py
+
       # deploy.yml ran two of the files above by hand before it deployed, and this workflow
       # starts beside it rather than before it, so a push to src/ that broke any other step
       # shipped anyway. The deploy job now runs every step of this job, read from this file

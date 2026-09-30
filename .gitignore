@@ -50,9 +50,12 @@ bench/backfill/
 # W41 prototype cache: raw RPC and honeypot.is answers (bench/sim_probe.py). Results are committed in bench/sim_probe/.
 bench/cache_sim/
 
-# W5: raw Quick Intel answers from bench/second_oracle.py --run. Not committed until the owner
+# W5: raw Quick Intel answers from bench/second_oracle.py --run, one file per selection, and
+# the copy each save writes before renaming it over the file. Not committed until the owner
 # has read Quick Intel's terms and decided what may be published.
 bench/second_oracle.json
+bench/second_oracle_adversarial.json
+bench/second_oracle*.json.partial
 
 # Owner-private strategy material: kept out of this public repository on purpose.
 docs/VetAgent_Product_Strategy_Evaluation.docx
