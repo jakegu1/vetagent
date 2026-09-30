@@ -1407,11 +1407,11 @@ def test_snapshot_checks_say_when_they_could_not_run():
     silent = [name for name, entries in said if not entries]
     whys = sorted(set(why for _, entries in said for _, why in entries))
     lines = printed.getvalue().count("NOT RUN HERE")
-    check("with no usable bash (simulated), each of the %d groups prints a NOT RUN HERE line "
-          "that says why" % len(said),
+    check("with no usable bash (simulated), each of the %d groups prints its own not-run line, "
+          "which says why" % len(said),
           not silent and whys == [SIMULATED_NO_BASH]
           and lines == sum(len(entries) for _, entries in said),
-          "silent: %s; reasons %s; %d NOT RUN HERE lines" % (silent, whys, lines))
+          "silent: %s; reasons %s; %d not-run lines" % (silent, whys, lines))
     check("  and none of it counts as passed or failed, and nothing was built or run",
           passed == 0 and not failed and not blind.built and not blind.calls,
           "%d passed, failed %s, %d built, %d run" % (passed, failed, blind.built, blind.calls))
