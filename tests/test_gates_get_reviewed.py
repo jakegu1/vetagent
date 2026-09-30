@@ -160,7 +160,6 @@ def test_strategy_gates_are_answered_when_they_fall_due():
         check("STRATEGY.md still has a decision-gate section", False, "heading missing")
         return
     end = whole.find("\n## ", start + 1)
-## ", start + 1)
     text = whole[start:end if end > 0 else len(whole)]
     rows = _GATE_ROW.findall(text)
     check("the gate table is still parseable", len(rows) >= 3, "%d rows" % len(rows))
