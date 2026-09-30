@@ -378,6 +378,54 @@ def test_guard_refuses_a_due_gate_without_a_conclusion():
               verdict == [False] and error is None, _said(verdict, error))
 
 
+# Placeholders that the table's own arrows used to answer while U+2192 counted as the
+# conclusion's arrow (measured on 8e14f10). Each is a test cell and an action cell for the
+# 2026-10-16 row; the action text keeps its own pre-registered U+2192 arrows. The last puts
+# an ASCII "->" in the test cell, before "Resolved:", so that a rule taking an arrow from
+# anywhere in the row would answer it.
+_ROW_1016 = [r for r in _SYNTHETIC_ROWS if r[0] == "2026-10-16"][0]
+_TEST_1016 = _ROW_1016[2].format(ge=chr(0x2265))
+_ACTION_1016 = _ROW_1016[3].format(a=_RIGHT_ARROW)
+_PLACED_ELSEWHERE = (
+    ("'Resolved: TBD' at the start of the action cell",
+     _TEST_1016, "Resolved: TBD. " + _ACTION_1016),
+    ("'Resolved: TBD' in the test cell",
+     _TEST_1016 + " Resolved: TBD", _ACTION_1016),
+    ("'Resolved: no' after the action text, with an ASCII arrow in the test cell",
+     "%s3 trial commitments -> a yes" % chr(0x2265), _ACTION_1016 + " Resolved: no"),
+)
+
+
+def _with_1016_cells(test, action):
+    """(STRATEGY.md text, the 2026-10-16 row) for the synthetic table with that row's test
+    and action cells replaced."""
+    lines = _synthetic_strategy().split("\n")
+    at = [i for i, ln in enumerate(lines) if ln.startswith("| 2026-10-16 ")][0]
+    lines[at] = "| 2026-10-16 | %s | %s | %s |" % (_ROW_1016[1], test, action)
+    return "\n".join(lines), lines[at]
+
+
+def test_guard_refuses_what_the_tables_own_arrows_answered():
+    """T-007, named change (b): placeholders the table's own arrows used to answer.
+
+    While U+2192 counted as the conclusion's arrow, "Resolved: TBD" at the start of the
+    action cell, or in the test cell, was answered by the action text's own
+    pre-registered arrows (measured on 8e14f10). Each case is judged through the
+    due-gate check on its due date, and by gate_row_answered directly.
+    """
+    print("\n[gates] self-test: the table's own arrows answer no placeholder")
+    rule = globals().get("gate_row_answered")
+    for label, test, action in _PLACED_ELSEWHERE:
+        strategy, row = _with_1016_cells(test, action)
+        verdicts, error, _ = _run_due_gate_check(strategy, _GATE_DAY)
+        verdict = _verdict(verdicts, "2026-10-16")
+        check("refused on its due date: %s" % label,
+              verdict == [False] and error is None, _said(verdict, error))
+        got = rule(row) if callable(rule) else "gate_row_answered is not defined"
+        check("gate_row_answered is False for %s" % label, got is False,
+              "returned %r" % (got,))
+
+
 def test_guard_accepts_a_written_conclusion():
     """T-007, AC 2: a finding, an arrow and a decision answer a due gate."""
     print("\n[gates] self-test: a due gate with a written conclusion passes")
