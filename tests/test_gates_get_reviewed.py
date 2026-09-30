@@ -303,9 +303,9 @@ class _ForcedClock(object):
 def _run_due_gate_check(strategy_text, day, rule=None):
     """Run the real due-gate check on `strategy_text`, with today forced to `day`.
 
-    Returns (verdicts, error, scratch): every check it made, as (name, passed); the
-    exception it raised, as text, or None; and the scratch directory it read from, which
-    is gone by then. `rule`, when given, stands in for gate_row_answered for the run.
+    Returns (verdicts, error, scratch): every check it made, as (name, passed, detail);
+    the exception it raised, as text, or None; and the scratch directory it read from,
+    which is gone by then. `rule`, when given, stands in for gate_row_answered for the run.
 
     Nothing leaks either way. STRATEGY, datetime, check, gate_row_answered, _FAILURES,
     _PASSED and stdout are put back before this returns, so a deliberate red inside is
@@ -325,7 +325,7 @@ def _run_due_gate_check(strategy_text, day, rule=None):
             f.write(strategy_text)
         g["STRATEGY"] = path
         g["datetime"] = _ForcedClock(saved["datetime"], day)
-        g["check"] = lambda name, ok, detail="": verdicts.append((name, bool(ok)))
+        g["check"] = lambda name, ok, detail="": verdicts.append((name, bool(ok), detail))
         if rule is not None:
             g["gate_row_answered"] = rule
         sys.stdout = io.StringIO()
@@ -347,7 +347,7 @@ def _run_due_gate_check(strategy_text, day, rule=None):
 
 def _verdict(verdicts, date_str):
     """What the check said about one gate: [True], [False], or [] if it did not judge it."""
-    return [ok for name, ok in verdicts if name.startswith("gate %s " % date_str)]
+    return [v[1] for v in verdicts if v[0].startswith("gate %s " % date_str)]
 
 
 def _said(verdict, error):
@@ -432,6 +432,74 @@ def test_guard_refuses_what_the_tables_own_arrows_answered():
               verdict == [False] and error is None, _said(verdict, error))
         got = rule(row) if callable(rule) else "gate_row_answered is not defined"
         check("gate_row_answered is False for %s" % label, got is False,
+              "returned %r" % (got,))
+
+
+# Named change (c), after the round 1 red-team (M1): the guard's own words, and markup a
+# reader never sees, are not a conclusion. The failure message and the template it quotes
+# are taken from the text the due-gate check emits, so the cases and the message cannot
+# drift apart. These texts go after the 2026-10-16 row's action text.
+_MARKUP_REFUSED = (
+    "Resolved: <what Experiment D measured> -> <decision>",
+    "Resolved: <!-- note --> pending",
+    "Resolved: <br> -> <br>",
+    "Resolved: &nbsp; -> &nbsp;",
+    "Resolved: 2026-10-16",              # a lone hyphen is not an arrow
+)
+_MARKUP_ACCEPTED = (
+    "Resolved: <3 commitments -> pick a different segment",
+    "Resolved: 0 commitments -> <b>no</b>, pick a different segment",
+)
+
+
+def _emitted_message():
+    """The failure message the due-gate check emits for an unanswered due gate, or ""."""
+    verdicts, error, _ = _run_due_gate_check(_synthetic_strategy(), _GATE_DAY)
+    said = [v[2] for v in verdicts if v[0].startswith("gate 2026-10-16 ") and not v[1]]
+    return said[0] if said and error is None else ""
+
+
+def _arrow_note():
+    """The parenthetical of that message, which says what the arrow is, or ""."""
+    message = _emitted_message()
+    return message[message.find("("):] if "(" in message else ""
+
+
+def test_guard_refuses_its_own_words_and_markup():
+    """T-007, named change (c): the guard's own words and markup are not a conclusion.
+
+    Found by the round 1 red-team (M1): the template the failure message prints, the whole
+    message pasted back, and markup a reader never sees all answered a due gate: tags and
+    entities between letters, and an HTML comment, whose closing "-->" was taken for the
+    arrow. Each case is judged through the due-gate check on its due date and by
+    gate_row_answered directly.
+    """
+    print("\n[gates] self-test: the guard's own words and markup are not a conclusion")
+    message = _emitted_message()
+    check("the due-gate check emits a message that quotes its template",
+          message.count("'") >= 2, "emitted %r" % (message,))
+    if message.count("'") < 2:
+        return
+    template = message.split("'")[1]
+
+    def after(text):
+        return _TEST_1016, _ACTION_1016 + " " + text
+
+    cases = ([("the failure message's template, %s" % ascii(template), after(template), False),
+              ("the whole failure message", after(message), False),
+              ("'**Resolved:** <!-- TODO -->' at the start of the action cell",
+               (_TEST_1016, "**Resolved:** <!-- TODO --> " + _ACTION_1016), False)]
+             + [(ascii(t), after(t), False) for t in _MARKUP_REFUSED]
+             + [(ascii(t), after(t), True) for t in _MARKUP_ACCEPTED])
+    rule = globals().get("gate_row_answered")
+    for label, (test, action), answered in cases:
+        strategy, row = _with_1016_cells(test, action)
+        verdicts, error, _ = _run_due_gate_check(strategy, _GATE_DAY)
+        verdict = _verdict(verdicts, "2026-10-16")
+        check("%s on its due date: %s" % ("accepted" if answered else "refused", label),
+              verdict == [answered] and error is None, _said(verdict, error))
+        got = rule(row) if callable(rule) else "gate_row_answered is not defined"
+        check("gate_row_answered is %s for %s" % (answered, label), got is answered,
               "returned %r" % (got,))
 
 
@@ -533,7 +601,8 @@ def test_guard_accepts_the_conclusions_in_the_real_table():
           "no row of section 8 carries Resolved:")
     for ln in rows:
         check("the real %s row is accepted" % _GATE_ROW.match(ln).group(1),
-              rule(ln) is True, "its Resolved text is not a written conclusion")
+              rule(ln) is True, "its Resolved text is not a written conclusion "
+              + _arrow_note())
 
 
 def test_guard_self_tests_leave_no_trace():
