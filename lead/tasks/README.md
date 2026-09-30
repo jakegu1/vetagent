@@ -12,6 +12,6 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-004 | Run the whole offline suite before every deploy | 3 | M | — | done (`d0eb7e8`) |
 | T-005 | Make second_oracle.py ready for the Owner's W5 check on the adversarial cohort | 2 | M | — | done (`0fa831a`) |
 | T-006 | Refuse regenerate-derived.sh's bots' mode outside GitHub Actions | 3 | S | — | done (`053fe0a`) |
-| T-007 | Make the gate guard require a written conclusion, as its docstrings say it does | 3 | S | — | in_progress |
-| T-008 | Refuse snapshot-commit.sh outside GitHub Actions, and pin its push path | 3 | S | — | in_progress |
-| T-009 | Show answered gates as answered, and put a gate that is coming due in Needs you | 1 | S | T-007 | ready (dispatch after T-007 merges) |
+| T-007 | Make the gate guard require a written conclusion, as its docstrings say it does | 3 | S | — | done (`3fb1d3d`) |
+| T-008 | Refuse snapshot-commit.sh outside GitHub Actions, and pin its push path | 3 | S | — | done (`f1a767d`) |
+| T-009 | Show answered gates as answered, and put a gate that is coming due in Needs you | 1 | S | T-007 | in_progress |

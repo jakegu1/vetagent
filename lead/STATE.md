@@ -50,17 +50,15 @@ Last updated: 2026-09-30 by lead session 4 (Claude Code desktop, local, opened i
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-007 | 3 | `task/t-007-gate-guard-needs-a-conclusion`, worktree `../vetagent-t-007`, from `de567c0` | reviews passed at `19e3c60` (round 2 combined 12 of 12, red-team none); decision: merge | the Owner (H-14) | On the Owner's yes: fetch and merge origin, then `git merge --no-ff` T-007 and T-008, regenerate, checks, then dispatch T-009 and push per H-14 |
-| T-008 | 3 | `task/t-008-snapshot-commit-refuses-locally`, worktree `../vetagent-t-008`, from `de567c0` | reviews passed at `1f9fba8` (independent 12 of 12; red-team none); decision: merge | the Owner (H-14) | As T-007. `git config user.name` in the main checkout checked `jakegu1` after both reviews |
+| T-009 | 1 | `task/t-009-owner-page-answered-gates`, worktree `../vetagent-t-009`, from the bookkeeping commit after the merges | executing | executor subagent (background, started 2026-10-01) | On READY: contract and checks, then one fresh review (Level 1). Pass: the lead merges (A2), then pushes it the H-14 way (a preflight branch, then `master`) without asking again. If the session ended first, look for commits on the branch |
+| Push (H-14) | - | preflight branch `preflight/h-14`, then `master` | pushing the merged tree to the preflight branch | the lead (approved) | Watch `tests` on the preflight branch; when green, fetch (merge origin if it moved), push `master`, watch `tests` on it, then delete the preflight branch. Anything red: stop and tell the Owner |
 
 ## Waiting on the Owner
 
-- **H-14 (asked 2026-09-30): merge T-007 and T-008, and push.** Both passed their reviews
-  (Level 3). Recommendation: merge both into local `master` (`--no-ff`); push in two steps, the
-  merged tree to a preflight branch first (`test.yml` on Linux; no deploy, nothing under `src/`),
-  then `master` once green, then delete the preflight branch; and push T-009 the same way once it
-  passes its review and the lead has merged it (Level 1, A2), without asking again. Anything red
-  stops the push and goes to the Owner. Default if no answer: nothing merged or pushed.
+- (H-14 answered 2026-10-01, as recommended: merge T-007 and T-008, then push in two steps (a
+  preflight branch on Linux first, then `master`), and push T-009 the same way once it passes its
+  review and the lead has merged it, without asking again; anything red stops the push. Merged
+  as `3fb1d3d` and `f1a767d`; checks on master 29 of 29.)
 
 - **H-13 (told 2026-09-30, needed by 2026-10-16; the Owner agreed to the plan): the 2026-10-16
   gate.** From 00:00 UTC that day `tests/test_gates_get_reviewed.py` is red, and so are `tests`
@@ -221,6 +219,9 @@ After T-001 (`0a3098d`, 2026-09-28): 27 of 27. **Lead session 2 at `24a0a73` (20
 clean. After T-002 (`16e100e`): 27 of 27, clean tree; `tests/test_published_numbers.py` 70 of
 70. After H-10 (`6c8b785`): 28 of 28 (T-004 added `tests/test_deploy_gate.py`, 125 of 125);
 `tests/test_published_numbers.py` 111 of 111; about 55 s locally. No failure is known.**
+**After H-14's merges (`f1a767d`, 2026-10-01): 29 of 29 in 96.1 s, tree clean;
+`tests/test_gates_get_reviewed.py` 98 of 98 (T-007), `tests/test_bot_commits_stay_green.py` 164
+of 164 in about 25 to 30 s on Windows (T-008; was 13.2 s).**
 **After H-11 (`b29c424`, 2026-09-30): 29 of 29 in 63.0 s. T-005 added `tests/test_second_oracle.py` (216 of 216, 0.5 s); after T-006 `tests/test_bot_commits_stay_green.py` runs the real script in scratch repositories (118 of 118, 13.2 s on Windows).** On CI (Linux), preflight run 36669036422 and `master` run
 36669385087 on `3db4bf5`: `test`, `upstream-contract` and `backfill-roundtrip` green; the
 regeneration script's 29 calls took 0.4 s there, so T-006 costs the deploy gate almost nothing.
@@ -243,6 +244,11 @@ modifies a tracked file. If it lists one, find the step that wrote it; do not re
 hand and move on.
 
 ## Recent decisions
+
+- 2026-10-01: H-14 approved as recommended. T-007 merged as `3fb1d3d` and T-008 as `f1a767d`
+  (`--no-ff`, the tests-first commits kept). The post-merge regeneration moved only date-driven
+  lines and the recent-commit list of `docs/OWNER.md` (local date 2026-10-01, UTC still
+  2026-09-30), so it was restored and left to the bots (`merge.after`).
 
 - 2026-09-30: the Owner answered H-12 as recommended: autonomy A2. The lead now merges Level 0
   to 2 tasks after passing reviews and reports each merge afterwards; Level 3 merges and every
@@ -308,6 +314,10 @@ hand and move on.
 | 4 | Claude Code desktop, local (opened in this repository) | 2026-09-30 | | |
 
 ## Log (newest first; keep the last ~20 lines)
+
+- 2026-10-01: H-14 yes. Origin had nothing new. Merged T-007 (`3fb1d3d`) and T-008 (`f1a767d`)
+  at their reviewed heads; checks on master 29 of 29, exit 0, tree clean. Next: T-009 dispatched
+  from the bookkeeping commit; the batch pushed to `preflight/h-14` first.
 
 - 2026-09-30: T-007 round 2 combined re-review: 12 of 12, pass, red-team none (50 markup texts,
   20 row-lookup scenarios, 15 mutants of round 2's code). Decision: merge. Both Level 3 tasks

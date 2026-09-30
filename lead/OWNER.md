@@ -3,25 +3,27 @@
 > This page holds only what the lead needs from you. The project's own dashboard, with its
 > deadlines and gates, is `docs/OWNER.md` (generated). Messages to you are in Chinese; files
 > here are English because the repository is English-only. Maintained by the project lead (AI).
-> Last updated: 2026-09-30
+> Last updated: 2026-10-01
 
 ## Status in one line
 
-All six workflows are green and M1's 7-day clock keeps running (done 2026-10-05 if nothing goes
-red). Two fixes are with executors (T-007, T-008), a third waits for the first (T-009).
-Autonomy is A2 (H-12). One date to keep: H-13, 2026-10-16.
+T-007 and T-008 are merged (H-14) and being pushed through a preflight branch; T-009 is with an
+executor. M1's 7-day clock keeps running (done 2026-10-05 if nothing goes red). Autonomy is A2.
+One date to keep: H-13, 2026-10-16.
 
 ## Needs you
 
 | ID | What | Why it's yours | Recommendation | Needed by |
 |---|---|---|---|---|
-| H-14 | Merge T-007 (the gate guard) and T-008 (`snapshot-commit.sh` refuses off GitHub Actions), and push them, then T-009 when it passes | Level 3 merges and every push are yours | Yes: both passed their reviews (T-007 after a second round). Push in two steps: a preflight branch on Linux first, then `master` once green (no deploy: nothing under `src/`). T-009 is pushed the same way after its review, without asking again; anything red stops it. Default: nothing merged or pushed | Any time; T-007 matters before 2026-10-16 |
 | H-13 | On 2026-10-16, write the gate's conclusion in `docs/STRATEGY.md` section 8 as `Resolved: <what Experiment D measured> -> <decision>`, and decide O2, O8, O9 and O11 in `docs/OPPORTUNITIES.md` | The gate's reading and the product decisions are yours | Give the lead the result in one line that morning; it drafts both edits for your yes. Otherwise the build is red, and every deploy blocked, from 00:00 UTC that day until both are done | 2026-10-16, before 02:23 UTC (the first bot run) |
 
 ## Done / answered
 
 | Item | Outcome | Recorded in |
 |---|---|---|
+| H-14 Merge T-007 and T-008, push them, then T-009 the same way (2026-10-01) | Approved as recommended; merged as `3fb1d3d` and `f1a767d`; checks 29 of 29; push in progress | `lead/STATE.md` |
+| T-008 (2026-10-01) | Merged as `f1a767d`: independent 12 of 12, red-team none | `lead/reviews/T-008.md` |
+| T-007 (2026-10-01) | Merged as `3fb1d3d`: round 1 red-team 2 material, fixed; round 2 combined 12 of 12, red-team none | `lead/reviews/T-007.md` |
 | H-12 Autonomy A2 (2026-09-30) | Approved as recommended: the lead merges Level 0 to 2 tasks after passing reviews and tells you afterwards; Level 3 merges and every push still come to you | `lead/config.yml`, `lead/STATE.md` |
 | H-11 Merge T-005, T-006 and the Level 0 branch; push in two steps (2026-09-30) | Approved as recommended; merged as `0fa831a`, `053fe0a`, `b29c424`; checks 29 of 29; preflight green on Linux; pushed `d5bb216..3db4bf5`; `tests` green; no deploy | `lead/STATE.md` |
 | T-006 (2026-09-30) | Merged as `053fe0a`: round 2 combined re-review pass, red-team none; its 15 s Windows time bound is not met (median 15.2 s), recorded rather than moved | `lead/reviews/T-006.md` |
@@ -46,9 +48,9 @@ Autonomy is A2 (H-12). One date to keep: H-13, 2026-10-16.
 
 | Task | Level | Status | Notes |
 |---|---|---|---|
-| T-007 | 3 | reviews passed; waiting for your merge (H-14) | The check that forces a written conclusion on a gate's date accepted an empty or placeholder one, and its own template pasted back; after this it does not |
-| T-008 | 3 | reviews passed; waiting for your merge (H-14) | `snapshot-commit.sh`, run by hand, would rewrite this clone's git identity and push; after this it refuses off GitHub Actions |
-| T-009 | 1 | ready, after T-007 | Your page (`docs/OWNER.md`) shows the answered 2026-09-18 gate as "12 days OVERDUE"; after this an answered gate reads as answered, and a gate 14 days out appears in "Needs you" |
+| T-007 | 3 | merged `3fb1d3d`; push in progress | The check that forces a written conclusion on a gate's date accepted an empty or placeholder one, and its own template pasted back; now it does not |
+| T-008 | 3 | merged `f1a767d`; push in progress | `snapshot-commit.sh`, run by hand, would rewrite this clone's git identity and push; now it refuses off GitHub Actions |
+| T-009 | 1 | executing | Your page (`docs/OWNER.md`) shows the answered 2026-09-18 gate as "12 days OVERDUE"; after this an answered gate reads as answered, and a gate 14 days out appears in "Needs you" |
 
 ## Milestones
 
@@ -58,6 +60,9 @@ Autonomy is A2 (H-12). One date to keep: H-13, 2026-10-16.
 | M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
+
+- **2026-10-01** · lead · You approved H-14. T-007 and T-008 are merged (checks 29 of 29) and
+  go out through a preflight branch first; T-009 has started.
 
 - **2026-09-30** · lead · T-007 passed its second review round and T-008 its first; both are
   Level 3, so their merge and the push are yours (H-14).
