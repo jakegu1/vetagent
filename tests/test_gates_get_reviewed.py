@@ -610,7 +610,10 @@ def test_guard_self_tests_leave_no_trace():
 
     Runs a gate that must be refused, with a stand-in rule, then checks that every global
     the run replaced is back, that a failure recorded before it is still recorded, and
-    that the synthetic table was written outside the repository and removed.
+    that the synthetic table was written outside the repository and removed. A leak is
+    also written straight into _FAILURES, not through check(): if check() is the global
+    that leaked, a report through it would be lost with every later red (round 1
+    red-team, M2).
     """
     print("\n[gates] self-test: a self-test's deliberate red stays inside it")
     g = globals()
@@ -626,6 +629,10 @@ def test_guard_self_tests_leave_no_trace():
     finally:
         _FAILURES[:] = [f for f in _FAILURES if f is not earlier]
     moved = [n for n in names if g.get(n, _ABSENT) is not before[n]]
+    leaked = moved + ([] if sys.stdout is stdout else ["stdout"])
+    if leaked:                           # recorded directly: check() may be what leaked
+        _FAILURES.append(("a self-test left %s replaced" % ", ".join(leaked), ""))
+        print("  FAIL  a self-test left %s replaced" % ", ".join(leaked))
     verdict = _verdict(verdicts, "2026-10-16")
     check("the run inside it was a real red", verdict == [False] and error is None,
           _said(verdict, error))
