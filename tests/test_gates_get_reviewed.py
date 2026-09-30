@@ -240,12 +240,12 @@ _NOT_A_CONCLUSION = (
     "Resolved: -> continue",             # nothing before the arrow
     "Resolved: 2 commitments ->",        # nothing after it
     "**Resolved:** ** -> **",            # only markup
+    "Resolved: 0 trial commitments %s pick a different segment and run D again"
+    % _RIGHT_ARROW,                      # U+2192, the table's own arrow, never counts
 )
 # ...and each of these does. Undecided is an answer; silence is not.
 _A_CONCLUSION = (
     "Resolved: 0 trial commitments -> pick a different segment and run D again",
-    "Resolved: 0 trial commitments %s pick a different segment and run D again"
-    % _RIGHT_ARROW,
     "**Resolved:** D got 1 commitment -> undecided, revisit 2026-10-23",
 )
 _ABSENT = object()
