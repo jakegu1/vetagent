@@ -4,7 +4,7 @@
 > session starts by reading it. Durable rules live in `AGENTS.md`, `lead/QUALITY.md` and
 > `lead/decisions/`. Test for this file: could a stranger act on every row below?
 
-Last updated: 2026-10-01 by lead session 4 at its handoff (Claude Code desktop, local, opened in
+Last updated: 2026-10-01 by lead session 5 after T-010 (Claude Code desktop, local, opened in
 this repository).
 
 ## Starting a lead session
@@ -51,10 +51,14 @@ this repository).
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| — | | | | | No task in flight. `master` is `d033c90` on origin (T-007, T-008, T-009 pushed and green) plus this handoff commit, which is local only. |
+| — | | | | | No task in flight. Local `master` is ahead of origin: the lead #4 handoff, the T-010 spec, the Level 0 `.gitattributes` merge (`426d8f4`) and T-010 (`47db199`); the push waits for the Owner (H-15). |
 
 ## Waiting on the Owner
 
+- **H-15 (asked 2026-10-01): push** the local commits (lead #4's handoff, the T-010 spec,
+  `426d8f4` Level 0, `47db199` T-010, this bookkeeping). Recommended: a preflight branch first
+  (`test.yml` on Linux), then `master`; no deploy (nothing under `src/`). Scan outgoing messages
+  for local paths, addresses and non-ASCII first.
 - **H-13 (told 2026-09-30, needed by 2026-10-16; the Owner agreed to the plan): the 2026-10-16
   gate.** From 00:00 UTC that day `tests/test_gates_get_reviewed.py` is red, and so are `tests`
   and every deploy, until (a) the gate's row in `docs/STRATEGY.md` section 8 carries
@@ -165,15 +169,10 @@ surviving mutants; T-006's speed and failed-read items), one after the other, ne
   push fails: exit 1, `LOST`, five attempts, sleeps 10 to 50); `date` without `-u` (run the
   calls on Actions under a `TZ` whose date differs from UTC's). Not in parallel with the T-006
   follow-up (same file).
-- Candidate, Level 1, T-009's follow-ups (`lead/reviews/T-009.md`): once a gate is answered but
-  its parked entries are still open, it leaves "Needs you", although from its date the guard fails
-  the build on those entries (keep the row until both are done, listing what is left); the page's
-  `gates()` takes any four-cell dated row anywhere in `docs/STRATEGY.md` while the guard reads
-  section 8 only (limit the page to section 8); with exactly one parked entry the "done" line's
-  grammar reads as a list.
-- Candidate, Level 0 or 1: nothing pins `.github/scripts/*.sh` to LF (no `.gitattributes`); a
-  script committed with CRLF would stop the bots on Linux (T-008 red-team note 3, emulated).
-  One line: `*.sh text eol=lf`. Check what it does to this Windows checkout first.
+- Candidate, test file only, T-010's review optionals (`lead/reviews/T-010.md`): a fixture with
+  no `##` heading before a stray dated row (kills mutant M4, `gates()` reading from character 0
+  when section 8 is missing); the AC 6 test combines the guard's two conditions itself, so a
+  third one added to the guard would go unseen. Neither is live today.
 - Candidate, Level 3 area (the gate guard), T-007's follow-ups (`lead/reviews/T-007.md`): "variant
   B", typing `Resolved:` and pasting the whole failure message after it, is still accepted
   (judging the text after each `Resolved:` up to the next one closes it, measured, not applied);
@@ -370,6 +369,17 @@ hand and move on.
 | 5 | next session, opened in this repository | | | |
 
 ## Log (newest first; keep the last ~20 lines)
+
+- 2026-10-01: lead #5 check-in. Merged origin (six bot commits, `dd2d987`); every workflow's
+  latest run green; M1 still running. Specced T-010 (Level 1: T-009's follow-ups, the page
+  dropping a gate whose row is answered while its parked entries still fail the build) and
+  dispatched it to a worktree. Did the Level 0 `.gitattributes` item on a branch (test watched
+  red: both scripts "eol: unspecified"); fresh review 12 of 12, merged under A2 as `426d8f4`
+  (`lead/reviews/L0-sh-eol-lf.md`).
+- 2026-10-01: T-010 READY at `40d77ba`; fresh review 12 of 12 (AC 1 reproduced on the real
+  files with the 2026-10-16 row answered and O2, O8, O9, O11 open: the page and the guard agree);
+  merged under A2 as `47db199`. Regeneration moved only the recent-commit list (left to the
+  bots). Worktree and branch removed. Push asked of the Owner as H-15.
 
 - 2026-10-01: T-009 pushed: preflight run 36753548989 green (the Owner page 379 of 379 on Linux
   with its date a day ahead of UTC); `master` `26392ab..d033c90`; `tests` run 36754083925 green;

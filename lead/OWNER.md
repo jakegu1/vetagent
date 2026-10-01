@@ -15,12 +15,15 @@ date to keep: H-13, 2026-10-16. The lead rotated to #5; nothing for you to do.
 
 | ID | What | Why it's yours | Recommendation | Needed by |
 |---|---|---|---|---|
+| H-15 | Push five local commits to origin: T-010, the Level 0 `.gitattributes`, and lead bookkeeping | Every push is yours | Yes: push through a preflight branch first (Linux `tests`, no deploy: nothing under `src/`), then `master` | Any time before 2026-10-14; nothing is blocked meanwhile |
 | H-13 | On 2026-10-16, write the gate's conclusion in `docs/STRATEGY.md` section 8 as `Resolved: <what Experiment D measured> -> <decision>`, and decide O2, O8, O9 and O11 in `docs/OPPORTUNITIES.md` | The gate's reading and the product decisions are yours | Give the lead the result in one line that morning; it drafts both edits for your yes. Otherwise the build is red, and every deploy blocked, from 00:00 UTC that day until both are done | 2026-10-16, before 02:23 UTC (the first bot run) |
 
 ## Done / answered
 
 | Item | Outcome | Recorded in |
 |---|---|---|
+| T-010 (2026-10-01) | Merged by the lead under A2 as `47db199`: fresh review 12 of 12. If you write the 2026-10-16 conclusion before deciding O2, O8, O9 and O11, the gate now stays in Needs you with what is left | `lead/reviews/T-010.md` |
+| Level 0 `.gitattributes` (2026-10-01) | Merged by the lead under A2 as `426d8f4`: the bots' shell scripts are pinned to LF; fresh review 12 of 12 | `lead/reviews/L0-sh-eol-lf.md` |
 | T-009 (2026-10-01) | Merged by the lead under A2 as `235b20c`: fresh review 12 of 12; the lead fixed one sentence of its own correction text first | `lead/reviews/T-009.md` |
 | H-14 Merge T-007 and T-008, push them, then T-009 the same way (2026-10-01) | Done as recommended: T-007 and T-008 pushed `a5bcce5..26392ab`, T-009 pushed `26392ab..d033c90`, each after a green preflight on Linux; `tests` green on both; no deploy | `lead/STATE.md` |
 | T-008 (2026-10-01) | Merged as `f1a767d`: independent 12 of 12, red-team none | `lead/reviews/T-008.md` |
@@ -52,6 +55,7 @@ date to keep: H-13, 2026-10-16. The lead rotated to #5; nothing for you to do.
 | T-007 | 3 | merged `3fb1d3d`, pushed | The check that forces a written conclusion on a gate's date accepted an empty or placeholder one, and its own template pasted back; now it does not |
 | T-008 | 3 | merged `f1a767d`, pushed | `snapshot-commit.sh`, run by hand, would rewrite this clone's git identity and push; now it refuses off GitHub Actions |
 | T-009 | 1 | merged `235b20c` by the lead (A2), pushed | Your page (`docs/OWNER.md`) showed the answered 2026-09-18 gate as twelve days overdue; now an answered gate reads "answered", and a gate 14 days out appears in "Needs you" with what to write. It also adds two corrections the page owed, without which the build would have gone red on 2026-10-04 |
+| T-010 | 1 | merged `47db199` by the lead (A2), not pushed | On 2026-10-16 your page keeps the gate in "Needs you" until both halves are done (the conclusion, and O2, O8, O9, O11), and reads gates only from `docs/STRATEGY.md` section 8, as the build check does |
 
 ## Milestones
 
@@ -61,6 +65,11 @@ date to keep: H-13, 2026-10-16. The lead rotated to #5; nothing for you to do.
 | M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
+
+- **2026-10-01** · lead #5 · Merged two small changes myself (A2), each after a fresh review
+  scored 12 of 12: T-010 (your page keeps a half-answered gate in "Needs you") and the
+  `.gitattributes` fix. CI is green and M1 is on track for 2026-10-05. One question for you: H-15,
+  the push.
 
 - **2026-10-01** · lead · Lead rotated to #5 at a clean boundary (context measured at 55 of 100
   parts of the window). T-009 is pushed and green. Nothing for you to do: open a new conversation
