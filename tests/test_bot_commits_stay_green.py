@@ -242,6 +242,33 @@ def test_the_shared_script_runs_every_generator_a_bot_can_stale():
           re.search(r"rev-list --count", script) is not None)
 
 
+def test_the_bots_scripts_are_checked_out_with_lf():
+    """A shell script with CRLF endings stops on Linux: `set -euo pipefail\\r` is refused and
+    `bash` reads `regenerate\\r` as the argument. This Windows clone has core.autocrlf, so its
+    working copies are CRLF; only the repository's own .gitattributes keeps a script committed
+    from a machine without autocrlf, or checked out on one, at LF (T-008 red-team note 3).
+    """
+    print("\n[bots] every tracked shell script is pinned to LF")
+
+    def git(*args):
+        try:
+            out = subprocess.run(("git",) + args, cwd=ROOT, capture_output=True, text=True)
+        except OSError as exc:
+            return None, str(exc)
+        return (out.stdout if out.returncode == 0 else None), out.stderr.strip()
+
+    listing, err = git("ls-files", "--eol", "--", "*.sh")
+    check("git lists the tracked shell scripts", listing is not None, err)
+    rows = [l for l in (listing or "").splitlines() if l.strip()]
+    check("  and there are at least the two bots' scripts", len(rows) >= 2, ascii(rows))
+    for row in rows:
+        info, path = row.split("\t", 1)
+        check("  %s: committed with LF" % path, info.split()[0] == "i/lf", info)
+        attr, err = git("check-attr", "eol", "--", path)
+        check("  %s: .gitattributes says eol=lf" % path,
+              attr is not None and attr.strip().endswith(": eol: lf"), attr or err)
+
+
 # ---------------------------------------------------------------------------------------------
 # T-006. The script, run for real. Any argument but `regenerate` is the bots' mode: it writes the
 # bot's identity into the clone's git config (every worktree of the clone shares it), resets the
@@ -1424,6 +1451,7 @@ def main():
     test_every_pushing_workflow_is_tested_after()
     test_every_pushing_workflow_regenerates_after_its_data()
     test_the_shared_script_runs_every_generator_a_bot_can_stale()
+    test_the_bots_scripts_are_checked_out_with_lf()
     started = time.time()
     h = _Harness()
     try:
