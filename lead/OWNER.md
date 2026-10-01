@@ -15,7 +15,7 @@ date to keep: H-13, 2026-10-16. The lead rotated to #5; nothing for you to do.
 
 | ID | What | Why it's yours | Recommendation | Needed by |
 |---|---|---|---|---|
-| H-15 | Push five local commits to origin: T-010, the Level 0 `.gitattributes`, and lead bookkeeping | Every push is yours | Yes: push through a preflight branch first (Linux `tests`, no deploy: nothing under `src/`), then `master` | Any time before 2026-10-14; nothing is blocked meanwhile |
+| H-15 | Push 11 local commits to origin (two of them merges): T-010, the Level 0 `.gitattributes`, and lead bookkeeping | Every push is yours | Yes: push through a preflight branch first (Linux `tests`, no deploy: nothing under `src/`), then `master` | Any time before 2026-10-14; nothing is blocked meanwhile |
 | H-13 | On 2026-10-16, write the gate's conclusion in `docs/STRATEGY.md` section 8 as `Resolved: <what Experiment D measured> -> <decision>`, and decide O2, O8, O9 and O11 in `docs/OPPORTUNITIES.md` | The gate's reading and the product decisions are yours | Give the lead the result in one line that morning; it drafts both edits for your yes. Otherwise the build is red, and every deploy blocked, from 00:00 UTC that day until both are done | 2026-10-16, before 02:23 UTC (the first bot run) |
 
 ## Done / answered
