@@ -1,0 +1,2 @@
+# The bots run these on Linux; a CRLF line ending stops them (tests/test_bot_commits_stay_green.py).
+*.sh text eol=lf
