@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- T-010: keep a half-answered gate in Needs you; read gates from section 8 only
+- T-010: acceptance tests
+- lead: spec T-010 (half-answered gate stays in Needs you; gates from section 8 only)
+- lead: handoff to lead #5
 - lead: T-009 merged by the lead (A2); review record saved; push next
 - T-009: Regenerate docs/OWNER.md with the corrected sentence
 - T-009: the correction says only the table cell was bold
 - T-009: Regenerate docs/OWNER.md with the two corrections
-- T-009: two corrections the page owed, dated 2026-09-30
-- lead: T-009 amended before review; master would go red on 2026-10-04
-- T-009: Regenerate docs/OWNER.md
-- T-009: A gate coming due is a row in "Needs you"
 
-_125 more not shown (133 commits in total)._
+_129 more not shown (137 commits in total)._
 
 ## What I got wrong
 

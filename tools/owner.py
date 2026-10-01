@@ -308,7 +308,7 @@ def _read(rel):
 GATE_GUARD = os.path.join(ROOT, "tests", "test_gates_get_reviewed.py")
 _GUARD = []
 
-# From this many days before an unanswered gate's date, on it and after it, the gate is a row
+# From this many days before an open gate's date, on it and after it, the gate is a row
 # of "Needs you". From its date the guard fails the build, and so every deploy, until the
 # gate's row carries a conclusion and each entry of docs/OPPORTUNITIES.md parked until it is
 # decided, and only the owner can do either.
@@ -333,10 +333,18 @@ def gate_guard():
 def gates():
     """The dated decision gates, straight out of STRATEGY's own table.
 
-    `answered` is the build guard's verdict on the gate's whole row (gate_guard()).
+    Only rows inside section 8, bounded as the guard bounds it: from "## 8. Decision gates"
+    to the next "\\n## ". A dated row anywhere else is not a gate the build enforces, so it is
+    not one here either (T-010); with no section 8 there are no gates. `answered` is the
+    build guard's verdict on the gate's whole row (gate_guard()).
     """
+    whole = _read("docs/STRATEGY.md")
+    start = whole.find("## 8. Decision gates")
+    if start < 0:
+        return []
+    end = whole.find("\n## ", start + 1)
     out = []
-    for line in _read("docs/STRATEGY.md").splitlines():
+    for line in whole[start:end if end > 0 else len(whole)].splitlines():
         m = re.match(r"^\|\s*(20\d\d-\d\d-\d\d)\s*\|(.+?)\|(.+?)\|(.+?)\|\s*$", line)
         if m:
             out.append({"date": m.group(1), "gate": m.group(2).strip(),
@@ -365,8 +373,24 @@ def _and(items):
     return items[0] if len(items) == 1 else "%s and %s" % (", ".join(items[:-1]), items[-1])
 
 
+def _entries_decided(ids):
+    """The entries parked until a gate, decided: singular for one, plural for more."""
+    if len(ids) == 1:
+        return ("%s, the entry of `docs/OPPORTUNITIES.md` parked until this gate, is "
+                "decided and moved under `## Reviewed and closed`" % ids[0])
+    return ("%s, the entries of `docs/OPPORTUNITIES.md` parked until this gate, are each "
+            "decided and moved under `## Reviewed and closed`" % _and(ids))
+
+
 def gates_coming_due(today):
-    """Unanswered gates from GATE_NOTICE_DAYS before their date on, as rows of "Needs you".
+    """Gates the guard would fail on, from GATE_NOTICE_DAYS before their date on, as rows of
+    "Needs you".
+
+    From its date the guard fails on a gate while either half is open: its row carries no
+    conclusion, or an entry is still parked until it. So a gate leaves this list only when
+    both are done (T-010). Before T-010 an answered row left it at once, and on 2026-10-16
+    the page would have dropped the gate while O2, O8, O9 and O11 still turned the build red.
+    A gate whose row is answered says so, and asks only for the entries.
 
     Each carries its own cost of waiting: a gate is not a backlog item, so it has no entry
     in COST_OF_WAITING, and "_not stated" would be the one line the owner most needs.
@@ -374,30 +398,43 @@ def gates_coming_due(today):
     out = []
     for g in gates():
         days = _days(g["date"], today)
-        if g["answered"] or days is None or days > GATE_NOTICE_DAYS:
+        if days is None or days > GATE_NOTICE_DAYS:
             continue
         ids = parked_until(g["date"])
-        if ids:
-            entries = ("and %s, the entries of `docs/OPPORTUNITIES.md` parked until this "
-                       "gate, are each decided and moved under `## Reviewed and closed`"
-                       % _and(ids))
+        if g["answered"] and not ids:
+            continue
+        item = {"id": "gate", "heading": "The %s gate: %s" % (g["date"], g["gate"]),
+                "due": g["date"], "days": days, "state": "Open",
+                "why": "it is the gate's own date, written down before anyone could know the "
+                       "answer; on it the rule is read",
+                "cost": "From %s, `tests/test_gates_get_reviewed.py` fails the build, and so "
+                        "blocks every deploy, until it is done." % g["date"]}
+        if g["answered"]:
+            one = len(ids) == 1
+            item.update({
+                "what": "Decide what is parked until the gate: %s" % g["gate"],
+                "do": "The gate's conclusion is already written in its row in "
+                      "`docs/STRATEGY.md` section 8; that half is done. What is left is the "
+                      "%s parked until this gate in `docs/OPPORTUNITIES.md`: decide %s and "
+                      "move %s under `## Reviewed and closed`."
+                      % ("entry" if one else "entries", _and(ids), "it" if one else "each"),
+                "done": "%s." % _entries_decided(ids)})
         else:
-            entries = ("and nothing else: no entry of `docs/OPPORTUNITIES.md` is parked "
-                       "until this gate")
-        out.append({
-            "id": "gate", "what": "Answer the gate: %s" % g["gate"],
-            "heading": "The %s gate: %s" % (g["date"], g["gate"]),
-            "due": g["date"], "days": days, "state": "Open",
-            "do": "Read the gate's question and its test in `docs/STRATEGY.md` section 8, "
-                  "then write its conclusion into the gate's row: what the measurement said, "
-                  "and what the gate's rule decides. The arrow between them is a hyphen "
-                  "followed by a greater-than sign; the table's own arrows do not count.",
-            "why": "it is the gate's own date, written down before anyone could know the "
-                   "answer; on it the rule is read",
-            "done": "its row in `docs/STRATEGY.md` section 8 carries "
-                    "`Resolved: <what the measurement said> -> <decision>`, %s." % entries,
-            "cost": "From %s, `tests/test_gates_get_reviewed.py` fails the build, and so "
-                    "blocks every deploy, until it is done." % g["date"]})
+            if ids:
+                entries = "and %s" % _entries_decided(ids)
+            else:
+                entries = ("and nothing else: no entry of `docs/OPPORTUNITIES.md` is parked "
+                           "until this gate")
+            item.update({
+                "what": "Answer the gate: %s" % g["gate"],
+                "do": "Read the gate's question and its test in `docs/STRATEGY.md` section 8, "
+                      "then write its conclusion into the gate's row: what the measurement "
+                      "said, and what the gate's rule decides. The arrow between them is a "
+                      "hyphen followed by a greater-than sign; the table's own arrows do not "
+                      "count.",
+                "done": "its row in `docs/STRATEGY.md` section 8 carries "
+                        "`Resolved: <what the measurement said> -> <decision>`, %s." % entries})
+        out.append(item)
     return out
 
 
