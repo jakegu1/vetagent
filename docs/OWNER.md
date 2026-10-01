@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- lead: T-009 merged by the lead (A2); review record saved; push next
+- T-009: Regenerate docs/OWNER.md with the corrected sentence
+- T-009: the correction says only the table cell was bold
 - T-009: Regenerate docs/OWNER.md with the two corrections
 - T-009: two corrections the page owed, dated 2026-09-30
+- lead: T-009 amended before review; master would go red on 2026-10-04
 - T-009: Regenerate docs/OWNER.md
 - T-009: A gate coming due is a row in "Needs you"
-- T-009: An answered gate reads as answered on the Owner page
-- T-009: acceptance test fix (a synthetic gate's name held the countdown word "tomorrow")
-- T-009: acceptance tests
-- lead: H-14 merges done (T-007, T-008); T-009 starts; push goes via preflight
 
-_120 more not shown (128 commits in total)._
+_125 more not shown (133 commits in total)._
 
 ## What I got wrong
 
