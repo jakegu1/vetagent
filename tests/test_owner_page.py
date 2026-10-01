@@ -728,18 +728,21 @@ def test_a_gate_coming_due_is_in_needs_you():
 
 
 def test_needs_you_has_no_answered_or_distant_gate():
-    """T-009, AC 4: an answered gate, or one more than 14 days away, is not in "Needs you"."""
+    """T-009, AC 4: an answered (row and entries) gate, or one more than 14 days away, is not
+    in "Needs you"."""
     print("\n[T-009] an answered or distant gate is not in Needs you")
     check("real files, today: the answered 2026-09-18 gate is not in Needs you",
           not _listed(owner.render(), "Is anyone using it"))
     opps = _opportunities(parked=(("O2", "2026-10-16"),))
-    for day, text, how in (
-            (datetime.date(2026, 10, 2), _ANSWERS[1], "answered, 14 days away"),
-            (_DAY, _ANSWERS[1], "answered, due today"),
-            (datetime.date(2026, 10, 17), _ANSWERS[1], "answered, a day past"),
-            (datetime.date(2026, 10, 1), "", "unanswered, 15 days away"),
-            (datetime.date(2026, 9, 30), "Resolved:", "with a bare Resolved:, 16 days away")):
-        page = _page(day, _four_gates(text), opps, _NO_OWNER_ITEMS)
+    answered = _opportunities(closed=(("O2", "2026-10-16"),))
+    for day, text, how, files in (
+            (datetime.date(2026, 10, 2), _ANSWERS[1], "answered, 14 days away", answered),
+            (_DAY, _ANSWERS[1], "answered, due today", answered),
+            (datetime.date(2026, 10, 17), _ANSWERS[1], "answered, a day past", answered),
+            (datetime.date(2026, 10, 1), "", "unanswered, 15 days away", opps),
+            (datetime.date(2026, 9, 30), "Resolved:", "with a bare Resolved:, 16 days away",
+             opps)):
+        page = _page(day, _four_gates(text), files, _NO_OWNER_ITEMS)
         check("the 2026-10-16 gate %s (%s) is not in Needs you" % (how, day),
               not _listed(page, "Does anyone want to pay"))
         others = [q for q in ("Is anyone using it", "Is further investment worth it",
@@ -873,6 +876,208 @@ def test_one_rule_says_whether_a_gate_is_answered():
                  _reads_answered(_timeline_label(page, date))]
         check("the real %s row: the page says what the rule says (%s)" % (date, said),
               shown == [said, said], "the page %r" % (shown,))
+
+
+# ---------------------------------------------------------------------------------------
+# T-010: the page lists a gate in "Needs you" for exactly as long as the guard would fail the
+# build on it, says which half is left, and reads its gates from the section the guard reads.
+#
+# T-009's review (lead/reviews/T-009.md) found that a gate whose row is answered left "Needs
+# you" while entries parked until it still turned the build red -- the real case is 2026-10-16,
+# if the Owner writes the conclusion before deciding O2, O8, O9 and O11 -- and that the page
+# took any four-cell dated row anywhere in docs/STRATEGY.md for a gate, while the guard reads
+# section 8 only. Every case here is synthetic and its date forced, so none turns red by itself.
+
+_Q = "Does anyone want to pay"
+
+
+def _with_sources(fn, strategy=None, opportunities=None):
+    """fn() with `strategy` and `opportunities` read as docs/STRATEGY.md and
+    docs/OPPORTUNITIES.md when given; owner._read is put back after."""
+    real_read = owner._read
+    swap = {"docs/STRATEGY.md": strategy, "docs/OPPORTUNITIES.md": opportunities}
+    owner._read = lambda rel: real_read(rel) if swap.get(rel) is None else swap[rel]
+    try:
+        return fn()
+    finally:
+        owner._read = real_read
+
+
+def test_a_half_answered_gate_stays_in_needs_you():
+    """T-010, AC 1: a gate in the window whose row is answered but which still has entries
+    parked until it is a row of "Needs you", with a subsection that says the conclusion is
+    written and that what is left is those entries, by id."""
+    print("\n[T-010] a half-answered gate stays in Needs you")
+    opps = _opportunities(parked=(("O2", "2026-10-16"), ("O1", "2026-12-04"),
+                                  ("O8", "2026-10-16"), ("O3", None)),
+                          closed=(("O6", "2026-10-16"),))
+    for day, when in ((datetime.date(2026, 10, 2), "**in 14 days**"),
+                      (_DAY, "**TODAY**"),
+                      (datetime.date(2026, 10, 17), "**1 days OVERDUE**")):
+        tag = "%s, the 2026-10-16 row answered, O2 and O8 still parked" % day
+        page = _page(day, _four_gates(_ANSWERS[1]), opps, _NO_OWNER_ITEMS, _OTHER_ROWS)
+        rows = [r for r in _needs_you_rows(page) if _Q in " | ".join(r)]
+        check("%s: it is a row of the table, due 2026-10-16, %s" % (tag, when.strip("*")),
+              len(rows) == 1 and rows[0][:2] == [when, "2026-10-16"], ascii(rows))
+        body = _gate_subsection(page, _Q)
+        check("%s: it has a subsection of its own" % tag, body is not None,
+              "no subsection heading names it")
+        if body is None:
+            continue
+        do = _line(body, "What you do") or ""
+        check("%s: 'what you do' says the conclusion is written" % tag,
+              "conclusion" in do and "written" in do, ascii(do))
+        check("%s: 'what you do' names what is left, O2 and O8" % tag,
+              sorted(_ids(do)) == ["O2", "O8"], ascii(do))
+        check("%s: it does not ask for the conclusion again" % tag,
+              re.search(r"\bwrite\b", do) is None and _TEMPLATE not in body
+              and "Resolved:" not in body, ascii(body))
+        done = _line(body, "You know it is done when") or ""
+        check("%s: 'done' names only the entries, O2 and O8" % tag,
+              sorted(_ids(done)) == ["O2", "O8"] and "docs/STRATEGY.md" not in done
+              and "decided" in done and "Reviewed and closed" in done, ascii(done))
+        cost = _line(body, "If you do nothing") or ""
+        for part in ("From 2026-10-16", "tests/test_gates_get_reviewed.py", "fails the build",
+                     "every deploy"):
+            check("%s: doing nothing keeps T-009's sentence, %s" % (tag, ascii(part)),
+                  part in cost, ascii(cost))
+        for where, read in (("the gate table", _gate_table_when),
+                            ("the timeline", _timeline_label)):
+            check("%s: %s still reads the row as answered" % (tag, where),
+                  _reads_answered(read(page, "2026-10-16")), ascii(read(page, "2026-10-16")))
+
+
+def test_entries_done_row_not_is_listed_as_before():
+    """T-010, AC 2: a gate in the window with no entry parked until it and an unanswered row
+    is listed as T-009 lists it: write the conclusion, and nothing else."""
+    print("\n[T-010] entries done, row not: listed as T-009 lists it")
+    opps = _opportunities(parked=(("O1", "2026-12-04"),), closed=(("O2", "2026-10-16"),))
+    page = _page(_DAY, _four_gates(), opps, _NO_OWNER_ITEMS)
+    check("the 2026-10-16 gate is in Needs you", _listed(page, _Q))
+    body = _gate_subsection(page, _Q) or ""
+    do = _line(body, "What you do") or ""
+    check("'what you do' asks for the conclusion",
+          "question" in do and "conclusion" in do, ascii(do))
+    done = _line(body, "You know it is done when") or ""
+    want = ("its row in `docs/STRATEGY.md` section 8 carries %s, and nothing else: no entry "
+            "of `docs/OPPORTUNITIES.md` is parked until this gate." % _TEMPLATE)
+    check("'done' is T-009's line", done == want, ascii(done))
+
+
+def test_a_fully_answered_gate_leaves_needs_you():
+    """T-010, AC 3: an answered row with no entry parked until it is not in "Needs you", on
+    any date; its labels read answered."""
+    print("\n[T-010] a fully answered gate leaves Needs you")
+    opps = _opportunities(closed=(("O2", "2026-10-16"),))
+    for day in (datetime.date(2026, 10, 2), _DAY, datetime.date(2026, 10, 17),
+                datetime.date(2027, 1, 1)):
+        page = _page(day, _four_gates(_ANSWERS[1]), opps, _NO_OWNER_ITEMS)
+        check("%s: the fully answered 2026-10-16 gate is not in Needs you" % day,
+              not _listed(page, _Q))
+        check("%s: and reads as answered" % day,
+              _reads_answered(_gate_table_when(page, "2026-10-16"))
+              and _reads_answered(_timeline_label(page, "2026-10-16")))
+
+
+def test_one_entry_reads_as_one():
+    """T-010, AC 4: one parked entry is "the entry ... is decided"; two or more are "the
+    entries ... are each decided"."""
+    print("\n[T-010] one entry reads as one")
+    for ids in (("O13",), ("O2", "O8"), ("O2", "O8", "O9", "O11")):
+        opps = _opportunities(parked=tuple((i, "2026-10-16") for i in ids))
+        for how, text in (("unanswered", ""), ("answered", _ANSWERS[1])):
+            page = _page(datetime.date(2026, 10, 2), _four_gates(text), opps, _NO_OWNER_ITEMS)
+            done = _line(_gate_subsection(page, _Q) or "", "You know it is done when") or ""
+            tag = "%s, %d entr%s" % (how, len(ids), "y" if len(ids) == 1 else "ies")
+            check("%s: 'done' lists %s" % (tag, " ".join(ids)),
+                  _ids(done) == list(ids), ascii(done))
+            if len(ids) == 1:
+                ok = ("%s, the entry of `docs/OPPORTUNITIES.md` parked until this gate, is "
+                      "decided and moved under `## Reviewed and closed`" % ids[0]) in done
+                ok = ok and "entries" not in done and "are each" not in done
+            else:
+                ok = ("the entries of `docs/OPPORTUNITIES.md` parked until this gate, are "
+                      "each decided and moved under `## Reviewed and closed`") in done
+                ok = ok and "%s, the entries" % ids[-1] in done
+            check("%s: the grammar agrees with the count" % tag, ok, ascii(done))
+
+
+def _stray_strategy(section_8=True):
+    """A docs/STRATEGY.md with a four-cell dated row above section 8 and one in section 9,
+    both in the window on 2026-10-16 and unanswered. Without `section_8`, its heading is
+    renamed so that no section 8 exists."""
+    action = "Yes %s continue; no %s stop" % (_RIGHT_ARROW, _RIGHT_ARROW)
+    head = ("## 8. Decision gates, and the standard we hold ourselves to" if section_8
+            else "## 8. Dates we decide on")
+    return "\n".join([
+        "# Strategy (synthetic, written by tests/test_owner_page.py)", "",
+        "## 7. Roadmap", "",
+        "| Date | Step | Test | Action |", "|---|---|---|---|",
+        "| 2026-10-14 | Stray question above section 8 | a measurement | %s |" % action, "",
+        head, "",
+        "| Date | Gate | Test | Action |", "|---|---|---|---|",
+        "| 2026-10-16 | %s | a measurement | %s |" % (_Q, action),
+        "| 2026-12-04 | Is further investment worth it | a measurement | %s |" % action, "",
+        "### 8.1 A subsection inside section 8", "",
+        "Text that stays inside section 8.", "",
+        "## 9. Metrics board", "",
+        "| Date | Metric | Test | Action |", "|---|---|---|---|",
+        "| 2026-10-20 | Stray question in section 9 | a measurement | %s |" % action, ""])
+
+
+def test_gates_come_from_section_8_only():
+    """T-010, AC 5: gates() reads section 8 only, bounded as the guard bounds it, so a dated
+    row elsewhere reaches neither the gate table, the timeline nor "Needs you"; and with no
+    section 8 there are no gates. On the real file the four gates are unchanged."""
+    print("\n[T-010] gates come from section 8 only")
+    got = [g["date"] for g in _with_sources(owner.gates, _stray_strategy())]
+    check("a synthetic file: gates() returns the two section 8 rows only",
+          got == ["2026-10-16", "2026-12-04"], ascii(got))
+    page = _page(_DAY, _stray_strategy(), _opportunities(), _NO_OWNER_ITEMS)
+    check("  and the page never shows a stray row",
+          "Stray question" not in page, ascii(re.findall(r".*Stray question.*", page)))
+    for date in ("2026-10-14", "2026-10-20"):
+        check("  %s is in neither the gate table nor the timeline" % date,
+              _gate_table_when(page, date) is None and _timeline_label(page, date) is None)
+    check("  while the section 8 gate due that day is in Needs you", _listed(page, _Q))
+    got = _with_sources(owner.gates, _stray_strategy(section_8=False))
+    check("without a section 8 heading, gates() returns no gates", got == [], ascii(got))
+    page = _page(_DAY, _stray_strategy(section_8=False), _opportunities(), _NO_OWNER_ITEMS)
+    check("  and the page shows none of the dated rows",
+          "Stray question" not in page and not _listed(page, _Q))
+    real = [g["date"] for g in owner.gates()]
+    check("the real file: the four gates are unchanged",
+          real == ["2026-09-18", "2026-10-16", "2026-12-04", "2027-03-04"], ascii(real))
+
+
+def test_the_page_agrees_with_the_guard():
+    """T-010, AC 6: from 14 days before a gate's date on, it is in "Needs you" exactly when,
+    run on its date or later, the guard's due-gate check (gate_row_answered on its row) or
+    its parked-entry check (parse_entries) would fail on it. Both are the guard's own,
+    loaded here apart from the page's copy."""
+    print("\n[T-010] the page lists a gate exactly when the guard would fail on it")
+    ref = _reference_guard()
+    rows = (("answered", _ANSWERS[1]), ("unanswered", ""), ("a bare Resolved:", "Resolved:"))
+    files = (("an entry parked until it", _opportunities(parked=(("O2", "2026-10-16"),))),
+             ("its entry closed", _opportunities(closed=(("O2", "2026-10-16"),))),
+             ("an entry parked until another gate",
+              _opportunities(parked=(("O1", "2026-12-04"),))),
+             ("no entries at all", _opportunities()))
+    days = ((15, datetime.date(2026, 10, 1)), (14, datetime.date(2026, 10, 2)),
+            (0, _DAY), (-1, datetime.date(2026, 10, 17)))
+    for row_how, text in rows:
+        strategy = _four_gates(text)
+        row = [ln for ln in strategy.split("\n") if ln.startswith("| 2026-10-16 ")][0]
+        for file_how, opps in files:
+            open_entries = [h for h, gate, unblocked in ref.parse_entries(opps)
+                            if gate == "2026-10-16" and not unblocked]
+            fails = ref.gate_row_answered(row) is not True or bool(open_entries)
+            for away, day in days:
+                want = away <= owner.GATE_NOTICE_DAYS and fails
+                got = _listed(_page(day, strategy, opps, _NO_OWNER_ITEMS), _Q)
+                check("row %s, %s, %d days away: listed %s, as the guard says"
+                      % (row_how, file_how, away, want), got == want,
+                      "the page listed it: %s" % got)
 
 
 def main():
