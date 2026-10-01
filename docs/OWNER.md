@@ -80,12 +80,12 @@ gantt
 ### Is the archive still collecting?
 
 ```text
-█████████████████████   2026-09-10 -> 2026-09-30
+█████████████████████   2026-09-11 -> 2026-10-01
 ```
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**28 days, no gaps.** Newest is 2026-09-30, yesterday.
+**29 days, no gaps.** Newest is 2026-10-01, today.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -119,7 +119,7 @@ Rounded = parked by you. Hexagons are not work items -- they are what a row is w
 
 | | |
 |---|---|
-| Maturity score | 45 / 100 (`docs/SCORECARD.md`) |
+| Maturity score | 42 / 100 (`docs/SCORECARD.md`) |
 | Tokens measured | 576 |
 | False positives | 3.1% -- we called a healthy token dangerous |
 | Answers we refuse | 21.2% -- `unknown`, on purpose |
