@@ -5,7 +5,7 @@
 > page cannot quietly drift out of date. `tests/test_owner_page.py` fails the
 > build if it does.
 >
-> Generated 2026-09-30.
+> Generated 2026-10-01.
 
 ## The project in one paragraph
 
@@ -21,27 +21,27 @@ These are the things I cannot do. Everything else in this project is mine.
 
 | When | Due | # | What you do | Blocked? |
 |---|---|---|---|---|
-| **12 days OVERDUE** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
-| in 16 days | 2026-10-16 | W5 | A second, independent sell-simulation source | no |
-| in 16 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
+| **13 days OVERDUE** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
+| in 15 days | 2026-10-16 | W5 | A second, independent sell-simulation source | no |
+| in 15 days | 2026-10-16 | W12 | Decide the price-history trade-off | no |
 
 ### W10 Create the two accounts the remaining directories need
 
-- **When:** 2026-09-18 (**12 days OVERDUE**)
+- **When:** 2026-09-18 (**13 days OVERDUE**)
 - **Why then:** distribution is the whole of the gate's failing branch
 - **You know it is done when:** `CHANNELS` in `bench/scorecard.py`, updated only by someone who went and looked
 - **If you do nothing:** Nothing. Six submissions are already queued and the two parked ones are one signup away; waiting costs reach, not work.
 
 ### W5 A second, independent sell-simulation source
 
-- **When:** 2026-10-16 (in 16 days)
+- **When:** 2026-10-16 (in 15 days)
 - **Why then:** needed for W3, which every accuracy claim rests on
 - **You know it is done when:** **Measured 2026-09-29; the credential no longer blocks it.** Probed 2026-09-06: staysafu unreachable (SSL), quickintel 401, tokensniffer 401, de.fi public endpoint 404; on 2026-09-15 Quick Intel added a free testing tier, and the owner obtained it. `python bench/second_oracle.py --run` then asked it about its 143-token set (21 disputed, 122 engine unknowns), paced to about one call a second after faster calls were rate limited; the raw answers stay local and git-ignored until the owner has read Quick Intel's terms. Each answer is classed as an error, a static audit only (no buy or sell tax, so no simulation), or a simulation dated by its `lastUpdatedTimestamp`, because it also returns months-old cached scans. Direction, figures withheld until the terms are read: it adds a recent sell simulation for part of the engine's unknowns, mostly on BSC and rarely on Base, every one of them sellable; on the honeypot disputes it simulated too few tokens recently to say whether the published false-positive rate is overstated. Not measured yet: the 17-token adversarial cohort W3 needs, mostly thin Base pools, where it rarely simulated; 17 calls of the remaining monthly quota would say: `python bench/second_oracle.py --plan --set adversarial`, then the same with `--run` and the owner's key, which paces its calls for the free tier, writes its own git-ignored file and will not start over an existing one. Done when that is measured and the owner has read the terms and decided whether to pay for it as an engine upstream (the lead recommends not before there are users)
 - **If you do nothing:** Every accuracy claim keeps resting on a single sell simulator. If it is wrong, we cannot tell, and neither can anyone reading the benchmark.
 
 ### W12 Decide the price-history trade-off
 
-- **When:** 2026-10-16 (in 16 days)
+- **When:** 2026-10-16 (in 15 days)
 - **Why then:** changes what the benchmark can measure, so before the D gate
 - **You know it is done when:** A decision recorded in `DECISIONS.md`, either way
 - **If you do nothing:** The 10-16 gate arrives with the measurement question still open, so that gate answers a smaller question than it was meant to.
@@ -55,9 +55,9 @@ next -- including stopping.
 | Date | When | The question | What happens |
 |---|---|---|---|
 | 2026-09-18 | answered | Is anyone using it | Yes → continue; no → run only Experiment C, add no features. **Resolved:** `gate_verdict()` printed YES (usage.yml run 35374258574, 2026-09-18 17:25 UTC) on `curl` (14 calls over 4 days, JP on 14 of 14 rows: our own untagged probes from this machine's Tokyo egress, 63c485b; adding JP to OWNER_COUNTRIES turns it NEAR and does not change the verdict) and `mozilla` (23 calls over 9 days; its verdicts come from GET /assess, and the bucket is any `Mozilla/` user agent, crawlers included). Recorded as the frozen rule printed it, and read for what it is: **not evidence of adoption** -- no identified stranger received a verdict, and 3,169 of 3,259 attributable tool calls (97.2%) were ours -> continue per §7: Experiment C now; Experiment D (20 operators, the $99/month line, each with its own client tag) sent by 2026-09-23; E only when a D reply asks how to pay; no new features before 10-16 (fixes are not features). |
-| 2026-10-16 | in 16 days | Does anyone want to pay | Yes → build payments; no → pick a different customer segment and run D again |
-| 2026-12-04 | in 65 days | Is further investment worth it | Yes → continue per §7; no → move to low-maintenance mode |
-| 2027-03-04 | in 155 days | Does the data asset hold up | Yes → that becomes the main product; no → keep the tool, drop the data narrative |
+| 2026-10-16 | in 15 days | Does anyone want to pay | Yes → build payments; no → pick a different customer segment and run D again |
+| 2026-12-04 | in 64 days | Is further investment worth it | Yes → continue per §7; no → move to low-maintenance mode |
+| 2027-03-04 | in 154 days | Does the data asset hold up | Yes → that becomes the main product; no → keep the tool, drop the data narrative |
 
 ## The same thing as a picture
 
@@ -72,9 +72,9 @@ gantt
     title The dates that decide things (red line is today)
     section Decisions
     Is anyone using it - answered :milestone, 2026-09-18, 0d
-    Does anyone want to pay - in 16 days :milestone, 2026-10-16, 0d
-    Is further investment worth it - in 65 days :milestone, 2026-12-04, 0d
-    Does the data asset hold up - in 155 days :milestone, 2027-03-04, 0d
+    Does anyone want to pay - in 15 days :milestone, 2026-10-16, 0d
+    Is further investment worth it - in 64 days :milestone, 2026-12-04, 0d
+    Does the data asset hold up - in 154 days :milestone, 2027-03-04, 0d
 ```
 
 ### Is the archive still collecting?
@@ -85,7 +85,7 @@ gantt
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**28 days, no gaps.** Newest is 2026-09-30, today.
+**28 days, no gaps.** Newest is 2026-09-30, yesterday.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
