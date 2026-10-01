@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- lead: H-15 counts the commits it would push (11, not five)
+- lead: T-010 and the Level 0 .gitattributes merged (A2); reviews saved; H-15 push asked
+- T-010: Regenerate docs/OWNER.md
 - T-010: keep a half-answered gate in Needs you; read gates from section 8 only
+- Level 0: .gitattributes pins *.sh to LF
 - T-010: acceptance tests
+- Level 0: pin the bots' shell scripts to LF (test first)
 - lead: spec T-010 (half-answered gate stays in Needs you; gates from section 8 only)
-- lead: handoff to lead #5
-- lead: T-009 merged by the lead (A2); review record saved; push next
-- T-009: Regenerate docs/OWNER.md with the corrected sentence
-- T-009: the correction says only the table cell was bold
-- T-009: Regenerate docs/OWNER.md with the two corrections
 
-_129 more not shown (137 commits in total)._
+_134 more not shown (142 commits in total)._
 
 ## What I got wrong
 
