@@ -31,8 +31,8 @@
 | Correctness | false positive rate (healthy rated high) | 4.0 | 5 | 3.1% |
 | Correctness | false-block rate (liquid healthy rated medium or high) | 2.0 | 5 | 13.0% (20 of 154) |
 | Correctness | unknown rate (benchmark, cached upstreams) | 2.0 | 5 | 21.2% |
-| Correctness | unknown rate (production, served answers) | 1.0 | 5 | 57.5% of 602, 2026-09-27 to 2026-10-04 |
-| Correctness | production guards observed live | 5.0 | 5 | 429 after 61 calls; batch of 11 -> HTTP 400; service 6b3b2f5 on 2026-10-04 |
+| Correctness | unknown rate (production, served answers) | 1.0 | 5 | 57.7% of 600, 2026-09-28 to 2026-10-05 |
+| Correctness | production guards observed live | 5.0 | 5 | 429 after 71 calls; batch of 11 -> HTTP 400; service f733cf9 on 2026-10-05 |
 | Coverage | risk dimensions covered, per advertised chain | 10.8 | 20 | 39 / 72 chain-dimension cells |
 | Credibility | recall is measurable | 10.0 | 10 | dead samples: 30 (need ≥20) |
 | Credibility | days of snapshots | 1.8 | 10 | 33 of 180 days |

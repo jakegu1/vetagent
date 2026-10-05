@@ -158,7 +158,7 @@ problem looked like before it was fixed.
 - Level 0: pin the bots' shell scripts to LF (test first)
 - lead: spec T-010 (half-answered gate stays in Needs you; gates from section 8 only)
 
-_134 more not shown (142 commits in total)._
+_128 more not shown (136 commits in total)._
 
 ## What I got wrong
 
