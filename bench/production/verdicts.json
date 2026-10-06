@@ -1,11 +1,11 @@
 {
- "window_start": "2026-09-28T15:16:08Z",
- "window_end": "2026-10-05T15:16:08Z",
+ "window_start": "2026-09-29T13:37:17Z",
+ "window_end": "2026-10-06T13:37:17Z",
  "counts": {
-  "low": 14,
+  "low": 16,
   "medium": 156,
   "high": 84,
-  "unknown": 346
+  "unknown": 349
  },
  "excluded_clients": [
   "vetagent-ci-smoke"
@@ -15,9 +15,9 @@
   "coverage|liquidity:unpriced|sellability:no record": 121,
   "coverage|sellability:simulation failed": 14,
   "coverage|sellability:chain not covered": 8,
+  "coverage|liquidity:no pair|sellability:no record": 5,
   "infrastructure|sellability:honeypot.is 400": 3,
   "coverage|sellability:chain not covered+score provisional": 2,
-  "coverage|liquidity:no pair|sellability:no record": 2,
   "mixed|sellability:chain not covered+rugcheck 429": 2,
   "coverage|liquidity:no depth": 1
  },
