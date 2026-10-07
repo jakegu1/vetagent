@@ -1,25 +1,26 @@
 {
- "window_start": "2026-09-29T13:37:17Z",
- "window_end": "2026-10-06T13:37:17Z",
+ "window_start": "2026-09-30T13:55:25Z",
+ "window_end": "2026-10-07T13:55:25Z",
  "counts": {
-  "low": 16,
-  "medium": 156,
-  "high": 84,
-  "unknown": 349
+  "low": 29,
+  "medium": 163,
+  "high": 88,
+  "unknown": 439
  },
  "excluded_clients": [
   "vetagent-ci-smoke"
  ],
  "unknown_why": {
-  "coverage|sellability:no record": 193,
+  "coverage|sellability:no record": 199,
   "coverage|liquidity:unpriced|sellability:no record": 121,
-  "coverage|sellability:simulation failed": 14,
-  "coverage|sellability:chain not covered": 8,
+  "coverage|sellability:chain not covered": 79,
+  "coverage|sellability:simulation failed": 16,
+  "coverage|sellability:chain not covered+score provisional": 9,
   "coverage|liquidity:no pair|sellability:no record": 5,
+  "mixed|sellability:chain not covered+rugcheck 429": 5,
   "infrastructure|sellability:honeypot.is 400": 3,
-  "coverage|sellability:chain not covered+score provisional": 2,
-  "mixed|sellability:chain not covered+rugcheck 429": 2,
-  "coverage|liquidity:no depth": 1
+  "coverage|liquidity:no depth": 1,
+  "coverage|liquidity:unpriced|sellability:chain not covered": 1
  },
  "high_why": {
   "driver=liquidity|sellability:no record": 15,
@@ -29,10 +30,10 @@
   "driver=honeypot": 11,
   "driver=no_liquidity|liquidity:no depth|sellability:simulation failed": 6,
   "driver=impersonation": 4,
-  "driver=no_liquidity|liquidity:no depth|sellability:no record": 2,
+  "driver=liquidity|sellability:chain not covered": 4,
+  "driver=no_liquidity|liquidity:no depth|sellability:no record": 3,
   "driver=no_liquidity|liquidity:no pair|sellability:no record": 2,
   "driver=rugcheck|sellability:chain not covered": 1,
-  "driver=liquidity|sellability:simulation failed": 1,
-  "driver=liquidity|sellability:chain not covered": 1
+  "driver=liquidity|sellability:simulation failed": 1
  }
 }
