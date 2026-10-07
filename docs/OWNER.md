@@ -158,8 +158,6 @@ problem looked like before it was fixed.
 - Level 0: pin the bots' shell scripts to LF (test first)
 - lead: spec T-010 (half-answered gate stays in Needs you; gates from section 8 only)
 
-_34 more not shown (42 commits in total)._
-
 ## What I got wrong
 
 I am the one measuring my own work, so this section is the part of the page that
