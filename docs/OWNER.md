@@ -146,17 +146,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 
 ## What changed in the last 7 days
 
-Every line is one commit, newest first. The full message says what the
-problem looked like before it was fixed.
-
-- lead: H-15 counts the commits it would push (11, not five)
-- lead: T-010 and the Level 0 .gitattributes merged (A2); reviews saved; H-15 push asked
-- T-010: Regenerate docs/OWNER.md
-- T-010: keep a half-answered gate in Needs you; read gates from section 8 only
-- Level 0: .gitattributes pins *.sh to LF
-- T-010: acceptance tests
-- Level 0: pin the bots' shell scripts to LF (test first)
-- lead: spec T-010 (half-answered gate stays in Needs you; gates from section 8 only)
+Nothing was committed. If that is a surprise, it is worth asking why.
 
 ## What I got wrong
 
