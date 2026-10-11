@@ -49,7 +49,7 @@ technical repair release.
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
 | T-020 | 3 | Recovery at 5bb391f; pacing published at 86a8111 | Published paced manual pass verified complete | Codex lead | Verify a real scheduled pass before done; retain DNS test follow-up |
-| T-019 | 3 | Approved 393346f merged as e93169a | Independent 12/12 and red-team none; integrated release checks | Codex lead | Cache-only reproduction, full integrated checks, exact-head preflight, publish and verify actual deployment |
+| T-013 | 3 | codex/t013-full-pool-identifiers from published a19c3dc | Exact dispatch prerequisites verified; tests-first execution next | Executor | Reproduce the immutable base, add acceptance tests alone, then repair validated full-id lookups under the one-fill gate |
 | T-022 | 3 | Approved 8b54497 published in 86a8111 | Manual run 38148501978 complete; raw committed coverage independently verified | Codex lead | Verify a real scheduled pass before completion |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
@@ -85,8 +85,15 @@ zero-miss replay changes two token rows through their actually requested success
 upstream answer; the other 574 rows and the independence result are unchanged. The
 data-only rebaseline now has fresh independent approval at 12/12 and red-team none.
 Both reviewers reproduce the real publication red and generated fixed point. Approved
-source is merged as e93169a, retaining all snapshot bot data. The lead's integrated replay,
-checks, preflight, publication and deployment remain pending.
+source is merged as e93169a, retaining all snapshot bot data. The lead's own immutable
+integrated replay exits zero and reproduces both committed outputs byte for byte, with
+zero network calls, after-clock selections or cache changes. Full integrated checks pass
+all thirty-one steps, and exact-head Linux preflight 38150722554 passes required jobs and
+219 observed upstream checks, with no unobserved or collapsed path. Published head is
+a19c3dc. Actual deployment 38150990382 runs and passes its offline suite, Worker deployment
+and tagged production smoke. The homepage and Agent text are read back with the new
+measured figures, and health is HTTP 200 and ok. T-019 is complete; T-013 starts from this
+exact published base. The optional backfill HTTP 400 remains an explicitly parked repair.
 
 T-022's named tests-only red at 62cccc7 has 320 passes and sixteen behavioral failures
 before source fix 8b54497. Its original 293 assertions remain green. Executor tests

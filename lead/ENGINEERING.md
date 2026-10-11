@@ -11,7 +11,7 @@ remain binding. No runtime rewrite, paid upstream or permission change is part o
 | P1 | Benchmark ages use the wall clock and uncached negative requests can reach live upstreams. Existing T-011/T-019 evidence separates these inputs. | T-011, then T-019: pinned replay clock, dated negative entries, explicit misses and allowlisted one-time fills. | Replay never reaches the network; a complete recorded cache reproduces committed outputs on the reviewed engine. |
 | P1 | V4 identifiers are display-truncated before a network lookup; traded tokens can be swept into the no-trace escalation. | T-013, then T-012, after benchmark dependencies. | Deterministic row-level before/after evidence; publication updates only when measured and authorized. |
 | P1 | Complete offline assessment with liquidity.usd set to "NaN" returns low and fails strict JSON; "Infinity" returns medium. A zero/unavailable mix also falsely claims all pools empty. Production occurrence is unmeasured. | T-021 after the existing dependencies: validate scalar boundaries, nullable MCP output and depth handoffs. | Strict JSON outputs, full stubbed handoffs, unchanged valid readings and reproducible benchmark evidence. |
-| P1 follow-up | Source inspection confirms that upstream-contract --write returns before the comparison that populates its collapse-refusal list. T-016 already keeps manual freeze checks mandatory. | Specify a small guard that compares observed coverage with the old baseline before writing; retain the current manual rules until that fix is separately verified. | Offline collapse/write-order reproduction and red-first tests; never replace observations with synthetic baseline data. |
+| P1 follow-up | A fully offline cold --write probe overwrites a baseline after a path falls from full observation to zero; running the comparison first detects and refuses the same collapse. T-016 already keeps manual freeze checks mandatory. | Specify a small guard that compares observed coverage with the old baseline before writing; retain the current manual rules until that fix is separately verified. | Offline collapse/write-order reproduction and red-first tests; never replace observations with synthetic baseline data. |
 | P2 | Discovery uses the keyless source and converts some absent figures to zero; partial scans need an explicit status. | T-017, then T-018 at its existing allowed date. | Existing privacy-text sign-off and timing condition still apply; verify discovery-to-assessment inputs. |
 | P2 | The risk engine is a large module; there is no fresh latency profile in this audit. | Extract pure normalization and provider adapters in small follow-ups after correctness repairs; first measure latency and upstream request fan-out. | No behavior drift under replay. Tune only measured bottlenecks. |
 
@@ -55,8 +55,11 @@ The real read-only cache replay identified 89 unrecorded URLs. T-019 independent
 reproduced those misses, protected the whole cache and completed one listed fill without
 changing old entries. Its zero-miss replay changes two rows through a successful recorded
 upstream answer, leaving the other 574 rows unchanged. Exact 393346f now has independent
-approval at 12/12 and red-team none; approved source is merged as e93169a. Integration
-and actual deployment remain. T-022's first independent and
+approval at 12/12 and red-team none; approved source is merged as e93169a. The lead's
+combined replay is byte-identical and immutable with zero network calls or misses. Full
+integrated checks and exact-head Linux preflight pass; actual Worker deployment 38150990382
+and tagged smoke pass on published a19c3dc. Public figures and health are read back.
+T-013 starts from that exact base. T-022's first independent and
 red-team reviews instead found a variable-connection-delay gap: 12.1 seconds configured
 can produce only 4.1 seconds between real HTTP starts. Its named opt-in pacing repair is
 implemented at frozen 8b54497 and approved by combined second review at 12/12, with no

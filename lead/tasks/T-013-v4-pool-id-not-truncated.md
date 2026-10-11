@@ -1,7 +1,7 @@
 ---
 id: T-013
 title: Look up Uniswap V4 pools by their full id, not the 48-character display string
-status: ready            # draft | ready | in_progress | in_review | changes_requested | done | dropped
+status: in_progress      # draft | ready | in_progress | in_review | changes_requested | done | dropped
 level: 3                 # 0 direct | 1 light | 2 standard | 3 high risk
 size: M                  # S | M (split anything larger)
 depends_on: [T-011, T-019]   # T-011 builds --replay and --fill; T-019 runs the fill and re-baselines
@@ -570,4 +570,22 @@ any different benchmark fetch, retry, cache shape or clock. The executor must in
 reproduce the zero-miss, byte-identical base on the protected main cache before starting,
 then use only the five actual full-id misses for the one permitted dated fill. Preserve
 T-019's original cache backup and its measured row changes through this task and T-012.
+
+### Exact published dispatch base (2026-10-11; criteria unchanged)
+
+The exact task base is a19c3dc0b5ac288b4b37966876a095f6616e0ca4. It contains
+T-011's reviewed replay, T-016's holder correction, T-019's approved rebaseline and
+T-022's opt-in collection pacing. T-019 source 393346f passes independent review at
+12/12 and red-team review with no material finding, and is merged as e93169a. The lead's
+combined immutable replay has zero misses and reproduces both committed outputs byte
+for byte. Full integrated checks pass thirty-one steps. Exact-head Linux preflight
+38150722554 passes required jobs and 219 observed upstream checks, with no unobserved
+or collapsed path. Published deployment 38150990382 actually runs and passes its
+offline suite, deployment and tagged smoke checks; generated homepage and Agent text
+are read back successfully. The executor must reproduce its own base prerequisite.
+
+The protected filled base now has 120 unknown rows out of 576. This is a measurement,
+not a changed target: all AC 6 and AC 7 moves are still relative to this base and to the
+actual single five-URL fill. The old September figures in brackets remain historical.
+No threshold, fill retry, miss-list allowance or older-test change is added.
 
