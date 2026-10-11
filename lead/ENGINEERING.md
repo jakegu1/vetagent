@@ -89,3 +89,12 @@ integrated checks pass thirty-one steps in 79.6 seconds. Exact-head preflight
 or collapsed path. Published 7f796e4 deploys successfully in actual run 38156203366;
 offline, Worker deployment and tagged smoke all run and pass. Tagged public figures
 and health are independently read back. T-013 is complete; T-012 starts on this base.
+
+T-012's exact 8771725 now passes combined second-round review at 12/12, red-team none.
+The new transaction-container availability regression is repaired with independently
+reproduced red-first acceptance and both caught guard mutants. All old acceptance remains
+immutable, and independent replay reproduces both raw result blobs and every cache/request
+byte. Three registered high-to-unknown moves retain critical data gaps; all dead/unsafe
+verdicts and 572 otherwise complete rows remain unchanged. Approved source is merged as
+248d64d. Both scoped stale Experiment C passages and W49 are closed from actual data;
+integrated release checks and actual deployment remain pending.

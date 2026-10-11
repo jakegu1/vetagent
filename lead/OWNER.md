@@ -79,6 +79,12 @@ technical release. Experiment D and the 2026-10-16 product gate retain their exi
 
 ## Log (newest first)
 
+- **2026-10-12** - lead - T-012's exact 8771725 passes fresh combined review at 12/12,
+  red-team none. Both malformed-container guards are independently observed to fail when
+  removed; original acceptance and frozen cache/request bytes remain intact. Approved
+  source is merged as 248d64d. The two scoped stale Experiment C passages and W49 are
+  corrected from actual rows. Integrated release checks and actual deployment are next.
+
 - **2026-10-12** - lead - T-013 is complete on published 7f796e4. Integrated checks
   pass thirty-one steps; exact-head Linux preflight 38155937648 passes required jobs
   and 219 observed upstream checks without blind or collapsed paths. Actual deployment
