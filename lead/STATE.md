@@ -48,7 +48,7 @@ technical repair release.
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-020 | 3 | codex/t020-preflight | Frozen implementation and chronological commits complete; release checks in progress | Codex lead | Full offline and Linux preflight, independent completion audit, reviewed merge, then actual collection verification |
+| T-020 | 3 | codex/engineering-release-20261011 | Reviewed and merged locally; post-merge checks before publication | Codex lead | Authorized master push, then manual and scheduled collection verification; retain DNS test follow-up |
 | T-016 | 2 | codex/t016-solana-pool-holders | Separate task; observed baseline and complete handoff evidence pending | Executor | Retain the five baseline acceptance rules; do not publish until the full contract and independent review pass |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
