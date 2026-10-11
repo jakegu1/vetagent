@@ -724,6 +724,56 @@ def test_amendment_b_persistently_unreadable_or_unusable_cache_stays_incomplete(
                       got is None and fetcher.benchmark_stats()["replay"]["requests"] == 1)
 
 
+def test_amendment_c_malformed_ports_refuse_entire_file_before_any_work():
+    malformed = ["invalid", "-1", "65536"]
+    for port in malformed:
+        for later in (False, True):
+            with sandbox() as temp:
+                file = temp / "fill.txt"
+                url = "https://authority.invalid:%s/token" % port
+                lines = (["https://authority.invalid:443/first"] if later else []) + [url]
+                file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+                Path(bench.RESULTS_JSON).write_bytes(b"existing-json")
+                Path(bench.RESULTS_MD).write_bytes(b"existing-md")
+                before = tree_bytes(temp)
+                previous_context = risk._BENCH_NOW
+                pins = []
+                class NoPin:
+                    def get(self):
+                        return previous_context.get()
+
+                    def set(self, value):
+                        pins.append(value)
+                        raise AssertionError("invalid authority pinned the clock")
+                with patch.object(risk, "_BENCH_NOW", NoPin()), patch.object(risk, "assess", side_effect=AssertionError("invalid authority evaluated a token")), fake_upstream(answer({"should_not_be_requested": True})) as network, patch.object(bench, "fetch_json", wraps=bench.fetch_json) as fetch_call:
+                    status, _summary, _output = call_main(["--fill", str(file)])
+                label = "port=%s later=%s" % (port, later)
+                check("AC5(c) malformed %s returns five" % label, status == 5, str(status))
+                check("AC5(c) malformed %s makes no fetch call" % label, fetch_call.call_count == 0)
+                check("AC5(c) malformed %s reaches no fake HTTP" % label, network.call_count == 0)
+                check("AC5(c) malformed %s changes no file or cache" % label, tree_bytes(temp) == before)
+                check("AC5(c) malformed %s never pins the clock" % label, not pins)
+
+
+def test_amendment_c_valid_explicit_https_ports_remain_fillable():
+    with sandbox() as temp:
+        urls = ["https://authority.invalid:%d/token" % port for port in (443, 8443, 65535)]
+        file = temp / "fill.txt"
+        file.write_text("\n".join(urls) + "\n", encoding="utf-8")
+        with fake_upstream(answer({"valid_port": True})) as network:
+            status, summary, _output = call_main(["--fill", str(file)])
+        check("AC5(c) valid explicit HTTPS ports fill successfully", status == 0)
+        check("AC5(c) valid explicit HTTPS ports are each requested once", network.call_count == 3)
+        check("AC5(c) valid explicit HTTPS ports report stored answers",
+              summary.get("fill", {}).get("outcomes") == [{"url": url, "outcome": "stored answer"} for url in urls])
+        fetcher.reset_benchmark_stats()
+        for url in urls:
+            got = fetcher.fetch_json(url, role="engine", replay=True)
+            check("AC5(c) valid port answer replays " + url, got == {"valid_port": True})
+        check("AC5(c) valid explicit HTTPS port entries cause no replay miss",
+              fetcher.benchmark_stats()["replay"]["requests"] == 0)
+
+
 def main():
     started = time.monotonic()
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
