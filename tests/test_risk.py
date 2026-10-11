@@ -2941,9 +2941,10 @@ def test_a_seller_count_nobody_took_cannot_overturn_a_honeypot():
     check("  so the verdict cannot be low or medium", r["risk_level"] not in ("low", "medium"),
           r["risk_level"])
     # ...and it is not `high` either. The first version of this fix kept the fatal and
-    # the benchmark moved 12 tokens medium -> high, none unsafe or dead; read live, CVX
-    # had 18 distinct sellers, THQ 28, AKE 789. They were condemned because GeckoTerminal
-    # answered 429 that minute.
+    # the benchmark moved 12 tokens medium -> high, none unsafe or dead. THQ and Surplus
+    # were picked on Uniswap V4 pools. Until T-013 their seller lookup sent a truncated
+    # id. GeckoTerminal answered THQ's truncated id with 404 (2026-10-07), so no retry
+    # could settle it, whatever the rate limit did.
     check("  nor high on our own outage: it is unknown", r["risk_level"] == "unknown",
           r["risk_level"])
     gaps = r["evidence"].get("data_gaps") or []
