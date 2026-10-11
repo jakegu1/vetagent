@@ -1,7 +1,7 @@
 ---
 id: T-021
 title: Reject invalid market scalars while preserving unavailable depth and observed zero
-status: changes_requested
+status: in_review
 level: 3
 size: M
 depends_on: [T-011, T-019, T-013, T-012]

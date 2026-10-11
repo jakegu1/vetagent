@@ -25,8 +25,13 @@ deployed and verified on e657c32 after combined review at 12/12, red-team none.
 T-021's clean 64fc7f3 has 32/32 checks, unchanged raw base/head replays and six caught
 mutants. Fresh reviewers then reproduce Unicode underflow falsely read as zero and a
 finite-price conflict hidden by quotient overflow. The lead independently reproduces
-both and registers bounded red-first corrections. Final 34 checks and round-2 approval
-remain required before publishing this source. Snapshot pacing and recovery are complete.
+both and registers bounded red-first corrections. Frozen 9ee9f1f fixes each in its own
+tests-only/fix pair; all 34 checks pass and final raw replay preserves every result and
+cache byte. Both fresh round-2 reviews now pass: independent 12/12 and red-team none,
+with their own 34-step suites. Source is merged as 157631d; the lead independently
+replays all 576 rows against raw Git output bytes with zero misses, network or writes.
+Integrated checks, final Linux preflight and actual deployment remain required.
+Snapshot pacing and recovery are complete.
 Execution permissions now work. Autonomy remains A1; this authorization covers the reviewed
 technical release. Experiment D and the 2026-10-16 product gate retain their existing rules.
 

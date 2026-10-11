@@ -48,7 +48,7 @@ technical repair release.
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-021 | 3 | codex/t021-finite-market-measurements; source 64fc7f3 | 32/32 and raw replay green; two independently reproduced round-1 boundary regressions | finite_market_executor | Named (c1)/(c2) red-first corrections, final 34 checks and round-2 review before publication |
+| T-021 | 3 | codex/t021-finite-market-measurements; source 9ee9f1f; merge 157631d | Independent 12/12 and red-team none; lead raw replay unchanged; release verification in progress | lead | Finish integrated checks and exact-head Linux preflight, then actual deployment and tagged readback |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
 permissions and explicitly asked to continue on 2026-10-11. This covers reviewed technical

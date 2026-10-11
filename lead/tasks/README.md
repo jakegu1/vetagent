@@ -22,6 +22,6 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-016 | Distinguish Solana liquidity pools from holder concentration | 2 | S | none | done (deployed c18de92) |
 | T-019 | Fill the benchmark's recorded miss list and publish an attributable replay baseline | 3 | S | T-011 | done (deployed a19c3dc) |
 | T-020 | Recover snapshot failures and report incomplete collection after preserving data | 3 | M | — | done (real schedule 38165984869) |
-| T-021 | Reject invalid market scalars and preserve unavailable depth | 3 | M | T-011, T-019, T-013, T-012 | changes_requested (two measured round-1 corrections) |
+| T-021 | Reject invalid market scalars and preserve unavailable depth | 3 | M | T-011, T-019, T-013, T-012 | approved, merged 157631d; final release verification in progress |
 | T-022 | Pace scheduled snapshot requests using the verified slower interval | 3 | S | T-020 source | done (real schedule 38165984869) |
 | T-023 | Compare observed coverage before a cold upstream-baseline write | 3 | S | T-016 | draft (after current correctness repairs; exact-base refresh pending) |
