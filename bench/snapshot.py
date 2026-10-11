@@ -694,9 +694,11 @@ def main():
     print("Collecting: %s" % ", ".join(chains))
     host, absent = "api.geckoterminal.com", object()
     previous_rate = fetcher._RATE.get(host, absent)
-    if args.request_gap is not None:
-        fetcher._RATE[host] = args.request_gap
+    previous_completion = fetcher._SNAPSHOT_COMPLETION.get(host, absent)
     try:
+        if args.request_gap is not None:
+            fetcher._RATE[host] = args.request_gap
+            fetcher._SNAPSHOT_COMPLETION[host] = None
         rows, seen_at, manifest = collect(chains, pages=args.pages)
     finally:
         # Optional probes and later callers must retain their own pacing, even if
@@ -706,6 +708,10 @@ def main():
                 fetcher._RATE.pop(host, None)
             else:
                 fetcher._RATE[host] = previous_rate
+            if previous_completion is absent:
+                fetcher._SNAPSHOT_COMPLETION.pop(host, None)
+            else:
+                fetcher._SNAPSHOT_COMPLETION[host] = previous_completion
     day = seen_at[:10]
     path = os.path.join(OUT_DIR, "pools-%s.ndjson" % day)
     if rows:
