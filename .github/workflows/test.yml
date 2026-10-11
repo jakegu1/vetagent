@@ -46,6 +46,9 @@ jobs:
       - name: Unicode decimal underflow preserves unavailable market measurements
         run: python tests/test_unicode_market_underflow.py
 
+      - name: Finite admitted prices retain the strict unranked conflict rule
+        run: python tests/test_finite_price_conflict.py
+
       - name: MCP protocol tests
         run: python tests/test_mcp.py
 

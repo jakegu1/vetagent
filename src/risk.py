@@ -1431,8 +1431,7 @@ def _unranked_price_conflict(scope):
     if len(prices) < 2:
         return None
     lo, hi = min(prices), max(prices)
-    ratio = _market_number(hi / lo)
-    return (lo, hi) if ratio is not None and ratio > _PRICE_DISAGREEMENT_FACTOR else None
+    return (lo, hi) if hi / lo > _PRICE_DISAGREEMENT_FACTOR else None
 
 
 # How far a single pool may sit from the median of its peers before it stops being a
