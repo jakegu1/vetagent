@@ -26,6 +26,7 @@ any store later.
 import argparse
 import io
 import json
+import math
 import os
 import sys
 import time
@@ -33,6 +34,7 @@ from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import fetcher  # noqa: E402
 from fetcher import NOT_FOUND, fetch_json  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -644,11 +646,24 @@ def _check_coverage():
         return 1
 
 
+def _request_gap(value):
+    try:
+        gap = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("request gap must be finite seconds at least 2.1")
+    if not math.isfinite(gap) or gap < 2.1:
+        raise argparse.ArgumentTypeError("request gap must be finite seconds at least 2.1")
+    return gap
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--chains", default=",".join(DEFAULT_CHAINS))
     ap.add_argument("--pages", type=int, default=5,
                     help="pages of new_pools per chain (10 is the API maximum)")
+    ap.add_argument("--request-gap", type=_request_gap,
+                    help="minimum seconds between GeckoTerminal requests during "
+                         "pool collection only (at least 2.1; unset keeps the current rate)")
     ap.add_argument("--check-coverage", action="store_true",
                     help="check completeness of the last recorded pool collection pass")
     ap.add_argument("--sellability-only", type=int, default=0, dest="sellability_only",
@@ -677,7 +692,20 @@ def main():
                                   seen_at)
 
     print("Collecting: %s" % ", ".join(chains))
-    rows, seen_at, manifest = collect(chains, pages=args.pages)
+    host, absent = "api.geckoterminal.com", object()
+    previous_rate = fetcher._RATE.get(host, absent)
+    if args.request_gap is not None:
+        fetcher._RATE[host] = args.request_gap
+    try:
+        rows, seen_at, manifest = collect(chains, pages=args.pages)
+    finally:
+        # Optional probes and later callers must retain their own pacing, even if
+        # collection raises before it can preserve a manifest.
+        if args.request_gap is not None:
+            if previous_rate is absent:
+                fetcher._RATE.pop(host, None)
+            else:
+                fetcher._RATE[host] = previous_rate
     day = seen_at[:10]
     path = os.path.join(OUT_DIR, "pools-%s.ndjson" % day)
     if rows:
