@@ -222,6 +222,10 @@ jobs:
       # by .github/scripts/offline_suite.py, before it installs its tooling. This pins that
       # seam: the gate's place and condition, the full history it needs, one list, and the
       # runner's fail-closed exits, shown on synthetic workflows.
+      # A replay uses a pinned clock and recorded answers, or refuses incomplete input.
+      - name: Benchmark replay is deterministic and never fetches
+        run: python tests/test_benchmark_replay.py
+
       - name: The deploy runs every step of this job before it deploys
         run: python tests/test_deploy_gate.py
 

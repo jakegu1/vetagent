@@ -3,6 +3,11 @@ emit a reproducible accuracy report.
 
 Usage:
     python bench/run_benchmark.py
+    python bench/run_benchmark.py --replay
+    python bench/run_benchmark.py --fill missing-urls.txt
+
+Replay never fetches and refuses to publish when an answer is unrecorded. Fill asks
+only the distinct listed URLs without entries; run a separate replay afterwards.
 
 Four things happen here:
 
@@ -30,6 +35,8 @@ import json
 import os
 import sys
 from collections import Counter
+from datetime import datetime, timezone
+from urllib.parse import urlsplit
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -43,6 +50,11 @@ from fetcher import access_report, fetch_json, load_persisted_access_log  # noqa
 DATASET = os.path.join(HERE, "dataset.json")
 RESULTS_JSON = os.path.join(HERE, "results.json")
 RESULTS_MD = os.path.join(HERE, "results.md")
+
+# Chosen by reproducing both committed result files; whole hours from September 20
+# at 16:00 UTC through September 21 at 09:00 UTC reproduced, adjacent hours did not.
+BENCH_CLOCK = datetime(2026, 9, 21, 2, tzinfo=timezone.utc)
+LAST_RUN = {}
 
 # Contract-safety signals: the ones independent of how much liquidity is left right now
 # What survives when the market-data signals are stripped. The point of the column is to
@@ -66,7 +78,7 @@ CONTRACT_CATEGORIES = {
 }
 
 
-def install_engine_fetcher():
+def install_engine_fetcher(replay=False):
     """Swap the engine's fetcher for one that caches and books which endpoints it hit."""
     async def _fetch(url, retries=2, timeout=8, mark_missing=False, headers=None):
         # `headers` is accepted and not used: the benchmark runs keyless (no CG_DEMO_KEY is
@@ -76,7 +88,8 @@ def install_engine_fetcher():
         # Production is gentler still: it caches at the edge and serves data up to 15
         # minutes stale rather than answering unknown, and it never asks about 558 tokens
         # in a burst.
-        got = fetch_json(url, role="engine", retries=2, mark_missing=mark_missing)
+        got = fetch_json(url, role="engine", retries=2, mark_missing=mark_missing,
+                         dated=True, replay=replay)
         return risk.NO_DATA if got is fetcher_module.NOT_FOUND else got
     risk._fetch_json = _fetch
 
@@ -237,7 +250,85 @@ def _num(v):
     return "—" if v is None else "%.1f" % v
 
 
-def main():
+def _fill(file):
+    try:
+        with open(file, encoding="utf-8") as f:
+            lines = f.read().splitlines()
+    except (OSError, UnicodeError):
+        print("Fill file cannot be read")
+        return 5
+    urls = []
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            parsed = urlsplit(line)
+            port = parsed.port
+            valid = (line.startswith("https://") and not any(c.isspace() for c in line)
+                     and parsed.scheme == "https" and bool(parsed.hostname)
+                     and (port is None or 0 <= port <= 65535))
+        except ValueError:
+            valid = False
+        if not valid:
+            print("Fill file must contain one https URL per line")
+            return 5
+        if line not in urls:
+            urls.append(line)
+    if not urls:
+        print("Fill file contains no URLs")
+        return 5
+
+    outcomes, hosts = [], {}
+    for url in urls:
+        if fetcher_module.read_cache_entry(url) is not None:
+            outcome = "already recorded"
+        else:
+            fetch_json(url, role="engine", retries=2, dated=True)
+            entry = fetcher_module.read_cache_entry(url)
+            outcome = ("stored answer" if isinstance(entry, dict) and "data" in entry else
+                       "stored 4xx" if isinstance(entry, dict) and "status" in entry else
+                       "not stored")
+        outcomes.append({"url": url, "outcome": outcome})
+        hosts.setdefault(urlsplit(url).netloc, Counter())[outcome] += 1
+        print("%s: %s" % (outcome, url))
+    per_host = {host: dict(counts) for host, counts in sorted(hosts.items())}
+    LAST_RUN["fill"] = {"outcomes": outcomes, "per_host": per_host}
+    for host, counts in per_host.items():
+        print("Fill %s: %s" % (host, dict(counts)))
+    return 6 if any(o["outcome"] == "not stored" for o in outcomes) else 0
+
+
+def main(argv=None):
+    global LAST_RUN
+    args = list(sys.argv[1:] if argv is None else argv)
+    LAST_RUN = {}
+    if args not in ([], ["--replay"]) and not (len(args) == 2 and args[0] == "--fill"):
+        print("Usage: run_benchmark.py [--replay | --fill FILE]")
+        return 5
+    fetcher_module.reset_benchmark_stats()
+    if args and args[0] == "--fill":
+        return _fill(args[1])
+
+    replay = args == ["--replay"]
+    LAST_RUN = {"clock": BENCH_CLOCK.isoformat().replace("+00:00", "Z"),
+                "pairs_after_clock": 0, "evaluated": 0}
+    previous_fetcher = risk._fetch_json
+    pin = risk._BENCH_NOW.set(BENCH_CLOCK)
+    try:
+        return _evaluate(replay)
+    finally:
+        risk._BENCH_NOW.reset(pin)
+        risk._fetch_json = previous_fetcher
+        LAST_RUN.update(fetcher_module.benchmark_stats())
+        if LAST_RUN["evaluated"]:
+            print("Benchmark clock: %s; best pairs created after it: %d" % (
+                LAST_RUN["clock"], LAST_RUN["pairs_after_clock"]))
+            if not replay:
+                print("Dated cache writes: %d entries; %d negative" % (
+                    LAST_RUN["writes"]["entries"], LAST_RUN["writes"]["negative"]))
+
+
+def _evaluate(replay=False):
     if not os.path.exists(DATASET):
         print("%s not found — run python bench/build_dataset.py first" % DATASET)
         return 1
@@ -248,7 +339,7 @@ def main():
         print("Dataset is empty")
         return 1
 
-    install_engine_fetcher()
+    install_engine_fetcher(replay=replay)
     import asyncio
 
     rows = []
@@ -262,6 +353,12 @@ def main():
         except Exception as e:  # noqa: BLE001
             print("  %s failed to evaluate: %s" % (t.get("symbol"), e))
             continue
+        LAST_RUN["evaluated"] += 1
+        created = (((res.get("evidence") or {}).get("best_pair") or {})
+                   .get("pair_created_at"))
+        created_ms = risk._pair_created_ms(created)
+        if created_ms is not None and created_ms > BENCH_CLOCK.timestamp() * 1000:
+            LAST_RUN["pairs_after_clock"] += 1
         sigs = res.get("signals") or []
         ab_level, ab_score = ablate(t["address"], sigs,
                                     (res.get("evidence") or {}).get("data_gaps"))
@@ -315,6 +412,17 @@ def main():
         for e in overlap:
             print("   overlapping endpoint:", e)
         return 2
+
+    if replay:
+        misses = fetcher_module.benchmark_stats()["replay"]
+        print("Replay missed %d requests over %d distinct URLs" % (
+            misses["requests"], len(misses["urls"])))
+        for host, count in misses["per_host"].items():
+            print("  %s: %d missed requests" % (host, count))
+        for url in misses["urls"]:
+            print(url)
+        if misses["requests"]:
+            return 4
 
     report = {
         "n_evaluated": len(rows),
