@@ -1,7 +1,7 @@
 ---
 id: T-022
 title: Pace scheduled snapshot requests using the verified slower interval
-status: changes_requested
+status: in_review
 level: 3
 size: S
 depends_on: [T-020-source]
@@ -33,7 +33,7 @@ recovery limits, data preservation, completeness checks and ordinary fetcher def
 ## Scope
 
 In: a snapshot-only CLI pacing option and its scheduled invocation; additive acceptance.
-Out: fetcher implementation except amendment (a), risk engine, benchmark files, providers, API keys, spending,
+Out: fetcher implementation except amendments (a)/(b), risk engine, benchmark files, providers, API keys, spending,
 cron changes, retry/deadline changes, coverage definitions, optional probe ordering,
 permission files and product thresholds. The lead preserves experiment data separately.
 

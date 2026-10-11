@@ -11,7 +11,8 @@ T-016 is deployed and verified. T-020 is published; its real manual pass preserv
 recovered missing rows and correctly failed remaining coverage gaps caused by observed
 HTTP 429 responses. A slower-pacing experiment recorded 672 pool rows with zero gaps;
 T-022 prepares that measured interval for scheduled collection. Scheduled verification
-is still pending. T-011 implements deterministic benchmark replay on the reviewed base.
+is still pending. T-011 is deployed and verified; T-019 prepares its protected cache fill.
+T-022's opt-in pacing and preservation repairs are in combined independent review.
 Execution permissions now work. Autonomy remains A1; this authorization covers the reviewed
 technical release. Experiment D and the 2026-10-16 product gate retain their existing rules.
 
@@ -68,6 +69,12 @@ technical release. Experiment D and the 2026-10-16 product gate retain their exi
 | M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
+
+- **2026-10-11** - lead - T-011 published at fefe6d1 after independent round-2 approval
+  and exact-head preflight. Deployment 38146148169 ran its offline and tagged production
+  checks, then completed successfully. T-019 starts with an independent pre-fill
+  reproduction and fresh whole-cache backup. T-022's second review covers actual request
+  timing and preservation before the unchanged job cutoff; scheduled proof remains pending.
 
 - **2026-10-11** - lead - Execution permissions restored and technical deployment authorized.
   Fresh-origin full offline checks pass. Snapshot recovery is first, followed by the separate

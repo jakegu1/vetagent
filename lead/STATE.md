@@ -49,8 +49,8 @@ technical repair release.
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
 | T-020 | 3 | master at 5bb391f | Published; manual run preserved data and correctly failed incomplete coverage | Codex lead | Investigate observed HTTP 429 gaps; verify scheduled execution before done; retain DNS test follow-up |
-| T-011 | 2 | reviewed e120fe5, local integration a126705 | Round 2 passed 12/12; source merged locally | Codex lead | Complete integrated checks and publish; verify deployment, then start T-019; no real fill yet |
-| T-022 | 3 | codex/t022-snapshot-pacing at e715d7a | Round 2 repair: gap fixed, slow retries can outrun preservation | Executor | Named amendment (b), red-first overall collection cap; then combined review and actual manual/scheduled coverage |
+| T-019 | 3 | codex/t019-benchmark-rebaseline from published fefe6d1 | Preparing the independently verified pre-fill base | Executor | Protect original cache, independently reproduce old results, then bounded listed fill and attribution; no threshold changes |
+| T-022 | 3 | codex/t022-snapshot-pacing at 8b54497 | Round 2 combined independent review | Fresh reviewer | Verify both named repairs and regressions, then integration and actual manual/scheduled coverage |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
 permissions and explicitly asked to continue on 2026-10-11. This covers reviewed technical
@@ -73,11 +73,21 @@ T-022 uses its measured 12.1-second interval in scheduled pool collection withou
 ordinary fetcher defaults, recovery budgets or the coverage rule. This is one measured
 pass; scheduled reliability remains to be observed. T-016 is closed after verified deployment.
 
-T-011's combined round-2 review and required source Linux jobs pass at e120fe5. The
-independent actual-cache regression preserves 91 missed requests over 89 URLs; no live
-fill or published benchmark change has occurred. Both named integrity/input fixes have
-their own tests-only reds and source commits. Reviewed source is merged locally at
-a126705; publication and deployed verification are pending the integrated release checks.
+T-011 is deployed at fefe6d1 after round-2 independent approval and full integrated
+checks. Exact final preflight 38145574532 passes required jobs; its upstream monitor
+reports 219 checks passed, three probes unobserved and no paths collapsed. No new baseline
+was frozen from that incomplete observation. Actual deployment 38146148169 uploaded and
+deployed Worker version c375f494-2ed2-42ba-94e5-3a8006ed6c05; offline and tagged production
+smoke steps all ran and passed. No real fill or published benchmark change has occurred.
+The actual-cache replay retains 91 misses over 89 URLs. T-019 independently reconfirms
+the exact published base and protects the original cache before any listed fill.
+
+T-022's named tests-only red at 62cccc7 has 320 passes and sixteen behavioral failures
+before source fix 8b54497. Its original 293 assertions remain green. Executor tests
+now pass 336 assertions and all thirty source-baseline steps. Slow fake scheduled passes
+preserve twenty-four observed rows at 1200 seconds, with twenty gaps and no late HTTP.
+This is offline evidence, not deployed coverage. The pushed fix's missing red description
+is corrected append-only in the review record; existing source history is never amended.
 
 ## Waiting on the Owner
 

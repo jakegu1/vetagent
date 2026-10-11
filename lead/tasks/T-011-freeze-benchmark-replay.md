@@ -1,7 +1,7 @@
 ---
 id: T-011
 title: Make the benchmark a deterministic replay - a pinned clock, dated cache entries, a replay that never calls an upstream, and a fill limited to a list
-status: in_review # draft | ready | in_progress | in_review | changes_requested | done | dropped
+status: done # draft | ready | in_progress | in_review | changes_requested | done | dropped
 level: 2                 # 0 direct | 1 light | 2 standard | 3 high risk
 size: M                  # S | M (split anything larger)
 depends_on: []           # none; never in parallel with T-014 to T-018 (shared files, Notes)
