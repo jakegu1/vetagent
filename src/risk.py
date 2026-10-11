@@ -4146,7 +4146,13 @@ async def assess(address, chain_hint=None, verbose=False):
                     % (len(stated), "" if len(stated) == 1 else "s"), "drained"))
             else:
                 def traded(pair):
-                    sells = ((pair.get("txns") or {}).get("h24") or {}).get("sells")
+                    txns = pair.get("txns")
+                    if not isinstance(txns, dict):
+                        return False
+                    h24 = txns.get("h24")
+                    if not isinstance(h24, dict):
+                        return False
+                    sells = h24.get("sells")
                     if isinstance(sells, bool):
                         return False
                     try:
