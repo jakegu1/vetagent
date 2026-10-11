@@ -263,8 +263,10 @@ def _fill(file):
             continue
         try:
             parsed = urlsplit(line)
+            port = parsed.port
             valid = (line.startswith("https://") and not any(c.isspace() for c in line)
-                     and parsed.scheme == "https" and bool(parsed.hostname))
+                     and parsed.scheme == "https" and bool(parsed.hostname)
+                     and (port is None or 0 <= port <= 65535))
         except ValueError:
             valid = False
         if not valid:
