@@ -117,7 +117,7 @@ def _fetch_pool_page(chain, kind, page, seen_at, retries=1, timeout=10, deadline
            % (chain, path, page))
     diagnostics = {}
     options = {"retries": retries, "timeout": timeout, "use_cache": False,
-               "write_cache": False, "diagnostics": diagnostics}
+               "write_cache": False, "diagnostics": diagnostics, "absolute_timeout": True}
     if deadline is not None:
         options["deadline"] = deadline
     data = fetch_json(url, role="label", **options)
