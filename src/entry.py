@@ -130,9 +130,9 @@ token is.
 
 ## Measured accuracy (n=576, published)
 
-False positives (healthy tokens flagged high) ....... 3.1%
-Answers returned as unknown ......................... 20.1%
-Centralised tokens (oracle-tagged) rated high ....... 22.3%
+False positives (healthy tokens flagged high) ....... 1.9%
+Answers returned as unknown ......................... 20.7%
+Centralised tokens (oracle-tagged) rated high ....... 21.2%
 Dead tokens not rated low ........................... 86.7% (26 of 30)
 
 What that last line does and does not say. Recall was unmeasurable here

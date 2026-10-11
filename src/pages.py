@@ -299,13 +299,13 @@ Base.</p>
 <h2>The numbers</h2>
 <table>
 <tr><th>Measure</th><th>Result</th></tr>
-<tr><td>Healthy tokens rated high (false positives)</td><td class="num">3.1% (5 of 162)</td></tr>
+<tr><td>Healthy tokens rated high (false positives)</td><td class="num">1.9% (3 of 162)</td></tr>
 <tr><td>Liquid healthy tokens rated medium or high (false blocks)</td><td class="num">13.0% (20 of 154)</td></tr>
-<tr><td>Answers returned as unknown</td><td class="num">20.1% (116 of 576)</td></tr>
+<tr><td>Answers returned as unknown</td><td class="num">20.7% (119 of 576)</td></tr>
 <tr><td>Confirmed-dead tokens not rated low</td><td class="num">86.7% (26 of 30)</td></tr>
 <tr><td>Confirmed-dead tokens rated high</td><td class="num">10.0% (3 of 30)</td></tr>
 <tr><td>Adversarial contracts rated high</td><td class="num">58.8% (10 of 17)</td></tr>
-<tr><td>Oracle-tagged centralised tokens rated high</td><td class="num">22.3% (40 of 179)</td></tr>
+<tr><td>Oracle-tagged centralised tokens rated high</td><td class="num">21.2% (38 of 179)</td></tr>
 </table>
 
 <h2>Read the unflattering rows first</h2>
@@ -332,15 +332,15 @@ age, lifecycle and impersonation signals removed, beside each count so the depth
 flatter a row.</p>
 <table>
 <tr><th>Oracle-tagged centralised tokens, pool depth</th><th>Tokens</th><th>High</th><th>Medium</th><th>Unknown</th><th>High on contract signals only</th></tr>
-<tr><td>No depth figure</td><td class="num">6</td><td class="num">4</td><td class="num">0</td><td class="num">2</td><td class="num">2</td></tr>
+<tr><td>No depth figure</td><td class="num">6</td><td class="num">2</td><td class="num">0</td><td class="num">4</td><td class="num">2</td></tr>
 <tr><td>Every pool reports $0</td><td class="num">15</td><td class="num">15</td><td class="num">0</td><td class="num">0</td><td class="num">0</td></tr>
 <tr><td>Under $1</td><td class="num">40</td><td class="num">16</td><td class="num">23</td><td class="num">1</td><td class="num">1</td></tr>
 <tr><td>$1 to $1,000</td><td class="num">15</td><td class="num">1</td><td class="num">10</td><td class="num">4</td><td class="num">1</td></tr>
 <tr><td>$1,000 to $100,000</td><td class="num">37</td><td class="num">3</td><td class="num">25</td><td class="num">5</td><td class="num">2</td></tr>
 <tr><td>$100,000 or more</td><td class="num">66</td><td class="num">1</td><td class="num">13</td><td class="num">8</td><td class="num">1</td></tr>
 </table>
-<p>So most of the 22.3% centralised row is empty pools: 31 of its 40 highs are on pools reporting
-$0 or under a dollar, and 30 of those 31 are not high on contract signals only; 4 more have no depth
+<p>So most of the 21.2% centralised row is empty pools: 31 of its 38 highs are on pools reporting
+$0 or under a dollar, and 30 of those 31 are not high on contract signals only; 2 more have no depth
 figure at all. USDT and WBTC themselves are rated low (4 of 4 benchmark rows).</p>
 <p>Across the 246 benchmark tokens holding $100,000 or more -- the 154 in the false-block row plus 92
 others -- 159 are low, 49 unknown and 38 medium or high. On contract signals only it is 179 low, 49 unknown
