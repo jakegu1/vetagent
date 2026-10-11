@@ -122,7 +122,7 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **17 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **16 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -149,16 +149,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- lead: dispatch combined review of the guarded traded-depth repair
+- T-012: regenerate added acceptance evidence
 - T-012: guard unavailable transaction containers
 - T-012: acceptance test fix (b)
+- lead: require named red seam tests for the traded-container regression
+- lead: dispatch fresh reviews of the frozen traded-depth repair
 - T-012: regenerate measured figures to a fixed point
 - T-012: remeasure the frozen traded-depth replay
-- T-012: named change (a)
-- T-012: keep traded depth gaps out of no-trace
-- T-012: record E35 traded-depth rule
-- T-012: acceptance tests
 
-_47 more not shown (55 commits in total)._
+_52 more not shown (60 commits in total)._
 
 ## What I got wrong
 
