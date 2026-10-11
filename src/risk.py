@@ -566,6 +566,13 @@ def _urlq(value):
     return "".join(out)
 
 
+def _validated_pool_id(value):
+    """Keep an exact ASCII address or V4 pool id, without changing its case."""
+    if isinstance(value, str) and re.fullmatch(r"0x(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})", value):
+        return value
+    return None
+
+
 def _low_recommendation(evidence):
     """The `low` sentence, saying which owner-power case we are actually in.
 
@@ -1796,6 +1803,8 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
                                 "Turnover is only %.1f%%. Exiting at size may be difficult." % (turnover * 100),
                                 "lifecycle"))
 
+    return best.get("pairAddress") or best.get("pool_id")
+
 
 async def _impersonation_signals(address, pairs, signals, evidence,
                                  chain_hint=None):
@@ -2590,7 +2599,7 @@ def _sim_never_ran(hp):
     return hp.get("router") == "" and gas == "0" and "does not contain code" in reason
 
 
-async def _distinct_sellers(hp, evidence):
+async def _distinct_sellers(hp, evidence, pool_id=None):
     """Fill in the picked pool's distinct-seller count, when a honeypot verdict is contested.
 
     Only then: a simulator saying honeypot is the one case where the count decides
@@ -2603,7 +2612,7 @@ async def _distinct_sellers(hp, evidence):
     if bp.get("sellers_24h") is not None:
         return
     net = _GT_NETWORK.get((bp.get("chain") or "").lower())
-    pool = bp.get("pair_address") or ""
+    pool = _validated_pool_id(pool_id if pool_id is not None else bp.get("pair_address"))
     if not net or not pool:
         return
     gt = None
@@ -2801,12 +2810,12 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
         #
         # When nobody can supply it, the verdict is contested and unsettled: `unknown`,
         # filed as our gap. Not `high`. The first version kept the fatal, and the
-        # benchmark moved 12 tokens medium -> high, none of them unsafe or dead. Read live
-        # at the same moment, CVX had 363 sells from 18 distinct sellers, THQ 74 from 28,
-        # Surplus 215 from 80, AKE 16,197 from 789 -- genuine simulator false positives,
-        # condemned because GeckoTerminal answered 429 that minute. An attacker wants
-        # `low` or `medium`, and `unknown` denies both; `high` on our own outage would
-        # only smear the token.
+        # benchmark moved 12 tokens medium -> high, none of them unsafe or dead.
+        # THQ and Surplus were picked on Uniswap V4 pools. Until T-013, their seller
+        # lookup sent a truncated id. GeckoTerminal answered THQ's truncated id with
+        # 404 (2026-10-07); no retry could settle it, whatever the rate limit did.
+        # An attacker wants `low` or `medium`, and `unknown` denies both; `high` on our
+        # own outage would only smear the token.
         sellers = (bp.get("sellers_24h"))
         pool_alive = _num(bp.get("liquidity_usd")) >= 5_000
         sells_work = pool_alive and sells >= 20 and sells >= 0.15 * (buys + 1)
@@ -4029,6 +4038,7 @@ async def assess(address, chain_hint=None, verbose=False):
     address = validate_address(address)
     _begin_request()            # per-request; drained into evidence at the end
     signals, evidence, data_gaps = [], {}, []
+    pool_id = None
 
     # Which chain this answer is about, recorded before anything is concluded from it.
     #
@@ -4140,7 +4150,7 @@ async def assess(address, chain_hint=None, verbose=False):
                                     "Pairs exist but none could be costed.",
                                     "no_liquidity"))
         else:
-            _liquidity_signals(best, pairs, signals, evidence, target=address)
+            pool_id = _liquidity_signals(best, pairs, signals, evidence, target=address)
             await _impersonation_signals(address, pairs, signals, evidence,
                                          chain_hint=chain_hint)
 
@@ -4215,21 +4225,21 @@ async def assess(address, chain_hint=None, verbose=False):
         # A failed retry must not overwrite a real answer either: if the second call
         # comes back empty we keep the first response, because "the simulator reverted on
         # its own pool" is a more informative thing to report than "no record".
-        hp_pair = ((evidence.get("best_pair") or {}).get("pair_address") or "")
+        hp_pair = _validated_pool_id(pool_id)
         # A first answer that never ran but still says honeypot is retried like any failed
         # simulation -- and remembered, because a clean trade on our pool does not settle
         # a claim about the pool the simulator picked (W46).
         unsettled_claim = (_sim_never_ran(hp)
                            and (hp.get("honeypotResult") or {}).get("isHoneypot") is True)
         replaced = False
-        if (_sim_failed(hp) and hp_pair.startswith("0x") and len(hp_pair) == 42):
+        if (_sim_failed(hp) and hp_pair is not None and len(hp_pair) == 42):
             retry = await _fetch_json("%s&pair=%s" % (hp_url, hp_pair),
                                       mark_missing=True)
             if retry is not None and retry is not NO_DATA and not _sim_failed(retry):
                 hp = retry
                 replaced = True
 
-        await _distinct_sellers(hp, evidence)
+        await _distinct_sellers(hp, evidence, pool_id=pool_id)
         _honeypot_signals(hp, signals, evidence, data_gaps, chain=hp_chain)
         if unsettled_claim and replaced:
             # Before W31 this answer was a fatal honeypot; W31 read it as a failed
@@ -4289,8 +4299,8 @@ async def assess(address, chain_hint=None, verbose=False):
         # or taxDistribution.
         result["evidence"] = {k: v for k, v in result["evidence"].items()
                               if k in _SLIM_EVIDENCE_KEYS}
-        # `pair_address` is 42 characters that matter to a benchmark and rarely to an
-        # agent -- it exists so a comparison can prove both sides looked at the same
+        # `pair_address` holds the picked pool's display id, capped at 48 characters
+        # with an ellipsis. It lets a comparison check whether both sides chose the same
         # venue. Verbose-only, so the disclosure the benchmark needs does not come out
         # of the output budget every caller pays.
         bp = result["evidence"].get("best_pair")
