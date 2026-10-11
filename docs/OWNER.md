@@ -146,7 +146,15 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 
 ## What changed in the last 7 days
 
-Nothing was committed. If that is a surprise, it is worth asking why.
+Every line is one commit, newest first. The full message says what the
+problem looked like before it was fixed.
+
+- lead: record independent snapshot release approval
+- lead: record authorized snapshot release and frozen review history
+- T-020: bound whole snapshot HTTP attempts and recovery deadlines
+- T-020: named change (a) protect absolute HTTP attempt limits
+- T-020: recover missing snapshot pages and fail incomplete passes
+- T-020: acceptance tests
 
 ## What I got wrong
 
