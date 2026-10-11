@@ -3460,6 +3460,57 @@ def _minutes_since_rugcheck_indexed(detected_at):
     return max(age, 0.0)
 
 
+def _rugcheck_holder_shares(rc, top_holders):
+    """Outside-pool top ten, all reported pool supply, and up to three AMM names.
+
+    No pool evidence, or an unidentified original top-ten holder, leaves the outside
+    reading unobserved. Explicit non-AMM tags win over market/vault matches: order-book
+    vaults and lockers can appear in markets too, and must remain counted.
+    """
+    known = rc.get("knownAccounts")
+    known = known if isinstance(known, dict) else {}
+    markets = rc.get("markets")
+    markets = ([m for m in markets if isinstance(m, dict)]
+               if isinstance(markets, list) else [])
+    pool_owners, pool_vaults = set(), set()
+    for market in markets:
+        owner = market.get("pubkey")
+        if isinstance(owner, str):
+            pool_owners.add(owner)
+        for vault in (market.get("liquidityA"), market.get("liquidityB")):
+            if isinstance(vault, str):
+                pool_vaults.add(vault)
+    has_pool_evidence = bool(pool_owners or pool_vaults) or any(
+        isinstance(tag, dict) and isinstance(tag.get("type"), str)
+        and tag["type"].upper() == "AMM" for tag in known.values())
+    if not top_holders or not has_pool_evidence or any(
+            not isinstance(h.get("owner"), str) and not isinstance(h.get("address"), str)
+            for h in top_holders[:10]):
+        return None, 0.0, []
+
+    outside, pool_share, pool_names = [], 0.0, []
+    for holder in top_holders:
+        owner, address = holder.get("owner"), holder.get("address")
+        tags = [known.get(account) for account in (owner, address)
+                if isinstance(account, str)]
+        typed = [tag for tag in tags if isinstance(tag, dict)
+                 and isinstance(tag.get("type"), str)]
+        non_amm = any(tag["type"].upper() != "AMM" for tag in typed)
+        is_pool = not non_amm and (
+            any(tag["type"].upper() == "AMM" for tag in typed)
+            or (isinstance(owner, str) and owner in pool_owners)
+            or (isinstance(address, str) and address in pool_vaults))
+        if is_pool:
+            pool_share += _num(holder.get("pct"))
+            for tag in typed:
+                name = _ascii_safe(tag.get("name"), 60)
+                if name and name not in pool_names and len(pool_names) < 3:
+                    pool_names.append(name)
+        else:
+            outside.append(holder)
+    return sum(_num(h.get("pct")) for h in outside[:10]), pool_share, pool_names
+
+
 def _rugcheck_signals(rc, signals, evidence, data_gaps):
     """Read RugCheck (Solana).
 
@@ -3510,7 +3561,8 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
 
     risks = [r for r in (rc.get("risks") or []) if isinstance(r, dict)]
     top_holders = [h for h in (rc.get("topHolders") or []) if isinstance(h, dict)]
-    top10 = sum(_num(h.get("pct")) for h in top_holders[:10])
+    top10 = sum(_num(h.get("pct")) for h in top_holders[:10]) if top_holders else None
+    outside_top10, pool_share, pool_names = _rugcheck_holder_shares(rc, top_holders)
     # A missing score is a gap, not a zero.
     #
     # _num(None) is 0.0 and 0 is the *best* possible normalised score, so an upstream
@@ -3627,7 +3679,9 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
         "mint_authority": rc.get("mintAuthority"),
         "freeze_authority": rc.get("freezeAuthority"),
         "total_holders": rc.get("totalHolders"),
-        "top10_holder_pct": _sig_round(top10, 4),
+        "top10_holder_pct": _sig_round(top10, 4) if top10 is not None else None,
+        "top10_outside_pools_pct": (_sig_round(outside_top10, 4)
+                                    if outside_top10 is not None else None),
         "lockers": len(rc.get("lockers") or {}),
         "risks": [{"name": _ascii_safe(r.get("name"), 60),
                    "level": _ascii_safe(r.get("level"), 16)} for r in risks],
@@ -3721,18 +3775,28 @@ def _rugcheck_signals(rc, signals, evidence, data_gaps):
         signals.append(_sig("critical", "RugCheck danger flags",
                             "; ".join(n for n in danger if n), "rugcheck"))
 
-    # Holder concentration: the strongest single predictor of a rug, and the data is
-    # already sitting in this same response
+    # Count the first ten holders outside identified pools, refilling from the reported
+    # list. Without pool/holder identities, retain the original reading and its band.
     if top_holders:
-        if top10 >= 70:
+        concentration_share = top10 if outside_top10 is None else outside_top10
+        if outside_top10 is None:
+            holder_message = (
+                "Top 10 addresses hold %.1f%%. RugCheck did not identify which holders are "
+                "liquidity pools, so this share may include the token's own pool." % top10)
+        else:
+            named_pools = " (%s)" % "; ".join(pool_names) if pool_names else ""
+            holder_message = (
+                "Top 10 holders outside liquidity pools hold %.1f%%. Identified liquidity "
+                "pool accounts hold %.1f%%%s." % (outside_top10, pool_share, named_pools))
+        if concentration_share >= 70:
             signals.append(_sig("critical", "Holdings are highly concentrated",
-                                "Top 10 addresses hold %.1f%%. A handful of wallets could crash the price." % top10, "concentration"))
-        elif top10 >= 50:
+                                holder_message, "concentration"))
+        elif concentration_share >= 50:
             signals.append(_sig("warn", "Holdings are concentrated",
-                                "Top 10 addresses hold %.1f%%." % top10, "concentration"))
+                                holder_message, "concentration"))
         else:
             signals.append(_sig("ok", "Holdings are well distributed",
-                                "Top 10 addresses hold %.1f%%." % top10, "concentration"))
+                                holder_message, "concentration"))
     else:
         # `if top_holders:` with no else meant the check simply went quiet when the
         # upstream stopped sending holders -- measured 2026-09-19, four live mints, all

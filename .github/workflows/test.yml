@@ -212,6 +212,10 @@ jobs:
       - name: The second-oracle script spends calls safely and reports only what it measured
         run: python tests/test_second_oracle.py
 
+      # A token's own pool vault is not a whale; unidentified pools keep the original band.
+      - name: Solana holder concentration excludes identified liquidity pool vaults
+        run: python tests/test_solana_pool_holders.py
+
       # deploy.yml ran two of the files above by hand before it deployed, and this workflow
       # starts beside it rather than before it, so a push to src/ that broke any other step
       # shipped anyway. The deploy job now runs every step of this job, read from this file
