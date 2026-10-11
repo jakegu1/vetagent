@@ -1560,11 +1560,38 @@ def test_a_fork_pool_cannot_silence_a_drained_rug():
     check("pools nobody costed are not reported as empty", not drained(r3),
           str([x["name"] for x in r3["signals"]]))
 
-    # -- And a costed-empty home pool alongside an uncosted one still counts. -
+    # -- An empty home pool cannot testify for an uncosted one beside it. -----
     mixed = [pool("ethereum", 0), pool("ethereum", None)]
     r4 = assess(mixed)
-    check("the pools that stated a depth still testify", drained(r4),
+    check("a mixed home scope has no drained finding or all-empty count",
+          not drained(r4) and not r4["evidence"].get("pools_all_empty"),
           str([x["name"] for x in r4["signals"]]))
+    mixed_gaps = r4["evidence"].get("data_gaps") or []
+    check("the unavailable home depth remains an explicit about-token liquidity gap",
+          any(g.get("dimension") == "liquidity"
+              and g.get("reason", "").startswith(risk._ABOUT_TOKEN + ": ")
+              and "no source reported pool depth" in g.get("reason", "")
+              for g in mixed_gaps), str(mixed_gaps))
+    check("mixed depth with no simulator record keeps the existing high finalization",
+          r4["risk_level"] == "high", r4["risk_level"])
+    mixed_clean = assess(mixed, hp=_load("hp_matic.json"))
+    check("a clean simulator cannot turn unavailable home depth into reassurance",
+          mixed_clean["risk_level"] == "unknown", mixed_clean["risk_level"])
+    check("mixed depth with a clean simulator has no fatal drained or all-empty claim",
+          not drained(mixed_clean) and not mixed_clean["evidence"].get("pools_all_empty")
+          and not any(s["severity"] == "fatal" for s in mixed_clean["signals"]),
+          str([x["name"] for x in mixed_clean["signals"]]))
+    check("the clean simulator leaves the mixed liquidity gap open",
+          any(g.get("dimension") == "liquidity"
+              for g in mixed_clean["evidence"].get("data_gaps") or []),
+          str(mixed_clean["evidence"].get("data_gaps")))
+    mixed_liquidity = run(risk.liquidity(WETH))
+    check("the same mixed home scope is unpriced with null public depth",
+          mixed_liquidity.get("status") == "unpriced"
+          and mixed_liquidity.get("liquidity_usd", "missing") is None,
+          str(mixed_liquidity))
+    check("the complete mixed controls encode strictly",
+          bool(json.dumps([r4, mixed_clean, mixed_liquidity], allow_nan=False)))
 
 
 def test_an_unrecognised_chain_hint_is_not_a_chain():
