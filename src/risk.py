@@ -204,6 +204,16 @@ def _stale_hits():
 _FETCH_FAILURES = contextvars.ContextVar("vetagent_fetch_failures")
 
 
+# Unset in served requests. The benchmark supplies one instant for its evaluation.
+_BENCH_NOW = contextvars.ContextVar("vetagent_bench_now", default=None)
+
+
+def _clock_now():
+    """The benchmark's pinned instant, or the current UTC wall clock."""
+    pinned = _BENCH_NOW.get()
+    return pinned if pinned is not None else datetime.now(timezone.utc)
+
+
 # The CoinGecko Demo key, read from the Worker's secrets by entry.py on every request.
 #
 # Why a key at all: production answered `unknown` with "upstream request failed
@@ -1571,7 +1581,7 @@ def _age_days(created_value, now=None):
     ms = _pair_created_ms(created_value)
     if ms is None:
         return None
-    now = now or datetime.now(timezone.utc)
+    now = now or _clock_now()
     days = (now.timestamp() * 1000 - ms) / 86400000.0
     # A timestamp slightly in the future is clock skew, and the honest reading of it is
     # "brand new". Returning None instead made the freshness dimension vanish silently --
@@ -3454,7 +3464,7 @@ def _minutes_since_rugcheck_indexed(detected_at):
         digits = offset[1:].replace(":", "")
         shift = timedelta(hours=int(digits[:2]), minutes=int(digits[2:]))
         seen = seen - shift if offset[0] == "+" else seen + shift
-    age = (datetime.now(timezone.utc) - seen).total_seconds() / 60.0
+    age = (_clock_now() - seen).total_seconds() / 60.0
     if age < -_CLOCK_SKEW_MINUTES:
         return None
     return max(age, 0.0)
