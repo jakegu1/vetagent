@@ -18,5 +18,6 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-010 | Keep a half-answered gate in Needs you, and read gates from section 8 only | 1 | S | T-009 | done (`47db199`) |
 | T-011 | Make benchmark replay deterministic and keep live fills explicitly limited | 2 | M | none | in_progress |
 | T-016 | Distinguish Solana liquidity pools from holder concentration | 2 | S | none | done (deployed c18de92) |
+| T-019 | Fill the benchmark's recorded miss list and publish an attributable replay baseline | 3 | S | T-011 | ready |
 | T-020 | Recover snapshot failures and report incomplete collection after preserving data | 3 | M | — | in_review |
 | T-022 | Pace scheduled snapshot requests using the verified slower interval | 3 | S | T-020 source | in_progress |
