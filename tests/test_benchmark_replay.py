@@ -591,6 +591,139 @@ def test_ac6_forty_day_replay_is_identical_and_unpinned_control_moves():
     check("AC6 replay does not leave a served clock pinned", result["evidence"].get("pair_age_days") == 10)
 
 
+def test_amendment_b_fill_and_replay_agree_on_cache_usability():
+    invalid = [
+        ("truncated", lambda url: '{"url": '),
+        ("null", lambda url: "null"),
+        ("array", lambda url: "[]"),
+        ("string", lambda url: '"not an entry"'),
+        ("number", lambda url: "42"),
+        ("missing-answer", lambda url: json.dumps({"url": url})),
+        ("missing-url", lambda url: json.dumps({"data": {"old": True}})),
+        ("wrong-url-data", lambda url: json.dumps({"url": url + "-other", "data": {"old": True}})),
+        ("wrong-url-status", lambda url: json.dumps({"url": url + "-other", "status": 404})),
+        ("string-status", lambda url: json.dumps({"url": url, "status": "404"})),
+        ("float-status", lambda url: json.dumps({"url": url, "status": 404.0})),
+        ("boolean-status", lambda url: json.dumps({"url": url, "status": True})),
+        ("rate-limit", lambda url: json.dumps({"url": url, "status": 429})),
+        ("server-error", lambda url: json.dumps({"url": url, "status": 500})),
+    ]
+    with sandbox() as temp:
+        for label, body in invalid:
+            url = "https://integrity.invalid/" + label
+            cache_path(url).write_text(body(url), encoding="utf-8")
+            fetcher.reset_benchmark_stats()
+            try:
+                got = fetcher.fetch_json(url, role="engine", replay=True, mark_missing=True)
+            except Exception as exc:
+                check("AC5(b) unusable %s replay does not raise" % label, False, str(exc))
+                got = "raised"
+            check("AC5(b) unusable %s is a replay failure" % label, got is None)
+            check("AC5(b) unusable %s is counted as missed" % label,
+                  fetcher.benchmark_stats()["replay"] == {"requests": 1, "per_host": {"integrity.invalid": 1}, "urls": [url]})
+            file = temp / "fill.txt"
+            file.write_text(url + "\n", encoding="utf-8")
+            with fake_upstream(answer({"repaired": True})) as network, patch.object(bench, "fetch_json", wraps=bench.fetch_json) as fetch_call:
+                status, summary, _output = call_main(["--fill", str(file)])
+            check("AC5(b) unusable %s fill succeeds after repair" % label, status == 0)
+            check("AC5(b) unusable %s makes one normal fetch call" % label,
+                  fetch_call.call_count == 1 and fetch_call.call_args == ((url,), {"role": "engine", "retries": 2, "dated": True}))
+            check("AC5(b) unusable %s makes one fake HTTP request" % label, network.call_count == 1)
+            check("AC5(b) unusable %s is reported as a stored answer" % label,
+                  summary.get("fill", {}).get("outcomes") == [{"url": url, "outcome": "stored answer"}])
+            fetcher.reset_benchmark_stats()
+            try:
+                got = fetcher.fetch_json(url, role="engine", replay=True, mark_missing=True)
+            except Exception as exc:
+                check("AC5(b) repaired %s replay does not raise" % label, False, str(exc))
+                got = None
+            check("AC5(b) repaired %s replays the observed answer" % label, got == {"repaired": True})
+            check("AC5(b) repaired %s has no replay miss" % label,
+                  fetcher.benchmark_stats()["replay"]["requests"] == 0)
+        valid = [{"data": {"old": True}}, {"status": 400}, {"status": 404, "not_found": True}]
+        for index, entry in enumerate(valid):
+            url = "https://integrity.invalid/valid/%d" % index
+            save_cache(url, **entry)
+            original = cache_path(url).read_bytes()
+            file = temp / "fill.txt"
+            file.write_text(url + "\n", encoding="utf-8")
+            with patch.object(bench, "fetch_json", side_effect=AssertionError("usable cache must not be fetched")):
+                status, summary, _output = call_main(["--fill", str(file)])
+            check("AC5(b) valid entry %d is already recorded" % index,
+                  status == 0 and summary.get("fill", {}).get("outcomes") == [{"url": url, "outcome": "already recorded"}])
+            check("AC5(b) valid entry %d remains byte-identical" % index, cache_path(url).read_bytes() == original)
+            fetcher.reset_benchmark_stats()
+            got = fetcher.fetch_json(url, role="engine", replay=True, mark_missing=True)
+            check("AC5(b) valid entry %d replays without a miss" % index,
+                  fetcher.benchmark_stats()["replay"]["requests"] == 0 and
+                  (got == {"old": True} if index == 0 else (got is fetcher.NOT_FOUND if index == 2 else got is None)))
+
+
+def test_amendment_b_interrupted_writer_then_normal_repair_and_replay():
+    url = "https://integrity.invalid/interrupted"
+    with sandbox() as temp:
+        file = temp / "fill.txt"
+        file.write_text(url + "\n", encoding="utf-8")
+        original_dump = json.dump
+        def interrupted_dump(entry, stream, **kw):
+            if Path(stream.name) == cache_path(url):
+                stream.write('{"url": ')
+                raise OSError("synthetic interrupted writer")
+            return original_dump(entry, stream, **kw)
+        with fake_upstream(answer({"first": True})) as network, patch("json.dump", side_effect=interrupted_dump):
+            status, summary, _output = call_main(["--fill", str(file)])
+        check("AC5(b) interrupted writer makes one fake request", network.call_count == 1)
+        check("AC5(b) interrupted writer is not stored and exits six",
+              status == 6 and summary.get("fill", {}).get("outcomes") == [{"url": url, "outcome": "not stored"}])
+        check("AC5(b) interrupted writer leaves actual truncated bytes",
+              cache_path(url).read_bytes() == b'{"url": ')
+        fetcher.reset_benchmark_stats()
+        got = fetcher.fetch_json(url, role="engine", replay=True, mark_missing=True)
+        check("AC5(b) interrupted entry remains an observed replay miss",
+              got is None and fetcher.benchmark_stats()["replay"]["requests"] == 1)
+        with fake_upstream(answer({"second": True})) as network, patch.object(bench, "fetch_json", wraps=bench.fetch_json) as fetch_call:
+            status, summary, _output = call_main(["--fill", str(file)])
+        check("AC5(b) later fill makes one normal fetch and one fake request",
+              network.call_count == 1 and fetch_call.call_count == 1)
+        check("AC5(b) later fill reports the repaired answer and exits zero",
+              status == 0 and summary.get("fill", {}).get("outcomes") == [{"url": url, "outcome": "stored answer"}])
+        fetcher.reset_benchmark_stats()
+        got = fetcher.fetch_json(url, role="engine", replay=True, mark_missing=True)
+        check("AC5(b) later successful record replays without a miss",
+              got == {"second": True} and fetcher.benchmark_stats()["replay"]["requests"] == 0)
+
+
+def test_amendment_b_persistently_unreadable_or_unusable_cache_stays_incomplete():
+    with sandbox() as temp:
+        for label in ("write-interrupted", "read-unavailable"):
+            url = "https://integrity.invalid/" + label
+            cache_path(url).write_text("{", encoding="utf-8")
+            file = temp / "fill.txt"
+            file.write_text(url + "\n", encoding="utf-8")
+            original_open = open
+            original_dump = json.dump
+            def read_failure(path, mode="r", *args, **kw):
+                if str(path) == str(cache_path(url)) and "r" in mode:
+                    raise PermissionError("synthetic unreadable entry")
+                return original_open(path, mode, *args, **kw)
+            def write_failure(entry, stream, **kw):
+                if Path(stream.name) == cache_path(url):
+                    stream.write("{")
+                    raise OSError("synthetic interrupted writer")
+                return original_dump(entry, stream, **kw)
+            failure = patch("builtins.open", side_effect=read_failure) if label == "read-unavailable" else patch("json.dump", side_effect=write_failure)
+            with failure, fake_upstream(answer({"attempted": True})) as network, patch.object(bench, "fetch_json", wraps=bench.fetch_json) as fetch_call:
+                status, summary, _output = call_main(["--fill", str(file)])
+                check("AC5(b) persistent %s attempted one normal fetch" % label,
+                      fetch_call.call_count == 1 and network.call_count == 1)
+                check("AC5(b) persistent %s reports not stored and exits six" % label,
+                      status == 6 and summary.get("fill", {}).get("outcomes") == [{"url": url, "outcome": "not stored"}])
+                fetcher.reset_benchmark_stats()
+                got = fetcher.fetch_json(url, role="engine", replay=True, mark_missing=True)
+                check("AC5(b) persistent %s agrees with replay miss" % label,
+                      got is None and fetcher.benchmark_stats()["replay"]["requests"] == 1)
+
+
 def main():
     started = time.monotonic()
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
