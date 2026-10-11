@@ -261,10 +261,11 @@ def _obs_holder_concentration(result):
     Covered means a number came back. Not covered is conclusive in both of the ways this
     dimension is currently missing: on EVM nothing is asked at all (the source would be
     GoPlus, held out under DECISIONS B2), and on Solana the request is made and RugCheck
-    returns no holders, which the engine records as a gap on this dimension.
+    returns no holders, which the engine records as a gap on this dimension and a null
+    top10_holder_pct. A number at that key therefore means a reading came back.
     """
     rc = (result.get("evidence") or {}).get("rugcheck")
-    if isinstance(rc, dict) and rc.get("top_holder_pct") is not None:
+    if isinstance(rc, dict) and rc.get("top10_holder_pct") is not None:
         return COVERED
     if any(s.get("category") == "concentration" and s.get("severity") != "info"
            for s in result.get("signals") or []):
