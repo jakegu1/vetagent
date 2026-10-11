@@ -1431,6 +1431,320 @@ def test_request_gap_workflow_paces_the_actual_collection_command_only():
           and all(b - a >= 12.1 - 0.000001 for a, b in zip(starts, starts[1:])), replay["output"])
 
 
+# T-022 named change (a): wire starts after variable connection setup.
+def _completion_cli_replay(setups=(), mode="ok", prior=2.1, anchor=13.0,
+                           chains="base", pages=2, ordinary=False, operation="collect"):
+    import fetcher
+    import hashlib
+    import socket
+    import ssl
+    import tempfile
+    import threading
+    import urllib.request
+    from contextlib import ExitStack, redirect_stdout, redirect_stderr
+    from datetime import datetime, timedelta, timezone
+    from unittest.mock import patch
+    from urllib.parse import parse_qs, urlparse
+    host = "api.geckoterminal.com"
+    initial_rates = dict(fetcher._RATE)
+    if prior is None:
+        initial_rates.pop(host, None)
+    else:
+        initial_rates[host] = prior
+    rates = _PacingRates(initial_rates)
+    initial_anchors = {"fixture.other.invalid": 17.0}
+    if anchor is not None:
+        initial_anchors[host] = anchor
+    anchors = _PacingRates(initial_anchors)
+    clock, http, calls, visits, phases, writes, probes, waits = [0.0], [], [], {}, [], [], [], []
+    result, raised, code = None, None, None
+    real_fetch, real_collect, real_open = fetcher.fetch_json, snapshot.collect, io.open
+    stream = io.StringIO()
+
+    class Clock:
+        fromisoformat = staticmethod(datetime.fromisoformat)
+        @staticmethod
+        def now(zone):
+            return datetime(2026, 10, 11, tzinfo=timezone.utc) + timedelta(seconds=clock[0])
+
+    class Event:
+        def __init__(self):
+            self.flag = False
+        def set(self):
+            self.flag = True
+        def is_set(self):
+            return self.flag
+        def wait(self, timeout=None):
+            return self.flag
+
+    class Thread:
+        def __init__(self, target, **kwargs):
+            self.target = target
+        def start(self):
+            self.target()
+
+    setup_index = [0]
+    active_setup = [(0, 0, 0)]
+
+    def dns(*args):
+        index = setup_index[0]
+        setup_index[0] += 1
+        active_setup[0] = setups[index] if index < len(setups) else (0, 0, 0)
+        clock[0] += active_setup[0][0]
+        phases.append(("dns", active_setup[0][0], clock[0]))
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 443))]
+
+    def tls(context, sock, **kwargs):
+        delay = active_setup[0][2]
+        elapsed = min(delay, sock.timeout)
+        clock[0] += elapsed
+        phases.append(("tls", elapsed, clock[0]))
+        if delay >= sock.timeout and delay:
+            raise TimeoutError("fixture TLS cutoff")
+        return sock
+
+    class SlowWire(io.RawIOBase):
+        def __init__(self, connection):
+            self.connection, self.offset = connection, 0
+        def readable(self):
+            return True
+        def readinto(self, target):
+            if self.offset == len(self.connection.wire):
+                return 0
+            delay = min(9.0, self.connection.timeout)
+            clock[0] += delay
+            if delay >= self.connection.timeout:
+                raise TimeoutError("fixture HTTP cutoff after setup")
+            target[0] = self.connection.wire[self.offset]
+            self.offset += 1
+            return 1
+
+    class Socket:
+        def __init__(self, timeout=10):
+            self.timeout, self.wire = timeout, b""
+        def settimeout(self, timeout):
+            self.timeout = timeout
+        def setsockopt(self, *args):
+            pass
+        def connect(self, address):
+            delay = active_setup[0][1]
+            elapsed = min(delay, self.timeout)
+            clock[0] += elapsed
+            phases.append(("connect", elapsed, clock[0]))
+            if delay >= self.timeout and delay:
+                raise TimeoutError("fixture connect cutoff")
+        def bind(self, address):
+            pass
+        def sendall(self, data):
+            if mode == "interrupt":
+                raise KeyboardInterrupt("fixture wire interrupt")
+            lines = data.decode("ascii").splitlines()
+            target = lines[0].split()[1]
+            request_host = next(line.split(": ", 1)[1] for line in lines
+                                if line.lower().startswith("host: "))
+            parsed = urlparse(target)
+            page = int(parse_qs(parsed.query).get("page", [1])[0])
+            key = (parsed.path, page)
+            visits[key] = visits.get(key, 0) + 1
+            failed = mode == "partial" or (mode == "recover" and
+                     parsed.path.endswith("new_pools") and page == 1 and visits[key] <= 2)
+            status = 429 if failed else 200
+            body = json.dumps({"data": [] if parsed.path.endswith("trending_pools") else
+                               [_snapshot_pool("fixture_%s_%d" % (parsed.path.split("/")[-2], page))]}).encode("utf-8")
+            self.wire = (("HTTP/1.1 %d fixture\r\nContent-Length: %d\r\nConnection: close\r\n\r\n" %
+                          (status, len(body))).encode("ascii") + body)
+            http.append({"start": clock[0], "host": request_host, "status": status,
+                         "io_remaining": self.timeout, "anchors": dict(anchors)})
+        def makefile(self, mode_name):
+            return io.BufferedReader(SlowWire(self)) if mode == "cutoff" else io.BytesIO(self.wire)
+        def close(self):
+            pass
+
+    def observe_fetch(url, role, **options):
+        call = {"start": clock[0], "options": options.copy(), "anchors": dict(anchors)}
+        calls.append(call)
+        value = real_fetch(url, role, **options)
+        call.update(end=clock[0], diagnostics=dict(options.get("diagnostics", {})))
+        return value
+
+    def observe_collect(*args, **options):
+        nonlocal result
+        result = real_collect(*args, **options)
+        return result
+
+    def observe_open(path, mode_name="r", *args, **options):
+        if "a" in mode_name or "w" in mode_name:
+            writes.append((dict(rates), dict(anchors)))
+        return real_open(path, mode_name, *args, **options)
+
+    def observe_probe(*args):
+        probes.append((dict(rates), dict(anchors)))
+        return []
+
+    def sleep(seconds):
+        waits.append(seconds)
+        clock[0] += seconds
+
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
+        stack.enter_context(patch.object(snapshot, "OUT_DIR", os.path.join(tmp, "archive")))
+        stack.enter_context(patch.object(fetcher, "CACHE_DIR", os.path.join(tmp, "cache")))
+        stack.enter_context(patch.object(fetcher, "_RATE", rates))
+        # create=True makes the pre-fix red behavioral, without an unknown API failure.
+        stack.enter_context(patch.object(fetcher, "_SNAPSHOT_COMPLETION", anchors, create=True))
+        stack.enter_context(patch.object(fetcher, "_last_hit", {}))
+        stack.enter_context(patch.object(fetcher, "_ACCESS_LOG", {"engine": set(), "label": set()}))
+        stack.enter_context(patch.object(fetcher, "_SNAPSHOT_RESOLVER", fetcher._SnapshotResolver()))
+        stack.enter_context(patch.object(socket, "socket", lambda *a, **kw: Socket()))
+        stack.enter_context(patch.object(socket, "create_connection", lambda *a, timeout=25, **kw: Socket(timeout)))
+        stack.enter_context(patch.object(socket, "getaddrinfo", side_effect=dns))
+        stack.enter_context(patch.object(ssl.SSLContext, "wrap_socket", tls))
+        stack.enter_context(patch.object(ssl, "_create_default_https_context",
+                                        return_value=ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)))
+        stack.enter_context(patch.object(urllib.request, "getproxies", return_value={}))
+        stack.enter_context(patch.object(urllib.request, "urlopen", side_effect=opener.open))
+        stack.enter_context(patch.object(threading, "Event", Event))
+        stack.enter_context(patch.object(threading, "Thread", Thread))
+        stack.enter_context(patch.object(fetcher.time, "time", lambda: 1000 + clock[0]))
+        stack.enter_context(patch.object(fetcher.time, "monotonic", lambda: clock[0]))
+        stack.enter_context(patch.object(fetcher.time, "sleep", sleep))
+        stack.enter_context(patch.object(snapshot, "datetime", Clock))
+        stack.enter_context(patch.object(snapshot, "fetch_json", side_effect=observe_fetch))
+        stack.enter_context(patch.object(snapshot, "collect", side_effect=observe_collect))
+        stack.enter_context(patch.object(snapshot.io, "open", side_effect=observe_open))
+        stack.enter_context(patch.object(snapshot, "probe_sellability", side_effect=observe_probe))
+        args = ["--chains", chains, "--pages", str(pages), "--sellability", "1"]
+        if operation != "unset":
+            args += ["--request-gap", "12.1"]
+        stack.enter_context(patch.object(snapshot.sys, "argv", ["snapshot.py"] + args))
+        url = "https://%s/api/v2/networks/base/new_pools?page=1" % host
+        with redirect_stdout(stream), redirect_stderr(stream):
+            if operation in ("ordinary", "other-host", "cached"):
+                if operation == "cached":
+                    os.makedirs(fetcher.CACHE_DIR)
+                    path = os.path.join(fetcher.CACHE_DIR, hashlib.sha256(url.encode()).hexdigest()[:40] + ".json")
+                    with real_open(path, "w", encoding="utf-8") as fh:
+                        json.dump({"url": url, "data": {"fixture_cached": True}}, fh)
+                    code = real_fetch(url, "label", use_cache=True, write_cache=False)
+                else:
+                    if operation == "other-host":
+                        url = url.replace(host, "api.dexscreener.com")
+                    for _ in range(2):
+                        code = real_fetch(url, "label", retries=0, use_cache=False, write_cache=False,
+                                          absolute_timeout=operation == "other-host")
+            else:
+                try:
+                    code = snapshot.main()
+                except BaseException as exc:
+                    raised = type(exc).__name__
+                    code = exc.code if isinstance(exc, SystemExit) else None
+        collection_end, restored_anchors, restored_rates = clock[0], dict(anchors), dict(rates)
+        collection_http = list(http)
+        if ordinary:
+            for _ in range(2):
+                real_fetch(url, "label", retries=0, use_cache=False, write_cache=False)
+        files = sorted(os.listdir(snapshot.OUT_DIR)) if os.path.isdir(snapshot.OUT_DIR) else []
+    return {"code": code, "raised": raised, "output": stream.getvalue(), "http": http,
+            "collection_http": collection_http, "calls": calls, "result": result,
+            "initial_rates": initial_rates, "rates": restored_rates,
+            "initial_anchors": initial_anchors, "anchors": restored_anchors,
+            "anchor_changes": anchors.changes, "writes": writes, "probes": probes,
+            "end": collection_end, "phases": phases, "waits": waits, "files": files}
+
+
+def test_request_gap_completion_keeps_wire_starts_apart_after_variable_setup():
+    print("\n[completion] DNS, TCP and TLS costs cannot shorten actual HTTP-send gaps")
+    cases = [("DNS", [(8, 0, 0)]), ("TLS", [(0, 0, 8)]), ("mixed", [(4, 0, 4)]),
+             ("variable", [(2, 2, 3), (1, 0, 2), (0, 1, 0)])]
+    for label, setups in cases:
+        replay = _completion_cli_replay(setups)
+        starts = [h["start"] for h in replay["collection_http"]]
+        check(label + " uses the actual main/fetcher/stdlib HTTP sends with successful coverage",
+              replay["code"] == 0 and len(starts) == 3, replay["output"])
+        check(label + " setup leaves every real wire-start gap at least 12.1 seconds",
+              len(starts) == 3 and all(b - a >= 12.1 - 0.000001 for a, b in zip(starts, starts[1:])), str(starts))
+        check(label + " applies gap waiting before, rather than inside, each ten-second IO attempt",
+              len(replay["collection_http"]) == 3 and all(0 < h["io_remaining"] <= 10.000001
+              for h in replay["collection_http"]) and replay["collection_http"][-1]["io_remaining"] >= 8.999999)
+
+
+def test_request_gap_completion_covers_retry_recovery_and_restored_ordinary_calls():
+    print("\n[completion] failed attempts, retries and recovery retain the same wire gap")
+    replay = _completion_cli_replay([(4, 0, 4)], mode="recover", ordinary=True)
+    starts = [h["start"] for h in replay["collection_http"]]
+    recovery = [c for c in replay["calls"] if "deadline" in c["options"]]
+    check("failed initial attempts really retry and recover the page with original retry choices",
+          replay["code"] == 0 and len(starts) == 5 and recovery
+          and [h["status"] for h in replay["collection_http"]] == [429, 429, 200, 200, 200]
+          and all(c["options"]["retries"] == (0 if "deadline" in c["options"] else 1) for c in replay["calls"]))
+    check("both failed and successful attempt completions protect every wire-start gap",
+          len(starts) == 5 and all(b - a >= 12.1 - 0.000001 for a, b in zip(starts, starts[1:])), str(starts))
+    check("the old rate and completion anchor are already restored before preservation and probing",
+          replay["rates"] == replay["initial_rates"] and replay["anchors"] == replay["initial_anchors"]
+          and replay["writes"] and replay["probes"] and all(pair ==
+          (replay["initial_rates"], replay["initial_anchors"]) for pair in replay["writes"] + replay["probes"]))
+    ordinary = replay["http"][-2:]
+    check("ordinary requests after the collection preserve their original 2.1-second interval",
+          len(ordinary) == 2 and abs(ordinary[1]["start"] - ordinary[0]["start"] - 2.1) < 0.000001)
+
+
+def test_request_gap_completion_retains_cutoffs_deadline_refusal_and_gap_manifest():
+    print("\n[completion] setup and progressive IO keep original recovery and attempt budgets")
+    for mode, chains, pages in (("partial", "a,b", 5), ("cutoff", "base", 5)):
+        replay = _completion_cli_replay([(8, 0, 0)], mode=mode, chains=chains, pages=pages)
+        recovery = [c for c in replay["calls"] if "deadline" in c["options"]]
+        manifest = (replay["result"] or ([], "", []))[2]
+        check(mode + " recovery obeys the unchanged ninety-second deadline and twelve-call cap",
+              recovery and len(recovery) <= 12 and abs(recovery[0]["options"]["deadline"] -
+              recovery[0]["start"] - 90) < 0.000001 and replay["end"] - recovery[0]["start"] <= 90.000001)
+        check(mode + " keeps ten-second whole-attempt IO and recovery timeouts",
+              recovery and all(c["options"]["absolute_timeout"] is True and
+              c["options"]["timeout"] <= 10 and c["options"]["retries"] == 0 for c in recovery)
+              and all(0 < h["io_remaining"] <= 10.000001 for h in replay["collection_http"]))
+        check(mode + " refuses the next over-budget pacing wait without sending another request",
+              replay["code"] == 1 and recovery and recovery[-1]["diagnostics"].get("error") == "budget_exhausted"
+              and recovery[-1]["diagnostics"].get("attempts") == 0)
+        check(mode + " records unavailable pages and restores both state maps before writes",
+              manifest and all(m["outcome"] in ("fetch_failed", "skipped") for m in manifest)
+              and any(m.get("recovery_outcome") == "budget_exhausted" for m in manifest)
+              and replay["writes"] and all(pair == (replay["initial_rates"], replay["initial_anchors"])
+              for pair in replay["writes"]) and any(fn.startswith("runs-") for fn in replay["files"]))
+        starts = [h["start"] for h in replay["collection_http"]]
+        check(mode + " unavailable attempts also keep actual send gaps at least 12.1 seconds",
+              len(starts) >= 2 and all(b - a >= 12.1 - 0.000001 for a, b in zip(starts, starts[1:])), str(starts))
+
+
+def test_request_gap_completion_restores_absent_state_and_interrupted_exit():
+    print("\n[completion] absent entries and a BaseException restore the full temporary state")
+    for mode in ("ok", "partial", "interrupt"):
+        replay = _completion_cli_replay([(4, 0, 4)], mode=mode, prior=None, anchor=None, pages=1)
+        check(mode + " restores absent rate and completion entries, including a wire interrupt",
+              replay["rates"] == replay["initial_rates"] and replay["anchors"] == replay["initial_anchors"]
+              and (replay["raised"] == "KeyboardInterrupt" if mode == "interrupt" else
+                   replay["code"] == (0 if mode == "ok" else 1)))
+        check(mode + " opts in transiently and never changes another host's completion state",
+              replay["anchor_changes"] and all(host == "api.geckoterminal.com" for host, _ in replay["anchor_changes"]))
+        if mode == "interrupt":
+            check("the interrupted wire exits before any archive write or optional probe",
+                  not replay["writes"] and not replay["probes"])
+
+
+def test_request_gap_completion_is_noop_for_unset_cached_ordinary_and_other_hosts():
+    print("\n[completion] cached/default callers and other hosts retain their previous behavior")
+    for operation in ("unset", "ordinary", "other-host", "cached"):
+        replay = _completion_cli_replay(anchor=None if operation == "unset" else 1000.0, operation=operation)
+        check(operation + " never changes a completion anchor or its opt-in configuration",
+              not replay["anchor_changes"] and replay["anchors"] == replay["initial_anchors"])
+        if operation == "cached":
+            check("a cached result is read without any HTTP or real pacing wait",
+                  replay["code"] == {"fixture_cached": True} and not replay["http"] and not replay["waits"])
+        else:
+            starts = [h["start"] for h in replay["http"]]
+            gap = 0.25 if operation == "other-host" else 2.1
+            check(operation + " keeps its ordinary host's original start-based gap",
+                  len(starts) >= 2 and abs(starts[1] - starts[0] - gap) < 0.000001)
+
+
 def main():
     print("=" * 68)
     print("Sellability archive: asking on the day, because later is too late")
