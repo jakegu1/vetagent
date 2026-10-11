@@ -1745,6 +1745,324 @@ def test_request_gap_completion_is_noop_for_unset_cached_ordinary_and_other_host
                   len(starts) >= 2 and abs(starts[1] - starts[0] - gap) < 0.000001)
 
 
+# T-022 named change (b): preservation before the scheduled job's timeout.
+def _collection_budget_cli_replay(setup="dns", mode="retry", prior_deadline=4500.0,
+                                  absent=False, operation="scheduled", optional=False,
+                                  start=0.0):
+    import fetcher
+    import hashlib
+    import re
+    import shlex
+    import socket
+    import ssl
+    import tempfile
+    import threading
+    import urllib.request
+    from contextlib import ExitStack, redirect_stdout, redirect_stderr
+    from datetime import datetime, timedelta, timezone
+    from unittest.mock import patch
+    from urllib.parse import urlparse
+    host = "api.geckoterminal.com"
+    initial_rates = dict(fetcher._RATE)
+    initial_anchors = {"fixture.other.invalid": 17.0}
+    initial_deadlines = {"fixture.other.invalid": -1.0}
+    if absent:
+        initial_rates.pop(host, None)
+    elif operation != "unset":
+        initial_anchors[host] = 13.0
+    if prior_deadline is not None:
+        initial_deadlines[host] = prior_deadline
+    rates, anchors, deadlines = (_PacingRates(value) for value in
+                                 (initial_rates, initial_anchors, initial_deadlines))
+    clock, http, calls, visits, writes, probes, waits = [start], [], [], {}, [], [], []
+    result, raised, code = None, None, None
+    real_fetch, real_collect, real_open = fetcher.fetch_json, snapshot.collect, io.open
+    stream = io.StringIO()
+    wf = io.open(os.path.join(ROOT, ".github", "workflows", "snapshot.yml"), encoding="utf-8").read()
+    steps = {part.splitlines()[0].strip(): part for part in re.split(r"- name: ", wf)[1:]}
+    command = shlex.split(re.search(r"^\s*run:\s*(python\s+bench/snapshot\.py[^\n]*)$",
+                                   steps["Collect pools"], re.M).group(1))
+    args = command[2:]
+    if optional:
+        args[args.index("--sellability") + 1] = "1"
+    if operation == "unset":
+        flag = args.index("--request-gap")
+        del args[flag:flag + 2]
+    elif operation in ("coverage", "sellability"):
+        args = (["--check-coverage"] if operation == "coverage" else ["--sellability-only", "1"])
+        args += ["--request-gap", "12.1"]
+
+    class Clock:
+        fromisoformat = staticmethod(datetime.fromisoformat)
+        @staticmethod
+        def now(zone):
+            return datetime(2026, 10, 11, tzinfo=timezone.utc) + timedelta(seconds=clock[0])
+
+    class Event:
+        def __init__(self):
+            self.flag = False
+        def set(self):
+            self.flag = True
+        def is_set(self):
+            return self.flag
+        def wait(self, timeout=None):
+            return self.flag
+
+    class Thread:
+        def __init__(self, target, **kwargs):
+            self.target = target
+        def start(self):
+            self.target()
+
+    def dns(*args):
+        if setup == "dns":
+            clock[0] += 9.0
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 443))]
+
+    def tls(context, sock, **kwargs):
+        if setup == "tls":
+            elapsed = min(9.0, sock.timeout)
+            clock[0] += elapsed
+            if elapsed >= sock.timeout:
+                raise TimeoutError("fixture collection TLS deadline")
+        return sock
+
+    class SlowWire(io.RawIOBase):
+        def __init__(self, connection):
+            self.connection = connection
+        def readable(self):
+            return True
+        def readinto(self, target):
+            clock[0] += self.connection.timeout
+            raise TimeoutError("fixture collection body deadline")
+
+    class Socket:
+        def __init__(self, timeout=10):
+            self.timeout, self.wire = timeout, b""
+        def settimeout(self, timeout):
+            self.timeout = timeout
+        def setsockopt(self, *args):
+            pass
+        def connect(self, address):
+            pass
+        def bind(self, address):
+            pass
+        def sendall(self, data):
+            lines = data.decode("ascii").splitlines()
+            target = lines[0].split()[1]
+            request_host = next(line.split(": ", 1)[1] for line in lines
+                                if line.lower().startswith("host: "))
+            visits[target] = visits.get(target, 0) + 1
+            failed = mode == "all-fail" or (mode == "retry" and visits[target] == 1)
+            if mode == "recover":
+                failed = "/eth/new_pools?page=1" in target and visits[target] <= 2
+            status = 429 if failed else 200
+            body = json.dumps({"data": [] if "trending_pools" in target else
+                               [_snapshot_pool("fixture_" + target)]}).encode("utf-8")
+            self.wire = (("HTTP/1.1 %d fixture\r\nContent-Length: %d\r\nConnection: close\r\n\r\n" %
+                          (status, len(body))).encode("ascii") + body)
+            http.append({"start": clock[0], "target": target, "host": request_host,
+                         "status": status, "io_remaining": self.timeout,
+                         "deadlines": dict(deadlines), "anchors": dict(anchors)})
+            if mode == "interrupt":
+                raise KeyboardInterrupt("fixture collection wire interrupt")
+        def makefile(self, mode_name):
+            return io.BufferedReader(SlowWire(self)) if mode == "body-cutoff" else io.BytesIO(self.wire)
+        def close(self):
+            pass
+
+    def observe_fetch(url, role, **options):
+        call = {"start": clock[0], "options": options.copy(), "deadlines": dict(deadlines)}
+        calls.append(call)
+        value = real_fetch(url, role, **options)
+        call.update(end=clock[0], diagnostics=dict(options.get("diagnostics", {})))
+        return value
+
+    def observe_collect(*args, **options):
+        nonlocal result
+        result = real_collect(*args, **options)
+        return result
+
+    def state():
+        return (dict(rates), dict(anchors), dict(deadlines))
+
+    def observe_open(path, mode_name="r", *args, **options):
+        if "a" in mode_name or "w" in mode_name:
+            writes.append({"at": clock[0], "path": os.path.basename(path), "state": state()})
+        return real_open(path, mode_name, *args, **options)
+
+    def observe_probe(*args):
+        probes.append(state())
+        return []
+
+    def sleep(seconds):
+        waits.append({"at": clock[0], "seconds": seconds})
+        clock[0] += seconds
+
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
+        stack.enter_context(patch.object(snapshot, "OUT_DIR", os.path.join(tmp, "archive")))
+        stack.enter_context(patch.object(fetcher, "CACHE_DIR", os.path.join(tmp, "cache")))
+        stack.enter_context(patch.object(fetcher, "_RATE", rates))
+        stack.enter_context(patch.object(fetcher, "_SNAPSHOT_COMPLETION", anchors))
+        stack.enter_context(patch.object(fetcher, "_SNAPSHOT_DEADLINE", deadlines, create=True))
+        stack.enter_context(patch.object(fetcher, "_last_hit", {}))
+        stack.enter_context(patch.object(fetcher, "_ACCESS_LOG", {"engine": set(), "label": set()}))
+        stack.enter_context(patch.object(fetcher, "_SNAPSHOT_RESOLVER", fetcher._SnapshotResolver()))
+        stack.enter_context(patch.object(socket, "socket", lambda *a, **kw: Socket()))
+        stack.enter_context(patch.object(socket, "create_connection", lambda *a, timeout=25, **kw: Socket(timeout)))
+        stack.enter_context(patch.object(socket, "getaddrinfo", side_effect=dns))
+        stack.enter_context(patch.object(ssl.SSLContext, "wrap_socket", tls))
+        stack.enter_context(patch.object(ssl, "_create_default_https_context",
+                                        return_value=ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)))
+        stack.enter_context(patch.object(urllib.request, "getproxies", return_value={}))
+        stack.enter_context(patch.object(urllib.request, "urlopen", side_effect=opener.open))
+        stack.enter_context(patch.object(threading, "Event", Event))
+        stack.enter_context(patch.object(threading, "Thread", Thread))
+        stack.enter_context(patch.object(fetcher.time, "time", lambda: 1000 + clock[0]))
+        stack.enter_context(patch.object(fetcher.time, "monotonic", lambda: clock[0]))
+        stack.enter_context(patch.object(fetcher.time, "sleep", sleep))
+        stack.enter_context(patch.object(snapshot, "datetime", Clock))
+        stack.enter_context(patch.object(snapshot, "fetch_json", side_effect=observe_fetch))
+        stack.enter_context(patch.object(snapshot, "collect", side_effect=observe_collect))
+        stack.enter_context(patch.object(snapshot.io, "open", side_effect=observe_open))
+        stack.enter_context(patch.object(snapshot, "probe_sellability", side_effect=observe_probe))
+        stack.enter_context(patch.object(snapshot.sys, "argv", ["snapshot.py"] + args))
+        url = "https://%s/api/v2/networks/eth/new_pools?page=1" % host
+        with redirect_stdout(stream), redirect_stderr(stream):
+            if operation == "cached":
+                os.makedirs(fetcher.CACHE_DIR)
+                path = os.path.join(fetcher.CACHE_DIR, hashlib.sha256(url.encode()).hexdigest()[:40] + ".json")
+                with real_open(path, "w", encoding="utf-8") as fh:
+                    json.dump({"url": url, "data": {"fixture_cached": True}}, fh)
+                code = real_fetch(url, "label", use_cache=True, write_cache=False, absolute_timeout=True)
+            elif operation in ("ordinary", "other-host", "fetch"):
+                if operation == "other-host":
+                    url = url.replace(host, "api.dexscreener.com")
+                diagnostics = {}
+                code = real_fetch(url, "label", retries=1 if operation == "fetch" else 0,
+                                  timeout=10, use_cache=False, write_cache=False,
+                                  absolute_timeout=operation != "ordinary", diagnostics=diagnostics)
+                calls.append({"diagnostics": diagnostics})
+            elif operation == "import":
+                import runpy
+                runpy.run_path(snapshot.__file__, run_name="collection_budget_import")
+            else:
+                try:
+                    code = snapshot.main()
+                except BaseException as exc:
+                    raised = type(exc).__name__
+                    code = exc.code if isinstance(exc, SystemExit) else None
+        persisted = {}
+        files = sorted(os.listdir(snapshot.OUT_DIR)) if os.path.isdir(snapshot.OUT_DIR) else []
+        for name in files:
+            with real_open(os.path.join(snapshot.OUT_DIR, name), encoding="utf-8") as fh:
+                persisted[name.split("-", 1)[0]] = [json.loads(line) for line in fh if line.strip()]
+    return {"code": code, "raised": raised, "output": stream.getvalue(), "http": http,
+            "calls": calls, "result": result, "end": clock[0], "writes": writes, "probes": probes,
+            "waits": waits, "persisted": persisted, "args": args,
+            "initial_state": (initial_rates, initial_anchors, initial_deadlines), "state": state(),
+            "deadline_changes": deadlines.changes, "anchor_changes": anchors.changes}
+
+
+def test_request_gap_collection_budget_preserves_the_full_scheduled_prefix_before_job_cutoff():
+    print("\n[collection budget] the full scheduled command preserves slow-retry observations on time")
+    for setup in ("dns", "tls"):
+        replay = _collection_budget_cli_replay(setup)
+        rows, _, manifest = replay["result"]
+        http, writes = replay["http"], replay["writes"]
+        check(setup + " exercises the actual eight-chain, forty-eight-page scheduled arguments",
+              replay["args"] == ["--pages", "5", "--sellability", "0", "--request-gap", "12.1"]
+              and len(manifest) == 48 and len({m["chain"] for m in manifest}) == 8)
+        check(setup + " preserves a successful prefix and incomplete manifest before the 1500-second cutoff",
+              replay["code"] == 1 and 0 < len(rows) < 40 and writes
+              and min(w["at"] for w in writes) < 1500 and replay["end"] <= 1200.000001,
+              "end=%s writes=%s rows=%s" % (replay["end"], [w["at"] for w in writes], len(rows)))
+        check(setup + " stops real HTTP sends at the opt-in monotonic collection deadline",
+              2 < len(http) < 96 and all(h["start"] < 1200 and
+              h["deadlines"].get("api.geckoterminal.com") == 1200 for h in http))
+        check(setup + " initial failures really retry before successful pages without extending IO",
+              [h["status"] for h in http[:4]] == [429, 200, 429, 200]
+              and all(0 < h["io_remaining"] <= 1.000001 for h in http)
+              and all(c["options"]["timeout"] <= 10 and c["options"]["absolute_timeout"]
+              and c["options"]["retries"] == (0 if "deadline" in c["options"] else 1)
+              for c in replay["calls"]))
+        check(setup + " retains the earlier completion-anchored minimum gap on actual stdlib sends",
+              all(b["start"] - a["start"] >= 12.1 - 0.000001 for a, b in zip(http, http[1:])))
+        check(setup + " stores exactly its observed rows and a valid honest gap manifest",
+              replay["persisted"].get("pools") == rows and replay["persisted"].get("runs") == manifest
+              and snapshot._coverage(manifest)[2] > 0
+              and not snapshot._coverage(manifest)[3].get("manifest_invalid")
+              and any(m.get("recovery_outcome") == "budget_exhausted" for m in manifest)
+              and all(m["outcome"] != "end_of_listing" for m in manifest
+                      if m["initial_outcome"] in ("fetch_failed", "skipped")))
+        check(setup + " restores all scoped state before writing and skips optional work",
+              replay["state"] == replay["initial_state"] and not replay["probes"]
+              and all(w["state"] == replay["initial_state"] for w in writes))
+
+
+def test_request_gap_collection_budget_bounds_retry_waits_and_remaining_real_io():
+    print("\n[collection budget] the real fetcher bounds setup, body and retry waits by remaining time")
+    for label, setup, mode, deadline in (("TLS", "tls", "ok", 5.0),
+                                        ("body", "none", "body-cutoff", 5.0),
+                                        ("retry", "none", "retry", 2.0)):
+        replay = _collection_budget_cli_replay(setup, mode, prior_deadline=deadline,
+                                               absent=True, operation="fetch")
+        diagnostic = replay["calls"][-1]["diagnostics"]
+        check(label + " fails at the scoped deadline without a late HTTP attempt or unbounded retry wait",
+              replay["code"] is None and replay["end"] <= deadline + 0.000001
+              and diagnostic.get("error") == "budget_exhausted"
+              and all(h["start"] < deadline for h in replay["http"]), str(diagnostic))
+        check(label + " retains at most one original IO attempt and leaves external configuration unchanged",
+              diagnostic.get("attempts") == 1 and len(replay["http"]) <= 1
+              and replay["state"] == replay["initial_state"] and not replay["deadline_changes"])
+    replay = _collection_budget_cli_replay("dns", "all-fail")
+    recovery = [c for c in replay["calls"] if "deadline" in c["options"]]
+    check("the independent recovery stage still has its ninety-second and twelve-call limits",
+          recovery and len(recovery) <= 12 and abs(recovery[0]["options"]["deadline"] -
+          recovery[0]["start"] - 90) < 0.000001
+          and replay["end"] - recovery[0]["start"] <= 90.000001
+          and all(c["options"]["retries"] == 0 and c["options"]["timeout"] <= 10 for c in recovery))
+
+
+def test_request_gap_collection_budget_restores_existing_absent_and_interrupted_state():
+    print("\n[collection budget] deadlines restore with rates and anchors on every exit path")
+    for mode, setup, absent in (("ok", "none", False), ("retry", "dns", True),
+                                ("interrupt", "dns", False), ("interrupt", "tls", True)):
+        replay = _collection_budget_cli_replay(setup, mode, prior_deadline=None if absent else 4500.0,
+                                               absent=absent, optional=True, start=37.0)
+        check(mode + " restores exact prior deadline presence/value with existing pacing state",
+              replay["state"] == replay["initial_state"] and replay["deadline_changes"]
+              and replay["deadline_changes"][0] == ("api.geckoterminal.com", 1237.0)
+              and all(host == "api.geckoterminal.com" for host, _ in replay["deadline_changes"]))
+        if mode == "interrupt":
+            check("an interrupted HTTP send restores state before propagating without preservation or probing",
+                  replay["raised"] == "KeyboardInterrupt" and not replay["writes"] and not replay["probes"])
+        else:
+            check(mode + " writes only after restoring all temporary maps and observes the optional-work rule",
+                  replay["writes"] and all(w["state"] == replay["initial_state"] for w in replay["writes"])
+                  and (replay["code"] == 0 and replay["probes"] == [replay["initial_state"]]
+                       if mode == "ok" else replay["code"] == 1 and not replay["probes"]))
+
+
+def test_request_gap_collection_budget_is_noop_for_unset_cached_and_noncollection_calls():
+    print("\n[collection budget] ordinary, cached and noncollection callers retain their contract")
+    for operation in ("unset", "cached", "ordinary", "other-host", "import", "coverage", "sellability"):
+        replay = _collection_budget_cli_replay("none", "ok", operation=operation,
+                                               prior_deadline=None if operation == "unset" else -1.0)
+        check(operation + " never changes a collection deadline or any caller's previous scope",
+              replay["state"] == replay["initial_state"] and not replay["deadline_changes"])
+        if operation in ("ordinary", "other-host"):
+            check(operation + " can fetch despite an unrelated expired collection deadline",
+                  isinstance(replay["code"], dict) and len(replay["http"]) == 1)
+        elif operation == "unset":
+            check("an unset collection still completes its full plan with no temporary deadline",
+                  replay["code"] == 0 and len(replay["http"]) == 48)
+        else:
+            check(operation + " performs no HTTP request or pacing wait",
+                  not replay["http"] and not replay["waits"])
+
+
 def main():
     print("=" * 68)
     print("Sellability archive: asking on the day, because later is too late")
