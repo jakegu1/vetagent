@@ -131,7 +131,7 @@ Rounded = parked by you. Hexagons are not work items -- they are what a row is w
 | Maturity score | 46 / 100 (`docs/SCORECARD.md`) |
 | Tokens measured | 576 |
 | False positives | 3.1% -- we called a healthy token dangerous |
-| Answers we refuse | 21.2% -- `unknown`, on purpose |
+| Answers we refuse | 20.8% -- `unknown`, on purpose |
 | Dead tokens we rated high | 10.0% -- our worst number, published first |
 | Round in progress | R23: A numbers audit, checked before it was believed |
 
@@ -149,16 +149,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- lead: record integrated release checks and real snapshot gaps
-- lead: record independently reviewed Solana release
-- lead: record independent snapshot release approval
-- lead: record authorized snapshot release and frozen review history
-- T-016: named change (b) re-freeze the upstream contract baseline
-- T-020: bound whole snapshot HTTP attempts and recovery deadlines
-- T-016: named change (a) coverage matrix reads the key the engine writes
-- T-016: exclude Solana pool vaults from holder concentration
+- T-019: re-measure the benchmark on the filled cache at the pinned clock
+- lead: require snapshot preservation before workflow timeout
+- lead: record reviewed replay integration and pending pacing repair
+- lead: require real request gaps despite connection delays
+- lead: require tested fill integrity and URL validation fixes
+- T-011: reject malformed fill URL ports before fetching
+- T-011: named change (c) test malformed fill URL ports before work
+- T-011: require usable cache records before completing a fill
 
-_4 more not shown (12 commits in total)._
+_19 more not shown (27 commits in total)._
 
 ## What I got wrong
 
@@ -298,7 +298,7 @@ python tools/owner.py --write   # regenerate this page
 
 **A gate** -- A date with a question and a rule, written down BEFORE the date. On the day, the rule is read and it decides what happens next. The point is that the rule cannot be argued with afterwards. This project has four.
 
-**`unknown`** -- A verdict that means 'a check I needed could not run'. It is not 'low risk' and it is not a bug -- it is the product refusing to guess. 21.2% of answers are this.
+**`unknown`** -- A verdict that means 'a check I needed could not run'. It is not 'low risk' and it is not a bug -- it is the product refusing to guess. 20.8% of answers are this.
 
 **Fail-closed** -- When something breaks, answer 'I don't know' rather than 'looks fine'. A safety tool that guesses optimistically when it is broken is worse than no tool.
 

@@ -298,7 +298,7 @@ Base.</p>
 <tr><th>Measure</th><th>Result</th></tr>
 <tr><td>Healthy tokens rated high (false positives)</td><td class="num">3.1% (5 of 162)</td></tr>
 <tr><td>Liquid healthy tokens rated medium or high (false blocks)</td><td class="num">13.0% (20 of 154)</td></tr>
-<tr><td>Answers returned as unknown</td><td class="num">21.2% (122 of 576)</td></tr>
+<tr><td>Answers returned as unknown</td><td class="num">20.8% (120 of 576)</td></tr>
 <tr><td>Confirmed-dead tokens not rated low</td><td class="num">86.7% (26 of 30)</td></tr>
 <tr><td>Confirmed-dead tokens rated high</td><td class="num">10.0% (3 of 30)</td></tr>
 <tr><td>Adversarial contracts rated high</td><td class="num">58.8% (10 of 17)</td></tr>
@@ -340,7 +340,7 @@ flatter a row.</p>
 $0 or under a dollar, and 30 of those 31 are not high on contract signals only; 4 more have no depth
 figure at all. USDT and WBTC themselves are rated low (4 of 4 benchmark rows).</p>
 <p>Across the 246 benchmark tokens holding $100,000 or more -- the 154 in the false-block row plus 92
-others -- 156 are low, 53 unknown and 37 medium or high. On contract signals only it is 176 low, 53 unknown
+others -- 158 are low, 51 unknown and 37 medium or high. On contract signals only it is 178 low, 51 unknown
 and 17 medium or high: the 20 that move to low all have a pool-age or lifecycle flag as their driver
 (20 of 20), and 13 of the 37 medium-or-high answers are honeypot verdicts, which contract signals keep.
 These are the benchmark's tokens, not the tokens callers ask about, and live answers are
