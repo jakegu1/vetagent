@@ -9,8 +9,9 @@
 
 T-016 is deployed and verified. T-020 is published; its real manual pass preserved data,
 recovered missing rows and correctly failed remaining coverage gaps caused by observed
-HTTP 429 responses. A slower-pacing measurement runs separately without production writes.
-T-011 now implements deterministic benchmark replay on the reviewed release base.
+HTTP 429 responses. A slower-pacing experiment recorded 672 pool rows with zero gaps;
+T-022 prepares that measured interval for scheduled collection. Scheduled verification
+is still pending. T-011 implements deterministic benchmark replay on the reviewed base.
 Execution permissions now work. Autonomy remains A1; this authorization covers the reviewed
 technical release. Experiment D and the 2026-10-16 product gate retain their existing rules.
 

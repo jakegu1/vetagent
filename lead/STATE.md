@@ -49,8 +49,8 @@ technical repair release.
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
 | T-020 | 3 | master at 5bb391f | Published; manual run preserved data and correctly failed incomplete coverage | Codex lead | Investigate observed HTTP 429 gaps; verify scheduled execution before done; retain DNS test follow-up |
-| T-016 | 2 | master at c18de92 | Deployed; source, live contract and production checks passed | Codex lead | Close the task in release bookkeeping; retain scoped-out upstream guard follow-ups |
-| T-011 | 2 | codex/t011-benchmark-replay | Next executor task on the published release base | Executor | Historical clock confirmation, tests-first implementation, thirty-step baseline plus new acceptance; no real fetch or fill |
+| T-011 | 2 | codex/t011-benchmark-replay | Tests-first implementation; final executor evidence pending | Executor | Complete mutants and READY, then fresh independent review; no real fetch or fill |
+| T-022 | 3 | codex/t022-snapshot-pacing | Slower-pacing follow-up specced from actual complete pass | Executor | Additive tests first, preserve original limits, then independent and red-team reviews |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
 permissions and explicitly asked to continue on 2026-10-11. This covers reviewed technical
@@ -65,6 +65,13 @@ observed listing ends. These counts were independently read from the committed p
 429 is now observed; shared-egress or provider capacity as its backend cause remains an
 inference. The existing GitHub repository has Cloudflare credentials, but no CoinGecko key
 secret. Do not present incomplete coverage as restored collection or silently add a paid source.
+
+Read-only slower-pacing experiment 38140061977 completed with forty HTTP 200 responses,
+672 independently counted pool rows and zero gaps across all eight chains. Its forty
+manifest entries contain thirty-seven successful pages and three observed listing ends.
+T-022 uses its measured 12.1-second interval in scheduled pool collection without changing
+ordinary fetcher defaults, recovery budgets or the coverage rule. This is one measured
+pass; scheduled reliability remains to be observed. T-016 is closed after verified deployment.
 
 ## Waiting on the Owner
 

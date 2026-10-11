@@ -35,7 +35,9 @@ A disposable read-only branch experiment measures the unchanged collector with s
 request pacing on a GitHub runner, without repository writes or a new scheduler:
 https://github.com/jakegu1/vetagent/actions/runs/38140061977. This is a hypothesis test,
 not a deployed pacing change or a claim that slower requests resolve shared-egress limits.
-Retain its actual rows and manifest before choosing a follow-up. The original recovery
+The saved data independently confirms 672 pool rows, forty HTTP 200 pages and zero gaps.
+T-022 now prepares the measured 12.1-second interval for scheduled pool collection.
+Retain its actual rows and manifest during integration. The original recovery
 limits and final coverage gate are unchanged. The minor registered DNS-fixture follow-up
 also remains, supported by independent fresh-budget pending-worker probes.
 
