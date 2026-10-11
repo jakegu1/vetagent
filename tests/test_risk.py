@@ -5819,6 +5819,198 @@ def test_every_data_gap_declares_which_of_three_things_it_is():
           "scenario" % sorted(set(calls) - reached))
 
 
+def _pool_id_assessment(pool, sellers=30, failed=36, holders=400, honeypot=True,
+                        sim_failed=False, broad_pool=False, keyed=False,
+                        present_sellers=None, verbose=True):
+    """Record the complete assessment with exact full-id pool routing and no network."""
+    pair = {"chainId": "ethereum", "dexId": "uniswap",
+            "baseToken": {"address": WETH, "symbol": "TKN"},
+            "quoteToken": {"address": "0xq"}, "priceUsd": "1.0",
+            "liquidity": {"usd": 60_000}, "volume": {"h24": 60_000},
+            "txns": {"h24": {"buys": 100, "sells": 40}},
+            "pairCreatedAt": 1589841515000}
+    if pool is not None:
+        pair["pairAddress"] = pool
+    if present_sellers is not None:
+        pair["traders"] = {"h24": {"sellers": present_sellers}}
+    hp = json.loads(json.dumps(_load("hp_matic.json")))
+    hp["honeypotResult"] = {"isHoneypot": honeypot, "honeypotReason": "HONEYPOT DETECTED"}
+    if honeypot is True:
+        hp["summary"] = {"risk": "honeypot", "riskLevel": 100,
+                         "flags": [{"flag": "medium_fail_rate", "description": "medium_fail_rate",
+                                    "severity": "high"}]}
+        hp["holderAnalysis"] = {"holders": str(holders), "failed": str(failed),
+                                "siphoned": "0", "successful": str(holders - failed)}
+    if sim_failed:
+        hp["simulationSuccess"] = False
+        hp["simulationError"] = 'execution reverted: "revert: HP: BUY_FAILED"'
+    answer = (None if sellers is None else
+              {"data": {"attributes": {"transactions": {"h24": {"sellers": sellers}}}}})
+    seen = []
+
+    async def _stub(url, *args, **kwargs):
+        seen.append((url, kwargs.get("headers") or {}))
+        if "dex/tokens" in url:
+            return {"pairs": [pair]}
+        if "honeypot.is" in url:
+            return hp
+        if "/pools/" in url and (broad_pool or url.endswith("/" + str(pool))):
+            return answer
+        return None
+
+    saved_key = risk._onchain_key()
+    try:
+        risk.configure(types_ns(CG_DEMO_KEY="CG-test-demo-key") if keyed else types_ns())
+        risk._fetch_json = _stub
+        result = run(risk.assess(WETH, chain_hint="ethereum", verbose=verbose))
+        return result, seen
+    finally:
+        risk.configure(types_ns(CG_DEMO_KEY=saved_key) if saved_key else types_ns())
+
+
+def test_pool_identifier_full_id_and_case_reach_only_existing_lookup_paths():
+    print("\n[pool id] raw V4 ids and checksummed addresses reach the existing routes")
+    full = "0x" + "ab" * 32
+    mixed = "0xAbCdEf0123456789aBcDeF0123456789AbCdEf01"
+    gt_root = "https://api.geckoterminal.com/api/v2/networks/eth/pools/"
+    cg_root = "https://api.coingecko.com/api/v3/onchain/networks/eth/pools/"
+    for label, pool in (("V4", full), ("checksummed", mixed)):
+        result, seen = _pool_id_assessment(pool)
+        urls = [u for u, _ in seen]
+        pools = [u for u in urls if "/pools/" in u]
+        check(label + " seller lookup carries the exact id", pools == [gt_root + pool], str(pools))
+        check(label + " no request uses a display truncation", not any("..." in u for u in urls), str(urls))
+        check(label + " spends one keyless seller request", len(pools) == 1, str(pools))
+
+        result, seen = _pool_id_assessment(pool, sellers=None, keyed=True)
+        pools = [u for u, _ in seen if "/pools/" in u]
+        check(label + " seller lookup tries the keyed source first",
+              pools == [cg_root + pool, gt_root + pool], str(pools))
+        check(label + " spends at most one seller request per source",
+              len(pools) == 2 and len(set(pools)) == 2, str(pools))
+        check(label + " keyed lookup still uses its Demo header",
+              any(u == cg_root + pool and h.get("x-cg-demo-api-key") == "CG-test-demo-key"
+                  for u, h in seen), str(seen))
+
+        result, seen = _pool_id_assessment(pool, honeypot=False, sim_failed=True)
+        retries = [u for u, _ in seen if "&pair=" in u]
+        expected = ([] if pool == full else
+                    ["https://api.honeypot.is/v2/IsHoneypot?address=" + WETH.lower()
+                     + "&chainID=1&pair=" + pool])
+        check(label + " simulator retry keeps its existing address-only contract",
+              retries == expected, str(retries))
+
+    for label, args in (("clean", {"honeypot": False}),
+                        ("not true", {"honeypot": "true"}),
+                        ("count already present", {"present_sellers": 30})):
+        result, seen = _pool_id_assessment(full, **args)
+        check(label + " path spends no seller request",
+              not any("/pools/" in u for u, _ in seen), str(seen))
+    result, seen = _pool_id_assessment(full, failed=195, holders=623)
+    check("fatal holder band still asks on the same seller path",
+          len([u for u, _ in seen if "/pools/" in u]) == 1, str(seen))
+
+
+def test_pool_identifier_contested_v4_verdict_uses_the_existing_bands():
+    print("\n[pool id] full-id counts settle contested verdicts under the existing bands")
+    pool = "0x" + "ab" * 32
+    result, seen = _pool_id_assessment(pool, sellers=30)
+    hp = [s for s in result["signals"] if s["category"] == "honeypot"]
+    gaps = result["evidence"].get("data_gaps") or []
+    check("V4 thirty sellers settle at medium", result["risk_level"] == "medium", result["risk_level"])
+    check("V4 thirty sellers produce the existing contested warning",
+          any(s["severity"] == "warn" and s["name"] == "Upstream calls this a honeypot, the chain disagrees"
+              for s in hp), str(hp))
+    check("V4 settled count removes the distinct-seller gap",
+          not any("distinct-seller" in g.get("reason", "") for g in gaps), str(gaps))
+    check("V4 settled count removes the retry sentence",
+          not any("Retrying shortly" in s["message"] for s in result["signals"]), str(hp))
+    check("V4 evidence contains the fetched count",
+          result["evidence"]["best_pair"]["sellers_24h"] == 30, str(result["evidence"]["best_pair"]))
+
+    result, seen = _pool_id_assessment(pool, sellers=3)
+    check("V4 three sellers keep a high verdict", result["risk_level"] == "high", result["risk_level"])
+    check("V4 three sellers keep the fatal honeypot signal",
+          any(s["category"] == "honeypot" and s["severity"] == "fatal" and s["name"] == "Honeypot"
+              for s in result["signals"]), str(result["signals"]))
+
+    result, seen = _pool_id_assessment(pool, sellers=117, failed=4, holders=688)
+    hp = [s for s in result["signals"] if s["category"] == "honeypot"]
+    release = ((result["evidence"].get("honeypot") or {}).get("contradicted_by_chain") or {})
+    check("V4 low holder share is released to info", hp and all(s["severity"] == "info" for s in hp), str(hp))
+    check("V4 release sentence retains its measured holder and seller counts",
+          hp and "4 of the 688 holders" in hp[0]["message"] and "117 distinct sellers" in hp[0]["message"], str(hp))
+    check("V4 holder-share release is recorded", release.get("released_by_holder_share") is True, str(release))
+    check("V4 holder-share release is no longer unknown", result["risk_level"] != "unknown", result["risk_level"])
+
+    result, seen = _pool_id_assessment(pool, sellers=500, failed=195, holders=623)
+    check("V4 fatal holder share never moves down", result["risk_level"] == "high", result["risk_level"])
+    check("V4 fatal holder share remains fatal regardless of sellers",
+          any(s["category"] == "honeypot" and s["severity"] == "fatal" for s in result["signals"]), str(result["signals"]))
+    result, seen = _pool_id_assessment(pool, sellers=None)
+    gaps = result["evidence"].get("data_gaps") or []
+    check("V4 missing count remains unknown", result["risk_level"] == "unknown", result["risk_level"])
+    check("V4 missing count retains today's upstream contested gap",
+          any(g.get("reason", "").startswith("upstream request failed")
+              and "distinct-seller" in g["reason"] for g in gaps), str(gaps))
+
+
+def test_pool_identifier_invalid_strings_never_reach_an_upstream_lookup():
+    print("\n[pool id] malformed text cannot become a pool or simulator query")
+    address = "0x" + "ab" * 20
+    full = "0x" + "ab" * 32
+    cases = [("63 hex", "0x" + "a" * 63), ("65 hex", "0x" + "a" * 65),
+             ("non-hex g", "0x" + "a" * 39 + "g"),
+             ("query injection", "0x" + "a" * 38 + "&x"),
+             ("underscore", "0x" + "a" * 20 + "_" + "a" * 19),
+             ("non-ASCII digit", "0x" + "a" * 39 + chr(0x0661)),
+             ("display truncation", full[:48] + "..."),
+             ("path suffix", address + "/../tokens"),
+             ("query suffix", address + "?"), ("fragment suffix", address + "#"),
+             ("trailing space", address + " "), ("trailing newline", address + chr(10)),
+             ("leading space", " " + address), ("overlong", "0x" + "a" * 4000),
+             ("empty", ""), ("missing", None)]
+    for label, pool in cases:
+        result, seen = _pool_id_assessment(pool, broad_pool=True)
+        pools = [u for u, _ in seen if "/pools/" in u]
+        gaps = result["evidence"].get("data_gaps") or []
+        check(label + " sends no seller lookup", not pools, str(pools))
+        check(label + " cannot settle a contested verdict", result["risk_level"] == "unknown", result["risk_level"])
+        check(label + " retains the distinct-seller gap",
+              any(g.get("reason", "").startswith("upstream request failed")
+                  and "distinct-seller" in g["reason"] for g in gaps), str(gaps))
+        result, seen = _pool_id_assessment(pool, honeypot=False, sim_failed=True)
+        retries = [u for u, _ in seen if "&pair=" in u]
+        check(label + " sends no simulator pair retry", not retries, str(retries))
+
+
+def test_pool_identifier_rendering_and_disclosure_stay_unchanged():
+    print("\n[pool id] display budgets and answer keys remain unchanged")
+    full = "0x" + "ab" * 32
+    mixed = "0xAbCdEf0123456789aBcDeF0123456789AbCdEf01"
+    keys = {"buys_24h", "chain", "dex", "liquidity_usd", "pair_address", "pair_created_at",
+            "price_usd", "sellers_24h", "sells_24h", "volume_24h_usd"}
+    for label, pool in (("V4", full), ("checksummed", mixed)):
+        for clean in (False, True):
+            tag = label + (" clean" if clean else " contested")
+            verbose, seen = _pool_id_assessment(pool, honeypot=not clean)
+            slim, seen = _pool_id_assessment(pool, honeypot=not clean, verbose=False)
+            rendered = full[:48] + "..." if pool == full else pool
+            check(tag + " verbose pool rendering is unchanged",
+                  verbose["evidence"]["best_pair"]["pair_address"] == rendered,
+                  str(verbose["evidence"]["best_pair"]))
+            check(tag + " verbose best_pair has exactly ten existing keys",
+                  set(verbose["evidence"]["best_pair"]) == keys, str(verbose["evidence"]["best_pair"]))
+            check(tag + " slim best_pair has exactly nine existing keys",
+                  set(slim["evidence"]["best_pair"]) == keys - {"pair_address"}, str(slim["evidence"]["best_pair"]))
+            if pool == full:
+                check(tag + " full id is absent from the verbose answer", full not in json.dumps(verbose), "raw id leaked")
+                check(tag + " full id is absent from the slim answer", full not in json.dumps(slim), "raw id leaked")
+                check(tag + " full id is absent from all gap reasons",
+                      all(full not in g.get("reason", "")
+                          for r in (verbose, slim) for g in r["evidence"].get("data_gaps") or []), "raw id leaked")
+
+
 # ---------------------------------------------------------------- main
 
 def main():
