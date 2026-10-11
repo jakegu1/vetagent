@@ -73,8 +73,8 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 
 | Metric | Value |
 |---|---|
-| Verdict distribution | high=75, low=178, medium=207, unknown=116 |
-| unknown rate | 20.1% |
+| Verdict distribution | high=72, low=178, medium=207, unknown=119 |
+| unknown rate | 20.7% |
 | Share with a data gap | 23.6% |
 
 > Read the unknown rate next to recall. A tool that answers unknown for everything has perfect recall and is useless.
@@ -89,7 +89,7 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **dead** | 30 | 10.0% | 46.7% | 13.3% | 40.0% | 35.4 |
-| **alive** | 162 | 3.1% | 21.0% | 66.0% | 13.0% | 12.0 |
+| **alive** | 162 | 1.9% | 19.8% | 66.0% | 14.2% | 11.6 |
 
 ### Contract-safety signals only (ablated)
 
@@ -116,7 +116,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 17 | 58.8% | 94.1% | 0.0% | 5.9% | 76.1 |
-| **safe** | 349 | 6.0% | 41.8% | 33.5% | 24.6% | 25.7 |
+| **safe** | 349 | 5.7% | 41.5% | 33.5% | 24.9% | 25.6 |
 
 ### Contract-safety signals only (ablated)
 
@@ -152,7 +152,7 @@ This bucket answers one question: **does the engine paint them all as high risk.
 
 | n | high rate | Verdict distribution |
 |---|---|---|
-| 179 | 22.3% | high=40, low=48, medium=71, unknown=20 |
+| 179 | 21.2% | high=38, low=48, medium=71, unknown=22 |
 
 Examples: HYDX(low), CP(unknown), TOSHE(medium), Onyxcoin XCN Kendu(high), SAGE Free(medium), Core Keeper Overnight(medium), VIRTUAL(low), Crypto Carbon Verse(high), ?(medium), BIO(low)
 
@@ -193,9 +193,9 @@ The false-positive rate depends on who is asked what a 'healthy token' is, and t
 
 | Oracle | What it actually measures | Independent of us? | Cohort | FP rate |
 |---|---|---|---|---|
-| realized market outcome | what happened to the money | **yes** -- built from price/volume history, not from any contract scanner | `alive`, n=162 | **3.1%** (5) |
-| GoPlus | what the contract does under simulation | **no** -- GoPlus is this benchmark's own labeller, so this is a disagreement rate | `safe`, n=349 | 6.0% (21) |
-| both, intersected | passes on both instruments | strictest available | n=95 | 2.1% (2) |
+| realized market outcome | what happened to the money | **yes** -- built from price/volume history, not from any contract scanner | `alive`, n=162 | **1.9%** (3) |
+| GoPlus | what the contract does under simulation | **no** -- GoPlus is this benchmark's own labeller, so this is a disagreement rate | `safe`, n=349 | 5.7% (20) |
+| both, intersected | passes on both instruments | strictest available | n=95 | 1.1% (1) |
 
 **Read it this way.** The outcome-based rate is the one to trust on method: market outcome is causally independent of every contract scanner, so it cannot be circular. Its weakness is population -- `alive` requires 90 days of history and real weekly volume, so freshness signals cannot fire on those tokens and liquidity rarely does, while agents mostly ask about tokens younger than that.
 
@@ -214,7 +214,7 @@ An `unknown` because we could not reach an upstream is a different thing from an
 | | n | share of all 576 |
 |---|---|---|
 | unknown, our side (upstream unreachable or uncovered) | 2 | 0.3% |
-| unknown, token side (nothing verifiable about it) | 114 | 19.8% |
+| unknown, token side (nothing verifiable about it) | 117 | 20.3% |
 
 
 ## What the sample is made of
@@ -256,7 +256,7 @@ Samples where the label and the engine disagree. Read the **false negatives** (l
 | false positive | `\u6211\u7684\u5973\u53cb\u666f\u751c` | base | goplus=safe | high | unknown | liquidity |
 | false positive | `CLAWD` | base | goplus=safe | high | unknown | impersonation |
 
-(10 more in `results.json`)
+(7 more in `results.json`)
 
 
 ### Counted as false positives, but outside the labeller's reach
