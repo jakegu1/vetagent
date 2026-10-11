@@ -71,7 +71,7 @@ def endpoint_of(url):
     return "%s/%s" % (u.netloc, "/".join(parts))
 
 
-def _throttle(url):
+def _throttle(url, deadline=None):
     from urllib.parse import urlparse
     host = urlparse(url).netloc
     gap = _RATE.get(host, 0.3)
@@ -79,22 +79,31 @@ def _throttle(url):
         last = _last_hit.get(host, 0.0)
         wait = gap - (time.time() - last)
         if wait > 0:
+            if deadline is not None and wait >= deadline - time.monotonic():
+                return False
             time.sleep(wait)
         _last_hit[host] = time.time()
+    return True
 
 
 def fetch_json(url, role, retries=2, timeout=25, use_cache=True,
-               mark_missing=False, write_cache=True):
+               mark_missing=False, write_cache=True, diagnostics=None, deadline=None):
     """Fetch JSON. role must be "engine" or "label", for provenance accounting.
 
     Returns a dict/list on success, None on a failed fetch — the same contract as
     risk._fetch_json, so the engine behaves identically when it runs the benchmark.
+    Optional diagnostics contain only status, a fixed error category and attempt count.
+    A monotonic deadline bounds live recovery calls, including throttle time.
     """
     assert role in ("engine", "label"), role
+    if diagnostics is not None:
+        diagnostics.clear()
+        diagnostics.update(status=None, error=None, attempts=0)
     with _LOCK:
         _ACCESS_LOG[role].add(endpoint_of(url))
 
-    os.makedirs(CACHE_DIR, exist_ok=True)
+    if use_cache or write_cache:
+        os.makedirs(CACHE_DIR, exist_ok=True)
     key = hashlib.sha256(url.encode()).hexdigest()[:40]
     path = os.path.join(CACHE_DIR, key + ".json")
     if use_cache and os.path.exists(path):
@@ -108,16 +117,37 @@ def fetch_json(url, role, retries=2, timeout=25, use_cache=True,
     data = None
     for attempt in range(retries + 1):
         try:
-            _throttle(url)
+            if deadline is None:
+                _throttle(url)
+                attempt_timeout = timeout
+            else:
+                if (_throttle(url, deadline=deadline) is False
+                        or deadline <= time.monotonic()):
+                    if diagnostics is not None:
+                        diagnostics.update(error="budget_exhausted")
+                    break
+                attempt_timeout = min(timeout, deadline - time.monotonic())
+            if diagnostics is not None:
+                diagnostics.update(status=None, error=None, attempts=attempt + 1)
             req = urllib.request.Request(url, headers={"Accept": "application/json",
                                                        "User-Agent": UA})
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
+            with urllib.request.urlopen(req, timeout=attempt_timeout) as resp:
+                if diagnostics is not None:
+                    diagnostics["status"] = (resp.status if type(resp.status) is int
+                                             and 100 <= resp.status <= 599 else None)
                 if resp.status == 200:
                     body = resp.read().decode("utf-8", "replace")
                     if body:
                         data = json.loads(body)
                         break
+                    if diagnostics is not None:
+                        diagnostics["error"] = "empty_body"
+                elif diagnostics is not None:
+                    diagnostics["error"] = "http"
         except urllib.error.HTTPError as e:
+            if diagnostics is not None:
+                diagnostics.update(status=e.code if type(e.code) is int
+                                   and 100 <= e.code <= 599 else None, error="http")
             if e.code == 429 and attempt < retries:
                 time.sleep(3.0 * (attempt + 1))
                 continue
@@ -125,8 +155,17 @@ def fetch_json(url, role, retries=2, timeout=25, use_cache=True,
                 return NOT_FOUND   # upstream has no record; not the same as unreachable
             if 400 <= e.code < 500 and e.code != 429:
                 break  # retrying a 4xx gets you nothing
+        except (TimeoutError, urllib.error.URLError) as e:
+            if diagnostics is not None:
+                timeout_error = isinstance(e, TimeoutError) or isinstance(
+                    getattr(e, "reason", None), TimeoutError)
+                diagnostics["error"] = "timeout" if timeout_error else "network"
+        except ValueError:
+            if diagnostics is not None:
+                diagnostics["error"] = "invalid_json"
         except Exception:
-            pass
+            if diagnostics is not None:
+                diagnostics["error"] = "request"
         if attempt < retries:
             time.sleep(0.8 * (2 ** attempt))
 

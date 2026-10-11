@@ -38,8 +38,8 @@ from fetcher import NOT_FOUND, fetch_json  # noqa: E402
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(HERE, "snapshots")
 
-# Chains to sweep. Unreachable ones are skipped without failing the run, so adding a
-# speculative network costs one wasted request rather than a broken snapshot.
+# Chains to sweep. Successful observations survive even when another chain is unreachable;
+# the manifest and coverage status expose any pages we could not observe.
 DEFAULT_CHAINS = ["eth", "base", "bsc", "solana", "arbitrum", "polygon_pos",
                   "avax", "optimism"]
 
@@ -111,6 +111,49 @@ def _row(chain, kind, p, seen_at):
     }
 
 
+def _fetch_pool_page(chain, kind, page, seen_at, retries=1, timeout=10, deadline=None):
+    path = "new_pools" if kind == "new" else "trending_pools"
+    url = ("https://api.geckoterminal.com/api/v2/networks/%s/%s?page=%d"
+           % (chain, path, page))
+    diagnostics = {}
+    options = {"retries": retries, "timeout": timeout, "use_cache": False,
+               "write_cache": False, "diagnostics": diagnostics}
+    if deadline is not None:
+        options["deadline"] = deadline
+    data = fetch_json(url, role="label", **options)
+    fetched_at = datetime.now(timezone.utc).isoformat()
+    if data is None:
+        if not diagnostics.get("error"):
+            diagnostics["error"] = "invalid_payload" if diagnostics.get("status") == 200 else "request"
+        return None, fetched_at, diagnostics
+    # A JSON response is not necessarily a listing. Validate every row before accepting
+    # any of the page: malformed nested fields must not erase earlier observations.
+    try:
+        pools = data["data"]
+        if not isinstance(pools, list) or not all(
+                isinstance(p, dict) and isinstance(p.get("id"), str) and p["id"]
+                and isinstance(p.get("attributes"), dict) for p in pools):
+            raise ValueError("invalid listing")
+        page_rows = [_row(chain, kind, p, seen_at) for p in pools]
+    except (KeyError, TypeError, AttributeError, ValueError):
+        diagnostics["error"] = "invalid_payload"
+        return None, fetched_at, diagnostics
+    for row in page_rows:
+        row["fetched_at"] = fetched_at
+    return page_rows, fetched_at, diagnostics
+
+
+def _append_pool_rows(rows, seen_ids, fetched):
+    added = 0
+    for row in fetched:
+        key = (row["chain"], row["pool_id"], row["kind"])
+        if key not in seen_ids:
+            seen_ids.add(key)
+            rows.append(row)
+            added += 1
+    return added
+
+
 def collect(chains, pages=5):
     """Collect one snapshot.
 
@@ -136,62 +179,79 @@ def collect(chains, pages=5):
     """
     seen_at = datetime.now(timezone.utc).isoformat()
     rows, seen_ids, manifest = [], set(), []
+    pages = max(1, min(pages, 10))
+    chains = list(dict.fromkeys(chains))
     for chain in chains:
-        for kind, path, n_pages in (("new", "new_pools", pages),
-                                    ("trending", "trending_pools", 1)):
+        for kind, n_pages in (("new", pages), ("trending", 1)):
             got, misses = 0, 0
             for page in range(1, n_pages + 1):
-                url = ("https://api.geckoterminal.com/api/v2/networks/%s/%s?page=%d"
-                       % (chain, path, page))
                 # A snapshot has to be live; a cached copy would record the same pool
                 # twice under two timestamps and silently corrupt the history.
-                data = fetch_json(url, role="label", use_cache=False)
-                if data is None:
-                    # A failed fetch and an exhausted listing took the SAME `break`, so
-                    # "base recorded 40 pools this pass" could mean "Base was quiet" or
-                    # "page 3 timed out and we stopped". Downstream those are identical,
-                    # and no later analysis can separate them -- the information was
-                    # never written down. Recorded now, per page, in the manifest.
-                    #
-                    # And recording it immediately proved the `break` was wrong too. The
-                    # first CI pass with a manifest reported NINE failed page fetches
-                    # across all eight chains, five of them on page 1 -- which under the
-                    # old rule meant those chain/kind combinations collected nothing at
-                    # all, silently. It also explains the daily row counts that looked
-                    # like market variance (160 / 664 / 2252 / 1468 / 359) and were
-                    # partly fetch-failure variance.
-                    #
-                    # Pages are independent listings, so a failed one is a hole, not an
-                    # ending. Back off, take the next page, and only give up on this
-                    # chain after two misses -- past that it is a rate limit rather than
-                    # a blip, and hammering it makes things worse for the next chain.
+                fetched, fetched_at, diagnostics = _fetch_pool_page(chain, kind, page, seen_at)
+                if fetched is None:
+                    # Pages are independent: a failure is a hole, not a listing end.
+                    # Keep the original two-miss stop, then recover once across chains.
                     manifest.append({"seen_at": seen_at, "chain": chain, "kind": kind,
-                                     "page": page, "outcome": "fetch_failed", "rows": 0})
+                                     "page": page, "pages": n_pages, "outcome": "fetch_failed",
+                                     "initial_outcome": "fetch_failed", "rows": 0,
+                                     "fetched_at": fetched_at, "diagnostics": diagnostics})
                     misses += 1
                     print("  %-8s %-9s page %d failed" % (chain, kind, page))
                     if misses >= 2:
                         break
                     time.sleep(3.0 * misses)
                     continue
-                pools = data.get("data") or []
-                page_rows = 0
-                if not pools:
+                if not fetched:
                     manifest.append({"seen_at": seen_at, "chain": chain, "kind": kind,
-                                     "page": page, "outcome": "end_of_listing",
-                                     "rows": 0})
+                                     "page": page, "pages": n_pages, "outcome": "end_of_listing",
+                                     "initial_outcome": "end_of_listing", "rows": 0,
+                                     "fetched_at": fetched_at, "diagnostics": diagnostics})
                     break  # past the last page
-                for p in pools:
-                    pid = p.get("id")
-                    if not pid or (chain, pid, kind) in seen_ids:
-                        continue
-                    seen_ids.add((chain, pid, kind))
-                    rows.append(_row(chain, kind, p, seen_at))
-                    got += 1
-                    page_rows += 1
+                page_rows = _append_pool_rows(rows, seen_ids, fetched)
+                got += page_rows
                 manifest.append({"seen_at": seen_at, "chain": chain, "kind": kind,
-                                 "page": page, "outcome": "ok", "rows": page_rows})
+                                 "page": page, "pages": n_pages, "outcome": "ok", "rows": page_rows,
+                                 "initial_outcome": "ok", "fetched_at": fetched_at,
+                                 "diagnostics": diagnostics})
+            if misses >= 2:
+                for skipped in range(page + 1, n_pages + 1):
+                    manifest.append({"seen_at": seen_at, "chain": chain, "kind": kind,
+                                     "page": skipped, "pages": n_pages, "outcome": "skipped",
+                                     "initial_outcome": "skipped", "rows": 0})
             if got:
                 print("  %-8s %-9s %d pools" % (chain, kind, got))
+
+    for m in manifest:
+        m["chains"] = chains
+    missing = sorted((m for m in manifest if m["outcome"] in ("fetch_failed", "skipped")),
+                     key=lambda m: (m["kind"] != "new", m["page"], chains.index(m["chain"])))
+    ends = {(m["chain"], m["kind"]): m["page"] for m in manifest
+            if m["outcome"] == "end_of_listing"}
+    deadline, attempts, budget_exhausted = time.monotonic() + 90, 0, False
+    for m in missing:
+        key = (m["chain"], m["kind"])
+        if key in ends and m["page"] > ends[key]:
+            m.update(outcome="past_end_of_listing", recovery_outcome="not_needed",
+                     confirmed_end_page=ends[key])
+            continue
+        remaining = deadline - time.monotonic()
+        if attempts >= 12 or remaining <= 0.000001 or budget_exhausted:
+            m["recovery_outcome"] = "fetch_limit" if attempts >= 12 else "budget_exhausted"
+            continue
+        attempts += 1
+        fetched, fetched_at, diagnostics = _fetch_pool_page(
+            m["chain"], m["kind"], m["page"], seen_at, retries=0,
+            timeout=min(10, remaining), deadline=deadline)
+        outcome = "fetch_failed" if fetched is None else "ok" if fetched else "end_of_listing"
+        m.update(outcome=outcome, recovery_outcome=outcome,
+                 recovery_fetched_at=fetched_at, recovery_diagnostics=diagnostics)
+        if diagnostics.get("error") == "budget_exhausted":
+            budget_exhausted = True
+            m["recovery_outcome"] = "budget_exhausted"
+        if fetched is not None:
+            m["rows"] = _append_pool_rows(rows, seen_ids, fetched)
+        if outcome == "end_of_listing":
+            ends[key] = m["page"]
     return rows, seen_at, manifest
 
 
@@ -485,11 +545,112 @@ def _write_sellability(sell, seen_at):
     return 0
 
 
+def _coverage(manifest):
+    """Validate one pass and return counts plus fixed, non-identifying causes."""
+    from collections import Counter
+    causes, groups, rows, gaps = Counter(), {}, 0, 0
+    outcomes = {"ok", "end_of_listing", "past_end_of_listing", "fetch_failed", "skipped"}
+    errors = {"http", "timeout", "network", "request", "invalid_json", "empty_body",
+              "invalid_payload", "budget_exhausted"}
+    try:
+        if not manifest:
+            raise ValueError("no pass")
+        planned_chains = manifest[0].get("chains") if isinstance(manifest[0], dict) else None
+        if planned_chains is not None and (
+                not isinstance(planned_chains, list) or not planned_chains
+                or not all(isinstance(chain, str) and chain for chain in planned_chains)
+                or len(set(planned_chains)) != len(planned_chains)):
+            raise ValueError("invalid chain plan")
+        for m in manifest:
+            if not isinstance(m, dict) or not isinstance(m.get("seen_at"), str):
+                raise ValueError("invalid row")
+            if datetime.fromisoformat(m["seen_at"]).tzinfo is None:
+                raise ValueError("invalid timestamp")
+            if (not isinstance(m.get("chain"), str) or not m["chain"]
+                    or m.get("kind") not in ("new", "trending")
+                    or m.get("outcome") not in outcomes
+                    or any(type(m.get(k)) is not int for k in ("page", "pages", "rows"))
+                    or not 1 <= m["page"] <= m["pages"] <= 10 or m["rows"] < 0
+                    or (m["kind"] == "trending" and m["pages"] != 1)
+                    or m.get("chains") != planned_chains
+                    or (planned_chains is not None and m["chain"] not in planned_chains)
+                    or (m["outcome"] != "ok" and m["rows"] != 0)):
+                raise ValueError("invalid page")
+            key = (m["chain"], m["kind"])
+            group = groups.setdefault(key, {})
+            if m["page"] in group:
+                raise ValueError("duplicate page")
+            group[m["page"]] = m
+            rows += m["rows"]
+            if m["outcome"] in ("fetch_failed", "skipped"):
+                gaps += 1
+                diagnostic = m.get("recovery_diagnostics", m.get("diagnostics", {}))
+                error = diagnostic.get("error") if isinstance(diagnostic, dict) else None
+                status = diagnostic.get("status") if isinstance(diagnostic, dict) else None
+                if error == "http" and type(status) is int and 100 <= status <= 599:
+                    causes["http_%d" % status] += 1
+                else:
+                    causes[error if error in errors else m["outcome"]] += 1
+                if m.get("recovery_outcome") in ("fetch_limit", "budget_exhausted"):
+                    causes[m["recovery_outcome"]] += 1
+        for group in groups.values():
+            planned = {m["pages"] for m in group.values()}
+            if len(planned) != 1:
+                raise ValueError("inconsistent plan")
+            ends = [m["page"] for m in group.values() if m["outcome"] == "end_of_listing"]
+            last = min(ends) if ends else next(iter(planned))
+            missing = len(set(range(1, last + 1)) - set(group))
+            gaps += missing
+            causes["missing_page"] += missing
+            if any(m["outcome"] == "past_end_of_listing" and
+                   (not ends or m["page"] <= min(ends)) for m in group.values()):
+                raise ValueError("unconfirmed end")
+        for chain in planned_chains or {key[0] for key in groups}:
+            missing = sum((chain, kind) not in groups for kind in ("new", "trending"))
+            gaps += missing
+            causes["missing_listing"] += missing
+        if not rows:
+            causes["zero_rows"] += 1
+        return rows, len(manifest), gaps, +causes
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return 0, len(manifest or []), 1, Counter({"manifest_invalid": 1})
+
+
+def _print_coverage(manifest):
+    rows, pages, gaps, causes = _coverage(manifest)
+    complete = rows > 0 and gaps == 0 and not causes
+    print("coverage: %s: %d rows, %d pages, %d gaps; causes: %s" % (
+        "complete" if complete else "incomplete", rows, pages, gaps,
+        ", ".join("%s=%d" % item for item in sorted(causes.items())) or "none"))
+    return 0 if complete else 1
+
+
+def _check_coverage():
+    try:
+        files = sorted(fn for fn in os.listdir(OUT_DIR)
+                       if fn.startswith("runs-") and fn.endswith(".ndjson"))
+        if not files:
+            raise FileNotFoundError
+        with io.open(os.path.join(OUT_DIR, files[-1]), encoding="utf-8") as fh:
+            entries = [json.loads(line) for line in fh if line.strip()]
+        if not entries or not isinstance(entries[-1], dict):
+            raise ValueError("invalid manifest")
+        latest = entries[-1]["seen_at"]
+        if not isinstance(latest, str) or any(not isinstance(m, dict) for m in entries):
+            raise ValueError("invalid manifest")
+        return _print_coverage([m for m in entries if m.get("seen_at") == latest])
+    except (OSError, ValueError, KeyError, TypeError):
+        print("coverage: incomplete: 0 rows, 0 pages, 1 gaps; causes: manifest_missing_or_invalid=1")
+        return 1
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--chains", default=",".join(DEFAULT_CHAINS))
     ap.add_argument("--pages", type=int, default=5,
                     help="pages of new_pools per chain (10 is the API maximum)")
+    ap.add_argument("--check-coverage", action="store_true",
+                    help="check completeness of the last recorded pool collection pass")
     ap.add_argument("--sellability-only", type=int, default=0, dest="sellability_only",
                     help="skip pool collection; sell-simulate N tokens from the most "
                          "recent pass already on disk. Lets the workflow commit the "
@@ -500,6 +661,8 @@ def main():
                          "(0 disables). The only observable here that cannot be "
                          "recovered later: a dead token cannot be simulated.")
     args = ap.parse_args()
+    if args.check_coverage:
+        return _check_coverage()
     chains = [c.strip() for c in args.chains.split(",") if c.strip()]
 
     os.makedirs(OUT_DIR, exist_ok=True)
@@ -515,11 +678,12 @@ def main():
 
     print("Collecting: %s" % ", ".join(chains))
     rows, seen_at, manifest = collect(chains, pages=args.pages)
-    if not rows:
-        print("Nothing collected — upstream is probably all down. Not writing a file.")
-        return 1
-
     day = seen_at[:10]
+    path = os.path.join(OUT_DIR, "pools-%s.ndjson" % day)
+    if rows:
+        with io.open(path, "a", encoding="utf-8", newline="") as f:
+            for r in rows:
+                f.write(json.dumps(r, ensure_ascii=False) + "\n")
     if manifest:
         mpath = os.path.join(OUT_DIR, "runs-%s.ndjson" % day)
         with io.open(mpath, "a", encoding="utf-8", newline="") as f:
@@ -527,22 +691,19 @@ def main():
                 f.write(json.dumps(m, ensure_ascii=False) + "\n")
         failed = [m for m in manifest if m["outcome"] == "fetch_failed"]
         if failed:
-            print("::warning::%d page fetches failed this pass: %s"
-                  % (len(failed),
-                     ", ".join(sorted({"%s/%s" % (m["chain"], m["kind"])
-                                       for m in failed}))))
-    path = os.path.join(OUT_DIR, "pools-%s.ndjson" % day)
-    with open(path, "a", encoding="utf-8") as f:
-        for r in rows:
-            f.write(json.dumps(r, ensure_ascii=False) + "\n")
-
-    _write_sellability(probe_sellability(rows, seen_at, args.sellability), seen_at)
+            print("::warning::%d page fetches failed this pass; see recorded coverage" % len(failed))
+    status = _print_coverage(manifest)
+    if not rows:
+        print("No pool rows collected; failure manifest preserved.")
+        return 1
+    if status == 0 and args.sellability:
+        _write_sellability(probe_sellability(rows, seen_at, args.sellability), seen_at)
 
     total_days = len({fn[6:16] for fn in os.listdir(OUT_DIR)
                       if fn.startswith("pools-") and fn.endswith(".ndjson")})
     print("\n%d rows this run -> %s" % (len(rows), os.path.basename(path)))
     print("Snapshot archive: **%d days** deep — the moat's only direct measure" % total_days)
-    return 0
+    return status
 
 
 if __name__ == "__main__":
