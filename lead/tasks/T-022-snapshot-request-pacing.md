@@ -40,7 +40,7 @@ permission files and product thresholds. The lead preserves experiment data sepa
 ## Files in scope
 
 - bench/snapshot.py
-- bench/fetcher.py (only the opt-in pacing seam authorized in amendment (a))
+- bench/fetcher.py (only the opt-in pacing seams authorized in amendments (a)/(b))
 - .github/workflows/snapshot.yml
 - Acceptance tests: tests/test_sellability_archive.py (already registered; additive only)
 - Lead records are maintained by the lead, outside the executor commits.
@@ -145,3 +145,48 @@ their independently observed red histories. Round 2 uses one combined reviewer f
 named defect, retained-budget/default-behavior regressions and original acceptance. All
 settled round-1 criteria stand. Actual deployed manual and scheduled coverage gates
 remain pending and cannot be replaced by the healthy branch experiment.
+
+### (b) Preserve observations before the unchanged workflow timeout
+
+Before round-2 review, a lead fake-clock probe uses exact e715d7a source and the actual
+scheduled arguments: eight default chains, five new pages and one trending page, no
+optional sellability during pool collection, and --request-gap 12.1. Each page receives
+HTTP 429 on its first attempt and 200 on its retry; each connection setup takes nine
+seconds, within the unchanged ten-second IO limit. The ninety-six HTTP attempts finish
+and first write their forty observed pool rows at 2013.5 seconds. The job's unchanged
+timeout is 1500 seconds. The exact earlier e1e2b83 with the same fake inputs first writes
+at 1158.5 seconds. This is a measured preservation regression of completion anchoring,
+not a claimed production incident. A final successful exit after the job cutoff cannot
+protect those observations. No new review front or threshold change is justified.
+
+Authorize a monotonic twenty-minute overall pool-collection budget only when the pacing
+option is explicitly set. It leaves five minutes of the existing twenty-five-minute job
+for preserving/committing observations and final coverage checks. Bound the real fetcher's
+initial, retry and recovery attempts and pacing waits by that collection deadline. Keep
+the original maximum ten-second whole-attempt limit, original retry choices and independent
+ninety-second/twelve-call recovery limits; effective remaining budgets may be shorter.
+No HTTP request may start after collection expiry. After expiry, the collector retains
+the successful prefix and an honest gap manifest, returns incomplete, skips optional
+work and performs its first archive write before the job cutoff. Do not turn a budget
+cutoff into an observed empty page or a green complete pass. Do not raise the job timeout.
+
+Keep any new deadline configuration scoped to collection and restore its exact previous
+state, including an absent entry, with rates/completion anchors on every exit path before
+writing or probing. Unset, import, coverage/sellability-only, ordinary, replay and cached
+call behavior remains unchanged. Avoid an unbounded queue, new transport or new provider.
+The narrow fetcher/snapshot files are already in scope; no benchmark/cache logic changes.
+
+This is a separate finding: add acceptance only in its own tests-only named-change commit
+with a behavioral red on e715d7a, then its own source fix. All existing 293 assertions,
+inputs and helper ASTs remain immutable. Run the full actual scheduled invocation through
+fake stdlib HTTP with slow setup, first-attempt failure then success and enough pages to
+cross the old budget. Verify successful-prefix rows/manifests survive, gaps remain honest,
+first writes precede 1500 seconds, no HTTP starts after the new deadline, recovery caps
+and remaining IO limits hold, and new state is restored on normal and interrupted exits.
+Kill the collection-deadline guard in a scratch mutant and observe an additive failure.
+Keep all acceptance under ten seconds and perform no real network or sleep.
+
+Round-2 combined review covers amendments (a) and (b) and their default/budget/preservation
+regressions. The original variable-setup fix remains necessary. No optional investigation
+or third review round is introduced. A healthy published manual and actual scheduled pass
+are still required for release completion.

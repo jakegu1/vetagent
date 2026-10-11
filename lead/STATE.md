@@ -50,7 +50,7 @@ technical repair release.
 |---|---|---|---|---|---|
 | T-020 | 3 | master at 5bb391f | Published; manual run preserved data and correctly failed incomplete coverage | Codex lead | Investigate observed HTTP 429 gaps; verify scheduled execution before done; retain DNS test follow-up |
 | T-011 | 2 | reviewed e120fe5, local integration a126705 | Round 2 passed 12/12; source merged locally | Codex lead | Complete integrated checks and publish; verify deployment, then start T-019; no real fill yet |
-| T-022 | 3 | codex/t022-snapshot-pacing at e1e2b83 | Round 1 changes required: connection delay can shorten the HTTP gap | Executor | Named amendment (a), additive red-first tests and opt-in completion pacing; then combined review and actual manual/scheduled coverage |
+| T-022 | 3 | codex/t022-snapshot-pacing at e715d7a | Round 2 repair: gap fixed, slow retries can outrun preservation | Executor | Named amendment (b), red-first overall collection cap; then combined review and actual manual/scheduled coverage |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
 permissions and explicitly asked to continue on 2026-10-11. This covers reviewed technical
