@@ -10,7 +10,7 @@ remain binding. No runtime rewrite, paid upstream or permission change is part o
 | P1 | RugCheck pool accounts are summed as wallets; absent holder lists are represented as zero. Current code and saved fixtures reproduce the seam. | T-016: separate pool accounts conservatively, disclose exclusions, retain fallback bands and represent absent readings as null. | Offline handoffs, observed contract re-freeze under the five pre-registered rules, independent review and tagged deployment smoke checks. |
 | P1 | Benchmark ages use the wall clock and uncached negative requests can reach live upstreams. Existing T-011/T-019 evidence separates these inputs. | T-011, then T-019: pinned replay clock, dated negative entries, explicit misses and allowlisted one-time fills. | Replay never reaches the network; a complete recorded cache reproduces committed outputs on the reviewed engine. |
 | P1 | V4 identifiers are display-truncated before a network lookup; traded tokens can be swept into the no-trace escalation. | T-013, then T-012, after benchmark dependencies. | Deterministic row-level before/after evidence; publication updates only when measured and authorized. |
-| P1 | A fixture with liquidity.usd set to "NaN" or "Infinity" yields an adequate-liquidity helper signal. Production occurrence has not been measured. | T-021: validate numeric boundaries and preserve unavailable depth. | Strict JSON outputs, full stubbed handoffs, unchanged valid readings and reproducible benchmark evidence. |
+| P1 | Complete offline assessment with liquidity.usd set to "NaN" returns low and fails strict JSON; "Infinity" returns medium. A zero/unavailable mix also falsely claims all pools empty. Production occurrence is unmeasured. | T-021 after the existing dependencies: validate scalar boundaries, nullable MCP output and depth handoffs. | Strict JSON outputs, full stubbed handoffs, unchanged valid readings and reproducible benchmark evidence. |
 | P1 follow-up | Source inspection confirms that upstream-contract --write returns before the comparison that populates its collapse-refusal list. T-016 already keeps manual freeze checks mandatory. | Specify a small guard that compares observed coverage with the old baseline before writing; retain the current manual rules until that fix is separately verified. | Offline collapse/write-order reproduction and red-first tests; never replace observations with synthetic baseline data. |
 | P2 | Discovery uses the keyless source and converts some absent figures to zero; partial scans need an explicit status. | T-017, then T-018 at its existing allowed date. | Existing privacy-text sign-off and timing condition still apply; verify discovery-to-assessment inputs. |
 | P2 | The risk engine is a large module; there is no fresh latency profile in this audit. | Extract pure normalization and provider adapters in small follow-ups after correctness repairs; first measure latency and upstream request fan-out. | No behavior drift under replay. Tune only measured bottlenecks. |
@@ -54,15 +54,20 @@ history; actual deployment 38146148169 runs and passes offline and tagged smoke 
 The real read-only cache replay identified 89 unrecorded URLs. T-019 independently
 reproduced those misses, protected the whole cache and completed one listed fill without
 changing old entries. Its zero-miss replay changes two rows through a successful recorded
-upstream answer, leaving the other 574 rows unchanged. Publication awaits the complete
-guarded rebaseline and fresh independent review. T-022's first independent and
+upstream answer, leaving the other 574 rows unchanged. Exact 393346f now has independent
+approval at 12/12 and red-team none; approved source is merged as e93169a. Integration
+and actual deployment remain. T-022's first independent and
 red-team reviews instead found a variable-connection-delay gap: 12.1 seconds configured
 can produce only 4.1 seconds between real HTTP starts. Its named opt-in pacing repair is
 implemented at frozen 8b54497 and approved by combined second review at 12/12, with no
 remaining material red-team finding. A separate slow-retry
 preservation regression also has its own tests-only red and scoped collection deadline.
-The approved source is merged locally as 9d2ed35. Full integrated checks, exact-head
-preflight and actual published manual and scheduled release gates remain pending.
+The approved source is merged as 9d2ed35. Full integrated checks pass thirty-one steps;
+exact-head preflight 38148113901 passes required jobs and all 219 observed upstream checks,
+with zero unobserved or collapsed path. Published head is 86a8111. Manual collection
+38148501978 succeeds; independent raw counts verify 676 unique pools, forty HTTP 200
+pages, all eight chains and zero gaps, with every old byte preserved. Real scheduled
+verification remains pending; the earlier branch experiment is not substituted for it.
 
 The prior write restriction is historical. Current unrestricted execution works and the
 Owner explicitly authorized continuing technical deployment. Other sign-off categories

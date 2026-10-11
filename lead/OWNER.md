@@ -10,10 +10,13 @@
 T-016 is deployed and verified. T-020 is published; its real manual pass preserved data,
 recovered missing rows and correctly failed remaining coverage gaps caused by observed
 HTTP 429 responses. A slower-pacing experiment recorded 672 pool rows with zero gaps;
-T-022 prepares that measured interval for scheduled collection. Scheduled verification
-is still pending. T-011 is deployed and verified. T-019 completed its protected listed fill;
-its measured data-only rebaseline awaits independent review. T-022's opt-in pacing and
-preservation repairs passed independent review at 12/12 and are in integration release checks.
+T-022 publishes that measured interval for scheduled collection. Its actual published
+manual pass saves 676 unique pools across all eight chains with zero gaps. Real scheduled
+verification is still pending. T-011 is deployed and verified. T-019 completed its protected listed fill;
+its measured data-only rebaseline passed fresh independent review at 12/12 and red-team
+review with no material finding, and is in integrated release checks. T-022's
+opt-in pacing and preservation repairs passed independent review at 12/12, are published,
+and passed actual manual collection. Real scheduled coverage remains pending.
 Execution permissions now work. Autonomy remains A1; this authorization covers the reviewed
 technical release. Experiment D and the 2026-10-16 product gate retain their existing rules.
 
@@ -70,6 +73,12 @@ technical release. Experiment D and the 2026-10-16 product gate retain their exi
 | M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
+
+- **2026-10-11** - lead - T-019's exact 393346f passes fresh independent review at 12/12
+  and red-team review with no material finding. Approved source is merged as e93169a,
+  retaining the actual paced manual snapshot. Integration checks and deployment remain.
+  That manual run saves 676 unique pools, covers all eight chains with forty HTTP 200
+  pages and zero gaps, and preserves all old bytes. Real scheduled proof is still pending.
 
 - **2026-10-11** - lead - T-022's fresh combined second review approves exact 8b54497 at
   12/12, with no material red-team finding. The lead merged it locally as 9d2ed35 and

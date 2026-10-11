@@ -48,9 +48,9 @@ technical repair release.
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-020 | 3 | master at 5bb391f | Published; manual run preserved data and correctly failed incomplete coverage | Codex lead | Investigate observed HTTP 429 gaps; verify scheduled execution before done; retain DNS test follow-up |
-| T-019 | 3 | codex/t019-benchmark-rebaseline from published fefe6d1 | One allowed fill completed; attribution and generated publication checks | Executor | Finish guarded data-only rebaseline, then fresh independent and red-team review; no threshold changes |
-| T-022 | 3 | Approved 8b54497 merged locally as 9d2ed35 | Round 2 approved 12/12; integration release checks | Codex lead | Verify combined replay and pacing, exact-head preflight, publish, then actual manual/scheduled coverage |
+| T-020 | 3 | Recovery at 5bb391f; pacing published at 86a8111 | Published paced manual pass verified complete | Codex lead | Verify a real scheduled pass before done; retain DNS test follow-up |
+| T-019 | 3 | Approved 393346f merged as e93169a | Independent 12/12 and red-team none; integrated release checks | Codex lead | Cache-only reproduction, full integrated checks, exact-head preflight, publish and verify actual deployment |
+| T-022 | 3 | Approved 8b54497 published in 86a8111 | Manual run 38148501978 complete; raw committed coverage independently verified | Codex lead | Verify a real scheduled pass before completion |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
 permissions and explicitly asked to continue on 2026-10-11. This covers reviewed technical
@@ -83,7 +83,10 @@ reproduced its 91 misses over 89 URLs and backed up the original cache before th
 fill. The single fill added 89 entries without changing or deleting old entries. Its
 zero-miss replay changes two token rows through their actually requested successful
 upstream answer; the other 574 rows and the independence result are unchanged. The
-data-only rebaseline is not reviewed or published yet.
+data-only rebaseline now has fresh independent approval at 12/12 and red-team none.
+Both reviewers reproduce the real publication red and generated fixed point. Approved
+source is merged as e93169a, retaining all snapshot bot data. The lead's integrated replay,
+checks, preflight, publication and deployment remain pending.
 
 T-022's named tests-only red at 62cccc7 has 320 passes and sixteen behavioral failures
 before source fix 8b54497. Its original 293 assertions remain green. Executor tests
@@ -95,7 +98,16 @@ Combined round-2 review now approves exact 8b54497 at 12/12, with no material re
 finding. It independently reproduces the old defects, immutable acceptance and broken
 mutants. Source Linux preflight 38146049602 passes required jobs and all 219 observed
 upstream checks, with no unobserved or collapsed path. Approved source is merged locally
-as 9d2ed35; integrated checks and actual published collection gates are still pending.
+as 9d2ed35. Full integrated checks pass all thirty-one steps in 79.3 seconds, including
+336 archive assertions and 814 replay assertions. Exact-head preflight 38148113901 passes
+required jobs and 219 observed upstream checks, with zero unobserved or collapsed path;
+the optional backfill job retains its HTTP 400. Published head is 86a8111. Actual manual
+snapshot 38148501978 completes successfully at 14:54:55 UTC. Independent counts of the
+committed raw pass verify 676 unique pool rows, forty HTTP 200 manifest entries, thirty-seven
+successful pages, three observed listing ends, all sixteen chain/listing slots and zero
+gaps. Every prior pool, manifest and sellability byte remains a prefix. Its three bot
+commits through f129baf are merged as 0beaa21. The workflow is active; no new scheduled
+run has yet been observed. Real scheduled coverage remains required for task completion.
 
 ## Waiting on the Owner
 
