@@ -97,6 +97,21 @@ EXTRA_ACTIONS = []
 # claim, which is itself a thing that can turn out to be false.
 CORRECTION_WINDOW = 14
 CORRECTIONS = [
+    ("2026-10-11",
+     "The first T-021 candidate treated a parsed zero string as an observed zero market "
+     "measurement when its mantissa contained no nonzero ASCII decimal digit.",
+     "Python also accepts Unicode decimal digit strings. Nonzero underflow in those "
+     "strings became float zero, so the candidate falsely called complete pool scopes "
+     "empty and drained. This was reproduced offline before that candidate reached "
+     "production; production frequency was not measured. The bounded correction detects "
+     "nonzero decimal digits accepted by float while preserving genuine zero and "
+     "representable values. The guard tests/test_unicode_market_underflow.py was "
+     "committed red before its fix; "
+     "the frozen benchmark outputs did not change.",
+     "Both fresh reviewers and the lead independently exercised complete assessment, "
+     "liquidity and MCP responses. The original configured checks were green but did not "
+     "cover this input family; the named supplemental guard now catches its restored "
+     "ASCII-only mutant."),
     ("2026-09-30",
      "This page showed the 2026-09-18 gate as twelve days overdue, in bold in the gate "
      "table, and on the timeline.",
