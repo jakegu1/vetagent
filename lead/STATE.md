@@ -49,7 +49,7 @@ technical repair release.
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
 | T-020 | 3 | Recovery at 5bb391f; pacing published at 86a8111 | Published paced manual pass verified complete | Codex lead | Verify a real scheduled pass before done; retain DNS test follow-up |
-| T-013 | 3 | Approved b99f2e7 merged as 46fb2a6 | Independent 12/12, red-team none; own integrated immutable replay pass | Codex lead | Run full integrated checks, exact-head preflight, actual deployment and tagged public readback |
+| T-012 | 3 | Exact published base 7f796e4 | Tests-first execution prepared after verified dependencies | Isolated executor | Reproduce the unchanged base, pre-register reached rows, then implement the narrow gap rule |
 | T-022 | 3 | Approved 8b54497 published in 86a8111 | Manual run 38148501978 complete; raw committed coverage independently verified | Codex lead | Verify a real scheduled pass before completion |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
@@ -109,7 +109,15 @@ actual request attribution, all row/figure changes and generated fixed point. Ap
 source is merged as 46fb2a6. The lead's own integrated replay is byte-identical for
 all 576 rows, with zero misses, network calls, cache writes or after-clock selections;
 source and copied caches remain unchanged. Full integrated checks, exact-head preflight
-and actual production deployment remain required. The named ASCII evidence clarification
+and actual production deployment are complete. Full integrated checks pass all thirty-one
+steps in 79.6 seconds. Exact-head preflight 38155937648 passes required jobs and 219
+observed upstream checks, with no unobserved or collapsed path. Published head is
+7f796e4; actual deployment 38156203366 runs and passes the complete offline suite,
+Worker deployment and tagged smoke. Worker version is 92c2e737-cf3a-46d3-8bdd-0d8faf74fdb6.
+The lead independently reads the homepage and Agent text at HTTP 200 with the new
+20.1 percent figure and health at HTTP 200 and ok. T-013 is complete. T-012's exact
+base is this published head; its mandatory replay and row pre-registration precede
+the first tests-only commit. The named ASCII evidence clarification
 retains pre-existing English punctuation and proves every changed line is ASCII.
 
 T-022's named tests-only red at 62cccc7 has 320 passes and sixteen behavioral failures
@@ -188,8 +196,9 @@ run has yet been observed. Real scheduled coverage remains required for task com
 
 ## Next up
 
-The current technical queue is T-013, then T-012, then draft T-021 and draft T-023. T-013's exact published
-base and unchanged fill gate are recorded in its spec. T-012 waits for its measured merge;
+The current technical queue is T-012, then draft T-021 and draft T-023. T-013 is complete;
+its exact source, one fill, integrated replay and actual deployment are recorded in its review.
+T-012 starts from verified published 7f796e4 under its unchanged narrow rule;
 T-021 waits for both, then repeats its exact-base conflict search and immutable replay
 before dispatch. T-021's complete offline audit reproduces NaN-low, non-finite public JSON,
 and the zero/unavailable all-empty seam; production occurrence and affected benchmark rows

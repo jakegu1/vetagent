@@ -84,4 +84,8 @@ changed rows; 572 complete rows and all old high verdicts stay unchanged. The le
 own immutable combined replay is zero-miss, zero-network and byte-identical to both
 raw result blobs for all 576 rows. Source Linux preflight 38153547356 passes required
 jobs and 219 observed upstream checks with no unobserved or collapsed path. Full
-integrated checks, exact-head preflight and actual deployment remain required.
+integrated checks pass thirty-one steps in 79.6 seconds. Exact-head preflight
+38155937648 passes required jobs and 219 observed upstream checks with no unobserved
+or collapsed path. Published 7f796e4 deploys successfully in actual run 38156203366;
+offline, Worker deployment and tagged smoke all run and pass. Tagged public figures
+and health are independently read back. T-013 is complete; T-012 starts on this base.

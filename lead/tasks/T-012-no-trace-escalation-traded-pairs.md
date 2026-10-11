@@ -1,7 +1,7 @@
 ---
 id: T-012
 title: Stop the no-trace escalation from calling a traded token "nothing can be verified" (W49, narrow form)
-status: ready            # draft | ready | in_progress | in_review | changes_requested | done | dropped
+status: in_progress      # draft | ready | in_progress | in_review | changes_requested | done | dropped
 level: 3                 # 0 direct | 1 light | 2 standard | 3 high risk
 size: M                  # S | M (split anything larger)
 depends_on: [T-011, T-019, T-013]   # T-019 is the base AC 7 measures on; T-013 first only because it edits the same file
@@ -487,3 +487,22 @@ free E-number and decision-table count there, as Notes already require. The pre-
 list comes from that base before the tests-only commit; old absolute figures are historical
 expectations, not targets. Existing bands, the finite-positive in-scope SELLS condition,
 critical liquidity gap, immutable older acceptance and no-live-fetch rule remain binding.
+
+### Exact published dispatch base (2026-10-12)
+
+T-011, T-019 and T-013 are independently reviewed, merged, published and verified.
+The exact base is 7f796e41a4436f3a55f526ebd5a8193a1a0cd883. T-013's frozen source
+b99f2e7 is merged as 46fb2a6; actual deployment 38156203366 runs every offline,
+deployment and tagged smoke step, and the lead's tagged public readback passes.
+Exact-head Linux preflight 38155937648 passes required jobs and 219 observed
+upstream checks, with no unobserved or collapsed path. Full combined checks pass
+all thirty-one steps. The decision table is still at sixty-one rows; E35 is free.
+
+The lead repeats the conflict search on this exact base. No older assertion change
+is added to named change (a). Existing T-013 acceptance remains immutable. AC 7's
+exact-base zero-miss raw-byte reproduction and full actual in-scope request-based
+pre-registration remain prerequisites before the executor's tests-only commit.
+The filled main cache has 6,741 entries and must remain unchanged. Only replay is
+allowed, never a fill or live call. Root corrects the two named stale Experiment C
+passages after the reviewed merge and before publication, from actual new rows.
+All earlier rules, bands, publication evidence and accepted residuals are unchanged.
