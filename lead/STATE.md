@@ -48,7 +48,7 @@ technical repair release.
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-021 | 3 | codex/t021-finite-market-measurements; source 9ee9f1f; merge 157631d | Independent 12/12 and red-team none; lead raw replay unchanged; release verification in progress | lead | Finish integrated checks and exact-head Linux preflight, then actual deployment and tagged readback |
+| T-023 | 3 | codex/t023-cold-upstream-baseline; exact published base 7da5bdf | Ready; exact caller/source refresh and cold CLI defect reproduced | lead, then executor | Dispatch this two-file tests-first specification; preserve every existing rule and real baseline byte |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
 permissions and explicitly asked to continue on 2026-10-11. This covers reviewed technical
@@ -202,29 +202,33 @@ a long-term reliability rate or the cause of earlier missing nominal triggers.
 
 ## Next up
 
-The current technical queue is active T-021, then draft T-023. T-012 and T-013 are complete;
-its exact source, one fill, integrated replay and actual deployment are recorded in its review.
-T-012 is deployed and verified on published e657c32 under its unchanged narrow rule;
-T-021's exact-base conflict search and immutable replay now pass on this published head.
-The executor independently repeated that prerequisite before tests-only 5e8a7fa.
-Its complete initial acceptance was behaviorally red; scoped 2091436 passes the new file.
-Named change (a) fixes only the old mixed-depth conflict missed by the initial search;
-the amended block is behaviorally red on the base and green at b1eab7c. All six mutants
-are caught and restored. The immutable head replay reproduces both raw blobs for all
-576 rows, with all 6741 cache files and the labeling log unchanged. Checks finish 31/32;
-the actual remaining red is the generated risk-test evidence count 1099 to 1106. The
-lead independently verifies unchanged registered values and benchmark Git blobs and
-registers generator-only amendment (b). Clean 64fc7f3 has 32/32 and unchanged raw replay.
-Fresh reviews then find Unicode decimal underflow falsely observed as zero and finite
-price conflict hidden by an overflowed quotient. The lead independently reproduces both
-with complete-tool controls and registers separate red-first named corrections (c1)/(c2).
-Full 34 checks, unchanged final raw replay and round-2 independent/red-team approval
-remain required before publication. The actual scheduled snapshot is now verified complete.
-Its offline audit reproduces NaN-low, non-finite public JSON,
-and the zero/unavailable all-empty seam; production occurrence and affected benchmark rows
-remain unmeasured. T-023's small baseline-write guard follows the correctness queue: an offline
-cold-write probe confirms the missing comparison, while the unchanged manual freeze rules
-remain binding. Scoped technical merges and pushes already have Owner authorization;
+T-011, T-019, T-013, T-012, T-016, T-020, T-021 and T-022 are complete with their
+actual release or scheduled coverage evidence recorded. T-021 publishes exact 7da5bdf
+after independent 12/12 and red-team none. The lead's integrated replay keeps all 576
+raw rows and 6,741 cache entries unchanged with no network, fill or after-clock selection.
+Full integrated checks pass 34/34 in 81.9 seconds. Final Linux preflight 38171028227
+passes required jobs and all 219 observed upstream checks, without unobserved or collapsed
+paths. Actual deployment 38171367523 runs and passes every offline, upload and tagged
+smoke step; Worker version is 6539783c-f83d-48c6-a507-8812bcd14f2b. The lead reads back
+the deployed nullable numeric schemas, unchanged generated public figures and healthy
+service at HTTP 200. Master CI 38171367587 passes required jobs and all 219 observed
+checks. Its optional backfill HTTP 400 is preserved as a separately parked repair.
+
+The literal correction journal is separately reviewed at L0. Its initial missing concrete
+reference produces an actual 502/1 owner-guard red and 33/34 integrated result. Naming
+the actual supplemental guard restores 503/0 and the full 34/34; the initial review and
+failed evidence are retained. Older entries, executable ASTs and the 14-day window stay
+unchanged. An exact-source forced-date probe shows the old recency guard red on Oct 15,
+and the truthful Oct-11-UTC entry green; this is not a claim about the entire future suite.
+
+The next task is ready T-023 on exact published 7da5bdf. Whole-repository caller search
+finds only the cold main writer path; all four old observation tests are retained by AST.
+The lead's actual offline CLI, using eight fully observed synthetic probes and an unchanged
+key/type shape, overwrites the private old baseline as coverage falls from one to zero.
+The same comparison performed first makes the existing writer refuse and preserve bytes.
+Actual baseline/status bytes and all network sources remain untouched. Dispatch the two-file
+tests-first task after its ready specification commit; keep the manual freeze rules binding.
+Scoped technical merges and pushes already have Owner authorization;
 A1 and all other sign-off categories remain unchanged. Older candidates and dated notes
 below are retained as historical context, with their readings refreshed before action.
 
@@ -234,7 +238,8 @@ below are retained as historical context, with their readings refreshed before a
 2. **About 2026-10-05: the first weekly pass** (`lead-weekly`; none since the adoption on
    2026-09-28). Tripwire Q3 is over its threshold (H-12, H-13, H-14 in two days after H-5 to H-11
    in three); A2 took the Level 0 to 2 merges off the Owner.
-3. **By 2026-10-14: a new correction** (below), or the build is red on 2026-10-15 UTC.
+3. **The old Oct-15 correction deadline is closed** by the truthful Oct-11-UTC entry;
+   the unchanged 14-day accountability rule continues to apply.
 4. **2026-10-16: the gate** (H-13). The Owner's page lists it under "Needs you" from 2026-10-02.
 
 **Every check that can go red on the calendar alone** (a scan of `tests/` for `date.today()`,

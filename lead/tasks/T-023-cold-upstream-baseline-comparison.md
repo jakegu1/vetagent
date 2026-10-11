@@ -1,10 +1,10 @@
 ---
 id: T-023
 title: Compare observed coverage before a cold upstream-baseline write
-status: draft
+status: ready
 level: 3
 size: S
-depends_on: [T-016]
+depends_on: [T-016, T-021]
 decisions: []
 backlog: none
 ---
@@ -99,10 +99,37 @@ Threat: a temporary missing field becomes the new normal because cold writing ne
 computes the comparison its own refusal checks. Synthetic data exercises this solely
 offline; it never substitutes for the live observations required for a genuine freeze.
 
-## Dated draft clarification
+## Dated readiness amendment
 
-2026-10-12: main() takes no arguments; exercise the unchanged actual CLI through a fresh
-module and temporary sys.argv containing --write, then restore argv. No signature change
-is in scope. The ready amendment remains pending the actual post-T-021 published base and
-renewed writer/caller/observation-contract search. This clarification does not dispatch
-another task or change any R2 rule.
+2026-10-12: exact published and deployed base is
+7da5bdfe6d40cd349610b83f0c2ada7e14edc0c1. T-021 has both fresh approvals, unchanged
+actual replay, full integrated checks, final Linux preflight and actual deployment with
+tagged production readback. The unchanged upstream-monitor source blob is
+cbb8ff6ab837e9969dcd6c079cbd749a927dc17f; the observation-file blob is
+ceddeaad3b0725c68871c00c86688841b94b56f4. Execute from this exact base, using this
+ready specification from its lead bookkeeping commit as the authority.
+
+The lead renews the whole-repository writer/caller search and retains exact raw source
+and function ASTs. The only writer caller is main at line 807. The existing R2 predicate
+remains in test_generated_field_contract; VALUE_BAND is 0.4, MIN_FOR_SHARE is 8,
+MAX_COLLAPSE_DAYS is 5 and HISTORY_DAYS is 30. All four old observation tests and their
+discovered runner are frozen. Its existing workflow registration reaches the additive
+tests without a new CI step. No old assertion changes are required beyond the named
+source R2 extraction described in scope.
+
+The lead independently exercises the actual cold CLI on a private synthetic old file:
+eight of eight observed probes, unchanged key/type shape, old value share one and current
+share zero. It makes one measurement pass, exits zero and replaces the private file.
+Comparing the same observations first records synthetic:field; the unchanged writer then
+exits one and preserves the restored bytes. There are zero network attempts, and the
+actual committed baseline and production status bytes stay unchanged. This is a measured
+offline seam defect, not a production coverage claim or permission to freeze a real file.
+The executor must independently repeat this prerequisite before committing acceptance.
+
+main() takes no arguments: exercise the unchanged actual CLI through a fresh module and
+temporary sys.argv containing --write, then restore argv. No signature change is in
+scope. Keep existing refusals and default-monitor/status behavior; do not run the full
+normal network test suite from the writer. Source baseline has 34 configured green
+steps. Two fresh review rounds at most; no actual cache replay or live baseline write
+belongs to this two-file task. This amendment completes readiness without changing any
+rule, source, payload or public number.

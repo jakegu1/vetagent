@@ -30,7 +30,11 @@ tests-only/fix pair; all 34 checks pass and final raw replay preserves every res
 cache byte. Both fresh round-2 reviews now pass: independent 12/12 and red-team none,
 with their own 34-step suites. Source is merged as 157631d; the lead independently
 replays all 576 rows against raw Git output bytes with zero misses, network or writes.
-Integrated checks, final Linux preflight and actual deployment remain required.
+Integrated checks pass 34/34, final Linux preflight passes all required jobs and 219
+observed checks, and exact published 7da5bdf is deployed with successful tagged smoke.
+Nullable numeric schemas, unchanged public figures and health are independently read back.
+T-021 is complete. T-023's ready two-file repair follows on this exact published base;
+its cold baseline overwrite is independently reproduced offline, with no real data write.
 Snapshot pacing and recovery are complete.
 Execution permissions now work. Autonomy remains A1; this authorization covers the reviewed
 technical release. Experiment D and the 2026-10-16 product gate retain their existing rules.
@@ -88,6 +92,16 @@ technical release. Experiment D and the 2026-10-16 product gate retain their exi
 | M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
+
+- **2026-10-12** - lead - T-021 is complete on published 7da5bdf. Fresh independent
+  review is 12/12 and red-team none. Integrated checks pass 34/34; final Linux preflight
+  38171028227 and master CI 38171367587 each observe 219/0, with no unobserved or
+  collapsed path. Actual deployment 38171367523 passes its whole offline suite,
+  Worker deployment and tagged smoke; deployed schemas, figures and health are read back.
+  The truthful correction journal passes a separate fresh L0 review without changing
+  the 14-day window or old guards. T-023 is ready after exact-base conflict search and
+  independent cold CLI falsification. Snapshot pacing/recovery are complete on the
+  actual scheduled 664-pool pass. Optional RPC backfill HTTP 400 remains parked.
 
 - **2026-10-12** - lead - T-012 is complete on published e657c32. Final checks pass
   thirty-one steps; exact-head preflight 38162435754 passes required jobs and all 219
