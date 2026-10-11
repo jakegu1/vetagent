@@ -128,7 +128,7 @@ Rounded = parked by you. Hexagons are not work items -- they are what a row is w
 
 | | |
 |---|---|
-| Maturity score | 44 / 100 (`docs/SCORECARD.md`) |
+| Maturity score | 46 / 100 (`docs/SCORECARD.md`) |
 | Tokens measured | 576 |
 | False positives | 3.1% -- we called a healthy token dangerous |
 | Answers we refuse | 21.2% -- `unknown`, on purpose |
@@ -149,12 +149,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- lead: record integrated release checks and real snapshot gaps
+- lead: record independently reviewed Solana release
 - lead: record independent snapshot release approval
 - lead: record authorized snapshot release and frozen review history
+- T-016: named change (b) re-freeze the upstream contract baseline
 - T-020: bound whole snapshot HTTP attempts and recovery deadlines
-- T-020: named change (a) protect absolute HTTP attempt limits
-- T-020: recover missing snapshot pages and fail incomplete passes
-- T-020: acceptance tests
+- T-016: named change (a) coverage matrix reads the key the engine writes
+- T-016: exclude Solana pool vaults from holder concentration
+
+_4 more not shown (12 commits in total)._
 
 ## What I got wrong
 
