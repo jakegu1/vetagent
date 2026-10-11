@@ -4,8 +4,8 @@
 > session starts by reading it. Durable rules live in `AGENTS.md`, `lead/QUALITY.md` and
 > `lead/decisions/`. Test for this file: could a stranger act on every row below?
 
-Last updated: 2026-10-01 by lead session 5 after T-010 (Claude Code desktop, local, opened in
-this repository).
+Last updated: 2026-10-11 by lead session 7 (Codex desktop), during the Owner-authorized
+technical repair release.
 
 ## Starting a lead session
 
@@ -17,9 +17,8 @@ this repository).
    CI for all six workflows, not only `test.yml` (the command is in `CLAUDE.md`). Fix this file
    if it drifted.
 4. Act on each row's next action. Then start the next ready task if WIP allows. Autonomy is
-   **A2** (`lead/config.yml`): spec, dispatch, review and decide; merge Level 0 to 2 tasks after
-   passing reviews and tell the Owner afterwards; ask the Owner before every Level 3 merge and
-   every push, batched.
+   **A1** (`lead/config.yml`): spec, dispatch, review and decide; merges and pushes need Owner
+   authorization. The scoped technical release authorization below is already present.
 5. Run `python lead/checks.py` before every commit to master, lead bookkeeping included.
 6. Check the rotation rule (`lead-handoff`). Update this file and commit.
 
@@ -29,11 +28,9 @@ this repository).
   `CLAUDE.md`'s lead block, the untagged-probe hook in `.claude/settings.json` and the
   SessionStart hook in `.claude/settings.local.json` load. **The SessionStart hook works:** at
   the start of lead session 2 the first 80 lines of this file appeared on their own.
-- **Autonomy is A2 (H-12, approved 2026-09-30).** The lead specs, dispatches, reviews and
-  decides on its own, and merges Level 0 to 2 tasks into local `master` after passing reviews;
-  each such merge is reported to the Owner afterwards. Level 3 merges and every push wait for
-  the Owner's yes. Any escaped defect demotes one level (tripwire Q1), and the
-  lead says so.
+- **Autonomy is A1.** The lead plans, dispatches and reviews; scoped Owner authorization is
+  required for merges and pushes. The technical release authorization below does not change
+  money, legal, privacy, permission-file or pre-registered product-gate requirements.
 - **M1's clock is running** since run 36445100361 (2026-09-28 15:38 UTC, head `dc401b9`); still
   green on run 36754083925 (head `d033c90`, 2026-09-30 UTC, T-009's push). At each check-in, check
   `gh run list --workflow=test.yml`; any red run on master restarts it and stops new work until
@@ -51,14 +48,19 @@ this repository).
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| — | | | | | No task in flight. Local `master` is ahead of origin: the lead #4 handoff, the T-010 spec, the Level 0 `.gitattributes` merge (`426d8f4`) and T-010 (`47db199`); the push waits for the Owner (H-15). |
+| T-020 | 3 | codex/t020-preflight | Frozen implementation and chronological commits complete; release checks in progress | Codex lead | Full offline and Linux preflight, independent completion audit, reviewed merge, then actual collection verification |
+| T-016 | 2 | codex/t016-solana-pool-holders | Separate task; observed baseline and complete handoff evidence pending | Executor | Retain the five baseline acceptance rules; do not publish until the full contract and independent review pass |
+
+The Owner authorized engineering repairs and prioritized deployment, then restored execution
+permissions and explicitly asked to continue on 2026-10-11. This covers reviewed technical
+merges, preflight pushes and deployment pushes. Keep A1 and all other sign-off categories.
+The release starts from inspected origin/master ea545c0 and preserves scheduled bot data;
+unrelated unpublished local bookkeeping is not included.
 
 ## Waiting on the Owner
 
-- **H-15 (asked 2026-10-01): push** the local commits (lead #4's handoff, the T-010 spec,
-  `426d8f4` Level 0, `47db199` T-010, this bookkeeping). Recommended: a preflight branch first
-  (`test.yml` on Linux), then `master`; no deploy (nothing under `src/`). Scan outgoing messages
-  for local paths, addresses and non-ASCII first.
+- H-15's earlier push is already present in public history at a31813b; its old pending entry
+  was stale. The current technical release uses its own inspected remote base.
 - **H-13 (told 2026-09-30, needed by 2026-10-16; the Owner agreed to the plan): the 2026-10-16
   gate.** From 00:00 UTC that day `tests/test_gates_get_reviewed.py` is red, and so are `tests`
   and every deploy, until (a) the gate's row in `docs/STRATEGY.md` section 8 carries
@@ -257,6 +259,10 @@ session 2 on 2026-09-29 on estimates; session 1 on 2026-09-28 at 50 of 100 parts
 
 ## Baseline
 
+**Inspected origin/master ea545c0, 2026-10-11:** `python lead/checks.py` passed all twenty-nine
+offline steps, exited zero and left the integration worktree clean. Real asyncio also works
+in the restored execution environment. Latest master CI: run 38127088651, successful.
+
 Before the lead kit, recorded 2026-09-28 on `f6c7c06` with `python lead/checks.py` (Windows,
 Python 3.13.4, 19.0 s): 26 of 27 steps passed; the red one was `tests/test_published_numbers.py`.
 After T-001 (`0a3098d`, 2026-09-28): 27 of 27. **Lead session 2 at `24a0a73` (2026-09-29):
@@ -369,6 +375,12 @@ hand and move on.
 | 5 | next session, opened in this repository | | | |
 
 ## Log (newest first; keep the last ~20 lines)
+
+- 2026-10-11: resumed the Owner-authorized technical release after execution permissions were
+  restored. Fresh-origin full checks pass. T-020 preserves separate acceptance, first fix,
+  named additive tests and absolute-timeout fix commits; final frozen source is unchanged.
+  Linux preflight and independent completion review precede publication. T-016 remains
+  separate until its observed upstream baseline and complete handoff checks pass.
 
 - 2026-10-01: lead #5 check-in. Merged origin (six bot commits, `dd2d987`); every workflow's
   latest run green; M1 still running. Specced T-010 (Level 1: T-009's follow-ups, the page

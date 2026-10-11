@@ -3,19 +3,20 @@
 > This page holds only what the lead needs from you. The project's own dashboard, with its
 > deadlines and gates, is `docs/OWNER.md` (generated). Messages to you are in Chinese; files
 > here are English because the repository is English-only. Maintained by the project lead (AI).
-> Last updated: 2026-10-01 (handoff to lead #5)
+> Last updated: 2026-10-11 (lead #7, Codex)
 
 ## Status in one line
 
-T-007, T-008 and T-009 are merged and pushed (H-14): green on Linux, nothing deployed, nothing in
-flight. M1's 7-day clock keeps running (done 2026-10-05 if nothing goes red). Autonomy is A2. One
-date to keep: H-13, 2026-10-16. The lead rotated to #5; nothing for you to do.
+The Owner-authorized technical release is in progress. T-020's frozen snapshot repair has
+its tests-first and additive-test history; full checks and Linux preflight precede publication.
+T-016 is separate until its observed upstream baseline and complete assessment checks pass.
+Execution permissions now work. Autonomy remains A1; this authorization covers the reviewed
+technical release. Experiment D and the 2026-10-16 product gate retain their existing rules.
 
 ## Needs you
 
 | ID | What | Why it's yours | Recommendation | Needed by |
 |---|---|---|---|---|
-| H-15 | Push 11 local commits to origin (two of them merges): T-010, the Level 0 `.gitattributes`, and lead bookkeeping | Every push is yours | Yes: push through a preflight branch first (Linux `tests`, no deploy: nothing under `src/`), then `master` | Any time before 2026-10-14; nothing is blocked meanwhile |
 | H-13 | On 2026-10-16, write the gate's conclusion in `docs/STRATEGY.md` section 8 as `Resolved: <what Experiment D measured> -> <decision>`, and decide O2, O8, O9 and O11 in `docs/OPPORTUNITIES.md` | The gate's reading and the product decisions are yours | Give the lead the result in one line that morning; it drafts both edits for your yes. Otherwise the build is red, and every deploy blocked, from 00:00 UTC that day until both are done | 2026-10-16, before 02:23 UTC (the first bot run) |
 
 ## Done / answered
@@ -65,6 +66,11 @@ date to keep: H-13, 2026-10-16. The lead rotated to #5; nothing for you to do.
 | M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
+
+- **2026-10-11** - lead - Execution permissions restored and technical deployment authorized.
+  Fresh-origin full offline checks pass. Snapshot recovery is first, followed by the separate
+  Solana correction once its observed baseline and complete checks pass. H-15's old pending
+  entry was stale: its push is already present at a31813b.
 
 - **2026-10-01** · lead #5 · Merged two small changes myself (A2), each after a fresh review
   scored 12 of 12: T-010 (your page keeps a half-answered gate in "Needs you") and the

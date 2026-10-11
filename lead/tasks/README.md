@@ -16,3 +16,4 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-008 | Refuse snapshot-commit.sh outside GitHub Actions, and pin its push path | 3 | S | — | done (`f1a767d`) |
 | T-009 | Show answered gates as answered, and put a gate that is coming due in Needs you | 1 | S | T-007 | done (`235b20c`) |
 | T-010 | Keep a half-answered gate in Needs you, and read gates from section 8 only | 1 | S | T-009 | done (`47db199`) |
+| T-020 | Recover snapshot failures and report incomplete collection after preserving data | 3 | M | — | in_review |
