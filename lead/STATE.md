@@ -48,8 +48,8 @@ technical repair release.
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-020 | 3 | codex/engineering-release-20261011 | Reviewed and merged locally; post-merge checks before publication | Codex lead | Authorized master push, then manual and scheduled collection verification; retain DNS test follow-up |
-| T-016 | 2 | codex/t016-solana-pool-holders | Separate task; observed baseline and complete handoff evidence pending | Executor | Retain the five baseline acceptance rules; do not publish until the full contract and independent review pass |
+| T-020 | 3 | master at 5bb391f | Published; manual collection in progress | Codex lead | Inspect run 38139242886 and actual manifest/rows; observe a scheduled pass on published code before done |
+| T-016 | 2 | codex/engineering-release-20261011 | Independent pass; reviewed source merged locally | Codex lead | Check all six source identities, regenerate, run all offline checks, then authorized deployment and tagged smoke verification |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
 permissions and explicitly asked to continue on 2026-10-11. This covers reviewed technical
