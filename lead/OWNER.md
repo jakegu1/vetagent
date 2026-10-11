@@ -14,8 +14,9 @@ T-022 publishes that measured interval for scheduled collection. Its actual publ
 manual pass saves 676 unique pools across all eight chains with zero gaps. Real scheduled
 verification is still pending. T-011 is deployed and verified. T-019 completed its protected listed fill;
 its measured data-only rebaseline passed fresh independent review at 12/12 and red-team
-review with no material finding, and is deployed and verified. T-013 now begins its
-tests-first full-pool-identifier repair from the exact published base. T-022's
+review with no material finding, and is deployed and verified. T-013's full-id repair
+passes its tests-first checks and the single five-URL fill; its frozen source now
+awaits fresh independent and red-team review before integration and deployment. T-022's
 opt-in pacing and preservation repairs passed independent review at 12/12, are published,
 and passed actual manual collection. Real scheduled coverage remains pending.
 Execution permissions now work. Autonomy remains A1; this authorization covers the reviewed

@@ -18,7 +18,7 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-010 | Keep a half-answered gate in Needs you, and read gates from section 8 only | 1 | S | T-009 | done (`47db199`) |
 | T-011 | Make benchmark replay deterministic and keep live fills explicitly limited | 2 | M | none | done (deployed fefe6d1) |
 | T-012 | Preserve the liquidity gap for traded pools without claiming no market trace | 3 | M | T-011, T-019, T-013 | ready (dependencies pending) |
-| T-013 | Use validated full pool identifiers for upstream lookups | 3 | M | T-011, T-019 | in_progress (published base a19c3dc) |
+| T-013 | Use validated full pool identifiers for upstream lookups | 3 | M | T-011, T-019 | in_review (frozen b99f2e7; fresh reviews pending) |
 | T-016 | Distinguish Solana liquidity pools from holder concentration | 2 | S | none | done (deployed c18de92) |
 | T-019 | Fill the benchmark's recorded miss list and publish an attributable replay baseline | 3 | S | T-011 | done (deployed a19c3dc) |
 | T-020 | Recover snapshot failures and report incomplete collection after preserving data | 3 | M | — | in_review |

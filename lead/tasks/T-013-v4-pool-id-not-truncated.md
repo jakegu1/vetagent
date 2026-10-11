@@ -1,7 +1,7 @@
 ---
 id: T-013
 title: Look up Uniswap V4 pools by their full id, not the 48-character display string
-status: in_progress      # draft | ready | in_progress | in_review | changes_requested | done | dropped
+status: in_review        # draft | ready | in_progress | in_review | changes_requested | done | dropped
 level: 3                 # 0 direct | 1 light | 2 standard | 3 high risk
 size: M                  # S | M (split anything larger)
 depends_on: [T-011, T-019]   # T-011 builds --replay and --fill; T-019 runs the fill and re-baselines
@@ -588,4 +588,20 @@ The protected filled base now has 120 unknown rows out of 576. This is a measure
 not a changed target: all AC 6 and AC 7 moves are still relative to this base and to the
 actual single five-URL fill. The old September figures in brackets remain historical.
 No threshold, fill retry, miss-list allowance or older-test change is added.
+
+### Named baseline clarification: ASCII evidence (2026-10-11)
+
+The Evidence line asking for no non-ASCII character in any changed file is already
+false on the exact published base. The lead independently compared Git blobs at
+a19c3dc and frozen source b99f2e7. Non-ASCII character counts are identical before
+and after: README 23, benchmark JSON 0, benchmark Markdown 18, Experiment C 22,
+generated Owner page 36, scorecard 119, entry 13, landing 49, pages 0, risk 15,
+and risk tests 9. The complete character multisets are unchanged, and every
+added and removed diff line is ASCII. Existing English punctuation is retained.
+
+For this evidence item, report the literal whole-file conflict and prove that
+no new or changed line contains non-ASCII text. The repository's English-only
+guard still runs. Rewriting pre-existing punctuation or immutable older tests
+is not authorized. This clarification changes no acceptance assertion, source
+behavior, figure, benchmark rule, risk threshold, or review gate.
 

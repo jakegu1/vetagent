@@ -49,7 +49,7 @@ technical repair release.
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
 | T-020 | 3 | Recovery at 5bb391f; pacing published at 86a8111 | Published paced manual pass verified complete | Codex lead | Verify a real scheduled pass before done; retain DNS test follow-up |
-| T-013 | 3 | codex/t013-full-pool-identifiers from published a19c3dc | Exact dispatch prerequisites verified; tests-first execution next | Executor | Reproduce the immutable base, add acceptance tests alone, then repair validated full-id lookups under the one-fill gate |
+| T-013 | 3 | Frozen b99f2e7 from published a19c3dc | Tests-first source, single five-URL fill and final thirty-one-step suite pass | Fresh reviewers | Independently verify the immutable contract, request attribution, four changed rows and generated fixed point before merge |
 | T-022 | 3 | Approved 8b54497 published in 86a8111 | Manual run 38148501978 complete; raw committed coverage independently verified | Codex lead | Verify a real scheduled pass before completion |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
@@ -94,6 +94,18 @@ a19c3dc. Actual deployment 38150990382 runs and passes its offline suite, Worker
 and tagged production smoke. The homepage and Agent text are read back with the new
 measured figures, and health is HTTP 200 and ok. T-019 is complete; T-013 starts from this
 exact published base. The optional backfill HTTP 400 remains an explicitly parked repair.
+
+T-013 freezes at b99f2e7. Its tests-only first commit b164b3e has 761 passes and
+sixty behavioral failures before source fix a6a31fe; all 706 older risk assertions
+remain green. The immutable base replay is byte-identical and misses nothing. At the
+fix, exactly five full-id seller URLs miss. The single fill records five HTTP 200
+answers and adds five cache entries without changing older bytes. Final replay misses
+nothing; the lead independently compares all 576 committed rows and finds exactly
+four registered changes, 572 otherwise identical rows and no old high verdict reduced.
+Unknown moves from 120 to 116. Executor final checks pass thirty-one steps at the
+clean frozen head. Fresh independent and red-team review, integrated replay, preflight
+and actual production deployment remain required. The named ASCII evidence clarification
+retains pre-existing English punctuation and proves every changed line is ASCII.
 
 T-022's named tests-only red at 62cccc7 has 320 passes and sixteen behavioral failures
 before source fix 8b54497. Its original 293 assertions remain green. Executor tests
