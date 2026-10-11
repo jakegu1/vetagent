@@ -44,7 +44,7 @@
     {"@type":"Question","name":"What does a risk_level of unknown mean?",
      "acceptedAnswer":{"@type":"Answer","text":"It means a critical check could not be completed — usually an upstream data source failed. It is not a low-risk result and must not be used to justify a trade. evidence.data_gaps lists exactly which checks were missing."}},
     {"@type":"Question","name":"How accurate is VetAgent?",
-     "acceptedAnswer":{"@type":"Answer","text":"Measured on 576 tokens: 3.1% of healthy tokens were flagged high (false positives), 20.8% of answers were unknown, and 22.3% of oracle-tagged centralised tokens were flagged high, mostly abandoned pools holding cents; USDT and WBTC themselves are rated low (4 of 4 benchmark rows). 26 of 30 confirmed-dead tokens were not rated low, though only 3 of 30 were rated high, because a dead project whose pool still holds liquidity can still be sold. Recall against deliberately adversarial contracts is measured on 17 tokens so far, 15 of which hold under a dollar, and is not yet a number worth quoting. The full method and the raw numbers are published in the repository."}},
+     "acceptedAnswer":{"@type":"Answer","text":"Measured on 576 tokens: 3.1% of healthy tokens were flagged high (false positives), 20.1% of answers were unknown, and 22.3% of oracle-tagged centralised tokens were flagged high, mostly abandoned pools holding cents; USDT and WBTC themselves are rated low (4 of 4 benchmark rows). 26 of 30 confirmed-dead tokens were not rated low, though only 3 of 30 were rated high, because a dead project whose pool still holds liquidity can still be sold. Recall against deliberately adversarial contracts is measured on 17 tokens so far, 15 of which hold under a dollar, and is not yet a number worth quoting. The full method and the raw numbers are published in the repository."}},
     {"@type":"Question","name":"Is VetAgent free?",
      "acceptedAnswer":{"@type":"Answer","text":"Yes. The remote MCP endpoint and the HTTP API are free and require no account or key."}},
     {"@type":"Question","name":"Does VetAgent log the tokens I look up?",
@@ -194,7 +194,7 @@
           <td>False positives. Too high; being worked on.</td></tr>
       <tr><td>Liquid healthy tokens rated medium or high</td><td class="num high">13.0%</td>
           <td>False blocks: what an agent refuses that it should not, 20 of 154.</td></tr>
-      <tr><td>Answers returned as <code>unknown</code></td><td class="num unk">20.8%</td>
+      <tr><td>Answers returned as <code>unknown</code></td><td class="num unk">20.1%</td>
           <td>Refusals when a check could not run. Honest, still too many.</td></tr>
       <tr><td>Oracle-tagged centralised tokens rated high</td><td class="num low">22.3%</td>
           <td>Most are abandoned pools holding cents, caught by the liquidity checks; most of the rest are honeypot flags. Owner powers drive <em>none</em> of them &mdash; the engine never scores those. USDT is rated low.</td></tr>

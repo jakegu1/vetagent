@@ -86,7 +86,7 @@ listings, first asked on 2026-09-18):
 | Confirmed-dead tokens rated high (n=30) | **10.0%** (3 of 30) | |
 | Healthy tokens rated high — false positives (n=162) | **3.1%** (5 of 162) | |
 | Liquid healthy tokens ($100k+) rated medium or high — false blocks (n=154) | **13.0%** (20 of 154) | |
-| Answers returned as `unknown` (n=576) | **20.8%** (120 of 576) | |
+| Answers returned as `unknown` (n=576) | **20.1%** (116 of 576) | |
 | Tokens the oracle tags centralised, rated high (n=179) | **22.3%** (40 of 179) | |
 
 **Read the second column before the first.** "Contract signals only" drops the liquidity,
@@ -125,7 +125,7 @@ first would be the flattering half of a pair.
   6.0% **down**, not up. At this sample size my own report calls the two indistinguishable.
 - **The label and the verdict describe the same pool only 55% of the time.**
 - **`unknown` is a design choice and also a dependency.** Fail-closed is real: a check that
-  cannot run must never read as low risk. But 92 of the 120 unknowns are one free upstream
+  cannot run must never read as low risk. But 92 of the 116 unknowns are one free upstream
   either not having indexed the token or its simulation reverting, on tokens with a median
   of $116k in the pool. That is my supply chain, not the market's ambiguity. Another 25
   are tokens whose every pool is priced in an asset no independent market prices: the
@@ -211,8 +211,8 @@ and paste into the Markdown editor.
 >
 > - Of 30 tokens that actually died, 10.0% (3 of 30) are rated high. 86.7% are not rated low, but that falls to 20.0% on contract signals only: mostly market-side checks seeing an empty pool.
 > - False positives: 3.1% (5 of 162) against market outcome, 6.0% against the held-out contract oracle. The healthy control's median pool is $484,483, and all 5 are among the 16 thin (under $10k) or unpriced tokens. 4 of those had no pool the engine could cost, and for 2 of them the missing pool alone produced `high` where `unknown` was due -- I think that is an engine bug, and it is open.
-> - 13.0% (20 of 154) of liquid ($100k+) tokens that are alive or merely centralised come back `medium` or `high`, which an unattended agent with no one to ask will likely refuse; another 19 come back `unknown`. A rule decided on 2026-09-18 and in the engine on 09-19 moved this from 30 to 20; I chose it with these same 576 tokens in view, so treat the drop as a fit until a fresh cohort confirms it.
-> - 20.8% (120 of 576) of benchmark answers are `unknown` (fail-closed); the live service returned 67.6% of 139 answers from 2026-10-04 to 10-11, a figure that includes our own monitoring and demo traffic. 92 of the 120 benchmark unknowns are one free upstream not indexing the token or its simulation reverting.
+> - 13.0% (20 of 154) of liquid ($100k+) tokens that are alive or merely centralised come back `medium` or `high`, which an unattended agent with no one to ask will likely refuse; another 18 come back `unknown`. A rule decided on 2026-09-18 and in the engine on 09-19 moved this from 30 to 20; I chose it with these same 576 tokens in view, so treat the drop as a fit until a fresh cohort confirms it.
+> - 20.1% (116 of 576) of benchmark answers are `unknown` (fail-closed); the live service returned 67.6% of 139 answers from 2026-10-04 to 10-11, a figure that includes our own monitoring and demo traffic. 92 of the 116 benchmark unknowns are one free upstream not indexing the token or its simulation reverting.
 > - Zero Solana rows, though the product answers Solana.
 >
 > What I'd most like attacked: is the oracle independent enough, can n=17 (or the 30-token dead cohort) support any claim, and is "contract signals only" the right ablation?
@@ -240,8 +240,8 @@ channel's rules on crypto and AI-written posts first.
 > **Published rates, unflattering first** (576 tokens on Ethereum/BSC/Base; engine as of 2026-09-19, market data mostly cached 09-04 to 09-07):
 > - Contracts a held-out third-party scanner labels adversarial, rated high: **58.8%** (10 of 17); contract signals only: **17.6%**. 15 of the 17 hold under $1 of liquidity, and 7 of the 10 highs vanish on contract signals alone.
 > - Confirmed-dead tokens rated high: **10.0%** (3 of 30).
-> - Liquid ($100k+) tokens that are alive or merely centralised, rated medium or high: **13.0%** (20 of 154), plus 19 `unknown`. A rule shipped 2026-09-19 took it from 30 to 20; chosen with these same tokens in view, so unconfirmed until fresh tokens test it.
-> - `unknown`: **20.8%** in the benchmark; 67.6% live (10-04 to 10-11, including our own monitoring and demo traffic). 92 of the 120 benchmark unknowns trace to one free upstream.
+> - Liquid ($100k+) tokens that are alive or merely centralised, rated medium or high: **13.0%** (20 of 154), plus 18 `unknown`. A rule shipped 2026-09-19 took it from 30 to 20; chosen with these same tokens in view, so unconfirmed until fresh tokens test it.
+> - `unknown`: **20.1%** in the benchmark; 67.6% live (10-04 to 10-11, including our own monitoring and demo traffic). 92 of the 116 benchmark unknowns trace to one free upstream.
 > - Healthy tokens rated high: **3.1%** (5 of 162) against market outcome, all 5 among the 16 where it saw under $10k; 6.0% against the held-out scanner.
 > - Solana is served but has 0 benchmark rows, and `find_new_hot_pools` defaults to it.
 >
