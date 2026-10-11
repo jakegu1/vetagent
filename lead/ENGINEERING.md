@@ -48,6 +48,14 @@ steps. A separately tagged live Solana answer returns the new outside-pool holde
 and retains fail-closed behavior. T-011 now starts on this published base; no real fill or
 published benchmark change belongs to that task.
 
+T-011's exact e120fe5 source now has independent round-2 approval at 12/12 and passing
+required Linux jobs. Local integration retains its tests-first and named-change history.
+The real read-only cache replay still refuses its 89 unrecorded URLs, so T-019 must perform
+the bounded fill and measured rebaseline after publication. T-022's first independent and
+red-team reviews instead found a variable-connection-delay gap: 12.1 seconds configured
+can produce only 4.1 seconds between real HTTP starts. Its named opt-in pacing repair is
+in progress; the actual manual and scheduled release gates remain pending.
+
 The prior write restriction is historical. Current unrestricted execution works and the
 Owner explicitly authorized continuing technical deployment. Other sign-off categories
 and product gates remain in force; no permission guard was bypassed.

@@ -49,7 +49,7 @@ technical repair release.
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
 | T-020 | 3 | master at 5bb391f | Published; manual run preserved data and correctly failed incomplete coverage | Codex lead | Investigate observed HTTP 429 gaps; verify scheduled execution before done; retain DNS test follow-up |
-| T-011 | 2 | codex/t011-benchmark-replay | Round 1 changes required: two fill input/integrity boundaries | Executor | Named additive tests (b)/(c), real reds, narrow fixes and round-2 combined review; no real fill |
+| T-011 | 2 | reviewed e120fe5, local integration a126705 | Round 2 passed 12/12; source merged locally | Codex lead | Complete integrated checks and publish; verify deployment, then start T-019; no real fill yet |
 | T-022 | 3 | codex/t022-snapshot-pacing at e1e2b83 | Round 1 changes required: connection delay can shorten the HTTP gap | Executor | Named amendment (a), additive red-first tests and opt-in completion pacing; then combined review and actual manual/scheduled coverage |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
@@ -72,6 +72,12 @@ manifest entries contain thirty-seven successful pages and three observed listin
 T-022 uses its measured 12.1-second interval in scheduled pool collection without changing
 ordinary fetcher defaults, recovery budgets or the coverage rule. This is one measured
 pass; scheduled reliability remains to be observed. T-016 is closed after verified deployment.
+
+T-011's combined round-2 review and required source Linux jobs pass at e120fe5. The
+independent actual-cache regression preserves 91 missed requests over 89 URLs; no live
+fill or published benchmark change has occurred. Both named integrity/input fixes have
+their own tests-only reds and source commits. Reviewed source is merged locally at
+a126705; publication and deployed verification are pending the integrated release checks.
 
 ## Waiting on the Owner
 
