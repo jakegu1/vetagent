@@ -40,6 +40,9 @@ jobs:
       - name: Regression tests (offline, real upstream snapshots)
         run: python tests/test_risk.py
 
+      - name: Market measurements preserve finite scalars and unavailable depth
+        run: python tests/test_finite_market_measurements.py
+
       - name: MCP protocol tests
         run: python tests/test_mcp.py
 

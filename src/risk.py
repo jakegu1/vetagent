@@ -11,6 +11,7 @@ import asyncio
 import contextvars
 import statistics
 import json
+import math
 import re
 from datetime import datetime, timedelta, timezone
 
@@ -161,6 +162,40 @@ def _sig_round(x, digits=6):
         return float("%.*g" % (digits, v))
     except (TypeError, ValueError):
         return v
+
+
+def _market_number(value, signed=False):
+    """A finite market scalar, or None; absence and invalid input are not zero."""
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not math.isfinite(number) or (number < 0 and not signed):
+        return None
+    # A nonzero decimal string can underflow during conversion. Only an actual
+    # zero mantissa is evidence of zero; its exponent does not change that.
+    if number == 0 and isinstance(value, str):
+        mantissa = value.strip().lower().split("e", 1)[0]
+        if any(digit in mantissa for digit in "123456789"):
+            return None
+    return number
+
+
+def _market_round(value, digits=6, signed=False):
+    number = _market_number(value, signed=signed)
+    if number is None:
+        return None
+    return _market_number(_sig_round(number, digits), signed=signed)
+
+
+def _market_sum(values):
+    """An aggregate cannot testify when an included reading or its sum is unavailable."""
+    values = list(values)
+    if any(value is None for value in values):
+        return None
+    return _market_number(sum(values))
 
 
 # How long a cached upstream response counts as fresh, and how long it may still be
@@ -1156,8 +1191,8 @@ def _price_of_target(pair, target):
     priced it at $0.00097; this one keeps the right chain and the right pool and still
     reports a number that is not this token's price.
     """
-    price = _num(pair.get("priceUsd"))
-    if price <= 0:
+    price = _market_number(pair.get("priceUsd"))
+    if price is None or price <= 0:
         return None
     t = (target or "").lower()
     if not t:
@@ -1168,10 +1203,11 @@ def _price_of_target(pair, target):
     quote = ((pair.get("quoteToken") or {}).get("address") or "").lower()
     if quote != t:
         return price          # neither side matches; caller's scoping decides
-    native = _num(pair.get("priceNative"))
-    if native <= 0:
+    native = _market_number(pair.get("priceNative"))
+    if native is None or native <= 0:
         return None           # nothing to invert by; do not guess
-    return price / native
+    result = _market_number(price / native)
+    return result if result is not None and result > 0 else None
 
 
 def _pair_liquidity(pair):
@@ -1228,17 +1264,28 @@ def _independent_depth_cap(pair):
         return _NOT_CHECKABLE
     if base_is and quote_is:
         return float("inf")
-    price, native = _num(pair.get("priceUsd")), _num(pair.get("priceNative"))
+    price = _market_number(pair.get("priceUsd"))
     if base_is:
-        return 2.0 * _num(liq.get("base")) * price if price > 0 else _NOT_CHECKABLE
-    if quote_is:
-        if price <= 0 or native <= 0:
-            return _NOT_CHECKABLE
-        return 2.0 * _num(liq.get("quote")) * price / native
-    return None
+        amount, native = _market_number(liq.get("base")), 1.0
+    elif quote_is:
+        amount = _market_number(liq.get("quote"))
+        native = _market_number(pair.get("priceNative"))
+    else:
+        return None
+    if amount is None or price is None or price <= 0 or native is None or native <= 0:
+        return _INVALID_CAP
+    # Preserve the original multiplication/division order for ordinary measurements.
+    # A positive reserve that underflows to zero is not an observed empty reserve.
+    doubled = _market_number(2.0 * amount)
+    product = _market_number(doubled * price) if doubled is not None else None
+    cap = _market_number(product / native) if product is not None else None
+    if cap is None or (amount > 0 and (product == 0 or cap == 0)):
+        return _INVALID_CAP
+    return cap
 
 
 _NOT_CHECKABLE = object()
+_INVALID_CAP = object()
 
 _UNBACKED_REASON = _gap(_ABOUT_TOKEN,
                         "no pool's depth is priced in an asset we can verify")
@@ -1262,7 +1309,7 @@ def _stated_liquidity(pair):
     liq = pair.get("liquidity") or {}
     for v in (liq.get("usd"), pair.get("reserveInUsd")):
         if v is not None and v != "":
-            return _num(v)
+            return _market_number(v)
     return None
 
 
@@ -1286,7 +1333,9 @@ def _reported_liquidity(pair):
     liq = pair.get("liquidity") or {}
     for v in (liq.get("usd"), pair.get("reserveInUsd")):
         if v is not None and v != "":
-            n = _num(v)
+            n = _market_number(v)
+            if n is None:
+                return None
             # A figure this small is not a small pool, it is a broken number, and it was
             # being spent as a measurement: GeckoTerminal reported reserve_in_usd
             # 0.0000000000192 for a pool its own OHLCV endpoint credited with $567,990 of
@@ -1309,6 +1358,8 @@ def _reported_liquidity(pair):
             cap = _independent_depth_cap(pair)
             if cap is _NOT_CHECKABLE:
                 return n
+            if cap is _INVALID_CAP:
+                return None          # an invalid required operand did not price a reserve
             if cap is None:
                 return None          # a figure nothing independent backs is no figure
             n = min(n, cap)
@@ -1375,12 +1426,13 @@ def _unranked_price_conflict(scope):
         return None                      # rank had something to say; it said it
     if len({(p.get("chainId") or "").lower() for p in scope}) < 2:
         return None                      # one chain is not an ambiguity
-    prices = [_num(p.get("priceUsd")) for p in scope
-              if _num(p.get("priceUsd")) > 0 and _reported_liquidity(p)]
+    prices = [_market_number(p.get("priceUsd")) for p in scope
+              if (_market_number(p.get("priceUsd")) or 0) > 0 and _reported_liquidity(p)]
     if len(prices) < 2:
         return None
     lo, hi = min(prices), max(prices)
-    return (lo, hi) if hi / lo > _PRICE_DISAGREEMENT_FACTOR else None
+    ratio = _market_number(hi / lo)
+    return (lo, hi) if ratio is not None and ratio > _PRICE_DISAGREEMENT_FACTOR else None
 
 
 # How far a single pool may sit from the median of its peers before it stops being a
@@ -1426,10 +1478,11 @@ def _drop_price_outliers(candidates, target):
     if len(priced) < _MIN_POOLS_FOR_CONSENSUS:
         return candidates
     med = statistics.median([v for v, _ in priced])
-    if med <= 0:
+    if _market_number(med) is None or med <= 0:
         return candidates
     kept = [p for v, p in priced
-            if max(v / med, med / v) <= _MAX_PRICE_DEVIATION]
+            if _market_number(v / med) is not None and _market_number(med / v) is not None
+            and max(v / med, med / v) <= _MAX_PRICE_DEVIATION]
     # Pools we could not price are not outliers; they simply cannot vote. Keep them, since
     # depth ranking may still legitimately choose one.
     unpriced = [p for p in candidates if not any(p is q for _, q in priced)]
@@ -1495,14 +1548,14 @@ def _home_scope(pairs, chain_hint=None, target=None):
     depth, count = {}, {}
     for p in tier:
         c = (p.get("chainId") or "").lower()
-        depth[c] = depth.get(c, 0.0) + _pair_liquidity(p)
+        depth[c] = _market_sum((depth.get(c, 0.0), _pair_liquidity(p)))
         count[c] = count.get(c, 0) + 1
     # Ranked tiers only. When every candidate is on a chain the table does not know,
     # _unranked_price_conflict needs to see them side by side to disclose a disagreement,
     # and that shape -- two unranked chains at once -- occurred 0 times in 1,136 cached
     # responses, so there is no mismatch there to fix.
     if len(depth) > 1 and best_rank != _UNKNOWN_CHAIN_RANK:
-        home_chain = sorted(depth, key=lambda c: (-depth[c], -count[c], c))[0]
+        home_chain = sorted(depth, key=lambda c: (-(depth[c] or 0.0), -count[c], c))[0]
         tier = [p for p in tier if (p.get("chainId") or "").lower() == home_chain]
     return tier
 
@@ -1536,7 +1589,7 @@ def _pick_best(pairs, chain_hint=None, target=None):
         if _pair_liquidity(p) <= 0:
             return False
         price = p.get("priceUsd")
-        return True if price in (None, "") else _num(price) > 0
+        return True if price in (None, "") else (_market_number(price) or 0) > 0
 
     def _is_target(p):
         bt = ((p.get("baseToken") or {}).get("address") or "").lower()
@@ -1614,10 +1667,13 @@ def _gt_base_price(a):
     """
     price = a.get("base_token_price_usd")
     if price not in (None, "", "0"):
-        return price
-    bq = _num(a.get("base_token_price_quote_token"))
-    qu = _num(a.get("quote_token_price_usd"))
-    return bq * qu if bq and qu else None
+        return _market_number(price)
+    bq = _market_number(a.get("base_token_price_quote_token"))
+    qu = _market_number(a.get("quote_token_price_usd"))
+    if bq is None or qu is None or bq <= 0 or qu <= 0:
+        return None
+    derived = _market_number(bq * qu)
+    return derived if derived is not None and derived > 0 else None
 
 
 def _gt_to_pair(p, address, network):
@@ -1639,6 +1695,12 @@ def _gt_to_pair(p, address, network):
         # No relationships to read (older payloads, test fixtures): the old assumption is
         # the only information there is, and it is labelled as the base side as before.
         base_addr, quote_addr = address, ""
+    price = _gt_base_price(a)
+    raw_price = a.get("base_token_price_usd")
+    if price is None and raw_price not in (None, "", "0"):
+        # Preserve invalid-present provenance for candidate qualification. A bad
+        # primary price cannot be recast as a genuinely missing optional price.
+        price = raw_price
     return {
         "dexId": "geckoterminal",
         # GeckoTerminal pool ids look like "eth_0xabc..."; the address is the tail.
@@ -1648,11 +1710,10 @@ def _gt_to_pair(p, address, network):
         # None, not 0.0, when GeckoTerminal did not state a reserve -- see
         # _reported_liquidity. A missing number must not arrive downstream as a measured
         # zero.
-        "liquidity": {"usd": (None if a.get("reserve_in_usd") in (None, "")
-                              else _num(a.get("reserve_in_usd")))},
-        "priceUsd": _gt_base_price(a),
+        "liquidity": {"usd": _market_number(a.get("reserve_in_usd"))},
+        "priceUsd": price,
         "pairCreatedAt": a.get("pool_created_at"),
-        "volume": {"h24": _num((a.get("volume_usd") or {}).get("h24"))},
+        "volume": {"h24": _market_number((a.get("volume_usd") or {}).get("h24"))},
         "priceChange": {"h24": (a.get("price_change_percentage") or {}).get("h24")},
         # Trade counts, which this shim simply did not carry. _num(None) is 0.0, so the
         # honeypot override's `sells >= N` could never hold and the whole "adjudicate,
@@ -1663,14 +1724,14 @@ def _gt_to_pair(p, address, network):
         # GeckoTerminal also reports distinct buyers and sellers, which DexScreener does
         # not. Carried through because it is the honest discriminator for the override:
         # wash trading is cheap in transactions and expensive in funded addresses.
-        "txns": {"h24": {"buys": _num(((a.get("transactions") or {}).get("h24") or {})
+        "txns": {"h24": {"buys": _market_number(((a.get("transactions") or {}).get("h24") or {})
                                       .get("buys")),
-                         "sells": _num(((a.get("transactions") or {}).get("h24") or {})
+                         "sells": _market_number(((a.get("transactions") or {}).get("h24") or {})
                                        .get("sells"))}},
-        "traders": {"h24": {"buyers": ((a.get("transactions") or {}).get("h24") or {})
-                            .get("buyers"),
-                            "sellers": ((a.get("transactions") or {}).get("h24") or {})
-                            .get("sellers")}},
+        "traders": {"h24": {"buyers": _market_number(((a.get("transactions") or {}).get("h24") or {})
+                            .get("buyers")),
+                            "sellers": _market_number(((a.get("transactions") or {}).get("h24") or {})
+                            .get("sellers"))}},
         # The symbol comes along, because a consumer that needs it has no other source.
         # Without it _impersonation_signals found "" and returned, so the check was
         # silently skipped for every token that fell through to GeckoTerminal -- no
@@ -1695,7 +1756,7 @@ def _gt_to_pair(p, address, network):
 
 def _liquidity_signals(best, pairs, signals, evidence, target=None):
     liq = _pair_liquidity(best)
-    vol = _num((best.get("volume") or {}).get("h24"))
+    vol = _market_number((best.get("volume") or {}).get("h24"))
     # Buy/sell counts come free in the same response and are the only direct evidence we
     # have about whether people can actually get out. _honeypot_signals reads them back.
     txns = ((best.get("txns") or {}).get("h24") or {})
@@ -1703,7 +1764,7 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
         "dex": best.get("dexId"), "chain": best.get("chainId"),
         "liquidity_usd": _sig_round(liq),
         # The price of the token asked about, not of whichever side the pool lists first.
-        "price_usd": _sig_round(_price_of_target(best, target)),
+        "price_usd": _market_round(_price_of_target(best, target)),
         # Which pool this verdict is actually about. A caller comparing our answer to
         # anything else -- another scanner, their own dashboard, a benchmark label --
         # needs to know we were both looking at the same venue. The benchmark was not:
@@ -1711,9 +1772,9 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
         # 16% of the set those are different pools, with the disagreement booked as
         # engine error.
         "pair_address": _ascii_safe(best.get("pairAddress") or best.get("pool_id"), 48),
-        "sellers_24h": ((best.get("traders") or {}).get("h24") or {}).get("sellers"),
-        "volume_24h_usd": _sig_round(vol), "pair_created_at": best.get("pairCreatedAt"),
-        "buys_24h": txns.get("buys"), "sells_24h": txns.get("sells"),
+        "sellers_24h": _market_number(((best.get("traders") or {}).get("h24") or {}).get("sellers")),
+        "volume_24h_usd": _market_round(vol), "pair_created_at": best.get("pairCreatedAt"),
+        "buys_24h": _market_number(txns.get("buys")), "sells_24h": _market_number(txns.get("sells")),
     }
     if liq < 5000:
         signals.append(_sig("critical", "Very low liquidity",
@@ -1765,14 +1826,15 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
     # threshold is how the false positives got in last time.
     change_24h = (best.get("priceChange") or {}).get("h24")
     if change_24h is not None:
-        evidence["price_change_24h_pct"] = _sig_round(_num(change_24h), 2)
-        if _num(change_24h) <= -50:
+        change_24h = _market_number(change_24h, signed=True)
+        evidence["price_change_24h_pct"] = _market_round(change_24h, 2, signed=True)
+        if change_24h is not None and change_24h <= -50:
             signals.append(_sig(
                 "info", "Price is sharply down today",
                 "Down %.0f%% in 24h. Reported, not scored: a falling price is not by "
                 "itself a safety finding, and this tool does not judge investments. "
                 "Check it against the liquidity and sell figures above."
-                % abs(_num(change_24h)), "lifecycle"))
+                % abs(change_24h), "lifecycle"))
 
     if liq > 0:
         # Over the token's pools on this chain, not the one picked. Trading moves to the
@@ -1789,12 +1851,14 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
                   and _pair_liquidity(p) > 0]
         if best not in venues:
             venues.append(best)
-        liq_all = sum(_pair_liquidity(p) for p in venues)
-        vol_all = sum(_num((p.get("volume") or {}).get("h24")) for p in venues)
-        turnover = vol_all / liq_all
-        evidence["turnover_24h"] = _sig_round(turnover, 4)
-        evidence["turnover_24h_best_pool"] = _sig_round(vol / liq, 4)
-        if turnover < 0.02 and (age or 0) > 180:
+        liq_all = _market_sum(_pair_liquidity(p) for p in venues)
+        vol_all = _market_sum(_market_number((p.get("volume") or {}).get("h24")) for p in venues)
+        turnover = (_market_number(vol_all / liq_all)
+                    if vol_all is not None and liq_all is not None and liq_all > 0 else None)
+        best_turnover = _market_number(vol / liq) if vol is not None else None
+        evidence["turnover_24h"] = _market_round(turnover, 4)
+        evidence["turnover_24h_best_pool"] = _market_round(best_turnover, 4)
+        if turnover is not None and turnover < 0.02 and (age or 0) > 180:
             signals.append(_sig("warn", "Looks abandoned",
                                 "$%s of liquidity across %d pool%s but only $%s traded in 24h "
                                 "(%.1f%% turnover). A token this quiet for this long usually "
@@ -1803,7 +1867,7 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
                                    "" if len(venues) == 1 else "s",
                                    format(vol_all, ",.0f"), turnover * 100),
                                 "lifecycle"))
-        elif turnover < 0.02:
+        elif turnover is not None and turnover < 0.02:
             signals.append(_sig("warn", "Very little trading",
                                 "Turnover is only %.1f%%. Exiting at size may be difficult." % (turnover * 100),
                                 "lifecycle"))
@@ -1990,9 +2054,11 @@ def _sells_demonstrated(evidence):
     behind them. Past sells say nothing about whether you can exit now.
     """
     bp = evidence.get("best_pair") or {}
-    sells, buys = _num(bp.get("sells_24h")), _num(bp.get("buys_24h"))
-    if _num(bp.get("liquidity_usd")) < 5000:
-        return False, sells, buys
+    sells = _market_number(bp.get("sells_24h"))
+    buys = _market_number(bp.get("buys_24h"))
+    depth = _market_number(bp.get("liquidity_usd"))
+    if sells is None or buys is None or depth is None or depth < 5000:
+        return False, sells or 0.0, buys or 0.0
     return (sells >= 20 and sells >= 0.15 * (buys + 1)), sells, buys
 
 
@@ -2630,7 +2696,7 @@ async def _distinct_sellers(hp, evidence, pool_id=None):
     attrs = ((gt.get("data") or {}).get("attributes") or {})
     sellers = ((attrs.get("transactions") or {}).get("h24") or {}).get("sellers")
     if sellers is not None:
-        bp["sellers_24h"] = sellers
+        bp["sellers_24h"] = _market_number(sellers)
 
 
 def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
@@ -2783,7 +2849,8 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
         # rather than dropped: something is wrong with this token, we just know it is not
         # that nobody can exit.
         bp = evidence.get("best_pair") or {}
-        sells, buys = _num(bp.get("sells_24h")), _num(bp.get("buys_24h"))
+        sells = _market_number(bp.get("sells_24h"))
+        buys = _market_number(bp.get("buys_24h"))
         # The pool also has to still be there. One token in the benchmark showed 458
         # completed sells against $0 of remaining liquidity: people got out, and then
         # the pool was drained behind them. Past sells say nothing about whether you
@@ -2821,9 +2888,10 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
         # 404 (2026-10-07); no retry could settle it, whatever the rate limit did.
         # An attacker wants `low` or `medium`, and `unknown` denies both; `high` on our
         # own outage would only smear the token.
-        sellers = (bp.get("sellers_24h"))
-        pool_alive = _num(bp.get("liquidity_usd")) >= 5_000
-        sells_work = pool_alive and sells >= 20 and sells >= 0.15 * (buys + 1)
+        sellers = _market_number(bp.get("sellers_24h"))
+        pool_alive = (_market_number(bp.get("liquidity_usd")) or 0) >= 5_000
+        sells_work = (pool_alive and sells is not None and buys is not None
+                      and sells >= 20 and sells >= 0.15 * (buys + 1))
         band = _holder_share_band(ha, flags, sim_ok, sim)
         if band == "fatal":
             evidence["honeypot"]["holder_share_band"] = "fatal"
@@ -4128,12 +4196,13 @@ async def assess(address, chain_hint=None, verbose=False):
             # ago. Asking this over every pair on every chain let one inherited fork pool
             # answer a question about the token's real exit.
             scope = _home_scope(pairs, chain_hint, address)
-            stated = [v for v in (_reported_liquidity(p) for p in scope) if v is not None]
+            readings = [_reported_liquidity(p) for p in scope]
+            stated = [v for v in readings if v is not None]
             # And only pools we could price can testify that they are empty: a pool stating
             # depth that nothing independent backs drops out of `stated`, which let a $0
             # WETH pool speak for a $115,299 VIRTUAL pool beside it (W33). Unverifiable is
             # a gap, not an absence.
-            if stated and max(stated) <= 0 and not _only_unbacked_depth(scope):
+            if stated and len(stated) == len(scope) and max(stated) <= 0 and not _only_unbacked_depth(scope):
                 evidence["pools_all_empty"] = len(stated)
                 # fatal, not critical. "There is nothing to sell into at any price" is
                 # the most serious thing this engine can conclude, and at critical it
@@ -4152,16 +4221,14 @@ async def assess(address, chain_hint=None, verbose=False):
                     h24 = txns.get("h24")
                     if not isinstance(h24, dict):
                         return False
-                    sells = h24.get("sells")
-                    if isinstance(sells, bool):
-                        return False
-                    try:
-                        return 0 < float(sells) < float("inf")
-                    except (TypeError, ValueError, OverflowError):
-                        return False
+                    sells = _market_number(h24.get("sells"))
+                    return sells is not None and sells > 0
 
                 reason = (_UNBACKED_REASON
                           if (not stated or max(stated) <= 0) and _only_unbacked_depth(scope)
+                          else _gap(_ABOUT_TOKEN, "among the sources queried, no source reported "
+                                    "pool depth for some listed pairs")
+                          if stated and max(stated) <= 0 and len(stated) < len(scope)
                           else _gap(_ABOUT_TOKEN, "no pair with a sane price") if stated
                           else _TRADED_DEPTH_REASON if any(traded(p) for p in scope)
                           else _gap(_ABOUT_TOKEN, "no source reported pool depth"))
@@ -4374,7 +4441,7 @@ async def liquidity(address, chain_hint=None):
         # do not know how deep its market is".
         scope = _home_scope(pairs, chain_hint, address)
         stated = [v for v in (_reported_liquidity(p) for p in scope) if v is not None]
-        if stated and max(stated) <= 0:
+        if stated and len(stated) == len(scope) and max(stated) <= 0 and not _only_unbacked_depth(scope):
             return _disclosed({"address": address, "status": "drained",
                                "liquidity_usd": 0,
                     "pairs_total": len(pairs),
@@ -4395,9 +4462,9 @@ async def liquidity(address, chain_hint=None):
         # Upstream names, escaped like every other upstream string that reaches a caller.
         "best_pair_chain": _ascii_safe(best.get("chainId"), 24),
         "best_pair_dex": _ascii_safe(best.get("dexId"), 24),
-        "price_usd": _sig_round(_price_of_target(best, address)),
+        "price_usd": _market_round(_price_of_target(best, address)),
         "liquidity_usd": _sig_round(_pair_liquidity(best)),
-        "volume_24h_usd": _sig_round(_num((best.get("volume") or {}).get("h24"))),
+        "volume_24h_usd": _market_round((best.get("volume") or {}).get("h24")),
         "pairs_total": len(pairs),
         "chains": sorted({_ascii_safe(p.get("chainId"), 24)
                           for p in pairs if p.get("chainId")}),
@@ -4466,9 +4533,9 @@ async def new_pools(chain="solana", limit=10):
                 "kind": kind, "pool_id": _ascii_safe(pid, 64),
                 "token_address": _ascii_safe(base_id, 64),
                 "name": _ascii_safe(a.get("name"), 48),
-                "price_usd": _sig_round(a.get("base_token_price_usd")),
-                "liquidity_usd": _sig_round(a.get("reserve_in_usd")),
-                "volume_24h_usd": _sig_round((a.get("volume_usd") or {}).get("h24")),
+                "price_usd": _market_round(a.get("base_token_price_usd")),
+                "liquidity_usd": _market_round(a.get("reserve_in_usd")),
+                "volume_24h_usd": _market_round((a.get("volume_usd") or {}).get("h24")),
                 "pool_age_days": _age_days(a.get("pool_created_at")),
             }
     if not reachable:

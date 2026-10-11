@@ -164,9 +164,9 @@ TOOLS = [
                 "status": {"type": "string",
                            "enum": ["ok", "not_found", "unpriced", "drained",
                                     "unavailable"]},
-                "price_usd": {"type": "number"},
+                "price_usd": {"type": ["number", "null"]},
                 "liquidity_usd": {"type": ["number", "null"]},
-                "volume_24h_usd": {"type": "number"},
+                "volume_24h_usd": {"type": ["number", "null"]},
                 "pairs_total": {"type": "integer"},
                 "checked_at": _CHECKED_AT,
                 "served_stale": {
