@@ -1,0 +1,51 @@
+name: snapshot pacing measurement
+
+# Disposable branch experiment. No scheduler, credentials or repository writes.
+on:
+  push:
+    branches: [codex/snapshot-pacing-probe]
+    paths: [.github/workflows/snapshot-pacing-probe.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Measure unchanged collector with slower request pacing
+        continue-on-error: true
+        run: |
+          python - <<'PY'
+          import os, sys
+          sys.path.insert(0, "bench")
+          import fetcher, snapshot
+          fetcher._RATE["api.geckoterminal.com"] = 12.1
+          snapshot.OUT_DIR = os.path.join(os.environ["RUNNER_TEMP"], "snapshot-pacing")
+          print("Experiment: same collector, eight chains, five pages; request gap 12.1 seconds")
+          sys.exit(snapshot.main())
+          PY
+        env:
+          PYTHONUNBUFFERED: "1"
+      - name: Retain actual pool rows and pass manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-pacing-observation
+          path: ${{ runner.temp }}/snapshot-pacing/*.ndjson
+          retention-days: 7
+      - name: Report actual complete or incomplete coverage
+        if: always()
+        run: |
+          python - <<'PY'
+          import os, sys
+          sys.path.insert(0, "bench")
+          import snapshot
+          snapshot.OUT_DIR = os.path.join(os.environ["RUNNER_TEMP"], "snapshot-pacing")
+          sys.exit(snapshot._check_coverage())
+          PY
