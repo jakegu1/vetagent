@@ -1,7 +1,7 @@
 ---
 id: T-012
 title: Stop the no-trace escalation from calling a traded token "nothing can be verified" (W49, narrow form)
-status: changes_requested # draft | ready | in_progress | in_review | changes_requested | done | dropped
+status: in_review        # draft | ready | in_progress | in_review | changes_requested | done | dropped
 level: 3                 # 0 direct | 1 light | 2 standard | 3 high risk
 size: M                  # S | M (split anything larger)
 depends_on: [T-011, T-019, T-013]   # T-019 is the base AC 7 measures on; T-013 first only because it edits the same file

@@ -49,7 +49,7 @@ technical repair release.
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
 | T-020 | 3 | Recovery at 5bb391f; pacing published at 86a8111 | Published paced manual pass verified complete | Codex lead | Verify a real scheduled pass before done; retain DNS test follow-up |
-| T-012 | 3 | codex/t012-traded-depth-gap; round-1 head b305d08, base 7f796e4 | Round-1 red team reproduces six new malformed-container regressions; named additive fix b recorded | Isolated executor | Commit additive red seam tests, guard only the new predicate, then obtain combined round-2 review |
+| T-012 | 3 | codex/t012-traded-depth-gap at 8771725; base 7f796e4 | Named fix b complete, immutable replay and full thirty-one-step suite pass; combined round 2 starting | Fresh combined reviewer | Verify new red-first seams and both guard mutants before lead-owned closeout and publication |
 | T-022 | 3 | Approved 8b54497 published in 86a8111 | Manual run 38148501978 complete; raw committed coverage independently verified | Codex lead | Verify a real scheduled pass before completion |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
