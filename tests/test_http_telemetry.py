@@ -1002,6 +1002,62 @@ def test_the_worker_hands_its_provider_key_to_the_engine():
         risk.configure(types.SimpleNamespace(CG_DEMO_KEY=saved) if saved else None)
 
 
+def test_traded_depth_gap_records_a_fixed_unique_label():
+    """T-012 AC 5a: telemetry names the actual new gap without copying upstream text."""
+    print("\n[T-012] a traded depth gap has its own fixed telemetry class")
+    pair = {"chainId": "bsc", "dexId": "pancakeswap",
+            "baseToken": {"address": ADDRESS, "symbol": "TKN"},
+            "quoteToken": {"address": "0xq"},
+            "txns": {"h24": {"buys": 10540, "sells": 148}}}
+    original = risk._fetch_json
+
+    async def stub(url, *a, **kw):
+        if "dex/tokens" in url:
+            return {"pairs": [pair]}
+        if "dex/search" in url:
+            return {"pairs": []}
+        if "geckoterminal" in url:
+            return {"data": []}
+        return risk.NO_DATA if "honeypot.is" in url or "rugcheck" in url else None
+
+    risk._fetch_json = stub
+    try:
+        observed = asyncio.run(risk.assess(ADDRESS, chain_hint="bsc"))
+        gaps = (observed.get("evidence") or {}).get("data_gaps") or []
+        answer = {"risk_level": "unknown", "unknown_kind": "coverage", "evidence": {"data_gaps": gaps}}
+        why = entry._why_unknown(answer)
+        match = re.fullmatch(r"coverage\|liquidity:([a-z ]+)\|sellability:no record", why)
+        label = match.group(1) if match else ""
+        prior_labels = {word for phrase, word in entry._GAP_CLASSES
+                        if phrase not in next((g["reason"] for g in gaps
+                                              if g.get("dimension") == "liquidity"), "")}
+        check("T-012 telemetry records exactly the fixed new class and no-record class",
+              bool(match) and label not in prior_labels and label not in ("other", "no depth"), why)
+        check("T-012 telemetry label contains only lowercase words", bool(re.fullmatch(r"[a-z ]+", label)), label)
+        check("T-012 telemetry does not copy the address or trade count",
+              ADDRESS.lower() not in why.lower() and not re.search(r"\d", why), why)
+        pair["txns"] = {"h24": {"buys": 0, "sells": 0}}
+        untraded = asyncio.run(risk.assess(ADDRESS, chain_hint="bsc"))
+        old = {"risk_level": "unknown", "unknown_kind": "coverage", "evidence": untraded["evidence"]}
+        check("T-012 untraded depth gap retains its existing telemetry label",
+              entry._why_unknown(old) == "coverage|liquidity:no depth|sellability:no record",
+              entry._why_unknown(old))
+    finally:
+        risk._fetch_json = original
+
+
+def test_unknown_page_distinguishes_traded_depth_from_absence():
+    """T-012 AC 6b: the public absence paragraph states the narrow unknown case."""
+    import pages
+    print("\n[T-012] /unknown names the traded-depth exception")
+    section = pages.UNKNOWN_HTML.split("<h2>When the absence is the answer</h2>", 1)[-1].split("<h2>", 1)[0]
+    check("T-012 /unknown says traded pools are not an absence", "not an absence" in section, section)
+    check("T-012 /unknown names last-day sells, missing depth and unknown",
+          all(x in section for x in ("sells", "last day", "depth", "unknown")), section)
+    check("T-012 /unknown adds no digits to the rule", not re.search(r"\d", section), section)
+    check("T-012 /unknown promises no rating for retry", "retry" not in section.lower(), section)
+
+
 def main():
     print("=" * 68)
     print("HTTP telemetry: the interface the gate could not see")
