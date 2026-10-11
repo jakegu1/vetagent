@@ -1058,6 +1058,120 @@ def test_unknown_page_distinguishes_traded_depth_from_absence():
     check("T-012 /unknown promises no rating for retry", "retry" not in section.lower(), section)
 
 
+def _t012_transaction_container_cases():
+    cases = []
+    for level in ("txns", "h24"):
+        for label, value in (("list", [1]), ("text", "bad"), ("integer", 1),
+                             ("true", True), ("false", False), ("null", None),
+                             ("empty", {})):
+            fields = {"txns": value if level == "txns" else {"h24": value}}
+            cases.append((level + " " + label, fields, False))
+    return cases + [("txns missing", {}, False), ("h24 missing", {"txns": {}}, False),
+                    ("finite positive sells", {"txns": {"h24": {"buys": 0, "sells": 3}}}, True)]
+
+
+def test_malformed_trade_containers_preserve_http_and_mcp_assessments():
+    """T-012 fix (b): real routes keep their complete verdict on unavailable containers."""
+    import json
+    print("\n[T-012] malformed transactions preserve the HTTP and MCP seams")
+    token_url = "https://api.dexscreener.com/latest/dex/tokens/" + ADDRESS.lower()
+    simulator_url = ("https://api.honeypot.is/v2/IsHoneypot?address="
+                     + ADDRESS.lower() + "&chainID=56")
+    saved = risk._fetch_json, entry._record, dict(risk._ONCHAIN)
+    try:
+        for label, fields, traded in _t012_transaction_container_cases():
+            pair = {"chainId": "bsc", "dexId": "uniswap",
+                    "baseToken": {"address": ADDRESS, "symbol": "TKN"},
+                    "quoteToken": {"address": "0xq"}, **fields}
+            for route in ("http", "mcp"):
+                calls, recorded = [], []
+
+                async def fetch(url, *a, **kw):
+                    calls.append((url, bool(kw.get("mark_missing"))))
+                    if url == token_url:
+                        return {"pairs": [pair]}
+                    if url == simulator_url:
+                        return risk.NO_DATA
+                    raise AssertionError("Unmatched local fixture URL: " + url)
+
+                risk._fetch_json = fetch
+                entry._record = lambda env, blobs, doubles: recorded.append(blobs)
+                body = ({"address": ADDRESS, "chain_hint": "bsc"} if route == "http" else
+                        {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                         "params": {"name": "assess_token_risk",
+                                    "arguments": {"address": ADDRESS, "chain_hint": "bsc"}}})
+
+                class Request(FakeRequest):
+                    async def json(self):
+                        return body
+
+                    async def text(self):
+                        return json.dumps(body)
+
+                prefix = "T-012 %s container %s: " % (route, label)
+                response, payload, error = None, {}, ""
+                try:
+                    response = asyncio.run(entry.Default().fetch(Request(
+                        "https://offline.invalid/" + ("assess" if route == "http" else "mcp"),
+                        method="POST", headers={"content-type": "application/json",
+                                                "x-mcp-client": "vetagent-offline-acceptance"})))
+                    payload = json.loads(response.body)
+                except Exception as exc:
+                    error = type(exc).__name__
+                check(prefix + "transport completes without raising", not error, error)
+                check(prefix + "HTTP succeeds", response is not None and response.status == 200,
+                      str(response.status if response is not None else None))
+                check(prefix + "only the same two fixture requests",
+                      calls == [(token_url, False), (simulator_url, True)], str(calls))
+                result = payload.get("result") or {} if route == "mcp" else payload
+                answer = result.get("structuredContent") or {} if route == "mcp" else result
+                check(prefix + "no protocol or tool error", "error" not in payload and not result.get("isError"),
+                      str(payload))
+                check(prefix + "no unsafe exception detail",
+                      "detail" not in payload and not any(word in str(payload) for word in
+                                                         ("AttributeError", "has no attribute", "Traceback")),
+                      str(payload))
+                expected = "unknown" if traded else "high"
+                check(prefix + "complete structured verdict",
+                      answer.get("risk_level") == expected and isinstance(answer.get("signals"), list)
+                      and isinstance(answer.get("evidence"), dict), str(answer))
+                check(prefix + "score and driver are unchanged",
+                      answer.get("risk_score") == (40 if traded else 70)
+                      and (answer.get("driver") or {}).get("category") == ("sellability" if traded else "no_liquidity"),
+                      str(answer))
+                escalation = any(s.get("name") == "Nothing about this token can be verified"
+                                 for s in answer.get("signals", []))
+                check(prefix + "only the valid sell avoids no-trace", escalation is not traded, str(escalation))
+                gaps = (answer.get("evidence") or {}).get("data_gaps") or []
+                depth = next((g for g in gaps if g.get("dimension") == "liquidity"), {})
+                simulator = next((g for g in gaps if g.get("dimension") == "sellability"), {})
+                check(prefix + "critical depth gap has no invented sell evidence",
+                      "liquidity" in risk._CRITICAL_DIMENSIONS and depth.get("reason") == (
+                          risk._TRADED_DEPTH_REASON if traded else "about the token: no source reported pool depth"),
+                      str(depth))
+                check(prefix + "critical simulator gap stays",
+                      "sellability" in risk._CRITICAL_DIMENSIONS and simulator.get("reason") ==
+                      "about the token: the sell simulator has no record of this token", str(simulator))
+                check(prefix + "valid traded control abstains and high keeps its action",
+                      answer.get("next_action") == ("abstain" if traded else None), str(answer.get("next_action")))
+                check(prefix + "telemetry carries the verdict without identifying the token",
+                      len(recorded) == 1 and recorded[0][2] == expected
+                      and ADDRESS.lower() not in str(recorded).lower(), str(recorded))
+                if route == "mcp":
+                    content = result.get("content") or []
+                    text_answer = {}
+                    try:
+                        text_answer = json.loads(content[0]["text"])
+                    except (IndexError, KeyError, TypeError, ValueError):
+                        pass
+                    check(prefix + "MCP text equals its structured assessment",
+                          bool(answer) and text_answer == answer and payload.get("id") == 1, str(content))
+    finally:
+        risk._fetch_json, entry._record = saved[:2]
+        risk._ONCHAIN.clear()
+        risk._ONCHAIN.update(saved[2])
+
+
 def main():
     print("=" * 68)
     print("HTTP telemetry: the interface the gate could not see")

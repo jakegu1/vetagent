@@ -6174,6 +6174,82 @@ def test_the_traded_depth_rule_is_recorded_before_measurement():
     check("T-012 decision table increases by one", "the table is at 62 rows now" in text)
 
 
+def _t012_transaction_container_cases():
+    cases = []
+    for level in ("txns", "h24"):
+        for label, value in (("list", [1]), ("text", "bad"), ("integer", 1),
+                             ("true", True), ("false", False), ("null", None),
+                             ("empty", {})):
+            fields = {"txns": value if level == "txns" else {"h24": value}}
+            cases.append((level + " " + label, fields, False))
+    return cases + [("txns missing", {}, False), ("h24 missing", {"txns": {}}, False),
+                    ("finite positive sells", {"txns": {"h24": {"buys": 0, "sells": 3}}}, True)]
+
+
+def test_traded_depth_predicate_preserves_malformed_transaction_containers():
+    """T-012 fix (b): an unavailable count container cannot invent a sell or crash."""
+    print("\n[T-012] malformed transaction containers preserve complete assessments")
+    token_url = "https://api.dexscreener.com/latest/dex/tokens/" + WETH.lower()
+    simulator_url = ("https://api.honeypot.is/v2/IsHoneypot?address="
+                     + WETH.lower() + "&chainID=56")
+    saved_fetch = risk._fetch_json
+    try:
+        for label, fields, traded in _t012_transaction_container_cases():
+            pair = {"chainId": "bsc", "dexId": "uniswap",
+                    "baseToken": {"address": WETH, "symbol": "TKN"},
+                    "quoteToken": {"address": "0xq"}, **fields}
+            calls = []
+
+            async def fetch(url, *a, **kw):
+                calls.append((url, bool(kw.get("mark_missing"))))
+                if url == token_url:
+                    return {"pairs": [pair]}
+                if url == simulator_url:
+                    return risk.NO_DATA
+                raise AssertionError("Unmatched local fixture URL: " + url)
+
+            risk._fetch_json = fetch
+            answer, error = {}, ""
+            try:
+                answer = run(risk.assess(WETH, chain_hint="bsc"))
+            except Exception as exc:
+                error = type(exc).__name__
+            prefix = "T-012 container %s: " % label
+            check(prefix + "complete assessment does not raise", not error, error)
+            check(prefix + "only the same two fixture requests",
+                  calls == [(token_url, False), (simulator_url, True)], str(calls))
+            if error:
+                continue
+            expected = "unknown" if traded else "high"
+            check(prefix + "verdict preserves unavailable versus traded",
+                  answer.get("risk_level") == expected, str(answer.get("risk_level")))
+            check(prefix + "score is unchanged", answer.get("risk_score") == (40 if traded else 70),
+                  str(answer.get("risk_score")))
+            escalation = any(s.get("name") == "Nothing about this token can be verified"
+                             for s in answer.get("signals", []))
+            check(prefix + "only the valid sell avoids no-trace", escalation is not traded, str(escalation))
+            gaps = (answer.get("evidence") or {}).get("data_gaps") or []
+            depth = next((g for g in gaps if g.get("dimension") == "liquidity"), {})
+            simulator = next((g for g in gaps if g.get("dimension") == "sellability"), {})
+            check(prefix + "critical depth gap is preserved",
+                  "liquidity" in risk._CRITICAL_DIMENSIONS and depth.get("source") == "dexscreener"
+                  and depth.get("reason") == (risk._TRADED_DEPTH_REASON if traded else
+                                               "about the token: no source reported pool depth"), str(depth))
+            check(prefix + "critical simulator gap is preserved",
+                  "sellability" in risk._CRITICAL_DIMENSIONS and simulator.get("source") == "honeypot.is"
+                  and simulator.get("reason") == "about the token: the sell simulator has no record of this token",
+                  str(simulator))
+            check(prefix + "driver is unchanged",
+                  (answer.get("driver") or {}).get("category") == ("sellability" if traded else "no_liquidity"),
+                  str(answer.get("driver")))
+            check(prefix + "home chain was searched",
+                  (answer.get("evidence") or {}).get("chain_searched") == "bsc", str(answer.get("evidence")))
+            check(prefix + "valid traded control abstains and high keeps its action",
+                  answer.get("next_action") == ("abstain" if traded else None), str(answer.get("next_action")))
+    finally:
+        risk._fetch_json = saved_fetch
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
