@@ -48,7 +48,7 @@ technical repair release.
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-023 | 3 | codex/t023-cold-upstream-baseline; frozen 14a1ab2 on base 7da5bdf | Fresh independent and red-team review | t021_independent; t021_redteam | Obtain both exact-head verdicts before source preflight and integration |
+| T-023 | 3 | codex/engineering-release-20261011; approved 14a1ab2 merged as 83e40d9 | Final integration/release verification | lead | Full integrated checks, exact-head Linux preflight, master publication and required CI |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
 permissions and explicitly asked to continue on 2026-10-11. This covers reviewed technical
@@ -221,7 +221,7 @@ failed evidence are retained. Older entries, executable ASTs and the 14-day wind
 unchanged. An exact-source forced-date probe shows the old recency guard red on Oct 15,
 and the truthful Oct-11-UTC entry green; this is not a claim about the entire future suite.
 
-T-023 is in fresh review on frozen 14a1ab2, with ready authority 1d4303b and published
+T-023 is approved on frozen 14a1ab2, with ready authority 1d4303b and published
 base 7da5bdf. Whole-repository caller search
 finds only the cold main writer path; all four old observation tests are retained by AST.
 The lead's actual offline CLI, using eight fully observed synthetic probes and an unchanged
@@ -231,8 +231,18 @@ Actual baseline/status bytes and all network sources remain untouched. The execu
 tests-only b9f71b0 is genuinely red at 144/44; its separate source fix 14a1ab2 passes
 188/0 and all 34 configured steps in 104.7 seconds. Three prescribed mutants fail and
 are restored; sixteen offline default-monitor cases remain equivalent. Both fresh
-reviewers now work from the exact frozen SHA. No source preflight, integration or
-publication is approved yet; keep the manual freeze rules binding.
+reviewers independently approve the exact frozen SHA: independent 12/12 with no
+required/optional change, red-team none. Their own full suites pass 34/34 in 90.9 and
+156.0 seconds. Source Linux preflight 38174669994 passes all required steps and 219
+observed upstream checks, with no unobserved or collapsed path. The optional RPC
+backfill retains HTTP 400; the heavy benchmark is intentionally skipped.
+Approved source is merged without squash as 83e40d9. The lead independently runs ten
+actual cold/warm CLI controls with private synthetic files: refusals precede any write,
+valid boundary/bootstrap writes work, one new collapse is retained after repeated calls,
+zero network attempts occur and all real baseline/status/result bytes stay unchanged.
+Full integrated checks and final exact-head Linux preflight remain required before
+master publication. This test-only repair updates CI; it does not require a Worker
+redeployment. Keep the manual freeze rules binding.
 Scoped technical merges and pushes already have Owner authorization;
 A1 and all other sign-off categories remain unchanged. Older candidates and dated notes
 below are retained as historical context, with their readings refreshed before action.

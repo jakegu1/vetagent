@@ -35,8 +35,10 @@ observed checks, and exact published 7da5bdf is deployed with successful tagged 
 Nullable numeric schemas, unchanged public figures and health are independently read back.
 T-021 is complete. T-023's two-file repair freezes at 14a1ab2 on this exact published base.
 Its actual tests-only red is 144/44; the frozen guard passes 188/0 and all 34 configured
-steps. Three prescribed mutants are caught and restored. Fresh independent and red-team
-reviews are in progress; it is not yet integrated or published. No real data is written.
+steps. Three prescribed mutants are caught and restored. Both fresh reviews approve:
+independent 12/12, red-team none. Source Linux preflight passes required jobs and 219
+observed checks. Source is integrated as 83e40d9, and the lead's ten private CLI controls
+pass with real bytes intact. Final checks/publication remain; no real data is written.
 Snapshot pacing and recovery are complete.
 Execution permissions now work. Autonomy remains A1; this authorization covers the reviewed
 technical release. Experiment D and the 2026-10-16 product gate retain their existing rules.
@@ -94,6 +96,14 @@ technical release. Experiment D and the 2026-10-16 product gate retain their exi
 | M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
+
+- **2026-10-12** - lead - T-023 passes both fresh exact-head reviews: independent
+  12/12 and red-team none, each with its own full 34-step run. Source Linux preflight
+  38174669994 passes required steps and all 219 observed checks, with no unobserved
+  or collapsed path. Optional backfill HTTP 400 remains. Approved source is merged
+  as 83e40d9; ten lead-run private cold/warm CLI cases pass without network or any
+  real baseline/status/result change. Final integrated checks and exact-head
+  preflight precede publication. This two-test-file repair needs no Worker upload.
 
 - **2026-10-12** - lead - T-023's executor returns signed READY on frozen 14a1ab2.
   Tests-only b9f71b0 reproduces actual cold overwrite at 144/44; the separate source
