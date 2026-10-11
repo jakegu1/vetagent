@@ -396,6 +396,26 @@ def measure():
 
 # ---------------------------------------------------------------- the generated test
 
+def _record_coverage_collapses(base, now):
+    """Record the existing R2 comparison once per common observed source/path."""
+    recorded = {name for name, _ in _COLLAPSES}
+    for source in sorted(now):
+        if not now[source]["probes"]:
+            continue
+        b = (base.get("sources") or {}).get(source) or {}
+        bp, np_ = b.get("paths") or {}, now[source]["paths"]
+        n = now[source]["probes"]
+        for path in sorted(set(np_) & set(bp)):
+            was, is_ = bp[path], np_[path]
+            if n >= MIN_FOR_SHARE and is_["value"] < was.get("value", 0) - VALUE_BAND:
+                name = "%s:%s" % (source, path)
+                if name not in recorded:
+                    _COLLAPSES.append(
+                        (name, "carried by %.0f%% of probes at baseline, %.0f%% now"
+                         % (100 * was.get("value", 0), 100 * is_["value"])))
+                    recorded.add(name)
+
+
 def test_generated_field_contract():
     """Every JSON path src/risk.py reads, measured against a frozen baseline.
 
@@ -418,6 +438,7 @@ def test_generated_field_contract():
           "still learning after %d rounds; the table is incomplete and every path it "
           "dropped is now unwatched" % getattr(fields, "rounds", 0))
     now, _bodies = measure()
+    _record_coverage_collapses(base, now)
 
     # A path the engine grew since the baseline was frozen is not a failure of upstream,
     # but it is unmeasured, and an unmeasured dependency is the whole bug class. It is
@@ -484,11 +505,7 @@ def test_generated_field_contract():
             #
             # Measured before it was believed: this is the second time the same field has
             # taught this file that a single observation is not a state.
-            if n >= MIN_FOR_SHARE and is_["value"] < was.get("value", 0) - VALUE_BAND:
-                _COLLAPSES.append(
-                    ("%s:%s" % (source, path),
-                     "carried by %.0f%% of probes at baseline, %.0f%% now"
-                     % (100 * was.get("value", 0), 100 * is_["value"])))
+            # The shared comparison above also runs before a cold baseline write.
             # R3 -- a type nobody has seen before. `null` is not one of them: a field
             # arriving empty is absence, which is precisely what R1 and R2 measure, and
             # treating it as a new type made the guard go red on an ordinary day. Caught
@@ -719,6 +736,17 @@ def test_rugcheck_extension_inventory():
 
 def write_baseline():
     sources, _ = measure()
+    if not _COLLAPSES and not _UNOBSERVED and os.path.exists(BASELINE):
+        try:
+            with open(BASELINE, encoding="utf-8") as f:
+                base = json.load(f)
+        except (OSError, ValueError):
+            print("refusing to freeze: the existing baseline cannot be read; nothing was written.")
+            return 1
+        if not isinstance(base, dict):
+            print("refusing to freeze: the existing baseline is not a JSON object; nothing was written.")
+            return 1
+        _record_coverage_collapses(base, sources)
     if _COLLAPSES:
         print("refusing to freeze a baseline while coverage is collapsed:")
         for name, detail in _COLLAPSES:

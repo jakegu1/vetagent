@@ -292,6 +292,302 @@ def test_a_record_that_cannot_be_read_is_not_a_missing_one():
         check("a record that is %s fails, even inside the due window" % label, failed, said)
 
 
+def _coverage_source(probes, values, path="field", asked=None):
+    """Collect actual list-valued synthetic bodies with stable key/type shape."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "upstream_collection_fixture", os.path.join(HERE, "test_upstream_contract.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    bodies = [{path: [1] if i < values else []} for i in range(probes)]
+    return {"probes": probes, "asked": probes if asked is None else asked,
+            "paths": module.collect(bodies, [path])}
+
+
+def _freeze_scenario(old, sources, unobserved=(), collapses=(), monitor=False,
+                     repeats=1, raw=None, unreadable=False):
+    """Exercise a fresh real CLI against private files, with network calls fatal."""
+    import copy
+    import importlib.util
+    import socket
+    import tempfile
+    import time
+    from unittest import mock
+
+    spec = importlib.util.spec_from_file_location(
+        "upstream_freeze_scenario", os.path.join(HERE, "test_upstream_contract.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    initial = (list(module._COLLAPSES), list(module._UNOBSERVED))
+    protected = (module.BASELINE, STATUS)
+    original_bytes = [open(path, "rb").read() for path in protected]
+    measures, opens, network, other_tests = [], [], [], []
+    output = io.StringIO()
+    original_open = open
+    clock = time.struct_time((2030, 1, 2, 3, 4, 5, 2, 2, 0))
+    with tempfile.TemporaryDirectory(prefix="upstream-freeze-") as directory:
+        baseline = os.path.join(directory, "baseline.json")
+        status = os.path.join(directory, "status.json")
+        module.BASELINE = baseline
+        if raw is not None or old is not None:
+            payload = {"measured_utc": "2026-09-21T02:00:00Z", "engine_paths": 1,
+                       "rule": {"value_band": 0.4, "min_for_share": 8}, "sources": old}
+            before = raw if raw is not None else (json.dumps(payload) + "\n").encode()
+            with original_open(baseline, "wb") as f:
+                f.write(before)
+        else:
+            before = None
+        module._COLLAPSES.extend(collapses)
+
+        def measure():
+            measures.append(copy.deepcopy(sources))
+            module._UNOBSERVED.extend(unobserved)
+            return copy.deepcopy(sources), {}
+
+        def track_open(path, mode="r", *args, **kwargs):
+            if os.path.abspath(os.fspath(path)) == baseline:
+                opens.append(mode)
+                if unreadable and mode == "r":
+                    raise PermissionError("synthetic existing baseline cannot be read")
+            return original_open(path, mode, *args, **kwargs)
+
+        def fatal(*args, **kwargs):
+            network.append(repr(args))
+            raise AssertionError("offline freeze attempted network or live probe")
+
+        def other_test(name):
+            return lambda: other_tests.append(name)
+
+        fields = mock.Mock(incomplete=False, rounds=1)
+        fields.table.return_value = {source: set(row["paths"]) for source, row in sources.items()}
+        argv = ["test_upstream_contract.py", "--status-json", status] if monitor else [
+            "test_upstream_contract.py", "--write"]
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(mock.patch.object(module, "measure", measure))
+            stack.enter_context(mock.patch.object(module, "open", track_open, create=True))
+            stack.enter_context(mock.patch.object(module.upstream_fields, "build", return_value=fields))
+            stack.enter_context(mock.patch.object(module.time, "gmtime", return_value=clock))
+            for name in ("fetch", "get", "fetch_bodies"):
+                stack.enter_context(mock.patch.object(module, name, fatal))
+            stack.enter_context(mock.patch.object(module.subprocess, "run", fatal))
+            stack.enter_context(mock.patch.object(socket, "create_connection", fatal))
+            stack.enter_context(mock.patch.object(socket.socket, "connect", fatal))
+            stack.enter_context(mock.patch.object(sys, "argv", argv))
+            for name in sorted(vars(module)):
+                if name.startswith("test_") and name != "test_generated_field_contract":
+                    stack.enter_context(mock.patch.object(
+                        module, name, other_test(name) if monitor else fatal))
+            stack.enter_context(contextlib.redirect_stdout(output))
+            results = [module.main() for _ in range(repeats)]
+        after = original_open(baseline, "rb").read() if os.path.exists(baseline) else None
+        record = json.load(original_open(status, encoding="utf-8")) if monitor else None
+        preserved = all(original_open(path, "rb").read() == data
+                        for path, data in zip(protected, original_bytes))
+        return {"results": results, "before": before, "after": after,
+                "opens": opens, "measures": measures, "initial": initial,
+                "collapses": list(module._COLLAPSES), "unobserved": list(module._UNOBSERVED),
+                "failures": list(module._FAILURES), "passed": module._PASSED,
+                "stdout": output.getvalue(), "status": record, "network": network,
+                "other_tests": other_tests, "protected": preserved,
+                "constants": (module.VALUE_BAND, module.MIN_FOR_SHARE,
+                              module.MAX_COLLAPSE_DAYS, module.HISTORY_DAYS)}
+
+
+def _check_refused_freeze(label, receipt, diagnostic):
+    check(label + ": cold CLI refuses", receipt["results"] == [1], receipt["stdout"])
+    check(label + ": old bytes are unchanged", receipt["before"] == receipt["after"])
+    check(label + ": no baseline write was opened",
+          not any(any(c in mode for c in "wax+") for mode in receipt["opens"]),
+          repr(receipt["opens"]))
+    check(label + ": one measurement pass", len(receipt["measures"]) == 1)
+    check(label + ": truthful refusal diagnostic", diagnostic in receipt["stdout"],
+          receipt["stdout"])
+    check(label + ": no network or public data change",
+          not receipt["network"] and receipt["protected"])
+
+
+def test_cold_freeze_refuses_observed_value_share_collapses():
+    """Cold --write must compare first, including a partial nonzero old share."""
+    for label, old_hits, now_hits in (("full share to zero", 8, 0),
+                                     ("partial old share", 6, 2)):
+        old = {"synthetic": _coverage_source(8, old_hits)}
+        now = {"synthetic": _coverage_source(8, now_hits)}
+        receipt = _freeze_scenario(old, now)
+        check(label + ": fresh collapse and blindness lists", receipt["initial"] == ([], []))
+        check(label + ": same observed key/type shape",
+              old["synthetic"]["paths"]["field"]["key"] == 1.0
+              and old["synthetic"]["paths"]["field"]["types"] == ["list"]
+              and now["synthetic"]["paths"]["field"]["key"] == 1.0
+              and now["synthetic"]["paths"]["field"]["types"] == ["list"])
+        _check_refused_freeze(label, receipt, "coverage is collapsed")
+        check(label + ": the collapsed source/path is named",
+              [name for name, _ in receipt["collapses"]] == ["synthetic:field"]
+              and "synthetic:field" in receipt["stdout"], receipt["stdout"])
+
+
+def test_cold_freeze_keeps_the_strict_R2_boundary_and_probe_floor():
+    """The existing share rule stays strict; a small sample gets no new rule."""
+    for label, probes, old_hits, now_hits, collapsed in (
+            ("equality", 10000, 10000, 6000, False),
+            ("just above", 10000, 10000, 6001, False),
+            ("just below", 10000, 10000, 5999, True),
+            ("under minimum", 7, 7, 0, False),
+            ("observed zero stays zero", 8, 0, 0, False)):
+        receipt = _freeze_scenario({"synthetic": _coverage_source(probes, old_hits)},
+                                   {"synthetic": _coverage_source(probes, now_hits)})
+        check(label + ": exact unchanged constants", receipt["constants"] == (0.4, 8, 5, 30))
+        check(label + ": strict R2 result", receipt["results"] == [1 if collapsed else 0],
+              receipt["stdout"])
+        check(label + ": collapse recording", bool(receipt["collapses"]) == collapsed)
+        check(label + ": one measurement", len(receipt["measures"]) == 1)
+        check(label + ": bytes protected on refusal",
+              not collapsed or receipt["before"] == receipt["after"])
+        check(label + ": no network or committed data change",
+              not receipt["network"] and receipt["protected"])
+
+
+def test_cold_freeze_success_and_bootstrap_keep_the_usual_payload():
+    """A valid re-freeze still writes measured sources, paths, rules and UTC time."""
+    sources = {"synthetic": _coverage_source(8, 6),
+               "another": _coverage_source(8, 8, path="other")}
+    for label, old in (("existing noncollapsed", {"synthetic": _coverage_source(8, 8)}),
+                       ("no old file", None),
+                       ("intentional shape re-freeze", {"synthetic": _coverage_source(8, 8, "old")})):
+        receipt = _freeze_scenario(old, sources)
+        check(label + ": writer succeeds", receipt["results"] == [0], receipt["stdout"])
+        payload = json.loads(receipt["after"])
+        check(label + ": usual payload shape",
+              set(payload) == {"measured_utc", "engine_paths", "rule", "sources"})
+        check(label + ": current measured UTC timestamp",
+              payload["measured_utc"] == "2030-01-02T03:04:05Z")
+        check(label + ": current sources and path count",
+              payload["sources"] == sources and payload["engine_paths"] == 2)
+        check(label + ": unchanged rule constants",
+              payload["rule"] == {"value_band": 0.4, "min_for_share": 8})
+        check(label + ": usual sorted JSON and final newline",
+              receipt["after"] == (json.dumps(payload, indent=1, sort_keys=True) + "\n")
+              .replace("\n", os.linesep).encode())
+        check(label + ": one measurement and one write",
+              len(receipt["measures"]) == 1 and receipt["opens"].count("w") == 1)
+        check(label + ": no normal network test was invoked", not receipt["other_tests"])
+        check(label + ": no network or public file change",
+              not receipt["network"] and receipt["protected"])
+
+
+def test_cold_freeze_refuses_an_existing_uncomparable_baseline():
+    """An unreadable existing file never impersonates no-old-file bootstrap."""
+    sources = {"synthetic": _coverage_source(8, 8)}
+    for label, raw, unreadable in (("invalid JSON", b'{"sources":', False),
+                                    ("list", b'[]', False), ("null", b'null', False),
+                                    ("string", b'"baseline"', False),
+                                    ("number", b'8', False), ("boolean", b'true', False),
+                                    ("read failure", b'{"sources": {}}', True)):
+        receipt = _freeze_scenario({}, sources, raw=raw, unreadable=unreadable)
+        _check_refused_freeze(label, receipt, "baseline")
+        check(label + ": diagnostic explains refusal", "refusing" in receipt["stdout"])
+
+
+def test_cold_freeze_retains_partial_and_populated_refusal_priority():
+    """Already known blindness and collapses are retained, with their old diagnostics."""
+    old = {"synthetic": _coverage_source(8, 8)}
+    healthy = {"synthetic": _coverage_source(8, 8, asked=9)}
+    known = [("already:field", "carried by 100% of probes at baseline, 0% now")]
+    partial = [("synthetic", "HTTP 429")]
+    for label, unobserved, collapses, diagnostic in (
+            ("partial run", partial, [], "partial run"),
+            ("known collapse", [], known, "coverage is collapsed"),
+            ("known collapse before blindness", partial, known, "coverage is collapsed")):
+        receipt = _freeze_scenario(old, healthy, unobserved=unobserved, collapses=collapses)
+        _check_refused_freeze(label, receipt, diagnostic)
+        check(label + ": existing evidence is not cleared",
+              receipt["collapses"] == collapses and receipt["unobserved"] == unobserved)
+        if collapses:
+            check(label + ": collapsed diagnostic retains priority",
+                  "already:field" in receipt["stdout"] and "partial run" not in receipt["stdout"])
+        else:
+            check(label + ": partial diagnostic names the failed source and cause",
+                  "synthetic" in receipt["stdout"] and "HTTP 429" in receipt["stdout"])
+    receipt = _freeze_scenario(old, {"synthetic": _coverage_source(8, 0, asked=9)},
+                               unobserved=partial)
+    _check_refused_freeze("observed trough plus partial run", receipt, "partial run")
+    check("the existing partial refusal remains truthful", receipt["unobserved"] == partial)
+
+
+def test_default_generated_monitor_retains_collapse_names_and_status():
+    """Normal comparison and status keep R2 recorded rather than failed, without duplicates."""
+    old = {"synthetic": _coverage_source(8, 8)}
+    now = {"synthetic": _coverage_source(8, 0)}
+    receipt = _freeze_scenario(old, now, monitor=True, repeats=2)
+    check("normal monitor records but does not fail a new collapse", receipt["results"] == [0, 0])
+    check("repeated normal comparison records the path exactly once",
+          [name for name, _ in receipt["collapses"]] == ["synthetic:field"], repr(receipt["collapses"]))
+    check("normal comparison keeps the exact collapse detail",
+          receipt["collapses"][0][1] == "carried by 100% of probes at baseline, 0% now")
+    check("normal key/type/new/removed/fixpoint checks still pass",
+          receipt["passed"] == 10 and not receipt["failures"])
+    check("normal monitor never rewrites its baseline",
+          receipt["before"] == receipt["after"] and receipt["opens"] == ["r", "r"])
+    check("normal monitor measures once per comparison", len(receipt["measures"]) == 2)
+    status = receipt["status"]
+    check("status keeps its ordinary shape", set(status) == {
+        "date", "status", "failures", "unobserved_sources", "unobserved_probes",
+        "collapsed_paths", "history"})
+    check("status records the same path only once",
+          status["status"] == "collapsed" and status["collapsed_paths"] == ["synthetic:field"])
+    check("status retains one current history row",
+          status["history"] == [{"date": "2030-01-02", "status": "collapsed",
+                                  "unobserved_sources": [], "collapsed_paths": ["synthetic:field"]}])
+    check("status retains failures and observation counts",
+          status["failures"] == [] and status["unobserved_sources"] == []
+          and status["unobserved_probes"] == 0)
+    check("the default monitor still discovers its other tests", len(receipt["other_tests"]) == 10)
+    check("monitor is offline and leaves committed data intact",
+          not receipt["network"] and receipt["protected"])
+
+
+def test_default_generated_monitor_keeps_common_observed_and_structural_rules():
+    """R2 ignores blind/noncommon paths while normal R1/R3 and engine-shape guards stay active."""
+    old = {"synthetic": _coverage_source(8, 8), "blind": _coverage_source(8, 8),
+           "old_source": _coverage_source(8, 8)}
+    old["synthetic"]["paths"]["removed"] = {"key": 1.0, "value": 1.0, "types": ["list"]}
+    now = {"synthetic": _coverage_source(8, 8), "blind": _coverage_source(0, 0, asked=8),
+           "new_source": _coverage_source(8, 8)}
+    now["synthetic"]["paths"]["field"]["key"] = 0.5
+    now["synthetic"]["paths"]["field"]["types"] = ["dict"]
+    now["synthetic"]["paths"]["new"] = {"key": 1.0, "value": 0.0, "types": ["list"]}
+    receipt = _freeze_scenario(old, now, monitor=True, unobserved=[("blind", "HTTP 503")])
+    names = [name for name, _ in receipt["failures"]]
+    check("noncommon and unobserved paths do not collapse", receipt["collapses"] == [])
+    check("new engine path still fails the normal monitor",
+          "synthetic: no unmeasured new path in the engine" in names)
+    check("removed engine path still fails the normal monitor",
+          "synthetic: no path has silently left the engine" in names)
+    check("missing key still fails the normal monitor",
+          "synthetic: field still present in every probe" in names)
+    check("new type still fails the normal monitor",
+          "synthetic: field sends no new JSON type" in names)
+    check("blind source asserts nothing about its fields",
+          "BLIND blind" in receipt["stdout"] and not any(name.startswith("blind:") for name in names))
+    check("normal status priority remains red before blind",
+          receipt["results"] == [1] and receipt["status"]["status"] == "red"
+          and receipt["status"]["unobserved_sources"] == ["blind"]
+          and receipt["status"]["collapsed_paths"] == [])
+    check("structural monitor keeps baseline bytes and one measurement",
+          receipt["before"] == receipt["after"] and len(receipt["measures"]) == 1)
+    check("structural controls make no network or public data change",
+          not receipt["network"] and receipt["protected"])
+
+
+def test_freeze_acceptance_uses_the_existing_offline_registration():
+    """The additive cases run through the unchanged discovered runner and CI step."""
+    with open(os.path.join(ROOT, ".github", "workflows", "test.yml"), encoding="utf-8") as f:
+        workflow = f.read()
+    check("the observed guard remains registered exactly once",
+          workflow.count("run: python tests/test_upstream_contract_is_observed.py") == 1)
+    check("the discovered runner sees every new freeze case",
+          sum(name.startswith("test_") for name in globals()) == 12)
+
+
 def main():
     print("=" * 68)
     print("Upstream contract monitor is still monitoring")
