@@ -29,13 +29,13 @@
  },
  "overall": {
   "verdict_distribution": {
-   "low": 175,
-   "unknown": 122,
+   "low": 177,
+   "unknown": 120,
    "medium": 204,
    "high": 75
   },
-  "unknown_rate": 0.21180555555555555,
-  "data_gap_rate": 0.2465277777777778
+  "unknown_rate": 0.20833333333333334,
+  "data_gap_rate": 0.24305555555555555
  },
  "outcome": {
   "bad_label": "dead",
@@ -53,9 +53,9 @@
     "n": 162,
     "high": 0.030864197530864196,
     "high_or_medium": 0.20987654320987653,
-    "low": 0.6419753086419753,
-    "unknown": 0.14814814814814814,
-    "mean_score": 12.17283950617284
+    "low": 0.654320987654321,
+    "unknown": 0.13580246913580246,
+    "mean_score": 12.11111111111111
    }
   },
   "contract_only": {
@@ -71,9 +71,9 @@
     "n": 162,
     "high": 0.018518518518518517,
     "high_or_medium": 0.08641975308641975,
-    "low": 0.7654320987654321,
-    "unknown": 0.14814814814814814,
-    "mean_score": 7.518518518518518
+    "low": 0.7777777777777778,
+    "unknown": 0.13580246913580246,
+    "mean_score": 7.45679012345679
    }
   },
   "driving_categories_on_bad": {
@@ -100,9 +100,9 @@
     "n": 349,
     "high": 0.06017191977077364,
     "high_or_medium": 0.40974212034383956,
-    "low": 0.32664756446991405,
-    "unknown": 0.2636103151862464,
-    "mean_score": 25.799426934097422
+    "low": 0.332378223495702,
+    "unknown": 0.25787965616045844,
+    "mean_score": 25.770773638968482
    }
   },
   "contract_only": {
@@ -118,9 +118,9 @@
     "n": 349,
     "high": 0.03724928366762178,
     "high_or_medium": 0.07449856733524356,
-    "low": 0.6819484240687679,
-    "unknown": 0.24355300859598855,
-    "mean_score": 9.951289398280803
+    "low": 0.6876790830945558,
+    "unknown": 0.23782234957020057,
+    "mean_score": 9.922636103151863
    }
   },
   "driving_categories_on_bad": {
@@ -11306,21 +11306,20 @@
    "goplus_label": "safe",
    "sampled_from": "gt_pools",
    "liquidity_usd": 796872.0,
-   "gap_reasons": [
-    "about the token: the sell simulator has no record of this token"
-   ],
-   "verdict": "unknown",
-   "score": 5,
-   "confidence": "low",
-   "verdict_ablated": "unknown",
-   "score_ablated": 5,
-   "driver": "sellability",
+   "gap_reasons": [],
+   "verdict": "low",
+   "score": 0,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
    "categories": [
     "freshness",
+    "honeypot",
     "liquidity",
-    "sellability"
+    "upstream_risk"
    ],
-   "has_data_gap": true
+   "has_data_gap": false
   },
   {
    "address": "0xca750ef65f295bbecd685abf54e82caf297bdb61",
@@ -14543,21 +14542,20 @@
    "goplus_label": "safe",
    "sampled_from": "gt_pools",
    "liquidity_usd": 796872.0,
-   "gap_reasons": [
-    "about the token: the sell simulator has no record of this token"
-   ],
-   "verdict": "unknown",
-   "score": 5,
-   "confidence": "low",
-   "verdict_ablated": "unknown",
-   "score_ablated": 5,
-   "driver": "sellability",
+   "gap_reasons": [],
+   "verdict": "low",
+   "score": 0,
+   "confidence": "high",
+   "verdict_ablated": "low",
+   "score_ablated": 0,
+   "driver": null,
    "categories": [
     "freshness",
+    "honeypot",
     "liquidity",
-    "sellability"
+    "upstream_risk"
    ],
-   "has_data_gap": true
+   "has_data_gap": false
   },
   {
    "address": "0xcacd6fd266af91b8aed52accc382b4e165586e29",

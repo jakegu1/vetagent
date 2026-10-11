@@ -73,9 +73,9 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 
 | Metric | Value |
 |---|---|
-| Verdict distribution | high=75, low=175, medium=204, unknown=122 |
-| unknown rate | 21.2% |
-| Share with a data gap | 24.7% |
+| Verdict distribution | high=75, low=177, medium=204, unknown=120 |
+| unknown rate | 20.8% |
+| Share with a data gap | 24.3% |
 
 > Read the unknown rate next to recall. A tool that answers unknown for everything has perfect recall and is useless.
 
@@ -89,7 +89,7 @@ Anything in between goes unlabelled — a smaller sample beats dirty labels.
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **dead** | 30 | 10.0% | 46.7% | 13.3% | 40.0% | 35.4 |
-| **alive** | 162 | 3.1% | 21.0% | 64.2% | 14.8% | 12.2 |
+| **alive** | 162 | 3.1% | 21.0% | 65.4% | 13.6% | 12.1 |
 
 ### Contract-safety signals only (ablated)
 
@@ -99,7 +99,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **dead** | 30 | 10.0% | 13.3% | 80.0% | 6.7% | 13.0 |
-| **alive** | 162 | 1.9% | 8.6% | 76.5% | 14.8% | 7.5 |
+| **alive** | 162 | 1.9% | 8.6% | 77.8% | 13.6% | 7.5 |
 
 **Which signal category made the call on dead samples:** `no_liquidity` 10, `liquidity` 10, `honeypot` 4, `sellability` 1, `lifecycle` 1
 
@@ -116,7 +116,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 17 | 58.8% | 94.1% | 0.0% | 5.9% | 76.1 |
-| **safe** | 349 | 6.0% | 41.0% | 32.7% | 26.4% | 25.8 |
+| **safe** | 349 | 6.0% | 41.0% | 33.2% | 25.8% | 25.8 |
 
 ### Contract-safety signals only (ablated)
 
@@ -126,7 +126,7 @@ Recomputed after dropping liquidity/activity/freshness/cross-chain. This column 
 | | n | high | high or medium | low | unknown | mean score |
 |---|---|---|---|---|---|---|
 | **unsafe** | 17 | 17.6% | 41.2% | 35.3% | 23.5% | 32.7 |
-| **safe** | 349 | 3.7% | 7.4% | 68.2% | 24.4% | 10.0 |
+| **safe** | 349 | 3.7% | 7.4% | 68.8% | 23.8% | 9.9 |
 
 **Which signal category made the call on unsafe samples:** `liquidity` 12, `honeypot` 3, `impersonation` 2
 
@@ -214,7 +214,7 @@ An `unknown` because we could not reach an upstream is a different thing from an
 | | n | share of all 576 |
 |---|---|---|
 | unknown, our side (upstream unreachable or uncovered) | 6 | 1.0% |
-| unknown, token side (nothing verifiable about it) | 116 | 20.1% |
+| unknown, token side (nothing verifiable about it) | 114 | 19.8% |
 
 
 ## What the sample is made of

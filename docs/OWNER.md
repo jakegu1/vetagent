@@ -131,7 +131,7 @@ Rounded = parked by you. Hexagons are not work items -- they are what a row is w
 | Maturity score | 46 / 100 (`docs/SCORECARD.md`) |
 | Tokens measured | 576 |
 | False positives | 3.1% -- we called a healthy token dangerous |
-| Answers we refuse | 21.2% -- `unknown`, on purpose |
+| Answers we refuse | 20.8% -- `unknown`, on purpose |
 | Dead tokens we rated high | 10.0% -- our worst number, published first |
 | Round in progress | R23: A numbers audit, checked before it was believed |
 
@@ -298,7 +298,7 @@ python tools/owner.py --write   # regenerate this page
 
 **A gate** -- A date with a question and a rule, written down BEFORE the date. On the day, the rule is read and it decides what happens next. The point is that the rule cannot be argued with afterwards. This project has four.
 
-**`unknown`** -- A verdict that means 'a check I needed could not run'. It is not 'low risk' and it is not a bug -- it is the product refusing to guess. 21.2% of answers are this.
+**`unknown`** -- A verdict that means 'a check I needed could not run'. It is not 'low risk' and it is not a bug -- it is the product refusing to guess. 20.8% of answers are this.
 
 **Fail-closed** -- When something breaks, answer 'I don't know' rather than 'looks fine'. A safety tool that guesses optimistically when it is broken is worse than no tool.
 

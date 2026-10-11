@@ -131,7 +131,7 @@ token is.
 ## Measured accuracy (n=576, published)
 
 False positives (healthy tokens flagged high) ....... 3.1%
-Answers returned as unknown ......................... 21.2%
+Answers returned as unknown ......................... 20.8%
 Centralised tokens (oracle-tagged) rated high ....... 22.3%
 Dead tokens not rated low ........................... 86.7% (26 of 30)
 
