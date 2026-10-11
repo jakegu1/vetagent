@@ -11,8 +11,9 @@ T-016 is deployed and verified. T-020 is published; its real manual pass preserv
 recovered missing rows and correctly failed remaining coverage gaps caused by observed
 HTTP 429 responses. A slower-pacing experiment recorded 672 pool rows with zero gaps;
 T-022 prepares that measured interval for scheduled collection. Scheduled verification
-is still pending. T-011 is deployed and verified; T-019 prepares its protected cache fill.
-T-022's opt-in pacing and preservation repairs are in combined independent review.
+is still pending. T-011 is deployed and verified. T-019 completed its protected listed fill;
+its measured data-only rebaseline awaits independent review. T-022's opt-in pacing and
+preservation repairs passed independent review at 12/12 and are in integration release checks.
 Execution permissions now work. Autonomy remains A1; this authorization covers the reviewed
 technical release. Experiment D and the 2026-10-16 product gate retain their existing rules.
 
@@ -69,6 +70,13 @@ technical release. Experiment D and the 2026-10-16 product gate retain their exi
 | M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
+
+- **2026-10-11** - lead - T-022's fresh combined second review approves exact 8b54497 at
+  12/12, with no material red-team finding. The lead merged it locally as 9d2ed35 and
+  begins integrated release checks. Actual published manual and scheduled coverage remain
+  required. T-019's single protected fill added 89 cache entries; its zero-miss replay
+  moves two rows through a recorded successful upstream answer, leaving 574 unchanged.
+  The rebaseline still requires fresh review before publication.
 
 - **2026-10-11** - lead - T-011 published at fefe6d1 after independent round-2 approval
   and exact-head preflight. Deployment 38146148169 ran its offline and tagged production

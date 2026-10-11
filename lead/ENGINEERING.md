@@ -45,19 +45,24 @@ T-016 is deployed at master c18de92. Exact source and integrated checks, actual 
 contract freeze, independent review and required Linux jobs all passed. Actual Worker
 deployment and production smoke run 38139780104 completed, with no skipped deployment
 steps. A separately tagged live Solana answer returns the new outside-pool holder field
-and retains fail-closed behavior. T-011 now starts on this published base; no real fill or
+and retains fail-closed behavior. T-011 is deployed on this published base; no real fill or
 published benchmark change belongs to that task.
 
 T-011's exact e120fe5 source has independent round-2 approval at 12/12 and passing
 required Linux jobs. Published integration fefe6d1 retains its tests-first and named-change
 history; actual deployment 38146148169 runs and passes offline and tagged smoke steps.
-The real read-only cache replay still refuses its 89 unrecorded URLs, so T-019 must perform
-the bounded fill and measured rebaseline after publication. T-022's first independent and
+The real read-only cache replay identified 89 unrecorded URLs. T-019 independently
+reproduced those misses, protected the whole cache and completed one listed fill without
+changing old entries. Its zero-miss replay changes two rows through a successful recorded
+upstream answer, leaving the other 574 rows unchanged. Publication awaits the complete
+guarded rebaseline and fresh independent review. T-022's first independent and
 red-team reviews instead found a variable-connection-delay gap: 12.1 seconds configured
 can produce only 4.1 seconds between real HTTP starts. Its named opt-in pacing repair is
-implemented at frozen 8b54497 and in combined second review. A separate slow-retry
+implemented at frozen 8b54497 and approved by combined second review at 12/12, with no
+remaining material red-team finding. A separate slow-retry
 preservation regression also has its own tests-only red and scoped collection deadline.
-The actual manual and scheduled release gates remain pending.
+The approved source is merged locally as 9d2ed35. Full integrated checks, exact-head
+preflight and actual published manual and scheduled release gates remain pending.
 
 The prior write restriction is historical. Current unrestricted execution works and the
 Owner explicitly authorized continuing technical deployment. Other sign-off categories

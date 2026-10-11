@@ -49,8 +49,8 @@ technical repair release.
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
 | T-020 | 3 | master at 5bb391f | Published; manual run preserved data and correctly failed incomplete coverage | Codex lead | Investigate observed HTTP 429 gaps; verify scheduled execution before done; retain DNS test follow-up |
-| T-019 | 3 | codex/t019-benchmark-rebaseline from published fefe6d1 | Preparing the independently verified pre-fill base | Executor | Protect original cache, independently reproduce old results, then bounded listed fill and attribution; no threshold changes |
-| T-022 | 3 | codex/t022-snapshot-pacing at 8b54497 | Round 2 combined independent review | Fresh reviewer | Verify both named repairs and regressions, then integration and actual manual/scheduled coverage |
+| T-019 | 3 | codex/t019-benchmark-rebaseline from published fefe6d1 | One allowed fill completed; attribution and generated publication checks | Executor | Finish guarded data-only rebaseline, then fresh independent and red-team review; no threshold changes |
+| T-022 | 3 | Approved 8b54497 merged locally as 9d2ed35 | Round 2 approved 12/12; integration release checks | Codex lead | Verify combined replay and pacing, exact-head preflight, publish, then actual manual/scheduled coverage |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
 permissions and explicitly asked to continue on 2026-10-11. This covers reviewed technical
@@ -78,9 +78,12 @@ checks. Exact final preflight 38145574532 passes required jobs; its upstream mon
 reports 219 checks passed, three probes unobserved and no paths collapsed. No new baseline
 was frozen from that incomplete observation. Actual deployment 38146148169 uploaded and
 deployed Worker version c375f494-2ed2-42ba-94e5-3a8006ed6c05; offline and tagged production
-smoke steps all ran and passed. No real fill or published benchmark change has occurred.
-The actual-cache replay retains 91 misses over 89 URLs. T-019 independently reconfirms
-the exact published base and protects the original cache before any listed fill.
+smoke steps all ran and passed. No real fill belongs to T-011. T-019 independently
+reproduced its 91 misses over 89 URLs and backed up the original cache before the allowed
+fill. The single fill added 89 entries without changing or deleting old entries. Its
+zero-miss replay changes two token rows through their actually requested successful
+upstream answer; the other 574 rows and the independence result are unchanged. The
+data-only rebaseline is not reviewed or published yet.
 
 T-022's named tests-only red at 62cccc7 has 320 passes and sixteen behavioral failures
 before source fix 8b54497. Its original 293 assertions remain green. Executor tests
@@ -88,6 +91,11 @@ now pass 336 assertions and all thirty source-baseline steps. Slow fake schedule
 preserve twenty-four observed rows at 1200 seconds, with twenty gaps and no late HTTP.
 This is offline evidence, not deployed coverage. The pushed fix's missing red description
 is corrected append-only in the review record; existing source history is never amended.
+Combined round-2 review now approves exact 8b54497 at 12/12, with no material red-team
+finding. It independently reproduces the old defects, immutable acceptance and broken
+mutants. Source Linux preflight 38146049602 passes required jobs and all 219 observed
+upstream checks, with no unobserved or collapsed path. Approved source is merged locally
+as 9d2ed35; integrated checks and actual published collection gates are still pending.
 
 ## Waiting on the Owner
 
