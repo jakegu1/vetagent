@@ -5,7 +5,7 @@
 > page cannot quietly drift out of date. `tests/test_owner_page.py` fails the
 > build if it does.
 >
-> Generated 2026-10-11.
+> Generated 2026-10-12.
 
 ## The project in one paragraph
 
@@ -21,21 +21,21 @@ These are the things I cannot do. Everything else in this project is mine.
 
 | When | Due | # | What you do | Blocked? |
 |---|---|---|---|---|
-| **23 days OVERDUE** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
-| **in 5 days** | 2026-10-16 | gate | Answer the gate: Does anyone want to pay | no |
-| **in 5 days** | 2026-10-16 | W5 | A second, independent sell-simulation source | no |
-| **in 5 days** | 2026-10-16 | W12 | Decide the price-history trade-off | no |
+| **24 days OVERDUE** | 2026-09-18 | W10 | Create the two accounts the remaining directories need | no |
+| **in 4 days** | 2026-10-16 | gate | Answer the gate: Does anyone want to pay | no |
+| **in 4 days** | 2026-10-16 | W5 | A second, independent sell-simulation source | no |
+| **in 4 days** | 2026-10-16 | W12 | Decide the price-history trade-off | no |
 
 ### W10 Create the two accounts the remaining directories need
 
-- **When:** 2026-09-18 (**23 days OVERDUE**)
+- **When:** 2026-09-18 (**24 days OVERDUE**)
 - **Why then:** distribution is the whole of the gate's failing branch
 - **You know it is done when:** `CHANNELS` in `bench/scorecard.py`, updated only by someone who went and looked
 - **If you do nothing:** Nothing. Six submissions are already queued and the two parked ones are one signup away; waiting costs reach, not work.
 
 ### The 2026-10-16 gate: Does anyone want to pay
 
-- **When:** 2026-10-16 (**in 5 days**)
+- **When:** 2026-10-16 (**in 4 days**)
 - **What you do:** Read the gate's question and its test in `docs/STRATEGY.md` section 8, then write its conclusion into the gate's row: what the measurement said, and what the gate's rule decides. The arrow between them is a hyphen followed by a greater-than sign; the table's own arrows do not count.
 - **Why then:** it is the gate's own date, written down before anyone could know the answer; on it the rule is read
 - **You know it is done when:** its row in `docs/STRATEGY.md` section 8 carries `Resolved: <what the measurement said> -> <decision>`, and O2, O8, O9 and O11, the entries of `docs/OPPORTUNITIES.md` parked until this gate, are each decided and moved under `## Reviewed and closed`.
@@ -43,14 +43,14 @@ These are the things I cannot do. Everything else in this project is mine.
 
 ### W5 A second, independent sell-simulation source
 
-- **When:** 2026-10-16 (**in 5 days**)
+- **When:** 2026-10-16 (**in 4 days**)
 - **Why then:** needed for W3, which every accuracy claim rests on
 - **You know it is done when:** **Measured 2026-09-29; the credential no longer blocks it.** Probed 2026-09-06: staysafu unreachable (SSL), quickintel 401, tokensniffer 401, de.fi public endpoint 404; on 2026-09-15 Quick Intel added a free testing tier, and the owner obtained it. `python bench/second_oracle.py --run` then asked it about its 143-token set (21 disputed, 122 engine unknowns), paced to about one call a second after faster calls were rate limited; the raw answers stay local and git-ignored until the owner has read Quick Intel's terms. Each answer is classed as an error, a static audit only (no buy or sell tax, so no simulation), or a simulation dated by its `lastUpdatedTimestamp`, because it also returns months-old cached scans. Direction, figures withheld until the terms are read: it adds a recent sell simulation for part of the engine's unknowns, mostly on BSC and rarely on Base, every one of them sellable; on the honeypot disputes it simulated too few tokens recently to say whether the published false-positive rate is overstated. Not measured yet: the 17-token adversarial cohort W3 needs, mostly thin Base pools, where it rarely simulated; 17 calls of the remaining monthly quota would say: `python bench/second_oracle.py --plan --set adversarial`, then the same with `--run` and the owner's key, which paces its calls for the free tier, writes its own git-ignored file and will not start over an existing one. Done when that is measured and the owner has read the terms and decided whether to pay for it as an engine upstream (the lead recommends not before there are users)
 - **If you do nothing:** Every accuracy claim keeps resting on a single sell simulator. If it is wrong, we cannot tell, and neither can anyone reading the benchmark.
 
 ### W12 Decide the price-history trade-off
 
-- **When:** 2026-10-16 (**in 5 days**)
+- **When:** 2026-10-16 (**in 4 days**)
 - **Why then:** changes what the benchmark can measure, so before the D gate
 - **You know it is done when:** A decision recorded in `DECISIONS.md`, either way
 - **If you do nothing:** The 10-16 gate arrives with the measurement question still open, so that gate answers a smaller question than it was meant to.
@@ -64,9 +64,9 @@ next -- including stopping.
 | Date | When | The question | What happens |
 |---|---|---|---|
 | 2026-09-18 | answered | Is anyone using it | Yes → continue; no → run only Experiment C, add no features. **Resolved:** `gate_verdict()` printed YES (usage.yml run 35374258574, 2026-09-18 17:25 UTC) on `curl` (14 calls over 4 days, JP on 14 of 14 rows: our own untagged probes from this machine's Tokyo egress, 63c485b; adding JP to OWNER_COUNTRIES turns it NEAR and does not change the verdict) and `mozilla` (23 calls over 9 days; its verdicts come from GET /assess, and the bucket is any `Mozilla/` user agent, crawlers included). Recorded as the frozen rule printed it, and read for what it is: **not evidence of adoption** -- no identified stranger received a verdict, and 3,169 of 3,259 attributable tool calls (97.2%) were ours -> continue per §7: Experiment C now; Experiment D (20 operators, the $99/month line, each with its own client tag) sent by 2026-09-23; E only when a D reply asks how to pay; no new features before 10-16 (fixes are not features). |
-| 2026-10-16 | **in 5 days** | Does anyone want to pay | Yes → build payments; no → pick a different customer segment and run D again |
-| 2026-12-04 | in 54 days | Is further investment worth it | Yes → continue per §7; no → move to low-maintenance mode |
-| 2027-03-04 | in 144 days | Does the data asset hold up | Yes → that becomes the main product; no → keep the tool, drop the data narrative |
+| 2026-10-16 | **in 4 days** | Does anyone want to pay | Yes → build payments; no → pick a different customer segment and run D again |
+| 2026-12-04 | in 53 days | Is further investment worth it | Yes → continue per §7; no → move to low-maintenance mode |
+| 2027-03-04 | in 143 days | Does the data asset hold up | Yes → that becomes the main product; no → keep the tool, drop the data narrative |
 
 ## The same thing as a picture
 
@@ -81,9 +81,9 @@ gantt
     title The dates that decide things (red line is today)
     section Decisions
     Is anyone using it - answered :milestone, 2026-09-18, 0d
-    Does anyone want to pay - in 5 days :milestone, 2026-10-16, 0d
-    Is further investment worth it - in 54 days :milestone, 2026-12-04, 0d
-    Does the data asset hold up - in 144 days :milestone, 2027-03-04, 0d
+    Does anyone want to pay - in 4 days :milestone, 2026-10-16, 0d
+    Is further investment worth it - in 53 days :milestone, 2026-12-04, 0d
+    Does the data asset hold up - in 143 days :milestone, 2027-03-04, 0d
 ```
 
 ### Is the archive still collecting?
@@ -94,7 +94,7 @@ gantt
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**39 days, no gaps.** Newest is 2026-10-11, today.
+**39 days, no gaps.** Newest is 2026-10-11, yesterday.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -149,16 +149,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- T-012: record verified integration and close stale claims
-- T-012: regenerate closed-backlog view
-- lead: dispatch combined review of the guarded traded-depth repair
-- T-012: regenerate added acceptance evidence
-- T-012: guard unavailable transaction containers
-- T-012: acceptance test fix (b)
-- lead: require named red seam tests for the traded-container regression
-- lead: dispatch fresh reviews of the frozen traded-depth repair
+- lead: record completed snapshot coverage and T-021 round-one defects
+- T-021: retain finite-price conflict on quotient overflow
+- T-021: named change (c2) finite-price conflict acceptance
+- T-021: preserve Unicode decimal underflow absence
+- T-021: named change (c1) Unicode underflow acceptance
+- T-021: preregister the independently reproduced boundary corrections
+- T-021: regenerate named test-count evidence
+- T-021: preregister the measured generator-only test evidence refresh
 
-_54 more not shown (62 commits in total)._
+_68 more not shown (76 commits in total)._
 
 ## What I got wrong
 
@@ -167,6 +167,12 @@ costs me something. A build check requires an entry here every 14 days: if there
 were genuinely no mistakes, saying so is itself a dated claim on the record.
 
 Newest first.
+
+**2026-10-11** &mdash; I said: *The first T-021 candidate treated a parsed zero string as an observed zero market measurement when its mantissa contained no nonzero ASCII decimal digit.*
+
+> Python also accepts Unicode decimal digit strings. Nonzero underflow in those strings became float zero, so the candidate falsely called complete pool scopes empty and drained. This was reproduced offline before that candidate reached production; production frequency was not measured. The bounded correction detects nonzero decimal digits accepted by float while preserving genuine zero and representable values. The guard tests/test_unicode_market_underflow.py was committed red before its fix; the frozen benchmark outputs did not change.
+
+> How it surfaced: Both fresh reviewers and the lead independently exercised complete assessment, liquidity and MCP responses. The original configured checks were green but did not cover this input family; the named supplemental guard now catches its restored ASCII-only mutant.
 
 **2026-09-30** &mdash; I said: *This page showed the 2026-09-18 gate as twelve days overdue, in bold in the gate table, and on the timeline.*
 
