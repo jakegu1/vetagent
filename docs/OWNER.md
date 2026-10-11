@@ -149,16 +149,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- lead: record integrated release checks and real snapshot gaps
-- lead: record independently reviewed Solana release
-- lead: record independent snapshot release approval
-- lead: record authorized snapshot release and frozen review history
-- T-016: named change (b) re-freeze the upstream contract baseline
-- T-020: bound whole snapshot HTTP attempts and recovery deadlines
-- T-016: named change (a) coverage matrix reads the key the engine writes
-- T-016: exclude Solana pool vaults from holder concentration
+- lead: record approved pacing integration and guarded rebaseline
+- lead: record deployed replay and snapshot preservation red
+- T-022: preserve paced observations before the job cutoff
+- T-022: named change (b) collection preservation acceptance
+- lead: require snapshot preservation before workflow timeout
+- lead: record reviewed replay integration and pending pacing repair
+- T-022: anchor opt-in pool pacing to attempt completion
+- T-022: named change (a) connection setup acceptance
 
-_4 more not shown (12 commits in total)._
+_26 more not shown (34 commits in total)._
 
 ## What I got wrong
 
