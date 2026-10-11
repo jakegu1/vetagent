@@ -183,6 +183,7 @@ def collect(chains, pages=5):
     rows, seen_ids, manifest = [], set(), []
     pages = max(1, min(pages, 10))
     chains = list(dict.fromkeys(chains))
+    collection_deadline = fetcher._SNAPSHOT_DEADLINE.get("api.geckoterminal.com")
     for chain in chains:
         for kind, n_pages in (("new", pages), ("trending", 1)):
             got, misses = 0, 0
@@ -201,7 +202,10 @@ def collect(chains, pages=5):
                     print("  %-8s %-9s page %d failed" % (chain, kind, page))
                     if misses >= 2:
                         break
-                    time.sleep(3.0 * misses)
+                    pause = 3.0 * misses
+                    if collection_deadline is not None:
+                        pause = min(pause, max(0, collection_deadline - time.monotonic()))
+                    time.sleep(pause)
                     continue
                 if not fetched:
                     manifest.append({"seen_at": seen_at, "chain": chain, "kind": kind,
@@ -230,6 +234,8 @@ def collect(chains, pages=5):
     ends = {(m["chain"], m["kind"]): m["page"] for m in manifest
             if m["outcome"] == "end_of_listing"}
     deadline, attempts, budget_exhausted = time.monotonic() + 90, 0, False
+    if collection_deadline is not None:
+        deadline = min(deadline, collection_deadline)
     for m in missing:
         key = (m["chain"], m["kind"])
         if key in ends and m["page"] > ends[key]:
@@ -695,10 +701,12 @@ def main():
     host, absent = "api.geckoterminal.com", object()
     previous_rate = fetcher._RATE.get(host, absent)
     previous_completion = fetcher._SNAPSHOT_COMPLETION.get(host, absent)
+    previous_deadline = fetcher._SNAPSHOT_DEADLINE.get(host, absent)
     try:
         if args.request_gap is not None:
             fetcher._RATE[host] = args.request_gap
             fetcher._SNAPSHOT_COMPLETION[host] = None
+            fetcher._SNAPSHOT_DEADLINE[host] = time.monotonic() + 20 * 60
         rows, seen_at, manifest = collect(chains, pages=args.pages)
     finally:
         # Optional probes and later callers must retain their own pacing, even if
@@ -712,6 +720,10 @@ def main():
                 fetcher._SNAPSHOT_COMPLETION.pop(host, None)
             else:
                 fetcher._SNAPSHOT_COMPLETION[host] = previous_completion
+            if previous_deadline is absent:
+                fetcher._SNAPSHOT_DEADLINE.pop(host, None)
+            else:
+                fetcher._SNAPSHOT_DEADLINE[host] = previous_deadline
     day = seen_at[:10]
     path = os.path.join(OUT_DIR, "pools-%s.ndjson" % day)
     if rows:

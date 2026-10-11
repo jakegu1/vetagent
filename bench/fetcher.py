@@ -51,6 +51,8 @@ _rate_lock = threading.Lock()
 # Opt-in snapshot hosts, with the previous attempt's monotonic completion (None initially).
 # The collector scopes and restores these entries; ordinary callers never use them.
 _SNAPSHOT_COMPLETION = {}
+# Monotonic collection ends for explicitly paced snapshot hosts only.
+_SNAPSHOT_DEADLINE = {}
 
 
 # Mirrors risk.NO_DATA so the benchmark exercises the same code path as production.
@@ -319,6 +321,9 @@ def fetch_json(url, role, retries=2, timeout=25, use_cache=True,
     from urllib.parse import urlparse
     host = urlparse(url).netloc if absolute_timeout else None
     pacing_host = host if host in _SNAPSHOT_COMPLETION else None
+    collection_deadline = _SNAPSHOT_DEADLINE.get(host)
+    if collection_deadline is not None:
+        deadline = collection_deadline if deadline is None else min(deadline, collection_deadline)
     data = None
     for attempt in range(retries + 1):
         try:
@@ -370,7 +375,10 @@ def fetch_json(url, role, retries=2, timeout=25, use_cache=True,
                 diagnostics.update(status=e.code if type(e.code) is int
                                    and 100 <= e.code <= 599 else None, error="http")
             if e.code == 429 and attempt < retries:
-                time.sleep(3.0 * (attempt + 1))
+                pause = 3.0 * (attempt + 1)
+                if collection_deadline is not None:
+                    pause = min(pause, max(0, deadline - time.monotonic()))
+                time.sleep(pause)
                 continue
             if e.code == 404 and mark_missing:
                 return NOT_FOUND   # upstream has no record; not the same as unreachable
@@ -391,7 +399,10 @@ def fetch_json(url, role, retries=2, timeout=25, use_cache=True,
             if diagnostics is not None:
                 diagnostics["error"] = "request"
         if attempt < retries:
-            time.sleep(0.8 * (2 ** attempt))
+            pause = 0.8 * (2 ** attempt)
+            if collection_deadline is not None:
+                pause = min(pause, max(0, deadline - time.monotonic()))
+            time.sleep(pause)
 
     # Only cache successes: a cached failure turns one network blip into permanent "no data"
     #
