@@ -49,8 +49,8 @@ technical repair release.
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
 | T-020 | 3 | master at 5bb391f | Published; manual run preserved data and correctly failed incomplete coverage | Codex lead | Investigate observed HTTP 429 gaps; verify scheduled execution before done; retain DNS test follow-up |
-| T-011 | 2 | codex/t011-benchmark-replay | Tests-first implementation; final executor evidence pending | Executor | Complete mutants and READY, then fresh independent review; no real fetch or fill |
-| T-022 | 3 | codex/t022-snapshot-pacing | Slower-pacing follow-up specced from actual complete pass | Executor | Additive tests first, preserve original limits, then independent and red-team reviews |
+| T-011 | 2 | codex/t011-benchmark-replay | Round 1 changes required: two fill input/integrity boundaries | Executor | Named additive tests (b)/(c), real reds, narrow fixes and round-2 combined review; no real fill |
+| T-022 | 3 | codex/t022-snapshot-pacing at e1e2b83 | READY; independent and red-team review | Reviewers | Verify exact source, then publish pacing and observe manual plus scheduled collection |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
 permissions and explicitly asked to continue on 2026-10-11. This covers reviewed technical

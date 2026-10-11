@@ -1,7 +1,7 @@
 ---
 id: T-011
 title: Make the benchmark a deterministic replay - a pinned clock, dated cache entries, a replay that never calls an upstream, and a fill limited to a list
-status: in_progress      # draft | ready | in_progress | in_review | changes_requested | done | dropped
+status: changes_requested # draft | ready | in_progress | in_review | changes_requested | done | dropped
 level: 2                 # 0 direct | 1 light | 2 standard | 3 high risk
 size: M                  # S | M (split anything larger)
 depends_on: []           # none; never in parallel with T-014 to T-018 (shared files, Notes)
@@ -591,3 +591,41 @@ At the head, the final reproduction harness uses the actual branch's BENCH_CLOCK
 must not replace the clock helper or set its context variable itself. Its simulated wall
 clocks remain as AC 7 requires. This clarifies evidence order; no expected figure, fixture,
 production-clock rule, acceptance threshold or output requirement changes.
+
+### (b) A filename is not a recorded answer (2026-10-11, round-1 review)
+
+Independent review of daf958b reproduced an interrupted cache write: the first fill
+returned 6 and left truncated JSON; a second fill returned 0 and "already recorded",
+while replay still counted the same URL as missed. This violates AC 5's completion
+condition. Do not count an unreadable or unusable file as an entry.
+
+Named additive acceptance in tests/test_benchmark_replay.py is authorized. Preserve
+every original assertion/input and commit the addition alone, observe its real red,
+then fix this finding in a separate commit. Cover a directly truncated file and an
+interrupted write, followed by fill and replay. A URL without a usable recorded entry
+is attempted once through fetch_json with its existing retry choice; a later successful
+record must replay without a miss. If it remains unreadable/unusable, report not stored
+and exit 6. Valid existing successes and 4xx records remain untouched and unrequested.
+
+Fill and replay must agree on entry usability: a JSON object for the requested URL
+carrying data, or a final integer 4xx status other than 429. Non-object JSON, missing
+answer/status, URL mismatch or unreadable JSON are not recorded answers. Use only
+temporary fixtures for these boundaries. Valid legacy cache, dated shapes, ordinary
+caller behavior, provenance and the actual 91/89 replay counts remain unchanged.
+No real cache repair, live request, new baseline or publication belongs to this task.
+
+### (c) Validate the URL authority before any work (2026-10-11, round-1 review)
+
+Independent review observed HTTPS lines with :invalid and :65536 ports reaching fake
+HTTP and being reported stored. AC 5 already requires malformed URL lines to exit 5
+before network access. Validate the parsed port during the whole-file validation pass.
+
+A separate named additive acceptance commit is authorized in
+tests/test_benchmark_replay.py. Preserve prior assertions/inputs, run it red before a
+separate fix commit, and cover nonnumeric, negative and out-of-range ports, including
+a malformed later line after a valid first line. Assert status 5 before any fetch,
+cache mutation, output mutation or clock pin. Valid explicit HTTPS ports remain valid.
+
+Round 2 checks exactly these two findings, their additions and regressions. Core clock,
+replay, dated cache and calendar results verified in round 1 are settled; no new front
+is opened for optional matters. The existing two-round cap still applies.
