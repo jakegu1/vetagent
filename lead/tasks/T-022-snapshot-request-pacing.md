@@ -1,7 +1,7 @@
 ---
 id: T-022
 title: Pace scheduled snapshot requests using the verified slower interval
-status: in_review
+status: changes_requested
 level: 3
 size: S
 depends_on: [T-020-source]
@@ -33,13 +33,14 @@ recovery limits, data preservation, completeness checks and ordinary fetcher def
 ## Scope
 
 In: a snapshot-only CLI pacing option and its scheduled invocation; additive acceptance.
-Out: fetcher implementation, risk engine, benchmark files, providers, API keys, spending,
+Out: fetcher implementation except amendment (a), risk engine, benchmark files, providers, API keys, spending,
 cron changes, retry/deadline changes, coverage definitions, optional probe ordering,
 permission files and product thresholds. The lead preserves experiment data separately.
 
 ## Files in scope
 
 - bench/snapshot.py
+- bench/fetcher.py (only the opt-in pacing seam authorized in amendment (a))
 - .github/workflows/snapshot.yml
 - Acceptance tests: tests/test_sellability_archive.py (already registered; additive only)
 - Lead records are maintained by the lead, outside the executor commits.
@@ -49,7 +50,8 @@ Collect pools, _RATE and ArgumentParser were searched throughout tests/. Existin
 main() callers and CLI helpers omit the new flag and must remain valid. The original
 167 archive assertions, inputs and helper behavior remain unchanged. No named change
 to an existing assertion or input is authorized. New tests/functions/imports are allowed.
-This task shares no source or acceptance file with T-011.
+The original scope shares no source or acceptance file with T-011. Amendment (a) adds
+fetcher.py only after T-011's source is frozen; do not run overlapping source edits.
 
 ## Acceptance criteria
 
@@ -107,4 +109,39 @@ criteria requires changing a fetcher contract, coverage bar or existing acceptan
 
 ## Amendments
 
-None.
+### (a) Preserve the minimum gap despite connection setup delays
+
+Round-1 independent and red-team probes at e1e2b83 reproduce the same AC 2 defect through
+the real main -> collect -> fetch_json -> throttle -> stdlib HTTP path. An eight-second
+first DNS lookup or TLS setup followed by immediate setup produces HTTP send starts at
+8.0, 12.1 and 24.2 seconds. The first actual gap is 4.1 seconds although the option
+promises at least 12.1. The run returns 0. Rate restoration and collection budgets pass.
+This is a measured seam defect; do not redefine a request start or lower AC 2.
+
+Authorize a narrow, opt-in fetcher pacing seam for this collection scope. Conservatively
+anchoring the next request's pacing to the previous attempt's completion is acceptable:
+it keeps waiting outside the original ten-second whole-attempt IO budget, and guarantees
+that variable DNS, connect, TLS, headers and body durations cannot shorten the gap.
+Default callers, cached/replay calls, other hosts and optional probes retain their current
+behavior. Temporary pacing configuration and any completion anchor are restored on all
+exit paths before writing or optional work. Recovery still uses its ninety-second
+monotonic deadline, twelve-call cap and original retry choices. No timeout extension,
+provider change, cache change, transport rewrite or extra production probe is authorized.
+
+Add acceptance functions/helpers only in a separate tests-only named-change commit before
+the source fix. All original 252 assertions, inputs and helper ASTs remain unchanged.
+Observe a behavioral red on e1e2b83 rather than an import or unknown-keyword failure.
+Exercise consecutive real stdlib HTTP sends with variable DNS/TLS setup, successful and
+failed attempts, retries and recovery. Include mixed setup, ten-second IO cutoffs,
+remaining-deadline refusal, ordinary calls after restoration and an interrupted exit.
+Use fake clocks and fake sockets only; no network, real sleeps or writes outside temp.
+The complete acceptance remains under ten seconds. Deliberately bypass the new anchoring
+and show that the additive tests fail; restore the exact source afterwards.
+
+T-011's frozen e120fe5 is being reviewed separately. Do not edit that task's worktree,
+cache/replay implementation or source history; integration will merge its reviewed head
+and resolve only the named pacing seam, followed by the full suite. Both must retain
+their independently observed red histories. Round 2 uses one combined reviewer for this
+named defect, retained-budget/default-behavior regressions and original acceptance. All
+settled round-1 criteria stand. Actual deployed manual and scheduled coverage gates
+remain pending and cannot be replaced by the healthy branch experiment.

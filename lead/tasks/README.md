@@ -20,4 +20,4 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-016 | Distinguish Solana liquidity pools from holder concentration | 2 | S | none | done (deployed c18de92) |
 | T-019 | Fill the benchmark's recorded miss list and publish an attributable replay baseline | 3 | S | T-011 | ready |
 | T-020 | Recover snapshot failures and report incomplete collection after preserving data | 3 | M | — | in_review |
-| T-022 | Pace scheduled snapshot requests using the verified slower interval | 3 | S | T-020 source | in_review |
+| T-022 | Pace scheduled snapshot requests using the verified slower interval | 3 | S | T-020 source | changes_requested |
