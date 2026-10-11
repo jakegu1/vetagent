@@ -38,7 +38,10 @@ Its actual tests-only red is 144/44; the frozen guard passes 188/0 and all 34 co
 steps. Three prescribed mutants are caught and restored. Both fresh reviews approve:
 independent 12/12, red-team none. Source Linux preflight passes required jobs and 219
 observed checks. Source is integrated as 83e40d9, and the lead's ten private CLI controls
-pass with real bytes intact. Final checks/publication remain; no real data is written.
+pass with real bytes intact. Full integrated checks pass 34/34; final exact-head Linux
+preflight passes required jobs and 219 fully observed checks. Published 2a8204f passes
+required master CI with 219/0, one RugCheck probe unobserved after HTTP 400 and no
+collapsed path. T-023 is complete; no real baseline is written or Worker redeployed.
 Snapshot pacing and recovery are complete.
 Execution permissions now work. Autonomy remains A1; this authorization covers the reviewed
 technical release. Experiment D and the 2026-10-16 product gate retain their existing rules.
@@ -96,6 +99,16 @@ technical release. Experiment D and the 2026-10-16 product gate retain their exi
 | M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
+
+- **2026-10-12** - lead - T-023 is complete on published 2a8204f. Full integrated
+  checks pass 34/34 in 81.0 seconds. Final Linux preflight 38175433633 passes all
+  required steps and 219 fully observed checks. Actual master CI 38175829622 passes
+  required jobs and 219/0, with one RugCheck probe unobserved after HTTP 400 and no
+  collapsed path; no real baseline is frozen. Optional Base RPC backfill HTTP 400
+  remains. Tagged health readback is HTTP 200 and ok. The primary checkout moves
+  onto a fresh verified branch, preserving its old branch/master, stash and permission
+  bytes. Saved-data reserve authenticity is parked as a bounded separate investigation;
+  its actual benchmark impact and new-request cost are not yet measured.
 
 - **2026-10-12** - lead - T-023 passes both fresh exact-head reviews: independent
   12/12 and red-team none, each with its own full 34-step run. Source Linux preflight

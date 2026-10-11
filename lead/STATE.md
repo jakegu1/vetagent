@@ -48,7 +48,7 @@ technical repair release.
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-023 | 3 | codex/engineering-release-20261011; approved 14a1ab2 merged as 83e40d9 | Final integration/release verification | lead | Full integrated checks, exact-head Linux preflight, master publication and required CI |
+| none | - | - | The authorized technical release is complete through T-023 | lead | Keep the existing product gate and investigate only separately bounded follow-ups |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
 permissions and explicitly asked to continue on 2026-10-11. This covers reviewed technical
@@ -202,7 +202,7 @@ a long-term reliability rate or the cause of earlier missing nominal triggers.
 
 ## Next up
 
-T-011, T-019, T-013, T-012, T-016, T-020, T-021 and T-022 are complete with their
+T-011, T-019, T-013, T-012, T-016, T-020, T-021, T-022 and T-023 are complete with their
 actual release or scheduled coverage evidence recorded. T-021 publishes exact 7da5bdf
 after independent 12/12 and red-team none. The lead's integrated replay keeps all 576
 raw rows and 6,741 cache entries unchanged with no network, fill or after-clock selection.
@@ -240,9 +240,30 @@ Approved source is merged without squash as 83e40d9. The lead independently runs
 actual cold/warm CLI controls with private synthetic files: refusals precede any write,
 valid boundary/bootstrap writes work, one new collapse is retained after repeated calls,
 zero network attempts occur and all real baseline/status/result bytes stay unchanged.
-Full integrated checks and final exact-head Linux preflight remain required before
-master publication. This test-only repair updates CI; it does not require a Worker
-redeployment. Keep the manual freeze rules binding.
+Full integrated checks pass 34/34 in 81.0 seconds. Final exact-head Linux preflight
+38175433633 verifies 2a8204f, with required jobs and all their steps passing, 219 checks
+passed, zero failed/unobserved/collapsed. This exact head is published to master.
+Actual master CI 38175829622 passes required jobs and 219/0, with one RugCheck probe
+unobserved after HTTP 400 and no collapsed path. That is an unobserved probe, not a
+missing field; no real baseline is frozen. Optional Base RPC backfill HTTP 400 remains.
+The tagged post-publication health request returns HTTP 200 and ok at 21:19:20 UTC.
+This test-only repair updates CI; the already verified T-021 Worker remains deployed.
+T-023 is complete. Keep the manual freeze rules binding.
+
+The primary checkout is on codex/engineering-verified-20261012. Its original T-019
+branch, unrelated local master, stash and permission-file bytes are preserved; advance
+only this clean verified branch to the latest published completion record. No old
+unpublished bookkeeping or permission change belongs to this release.
+
+Separately parked technical follow-ups: the optional historical Base RPC query still
+returns HTTP 400; diagnose supported free query windows before changing provider or
+adding cost. A saved real selected-pool case also has a stated USD depth far above a
+nearby quote-anchor balance-derived cap. A private saved-data selection control confirms
+the seam, but actual fallback attribution, benchmark row impact, LP/manager eligibility
+and runtime request cost remain unmeasured. Price the next bounded test at zero extra
+spend and at most one working day. Do not silently alter anchors, bands, sources or
+claimed depth, treat the static ID inventory as faulty rows, or redirect the completed
+repair release into a new runtime policy without a ready specification.
 Scoped technical merges and pushes already have Owner authorization;
 A1 and all other sign-off categories remain unchanged. Older candidates and dated notes
 below are retained as historical context, with their readings refreshed before action.
