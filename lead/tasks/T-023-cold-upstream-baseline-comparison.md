@@ -41,7 +41,7 @@ and apply structural comparisons to deliberate schema re-freezes beyond this tas
 ## Acceptance criteria
 
 1. The first commit adds only offline acceptance functions/helpers in the existing
-   monitor-observation file. A cold main([--write]) invocation has a fresh module with
+   monitor-observation file. A cold main() invocation with sys.argv containing --write has a fresh module with
    empty _COLLAPSES/_UNOBSERVED, an old temporary baseline, all MIN_FOR_SHARE observations,
    matching key/type shape and a value-share collapse. Fake measure returns the actual
    synthetic observations; network calls are fatal test failures. The measured initial
@@ -98,3 +98,11 @@ exact-base conflict refresh and dispatches it after the current correctness repa
 Threat: a temporary missing field becomes the new normal because cold writing never
 computes the comparison its own refusal checks. Synthetic data exercises this solely
 offline; it never substitutes for the live observations required for a genuine freeze.
+
+## Dated draft clarification
+
+2026-10-12: main() takes no arguments; exercise the unchanged actual CLI through a fresh
+module and temporary sys.argv containing --write, then restore argv. No signature change
+is in scope. The ready amendment remains pending the actual post-T-021 published base and
+renewed writer/caller/observation-contract search. This clarification does not dispatch
+another task or change any R2 rule.

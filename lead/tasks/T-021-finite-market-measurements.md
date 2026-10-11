@@ -1,7 +1,7 @@
 ---
 id: T-021
 title: Reject invalid market scalars while preserving unavailable depth and observed zero
-status: ready
+status: in_progress
 level: 3
 size: M
 depends_on: [T-011, T-019, T-013, T-012]
@@ -249,6 +249,24 @@ writes or after-clock selections. The executor must independently repeat this pr
 on its own isolated cache copy before the first tests-only commit. The same no-fill,
 no-row-drift stop rule and four-file scope remain binding. There is no permission to
 silently rebaseline or regenerate public figures if numeric normalization changes a row.
+
+## Dated arithmetic/zero clarification before acceptance
+
+2026-10-12: the lead independently probes the exact published risk blob above. A
+one-anchor Ethereum pool with positive reserve/price operands (quote reserve 1e-300,
+target USD price 1e-300, native price 1, stated USD 100000) has computed cap and credited
+depth both 0 through floating arithmetic underflow. A positive stated USD string 1e-400
+also becomes credited zero during conversion. Both measurements are retained privately.
+These are synthetic offline observations, not production frequency claims.
+
+AC 2's existing nonzero-below-floor and true-zero contract covers these handoffs:
+underflow to zero from a raw nonzero USD string or strictly positive required cap
+operands is unavailable, rather than evidence of an empty pool. Include complete
+assess/liquidity controls in the initial additive tests, and keep actual upstream zero,
+signed numeric zero and genuine anchored zero unchanged. Valid representable tiny
+prices retain their existing behavior without a new price floor. No transport/raw-JSON
+decoder change, exact-arithmetic engine, threshold or other scope expansion is authorized.
+All four-file, immutable-old-test and benchmark stop gates remain in force.
 
 ## Dated draft amendment
 

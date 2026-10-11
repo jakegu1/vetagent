@@ -49,7 +49,7 @@ technical repair release.
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
 | T-020 | 3 | Recovery at 5bb391f; pacing published at 86a8111 | Published paced manual pass verified complete | Codex lead | Verify a real scheduled pass before done; retain DNS test follow-up |
-| T-021 | 3 | codex/t021-finite-market-measurements; exact base e657c32 | Ready; exact-base caller/conflict refresh and immutable zero-miss replay complete | Next executor | Repeat the prerequisite on an isolated cache, then commit additive acceptance alone and show behavioral red |
+| T-021 | 3 | codex/t021-finite-market-measurements; exact base e657c32 | Executor independently verifies isolated prerequisite; source edits not started | finite_market_executor | Commit additive acceptance alone only after raw zero-miss proof, then show complete behavioral red |
 | T-022 | 3 | Approved 8b54497 published in 86a8111 | Manual run 38148501978 complete; raw committed coverage independently verified | Codex lead | Verify a real scheduled pass before completion |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
@@ -196,7 +196,7 @@ run has yet been observed. Real scheduled coverage remains required for task com
 
 ## Next up
 
-The current technical queue is ready T-021, then draft T-023. T-012 and T-013 are complete;
+The current technical queue is active T-021, then draft T-023. T-012 and T-013 are complete;
 its exact source, one fill, integrated replay and actual deployment are recorded in its review.
 T-012 is deployed and verified on published e657c32 under its unchanged narrow rule;
 T-021's exact-base conflict search and immutable replay now pass on this published head.
