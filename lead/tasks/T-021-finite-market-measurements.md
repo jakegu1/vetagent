@@ -54,6 +54,7 @@ Files in scope, exactly:
 4. `.github/workflows/test.yml` (register that file in the offline test steps).
 5. `tests/test_risk.py`, only the mixed-depth tail of
    `test_a_fork_pool_cannot_silence_a_drained_rug` under named change (a) below.
+6. `docs/SCORECARD.md`, only the real-generator test-count evidence under amendment (b).
 
 Every existing test and fixture is frozen except that named mixed-depth assertion block.
 Do not change `_num` or the default `_sig_round`
@@ -307,7 +308,41 @@ to 5e8a7fa. No other old test/helper/fixture edit is authorized.
 This aligns one old assertion with the already registered AC 3; it does not lower a risk
 band, USD floor, finalizer rule, product gate or threshold. Scope is now exactly five files.
 The head zero-miss/raw-row-drift stop and actual generated-test-count stop remain binding;
-neither a benchmark rebaseline nor generated publication edits are authorized here.
+neither a benchmark rebaseline nor generated publication edits are authorized by (a).
+The later explicit generator-only test-evidence amendment does not relax that row gate.
+
+## Dated generator-only amendment (b)
+
+2026-10-12: amended source b1eab7c has a zero-miss head replay identical to both base
+raw output blobs for all 576 rows. All 6741 cache files, 1941 actual requests and the
+real labeling log remain unchanged. All six prescribed mutants are caught. Actual
+configured checks then finish with 31 of 32 passed; the sole red is the published-number
+guard's real scorecard comparison, not a changed benchmark figure.
+
+The executor retains the real publication failure and a private rendered diff. The lead
+independently renders without any tracked write and compares all registered values on
+the root/base engine and amended source. Every value is identical, all targets match,
+and the maturity total remains 47. The only semantic scorecard difference is the risk
+test-evidence count 1099 to 1106; MCP 80 and HTTP 596 are unchanged. Both raw committed
+benchmark hashes also match. Windows working-tree CRLF hashes differ from Git blobs on
+the root checkout; the proof distinguishes those explicitly and compares raw Git blobs.
+
+Authorize real .github/scripts/regenerate-derived.sh regenerate on the executor source,
+with no fake GitHub Actions environment. Inspect the complete diff and commit only this
+generated docs/SCORECARD.md test-count row in its own generator-only commit. No benchmark
+JSON/Markdown, cache, labeling log, public metric, threshold, scope claim, generator,
+publication target, runtime source or existing test is changed by that commit. Restore
+only date/recent-history-only docs/OWNER.md and pure line-ending docs/ROUNDS.md according
+to merge.after, with their actual diffs retained. Any other semantic generated change
+stops again for attribution; it is not pre-authorized.
+
+Repeat the real guard green and complete 32-step suite. Independently prove the generated
+row equals the real renderer, and separately disclose the expected OWNER recent-history
+exception after the generated commit instead of claiming a raw global fixed point.
+The scope is now exactly six files; initial additive acceptance remains byte-identical,
+and named change (a) remains the sole old-test exception. Repeat/verify raw replay at the
+final frozen head without modifying data. The original benchmark-drift stop remains
+binding. Full fresh independent/red-team review and Linux preflight are still required.
 
 ## Dated draft amendment
 

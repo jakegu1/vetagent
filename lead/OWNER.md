@@ -20,11 +20,12 @@ passes 12/12 and red-team review has no material finding. The approved source is
 the lead's own integrated replay is byte-identical and immutable. Final checks and actual
 deployment pass; public figures and health are independently read back. T-012 is also
 deployed and verified on e657c32 after combined review at 12/12, red-team none.
-T-021's immutable replay prerequisite passes; its new acceptance is green on the narrow
-numeric repair. One old assertion requires an all-empty claim from partially unavailable
-pool data; execution correctly stops there. The lead independently reproduces the conflict
-and registers its sole named assertion repair without changing any decision threshold.
-Independent review and head replay remain pending. T-022's
+T-021's immutable base and head replays pass on the narrow numeric repair. The sole named
+old assertion repair is behaviorally red on the base and green on the fix; all six
+fault-injection mutants are caught. Actual checks finish 31/32 because generated risk
+test evidence is stale at 1099 instead of 1106. The lead verifies unchanged public values
+and registers the bounded generator-only update. Final frozen-head checks and fresh
+independent/red-team review remain pending. T-022's
 opt-in pacing and preservation repairs passed independent review at 12/12, are published,
 and passed actual manual collection. Real scheduled coverage remains pending.
 Execution permissions now work. Autonomy remains A1; this authorization covers the reviewed

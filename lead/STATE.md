@@ -49,7 +49,7 @@ technical repair release.
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
 | T-020 | 3 | Recovery at 5bb391f; pacing published at 86a8111 | Published paced manual pass verified complete | Codex lead | Verify a real scheduled pass before done; retain DNS test follow-up |
-| T-021 | 3 | codex/t021-finite-market-measurements; source 2091436 | New acceptance green; one old mixed-depth assertion conflicts with AC 3 | finite_market_executor | After named amendment (a), prove that old mixed block red on the exact base; preserve all other frozen tests, then run head replay |
+| T-021 | 3 | codex/t021-finite-market-measurements; source b1eab7c | Named mixed-depth repair green; raw head replay identical; 31/32 with actual stale test-count evidence | finite_market_executor | After bounded generator amendment (b), refresh only the risk test count, rerun all checks, then freeze for independent and red-team review |
 | T-022 | 3 | Approved 8b54497 published in 86a8111 | Manual run 38148501978 complete; raw committed coverage independently verified | Codex lead | Verify a real scheduled pass before completion |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
@@ -201,11 +201,15 @@ its exact source, one fill, integrated replay and actual deployment are recorded
 T-012 is deployed and verified on published e657c32 under its unchanged narrow rule;
 T-021's exact-base conflict search and immutable replay now pass on this published head.
 The executor independently repeated that prerequisite before tests-only 5e8a7fa.
-Its complete initial acceptance was behaviorally red; scoped 2091436 passes the new file
-but stops on one old mixed-depth assertion missed by the initial conflict search. A named
-amendment preserves AC 3's truthful gap and freezes every other old assertion; the lead's
-independent complete-tool probe confirms true-zero and finalizer controls. Head replay,
-mutants and full executor checks remain unrun until that bounded conflict is resolved.
+Its complete initial acceptance was behaviorally red; scoped 2091436 passes the new file.
+Named change (a) fixes only the old mixed-depth conflict missed by the initial search;
+the amended block is behaviorally red on the base and green at b1eab7c. All six mutants
+are caught and restored. The immutable head replay reproduces both raw blobs for all
+576 rows, with all 6741 cache files and the labeling log unchanged. Checks finish 31/32;
+the actual remaining red is the generated risk-test evidence count 1099 to 1106. The
+lead independently verifies unchanged registered values and benchmark Git blobs and
+registers generator-only amendment (b). Full checks and fresh independent/red-team
+review remain required on the final clean generated head.
 Its offline audit reproduces NaN-low, non-finite public JSON,
 and the zero/unavailable all-empty seam; production occurrence and affected benchmark rows
 remain unmeasured. T-023's small baseline-write guard follows the correctness queue: an offline
