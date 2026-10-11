@@ -178,7 +178,7 @@ def _market_number(value, signed=False):
     # zero mantissa is evidence of zero; its exponent does not change that.
     if number == 0 and isinstance(value, str):
         mantissa = value.strip().lower().split("e", 1)[0]
-        if any(digit in mantissa for digit in "123456789"):
+        if any(digit.isdecimal() and int(digit) != 0 for digit in mantissa):
             return None
     return number
 

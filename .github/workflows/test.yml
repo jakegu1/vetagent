@@ -43,6 +43,9 @@ jobs:
       - name: Market measurements preserve finite scalars and unavailable depth
         run: python tests/test_finite_market_measurements.py
 
+      - name: Unicode decimal underflow preserves unavailable market measurements
+        run: python tests/test_unicode_market_underflow.py
+
       - name: MCP protocol tests
         run: python tests/test_mcp.py
 
