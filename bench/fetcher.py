@@ -105,6 +105,11 @@ _RATE = {
 }
 _last_hit = {}
 _rate_lock = threading.Lock()
+# Opt-in snapshot hosts, with the previous attempt's monotonic completion (None initially).
+# The collector scopes and restores these entries; ordinary callers never use them.
+_SNAPSHOT_COMPLETION = {}
+# Monotonic collection ends for explicitly paced snapshot hosts only.
+_SNAPSHOT_DEADLINE = {}
 
 
 # Mirrors risk.NO_DATA so the benchmark exercises the same code path as production.
@@ -143,6 +148,19 @@ def _throttle(url, deadline=None):
                 return False
             time.sleep(wait)
         _last_hit[host] = time.time()
+    return True
+
+
+def _snapshot_gap_ready(host, deadline):
+    """Wait from the previous completion, outside the next attempt's IO budget."""
+    with _rate_lock:
+        completed = _SNAPSHOT_COMPLETION.get(host)
+        if completed is not None:
+            wait = _RATE.get(host, 0.3) - (time.monotonic() - completed)
+            if wait > 0:
+                if deadline is not None and wait >= deadline - time.monotonic():
+                    return False
+                time.sleep(wait)
     return True
 
 
@@ -361,9 +379,19 @@ def fetch_json(url, role, retries=2, timeout=25, use_cache=True,
             _REPLAY_MISSES.append(url)
         return None
 
+    from urllib.parse import urlparse
+    host = urlparse(url).netloc if absolute_timeout else None
+    pacing_host = host if host in _SNAPSHOT_COMPLETION else None
+    collection_deadline = _SNAPSHOT_DEADLINE.get(host)
+    if collection_deadline is not None:
+        deadline = collection_deadline if deadline is None else min(deadline, collection_deadline)
     data = None
     for attempt in range(retries + 1):
         try:
+            if pacing_host is not None and not _snapshot_gap_ready(pacing_host, deadline):
+                if diagnostics is not None:
+                    diagnostics.update(error="budget_exhausted")
+                break
             if deadline is None:
                 _throttle(url)
                 attempt_timeout = timeout
@@ -379,23 +407,28 @@ def fetch_json(url, role, retries=2, timeout=25, use_cache=True,
             req = urllib.request.Request(url, headers={"Accept": "application/json",
                                                        "User-Agent": UA})
             budget = _AttemptBudget(attempt_timeout, deadline) if absolute_timeout else None
-            response = (_absolute_urlopen(req, attempt_timeout, budget) if budget is not None
-                        else urllib.request.urlopen(req, timeout=attempt_timeout))
-            with response as resp:
-                if diagnostics is not None:
-                    diagnostics["status"] = (resp.status if type(resp.status) is int
-                                             and 100 <= resp.status <= 599 else None)
-                if resp.status == 200:
-                    body = resp.read().decode("utf-8", "replace")
-                    if body:
-                        data = json.loads(body)
-                        if budget is not None:
-                            budget.remaining()
-                        break
+            try:
+                response = (_absolute_urlopen(req, attempt_timeout, budget) if budget is not None
+                            else urllib.request.urlopen(req, timeout=attempt_timeout))
+                with response as resp:
                     if diagnostics is not None:
-                        diagnostics["error"] = "empty_body"
-                elif diagnostics is not None:
-                    diagnostics["error"] = "http"
+                        diagnostics["status"] = (resp.status if type(resp.status) is int
+                                                 and 100 <= resp.status <= 599 else None)
+                    if resp.status == 200:
+                        body = resp.read().decode("utf-8", "replace")
+                        if body:
+                            data = json.loads(body)
+                            if budget is not None:
+                                budget.remaining()
+                            break
+                        if diagnostics is not None:
+                            diagnostics["error"] = "empty_body"
+                    elif diagnostics is not None:
+                        diagnostics["error"] = "http"
+            finally:
+                if pacing_host is not None:
+                    with _rate_lock:
+                        _SNAPSHOT_COMPLETION[pacing_host] = time.monotonic()
         except urllib.error.HTTPError as e:
             if absolute_timeout:
                 e.close()
@@ -403,7 +436,10 @@ def fetch_json(url, role, retries=2, timeout=25, use_cache=True,
                 diagnostics.update(status=e.code if type(e.code) is int
                                    and 100 <= e.code <= 599 else None, error="http")
             if e.code == 429 and attempt < retries:
-                time.sleep(3.0 * (attempt + 1))
+                pause = 3.0 * (attempt + 1)
+                if collection_deadline is not None:
+                    pause = min(pause, max(0, deadline - time.monotonic()))
+                time.sleep(pause)
                 continue
             if dated and write_cache and 400 <= e.code < 500 and e.code != 429:
                 entry = {"url": url, "status": e.code, "fetched_at": _fetched_at()}
@@ -429,7 +465,10 @@ def fetch_json(url, role, retries=2, timeout=25, use_cache=True,
             if diagnostics is not None:
                 diagnostics["error"] = "request"
         if attempt < retries:
-            time.sleep(0.8 * (2 ** attempt))
+            pause = 0.8 * (2 ** attempt)
+            if collection_deadline is not None:
+                pause = min(pause, max(0, deadline - time.monotonic()))
+            time.sleep(pause)
 
     # Ordinary callers cache only successes. Dated benchmark mode also keeps final 4xx.
     #

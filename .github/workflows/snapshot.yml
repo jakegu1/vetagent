@@ -46,7 +46,7 @@ jobs:
       - name: Collect pools
         id: collect_pools
         continue-on-error: true
-        run: python bench/snapshot.py --pages 5 --sellability 0
+        run: python bench/snapshot.py --pages 5 --sellability 0 --request-gap 12.1
 
       - name: Commit pools
         if: ${{ always() && steps.collect_pools.outcome != 'skipped' }}

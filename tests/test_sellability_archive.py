@@ -1025,6 +1025,1044 @@ def test_absolute_snapshot_fetch_mode_retains_cutoff_gaps():
           not result[0] and all(m["outcome"] in ("fetch_failed", "skipped") for m in result[2]))
 
 
+# T-022 additive acceptance. Keep the original archive contract above unchanged.
+class _PacingRates(dict):
+    def __init__(self, values):
+        super().__init__(values)
+        self.changes = []
+
+    def __setitem__(self, key, value):
+        self.changes.append((key, value))
+        super().__setitem__(key, value)
+
+    def pop(self, key, *default):
+        self.changes.append((key, None))
+        return super().pop(key, *default)
+
+    def __delitem__(self, key):
+        self.changes.append((key, None))
+        super().__delitem__(key)
+
+
+def _pacing_cli_replay(args, mode="complete", previous=2.1, ordinary=False):
+    """Real CLI, collection, fetcher, throttle and stdlib HTTP; fake sockets/clock only."""
+    import fetcher
+    import socket
+    import ssl
+    import tempfile
+    import threading
+    import urllib.request
+    from contextlib import ExitStack, redirect_stdout, redirect_stderr
+    from datetime import datetime, timedelta, timezone
+    from unittest.mock import patch
+    from urllib.parse import parse_qs, urlparse
+    host = "api.geckoterminal.com"
+    initial = dict(fetcher._RATE)
+    if previous is None:
+        initial.pop(host, None)
+    else:
+        initial[host] = previous
+    rates = _PacingRates(initial)
+    clock, calls, http, visits, writes, probes, waits = [0.0], [], [], {}, [], [], []
+    stream, code, error, result = io.StringIO(), None, None, None
+    real_fetch, real_collect, real_open = fetcher.fetch_json, snapshot.collect, io.open
+
+    class Clock:
+        fromisoformat = staticmethod(datetime.fromisoformat)
+
+        @staticmethod
+        def now(zone):
+            return datetime(2026, 10, 9, tzinfo=timezone.utc) + timedelta(seconds=clock[0])
+
+    class Event:
+        def __init__(self):
+            self.flag = False
+        def set(self):
+            self.flag = True
+        def is_set(self):
+            return self.flag
+        def wait(self, timeout=None):
+            return self.flag
+
+    class Thread:
+        def __init__(self, target, **kwargs):
+            self.target = target
+        def start(self):
+            self.target()
+
+    class SlowWire(io.RawIOBase):
+        def __init__(self, connection):
+            self.connection, self.offset = connection, 0
+        def readable(self):
+            return True
+        def readinto(self, target):
+            if self.offset == len(self.connection.wire):
+                return 0
+            delay = min(9.0, self.connection.timeout)
+            clock[0] += delay
+            if delay == self.connection.timeout:
+                raise TimeoutError("fixture progressive HTTP timeout")
+            target[0] = self.connection.wire[self.offset]
+            self.offset += 1
+            return 1
+
+    class Socket:
+        def __init__(self, timeout=10):
+            self.timeout, self.wire = timeout, b""
+        def settimeout(self, timeout):
+            self.timeout = timeout
+        def setsockopt(self, *args):
+            pass
+        def connect(self, address):
+            pass
+        def bind(self, address):
+            pass
+        def sendall(self, data):
+            lines = data.decode("ascii").splitlines()
+            target = lines[0].split()[1]
+            request_host = next(line.split(": ", 1)[1] for line in lines
+                                if line.lower().startswith("host: "))
+            parsed = urlparse(target)
+            page = int(parse_qs(parsed.query).get("page", [1])[0])
+            key = (request_host, parsed.path, page)
+            visits[key] = visits.get(key, 0) + 1
+            failed = request_host == host and (mode == "partial" or
+                     (mode == "recover" and parsed.path.endswith("new_pools")
+                      and page == 1 and visits[key] <= 2))
+            status = 429 if failed else 200
+            payload = {"data": []} if parsed.path.endswith("trending_pools") else {
+                "data": [_snapshot_pool("fixture_%s_%d" % (parsed.path.split("/")[-2], page))]}
+            body = json.dumps(payload).encode("utf-8")
+            self.wire = (("HTTP/1.1 %d fixture\r\nContent-Length: %d\r\n"
+                          "Connection: close\r\n\r\n" % (status, len(body))).encode("ascii")
+                         + body)
+            http.append({"host": request_host, "path": target, "start": clock[0],
+                         "status": status, "rate": rates.get(request_host, 0.3),
+                         "timeout": self.timeout})
+        def makefile(self, mode_name):
+            return (io.BufferedReader(SlowWire(self)) if mode == "timeout"
+                    else io.BytesIO(self.wire))
+        def close(self):
+            pass
+
+    def connect(address, timeout=10, *args, **kwargs):
+        return Socket(timeout)
+
+    def observe_fetch(url, role, **options):
+        call = {"url": url, "role": role, "options": options.copy(),
+                "start": clock[0], "rates": dict(rates)}
+        calls.append(call)
+        value = real_fetch(url, role, **options)
+        call.update(end=clock[0], diagnostics=dict(options.get("diagnostics", {})))
+        return value
+
+    def observe_collect(*positional, **options):
+        nonlocal result
+        result = real_collect(*positional, **options)
+        if mode == "exception":
+            raise RuntimeError("fixture collection exception")
+        return result
+
+    def observe_open(path, mode_name="r", *positional, **options):
+        if "a" in mode_name or "w" in mode_name:
+            writes.append({"path": os.path.basename(path), "rates": dict(rates)})
+        return real_open(path, mode_name, *positional, **options)
+
+    def observe_probe(*positional):
+        probes.append(dict(rates))
+        return []
+
+    def sleep(seconds):
+        waits.append(seconds)
+        clock[0] += seconds
+
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
+        stack.enter_context(patch.object(snapshot, "OUT_DIR", os.path.join(tmp, "output")))
+        stack.enter_context(patch.object(fetcher, "CACHE_DIR", os.path.join(tmp, "cache")))
+        stack.enter_context(patch.object(fetcher, "_RATE", rates))
+        stack.enter_context(patch.object(fetcher, "_last_hit", {}))
+        stack.enter_context(patch.object(fetcher, "_ACCESS_LOG", {"label": set(), "engine": set()}))
+        stack.enter_context(patch.object(fetcher, "_SNAPSHOT_RESOLVER", fetcher._SnapshotResolver()))
+        stack.enter_context(patch.object(socket, "create_connection", connect))
+        stack.enter_context(patch.object(socket, "socket", lambda *a, **kw: Socket()))
+        stack.enter_context(patch.object(socket, "getaddrinfo", return_value=[
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 443))]))
+        stack.enter_context(patch.object(ssl.SSLContext, "wrap_socket", lambda self, sock, **kw: sock))
+        stack.enter_context(patch.object(urllib.request, "getproxies", return_value={}))
+        stack.enter_context(patch.object(urllib.request, "urlopen", side_effect=opener.open))
+        stack.enter_context(patch.object(threading, "Event", Event))
+        stack.enter_context(patch.object(threading, "Thread", Thread))
+        stack.enter_context(patch.object(fetcher.time, "time", lambda: 1000 + clock[0]))
+        stack.enter_context(patch.object(fetcher.time, "monotonic", lambda: clock[0]))
+        stack.enter_context(patch.object(fetcher.time, "sleep", sleep))
+        stack.enter_context(patch.object(snapshot, "datetime", Clock))
+        stack.enter_context(patch.object(snapshot, "fetch_json", side_effect=observe_fetch))
+        stack.enter_context(patch.object(snapshot, "collect", side_effect=observe_collect))
+        stack.enter_context(patch.object(snapshot.io, "open", side_effect=observe_open))
+        stack.enter_context(patch.object(snapshot, "probe_sellability", side_effect=observe_probe))
+        stack.enter_context(patch.object(snapshot.sys, "argv", ["snapshot.py"] + args))
+        with redirect_stdout(stream), redirect_stderr(stream):
+            try:
+                code = snapshot.main()
+            except SystemExit as exc:
+                code = exc.code
+            except RuntimeError as exc:
+                error = str(exc)
+        collection_end, restored = clock[0], dict(rates)
+        if ordinary:
+            for request_host in (host, host, "api.dexscreener.com", "api.dexscreener.com"):
+                real_fetch("https://%s/api/v2/networks/base/new_pools?page=1" % request_host,
+                           "label", retries=0, use_cache=False, write_cache=False)
+        cache_exists = os.path.exists(fetcher.CACHE_DIR)
+        files = sorted(os.listdir(snapshot.OUT_DIR)) if os.path.isdir(snapshot.OUT_DIR) else []
+    return {"code": code, "error": error, "output": stream.getvalue(), "result": result,
+            "calls": calls, "http": http, "writes": writes, "probes": probes,
+            "initial": initial, "restored": restored, "changes": rates.changes,
+            "collection_end": collection_end, "cache_exists": cache_exists, "files": files,
+            "waits": waits}
+
+
+def test_request_gap_rejects_invalid_values_before_any_work():
+    print("\n[pacing] invalid CLI values do not fetch, read, create or change shared rates")
+    import fetcher
+    import tempfile
+    from contextlib import ExitStack, redirect_stdout, redirect_stderr
+    from unittest.mock import patch
+    invalid = ["garbage", "-1", "0", "2.0", "2.099999", "nan", "NaN", "inf", "-inf", "1e309", None]
+    for value in invalid:
+        for extra in ([], ["--check-coverage"], ["--sellability-only", "1"]):
+            rates, work, stream = _PacingRates(dict(fetcher._RATE)), [], io.StringIO()
+            original = dict(rates)
+            with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
+                stack.enter_context(patch.object(snapshot, "OUT_DIR", os.path.join(tmp, "missing")))
+                stack.enter_context(patch.object(fetcher, "_RATE", rates))
+                args = extra + (["--request-gap"] if value is None else ["--request-gap=" + value])
+                stack.enter_context(patch.object(snapshot.sys, "argv", ["snapshot.py"] + args))
+                for owner, name in ((snapshot, "collect"), (snapshot, "fetch_json"),
+                                    (snapshot, "_last_pass"), (snapshot, "_check_coverage"),
+                                    (snapshot.os, "makedirs"), (snapshot.os, "listdir"),
+                                    (snapshot.io, "open")):
+                    def forbidden(*a, action=name, **kw):
+                        work.append(action)
+                        raise AssertionError("work before validation: " + action)
+                    stack.enter_context(patch.object(owner, name, side_effect=forbidden))
+                with redirect_stdout(stream), redirect_stderr(stream):
+                    try:
+                        code = snapshot.main()
+                    except SystemExit as exc:
+                        code = exc.code
+            check("invalid gap %r in %s exits before every work or rate mutation" %
+                  (value, extra or "collection"), code != 0 and not work
+                  and not rates.changes and dict(rates) == original, stream.getvalue())
+
+
+def test_request_gap_reaches_real_initial_recovery_and_ordinary_http():
+    print("\n[pacing] the CLI interval reaches real throttle and fake stdlib HTTP starts")
+    common = ["--chains", "base", "--pages", "2", "--sellability", "0"]
+    for value in ("2.1", "12.1", "1e2"):
+        replay = _pacing_cli_replay(common + ["--request-gap", value])
+        starts = [h["start"] for h in replay["http"]]
+        check("finite gap %s performs at least two successful real HTTP requests" % value,
+              replay["code"] == 0 and len(starts) >= 2
+              and all(h["status"] == 200 for h in replay["http"]), replay["output"])
+        check("finite gap %s is the minimum between real HTTP starts" % value,
+              len(starts) >= 2 and all(b - a >= float(value) - 0.000001
+                                      for a, b in zip(starts, starts[1:])), str(starts))
+        check("finite gap %s never reads or writes the shared response cache" % value,
+              replay["calls"] and all(c["options"].get("use_cache") is False
+              and c["options"].get("write_cache") is False for c in replay["calls"])
+              and not replay["cache_exists"])
+    replay = _pacing_cli_replay(common + ["--request-gap", "12.1"], mode="recover", ordinary=True)
+    calls = replay["calls"]
+    recovery = [c for c in calls if "deadline" in c["options"]]
+    collection_http = replay["http"][:-4]
+    check("a failed initial page is retried and really recovered under the same host rate",
+          replay["code"] == 0 and recovery and len(collection_http) >= 5
+          and all(c["rates"]["api.geckoterminal.com"] == 12.1 for c in calls)
+          and any(m.get("initial_outcome") == "fetch_failed" and m["outcome"] == "ok"
+                  for m in (replay["result"] or ([], "", []))[2]), replay["output"])
+    check("initial retry, other pages and recovery share the real 12.1-second throttle",
+          len(collection_http) >= 2 and all(b["start"] - a["start"] >= 12.1 - 0.000001
+              for a, b in zip(collection_http, collection_http[1:])), str(collection_http))
+    ordinary = replay["http"][-4:]
+    check("ordinary GeckoTerminal calls retain the original 2.1-second default",
+          len(ordinary) == 4 and all(h["rate"] == 2.1 for h in ordinary[:2])
+          and abs(ordinary[1]["start"] - ordinary[0]["start"] - 2.1) < 0.000001,
+          str(ordinary))
+    check("another host keeps its own ordinary fetch interval",
+          len(ordinary) == 4 and all(h["rate"] == 0.25 for h in ordinary[2:])
+          and abs(ordinary[3]["start"] - ordinary[2]["start"] - 0.25) < 0.000001)
+
+
+def test_request_gap_restores_existing_and_absent_rates_before_writes_and_probe():
+    print("\n[pacing] rate state is restored before preservation and optional work on every exit")
+    args = ["--chains", "base", "--pages", "2", "--sellability", "1", "--request-gap", "12.1"]
+    for previous in (5.5, None):
+        for mode, expected in (("complete", 0), ("partial", 1), ("exception", None)):
+            replay = _pacing_cli_replay(args, mode=mode, previous=previous)
+            check("%s with prior rate %r restores the exact original mapping" % (mode, previous),
+                  replay["code"] == expected and replay["restored"] == replay["initial"]
+                  and (replay["error"] == "fixture collection exception" if mode == "exception"
+                       else replay["error"] is None), replay["output"])
+            check("%s with prior rate %r changes only the collection host" % (mode, previous),
+                  bool(replay["changes"]) and all(key == "api.geckoterminal.com"
+                                                 for key, _ in replay["changes"]))
+            if mode == "exception":
+                check("the collection exception is propagated before any write or probe",
+                      not replay["writes"] and not replay["probes"])
+            else:
+                check("%s with prior rate %r has restored pacing at every archive write" %
+                      (mode, previous), replay["writes"]
+                      and all(w["rates"] == replay["initial"] for w in replay["writes"]))
+                check("%s with prior rate %r respects the optional-probe coverage guard" %
+                      (mode, previous), replay["probes"] == ([replay["initial"]]
+                                                            if mode == "complete" else []))
+
+
+def test_request_gap_unset_import_and_noncollection_modes_do_not_change_rates():
+    print("\n[pacing] only an explicitly paced collection changes the shared rate mapping")
+    import fetcher
+    import importlib.util
+    import tempfile
+    from contextlib import ExitStack, redirect_stdout, redirect_stderr
+    from unittest.mock import patch
+    for previous in (5.5, None):
+        replay = _pacing_cli_replay(["--chains", "base", "--pages", "2", "--sellability", "0"],
+                                    previous=previous)
+        expected = previous if previous is not None else 0.3
+        check("unset retains caller-specific prior rate %r without any mutation" % previous,
+              replay["code"] == 0 and not replay["changes"]
+              and all(h["rate"] == expected for h in replay["http"])
+              and replay["restored"] == replay["initial"])
+    rates = _PacingRates(dict(fetcher._RATE))
+    with patch.object(fetcher, "_RATE", rates), patch.object(sys, "path", list(sys.path)):
+        spec = importlib.util.spec_from_file_location("snapshot_import_fixture", snapshot.__file__)
+        spec.loader.exec_module(importlib.util.module_from_spec(spec))
+    check("importing snapshot has no shared-rate mutation", not rates.changes)
+    for args, expected in ((["--check-coverage"], "health"), (["--sellability-only", "1"], "probe")):
+        rates, calls, stream = _PacingRates(dict(fetcher._RATE)), [], io.StringIO()
+        with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
+            stack.enter_context(patch.object(fetcher, "_RATE", rates))
+            stack.enter_context(patch.object(snapshot, "OUT_DIR", tmp))
+            stack.enter_context(patch.object(snapshot.sys, "argv",
+                                            ["snapshot.py"] + args + ["--request-gap", "12.1"]))
+            stack.enter_context(patch.object(snapshot, "collect", side_effect=AssertionError("collection")))
+            stack.enter_context(patch.object(snapshot, "fetch_json", side_effect=AssertionError("network")))
+            stack.enter_context(patch.object(snapshot, "_check_coverage",
+                                            side_effect=lambda: calls.append("health") or 0))
+            stack.enter_context(patch.object(snapshot, "_last_pass", return_value=([{}], "fixture")))
+            stack.enter_context(patch.object(snapshot, "probe_sellability",
+                                            side_effect=lambda *a: calls.append("probe") or []))
+            stack.enter_context(patch.object(snapshot, "_write_sellability", return_value=0))
+            with redirect_stdout(stream), redirect_stderr(stream):
+                try:
+                    code = snapshot.main()
+                except SystemExit as exc:
+                    code = exc.code
+        check("%s ignores a valid collection gap without changing rate state" % expected,
+              code == 0 and calls == [expected] and not rates.changes, stream.getvalue())
+    stream = io.StringIO()
+    with patch.object(snapshot.sys, "argv", ["snapshot.py", "--help"]), redirect_stdout(stream):
+        try:
+            snapshot.main()
+        except SystemExit:
+            pass
+    help_text = " ".join(stream.getvalue().lower().split())
+    check("help describes the option as applying only to pool collection",
+          "--request-gap" in help_text and "pool collection only" in help_text, help_text)
+
+
+def test_request_gap_slow_recovery_keeps_deadline_cap_attempt_limits_and_gaps():
+    print("\n[pacing] a slower real throttle consumes, rather than expands, the recovery budget")
+    args = ["--chains", "a,b,c,d", "--pages", "5", "--sellability", "0", "--request-gap", "12.1"]
+    for mode in ("partial", "timeout"):
+        replay = _pacing_cli_replay(args, mode=mode)
+        calls = replay["calls"]
+        recovery = [c for c in calls if "deadline" in c["options"]]
+        manifest = (replay["result"] or ([], "", []))[2]
+        check("%s real recovery performs at most twelve calls within the original ninety seconds" % mode,
+              recovery and 0 < len(recovery) <= 12
+              and abs(recovery[0]["options"]["deadline"] - recovery[0]["start"] - 90) < 0.000001
+              and replay["collection_end"] - recovery[0]["start"] <= 90 + 0.000001,
+              str([(c["start"], c["end"]) for c in recovery]))
+        check("%s keeps initial retries, recovery retries and whole-attempt limits" % mode,
+              calls and all(c["options"].get("absolute_timeout") is True
+                            and c["options"].get("retries") == (0 if "deadline" in c["options"] else 1)
+                            and 0 < c["options"]["timeout"] <= 10 for c in calls)
+              and all(c["options"]["timeout"] <= c["options"]["deadline"] - c["start"] + 0.000001
+                      for c in recovery))
+        check("%s leaves unobserved pages as persisted gaps and exits incomplete" % mode,
+              replay["code"] == 1 and manifest
+              and all(m["outcome"] in ("fetch_failed", "skipped") for m in manifest)
+              and any(m.get("recovery_outcome") == "budget_exhausted" for m in manifest)
+              and any(fn.startswith("runs-") for fn in replay["files"])
+              and not any(fn.startswith("pools-") for fn in replay["files"]), replay["output"])
+        starts = [h["start"] for h in replay["http"]]
+        check("%s real HTTP requests remain at least 12.1 seconds apart" % mode,
+              len(starts) >= 2 and all(b - a >= 12.1 - 0.000001
+                                      for a, b in zip(starts, starts[1:])), str(starts))
+
+
+def test_request_gap_workflow_paces_the_actual_collection_command_only():
+    print("\n[pacing] the executable scheduled command selects 12.1 seconds")
+    import re
+    import shlex
+    wf = io.open(os.path.join(ROOT, ".github", "workflows", "snapshot.yml"), encoding="utf-8").read()
+    steps = {part.splitlines()[0].strip(): part for part in re.split(r"- name: ", wf)[1:]}
+    commands = {name: shlex.split(match.group(1)) for name, body in steps.items()
+                for match in [re.search(r"^\s*run:\s*(python\s+bench/snapshot\.py[^\n]*)$", body, re.M)]
+                if match}
+    collect = commands.get("Collect pools", [])
+    check("Collect pools executes the real CLI with --request-gap 12.1 exactly once",
+          collect[:2] == ["python", "bench/snapshot.py"] and collect.count("--request-gap") == 1
+          and collect[collect.index("--request-gap") + 1:collect.index("--request-gap") + 2] == ["12.1"]
+          and "--pages" in collect and collect[collect.index("--pages") + 1] == "5"
+          and "--sellability" in collect and collect[collect.index("--sellability") + 1] == "0",
+          str(collect))
+    check("all other snapshot invocations retain their own collection defaults",
+          commands.get("Collect day-one sellability") == ["python", "bench/snapshot.py", "--sellability-only", "25"]
+          and all("--request-gap" not in body for name, body in steps.items() if name != "Collect pools"))
+    replay = _pacing_cli_replay(collect[2:])
+    starts = [h["start"] for h in replay["http"]]
+    check("the actual workflow args reach real throttle and stdlib HTTP without network or real sleep",
+          replay["code"] == 0 and len(starts) >= 2
+          and all(h["rate"] == 12.1 for h in replay["http"])
+          and all(b - a >= 12.1 - 0.000001 for a, b in zip(starts, starts[1:])), replay["output"])
+
+
+# T-022 named change (a): wire starts after variable connection setup.
+def _completion_cli_replay(setups=(), mode="ok", prior=2.1, anchor=13.0,
+                           chains="base", pages=2, ordinary=False, operation="collect"):
+    import fetcher
+    import hashlib
+    import socket
+    import ssl
+    import tempfile
+    import threading
+    import urllib.request
+    from contextlib import ExitStack, redirect_stdout, redirect_stderr
+    from datetime import datetime, timedelta, timezone
+    from unittest.mock import patch
+    from urllib.parse import parse_qs, urlparse
+    host = "api.geckoterminal.com"
+    initial_rates = dict(fetcher._RATE)
+    if prior is None:
+        initial_rates.pop(host, None)
+    else:
+        initial_rates[host] = prior
+    rates = _PacingRates(initial_rates)
+    initial_anchors = {"fixture.other.invalid": 17.0}
+    if anchor is not None:
+        initial_anchors[host] = anchor
+    anchors = _PacingRates(initial_anchors)
+    clock, http, calls, visits, phases, writes, probes, waits = [0.0], [], [], {}, [], [], [], []
+    result, raised, code = None, None, None
+    real_fetch, real_collect, real_open = fetcher.fetch_json, snapshot.collect, io.open
+    stream = io.StringIO()
+
+    class Clock:
+        fromisoformat = staticmethod(datetime.fromisoformat)
+        @staticmethod
+        def now(zone):
+            return datetime(2026, 10, 11, tzinfo=timezone.utc) + timedelta(seconds=clock[0])
+
+    class Event:
+        def __init__(self):
+            self.flag = False
+        def set(self):
+            self.flag = True
+        def is_set(self):
+            return self.flag
+        def wait(self, timeout=None):
+            return self.flag
+
+    class Thread:
+        def __init__(self, target, **kwargs):
+            self.target = target
+        def start(self):
+            self.target()
+
+    setup_index = [0]
+    active_setup = [(0, 0, 0)]
+
+    def dns(*args):
+        index = setup_index[0]
+        setup_index[0] += 1
+        active_setup[0] = setups[index] if index < len(setups) else (0, 0, 0)
+        clock[0] += active_setup[0][0]
+        phases.append(("dns", active_setup[0][0], clock[0]))
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 443))]
+
+    def tls(context, sock, **kwargs):
+        delay = active_setup[0][2]
+        elapsed = min(delay, sock.timeout)
+        clock[0] += elapsed
+        phases.append(("tls", elapsed, clock[0]))
+        if delay >= sock.timeout and delay:
+            raise TimeoutError("fixture TLS cutoff")
+        return sock
+
+    class SlowWire(io.RawIOBase):
+        def __init__(self, connection):
+            self.connection, self.offset = connection, 0
+        def readable(self):
+            return True
+        def readinto(self, target):
+            if self.offset == len(self.connection.wire):
+                return 0
+            delay = min(9.0, self.connection.timeout)
+            clock[0] += delay
+            if delay >= self.connection.timeout:
+                raise TimeoutError("fixture HTTP cutoff after setup")
+            target[0] = self.connection.wire[self.offset]
+            self.offset += 1
+            return 1
+
+    class Socket:
+        def __init__(self, timeout=10):
+            self.timeout, self.wire = timeout, b""
+        def settimeout(self, timeout):
+            self.timeout = timeout
+        def setsockopt(self, *args):
+            pass
+        def connect(self, address):
+            delay = active_setup[0][1]
+            elapsed = min(delay, self.timeout)
+            clock[0] += elapsed
+            phases.append(("connect", elapsed, clock[0]))
+            if delay >= self.timeout and delay:
+                raise TimeoutError("fixture connect cutoff")
+        def bind(self, address):
+            pass
+        def sendall(self, data):
+            if mode == "interrupt":
+                raise KeyboardInterrupt("fixture wire interrupt")
+            lines = data.decode("ascii").splitlines()
+            target = lines[0].split()[1]
+            request_host = next(line.split(": ", 1)[1] for line in lines
+                                if line.lower().startswith("host: "))
+            parsed = urlparse(target)
+            page = int(parse_qs(parsed.query).get("page", [1])[0])
+            key = (parsed.path, page)
+            visits[key] = visits.get(key, 0) + 1
+            failed = mode == "partial" or (mode == "recover" and
+                     parsed.path.endswith("new_pools") and page == 1 and visits[key] <= 2)
+            status = 429 if failed else 200
+            body = json.dumps({"data": [] if parsed.path.endswith("trending_pools") else
+                               [_snapshot_pool("fixture_%s_%d" % (parsed.path.split("/")[-2], page))]}).encode("utf-8")
+            self.wire = (("HTTP/1.1 %d fixture\r\nContent-Length: %d\r\nConnection: close\r\n\r\n" %
+                          (status, len(body))).encode("ascii") + body)
+            http.append({"start": clock[0], "host": request_host, "status": status,
+                         "io_remaining": self.timeout, "anchors": dict(anchors)})
+        def makefile(self, mode_name):
+            return io.BufferedReader(SlowWire(self)) if mode == "cutoff" else io.BytesIO(self.wire)
+        def close(self):
+            pass
+
+    def observe_fetch(url, role, **options):
+        call = {"start": clock[0], "options": options.copy(), "anchors": dict(anchors)}
+        calls.append(call)
+        value = real_fetch(url, role, **options)
+        call.update(end=clock[0], diagnostics=dict(options.get("diagnostics", {})))
+        return value
+
+    def observe_collect(*args, **options):
+        nonlocal result
+        result = real_collect(*args, **options)
+        return result
+
+    def observe_open(path, mode_name="r", *args, **options):
+        if "a" in mode_name or "w" in mode_name:
+            writes.append((dict(rates), dict(anchors)))
+        return real_open(path, mode_name, *args, **options)
+
+    def observe_probe(*args):
+        probes.append((dict(rates), dict(anchors)))
+        return []
+
+    def sleep(seconds):
+        waits.append(seconds)
+        clock[0] += seconds
+
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
+        stack.enter_context(patch.object(snapshot, "OUT_DIR", os.path.join(tmp, "archive")))
+        stack.enter_context(patch.object(fetcher, "CACHE_DIR", os.path.join(tmp, "cache")))
+        stack.enter_context(patch.object(fetcher, "_RATE", rates))
+        # create=True makes the pre-fix red behavioral, without an unknown API failure.
+        stack.enter_context(patch.object(fetcher, "_SNAPSHOT_COMPLETION", anchors, create=True))
+        stack.enter_context(patch.object(fetcher, "_last_hit", {}))
+        stack.enter_context(patch.object(fetcher, "_ACCESS_LOG", {"engine": set(), "label": set()}))
+        stack.enter_context(patch.object(fetcher, "_SNAPSHOT_RESOLVER", fetcher._SnapshotResolver()))
+        stack.enter_context(patch.object(socket, "socket", lambda *a, **kw: Socket()))
+        stack.enter_context(patch.object(socket, "create_connection", lambda *a, timeout=25, **kw: Socket(timeout)))
+        stack.enter_context(patch.object(socket, "getaddrinfo", side_effect=dns))
+        stack.enter_context(patch.object(ssl.SSLContext, "wrap_socket", tls))
+        stack.enter_context(patch.object(ssl, "_create_default_https_context",
+                                        return_value=ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)))
+        stack.enter_context(patch.object(urllib.request, "getproxies", return_value={}))
+        stack.enter_context(patch.object(urllib.request, "urlopen", side_effect=opener.open))
+        stack.enter_context(patch.object(threading, "Event", Event))
+        stack.enter_context(patch.object(threading, "Thread", Thread))
+        stack.enter_context(patch.object(fetcher.time, "time", lambda: 1000 + clock[0]))
+        stack.enter_context(patch.object(fetcher.time, "monotonic", lambda: clock[0]))
+        stack.enter_context(patch.object(fetcher.time, "sleep", sleep))
+        stack.enter_context(patch.object(snapshot, "datetime", Clock))
+        stack.enter_context(patch.object(snapshot, "fetch_json", side_effect=observe_fetch))
+        stack.enter_context(patch.object(snapshot, "collect", side_effect=observe_collect))
+        stack.enter_context(patch.object(snapshot.io, "open", side_effect=observe_open))
+        stack.enter_context(patch.object(snapshot, "probe_sellability", side_effect=observe_probe))
+        args = ["--chains", chains, "--pages", str(pages), "--sellability", "1"]
+        if operation != "unset":
+            args += ["--request-gap", "12.1"]
+        stack.enter_context(patch.object(snapshot.sys, "argv", ["snapshot.py"] + args))
+        url = "https://%s/api/v2/networks/base/new_pools?page=1" % host
+        with redirect_stdout(stream), redirect_stderr(stream):
+            if operation in ("ordinary", "other-host", "cached"):
+                if operation == "cached":
+                    os.makedirs(fetcher.CACHE_DIR)
+                    path = os.path.join(fetcher.CACHE_DIR, hashlib.sha256(url.encode()).hexdigest()[:40] + ".json")
+                    with real_open(path, "w", encoding="utf-8") as fh:
+                        json.dump({"url": url, "data": {"fixture_cached": True}}, fh)
+                    code = real_fetch(url, "label", use_cache=True, write_cache=False)
+                else:
+                    if operation == "other-host":
+                        url = url.replace(host, "api.dexscreener.com")
+                    for _ in range(2):
+                        code = real_fetch(url, "label", retries=0, use_cache=False, write_cache=False,
+                                          absolute_timeout=operation == "other-host")
+            else:
+                try:
+                    code = snapshot.main()
+                except BaseException as exc:
+                    raised = type(exc).__name__
+                    code = exc.code if isinstance(exc, SystemExit) else None
+        collection_end, restored_anchors, restored_rates = clock[0], dict(anchors), dict(rates)
+        collection_http = list(http)
+        if ordinary:
+            for _ in range(2):
+                real_fetch(url, "label", retries=0, use_cache=False, write_cache=False)
+        files = sorted(os.listdir(snapshot.OUT_DIR)) if os.path.isdir(snapshot.OUT_DIR) else []
+    return {"code": code, "raised": raised, "output": stream.getvalue(), "http": http,
+            "collection_http": collection_http, "calls": calls, "result": result,
+            "initial_rates": initial_rates, "rates": restored_rates,
+            "initial_anchors": initial_anchors, "anchors": restored_anchors,
+            "anchor_changes": anchors.changes, "writes": writes, "probes": probes,
+            "end": collection_end, "phases": phases, "waits": waits, "files": files}
+
+
+def test_request_gap_completion_keeps_wire_starts_apart_after_variable_setup():
+    print("\n[completion] DNS, TCP and TLS costs cannot shorten actual HTTP-send gaps")
+    cases = [("DNS", [(8, 0, 0)]), ("TLS", [(0, 0, 8)]), ("mixed", [(4, 0, 4)]),
+             ("variable", [(2, 2, 3), (1, 0, 2), (0, 1, 0)])]
+    for label, setups in cases:
+        replay = _completion_cli_replay(setups)
+        starts = [h["start"] for h in replay["collection_http"]]
+        check(label + " uses the actual main/fetcher/stdlib HTTP sends with successful coverage",
+              replay["code"] == 0 and len(starts) == 3, replay["output"])
+        check(label + " setup leaves every real wire-start gap at least 12.1 seconds",
+              len(starts) == 3 and all(b - a >= 12.1 - 0.000001 for a, b in zip(starts, starts[1:])), str(starts))
+        check(label + " applies gap waiting before, rather than inside, each ten-second IO attempt",
+              len(replay["collection_http"]) == 3 and all(0 < h["io_remaining"] <= 10.000001
+              for h in replay["collection_http"]) and replay["collection_http"][-1]["io_remaining"] >= 8.999999)
+
+
+def test_request_gap_completion_covers_retry_recovery_and_restored_ordinary_calls():
+    print("\n[completion] failed attempts, retries and recovery retain the same wire gap")
+    replay = _completion_cli_replay([(4, 0, 4)], mode="recover", ordinary=True)
+    starts = [h["start"] for h in replay["collection_http"]]
+    recovery = [c for c in replay["calls"] if "deadline" in c["options"]]
+    check("failed initial attempts really retry and recover the page with original retry choices",
+          replay["code"] == 0 and len(starts) == 5 and recovery
+          and [h["status"] for h in replay["collection_http"]] == [429, 429, 200, 200, 200]
+          and all(c["options"]["retries"] == (0 if "deadline" in c["options"] else 1) for c in replay["calls"]))
+    check("both failed and successful attempt completions protect every wire-start gap",
+          len(starts) == 5 and all(b - a >= 12.1 - 0.000001 for a, b in zip(starts, starts[1:])), str(starts))
+    check("the old rate and completion anchor are already restored before preservation and probing",
+          replay["rates"] == replay["initial_rates"] and replay["anchors"] == replay["initial_anchors"]
+          and replay["writes"] and replay["probes"] and all(pair ==
+          (replay["initial_rates"], replay["initial_anchors"]) for pair in replay["writes"] + replay["probes"]))
+    ordinary = replay["http"][-2:]
+    check("ordinary requests after the collection preserve their original 2.1-second interval",
+          len(ordinary) == 2 and abs(ordinary[1]["start"] - ordinary[0]["start"] - 2.1) < 0.000001)
+
+
+def test_request_gap_completion_retains_cutoffs_deadline_refusal_and_gap_manifest():
+    print("\n[completion] setup and progressive IO keep original recovery and attempt budgets")
+    for mode, chains, pages in (("partial", "a,b", 5), ("cutoff", "base", 5)):
+        replay = _completion_cli_replay([(8, 0, 0)], mode=mode, chains=chains, pages=pages)
+        recovery = [c for c in replay["calls"] if "deadline" in c["options"]]
+        manifest = (replay["result"] or ([], "", []))[2]
+        check(mode + " recovery obeys the unchanged ninety-second deadline and twelve-call cap",
+              recovery and len(recovery) <= 12 and abs(recovery[0]["options"]["deadline"] -
+              recovery[0]["start"] - 90) < 0.000001 and replay["end"] - recovery[0]["start"] <= 90.000001)
+        check(mode + " keeps ten-second whole-attempt IO and recovery timeouts",
+              recovery and all(c["options"]["absolute_timeout"] is True and
+              c["options"]["timeout"] <= 10 and c["options"]["retries"] == 0 for c in recovery)
+              and all(0 < h["io_remaining"] <= 10.000001 for h in replay["collection_http"]))
+        check(mode + " refuses the next over-budget pacing wait without sending another request",
+              replay["code"] == 1 and recovery and recovery[-1]["diagnostics"].get("error") == "budget_exhausted"
+              and recovery[-1]["diagnostics"].get("attempts") == 0)
+        check(mode + " records unavailable pages and restores both state maps before writes",
+              manifest and all(m["outcome"] in ("fetch_failed", "skipped") for m in manifest)
+              and any(m.get("recovery_outcome") == "budget_exhausted" for m in manifest)
+              and replay["writes"] and all(pair == (replay["initial_rates"], replay["initial_anchors"])
+              for pair in replay["writes"]) and any(fn.startswith("runs-") for fn in replay["files"]))
+        starts = [h["start"] for h in replay["collection_http"]]
+        check(mode + " unavailable attempts also keep actual send gaps at least 12.1 seconds",
+              len(starts) >= 2 and all(b - a >= 12.1 - 0.000001 for a, b in zip(starts, starts[1:])), str(starts))
+
+
+def test_request_gap_completion_restores_absent_state_and_interrupted_exit():
+    print("\n[completion] absent entries and a BaseException restore the full temporary state")
+    for mode in ("ok", "partial", "interrupt"):
+        replay = _completion_cli_replay([(4, 0, 4)], mode=mode, prior=None, anchor=None, pages=1)
+        check(mode + " restores absent rate and completion entries, including a wire interrupt",
+              replay["rates"] == replay["initial_rates"] and replay["anchors"] == replay["initial_anchors"]
+              and (replay["raised"] == "KeyboardInterrupt" if mode == "interrupt" else
+                   replay["code"] == (0 if mode == "ok" else 1)))
+        check(mode + " opts in transiently and never changes another host's completion state",
+              replay["anchor_changes"] and all(host == "api.geckoterminal.com" for host, _ in replay["anchor_changes"]))
+        if mode == "interrupt":
+            check("the interrupted wire exits before any archive write or optional probe",
+                  not replay["writes"] and not replay["probes"])
+
+
+def test_request_gap_completion_is_noop_for_unset_cached_ordinary_and_other_hosts():
+    print("\n[completion] cached/default callers and other hosts retain their previous behavior")
+    for operation in ("unset", "ordinary", "other-host", "cached"):
+        replay = _completion_cli_replay(anchor=None if operation == "unset" else 1000.0, operation=operation)
+        check(operation + " never changes a completion anchor or its opt-in configuration",
+              not replay["anchor_changes"] and replay["anchors"] == replay["initial_anchors"])
+        if operation == "cached":
+            check("a cached result is read without any HTTP or real pacing wait",
+                  replay["code"] == {"fixture_cached": True} and not replay["http"] and not replay["waits"])
+        else:
+            starts = [h["start"] for h in replay["http"]]
+            gap = 0.25 if operation == "other-host" else 2.1
+            check(operation + " keeps its ordinary host's original start-based gap",
+                  len(starts) >= 2 and abs(starts[1] - starts[0] - gap) < 0.000001)
+
+
+# T-022 named change (b): preservation before the scheduled job's timeout.
+def _collection_budget_cli_replay(setup="dns", mode="retry", prior_deadline=4500.0,
+                                  absent=False, operation="scheduled", optional=False,
+                                  start=0.0):
+    import fetcher
+    import hashlib
+    import re
+    import shlex
+    import socket
+    import ssl
+    import tempfile
+    import threading
+    import urllib.request
+    from contextlib import ExitStack, redirect_stdout, redirect_stderr
+    from datetime import datetime, timedelta, timezone
+    from unittest.mock import patch
+    from urllib.parse import urlparse
+    host = "api.geckoterminal.com"
+    initial_rates = dict(fetcher._RATE)
+    initial_anchors = {"fixture.other.invalid": 17.0}
+    initial_deadlines = {"fixture.other.invalid": -1.0}
+    if absent:
+        initial_rates.pop(host, None)
+    elif operation != "unset":
+        initial_anchors[host] = 13.0
+    if prior_deadline is not None:
+        initial_deadlines[host] = prior_deadline
+    rates, anchors, deadlines = (_PacingRates(value) for value in
+                                 (initial_rates, initial_anchors, initial_deadlines))
+    clock, http, calls, visits, writes, probes, waits = [start], [], [], {}, [], [], []
+    result, raised, code = None, None, None
+    real_fetch, real_collect, real_open = fetcher.fetch_json, snapshot.collect, io.open
+    stream = io.StringIO()
+    wf = io.open(os.path.join(ROOT, ".github", "workflows", "snapshot.yml"), encoding="utf-8").read()
+    steps = {part.splitlines()[0].strip(): part for part in re.split(r"- name: ", wf)[1:]}
+    command = shlex.split(re.search(r"^\s*run:\s*(python\s+bench/snapshot\.py[^\n]*)$",
+                                   steps["Collect pools"], re.M).group(1))
+    args = command[2:]
+    if optional:
+        args[args.index("--sellability") + 1] = "1"
+    if operation == "unset":
+        flag = args.index("--request-gap")
+        del args[flag:flag + 2]
+    elif operation in ("coverage", "sellability"):
+        args = (["--check-coverage"] if operation == "coverage" else ["--sellability-only", "1"])
+        args += ["--request-gap", "12.1"]
+
+    class Clock:
+        fromisoformat = staticmethod(datetime.fromisoformat)
+        @staticmethod
+        def now(zone):
+            return datetime(2026, 10, 11, tzinfo=timezone.utc) + timedelta(seconds=clock[0])
+
+    class Event:
+        def __init__(self):
+            self.flag = False
+        def set(self):
+            self.flag = True
+        def is_set(self):
+            return self.flag
+        def wait(self, timeout=None):
+            return self.flag
+
+    class Thread:
+        def __init__(self, target, **kwargs):
+            self.target = target
+        def start(self):
+            self.target()
+
+    def dns(*args):
+        if setup == "dns":
+            clock[0] += 9.0
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 443))]
+
+    def tls(context, sock, **kwargs):
+        if setup == "tls":
+            elapsed = min(9.0, sock.timeout)
+            clock[0] += elapsed
+            if elapsed >= sock.timeout:
+                raise TimeoutError("fixture collection TLS deadline")
+        return sock
+
+    class SlowWire(io.RawIOBase):
+        def __init__(self, connection):
+            self.connection = connection
+        def readable(self):
+            return True
+        def readinto(self, target):
+            clock[0] += self.connection.timeout
+            raise TimeoutError("fixture collection body deadline")
+
+    class Socket:
+        def __init__(self, timeout=10):
+            self.timeout, self.wire = timeout, b""
+        def settimeout(self, timeout):
+            self.timeout = timeout
+        def setsockopt(self, *args):
+            pass
+        def connect(self, address):
+            pass
+        def bind(self, address):
+            pass
+        def sendall(self, data):
+            lines = data.decode("ascii").splitlines()
+            target = lines[0].split()[1]
+            request_host = next(line.split(": ", 1)[1] for line in lines
+                                if line.lower().startswith("host: "))
+            visits[target] = visits.get(target, 0) + 1
+            failed = mode == "all-fail" or (mode == "retry" and visits[target] == 1)
+            if mode == "recover":
+                failed = "/eth/new_pools?page=1" in target and visits[target] <= 2
+            status = 429 if failed else 200
+            body = json.dumps({"data": [] if "trending_pools" in target else
+                               [_snapshot_pool("fixture_" + target)]}).encode("utf-8")
+            self.wire = (("HTTP/1.1 %d fixture\r\nContent-Length: %d\r\nConnection: close\r\n\r\n" %
+                          (status, len(body))).encode("ascii") + body)
+            http.append({"start": clock[0], "target": target, "host": request_host,
+                         "status": status, "io_remaining": self.timeout,
+                         "deadlines": dict(deadlines), "anchors": dict(anchors)})
+            if mode == "interrupt":
+                raise KeyboardInterrupt("fixture collection wire interrupt")
+        def makefile(self, mode_name):
+            return io.BufferedReader(SlowWire(self)) if mode == "body-cutoff" else io.BytesIO(self.wire)
+        def close(self):
+            pass
+
+    def observe_fetch(url, role, **options):
+        call = {"start": clock[0], "options": options.copy(), "deadlines": dict(deadlines)}
+        calls.append(call)
+        value = real_fetch(url, role, **options)
+        call.update(end=clock[0], diagnostics=dict(options.get("diagnostics", {})))
+        return value
+
+    def observe_collect(*args, **options):
+        nonlocal result
+        result = real_collect(*args, **options)
+        return result
+
+    def state():
+        return (dict(rates), dict(anchors), dict(deadlines))
+
+    def observe_open(path, mode_name="r", *args, **options):
+        if "a" in mode_name or "w" in mode_name:
+            writes.append({"at": clock[0], "path": os.path.basename(path), "state": state()})
+        return real_open(path, mode_name, *args, **options)
+
+    def observe_probe(*args):
+        probes.append(state())
+        return []
+
+    def sleep(seconds):
+        waits.append({"at": clock[0], "seconds": seconds})
+        clock[0] += seconds
+
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
+        stack.enter_context(patch.object(snapshot, "OUT_DIR", os.path.join(tmp, "archive")))
+        stack.enter_context(patch.object(fetcher, "CACHE_DIR", os.path.join(tmp, "cache")))
+        stack.enter_context(patch.object(fetcher, "_RATE", rates))
+        stack.enter_context(patch.object(fetcher, "_SNAPSHOT_COMPLETION", anchors))
+        stack.enter_context(patch.object(fetcher, "_SNAPSHOT_DEADLINE", deadlines, create=True))
+        stack.enter_context(patch.object(fetcher, "_last_hit", {}))
+        stack.enter_context(patch.object(fetcher, "_ACCESS_LOG", {"engine": set(), "label": set()}))
+        stack.enter_context(patch.object(fetcher, "_SNAPSHOT_RESOLVER", fetcher._SnapshotResolver()))
+        stack.enter_context(patch.object(socket, "socket", lambda *a, **kw: Socket()))
+        stack.enter_context(patch.object(socket, "create_connection", lambda *a, timeout=25, **kw: Socket(timeout)))
+        stack.enter_context(patch.object(socket, "getaddrinfo", side_effect=dns))
+        stack.enter_context(patch.object(ssl.SSLContext, "wrap_socket", tls))
+        stack.enter_context(patch.object(ssl, "_create_default_https_context",
+                                        return_value=ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)))
+        stack.enter_context(patch.object(urllib.request, "getproxies", return_value={}))
+        stack.enter_context(patch.object(urllib.request, "urlopen", side_effect=opener.open))
+        stack.enter_context(patch.object(threading, "Event", Event))
+        stack.enter_context(patch.object(threading, "Thread", Thread))
+        stack.enter_context(patch.object(fetcher.time, "time", lambda: 1000 + clock[0]))
+        stack.enter_context(patch.object(fetcher.time, "monotonic", lambda: clock[0]))
+        stack.enter_context(patch.object(fetcher.time, "sleep", sleep))
+        stack.enter_context(patch.object(snapshot, "datetime", Clock))
+        stack.enter_context(patch.object(snapshot, "fetch_json", side_effect=observe_fetch))
+        stack.enter_context(patch.object(snapshot, "collect", side_effect=observe_collect))
+        stack.enter_context(patch.object(snapshot.io, "open", side_effect=observe_open))
+        stack.enter_context(patch.object(snapshot, "probe_sellability", side_effect=observe_probe))
+        stack.enter_context(patch.object(snapshot.sys, "argv", ["snapshot.py"] + args))
+        url = "https://%s/api/v2/networks/eth/new_pools?page=1" % host
+        with redirect_stdout(stream), redirect_stderr(stream):
+            if operation == "cached":
+                os.makedirs(fetcher.CACHE_DIR)
+                path = os.path.join(fetcher.CACHE_DIR, hashlib.sha256(url.encode()).hexdigest()[:40] + ".json")
+                with real_open(path, "w", encoding="utf-8") as fh:
+                    json.dump({"url": url, "data": {"fixture_cached": True}}, fh)
+                code = real_fetch(url, "label", use_cache=True, write_cache=False, absolute_timeout=True)
+            elif operation in ("ordinary", "other-host", "fetch"):
+                if operation == "other-host":
+                    url = url.replace(host, "api.dexscreener.com")
+                diagnostics = {}
+                code = real_fetch(url, "label", retries=1 if operation == "fetch" else 0,
+                                  timeout=10, use_cache=False, write_cache=False,
+                                  absolute_timeout=operation != "ordinary", diagnostics=diagnostics)
+                calls.append({"diagnostics": diagnostics})
+            elif operation == "import":
+                import runpy
+                runpy.run_path(snapshot.__file__, run_name="collection_budget_import")
+            else:
+                try:
+                    code = snapshot.main()
+                except BaseException as exc:
+                    raised = type(exc).__name__
+                    code = exc.code if isinstance(exc, SystemExit) else None
+        persisted = {}
+        files = sorted(os.listdir(snapshot.OUT_DIR)) if os.path.isdir(snapshot.OUT_DIR) else []
+        for name in files:
+            with real_open(os.path.join(snapshot.OUT_DIR, name), encoding="utf-8") as fh:
+                persisted[name.split("-", 1)[0]] = [json.loads(line) for line in fh if line.strip()]
+    return {"code": code, "raised": raised, "output": stream.getvalue(), "http": http,
+            "calls": calls, "result": result, "end": clock[0], "writes": writes, "probes": probes,
+            "waits": waits, "persisted": persisted, "args": args,
+            "initial_state": (initial_rates, initial_anchors, initial_deadlines), "state": state(),
+            "deadline_changes": deadlines.changes, "anchor_changes": anchors.changes}
+
+
+def test_request_gap_collection_budget_preserves_the_full_scheduled_prefix_before_job_cutoff():
+    print("\n[collection budget] the full scheduled command preserves slow-retry observations on time")
+    for setup in ("dns", "tls"):
+        replay = _collection_budget_cli_replay(setup)
+        rows, _, manifest = replay["result"]
+        http, writes = replay["http"], replay["writes"]
+        check(setup + " exercises the actual eight-chain, forty-eight-page scheduled arguments",
+              replay["args"] == ["--pages", "5", "--sellability", "0", "--request-gap", "12.1"]
+              and len(manifest) == 48 and len({m["chain"] for m in manifest}) == 8)
+        check(setup + " preserves a successful prefix and incomplete manifest before the 1500-second cutoff",
+              replay["code"] == 1 and 0 < len(rows) < 40 and writes
+              and min(w["at"] for w in writes) < 1500 and replay["end"] <= 1200.000001,
+              "end=%s writes=%s rows=%s" % (replay["end"], [w["at"] for w in writes], len(rows)))
+        check(setup + " stops real HTTP sends at the opt-in monotonic collection deadline",
+              2 < len(http) < 96 and all(h["start"] < 1200 and
+              h["deadlines"].get("api.geckoterminal.com") == 1200 for h in http))
+        check(setup + " initial failures really retry before successful pages without extending IO",
+              [h["status"] for h in http[:4]] == [429, 200, 429, 200]
+              and all(0 < h["io_remaining"] <= 1.000001 for h in http)
+              and all(c["options"]["timeout"] <= 10 and c["options"]["absolute_timeout"]
+              and c["options"]["retries"] == (0 if "deadline" in c["options"] else 1)
+              for c in replay["calls"]))
+        check(setup + " retains the earlier completion-anchored minimum gap on actual stdlib sends",
+              all(b["start"] - a["start"] >= 12.1 - 0.000001 for a, b in zip(http, http[1:])))
+        check(setup + " stores exactly its observed rows and a valid honest gap manifest",
+              replay["persisted"].get("pools") == rows and replay["persisted"].get("runs") == manifest
+              and snapshot._coverage(manifest)[2] > 0
+              and not snapshot._coverage(manifest)[3].get("manifest_invalid")
+              and any(m.get("recovery_outcome") == "budget_exhausted" for m in manifest)
+              and all(m["outcome"] != "end_of_listing" for m in manifest
+                      if m["initial_outcome"] in ("fetch_failed", "skipped")))
+        check(setup + " restores all scoped state before writing and skips optional work",
+              replay["state"] == replay["initial_state"] and not replay["probes"]
+              and all(w["state"] == replay["initial_state"] for w in writes))
+
+
+def test_request_gap_collection_budget_bounds_retry_waits_and_remaining_real_io():
+    print("\n[collection budget] the real fetcher bounds setup, body and retry waits by remaining time")
+    for label, setup, mode, deadline in (("TLS", "tls", "ok", 5.0),
+                                        ("body", "none", "body-cutoff", 5.0),
+                                        ("retry", "none", "retry", 2.0)):
+        replay = _collection_budget_cli_replay(setup, mode, prior_deadline=deadline,
+                                               absent=True, operation="fetch")
+        diagnostic = replay["calls"][-1]["diagnostics"]
+        check(label + " fails at the scoped deadline without a late HTTP attempt or unbounded retry wait",
+              replay["code"] is None and replay["end"] <= deadline + 0.000001
+              and diagnostic.get("error") == "budget_exhausted"
+              and all(h["start"] < deadline for h in replay["http"]), str(diagnostic))
+        check(label + " retains at most one original IO attempt and leaves external configuration unchanged",
+              diagnostic.get("attempts") == 1 and len(replay["http"]) <= 1
+              and replay["state"] == replay["initial_state"] and not replay["deadline_changes"])
+    replay = _collection_budget_cli_replay("dns", "all-fail")
+    recovery = [c for c in replay["calls"] if "deadline" in c["options"]]
+    check("the independent recovery stage still has its ninety-second and twelve-call limits",
+          recovery and len(recovery) <= 12 and abs(recovery[0]["options"]["deadline"] -
+          recovery[0]["start"] - 90) < 0.000001
+          and replay["end"] - recovery[0]["start"] <= 90.000001
+          and all(c["options"]["retries"] == 0 and c["options"]["timeout"] <= 10 for c in recovery))
+
+
+def test_request_gap_collection_budget_restores_existing_absent_and_interrupted_state():
+    print("\n[collection budget] deadlines restore with rates and anchors on every exit path")
+    for mode, setup, absent in (("ok", "none", False), ("retry", "dns", True),
+                                ("interrupt", "dns", False), ("interrupt", "tls", True)):
+        replay = _collection_budget_cli_replay(setup, mode, prior_deadline=None if absent else 4500.0,
+                                               absent=absent, optional=True, start=37.0)
+        check(mode + " restores exact prior deadline presence/value with existing pacing state",
+              replay["state"] == replay["initial_state"] and replay["deadline_changes"]
+              and replay["deadline_changes"][0] == ("api.geckoterminal.com", 1237.0)
+              and all(host == "api.geckoterminal.com" for host, _ in replay["deadline_changes"]))
+        if mode == "interrupt":
+            check("an interrupted HTTP send restores state before propagating without preservation or probing",
+                  replay["raised"] == "KeyboardInterrupt" and not replay["writes"] and not replay["probes"])
+        else:
+            check(mode + " writes only after restoring all temporary maps and observes the optional-work rule",
+                  replay["writes"] and all(w["state"] == replay["initial_state"] for w in replay["writes"])
+                  and (replay["code"] == 0 and replay["probes"] == [replay["initial_state"]]
+                       if mode == "ok" else replay["code"] == 1 and not replay["probes"]))
+
+
+def test_request_gap_collection_budget_is_noop_for_unset_cached_and_noncollection_calls():
+    print("\n[collection budget] ordinary, cached and noncollection callers retain their contract")
+    for operation in ("unset", "cached", "ordinary", "other-host", "import", "coverage", "sellability"):
+        replay = _collection_budget_cli_replay("none", "ok", operation=operation,
+                                               prior_deadline=None if operation == "unset" else -1.0)
+        check(operation + " never changes a collection deadline or any caller's previous scope",
+              replay["state"] == replay["initial_state"] and not replay["deadline_changes"])
+        if operation in ("ordinary", "other-host"):
+            check(operation + " can fetch despite an unrelated expired collection deadline",
+                  isinstance(replay["code"], dict) and len(replay["http"]) == 1)
+        elif operation == "unset":
+            check("an unset collection still completes its full plan with no temporary deadline",
+                  replay["code"] == 0 and len(replay["http"]) == 48)
+        else:
+            check(operation + " performs no HTTP request or pacing wait",
+                  not replay["http"] and not replay["waits"])
+
+
 def main():
     print("=" * 68)
     print("Sellability archive: asking on the day, because later is too late")
