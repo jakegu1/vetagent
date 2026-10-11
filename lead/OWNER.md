@@ -18,8 +18,10 @@ review with no material finding, and is deployed and verified. T-013's full-id r
 passes its tests-first checks and the single five-URL fill. Fresh independent review
 passes 12/12 and red-team review has no material finding. The approved source is merged;
 the lead's own integrated replay is byte-identical and immutable. Final checks and actual
-deployment pass; public figures and health are independently read back. T-012 starts
-from that exact published base. T-022's
+deployment pass; public figures and health are independently read back. T-012 is also
+deployed and verified on e657c32 after combined review at 12/12, red-team none.
+T-021's renewed exact-base conflict and immutable replay prerequisites pass; its narrow
+numeric-boundary repair is ready for an executor. T-022's
 opt-in pacing and preservation repairs passed independent review at 12/12, are published,
 and passed actual manual collection. Real scheduled coverage remains pending.
 Execution permissions now work. Autonomy remains A1; this authorization covers the reviewed
@@ -78,6 +80,14 @@ technical release. Experiment D and the 2026-10-16 product gate retain their exi
 | M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
+
+- **2026-10-12** - lead - T-012 is complete on published e657c32. Final checks pass
+  thirty-one steps; exact-head preflight 38162435754 passes required jobs and all 219
+  observed checks. Actual deployment 38162750450 runs every offline, upload and tagged
+  smoke step successfully. Public figures and health are independently read back.
+  T-021's complete exact-base conflict refresh and byte-identical replay pass on this
+  published base; its executor must repeat that prerequisite before additive tests.
+  Real scheduled snapshot coverage remains pending.
 
 - **2026-10-12** - lead - T-012's exact 8771725 passes fresh combined review at 12/12,
   red-team none. Both malformed-container guards are independently observed to fail when

@@ -1,24 +1,22 @@
 ---
 id: T-021
 title: Reject invalid market scalars while preserving unavailable depth and observed zero
-status: draft
+status: ready
 level: 3
 size: M
 depends_on: [T-011, T-019, T-013, T-012]
 decisions: []
 ---
 
-# Draft after the complete numeric-boundary audit
+# Numeric-boundary repair after the completed dependencies
 
-This is a recorded draft, not an executor dispatch. Keep
-`status: draft` until the dependencies, exact-base conflict refresh, complete scope and
-zero-miss replay prerequisite below are satisfied. The lead can then record the dated
-amendment, set ready and dispatch. Existing publication gates and Owner authorization stay
-as defined by QUALITY/config.
+The dated readiness amendment below records the completed dependencies, actual published
+base, renewed conflict search and zero-miss replay prerequisite. Existing publication gates
+and Owner authorization stay as defined by QUALITY/config.
 
 ## Context and goal
 
-The unchanged published risk engine, git blob
+At the preparation audit, risk engine git blob
 `a0ae14779b345a5e1f9ecb889f549b119dd55dfd`, was probed offline with copied tracked fixtures
 and local fake fetchers. On the Ethereum USDC fixture, changing only liquidity.usd to the
 valid JSON string "NaN" returned a complete `low` assessment and adequate-liquidity signal;
@@ -219,6 +217,38 @@ silently leaving finite stated depth, optional rounding inventing zero, partial 
 pretending every pool is empty, GT normalization hiding invalid provenance, and skipped test
 registration. The task closes these measured numeric handoffs while preserving the existing
 decision rules.
+
+## Dated readiness amendment
+
+2026-10-12: all four dependencies are independently reviewed, merged, deployed and verified.
+T-012 is published as e657c32dcdc516c8d8c07f0a040527a4a69e2617; its actual deployment
+38162750450 runs and passes all thirty-one offline steps, Worker deployment and tagged
+production smoke. Tagged homepage, Agent text and health readbacks pass. Required master
+jobs also pass. This exact published commit is the task base, not later lead bookkeeping;
+its risk source blob is 6076480f13c71b20adc06fc10823fa7a14594fb6.
+
+The read-only exact-base AST refresh inventories all 140 calls to the seventeen existing
+numeric/scope helpers, 107 matching test-file functions including helpers, 93 actual
+test functions and forty mapped-reason reader lines. These are search counts, not executed
+test counts. The full extracts and caller/reason inventories are retained privately.
+Missing-price selection, tiny prices, anchored reserve residuals, two-anchor infinity
+marker, genuine zero, all-empty/unpriced distinctions, turnover aggregation, GT side
+semantics, simulator adjudication, T-012 gaps and HTTP/MCP classifiers are read and remain
+binding. No existing test change is required or allowed. In particular preserve
+test_depth_counts_only_what_no_pool_creator_can_price,
+test_a_fallback_pool_is_held_to_the_same_depth_rule,
+test_an_empty_pool_does_not_speak_for_a_deep_one_we_cannot_price,
+test_a_tiny_price_is_still_a_price, test_every_pool_empty_is_a_finding_not_a_gap,
+test_unpriced_pools_are_not_empty_pools and
+test_turnover_is_measured_over_the_token_not_one_pool, plus the merged T-012 acceptance.
+
+The lead's own exact-base replay evaluates all 576 rows at 2026-09-21T02:00:00Z, misses
+nothing and reproduces both committed raw output blobs byte-identically. All 6,741 cache
+files and the recorded labeling log remain unchanged, with zero network calls, cache
+writes or after-clock selections. The executor must independently repeat this prerequisite
+on its own isolated cache copy before the first tests-only commit. The same no-fill,
+no-row-drift stop rule and four-file scope remain binding. There is no permission to
+silently rebaseline or regenerate public figures if numeric normalization changes a row.
 
 ## Dated draft amendment
 

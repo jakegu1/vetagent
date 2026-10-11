@@ -98,3 +98,12 @@ byte. Three registered high-to-unknown moves retain critical data gaps; all dead
 verdicts and 572 otherwise complete rows remain unchanged. Approved source is merged as
 248d64d. Both scoped stale Experiment C passages and W49 are closed from actual data;
 integrated release checks and actual deployment remain pending.
+
+T-012 is now complete on published e657c32. Full integrated checks pass thirty-one
+steps, and exact final preflight 38162435754 passes required jobs and all 219 observed
+upstream checks with zero unobserved or collapsed path. Actual deployment 38162750450
+runs and passes offline tests, Worker deployment and tagged production smoke. Worker
+version is 6d7ccb28-ecab-4623-9c61-8ded53e45644. Separately tagged readback verifies
+the new public figures and HTTP 200/ok health. T-021's exact-base numeric caller/conflict
+search and zero-miss immutable replay now pass on this published head. It is ready,
+with all older tests frozen and any benchmark row drift requiring an explicit amendment.

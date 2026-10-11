@@ -49,7 +49,7 @@ technical repair release.
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
 | T-020 | 3 | Recovery at 5bb391f; pacing published at 86a8111 | Published paced manual pass verified complete | Codex lead | Verify a real scheduled pass before done; retain DNS test follow-up |
-| T-012 | 3 | Approved 8771725 merged as 248d64d; base 7f796e4 | Combined round 2 passes 12/12, red-team none; scoped copy and W49 closed | Codex lead | Complete integrated replay, full checks, exact-head preflight and actual deployment |
+| T-021 | 3 | codex/t021-finite-market-measurements; exact base e657c32 | Ready; exact-base caller/conflict refresh and immutable zero-miss replay complete | Next executor | Repeat the prerequisite on an isolated cache, then commit additive acceptance alone and show behavioral red |
 | T-022 | 3 | Approved 8b54497 published in 86a8111 | Manual run 38148501978 complete; raw committed coverage independently verified | Codex lead | Verify a real scheduled pass before completion |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
@@ -196,11 +196,11 @@ run has yet been observed. Real scheduled coverage remains required for task com
 
 ## Next up
 
-The current technical queue is T-012, then draft T-021 and draft T-023. T-013 is complete;
+The current technical queue is ready T-021, then draft T-023. T-012 and T-013 are complete;
 its exact source, one fill, integrated replay and actual deployment are recorded in its review.
-T-012 starts from verified published 7f796e4 under its unchanged narrow rule;
-T-021 waits for both, then repeats its exact-base conflict search and immutable replay
-before dispatch. T-021's complete offline audit reproduces NaN-low, non-finite public JSON,
+T-012 is deployed and verified on published e657c32 under its unchanged narrow rule;
+T-021's exact-base conflict search and immutable replay now pass on this published head.
+The executor repeats that prerequisite before its first commit. Its offline audit reproduces NaN-low, non-finite public JSON,
 and the zero/unavailable all-empty seam; production occurrence and affected benchmark rows
 remain unmeasured. T-023's small baseline-write guard follows the correctness queue: an offline
 cold-write probe confirms the missing comparison, while the unchanged manual freeze rules
