@@ -7,9 +7,10 @@
 
 ## Status in one line
 
-The Owner-authorized technical release is in progress. T-020's frozen snapshot repair has
-its tests-first and additive-test history; full checks and Linux preflight precede publication.
-T-016 is separate until its observed upstream baseline and complete assessment checks pass.
+T-016 is deployed and verified. T-020 is published; its real manual pass preserved data,
+recovered missing rows and correctly failed remaining coverage gaps caused by observed
+HTTP 429 responses. A slower-pacing measurement runs separately without production writes.
+T-011 now implements deterministic benchmark replay on the reviewed release base.
 Execution permissions now work. Autonomy remains A1; this authorization covers the reviewed
 technical release. Experiment D and the 2026-10-16 product gate retain their existing rules.
 

@@ -1,7 +1,7 @@
 ---
 id: T-016
 title: Stop counting a Solana token's own liquidity pool as a whale in holder concentration
-status: in_review         # draft | ready | in_progress | in_review | changes_requested | done | dropped
+status: done              # draft | ready | in_progress | in_review | changes_requested | done | dropped
 level: 2                 # 0 direct | 1 light | 2 standard | 3 high risk
 size: S                  # S | M (split anything larger)
 depends_on: []           # none; shares files with T-011 to T-015, T-017, T-018: never in parallel

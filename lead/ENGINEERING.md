@@ -22,26 +22,30 @@ fail-closed, isolates per-request disclosures with context variables, and disclo
 cache use. The deploy runner derives its offline test list from the test workflow and runs
 the full list before shipping. Preserve these seams while fixing the measured defects.
 
-## Current release limitation
+## Current release evidence
 
-T-020's four frozen engineering files now have preserved chronological Git commits after
-the second independent and adversarial reviews found no material technical defect. The
-original and additive acceptance reds are reproduced and the final archive suite is green.
-Full release-head checks, Linux preflight and independent completion audit precede release;
-actual collection and scheduled execution are checked afterwards. A registered DNS fixture
-reusing an expired deadline needs a small follow-up; independent fresh-budget probes verify
-the current pending-worker cap and catch its mutant. T-016 remains separate while its
-observed baseline and full asynchronous evidence are completed.
+T-020 is published at master 5bb391f with actual tests-first and additive-test commits,
+full checks, required Linux jobs and independent completion review. Manual snapshot run
+38139242886 preserved its actual pool rows and manifest before correctly failing incomplete
+coverage. Committed data confirms recovery adds twenty-seven rows across three pages; HTTP
+429 responses remain observed gaps. A scheduled run on the published code is still required
+before task completion. The earlier green job never established complete coverage.
 
-The refreshed remote base is ea545c0. Scheduled snapshot run 38126683939 started at
-2026-10-11 08:58 UTC and succeeded; its manifest still records failed requests alongside
-real rows. Latest master tests run 38127088651 succeeded. The lead ran the complete offline
-suite on that fresh base successfully. Observe real post-release coverage rather than
-inferring collection completeness from the old green job.
+A disposable read-only branch experiment measures the unchanged collector with slower
+request pacing on a GitHub runner, without repository writes or a new scheduler:
+https://github.com/jakegu1/vetagent/actions/runs/38140061977. This is a hypothesis test,
+not a deployed pacing change or a claim that slower requests resolve shared-egress limits.
+Retain its actual rows and manifest before choosing a follow-up. The original recovery
+limits and final coverage gate are unchanged. The minor registered DNS-fixture follow-up
+also remains, supported by independent fresh-budget pending-worker probes.
 
-The earlier session's write restrictions prevented branch creation and complete local
-validation. On 2026-10-11 the Owner restored the execution permissions and asked the lead
-to continue. Git fetch, clean managed-worktree status and a real asyncio probe now succeed.
-Release work resumes from inspected origin/master ea545c0, with the frozen chronological
-patches preserved. Commits, full checks, Linux preflight and actual collection are verified
-in that order before reporting release completion. No permission guard is bypassed.
+T-016 is deployed at master c18de92. Exact source and integrated checks, actual observed
+contract freeze, independent review and required Linux jobs all passed. Actual Worker
+deployment and production smoke run 38139780104 completed, with no skipped deployment
+steps. A separately tagged live Solana answer returns the new outside-pool holder field
+and retains fail-closed behavior. T-011 now starts on this published base; no real fill or
+published benchmark change belongs to that task.
+
+The prior write restriction is historical. Current unrestricted execution works and the
+Owner explicitly authorized continuing technical deployment. Other sign-off categories
+and product gates remain in force; no permission guard was bypassed.

@@ -49,7 +49,8 @@ technical repair release.
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
 | T-020 | 3 | master at 5bb391f | Published; manual run preserved data and correctly failed incomplete coverage | Codex lead | Investigate observed HTTP 429 gaps; verify scheduled execution before done; retain DNS test follow-up |
-| T-016 | 2 | codex/engineering-release-20261011 | Independent pass; reviewed source merged locally | Codex lead | Check all six source identities, regenerate, run all offline checks, then authorized deployment and tagged smoke verification |
+| T-016 | 2 | master at c18de92 | Deployed; source, live contract and production checks passed | Codex lead | Close the task in release bookkeeping; retain scoped-out upstream guard follow-ups |
+| T-011 | 2 | codex/t011-benchmark-replay | Next executor task on the published release base | Executor | Historical clock confirmation, tests-first implementation, thirty-step baseline plus new acceptance; no real fetch or fill |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
 permissions and explicitly asked to continue on 2026-10-11. This covers reviewed technical
