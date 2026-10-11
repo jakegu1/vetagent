@@ -278,7 +278,7 @@ def _fill(file):
 
     outcomes, hosts = [], {}
     for url in urls:
-        if os.path.exists(fetcher_module.cache_path(url)):
+        if fetcher_module.read_cache_entry(url) is not None:
             outcome = "already recorded"
         else:
             fetch_json(url, role="engine", retries=2, dated=True)

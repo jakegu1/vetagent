@@ -42,9 +42,15 @@ def cache_path(url):
 def read_cache_entry(url):
     try:
         with open(cache_path(url), encoding="utf-8") as f:
-            return json.load(f)
+            entry = json.load(f)
     except (OSError, ValueError):
         return None
+    if not isinstance(entry, dict) or entry.get("url") != url:
+        return None
+    status = entry.get("status")
+    if "data" in entry or (type(status) is int and 400 <= status < 500 and status != 429):
+        return entry
+    return None
 
 
 def _write_cache_entry(url, entry, dated):
@@ -343,16 +349,12 @@ def fetch_json(url, role, retries=2, timeout=25, use_cache=True,
 
     if not replay and (use_cache or write_cache):
         os.makedirs(CACHE_DIR, exist_ok=True)
-    path = cache_path(url)
-    if (use_cache or replay) and os.path.exists(path):
-        try:
-            with open(path, encoding="utf-8") as f:
-                blob = json.load(f)
-            if "status" in blob:
-                return NOT_FOUND if blob["status"] == 404 and mark_missing else None
-            return blob.get("data")
-        except (OSError, ValueError):
-            pass
+    if use_cache or replay:
+        blob = read_cache_entry(url)
+        if blob is not None:
+            if "data" in blob:
+                return blob["data"]
+            return NOT_FOUND if blob["status"] == 404 and mark_missing else None
 
     if replay:
         with _LOCK:
