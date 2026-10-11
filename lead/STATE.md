@@ -171,9 +171,16 @@ run has yet been observed. Real scheduled coverage remains required for task com
 
 ## Next up
 
-No task is specced. Candidates below; at A2 the lead may spec, dispatch and (Levels 0 to 2, after
-passing reviews) merge any of them; Level 3 merges and every push wait for the Owner's yes. Items
-marked "Owner's call first" need the Owner before a spec.
+The current technical queue is T-013, then T-012, then draft T-021. T-013's exact published
+base and unchanged fill gate are recorded in its spec. T-012 waits for its measured merge;
+T-021 waits for both, then repeats its exact-base conflict search and immutable replay
+before dispatch. T-021's complete offline audit reproduces NaN-low, non-finite public JSON,
+and the zero/unavailable all-empty seam; production occurrence and affected benchmark rows
+remain unmeasured. A small baseline-write guard follows the correctness queue: an offline
+cold-write probe confirms the missing comparison, while the unchanged manual freeze rules
+remain binding. Scoped technical merges and pushes already have Owner authorization;
+A1 and all other sign-off categories remain unchanged. Older candidates and dated notes
+below are retained as historical context, with their readings refreshed before action.
 
 **The dates, in order** (all measured or read on 2026-10-01):
 1. **2026-10-05 15:38 UTC: M1 completes** if no `tests` run on `master` goes red; record it in
