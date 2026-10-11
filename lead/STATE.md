@@ -48,7 +48,7 @@ technical repair release.
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-020 | 3 | master at 5bb391f | Published; manual collection in progress | Codex lead | Inspect run 38139242886 and actual manifest/rows; observe a scheduled pass on published code before done |
+| T-020 | 3 | master at 5bb391f | Published; manual run preserved data and correctly failed incomplete coverage | Codex lead | Investigate observed HTTP 429 gaps; verify scheduled execution before done; retain DNS test follow-up |
 | T-016 | 2 | codex/engineering-release-20261011 | Independent pass; reviewed source merged locally | Codex lead | Check all six source identities, regenerate, run all offline checks, then authorized deployment and tagged smoke verification |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
@@ -56,6 +56,14 @@ permissions and explicitly asked to continue on 2026-10-11. This covers reviewed
 merges, preflight pushes and deployment pushes. Keep A1 and all other sign-off categories.
 The release starts from inspected origin/master ea545c0 and preserves scheduled bot data;
 unrelated unpublished local bookkeeping is not included.
+
+Manual snapshot run 38139242886 persisted 415 pool rows and its manifest before reporting
+eighteen gaps. Recovery saved another twenty-seven rows across three pages. Final outcomes
+were twenty-three successful pages, fourteen failed fetches, four skipped pages and two
+observed listing ends. These counts were independently read from the committed pass. HTTP
+429 is now observed; shared-egress or provider capacity as its backend cause remains an
+inference. The existing GitHub repository has Cloudflare credentials, but no CoinGecko key
+secret. Do not present incomplete coverage as restored collection or silently add a paid source.
 
 ## Waiting on the Owner
 
