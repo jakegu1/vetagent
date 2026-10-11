@@ -3,7 +3,7 @@
 > This page holds only what the lead needs from you. The project's own dashboard, with its
 > deadlines and gates, is `docs/OWNER.md` (generated). Messages to you are in Chinese; files
 > here are English because the repository is English-only. Maintained by the project lead (AI).
-> Last updated: 2026-10-11 (lead #7, Codex)
+> Last updated: 2026-10-12 (lead #7, Codex)
 
 ## Status in one line
 
@@ -15,8 +15,10 @@ manual pass saves 676 unique pools across all eight chains with zero gaps. Real 
 verification is still pending. T-011 is deployed and verified. T-019 completed its protected listed fill;
 its measured data-only rebaseline passed fresh independent review at 12/12 and red-team
 review with no material finding, and is deployed and verified. T-013's full-id repair
-passes its tests-first checks and the single five-URL fill; its frozen source now
-awaits fresh independent and red-team review before integration and deployment. T-022's
+passes its tests-first checks and the single five-URL fill. Fresh independent review
+passes 12/12 and red-team review has no material finding. The approved source is merged;
+the lead's own integrated replay is byte-identical and immutable. Final checks and actual
+deployment remain required. T-022's
 opt-in pacing and preservation repairs passed independent review at 12/12, are published,
 and passed actual manual collection. Real scheduled coverage remains pending.
 Execution permissions now work. Autonomy remains A1; this authorization covers the reviewed
@@ -75,6 +77,13 @@ technical release. Experiment D and the 2026-10-16 product gate retain their exi
 | M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
+
+- **2026-10-12** - lead - T-013's exact b99f2e7 passes fresh review at 12/12 and
+  red-team review with no material finding after 563 independent probes. Approved
+  source is merged as 46fb2a6. The lead independently reproduces all 576 raw result
+  rows with zero network calls or cache writes. Four registered rows move; 572
+  remain identical and all old high verdicts stay high. Final release checks and
+  actual deployment remain pending; scheduled snapshot proof is still separate.
 
 - **2026-10-11** - lead - T-019 is complete on published a19c3dc. Immutable combined
   replay is byte-identical with zero misses or network calls; full checks pass thirty-one

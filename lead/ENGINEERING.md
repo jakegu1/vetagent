@@ -75,3 +75,13 @@ verification remains pending; the earlier branch experiment is not substituted f
 The prior write restriction is historical. Current unrestricted execution works and the
 Owner explicitly authorized continuing technical deployment. Other sign-off categories
 and product gates remain in force; no permission guard was bypassed.
+
+T-013's exact b99f2e7 passes fresh independent review at 12/12 and red-team review
+with no material finding after 563 independent probes. Approved source is merged as
+46fb2a6. Its one protected fill adds five successful complete-id seller answers,
+preserving every old cache file. Actual requested-URL attribution explains four
+changed rows; 572 complete rows and all old high verdicts stay unchanged. The lead's
+own immutable combined replay is zero-miss, zero-network and byte-identical to both
+raw result blobs for all 576 rows. Source Linux preflight 38153547356 passes required
+jobs and 219 observed upstream checks with no unobserved or collapsed path. Full
+integrated checks, exact-head preflight and actual deployment remain required.

@@ -4,7 +4,7 @@
 > session starts by reading it. Durable rules live in `AGENTS.md`, `lead/QUALITY.md` and
 > `lead/decisions/`. Test for this file: could a stranger act on every row below?
 
-Last updated: 2026-10-11 by lead session 7 (Codex desktop), during the Owner-authorized
+Last updated: 2026-10-12 by lead session 7 (Codex desktop), during the Owner-authorized
 technical repair release.
 
 ## Starting a lead session
@@ -49,7 +49,7 @@ technical repair release.
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
 | T-020 | 3 | Recovery at 5bb391f; pacing published at 86a8111 | Published paced manual pass verified complete | Codex lead | Verify a real scheduled pass before done; retain DNS test follow-up |
-| T-013 | 3 | Frozen b99f2e7 from published a19c3dc | Tests-first source, single five-URL fill and final thirty-one-step suite pass | Fresh reviewers | Independently verify the immutable contract, request attribution, four changed rows and generated fixed point before merge |
+| T-013 | 3 | Approved b99f2e7 merged as 46fb2a6 | Independent 12/12, red-team none; own integrated immutable replay pass | Codex lead | Run full integrated checks, exact-head preflight, actual deployment and tagged public readback |
 | T-022 | 3 | Approved 8b54497 published in 86a8111 | Manual run 38148501978 complete; raw committed coverage independently verified | Codex lead | Verify a real scheduled pass before completion |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
@@ -103,7 +103,12 @@ answers and adds five cache entries without changing older bytes. Final replay m
 nothing; the lead independently compares all 576 committed rows and finds exactly
 four registered changes, 572 otherwise identical rows and no old high verdict reduced.
 Unknown moves from 120 to 116. Executor final checks pass thirty-one steps at the
-clean frozen head. Fresh independent and red-team review, integrated replay, preflight
+clean frozen head. Fresh independent review passes 12/12; red-team review has no
+material finding after 563 independent probes. Both reproduce the immutable contract,
+actual request attribution, all row/figure changes and generated fixed point. Approved
+source is merged as 46fb2a6. The lead's own integrated replay is byte-identical for
+all 576 rows, with zero misses, network calls, cache writes or after-clock selections;
+source and copied caches remain unchanged. Full integrated checks, exact-head preflight
 and actual production deployment remain required. The named ASCII evidence clarification
 retains pre-existing English punctuation and proves every changed line is ASCII.
 
