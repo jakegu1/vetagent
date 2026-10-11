@@ -1,7 +1,7 @@
 ---
 id: T-012
 title: Stop the no-trace escalation from calling a traded token "nothing can be verified" (W49, narrow form)
-status: in_review        # draft | ready | in_progress | in_review | changes_requested | done | dropped
+status: changes_requested # draft | ready | in_progress | in_review | changes_requested | done | dropped
 level: 3                 # 0 direct | 1 light | 2 standard | 3 high risk
 size: M                  # S | M (split anything larger)
 depends_on: [T-011, T-019, T-013]   # T-019 is the base AC 7 measures on; T-013 first only because it edits the same file
@@ -506,3 +506,61 @@ The filled main cache has 6,741 entries and must remain unchanged. Only replay i
 allowed, never a fill or live call. Root corrects the two named stale Experiment C
 passages after the reviewed merge and before publication, from actual new rows.
 All earlier rules, bands, publication evidence and accepted residuals are unchanged.
+
+### Round-1 regression and named acceptance test fix (b) (2026-10-12)
+
+The frozen first-round head b305d088f884b129448b5aac20a1854f8d77afe7 adds a
+transaction-container read inside the new local traded predicate. The red team
+independently reproduces six regressions against exact base 7f796e4: a truthy
+non-object txns or txns.h24 value of [1], "bad" or 1 raises AttributeError before
+the numeric try. The complete base assessments return high with the existing
+no-trace finding. The frozen head instead returns HTTP 500, and an actual MCP
+tools/call returns isError with no structured verdict. No production call is
+involved. This new regression must be repaired before the task is merged.
+
+**Threat model.** A malformed upstream count container must not interrupt an
+assessment or manufacture evidence of a sell. Only object-shaped containers and
+the existing finite positive sell scalar may support this narrow exception.
+
+**Required.**
+1. Guard txns and its h24 container as dictionaries inside the new local traded
+   predicate; a non-object is unavailable and untraded. No general payload
+   validator, GT shim, transport, other risk branch or numeric helper change.
+2. **Named acceptance test fix (b): additive only.** In tests/test_risk.py add
+   test_traded_depth_predicate_preserves_malformed_transaction_containers. Use
+   complete stubbed assessments for the six measured parent/nested cases, with
+   missing, null and empty-container controls and a finite-positive-sell object
+   control. Malformed containers must preserve high, the original no-trace
+   escalation and critical depth/simulator gaps, without exceptions. The valid
+   traded control remains unknown with its critical depth gap and abstention.
+   In tests/test_http_telemetry.py add
+   test_malformed_trade_containers_preserve_http_and_mcp_assessments. Exercise
+   actual local HTTP and MCP tool paths on the six cases, preserving complete
+   high results, structured verdicts and successful transport without unsafe
+   error detail or invented sell evidence. Every fake fetch is local and rejects
+   unmatched URLs; restore all monkeypatches. No old assertion/helper or earlier
+   T-012 acceptance function is edited. Necessary new private test helpers are
+   additive and shared pre-existing helpers remain immutable.
+3. Commit those additive tests alone as T-012: acceptance test fix (b), retain
+   the actual pre-fix behavioral red without crashes in the test runner, then
+   commit the narrow source guard separately with the red described in its
+   message. Source history already pushed is neither amended nor rebased.
+4. A restored mutant removing either the parent or nested guard must fail the
+   corresponding new complete-assessment and endpoint acceptance. Original
+   five mutants, all old controls and the original acceptance AST remain intact.
+   Run full configured checks on the clean final head and repeat the cache-only
+   replay: both measurement blobs must remain byte-identical to b305d08, all
+   actual requests and cache bytes unchanged. No fill or regeneration is needed
+   unless the actual immutable evidence proves otherwise; unexpected drift is
+   BLOCKED, not a silent rebaseline.
+
+**Decided.** Earlier replay attribution, narrow finite-positive in-scope SELLS
+policy, thresholds, independent fatal findings, fixed gap/telemetry label and
+accepted GT boolean residual stay as specified. The two named handwritten
+Experiment C corrections still belong to the lead after the reviewed merge.
+
+**Bar for combined round 2.** Independently reproduce all six base/head seam
+regressions and the repaired complete results, both restored container mutants,
+strict source/test scope, unchanged original acceptance AST, identical replay
+and full green checks. Re-review the named changes and their regressions only;
+settled first-round proofs stand. Two-round limit remains unchanged.
