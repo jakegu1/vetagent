@@ -48,7 +48,7 @@ technical repair release.
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-023 | 3 | codex/t023-cold-upstream-baseline; exact published base 7da5bdf | Ready; exact caller/source refresh and cold CLI defect reproduced | lead, then executor | Dispatch this two-file tests-first specification; preserve every existing rule and real baseline byte |
+| T-023 | 3 | codex/t023-cold-upstream-baseline; frozen 14a1ab2 on base 7da5bdf | Fresh independent and red-team review | t021_independent; t021_redteam | Obtain both exact-head verdicts before source preflight and integration |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
 permissions and explicitly asked to continue on 2026-10-11. This covers reviewed technical
@@ -221,13 +221,18 @@ failed evidence are retained. Older entries, executable ASTs and the 14-day wind
 unchanged. An exact-source forced-date probe shows the old recency guard red on Oct 15,
 and the truthful Oct-11-UTC entry green; this is not a claim about the entire future suite.
 
-The next task is ready T-023 on exact published 7da5bdf. Whole-repository caller search
+T-023 is in fresh review on frozen 14a1ab2, with ready authority 1d4303b and published
+base 7da5bdf. Whole-repository caller search
 finds only the cold main writer path; all four old observation tests are retained by AST.
 The lead's actual offline CLI, using eight fully observed synthetic probes and an unchanged
 key/type shape, overwrites the private old baseline as coverage falls from one to zero.
 The same comparison performed first makes the existing writer refuse and preserve bytes.
-Actual baseline/status bytes and all network sources remain untouched. Dispatch the two-file
-tests-first task after its ready specification commit; keep the manual freeze rules binding.
+Actual baseline/status bytes and all network sources remain untouched. The executor's
+tests-only b9f71b0 is genuinely red at 144/44; its separate source fix 14a1ab2 passes
+188/0 and all 34 configured steps in 104.7 seconds. Three prescribed mutants fail and
+are restored; sixteen offline default-monitor cases remain equivalent. Both fresh
+reviewers now work from the exact frozen SHA. No source preflight, integration or
+publication is approved yet; keep the manual freeze rules binding.
 Scoped technical merges and pushes already have Owner authorization;
 A1 and all other sign-off categories remain unchanged. Older candidates and dated notes
 below are retained as historical context, with their readings refreshed before action.

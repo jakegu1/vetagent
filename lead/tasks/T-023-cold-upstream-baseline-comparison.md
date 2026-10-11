@@ -1,7 +1,7 @@
 ---
 id: T-023
 title: Compare observed coverage before a cold upstream-baseline write
-status: ready
+status: in_review
 level: 3
 size: S
 depends_on: [T-016, T-021]

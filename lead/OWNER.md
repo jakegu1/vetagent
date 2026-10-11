@@ -33,8 +33,10 @@ replays all 576 rows against raw Git output bytes with zero misses, network or w
 Integrated checks pass 34/34, final Linux preflight passes all required jobs and 219
 observed checks, and exact published 7da5bdf is deployed with successful tagged smoke.
 Nullable numeric schemas, unchanged public figures and health are independently read back.
-T-021 is complete. T-023's ready two-file repair follows on this exact published base;
-its cold baseline overwrite is independently reproduced offline, with no real data write.
+T-021 is complete. T-023's two-file repair freezes at 14a1ab2 on this exact published base.
+Its actual tests-only red is 144/44; the frozen guard passes 188/0 and all 34 configured
+steps. Three prescribed mutants are caught and restored. Fresh independent and red-team
+reviews are in progress; it is not yet integrated or published. No real data is written.
 Snapshot pacing and recovery are complete.
 Execution permissions now work. Autonomy remains A1; this authorization covers the reviewed
 technical release. Experiment D and the 2026-10-16 product gate retain their existing rules.
@@ -92,6 +94,13 @@ technical release. Experiment D and the 2026-10-16 product gate retain their exi
 | M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
+
+- **2026-10-12** - lead - T-023's executor returns signed READY on frozen 14a1ab2.
+  Tests-only b9f71b0 reproduces actual cold overwrite at 144/44; the separate source
+  fix passes 188/0, unchanged normal-monitor controls and all 34 configured checks.
+  Three prescribed mutants fail and are restored. The two fresh reviewers are
+  dispatched on the exact SHA and authority 1d4303b; no integration or publication
+  has occurred. Real baseline, status, runtime, thresholds and data stay unchanged.
 
 - **2026-10-12** - lead - T-021 is complete on published 7da5bdf. Fresh independent
   review is 12/12 and red-team none. Integrated checks pass 34/34; final Linux preflight
