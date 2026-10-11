@@ -30,11 +30,11 @@
  "overall": {
   "verdict_distribution": {
    "low": 178,
-   "unknown": 116,
+   "unknown": 119,
    "medium": 207,
-   "high": 75
+   "high": 72
   },
-  "unknown_rate": 0.2013888888888889,
+  "unknown_rate": 0.2065972222222222,
   "data_gap_rate": 0.2361111111111111
  },
  "outcome": {
@@ -51,11 +51,11 @@
    },
    "good": {
     "n": 162,
-    "high": 0.030864197530864196,
-    "high_or_medium": 0.20987654320987653,
+    "high": 0.018518518518518517,
+    "high_or_medium": 0.19753086419753085,
     "low": 0.6604938271604939,
-    "unknown": 0.12962962962962962,
-    "mean_score": 11.95679012345679
+    "unknown": 0.1419753086419753,
+    "mean_score": 11.58641975308642
    }
   },
   "contract_only": {
@@ -98,11 +98,11 @@
    },
    "good": {
     "n": 349,
-    "high": 0.06017191977077364,
-    "high_or_medium": 0.4183381088825215,
+    "high": 0.05730659025787966,
+    "high_or_medium": 0.4154727793696275,
     "low": 0.335243553008596,
-    "unknown": 0.24641833810888253,
-    "mean_score": 25.69914040114613
+    "unknown": 0.2492836676217765,
+    "mean_score": 25.61318051575931
    }
   },
   "contract_only": {
@@ -133,11 +133,11 @@
   "n": 179,
   "verdict_distribution": {
    "low": 48,
-   "unknown": 20,
+   "unknown": 22,
    "medium": 71,
-   "high": 40
+   "high": 38
   },
-  "high_rate": 0.22346368715083798,
+  "high_rate": 0.2122905027932961,
   "examples": [
    {
     "symbol": "HYDX",
@@ -445,26 +445,6 @@
   },
   {
    "kind": "false positive",
-   "label": "outcome=alive",
-   "address": "0x1b282603099647e2ec3461b2714acf38009d66b6",
-   "symbol": "WMAI",
-   "chain": "bsc",
-   "verdict": "high",
-   "verdict_ablated": "unknown",
-   "driver": "no_liquidity"
-  },
-  {
-   "kind": "false positive",
-   "label": "goplus=safe",
-   "address": "0x1b282603099647e2ec3461b2714acf38009d66b6",
-   "symbol": "WMAI",
-   "chain": "bsc",
-   "verdict": "high",
-   "verdict_ablated": "unknown",
-   "driver": "no_liquidity"
-  },
-  {
-   "kind": "false positive",
    "label": "goplus=safe",
    "address": "0x760f35eb9b535fa894d41ccdae4cbcd0f2d9b748",
    "symbol": "CC",
@@ -502,16 +482,6 @@
    "verdict": "high",
    "verdict_ablated": "high",
    "driver": "honeypot"
-  },
-  {
-   "kind": "false positive",
-   "label": "outcome=alive",
-   "address": "0xa250cc729bb3323e7933022a67b52200fe354767",
-   "symbol": "fwWETH",
-   "chain": "ethereum",
-   "verdict": "high",
-   "verdict_ablated": "unknown",
-   "driver": "no_liquidity"
   }
  ],
  "composition": {
@@ -5544,7 +5514,7 @@
    "sampled_from": "backfill_2025-12-09",
    "liquidity_usd": null,
    "gap_reasons": [
-    "about the token: no source reported pool depth"
+    "about the token: pairs are listed and traded, but none states a depth"
    ],
    "verdict": "high",
    "score": 100,
@@ -9494,15 +9464,15 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": null,
    "gap_reasons": [
-    "about the token: no source reported pool depth",
+    "about the token: pairs are listed and traded, but none states a depth",
     "about the token: the sell simulator has no record of this token"
    ],
-   "verdict": "high",
-   "score": 70,
+   "verdict": "unknown",
+   "score": 40,
    "confidence": "low",
    "verdict_ablated": "unknown",
    "score_ablated": 30,
-   "driver": "no_liquidity",
+   "driver": "sellability",
    "categories": [
     "no_liquidity",
     "sellability"
@@ -12090,15 +12060,15 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": null,
    "gap_reasons": [
-    "about the token: no source reported pool depth",
+    "about the token: pairs are listed and traded, but none states a depth",
     "about the token: the sell simulator has no record of this token"
    ],
-   "verdict": "high",
-   "score": 70,
+   "verdict": "unknown",
+   "score": 40,
    "confidence": "low",
    "verdict_ablated": "unknown",
    "score_ablated": 30,
-   "driver": "no_liquidity",
+   "driver": "sellability",
    "categories": [
     "no_liquidity",
     "sellability"
@@ -14125,15 +14095,15 @@
    "sampled_from": "gt_pools",
    "liquidity_usd": null,
    "gap_reasons": [
-    "about the token: no source reported pool depth",
+    "about the token: pairs are listed and traded, but none states a depth",
     "about the token: simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
    ],
-   "verdict": "high",
-   "score": 70,
+   "verdict": "unknown",
+   "score": 40,
    "confidence": "low",
    "verdict_ablated": "unknown",
    "score_ablated": 30,
-   "driver": "no_liquidity",
+   "driver": "sellability",
    "categories": [
     "no_liquidity",
     "sellability"

@@ -4,11 +4,11 @@
 > It moves with every commit, so `git diff` tells you what the change was worth.
 
 
-## Total: **46 / 100**
+## Total: **47 / 100**
 
 | Dimension | Score | Max |
 |---|---|---|
-| Correctness | 19.0 | 30 |
+| Correctness | 20.0 | 30 |
 | Coverage | 10.8 | 20 |
 | Credibility | 12.2 | 20 |
 | Distribution | 4.2 ⚠️ | 15 |
@@ -27,10 +27,10 @@
 
 | Dimension | Item | Score | Max | Evidence |
 |---|---|---|---|---|
-| Correctness | tests all green | 5.0 | 5 | test_risk.py 821 passed, 0 failed All passed; test_mcp.py 80 passed, 0 failed All passed; test_http_telemetry.py 163 passed, 0 failed All passed |
-| Correctness | false positive rate (healthy rated high) | 4.0 | 5 | 3.1% |
+| Correctness | tests all green | 5.0 | 5 | test_risk.py 1099 passed, 0 failed All passed; test_mcp.py 80 passed, 0 failed All passed; test_http_telemetry.py 596 passed, 0 failed All passed |
+| Correctness | false positive rate (healthy rated high) | 5.0 | 5 | 1.9% |
 | Correctness | false-block rate (liquid healthy rated medium or high) | 2.0 | 5 | 13.0% (20 of 154) |
-| Correctness | unknown rate (benchmark, cached upstreams) | 2.0 | 5 | 20.1% |
+| Correctness | unknown rate (benchmark, cached upstreams) | 2.0 | 5 | 20.7% |
 | Correctness | unknown rate (production, served answers) | 1.0 | 5 | 67.6% of 139, 2026-10-04 to 2026-10-11 |
 | Correctness | production guards observed live | 5.0 | 5 | 429 after 73 calls; batch of 11 -> HTTP 400; service c18de92 on 2026-10-11 |
 | Coverage | risk dimensions covered, per advertised chain | 10.8 | 20 | 39 / 72 chain-dimension cells |
@@ -103,7 +103,7 @@ with false positives and false blocks <2%, unknown <5% in the benchmark and in p
 outcome data, the benchmark methodology cited as a standard by peers, the default
 choice at every agent entry point, and paying users who would complain if it disappeared.
 
-**The current 46 is not a failure** — it says precisely that the
+**The current 47 is not a failure** — it says precisely that the
 engineering is decent, proof and demand are both still zero, and writing more code
 cannot solve those last two.
 

@@ -5514,11 +5514,14 @@ def test_every_data_gap_declares_which_of_three_things_it_is():
         "no record": {"dimension": "sellability", "source": "honeypot.is",
                       "reason": risk._gap(risk._ABOUT_TOKEN,
                                           "the sell simulator has no record of this token")},
-        # W49's shape, and the one that reaches `_what_was_unseen`'s fallback: sources
-        # answered, and none stated a depth. Without it a mutant that put "No source can
-        # see this token" back as the fallback survived this whole table.
+        # Untraded shape: sources answered, pools were listed, none traded or stated
+        # a depth. Both depth atoms reach `_what_was_unseen`'s fallback; without this
+        # shape a mutant putting "No source can see this token" back survived the table.
         "no depth": {"dimension": "liquidity", "source": "dexscreener+geckoterminal",
                      "reason": risk._gap(risk._ABOUT_TOKEN, "no source reported pool depth")},
+        # W49's shape: pairs listed and traded, none states a depth.
+        "traded, no depth": {"dimension": "liquidity", "source": "dexscreener",
+                             "reason": risk._TRADED_DEPTH_REASON},
     }
     # Outside the critical dimensions: the guidance must not move for it (E31's claim).
     beside = {"dimension": "concentration", "source": "rugcheck",
@@ -6013,6 +6016,239 @@ def test_pool_identifier_rendering_and_disclosure_stay_unchanged():
 
 
 # ---------------------------------------------------------------- main
+
+def test_traded_pools_without_depth_do_not_escalate():
+    """T-012 AC 1, 3, 4 and 5b: an observed sell is not a missing market."""
+    print("\n[T-012] traded home pools retain a critical depth gap")
+
+    def pair(chain="bsc", buys=10540, sells=148):
+        return {"chainId": chain, "dexId": "uniswap",
+                "baseToken": {"address": WETH, "symbol": "TKN"},
+                "quoteToken": {"address": "0xq"},
+                "txns": {"h24": {"buys": buys, "sells": sells}}}
+
+    reverted = {"simulationSuccess": False,
+                "simulationError": 'execution reverted: "revert: HP: BUY_FAILED"'}
+    variants = [("hinted", [pair()], "bsc", risk.NO_DATA),
+                ("unhinted", [pair()], None, risk.NO_DATA),
+                ("reverted buy", [pair("ethereum")], "ethereum", reverted),
+                ("one of three", [pair(sells=0), pair(sells=3), pair(sells=0)],
+                 "bsc", risk.NO_DATA),
+                ("sells only", [pair(buys=0, sells=3)], "bsc", risk.NO_DATA)]
+    reasons = []
+    for label, pairs, hint, simulator in variants:
+        install_stub([("dex/tokens", {"pairs": pairs}), ("dex/search", {"pairs": []}),
+                      ("geckoterminal", {"data": []}), ("honeypot.is", simulator),
+                      ("goplus", None), ("rugcheck", risk.NO_DATA)])
+        answer = run(risk.assess(WETH, chain_hint=hint))
+        gaps = (answer.get("evidence") or {}).get("data_gaps") or []
+        depth = next((g for g in gaps if g.get("dimension") == "liquidity"), {})
+        reason = depth.get("reason", "")
+        reasons.append(reason)
+        check("T-012 %s: unknown, never reassurance" % label,
+              answer["risk_level"] == "unknown", answer["risk_level"])
+        check("T-012 %s: no no-trace escalation" % label,
+              not any(s["name"] == "Nothing about this token can be verified"
+                      for s in answer["signals"]), str([s["name"] for s in answer["signals"]]))
+        check("T-012 %s: critical liquidity gap remains" % label,
+              bool(depth) and "liquidity" in risk._CRITICAL_DIMENSIONS, str(gaps))
+        check("T-012 %s: abstain" % label,
+              answer.get("next_action") == "abstain", str(answer.get("next_action")))
+        check("T-012 %s: reason declares about the token" % label,
+              reason.startswith(risk._ABOUT_TOKEN + ": ")
+              and reason == risk._gap(risk._ABOUT_TOKEN, reason.split(": ", 1)[-1]), reason)
+        check("T-012 %s: reason states the observed listed pools and missing depth" % label,
+              "pairs are listed" in reason and "none states a depth" in reason, reason)
+        forbidden = ("no source reported pool depth", "no trading pair found", "priced in an asset",
+                     "no record", "simulation failed", "does not cover", "upstream request failed")
+        check("T-012 %s: reason has no number or borrowed classification" % label,
+              not re.search(r"\d", reason) and not any(s in reason for s in forbidden), reason)
+        recommendation = answer.get("recommendation", "")
+        check("T-012 %s: guidance does not invent a missing market" % label,
+              "No source can see this token" not in recommendation
+              and "could price it" not in recommendation, recommendation)
+    check("T-012 all traded variants use one reason", len(set(reasons)) == 1, str(reasons))
+    declared = getattr(risk, "_TRADED_DEPTH_REASON", None)
+    check("T-012 reason is declared by the engine without a missing-name crash",
+          declared is not None and declared == reasons[0], str(declared))
+
+    # Neither a clean simulation nor a holder flag may turn the depth gap into safety.
+    hp_flagged = json.loads(json.dumps(_load("hp_matic.json")))
+    hp_flagged["honeypotResult"] = {"isHoneypot": True}
+    hp_flagged["holderAnalysis"] = {"holders": "3689", "successful": "3599", "failed": "90",
+                                    "siphoned": "0", "averageTax": 0, "highestTax": 0}
+    hp_flagged["summary"] = {"risk": "honeypot", "riskLevel": 100,
+                             "flags": [{"flag": "medium_fail_rate",
+                                        "description": "A high amount of users cannot sell their tokens.",
+                                        "severity": "high", "severityIndex": 16}]}
+    for label, simulator, verdict in (("clean simulation", _load("hp_matic.json"), "unknown"),
+                                      ("holder flag", hp_flagged, "high")):
+        install_stub([("dex/tokens", {"pairs": [pair("ethereum")]}),
+                      ("dex/search", {"pairs": []}), ("geckoterminal", {"data": []}),
+                      ("honeypot.is", simulator), ("goplus", None), ("rugcheck", risk.NO_DATA)])
+        answer = run(risk.assess(WETH, chain_hint="ethereum"))
+        check("T-012 %s: independent finding or critical gap determines verdict" % label,
+              answer["risk_level"] == verdict, answer["risk_level"])
+        check("T-012 %s: nothing moves to low or medium" % label,
+              answer["risk_level"] not in ("low", "medium"), answer["risk_level"])
+        if verdict == "high":
+            check("T-012 holder flag remains the honeypot driver",
+                  (answer.get("driver") or {}).get("category") == "honeypot", str(answer.get("driver")))
+
+    # Read the reason from the actual engine answer, never a typed measurement copy.
+    sys.path.insert(0, os.path.join(os.path.dirname(FIXTURES), "..", "bench"))
+    import publish_numbers
+    row = {"liquidity_usd": None, "driver": "sellability", "gap_reasons": [reasons[0]]}
+    try:
+        bucket = publish_numbers._depth_row(row)
+    except ValueError as exc:
+        bucket = str(exc)
+    check("T-012 measurement classifies the engine's depth gap", bucket == "none", str(bucket))
+    raised = False
+    try:
+        publish_numbers._depth_row({"liquidity_usd": None, "driver": "sellability", "gap_reasons": []})
+    except ValueError:
+        raised = True
+    check("T-012 measurement still rejects an unobserved depth dimension", raised)
+
+
+def test_observed_absences_still_escalate_with_trades_elsewhere():
+    """T-012 AC 2: untraded, malformed, buys-only, drained and fork-only stay high."""
+    print("\n[T-012] a sell must be finite, positive and in the gap's home scope")
+
+    def pair(chain="bsc", buys=0, sells=0):
+        return {"chainId": chain, "dexId": "uniswap",
+                "baseToken": {"address": WETH, "symbol": "TKN"},
+                "quoteToken": {"address": "0xq"},
+                "txns": {"h24": {"buys": buys, "sells": sells}}}
+
+    missing = pair()
+    del missing["txns"]
+    drained = pair(buys=4, sells=3)
+    drained.update(liquidity={"usd": 0}, priceUsd="0.1")
+    forks = [pair("ethereum"), pair("ethereum"), pair("pulsechain", 500, 500)]
+    variants = [("zero trades", [pair()], "bsc", True),
+                ("no txns", [missing], "bsc", True),
+                ("drained after sells", [drained], "bsc", False),
+                ("fork sells with hint", forks, "ethereum", True),
+                ("fork sells without hint", forks, None, True),
+                ("buys only", [pair(buys=900, sells=0)], "bsc", True)]
+    invalid = (None, "abc", "", "nan", "inf", -5, True, False,
+               float("nan"), float("inf"), float("-inf"), 10 ** 400)
+    variants += [("invalid %r" % value, [pair(buys=value, sells=value)], "bsc", True)
+                 for value in invalid]
+    for label, pairs, hint, gap_expected in variants:
+        install_stub([("dex/tokens", {"pairs": pairs}), ("dex/search", {"pairs": []}),
+                      ("geckoterminal", {"data": []}), ("honeypot.is", risk.NO_DATA),
+                      ("goplus", None), ("rugcheck", risk.NO_DATA)])
+        answer = run(risk.assess(WETH, chain_hint=hint))
+        check("T-012 %s: observed absence stays high" % label,
+              answer["risk_level"] == "high", answer["risk_level"])
+        check("T-012 %s: no-trace finding is preserved" % label,
+              any(s["name"] == "Nothing about this token can be verified"
+                  for s in answer["signals"]), str([s["name"] for s in answer["signals"]]))
+        if gap_expected:
+            depth = next((g for g in (answer.get("evidence") or {}).get("data_gaps", [])
+                          if g.get("dimension") == "liquidity"), {})
+            check("T-012 %s: untraded gap wording is unchanged" % label,
+                  depth.get("reason") == "about the token: no source reported pool depth", str(depth))
+
+
+def test_the_traded_depth_rule_is_recorded_before_measurement():
+    """T-012 AC 6a: the dated rule states both the scope and the fail-closed limit."""
+    print("\n[T-012] E35 records the narrow traded-depth rule")
+    path = os.path.join(os.path.dirname(FIXTURES), "..", "docs", "DECISIONS.md")
+    with open(path, encoding="utf-8") as fh:
+        text = fh.read()
+    row = next((line for line in text.splitlines() if line.startswith("| E35 |")), "")
+    check("T-012 E35 exists once", bool(row) and text.count("| E35 |") == 1, row)
+    check("T-012 E35 is dated and names its evidence",
+          "2026-10-12" in row and all(x in row for x in ("W49", "E11", "E21")), row)
+    check("T-012 E35 scopes finite positive sells and refuses buys alone",
+          all(x in row for x in ("in-scope", "finite", "h24", "sells", "above zero", "buys alone")), row)
+    check("T-012 E35 retains the gap, unknown and no low",
+          all(x in row for x in ("liquidity gap", "unknown", "toward", "low")), row)
+    check("T-012 E35 names the positive and negative acceptance functions",
+          "test_traded_pools_without_depth_do_not_escalate" in row
+          and "test_observed_absences_still_escalate_with_trades_elsewhere" in row, row)
+    check("T-012 decision table increases by one", "the table is at 62 rows now" in text)
+
+
+def _t012_transaction_container_cases():
+    cases = []
+    for level in ("txns", "h24"):
+        for label, value in (("list", [1]), ("text", "bad"), ("integer", 1),
+                             ("true", True), ("false", False), ("null", None),
+                             ("empty", {})):
+            fields = {"txns": value if level == "txns" else {"h24": value}}
+            cases.append((level + " " + label, fields, False))
+    return cases + [("txns missing", {}, False), ("h24 missing", {"txns": {}}, False),
+                    ("finite positive sells", {"txns": {"h24": {"buys": 0, "sells": 3}}}, True)]
+
+
+def test_traded_depth_predicate_preserves_malformed_transaction_containers():
+    """T-012 fix (b): an unavailable count container cannot invent a sell or crash."""
+    print("\n[T-012] malformed transaction containers preserve complete assessments")
+    token_url = "https://api.dexscreener.com/latest/dex/tokens/" + WETH.lower()
+    simulator_url = ("https://api.honeypot.is/v2/IsHoneypot?address="
+                     + WETH.lower() + "&chainID=56")
+    saved_fetch = risk._fetch_json
+    try:
+        for label, fields, traded in _t012_transaction_container_cases():
+            pair = {"chainId": "bsc", "dexId": "uniswap",
+                    "baseToken": {"address": WETH, "symbol": "TKN"},
+                    "quoteToken": {"address": "0xq"}, **fields}
+            calls = []
+
+            async def fetch(url, *a, **kw):
+                calls.append((url, bool(kw.get("mark_missing"))))
+                if url == token_url:
+                    return {"pairs": [pair]}
+                if url == simulator_url:
+                    return risk.NO_DATA
+                raise AssertionError("Unmatched local fixture URL: " + url)
+
+            risk._fetch_json = fetch
+            answer, error = {}, ""
+            try:
+                answer = run(risk.assess(WETH, chain_hint="bsc"))
+            except Exception as exc:
+                error = type(exc).__name__
+            prefix = "T-012 container %s: " % label
+            check(prefix + "complete assessment does not raise", not error, error)
+            check(prefix + "only the same two fixture requests",
+                  calls == [(token_url, False), (simulator_url, True)], str(calls))
+            if error:
+                continue
+            expected = "unknown" if traded else "high"
+            check(prefix + "verdict preserves unavailable versus traded",
+                  answer.get("risk_level") == expected, str(answer.get("risk_level")))
+            check(prefix + "score is unchanged", answer.get("risk_score") == (40 if traded else 70),
+                  str(answer.get("risk_score")))
+            escalation = any(s.get("name") == "Nothing about this token can be verified"
+                             for s in answer.get("signals", []))
+            check(prefix + "only the valid sell avoids no-trace", escalation is not traded, str(escalation))
+            gaps = (answer.get("evidence") or {}).get("data_gaps") or []
+            depth = next((g for g in gaps if g.get("dimension") == "liquidity"), {})
+            simulator = next((g for g in gaps if g.get("dimension") == "sellability"), {})
+            check(prefix + "critical depth gap is preserved",
+                  "liquidity" in risk._CRITICAL_DIMENSIONS and depth.get("source") == "dexscreener"
+                  and depth.get("reason") == (risk._TRADED_DEPTH_REASON if traded else
+                                               "about the token: no source reported pool depth"), str(depth))
+            check(prefix + "critical simulator gap is preserved",
+                  "sellability" in risk._CRITICAL_DIMENSIONS and simulator.get("source") == "honeypot.is"
+                  and simulator.get("reason") == "about the token: the sell simulator has no record of this token",
+                  str(simulator))
+            check(prefix + "driver is unchanged",
+                  (answer.get("driver") or {}).get("category") == ("sellability" if traded else "no_liquidity"),
+                  str(answer.get("driver")))
+            check(prefix + "home chain was searched",
+                  (answer.get("evidence") or {}).get("chain_searched") == "bsc", str(answer.get("evidence")))
+            check(prefix + "valid traded control abstains and high keeps its action",
+                  answer.get("next_action") == ("abstain" if traded else None), str(answer.get("next_action")))
+    finally:
+        risk._fetch_json = saved_fetch
+
 
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
