@@ -1,7 +1,7 @@
 ---
 id: T-021
 title: Reject invalid market scalars while preserving unavailable depth and observed zero
-status: in_progress
+status: changes_requested
 level: 3
 size: M
 depends_on: [T-011, T-019, T-013, T-012]
@@ -55,6 +55,8 @@ Files in scope, exactly:
 5. `tests/test_risk.py`, only the mixed-depth tail of
    `test_a_fork_pool_cannot_silence_a_drained_rug` under named change (a) below.
 6. `docs/SCORECARD.md`, only the real-generator test-count evidence under amendment (b).
+7. New `tests/test_unicode_market_underflow.py`, additive complete-tool regression under (c1).
+8. New `tests/test_finite_price_conflict.py`, additive complete-tool regression under (c2).
 
 Every existing test and fixture is frozen except that named mixed-depth assertion block.
 Do not change `_num` or the default `_sig_round`
@@ -343,6 +345,69 @@ The scope is now exactly six files; initial additive acceptance remains byte-ide
 and named change (a) remains the sole old-test exception. Repeat/verify raw replay at the
 final frozen head without modifying data. The original benchmark-drift stop remains
 binding. Full fresh independent/red-team review and Linux preflight are still required.
+
+## Dated round-1 correction (c)
+
+2026-10-12: clean 64fc7f3 completes 32 configured checks and raw-identical replay, but
+fresh independent and red-team review reproduce two material boundary regressions.
+The lead independently falsifies both through complete tools before accepting them.
+These are offline synthetic observations; production frequency remains unmeasured.
+
+**(c1) Unicode decimal underflow.** Python float accepts fullwidth, Arabic-Indic and
+Devanagari decimal digits. The new ASCII-only nonzero-mantissa check converts their
+nonzero e-400 USD strings into observed zero: full assess and liquidity claim drained,
+all-empty and high. ASCII 1e-400 correctly stays unavailable. The lead's eleven complete
+cases preserve four genuine-zero and three representable controls; red-team evidence
+also reproduces fallback, anchored operands and actual MCP calls. Detect nonzero decimal
+mantissas for every decimal digit family accepted by float, with the same finite/signed
+policy. Do not reject genuine Unicode zero or finite representable numeric strings.
+
+Add the new underflow file in its own tests-only commit, retaining an actual behavioral
+red at 64fc7f3, not an import/runner failure. Use ASCII escapes in the English-only file.
+Test complete verbose/compact assessment, liquidity and actual MCP output with clean
+HP, plus fatal/all-true-zero controls, for nonzero underflow and genuine zero in at
+least those three families. Include signed, fractional and Unicode-exponent variants,
+anchored required operands, optional prices/volumes and representable tiny prices;
+check strict JSON and false-empty absence. In a following source-fix commit, change only
+the bounded mantissa detection and register this file in the existing offline job. Its
+message retains the actual red. Freeze the new file after its tests-only commit.
+
+**(c2) finite-price conflict lost on ratio overflow.** Two admitted finite prices
+1e-307 and 1e308 on two unranked chains trigger the base's price_disagreement and price
+gap. The new _market_number(hi / lo) hides that conflict when the quotient overflows.
+The lead independently compares twelve complete base/head cases in both candidate
+orders: strict 100 does not trigger, 101 does, on both engines; the extreme finite
+case loses only its existing conflict/gap on the new engine. Both risk levels remain
+unknown through the unchanged coverage gap. Do not claim this observation yields low.
+
+Add the new finite-price-conflict file in a separate tests-only commit with actual
+behavioral red on the frozen code. Complete assess/compact/liquidity and actual MCP
+must retain the existing finite-price conflict and qualified price gap in both orders,
+with strict 100/101 boundary, supported-chain rank, single-unranked-chain, invalid-price
+and genuinely absent/zero-depth controls. All numeric outputs remain strict JSON.
+Then repair only _unranked_price_conflict's comparison so finite positive admitted
+prices obey the existing strict >100 rule even when their internal quotient overflows;
+register the file. Preserve its chain/rank/price/depth admission and returned finite
+low/high values. No new ratio field, price floor, threshold or broad peer-policy change.
+
+These are two findings with separate tests-only and following source-fix commits,
+each naming its reproduced red. They extend the exact scope to eight files; both new
+guards are reached by actual offline CI, so the final configured suite has 34 steps.
+The original 614-line additive acceptance remains byte-identical to 5e8a7fa and all
+its functions/helpers are unchanged. All other old tests and fixtures stay frozen
+except the sole named (a) tail. The generator-only (b) remains count-only; these new
+test files do not authorize any other generated/publication edit.
+
+Catch and restore two additional mutants: ASCII-only mantissa detection, and dropping
+the conflict when a finite-price quotient is nonfinite. Keep the prior six mutant
+receipts and verify their original acceptance stays green; repeat them only if a new
+failure or change in their path warrants it. Repeat exact final-head immutable replay
+under an exclusive window, with no fill/row drift/cache or labeling-log change. Any
+publication drift still stops for raw attribution. Full configured checks, kit/manual
+contract and eight-file AST/scope proof remain mandatory. Round-2 reviewers independently
+reproduce both corrected full-tool edges, their caught/restored mutants, unchanged
+controls, raw final replay and full 34 checks. They review the bounded corrections and
+regressions, not new policy fronts. No push, merge or deployment precedes that approval.
 
 ## Dated draft amendment
 

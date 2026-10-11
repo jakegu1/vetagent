@@ -48,9 +48,7 @@ technical repair release.
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-020 | 3 | Recovery at 5bb391f; pacing published at 86a8111 | Published paced manual pass verified complete | Codex lead | Verify a real scheduled pass before done; retain DNS test follow-up |
-| T-021 | 3 | codex/t021-finite-market-measurements; source b1eab7c | Named mixed-depth repair green; raw head replay identical; 31/32 with actual stale test-count evidence | finite_market_executor | After bounded generator amendment (b), refresh only the risk test count, rerun all checks, then freeze for independent and red-team review |
-| T-022 | 3 | Approved 8b54497 published in 86a8111 | Manual run 38148501978 complete; raw committed coverage independently verified | Codex lead | Verify a real scheduled pass before completion |
+| T-021 | 3 | codex/t021-finite-market-measurements; source 64fc7f3 | 32/32 and raw replay green; two independently reproduced round-1 boundary regressions | finite_market_executor | Named (c1)/(c2) red-first corrections, final 34 checks and round-2 review before publication |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
 permissions and explicitly asked to continue on 2026-10-11. This covers reviewed technical
@@ -138,8 +136,16 @@ snapshot 38148501978 completes successfully at 14:54:55 UTC. Independent counts 
 committed raw pass verify 676 unique pool rows, forty HTTP 200 manifest entries, thirty-seven
 successful pages, three observed listing ends, all sixteen chain/listing slots and zero
 gaps. Every prior pool, manifest and sellability byte remains a prefix. Its three bot
-commits through f129baf are merged as 0beaa21. The workflow is active; no new scheduled
-run has yet been observed. Real scheduled coverage remains required for task completion.
+commits through f129baf are merged as 0beaa21. Real schedule 38165984869 now runs on
+published e657c32 from 18:57:31 to 19:06:42 UTC. All collection, pool/sellability commits,
+generation and final coverage steps actually run and pass. Independent raw Git counts
+at 4fe3090 prove 664 unique pools, forty HTTP 200 manifest pages, thirty-seven successes
+and three observed listing ends, all eight chains and sixteen chain/listing slots,
+with zero gaps. Every pre-run pool, manifest and sellability byte remains a prefix.
+Bot-triggered offline CI 38166626385 passes; network jobs are intentionally skipped
+for this event. Bots through 4fe3090 are merged as 689debf. T-020 and T-022 are complete;
+retain their minor DNS test follow-up. This proves one real scheduled paced pass, not
+a long-term reliability rate or the cause of earlier missing nominal triggers.
 
 ## Waiting on the Owner
 
@@ -208,8 +214,12 @@ are caught and restored. The immutable head replay reproduces both raw blobs for
 576 rows, with all 6741 cache files and the labeling log unchanged. Checks finish 31/32;
 the actual remaining red is the generated risk-test evidence count 1099 to 1106. The
 lead independently verifies unchanged registered values and benchmark Git blobs and
-registers generator-only amendment (b). Full checks and fresh independent/red-team
-review remain required on the final clean generated head.
+registers generator-only amendment (b). Clean 64fc7f3 has 32/32 and unchanged raw replay.
+Fresh reviews then find Unicode decimal underflow falsely observed as zero and finite
+price conflict hidden by an overflowed quotient. The lead independently reproduces both
+with complete-tool controls and registers separate red-first named corrections (c1)/(c2).
+Full 34 checks, unchanged final raw replay and round-2 independent/red-team approval
+remain required before publication. The actual scheduled snapshot is now verified complete.
 Its offline audit reproduces NaN-low, non-finite public JSON,
 and the zero/unavailable all-empty seam; production occurrence and affected benchmark rows
 remain unmeasured. T-023's small baseline-write guard follows the correctness queue: an offline

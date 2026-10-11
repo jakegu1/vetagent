@@ -1,7 +1,7 @@
 ---
 id: T-022
 title: Pace scheduled snapshot requests using the verified slower interval
-status: in_review
+status: done
 level: 3
 size: S
 depends_on: [T-020-source]

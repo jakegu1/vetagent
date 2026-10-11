@@ -1,7 +1,7 @@
 ---
 id: T-020
 title: Recover snapshot page failures and report incomplete collection after preserving data
-status: in_review
+status: done
 level: 3
 size: M
 depends_on: []

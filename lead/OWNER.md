@@ -11,8 +11,10 @@ T-016 is deployed and verified. T-020 is published; its real manual pass preserv
 recovered missing rows and correctly failed remaining coverage gaps caused by observed
 HTTP 429 responses. A slower-pacing experiment recorded 672 pool rows with zero gaps;
 T-022 publishes that measured interval for scheduled collection. Its actual published
-manual pass saves 676 unique pools across all eight chains with zero gaps. Real scheduled
-verification is still pending. T-011 is deployed and verified. T-019 completed its protected listed fill;
+manual pass saves 676 unique pools across all eight chains with zero gaps. Actual schedule
+38165984869 now passes all steps: independently counted 664 unique pools, forty HTTP 200
+manifest pages, sixteen chain/listing slots and zero gaps, with all old raw bytes preserved.
+T-020 and T-022 are complete. T-011 is deployed and verified. T-019 completed its protected listed fill;
 its measured data-only rebaseline passed fresh independent review at 12/12 and red-team
 review with no material finding, and is deployed and verified. T-013's full-id repair
 passes its tests-first checks and the single five-URL fill. Fresh independent review
@@ -20,14 +22,11 @@ passes 12/12 and red-team review has no material finding. The approved source is
 the lead's own integrated replay is byte-identical and immutable. Final checks and actual
 deployment pass; public figures and health are independently read back. T-012 is also
 deployed and verified on e657c32 after combined review at 12/12, red-team none.
-T-021's immutable base and head replays pass on the narrow numeric repair. The sole named
-old assertion repair is behaviorally red on the base and green on the fix; all six
-fault-injection mutants are caught. Actual checks finish 31/32 because generated risk
-test evidence is stale at 1099 instead of 1106. The lead verifies unchanged public values
-and registers the bounded generator-only update. Final frozen-head checks and fresh
-independent/red-team review remain pending. T-022's
-opt-in pacing and preservation repairs passed independent review at 12/12, are published,
-and passed actual manual collection. Real scheduled coverage remains pending.
+T-021's clean 64fc7f3 has 32/32 checks, unchanged raw base/head replays and six caught
+mutants. Fresh reviewers then reproduce Unicode underflow falsely read as zero and a
+finite-price conflict hidden by quotient overflow. The lead independently reproduces
+both and registers bounded red-first corrections. Final 34 checks and round-2 approval
+remain required before publishing this source. Snapshot pacing and recovery are complete.
 Execution permissions now work. Autonomy remains A1; this authorization covers the reviewed
 technical release. Experiment D and the 2026-10-16 product gate retain their existing rules.
 
