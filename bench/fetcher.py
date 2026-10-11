@@ -9,8 +9,11 @@ Two jobs:
 """
 
 import hashlib
+import http.client
+import io
 import json
 import os
+import socket
 import threading
 import time
 import urllib.error
@@ -71,7 +74,7 @@ def endpoint_of(url):
     return "%s/%s" % (u.netloc, "/".join(parts))
 
 
-def _throttle(url):
+def _throttle(url, deadline=None):
     from urllib.parse import urlparse
     host = urlparse(url).netloc
     gap = _RATE.get(host, 0.3)
@@ -79,22 +82,214 @@ def _throttle(url):
         last = _last_hit.get(host, 0.0)
         wait = gap - (time.time() - last)
         if wait > 0:
+            if deadline is not None and wait >= deadline - time.monotonic():
+                return False
             time.sleep(wait)
         _last_hit[host] = time.time()
+    return True
+
+
+class _AttemptBudget:
+    def __init__(self, timeout, deadline):
+        self.end = time.monotonic() + timeout
+        if deadline is not None:
+            self.end = min(self.end, deadline)
+
+    def remaining(self):
+        remaining = self.end - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("HTTP attempt deadline reached")
+        return remaining
+
+
+class _SnapshotResolver:
+    """At most one pending DNS-only worker in this process, with no HTTP callback.
+
+    getaddrinfo cannot be cancelled portably. A caller waits only for its budget;
+    a timed-out lookup remains the sole pending worker until the OS finishes it.
+    Its late result is discarded, never cached or turned into a late HTTP request.
+    """
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._pending = None
+
+    def resolve(self, host, port, budget):
+        budget.remaining()
+        key = (host, port)
+        with self._lock:
+            pending = self._pending
+            if pending is None or pending["done"].is_set():
+                pending = {"key": key, "done": threading.Event(),
+                           "cancelled": threading.Event(), "value": None, "error": None}
+                self._pending = pending
+
+                def lookup():
+                    try:
+                        if pending["cancelled"].is_set() or time.monotonic() >= budget.end:
+                            return
+                        value = socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM)
+                        if not pending["cancelled"].is_set() and time.monotonic() < budget.end:
+                            pending["value"] = value
+                    except Exception:
+                        if not pending["cancelled"].is_set() and time.monotonic() < budget.end:
+                            pending["error"] = OSError("Snapshot DNS resolution unavailable")
+                    finally:
+                        pending["done"].set()
+
+                threading.Thread(target=lookup, daemon=True, name="snapshot-dns").start()
+            elif pending["key"] != key:
+                raise TimeoutError("Snapshot resolver is occupied")
+        if not pending["done"].wait(budget.remaining()):
+            pending["cancelled"].set()
+            raise TimeoutError("DNS attempt deadline reached")
+        budget.remaining()
+        if pending["error"] is not None:
+            raise pending["error"]
+        if pending["value"] is None:
+            raise TimeoutError("DNS result unavailable within attempt deadline")
+        return pending["value"]
+
+
+_SNAPSHOT_RESOLVER = _SnapshotResolver()
+
+
+def _snapshot_connection(address, budget, source_address=None):
+    resolved = _SNAPSHOT_RESOLVER.resolve(*address, budget)
+    error = OSError("No connection address available")
+    for family, kind, protocol, _, destination in resolved:
+        connection = None
+        try:
+            budget.remaining()
+            connection = socket.socket(family, kind, protocol)
+            connection.settimeout(budget.remaining())
+            if source_address is not None:
+                connection.bind(source_address)
+            connection.connect(destination)
+            budget.remaining()
+            return connection
+        except OSError as exc:
+            error = exc
+            if connection is not None:
+                connection.close()
+    raise error
+
+
+class _DeadlineReader(io.RawIOBase):
+    def __init__(self, file, connection, budget):
+        self.file, self.connection, self.budget = file, connection, budget
+
+    def readable(self):
+        return True
+
+    def readinto(self, target):
+        try:
+            self.connection.settimeout(self.budget.remaining())
+            # read1 performs at most one raw read. Wrapping read()/readline() after
+            # they return would let progressive headers and chunk framing run forever.
+            data = self.file.read1(len(target))
+            self.budget.remaining()
+            target[:len(data)] = data
+            return len(data)
+        except OSError:
+            # Close the socket file immediately, while letting the owning buffered
+            # reader close this RawIOBase normally (avoids masking the timeout in flush).
+            self.file.close()
+            raise
+
+    def close(self):
+        try:
+            self.file.close()
+        finally:
+            super().close()
+
+
+class _DeadlineSocketFile:
+    def __init__(self, connection, budget):
+        self.connection, self.budget = connection, budget
+
+    def makefile(self, mode):
+        return io.BufferedReader(_DeadlineReader(
+            self.connection.makefile(mode), self.connection, self.budget))
+
+
+class _AbsoluteConnection:
+    def __init__(self, *args, budget, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.budget = budget
+        self._create_connection = lambda address, timeout, source: _snapshot_connection(
+            address, budget, source)
+        self.response_class = lambda connection, **kw: http.client.HTTPResponse(
+            _DeadlineSocketFile(connection, budget), **kw)
+
+    def send(self, data):
+        if self.sock is None:
+            self.connect()
+        self.sock.settimeout(self.budget.remaining())
+        super().send(data)
+        self.budget.remaining()
+
+
+class _AbsoluteHTTPConnection(_AbsoluteConnection, http.client.HTTPConnection):
+    pass
+
+
+class _AbsoluteHTTPSConnection(_AbsoluteConnection, http.client.HTTPSConnection):
+    def connect(self):
+        http.client.HTTPConnection.connect(self)
+        # TCP/proxy setup and TLS consume the same attempt, rather than giving each
+        # stage a fresh ten seconds. The stdlib TLS handshake uses this total timeout.
+        self.sock.settimeout(self.budget.remaining())
+        hostname = self._tunnel_host or self.host
+        self.sock = self._context.wrap_socket(self.sock, server_hostname=hostname)
+        self.budget.remaining()
+
+
+class _AbsoluteHTTPHandler(urllib.request.HTTPHandler):
+    def __init__(self, budget):
+        super().__init__()
+        self.budget = budget
+
+    def http_open(self, req):
+        return self.do_open(lambda host, **kw: _AbsoluteHTTPConnection(
+            host, budget=self.budget, **kw), req)
+
+
+class _AbsoluteHTTPSHandler(urllib.request.HTTPSHandler):
+    def __init__(self, budget):
+        super().__init__()
+        self.budget = budget
+
+    def https_open(self, req):
+        return self.do_open(lambda host, **kw: _AbsoluteHTTPSConnection(
+            host, budget=self.budget, **kw), req, context=self._context)
+
+
+def _absolute_urlopen(req, timeout, budget):
+    opener = urllib.request.build_opener(_AbsoluteHTTPHandler(budget), _AbsoluteHTTPSHandler(budget))
+    return opener.open(req, timeout=timeout)
 
 
 def fetch_json(url, role, retries=2, timeout=25, use_cache=True,
-               mark_missing=False, write_cache=True):
+               mark_missing=False, write_cache=True, diagnostics=None, deadline=None,
+               absolute_timeout=False):
     """Fetch JSON. role must be "engine" or "label", for provenance accounting.
 
     Returns a dict/list on success, None on a failed fetch — the same contract as
     risk._fetch_json, so the engine behaves identically when it runs the benchmark.
+    Optional diagnostics contain only status, a fixed error category and attempt count.
+    A monotonic deadline bounds live recovery calls, including throttle time.
+    Snapshot-only absolute_timeout bounds the complete HTTP attempt and DNS wait;
+    ordinary benchmark callers retain their existing urllib timeout/cache contract.
     """
     assert role in ("engine", "label"), role
+    if diagnostics is not None:
+        diagnostics.clear()
+        diagnostics.update(status=None, error=None, attempts=0)
     with _LOCK:
         _ACCESS_LOG[role].add(endpoint_of(url))
 
-    os.makedirs(CACHE_DIR, exist_ok=True)
+    if use_cache or write_cache:
+        os.makedirs(CACHE_DIR, exist_ok=True)
     key = hashlib.sha256(url.encode()).hexdigest()[:40]
     path = os.path.join(CACHE_DIR, key + ".json")
     if use_cache and os.path.exists(path):
@@ -108,16 +303,44 @@ def fetch_json(url, role, retries=2, timeout=25, use_cache=True,
     data = None
     for attempt in range(retries + 1):
         try:
-            _throttle(url)
+            if deadline is None:
+                _throttle(url)
+                attempt_timeout = timeout
+            else:
+                if (_throttle(url, deadline=deadline) is False
+                        or deadline <= time.monotonic()):
+                    if diagnostics is not None:
+                        diagnostics.update(error="budget_exhausted")
+                    break
+                attempt_timeout = min(timeout, deadline - time.monotonic())
+            if diagnostics is not None:
+                diagnostics.update(status=None, error=None, attempts=attempt + 1)
             req = urllib.request.Request(url, headers={"Accept": "application/json",
                                                        "User-Agent": UA})
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
+            budget = _AttemptBudget(attempt_timeout, deadline) if absolute_timeout else None
+            response = (_absolute_urlopen(req, attempt_timeout, budget) if budget is not None
+                        else urllib.request.urlopen(req, timeout=attempt_timeout))
+            with response as resp:
+                if diagnostics is not None:
+                    diagnostics["status"] = (resp.status if type(resp.status) is int
+                                             and 100 <= resp.status <= 599 else None)
                 if resp.status == 200:
                     body = resp.read().decode("utf-8", "replace")
                     if body:
                         data = json.loads(body)
+                        if budget is not None:
+                            budget.remaining()
                         break
+                    if diagnostics is not None:
+                        diagnostics["error"] = "empty_body"
+                elif diagnostics is not None:
+                    diagnostics["error"] = "http"
         except urllib.error.HTTPError as e:
+            if absolute_timeout:
+                e.close()
+            if diagnostics is not None:
+                diagnostics.update(status=e.code if type(e.code) is int
+                                   and 100 <= e.code <= 599 else None, error="http")
             if e.code == 429 and attempt < retries:
                 time.sleep(3.0 * (attempt + 1))
                 continue
@@ -125,8 +348,20 @@ def fetch_json(url, role, retries=2, timeout=25, use_cache=True,
                 return NOT_FOUND   # upstream has no record; not the same as unreachable
             if 400 <= e.code < 500 and e.code != 429:
                 break  # retrying a 4xx gets you nothing
+        except (TimeoutError, urllib.error.URLError) as e:
+            data = None
+            if diagnostics is not None:
+                timeout_error = isinstance(e, TimeoutError) or isinstance(
+                    getattr(e, "reason", None), TimeoutError)
+                exhausted = absolute_timeout and deadline is not None and time.monotonic() >= deadline
+                diagnostics["error"] = ("budget_exhausted" if exhausted else
+                                        "timeout" if timeout_error else "network")
+        except ValueError:
+            if diagnostics is not None:
+                diagnostics["error"] = "invalid_json"
         except Exception:
-            pass
+            if diagnostics is not None:
+                diagnostics["error"] = "request"
         if attempt < retries:
             time.sleep(0.8 * (2 ** attempt))
 

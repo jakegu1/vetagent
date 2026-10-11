@@ -496,6 +496,535 @@ def test_the_archive_on_disk_is_wellformed():
     check("every recorded row is well formed", not bad, "; ".join(bad[:4]))
 
 
+# T-020 acceptance contract. All upstreams, clocks and output directories are isolated.
+def _snapshot_pool(pid):
+    return {"id": pid, "attributes": {"address": "fixture-pool", "reserve_in_usd": "7"}}
+
+
+def _snapshot_replay(reply, chains=None, pages=5, recovery_cost=0.1):
+    from contextlib import redirect_stdout
+    from datetime import datetime, timedelta, timezone
+    from urllib.parse import parse_qs, urlparse
+    old = (snapshot.fetch_json, snapshot.time.sleep, snapshot.time.monotonic,
+           snapshot.datetime)
+    calls, visits, clock = [], {}, [0.0]
+
+    class Clock:
+        @staticmethod
+        def now(zone):
+            return datetime(2026, 10, 9, tzinfo=timezone.utc) + timedelta(seconds=clock[0])
+
+    def fake(url, role, **kw):
+        parsed = urlparse(url)
+        parts = parsed.path.split("/")
+        chain, kind = parts[-2], "new" if parts[-1] == "new_pools" else "trending"
+        page = int(parse_qs(parsed.query)["page"][0])
+        key = (chain, kind, page)
+        visits[key] = visits.get(key, 0) + 1
+        recovery = kw.get("retries") == 0
+        calls.append({"chain": chain, "kind": kind, "page": page,
+                      "visit": visits[key], "role": role, "kw": kw.copy(),
+                      "start": clock[0]})
+        result = reply(chain, kind, page, visits[key])
+        if isinstance(kw.get("diagnostics"), dict):
+            kw["diagnostics"].update(status=429 if result is None else 200,
+                                     error="http" if result is None else None,
+                                     attempts=1 if recovery else 2)
+        clock[0] += min(recovery_cost, kw.get("timeout", 10)) if recovery else 0.1
+        return result
+
+    snapshot.fetch_json = fake
+    snapshot.time.sleep = lambda seconds: None
+    snapshot.time.monotonic = lambda: clock[0]
+    snapshot.datetime = Clock
+    stream = io.StringIO()
+    try:
+        with redirect_stdout(stream):
+            result = snapshot.collect(chains or ["base"], pages=pages)
+    finally:
+        (snapshot.fetch_json, snapshot.time.sleep, snapshot.time.monotonic,
+         snapshot.datetime) = old
+    return result, calls, stream.getvalue()
+
+
+def test_snapshot_recovers_real_rows_without_duplicate_or_cache():
+    print("\n[snapshot] recovery preserves the initial gap and the actual observation time")
+
+    def reply(chain, kind, page, visit):
+        if kind == "trending" or page == 3:
+            return {"data": []}
+        if page == 1 and visit == 1:
+            return None
+        ids = ["shared", "recovered"] if page == 1 else ["shared"]
+        return {"data": [_snapshot_pool(pid) for pid in ids]}
+
+    (rows, seen_at, manifest), calls, _ = _snapshot_replay(reply, pages=5)
+    check("recovery adds fetched rows and deduplicates an overlapping page",
+          sorted(r["pool_id"] for r in rows) == ["recovered", "shared"], str(rows))
+    recovered = [r for r in rows if r["pool_id"] == "recovered"]
+    check("recovered rows remain grouped under the original pass timestamp",
+          recovered and recovered[0]["seen_at"] == seen_at)
+    check("recovered rows expose a later actual fetch timestamp",
+          recovered and recovered[0].get("fetched_at", "") > seen_at)
+    page1 = next(m for m in manifest if m["kind"] == "new" and m["page"] == 1)
+    check("manifest retains failure and recovery outcome",
+          page1.get("initial_outcome") == "fetch_failed"
+          and page1.get("recovery_outcome") == "ok" and page1["outcome"] == "ok",
+          str(page1))
+    check("initial diagnostics identify the bounded HTTP failure",
+          page1.get("diagnostics", {}).get("status") == 429
+          and page1.get("diagnostics", {}).get("attempts") == 2, str(page1))
+    initial = [c for c in calls if c["kw"].get("retries") != 0]
+    recovery = [c for c in calls if c["kw"].get("retries") == 0]
+    check("every initial fetch has one retry and a ten-second timeout",
+          initial and all(c["kw"].get("retries") == 1 and c["kw"].get("timeout") == 10
+                          for c in initial))
+    check("recovery is a single zero-retry attempt", len(recovery) == 1, str(recovery))
+    check("snapshot fetches never read or write benchmark cache",
+          all(c["kw"].get("use_cache") is False
+              and c["kw"].get("write_cache") is False for c in calls))
+    check("confirmed initial listing ends are never recovered or paged past",
+          not any(c["kind"] == "new" and c["page"] > 3 for c in calls))
+
+
+def test_snapshot_records_skipped_pages_and_preserves_recovered_ends():
+    print("\n[snapshot] a two-miss stop leaves explicit gaps, not empty pages")
+
+    def reply(chain, kind, page, visit):
+        if kind == "trending" or page >= 3:
+            return {"data": []}
+        if page == 1 or visit == 1:
+            return None
+        return {"data": [_snapshot_pool("page-two")]}
+
+    (rows, _, manifest), calls, _ = _snapshot_replay(reply, pages=5)
+    by_page = {m["page"]: m for m in manifest if m["kind"] == "new"}
+    check("all planned new-pool pages remain represented after a two-miss stop",
+          set(by_page) == set(range(1, 6)), str(by_page))
+    check("initial skipped pages are explicitly different from empty listings",
+          all(by_page.get(p, {}).get("initial_outcome") == "skipped" for p in (3, 4, 5)))
+    check("one unresolved failed page remains a failed page",
+          by_page[1]["outcome"] == "fetch_failed")
+    check("a skipped page can be recovered as a confirmed end",
+          by_page.get(3, {}).get("recovery_outcome") == "end_of_listing")
+    check("later gaps are marked past a confirmed end without inventing empty fetches",
+          all(by_page.get(p, {}).get("outcome") == "past_end_of_listing" for p in (4, 5))
+          and not any(c["page"] > 3 for c in calls))
+    check("successfully fetched data survives remaining gaps",
+          [r["pool_id"] for r in rows] == ["page-two"])
+
+
+def test_snapshot_recovery_has_fixed_count_and_deadline():
+    print("\n[snapshot] recovery prioritizes early new-pool pages under both budgets")
+    fail = lambda chain, kind, page, visit: None
+    (_, _, manifest), calls, _ = _snapshot_replay(fail, chains=["a", "b", "c", "d"], pages=5)
+    recovery = [c for c in calls if c["kw"].get("retries") == 0]
+    check("at most twelve extra fetches, never an unbounded recovery loop",
+          len(recovery) == 12, str([(c["chain"], c["kind"], c["page"]) for c in recovery]))
+    check("early new-pool pages take precedence over later pages and trending",
+          [(c["kind"], c["page"]) for c in recovery[:4]] == [("new", 1)] * 4)
+    check("the count limit leaves explicit missing pages",
+          any(m.get("recovery_outcome") == "fetch_limit" for m in manifest)
+          and all(m["outcome"] in ("fetch_failed", "skipped") for m in manifest))
+    (_, _, manifest), calls, _ = _snapshot_replay(fail, chains=["a", "b", "c", "d"],
+                                                pages=5, recovery_cost=9.6)
+    recovery = [c for c in calls if c["kw"].get("retries") == 0]
+    check("the ninety-second deadline stops further recovery requests",
+          len(recovery) == 10 and any(m.get("recovery_outcome") == "budget_exhausted"
+                                     for m in manifest), str(len(recovery)))
+    check("each timeout is bounded by remaining budget and capped at ten seconds",
+          recovery and all(0 < c["kw"]["timeout"] <= min(10, 90 -
+                           (c["start"] - recovery[0]["start"])) + 0.000001 for c in recovery)
+          and recovery[-1]["kw"]["timeout"] < 4)
+
+
+def test_snapshot_invalid_payloads_are_failures_and_never_listing_ends():
+    print("\n[snapshot] malformed upstream payloads are unobserved gaps")
+    payloads = [{"error": "not a listing"}, {"data": {}}, {"data": [None]},
+                {"data": [{"attributes": {}}]}]
+    for i, payload in enumerate(payloads):
+        try:
+            (rows, _, manifest), _, _ = _snapshot_replay(
+                lambda chain, kind, page, visit: payload, pages=2)
+            correct = (not rows and manifest and
+                       all(m["outcome"] in ("fetch_failed", "skipped") for m in manifest)
+                       and any(m.get("diagnostics", {}).get("error") == "invalid_payload"
+                               for m in manifest))
+        except (TypeError, AttributeError, ValueError):
+            correct = False
+        check("invalid payload %d neither crashes nor becomes an empty market" % i, correct)
+
+
+def test_fetch_diagnostics_are_bounded_and_preserve_return_and_cache_contract():
+    print("\n[fetch] diagnostics never contain URL, body, credential or exception text")
+    import fetcher
+    import tempfile
+    import urllib.error
+    from contextlib import redirect_stdout
+    from unittest.mock import patch
+    secret = "fixture-secret-must-not-escape"
+    url = "https://fixture.invalid/private?token=" + secret
+
+    class Response:
+        status = 200
+        def __init__(self, body):
+            self.body = body
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self):
+            return self.body
+
+    cases = [(urllib.error.HTTPError(url, 429, secret, {}, None), None, "http", 429, 2),
+             (urllib.error.HTTPError(url, 404, secret, {}, None), fetcher.NOT_FOUND,
+              "http", 404, 1),
+             (TimeoutError(secret), None, "timeout", None, 2),
+             (urllib.error.URLError(secret), None, "network", None, 2),
+             (RuntimeError(secret), None, "request", None, 2),
+             (Response(b"invalid body"), None, "invalid_json", 200, 2),
+             (Response(b'{"data": [7]}'), {"data": [7]}, None, 200, 1)]
+    with tempfile.TemporaryDirectory() as tmp:
+        for i, (effect, expected, error, status, attempts) in enumerate(cases):
+            diagnostics, stream = {}, io.StringIO()
+            try:
+                with patch.object(fetcher, "CACHE_DIR", tmp), \
+                     patch.object(fetcher, "_throttle", lambda *a, **kw: None), \
+                     patch.object(fetcher.time, "sleep", lambda seconds: None), \
+                     patch.object(fetcher.urllib.request, "urlopen",
+                                  side_effect=effect if isinstance(effect, Exception) else None,
+                                  return_value=effect), redirect_stdout(stream):
+                    result = fetcher.fetch_json(url, "label", retries=1, use_cache=False,
+                                                write_cache=False, mark_missing=True,
+                                                diagnostics=diagnostics)
+                correct = (result is expected if expected is fetcher.NOT_FOUND
+                           else result == expected)
+                correct = (correct and diagnostics == {"status": status, "error": error,
+                                                        "attempts": attempts})
+            except TypeError:
+                correct = False
+            check("diagnostics case %d preserves result and bounded categories" % i, correct,
+                  str(diagnostics))
+            check("diagnostics case %d redacts all identifying material" % i,
+                  secret not in json.dumps(diagnostics) + stream.getvalue()
+                  and "private" not in json.dumps(diagnostics) + stream.getvalue())
+        check("live snapshot-style fetches never create response cache entries",
+              not os.listdir(tmp), str(os.listdir(tmp)))
+        with patch.object(fetcher, "CACHE_DIR", tmp), \
+             patch.object(fetcher, "_throttle", lambda *a, **kw: None), \
+             patch.object(fetcher.urllib.request, "urlopen", return_value=Response(b'{"data": [7]}')):
+            first = fetcher.fetch_json(url, "label")
+        with patch.object(fetcher, "CACHE_DIR", tmp), \
+             patch.object(fetcher.urllib.request, "urlopen", side_effect=AssertionError("cache miss")):
+            second = fetcher.fetch_json(url, "label")
+        check("existing callers keep success caching and cache reads", first == second == {"data": [7]})
+        check("endpoint provenance still records the role", fetcher.endpoint_of(url) in
+              fetcher.access_report()[1])
+
+
+def _snapshot_cli(directory, args, result=None, probe=None):
+    from contextlib import redirect_stdout, redirect_stderr
+    from unittest.mock import patch
+    stream = io.StringIO()
+    with patch.object(snapshot, "OUT_DIR", directory), \
+         patch.object(snapshot.sys, "argv", ["snapshot.py"] + args), \
+         patch.object(snapshot, "collect", return_value=result), \
+         patch.object(snapshot, "probe_sellability", side_effect=probe or (lambda *a: [])), \
+         redirect_stdout(stream), redirect_stderr(stream):
+        try:
+            code = snapshot.main()
+        except SystemExit as exc:
+            code = exc.code
+    return code, stream.getvalue()
+
+
+def _snapshot_manifest(timestamp, outcome="ok", rows=1):
+    return [{"seen_at": timestamp, "chain": "base", "kind": kind, "page": 1,
+             "pages": 1, "initial_outcome": outcome, "outcome": outcome,
+             "rows": rows if kind == "new" else 0}
+            for kind in ("new", "trending")]
+
+
+def test_snapshot_zero_and_partial_passes_persist_before_failure_or_optional_work():
+    print("\n[snapshot] save the pass manifest even when every pool fetch fails")
+    import tempfile
+    timestamp = "2026-10-09T14:00:00+00:00"
+    with tempfile.TemporaryDirectory() as tmp:
+        result = ([], timestamp, _snapshot_manifest(timestamp, "fetch_failed", rows=0))
+        code, output = _snapshot_cli(tmp, ["--sellability", "0"], result)
+        manifest_path = os.path.join(tmp, "runs-2026-10-09.ndjson")
+        check("zero rows exit nonzero and write their failure manifest",
+              code != 0 and os.path.isfile(manifest_path), output)
+        check("zero rows do not manufacture an empty pool file",
+              not os.path.exists(os.path.join(tmp, "pools-2026-10-09.ndjson")))
+    for partial in (False, True):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "pools-2026-10-09.ndjson")
+            old = b'{"seen_at":"old","pool_id":"historical"}\n'
+            with open(path, "wb") as fh:
+                fh.write(old)
+            rows = [snapshot._row("base", "new", _snapshot_pool("new"), timestamp)]
+            manifest = _snapshot_manifest(timestamp)
+            if partial:
+                manifest[1].update(outcome="fetch_failed", initial_outcome="fetch_failed")
+
+            def probe(*args):
+                with open(path, "rb") as fh:
+                    saved = fh.read()
+                check("pool rows are appended before optional work", saved.startswith(old)
+                      and b'"pool_id": "new"' in saved)
+                check("manifest is saved before optional work", os.path.isfile(
+                      os.path.join(tmp, "runs-2026-10-09.ndjson")))
+                return []
+
+            code, output = _snapshot_cli(tmp, ["--sellability", "1"],
+                                         (rows, timestamp, manifest), probe)
+            check("collection status reports %s coverage after preservation" %
+                  ("partial" if partial else "complete"), code == (1 if partial else 0), output)
+            with open(path, "rb") as fh:
+                check("existing archive rows stay byte-for-byte unchanged", fh.read().startswith(old))
+
+
+def test_snapshot_health_cli_checks_last_pass_and_rejects_absence_corruption_and_zero():
+    print("\n[snapshot] coverage is about the last recorded pass, not an older success")
+    import tempfile
+    timestamp = "2026-10-09T14:00:00+00:00"
+    good = _snapshot_manifest(timestamp)
+    partial = _snapshot_manifest("2026-10-09T20:00:00+00:00", "fetch_failed", rows=0)
+    cases = [("missing", None, 1), ("complete", good, 0),
+             ("older success then failure", good + partial, 1),
+             ("zero", _snapshot_manifest(timestamp, "end_of_listing", rows=0), 1),
+             ("malformed JSON", "{invalid}", 1), ("malformed shape", [{}], 1),
+             ("missing page", [dict(good[0], pages=2)], 1)]
+    for name, data, expected in cases:
+        with tempfile.TemporaryDirectory() as tmp:
+            if data is not None:
+                with open(os.path.join(tmp, "runs-2026-10-09.ndjson"), "w", encoding="utf-8") as fh:
+                    fh.write(data if isinstance(data, str) else
+                             "".join(json.dumps(m) + "\n" for m in data))
+            code, output = _snapshot_cli(tmp, ["--check-coverage"])
+            check("coverage CLI %s returns %d" % (name, expected), code == expected, output)
+            check("coverage CLI %s prints counts and a bounded cause" % name,
+                  "coverage:" in output and "rows" in output and "causes:" in output, output)
+    with tempfile.TemporaryDirectory() as tmp:
+        result, _, _ = _snapshot_replay(lambda chain, kind, page, visit:
+            None if kind == "new" and visit == 1 else
+            {"data": [_snapshot_pool("real")]} if kind == "new" else {"data": []}, pages=1)
+        _snapshot_cli(tmp, ["--sellability", "0"], result)
+        code, output = _snapshot_cli(tmp, ["--check-coverage"])
+        check("a recovered pass can be complete", code == 0, output)
+
+
+def test_snapshot_workflow_preserves_failures_then_reports_current_coverage():
+    print("\n[snapshot] collection failure never skips the commit or becomes an old healthy pass")
+    import re
+    wf = io.open(os.path.join(ROOT, ".github", "workflows", "snapshot.yml"), encoding="utf-8").read()
+    steps = {part.splitlines()[0].strip(): part for part in re.split(r"- name: ", wf)[1:]}
+    collect = steps.get("Collect pools", "")
+    commit = steps.get("Commit pools", "")
+    probe = steps.get("Collect day-one sellability", "")
+    health = steps.get("Check pool coverage", "")
+    check("collection has an outcome id and continues to the preservation step",
+          "id: collect_pools" in collect and "continue-on-error: true" in collect)
+    check("pool preservation runs even after a collector failure", "always()" in commit)
+    check("sellability is skipped unless this collection succeeded",
+          "steps.collect_pools.outcome == 'success'" in probe)
+    check("coverage is the final step and runs even after an earlier failure",
+          health and list(steps)[-1] == "Check pool coverage" and "always()" in health)
+    check("final step runs the real coverage CLI after pool preservation",
+          "--check-coverage" in health and wf.find('snapshot-commit.sh "pools"') <
+          wf.find("--check-coverage"))
+    check("an old healthy pass cannot override this collection's failed outcome",
+          "POOL_COLLECTION_OUTCOME: ${{ steps.collect_pools.outcome }}" in health
+          and '"$POOL_COLLECTION_OUTCOME" != "success"' in health and "exit 1" in health)
+    check("the original four daily schedule slots and job timeout remain",
+          'cron: "23 2,8,14,20 * * *"' in wf and "timeout-minutes: 25" in wf)
+
+
+# T-020 named change (a): additive real-fetcher absolute-attempt tests.
+def _absolute_http_replay(phase="fast", deadline=None, delay=9, retries=0,
+                          scheme="http", throttle=False, blocked_dns=False):
+    import inspect
+    import socket
+    import ssl
+    import threading
+    import urllib.request
+    import fetcher
+    from contextlib import ExitStack
+    from unittest.mock import patch
+    clock, sockets, threads, waits = [0.0], [], [], []
+    body = b'{"data": []}'
+    headers = ("HTTP/1.1 200 OK\r\nContent-Length: %d\r\nConnection: close\r\n\r\n" % len(body)).encode()
+
+    class Event:
+        def __init__(self):
+            self.flag = False
+        def set(self):
+            self.flag = True
+        def is_set(self):
+            return self.flag
+        def wait(self, timeout=None):
+            if not self.flag and timeout is not None:
+                clock[0] += timeout
+            return self.flag
+
+    class Thread:
+        def __init__(self, target, **kwargs):
+            self.target = target
+            threads.append(self)
+        def start(self):
+            if not blocked_dns:
+                self.target()
+
+    class Socket:
+        def __init__(self, timeout=10):
+            self.timeout, self.requests, self.files, self.closed = timeout, [], [], False
+        def settimeout(self, timeout):
+            self.timeout = timeout
+        def setsockopt(self, *args):
+            pass
+        def connect(self, address):
+            pass
+        def bind(self, address):
+            pass
+        def sendall(self, data):
+            self.requests.append(data)
+        def makefile(self, mode):
+            raw = Drip(self)
+            self.files.append(raw)
+            return io.BufferedReader(raw, buffer_size=8)
+        def close(self):
+            self.closed = True
+
+    class Drip(io.RawIOBase):
+        def __init__(self, connection):
+            self.connection, self.wire, self.offset = connection, headers + body, 0
+        def readable(self):
+            return True
+        def readinto(self, target):
+            if self.offset == len(self.wire):
+                return 0
+            slow = ((phase == "headers" and self.offset < len(headers))
+                    or (phase == "body" and self.offset >= len(headers)))
+            if slow:
+                if delay >= self.connection.timeout:
+                    clock[0] += self.connection.timeout
+                    raise TimeoutError("fixture progressive socket timeout")
+                clock[0] += delay
+            target[0] = self.wire[self.offset]
+            self.offset += 1
+            return 1
+
+    def connect(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, *args, **kwargs):
+        connection = Socket(timeout)
+        sockets.append(connection)
+        return connection
+
+    def socket_factory(*args, **kwargs):
+        return connect(None)
+
+    def sleep(seconds):
+        waits.append(seconds)
+        clock[0] += seconds
+
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    diagnostics, result, before_late = {}, None, None
+    options = dict(role="label", retries=retries, timeout=10, deadline=deadline,
+                   use_cache=False, write_cache=False, diagnostics=diagnostics)
+    # Round 1 has no snapshot-only mode; run the same real HTTP failure there so red
+    # evidence shows progressing IO, rather than just an unexpected keyword error.
+    if "absolute_timeout" in inspect.signature(fetcher.fetch_json).parameters:
+        options["absolute_timeout"] = True
+    with ExitStack() as stack:
+        stack.enter_context(patch.object(socket, "create_connection", connect))
+        stack.enter_context(patch.object(socket, "socket", socket_factory))
+        stack.enter_context(patch.object(socket, "getaddrinfo", return_value=[
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 80))]))
+        stack.enter_context(patch.object(ssl.SSLContext, "wrap_socket",
+                                        lambda self, sock, **kw: sock))
+        stack.enter_context(patch.object(urllib.request, "getproxies", return_value={}))
+        stack.enter_context(patch.object(fetcher.urllib.request, "urlopen", side_effect=opener.open))
+        stack.enter_context(patch.object(threading, "Event", Event))
+        stack.enter_context(patch.object(threading, "Thread", Thread))
+        stack.enter_context(patch.object(fetcher.time, "monotonic", lambda: clock[0]))
+        stack.enter_context(patch.object(fetcher.time, "time", lambda: 100 + clock[0]))
+        stack.enter_context(patch.object(fetcher.time, "sleep", sleep))
+        stack.enter_context(patch.object(fetcher, "_RATE", {"fixture.invalid": 2.1}))
+        stack.enter_context(patch.object(fetcher, "_last_hit", {"fixture.invalid": 100 if throttle else 90}))
+        if hasattr(fetcher, "_SnapshotResolver"):
+            stack.enter_context(patch.object(fetcher, "_SNAPSHOT_RESOLVER", fetcher._SnapshotResolver()))
+        result = fetcher.fetch_json(scheme + "://fixture.invalid/absolute-fixture", **options)
+        before_late = sum(len(s.requests) for s in sockets)
+        if blocked_dns:
+            # A second pass may wait on the same unresolved lookup, but must not spawn
+            # a second DNS worker or dispatch HTTP when the first lookup finishes late.
+            fetcher.fetch_json(scheme + "://fixture.invalid/absolute-fixture", **options)
+            for thread in threads:
+                thread.target()
+    return {"result": result, "elapsed": clock[0], "diagnostics": diagnostics,
+            "requests": before_late, "requests_after_late": sum(len(s.requests) for s in sockets),
+            "threads": len(threads), "waits": waits,
+            "socket_timeouts": [s.timeout for s in sockets],
+            "raw_files_closed": all(raw.closed for s in sockets for raw in s.files)}
+
+
+def test_absolute_fetcher_deadline_covers_expiry_throttle_and_remaining_io():
+    print("\n[absolute] the real fetcher accounts for throttle before HTTP IO")
+    for name, deadline, expected_wait in (("expired", -1, 0), ("throttle exceeds budget", 1, 0)):
+        replay = _absolute_http_replay(deadline=deadline, throttle=True)
+        check(name + " performs no HTTP or over-budget wait", replay["requests"] == 0
+              and replay["waits"] == [] and replay["elapsed"] == 0)
+        check(name + " records bounded budget diagnostics", replay["diagnostics"] ==
+              {"status": None, "error": "budget_exhausted", "attempts": 0})
+    replay = _absolute_http_replay(deadline=3, throttle=True)
+    check("fast HTTP survives a throttle within the deadline", replay["result"] == {"data": []}
+          and abs(sum(replay["waits"]) - 2.1) < 0.000001)
+    check("the real connection receives only the remaining timeout after throttle",
+          replay["socket_timeouts"] and all(0 < value <= 0.900001
+                                            for value in replay["socket_timeouts"]))
+
+
+def test_absolute_http_headers_and_body_cannot_extend_initial_or_recovery_attempts():
+    print("\n[absolute] progressive stdlib HTTP IO shares one ten-second attempt limit")
+    for scheme in ("http", "https"):
+        for phase in ("headers", "body"):
+            for deadline in (None, 90, 3):
+                replay = _absolute_http_replay(phase, deadline=deadline, scheme=scheme)
+                cap = 10 if deadline is None else min(10, deadline)
+                check("%s %s drip with deadline %s stops inside the whole-attempt budget" %
+                      (scheme, phase, deadline), replay["result"] is None
+                      and 0 < replay["elapsed"] <= cap + 0.000001, str(replay))
+                check("%s %s cutoff closes raw IO and reports an unavailable attempt" %
+                      (scheme, phase), replay["raw_files_closed"]
+                      and replay["diagnostics"].get("error") in ("timeout", "budget_exhausted")
+                      and replay["diagnostics"].get("attempts") == 1)
+    replay = _absolute_http_replay("body", retries=1)
+    check("both initial retry attempts have independent ten-second IO limits",
+          replay["result"] is None and replay["requests"] == 2
+          and replay["diagnostics"].get("attempts") == 2 and replay["elapsed"] <= 20.800001,
+          str(replay))
+
+
+def test_absolute_dns_lookup_is_bounded_without_late_http_or_worker_fanout():
+    print("\n[absolute] an unresolved DNS lookup cannot hold preservation or queue late requests")
+    replay = _absolute_http_replay(deadline=3, blocked_dns=True)
+    check("DNS expiry returns unavailable within the original deadline",
+          replay["result"] is None and replay["elapsed"] <= 3.000001)
+    check("only one pending DNS-only worker exists across repeated requests",
+          replay["threads"] == 1, str(replay))
+    check("a late DNS completion cannot send HTTP or trigger retries",
+          replay["requests"] == replay["requests_after_late"] == 0)
+
+
+def test_absolute_snapshot_fetch_mode_retains_cutoff_gaps():
+    print("\n[absolute] snapshot requests explicitly opt into whole-attempt IO bounds")
+    result, calls, _ = _snapshot_replay(lambda *args: None, pages=2)
+    check("every initial and recovery snapshot call selects absolute HTTP limits",
+          calls and all(c["kw"].get("absolute_timeout") is True for c in calls))
+    check("cutoff pages remain gaps under the original manifest grouping",
+          not result[0] and all(m["outcome"] in ("fetch_failed", "skipped") for m in result[2]))
+
+
 def main():
     print("=" * 68)
     print("Sellability archive: asking on the day, because later is too late")

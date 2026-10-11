@@ -44,9 +44,12 @@ jobs:
       # The pool rows are the irreplaceable product: "a day we miss never existed".
       # Collect and COMMIT them before anything optional runs.
       - name: Collect pools
+        id: collect_pools
+        continue-on-error: true
         run: python bench/snapshot.py --pages 5 --sellability 0
 
       - name: Commit pools
+        if: ${{ always() && steps.collect_pools.outcome != 'skipped' }}
         run: bash .github/scripts/snapshot-commit.sh "pools"
 
       # Only now the add-on. For 25 of the newest tokens, ask honeypot.is whether they
@@ -61,10 +64,12 @@ jobs:
       # disk. The optional thing could permanently destroy the primary thing, and
       # precisely when the upstream was already degraded.
       - name: Collect day-one sellability
+        if: ${{ success() && steps.collect_pools.outcome == 'success' }}
         continue-on-error: true
         run: python bench/snapshot.py --sellability-only 25
 
       - name: Commit sellability
+        if: ${{ success() && steps.collect_pools.outcome == 'success' }}
         continue-on-error: true
         run: bash .github/scripts/snapshot-commit.sh "sellability"
 
@@ -75,6 +80,20 @@ jobs:
       # no test.yml. A failure here is reported loudly and costs no rows: they are already
       # on origin.
       - name: Regenerate the pages that quote the archive
+        if: ${{ success() && steps.collect_pools.outcome != 'skipped' }}
         env:
           PYTHONIOENCODING: utf-8
         run: bash .github/scripts/regenerate-derived.sh "Snapshot $(date -u +%F)"
+
+      # Preservation precedes this failure signal. An older healthy pass cannot hide
+      # a collector that failed before writing a manifest during this job.
+      - name: Check pool coverage
+        if: ${{ always() }}
+        env:
+          POOL_COLLECTION_OUTCOME: ${{ steps.collect_pools.outcome }}
+        run: |
+          python bench/snapshot.py --check-coverage
+          if [ "$POOL_COLLECTION_OUTCOME" != "success" ]; then
+            echo "::error::Pool collection failed during this pass."
+            exit 1
+          fi
