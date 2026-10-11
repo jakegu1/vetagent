@@ -462,6 +462,7 @@ _GAP_CLASSES = (
     ("no record", "no record"),
     ("simulation failed", "simulation failed"),
     ("priced in an asset", "unpriced"),
+    ("pairs are listed and traded", "traded no depth"),
     ("no source reported pool depth", "no depth"),
     ("no pair with a sane price", "price outlier"),
     ("no trading pair found", "no pair"),

@@ -539,7 +539,7 @@ DEPTH_ROWS = (
     ("deep", "$100,000 or more"),
 )
 DEPTH_COLUMNS = ("n", "high", "medium", "unknown", "high_contract")
-_DEPTH_GAPS = ("no source reported pool depth", "priced in an asset")
+_DEPTH_GAPS = ("no source reported pool depth", "priced in an asset", "pairs are listed and traded")
 
 
 def _depth_row(r):

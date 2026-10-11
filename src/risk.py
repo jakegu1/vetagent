@@ -853,7 +853,9 @@ def _finalize(address, signals, evidence, data_gaps):
     # A market that exists but whose depth nobody independent backs is not "no trace":
     # a source did price it, we declined to believe the price. Escalating it to high
     # condemned four safe-labelled tokens quoted in assets outside _ANCHORS.
-    not_absence = ours + (_UNBACKED_REASON,)
+    # Listed home pools with observed sells also show a market, even when none states
+    # a depth. That missing depth stays a critical gap; activity cannot prove safety.
+    not_absence = ours + (_UNBACKED_REASON, _TRADED_DEPTH_REASON)
     token_side = [g for g in data_gaps
                   if g.get("dimension") in _CRITICAL_DIMENSIONS
                   and not str(g.get("reason", "")).startswith(not_absence)]
@@ -1240,6 +1242,9 @@ _NOT_CHECKABLE = object()
 
 _UNBACKED_REASON = _gap(_ABOUT_TOKEN,
                         "no pool's depth is priced in an asset we can verify")
+
+_TRADED_DEPTH_REASON = _gap(_ABOUT_TOKEN,
+                           "pairs are listed and traded, but none states a depth")
 
 _UNBACKED_NOTE = ("Pools state a depth, but none holds a reserve in an asset whose price we "
                   "can verify independently, so the depth is unknown. A pool priced only in "
@@ -4140,9 +4145,19 @@ async def assess(address, chain_hint=None, verbose=False):
                     "There is nothing to sell into at any price."
                     % (len(stated), "" if len(stated) == 1 else "s"), "drained"))
             else:
+                def traded(pair):
+                    sells = ((pair.get("txns") or {}).get("h24") or {}).get("sells")
+                    if isinstance(sells, bool):
+                        return False
+                    try:
+                        return 0 < float(sells) < float("inf")
+                    except (TypeError, ValueError, OverflowError):
+                        return False
+
                 reason = (_UNBACKED_REASON
                           if (not stated or max(stated) <= 0) and _only_unbacked_depth(scope)
                           else _gap(_ABOUT_TOKEN, "no pair with a sane price") if stated
+                          else _TRADED_DEPTH_REASON if any(traded(p) for p in scope)
                           else _gap(_ABOUT_TOKEN, "no source reported pool depth"))
                 data_gaps.append({"dimension": "liquidity", "source": source,
                                   "reason": reason})

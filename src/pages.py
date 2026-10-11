@@ -260,10 +260,13 @@ Solana was published as a permanent coverage gap telling callers not to retry. T
 exists so that no reason can mean something by default.</p>
 
 <h2>When the absence is the answer</h2>
-<p>If no market data source can price a token and no simulator can trade it, on a chain we know we
-searched, the answer is not <code>unknown</code> but <code>high</code>, with the signal
-"Nothing about this token can be verified". Every legitimate token clears at least one of those.
-The rule applies only when the gaps are about the token, never when they are our own outage.</p>
+<p>On a chain we know we searched, no pair, drained pools, or pools with neither a stated depth
+nor observed sells can support the signal "Nothing about this token can be verified" when no
+simulator can trade the token and the gaps are about the token. That finding is <code>high</code>.
+Pools listed with sells in the last day, whose depth no source states, are not an absence.
+Such a token keeps its critical liquidity gap and comes back <code>unknown</code> unless a
+separate finding requires <code>high</code>. Buys alone do not count as sells. The rule never
+applies to our own outage.</p>
 
 <h2>How often</h2>
 <p>The benchmark's rate is on <a href="/method">the method page</a>. Production refuses more often
