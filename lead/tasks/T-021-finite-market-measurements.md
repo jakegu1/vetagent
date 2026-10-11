@@ -52,8 +52,11 @@ Files in scope, exactly:
    number-or-null; depth and discovery are already nullable).
 3. New `tests/test_finite_market_measurements.py` (all acceptance tests and characterization).
 4. `.github/workflows/test.yml` (register that file in the offline test steps).
+5. `tests/test_risk.py`, only the mixed-depth tail of
+   `test_a_fork_pool_cannot_silence_a_drained_rug` under named change (a) below.
 
-No existing test or fixture is changed. Do not change `_num` or the default `_sig_round`
+Every existing test and fixture is frozen except that named mixed-depth assertion block.
+Do not change `_num` or the default `_sig_round`
 behavior, HP/simulator numeric fields, RugCheck/Token-2022/holder policies, risk thresholds,
 anchor tables, freshness rules, chain selection policy, sources/fallback ordering, transport,
 cache, telemetry labels, public pages/legal text or permission files. Do not add upstream
@@ -132,9 +135,10 @@ must satisfy these properties and the existing AST gap guard.
    unchanged. Strict JSON is necessary but insufficient: cap tests must also reject the
    currently finite 250,000/low result produced by a NaN/Infinity cap.
 6. **Frozen tests and scope evidence.** Every existing risk, MCP, coverage-matrix,
-   advertised-coverage, upstream-field and publication test stays unchanged and green.
+   advertised-coverage, upstream-field and publication test stays unchanged and green,
+   except the precisely bounded named change (a) below.
    Repeat the conflict search on the exact post-T-012 base, including every numeric helper
-   caller and mapped reason reader. Existing-test changes permitted by T-021: none. T-012
+   caller and mapped reason reader. Existing-test changes permitted by T-021: only (a). T-012
    separately owns its named gap-atom test change; it is already in this base. Restore all
    monkeypatches in tests, and reject any unmatched fake fetch URL rather than falling back
    to transport. All functions in the new file are called by its main runner, and the
@@ -234,7 +238,9 @@ test counts. The full extracts and caller/reason inventories are retained privat
 Missing-price selection, tiny prices, anchored reserve residuals, two-anchor infinity
 marker, genuine zero, all-empty/unpriced distinctions, turnover aggregation, GT side
 semantics, simulator adjudication, T-012 gaps and HTTP/MCP classifiers are read and remain
-binding. No existing test change is required or allowed. In particular preserve
+binding. The initial conclusion that no existing test change was needed missed one
+conflicting mixed-depth assertion; the measured correction and sole exception are below.
+In particular preserve
 test_depth_counts_only_what_no_pool_creator_can_price,
 test_a_fallback_pool_is_held_to_the_same_depth_rule,
 test_an_empty_pool_does_not_speak_for_a_deep_one_we_cannot_price,
@@ -247,7 +253,7 @@ nothing and reproduces both committed raw output blobs byte-identically. All 6,7
 files and the recorded labeling log remain unchanged, with zero network calls, cache
 writes or after-clock selections. The executor must independently repeat this prerequisite
 on its own isolated cache copy before the first tests-only commit. The same no-fill,
-no-row-drift stop rule and four-file scope remain binding. There is no permission to
+no-row-drift stop rule and bounded scope remain binding. There is no permission to
 silently rebaseline or regenerate public figures if numeric normalization changes a row.
 
 ## Dated arithmetic/zero clarification before acceptance
@@ -266,7 +272,42 @@ assess/liquidity controls in the initial additive tests, and keep actual upstrea
 signed numeric zero and genuine anchored zero unchanged. Valid representable tiny
 prices retain their existing behavior without a new price floor. No transport/raw-JSON
 decoder change, exact-arithmetic engine, threshold or other scope expansion is authorized.
-All four-file, immutable-old-test and benchmark stop gates remain in force.
+All bounded-scope, old-test and benchmark stop gates remain in force, with the sole
+existing-test exception registered below.
+
+## Dated named change (a): old mixed-depth assertion
+
+2026-10-12: tests-only 5e8a7fa runs to completion with 2067 passes and 1819 behavioral
+failures before source changes. Scoped source 2091436 makes its immutable new acceptance
+green (3814 passes, zero failures), but the unchanged old risk suite reports 1098 passes
+and one failure. The failing check is the last mixed-depth block of
+test_a_fork_pool_cannot_silence_a_drained_rug: zero plus unavailable on Ethereum is
+required to emit "No liquidity left in any pool". That requirement contradicts AC 3.
+The earlier conflict search missed this assertion; its inventory counts did not establish
+that every behavior was compatible.
+
+The lead independently reproduces complete assess/liquidity outputs on exact published
+e657c32 and the frozen scoped source. With zero plus unavailable, the old engine claims
+drained/high for both NO_DATA and clean HP. The scoped engine has null/unpriced depth and
+no fatal/all-empty claim: NO_DATA remains high under the unchanged finalizer, while clean
+HP is unknown with an explicit about-token liquidity gap. Two genuinely zero home pools
+remain drained/high with either simulator control. All raw inputs and complete outputs
+are retained privately. These are offline synthetic measurements, not occurrence counts.
+
+Authorize one tests-only commit titled "T-021: named change (a) preserve the mixed-depth
+gap". Change only the final mixed block and its immediately preceding comment in that
+function: replace the false drained assertion with no-drained/no-empty-count plus an
+explicit liquidity-gap check; add the same mixed fixture with clean hp_matic.json and
+require unknown, null/unpriced depth and no fatal/all-empty claim. Keep the raw pair builder,
+original mixed pairs, all other original assertions and all all-zero/fork/home-chain cases
+unchanged. Demonstrate the amended block red against exact base e657c32 before checking
+it against the scoped source. The first additive acceptance file remains byte-identical
+to 5e8a7fa. No other old test/helper/fixture edit is authorized.
+
+This aligns one old assertion with the already registered AC 3; it does not lower a risk
+band, USD floor, finalizer rule, product gate or threshold. Scope is now exactly five files.
+The head zero-miss/raw-row-drift stop and actual generated-test-count stop remain binding;
+neither a benchmark rebaseline nor generated publication edits are authorized here.
 
 ## Dated draft amendment
 
@@ -274,6 +315,7 @@ All four-file, immutable-old-test and benchmark stop gates remain in force.
 offline NaN-low / Infinity-medium evidence; add missing nullable MCP scope, signed-change
 and consumed-market-count validation, cap arithmetic and partial-empty handoff acceptance.
 Order T-021 after T-019, T-013 and T-012 and reuse T-012's pre-registered rule without
-widening it. Freeze all older tests; only additive acceptance and workflow registration are
-allowed. Preserve the zero-miss and publication row-attribution gates. Readiness is pending
+widening it. Freeze all older tests except the later explicitly named mixed-depth change;
+the initial additive acceptance remains immutable. Preserve the zero-miss and publication
+row-attribution gates. Readiness is pending
 the actual post-dependency base and renewed conflict/replay verification.
