@@ -841,6 +841,190 @@ def test_snapshot_workflow_preserves_failures_then_reports_current_coverage():
           'cron: "23 2,8,14,20 * * *"' in wf and "timeout-minutes: 25" in wf)
 
 
+# T-020 named change (a): additive real-fetcher absolute-attempt tests.
+def _absolute_http_replay(phase="fast", deadline=None, delay=9, retries=0,
+                          scheme="http", throttle=False, blocked_dns=False):
+    import inspect
+    import socket
+    import ssl
+    import threading
+    import urllib.request
+    import fetcher
+    from contextlib import ExitStack
+    from unittest.mock import patch
+    clock, sockets, threads, waits = [0.0], [], [], []
+    body = b'{"data": []}'
+    headers = ("HTTP/1.1 200 OK\r\nContent-Length: %d\r\nConnection: close\r\n\r\n" % len(body)).encode()
+
+    class Event:
+        def __init__(self):
+            self.flag = False
+        def set(self):
+            self.flag = True
+        def is_set(self):
+            return self.flag
+        def wait(self, timeout=None):
+            if not self.flag and timeout is not None:
+                clock[0] += timeout
+            return self.flag
+
+    class Thread:
+        def __init__(self, target, **kwargs):
+            self.target = target
+            threads.append(self)
+        def start(self):
+            if not blocked_dns:
+                self.target()
+
+    class Socket:
+        def __init__(self, timeout=10):
+            self.timeout, self.requests, self.files, self.closed = timeout, [], [], False
+        def settimeout(self, timeout):
+            self.timeout = timeout
+        def setsockopt(self, *args):
+            pass
+        def connect(self, address):
+            pass
+        def bind(self, address):
+            pass
+        def sendall(self, data):
+            self.requests.append(data)
+        def makefile(self, mode):
+            raw = Drip(self)
+            self.files.append(raw)
+            return io.BufferedReader(raw, buffer_size=8)
+        def close(self):
+            self.closed = True
+
+    class Drip(io.RawIOBase):
+        def __init__(self, connection):
+            self.connection, self.wire, self.offset = connection, headers + body, 0
+        def readable(self):
+            return True
+        def readinto(self, target):
+            if self.offset == len(self.wire):
+                return 0
+            slow = ((phase == "headers" and self.offset < len(headers))
+                    or (phase == "body" and self.offset >= len(headers)))
+            if slow:
+                if delay >= self.connection.timeout:
+                    clock[0] += self.connection.timeout
+                    raise TimeoutError("fixture progressive socket timeout")
+                clock[0] += delay
+            target[0] = self.wire[self.offset]
+            self.offset += 1
+            return 1
+
+    def connect(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, *args, **kwargs):
+        connection = Socket(timeout)
+        sockets.append(connection)
+        return connection
+
+    def socket_factory(*args, **kwargs):
+        return connect(None)
+
+    def sleep(seconds):
+        waits.append(seconds)
+        clock[0] += seconds
+
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    diagnostics, result, before_late = {}, None, None
+    options = dict(role="label", retries=retries, timeout=10, deadline=deadline,
+                   use_cache=False, write_cache=False, diagnostics=diagnostics)
+    # Round 1 has no snapshot-only mode; run the same real HTTP failure there so red
+    # evidence shows progressing IO, rather than just an unexpected keyword error.
+    if "absolute_timeout" in inspect.signature(fetcher.fetch_json).parameters:
+        options["absolute_timeout"] = True
+    with ExitStack() as stack:
+        stack.enter_context(patch.object(socket, "create_connection", connect))
+        stack.enter_context(patch.object(socket, "socket", socket_factory))
+        stack.enter_context(patch.object(socket, "getaddrinfo", return_value=[
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 80))]))
+        stack.enter_context(patch.object(ssl.SSLContext, "wrap_socket",
+                                        lambda self, sock, **kw: sock))
+        stack.enter_context(patch.object(urllib.request, "getproxies", return_value={}))
+        stack.enter_context(patch.object(fetcher.urllib.request, "urlopen", side_effect=opener.open))
+        stack.enter_context(patch.object(threading, "Event", Event))
+        stack.enter_context(patch.object(threading, "Thread", Thread))
+        stack.enter_context(patch.object(fetcher.time, "monotonic", lambda: clock[0]))
+        stack.enter_context(patch.object(fetcher.time, "time", lambda: 100 + clock[0]))
+        stack.enter_context(patch.object(fetcher.time, "sleep", sleep))
+        stack.enter_context(patch.object(fetcher, "_RATE", {"fixture.invalid": 2.1}))
+        stack.enter_context(patch.object(fetcher, "_last_hit", {"fixture.invalid": 100 if throttle else 90}))
+        if hasattr(fetcher, "_SnapshotResolver"):
+            stack.enter_context(patch.object(fetcher, "_SNAPSHOT_RESOLVER", fetcher._SnapshotResolver()))
+        result = fetcher.fetch_json(scheme + "://fixture.invalid/absolute-fixture", **options)
+        before_late = sum(len(s.requests) for s in sockets)
+        if blocked_dns:
+            # A second pass may wait on the same unresolved lookup, but must not spawn
+            # a second DNS worker or dispatch HTTP when the first lookup finishes late.
+            fetcher.fetch_json(scheme + "://fixture.invalid/absolute-fixture", **options)
+            for thread in threads:
+                thread.target()
+    return {"result": result, "elapsed": clock[0], "diagnostics": diagnostics,
+            "requests": before_late, "requests_after_late": sum(len(s.requests) for s in sockets),
+            "threads": len(threads), "waits": waits,
+            "socket_timeouts": [s.timeout for s in sockets],
+            "raw_files_closed": all(raw.closed for s in sockets for raw in s.files)}
+
+
+def test_absolute_fetcher_deadline_covers_expiry_throttle_and_remaining_io():
+    print("\n[absolute] the real fetcher accounts for throttle before HTTP IO")
+    for name, deadline, expected_wait in (("expired", -1, 0), ("throttle exceeds budget", 1, 0)):
+        replay = _absolute_http_replay(deadline=deadline, throttle=True)
+        check(name + " performs no HTTP or over-budget wait", replay["requests"] == 0
+              and replay["waits"] == [] and replay["elapsed"] == 0)
+        check(name + " records bounded budget diagnostics", replay["diagnostics"] ==
+              {"status": None, "error": "budget_exhausted", "attempts": 0})
+    replay = _absolute_http_replay(deadline=3, throttle=True)
+    check("fast HTTP survives a throttle within the deadline", replay["result"] == {"data": []}
+          and abs(sum(replay["waits"]) - 2.1) < 0.000001)
+    check("the real connection receives only the remaining timeout after throttle",
+          replay["socket_timeouts"] and all(0 < value <= 0.900001
+                                            for value in replay["socket_timeouts"]))
+
+
+def test_absolute_http_headers_and_body_cannot_extend_initial_or_recovery_attempts():
+    print("\n[absolute] progressive stdlib HTTP IO shares one ten-second attempt limit")
+    for scheme in ("http", "https"):
+        for phase in ("headers", "body"):
+            for deadline in (None, 90, 3):
+                replay = _absolute_http_replay(phase, deadline=deadline, scheme=scheme)
+                cap = 10 if deadline is None else min(10, deadline)
+                check("%s %s drip with deadline %s stops inside the whole-attempt budget" %
+                      (scheme, phase, deadline), replay["result"] is None
+                      and 0 < replay["elapsed"] <= cap + 0.000001, str(replay))
+                check("%s %s cutoff closes raw IO and reports an unavailable attempt" %
+                      (scheme, phase), replay["raw_files_closed"]
+                      and replay["diagnostics"].get("error") in ("timeout", "budget_exhausted")
+                      and replay["diagnostics"].get("attempts") == 1)
+    replay = _absolute_http_replay("body", retries=1)
+    check("both initial retry attempts have independent ten-second IO limits",
+          replay["result"] is None and replay["requests"] == 2
+          and replay["diagnostics"].get("attempts") == 2 and replay["elapsed"] <= 20.800001,
+          str(replay))
+
+
+def test_absolute_dns_lookup_is_bounded_without_late_http_or_worker_fanout():
+    print("\n[absolute] an unresolved DNS lookup cannot hold preservation or queue late requests")
+    replay = _absolute_http_replay(deadline=3, blocked_dns=True)
+    check("DNS expiry returns unavailable within the original deadline",
+          replay["result"] is None and replay["elapsed"] <= 3.000001)
+    check("only one pending DNS-only worker exists across repeated requests",
+          replay["threads"] == 1, str(replay))
+    check("a late DNS completion cannot send HTTP or trigger retries",
+          replay["requests"] == replay["requests_after_late"] == 0)
+
+
+def test_absolute_snapshot_fetch_mode_retains_cutoff_gaps():
+    print("\n[absolute] snapshot requests explicitly opt into whole-attempt IO bounds")
+    result, calls, _ = _snapshot_replay(lambda *args: None, pages=2)
+    check("every initial and recovery snapshot call selects absolute HTTP limits",
+          calls and all(c["kw"].get("absolute_timeout") is True for c in calls))
+    check("cutoff pages remain gaps under the original manifest grouping",
+          not result[0] and all(m["outcome"] in ("fetch_failed", "skipped") for m in result[2]))
+
+
 def main():
     print("=" * 68)
     print("Sellability archive: asking on the day, because later is too late")
