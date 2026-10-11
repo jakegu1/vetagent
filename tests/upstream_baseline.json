@@ -1,6 +1,6 @@
 {
- "engine_paths": 123,
- "measured_utc": "2026-09-20T16:46:21Z",
+ "engine_paths": 130,
+ "measured_utc": "2026-10-11T12:04:32Z",
  "rule": {
   "min_for_share": 8,
   "value_band": 0.4
@@ -248,7 +248,6 @@
     "data.[].attributes.base_token_price_quote_token": {
      "key": 0.875,
      "types": [
-      "null",
       "str"
      ],
      "value": 0.875
@@ -298,7 +297,6 @@
     "data.[].attributes.reserve_in_usd": {
      "key": 0.875,
      "types": [
-      "null",
       "str"
      ],
      "value": 0.875
@@ -634,12 +632,48 @@
      ],
      "value": 0.25
     },
+    "knownAccounts": {
+     "key": 1.0,
+     "types": [
+      "dict"
+     ],
+     "value": 1.0
+    },
     "lockers": {
      "key": 1.0,
      "types": [
       "dict"
      ],
      "value": 0.6875
+    },
+    "markets": {
+     "key": 1.0,
+     "types": [
+      "list",
+      "null"
+     ],
+     "value": 0.75
+    },
+    "markets.[].liquidityA": {
+     "key": 0.75,
+     "types": [
+      "str"
+     ],
+     "value": 0.75
+    },
+    "markets.[].liquidityB": {
+     "key": 0.75,
+     "types": [
+      "str"
+     ],
+     "value": 0.75
+    },
+    "markets.[].pubkey": {
+     "key": 0.75,
+     "types": [
+      "str"
+     ],
+     "value": 0.75
     },
     "mint": {
      "key": 1.0,
@@ -859,6 +893,20 @@
      "types": [
       "list",
       "null"
+     ],
+     "value": 0.75
+    },
+    "topHolders.[].address": {
+     "key": 0.75,
+     "types": [
+      "str"
+     ],
+     "value": 0.75
+    },
+    "topHolders.[].owner": {
+     "key": 0.75,
+     "types": [
+      "str"
      ],
      "value": 0.75
     },
