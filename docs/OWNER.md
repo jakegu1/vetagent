@@ -149,16 +149,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- T-012: guard unavailable transaction containers
+- T-012: acceptance test fix (b)
+- T-012: regenerate measured figures to a fixed point
 - T-012: remeasure the frozen traded-depth replay
 - T-012: named change (a)
 - T-012: keep traded depth gaps out of no-trace
 - T-012: record E35 traded-depth rule
 - T-012: acceptance tests
-- lead: accept independently verified full-pool-id integration
-- lead: retain the measured cold-baseline guard as a scoped draft
-- lead: dispatch fresh review of the frozen full-pool-id repair
 
-_44 more not shown (52 commits in total)._
+_47 more not shown (55 commits in total)._
 
 ## What I got wrong
 
