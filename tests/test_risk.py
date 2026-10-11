@@ -5514,11 +5514,14 @@ def test_every_data_gap_declares_which_of_three_things_it_is():
         "no record": {"dimension": "sellability", "source": "honeypot.is",
                       "reason": risk._gap(risk._ABOUT_TOKEN,
                                           "the sell simulator has no record of this token")},
-        # W49's shape, and the one that reaches `_what_was_unseen`'s fallback: sources
-        # answered, and none stated a depth. Without it a mutant that put "No source can
-        # see this token" back as the fallback survived this whole table.
+        # Untraded shape: sources answered, pools were listed, none traded or stated
+        # a depth. Both depth atoms reach `_what_was_unseen`'s fallback; without this
+        # shape a mutant putting "No source can see this token" back survived the table.
         "no depth": {"dimension": "liquidity", "source": "dexscreener+geckoterminal",
                      "reason": risk._gap(risk._ABOUT_TOKEN, "no source reported pool depth")},
+        # W49's shape: pairs listed and traded, none states a depth.
+        "traded, no depth": {"dimension": "liquidity", "source": "dexscreener",
+                             "reason": risk._TRADED_DEPTH_REASON},
     }
     # Outside the critical dimensions: the guidance must not move for it (E31's claim).
     beside = {"dimension": "concentration", "source": "rugcheck",
