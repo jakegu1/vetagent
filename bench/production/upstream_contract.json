@@ -1,6 +1,6 @@
 {
  "collapsed_paths": [],
- "date": "2026-10-14",
+ "date": "2026-10-15",
  "failures": [],
  "history": [
   {
@@ -152,11 +152,15 @@
    "unobserved_sources": [
     "rugcheck"
    ]
+  },
+  {
+   "collapsed_paths": [],
+   "date": "2026-10-15",
+   "status": "green",
+   "unobserved_sources": []
   }
  ],
- "status": "blind",
- "unobserved_probes": 10,
- "unobserved_sources": [
-  "rugcheck"
- ]
+ "status": "green",
+ "unobserved_probes": 0,
+ "unobserved_sources": []
 }
