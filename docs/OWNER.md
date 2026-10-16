@@ -149,6 +149,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- lead: record verified tool release and preserved Oct16 snapshot
 - lead: accept bounded replay re-review and prepare verified integration release
 - T-025: named change (_replay and _assess handoff)
 - T-025: named change (add malformed-recording acceptance)
@@ -156,9 +157,8 @@ problem looked like before it was fixed.
 - lead: record T-024 approvals and green integration with RPC follow-up
 - lead: clarify shared replay helper contract and record next depth study
 - T-025: named change (_replay and _assess handoff)
-- T-015: describe the landing demo's failed simulation
 
-_92 more not shown (100 commits in total)._
+_93 more not shown (101 commits in total)._
 
 ## What I got wrong
 
