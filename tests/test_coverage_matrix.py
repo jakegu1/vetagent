@@ -142,14 +142,17 @@ class _Response:
         return self._body
 
 
-def _replay(responses):
+def _replay(responses, missing=None):
     """A cf_fetch that serves recorded bytes and refuses to invent any."""
+    missing = [] if missing is None else missing
+
     async def _fetch(url, method="GET", headers=None, body=None, **kw):
         hit = responses.get(url)
         if hit is None:
             # Never a silent miss. An unrecorded URL means the engine asked something the
             # recording never saw, and answering "fetch failed" would quietly turn that
             # into a data gap -- the exact confusion this repo keeps paying for.
+            missing.append(url)
             raise AssertionError(
                 "engine requested an unrecorded URL, re-record this chain: %s" % url)
         return _Response(hit["status"], hit["body"])
@@ -161,11 +164,17 @@ def _assess(chain, stem=None):
     path = os.path.join(FIXTURES, "%s.json" % (stem or chain))
     with io.open(path, encoding="utf-8") as f:
         rec = json.load(f)
-    risk.cf_fetch = _replay(rec["responses"])
+    previous_fetch, missing = risk.cf_fetch, []
+    risk.cf_fetch = _replay(rec["responses"], missing)
     try:
         result = asyncio.run(risk.assess(rec["address"], chain_hint=chain, verbose=True))
     finally:
-        risk.cf_fetch = None
+        risk.cf_fetch = previous_fetch
+        # The engine can catch a callback assertion as an upstream failure. The recording
+        # still is incomplete, even if that handling returned a plausible assessment.
+        if missing:
+            raise AssertionError("incomplete replay for %s (%s), unrecorded URL(s): %s"
+                                 % (chain, stem or chain, ", ".join(sorted(set(missing)))))
     return result, rec
 
 
