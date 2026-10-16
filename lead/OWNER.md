@@ -12,8 +12,12 @@ twelve-of-twelve approval and RED-TEAM: none, and is merged into the isolated in
 branch. Its original question, threshold and unresolved status remain. T-025 repairs the
 coverage replay handoff; T-015 applies the previously confirmed demo wording with a guard.
 T-015 also has fresh independent twelve-of-twelve approval and RED-TEAM: none and is
-merged locally. T-025 needs a bounded second round: partial response objects still
-hide missing evidence. Publication follows that fix, re-review and full release checks.
+merged locally. T-025's bounded second round now passes fresh combined independent
+review at twelve of twelve, RED-TEAM: none material, and is merged as 1d0a76f9.
+All twelve complete outputs remain unchanged; missing or malformed recorded evidence
+is refused even when the engine catches its callback error. The complete integrated
+gate precedes this bookkeeping commit. Exact-head Linux preflight, publication,
+actual deployment and a verified Oct-16 snapshot are the next release steps.
 
 Previous verified release:
 
@@ -109,6 +113,12 @@ technical release. Experiment D retains its existing rules and moves to 2026-10-
 | M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
+
+- **2026-10-16** - lead - All three source repairs have fresh required approvals and
+  are merged locally: T-024 eb13f174, T-015 29afd0d9 and T-025 1d0a76f9. T-025's first
+  adversarial finding is retained and fixed in its bounded second round; final acceptance
+  is 335/0 with the same four unsettled cells. The real generator succeeds, and only
+  proved cosmetic drift is restored from exact backups. Publication remains separate.
 
 - **2026-10-16** - lead - Recorded the Owner's explicit Oct-20 Experiment D postponement
   in ADR-0002 and started T-024. The base full runner is 33/34 solely because the old date

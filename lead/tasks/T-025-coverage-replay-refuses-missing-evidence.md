@@ -1,7 +1,7 @@
 ---
 id: T-025
 title: Make coverage replay refuse an incomplete recording after engine error handling
-status: changes_requested
+status: done
 level: 3
 size: S
 depends_on: [T-024]
@@ -99,7 +99,8 @@ does not establish a recorded HTTP observation. This is within the original inco
 recording goal; do not reinterpret malformed evidence as an ordinary upstream failure.
 
 Keep the same one-file scope and preserve every old and first-round acceptance function,
-input, helper and discovery AST from cb1c8ac. Authorized additive acceptance name:
+input, acceptance helper and discovery AST from cb1c8ac. The two named source helpers
+remain the implementation exception. Authorized additive acceptance name:
 test_replay_rejects_malformed_recorded_responses, plus only new test-local helpers needed
 by it. Commit additions alone as `T-025: named change (add malformed-recording acceptance)`
 and reproduce meaningful failures on cb1c8ac before the helper fix. Do not edit the
@@ -112,6 +113,8 @@ excluding bool, and body is text, including empty text. A malformed responses co
 also invalidates replay. Valid recorded HTTP errors keep their original status/body
 semantics; no fixture or production behavior changes. Inventory existing recordings
 first and stop on an actual valid-fixture conflict.
+The existing direct-adapter bytes control remains frozen. The text requirement applies
+to JSON-recorded entries consumed by _assess, not a change to that raw bytes control.
 
 Bound cases to missing fields, non-object entries/container, invalid status type/range
 and non-text bodies. Exercise both the real assessment and the swallowing fake with a

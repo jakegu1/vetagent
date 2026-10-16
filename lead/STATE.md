@@ -53,7 +53,7 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-025 | 3 | codex/t025-coverage-replay-evidence, cb1c8ac plus round-2 work | changes requested; bounded executor continuation | executor | Refuse malformed status/body evidence, freeze old tests, then fresh combined round-2 review |
+| T-015, T-024, T-025 release | 3 | codex/tool-improvements-20261016, merged through 1d0a76f9 | all source reviews approved; integrated gate and release | lead | Run complete integrated checks, exact-head Linux preflight, publish, then verify deployment and a real snapshot |
 
 T-024 is merged locally as eb13f174 after independent twelve-of-twelve approval and
 RED-TEAM: none. Both reviewers reproduce exact-head thirty-five-step success, original
@@ -64,14 +64,19 @@ No new production publication or experiment outcome is claimed yet.
 
 T-015 is merged locally as 29afd0d9 after independent twelve-of-twelve approval
 and RED-TEAM: none. Both reviewers reproduce the one-line copy diff, frozen old
-tests, real caption red and restored mutants. T-025's red-team catches a partial
-response object bypass after its independent pass; lead/reviews/T-025.md records
-the bounded class fix and round-2 bar. Do not publish that source before re-review.
+tests, real caption red and restored mutants. T-025's first red-team catches a partial
+response object bypass. The bounded round-2 repair freezes at 63651083 and passes
+fresh combined independent review at twelve of twelve, RED-TEAM: none material.
+All twelve complete outputs remain identical under one fixed clock, acceptance is
+335/0 with four unchanged unsettled cells, and three mutants fail meaningfully.
+Approved source is merged as 1d0a76f9. The actual fixed-point generator succeeds;
+only proved cosmetic changes are restored from exact external backups. The lead's
+full integrated gate precedes this bookkeeping commit. Actual publication is next.
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
 permissions and explicitly asked to continue on 2026-10-11. This covers reviewed technical
 merges, preflight pushes and deployment pushes. Keep A1 and all other sign-off categories.
-The release starts from inspected origin/master ea545c0 and preserves scheduled bot data;
+This release starts from inspected origin/master 7ec4530 and preserves scheduled bot data;
 unrelated unpublished local bookkeeping is not included.
 
 Manual snapshot run 38139242886 persisted 415 pool rows and its manifest before reporting
@@ -219,6 +224,14 @@ a long-term reliability rate or the cause of earlier missing nominal triggers.
 - (H-1 done 2026-09-28: pushed `c954f43..dc401b9`; CI green on it.)
 
 ## Next up
+
+Publish the approved T-015/T-024/T-025 integration after its complete local gate
+and exact-head Linux preflight. Verify that required deployment steps actually run,
+read back the tagged homepage and health endpoint, and independently count a real
+Oct-16 raw snapshot pass with all prior raw byte prefixes preserved. Do not infer
+coverage or four daily triggers from a successful workflow badge. Then ready the
+bounded T-026 attribution study and T-027 deterministic-RPC regression split; both
+drafts retain their Oct-17 review date and authorize no new provider or spending.
 
 T-011, T-019, T-013, T-012, T-016, T-020, T-021, T-022 and T-023 are complete with their
 actual release or scheduled coverage evidence recorded. T-021 publishes exact 7da5bdf
