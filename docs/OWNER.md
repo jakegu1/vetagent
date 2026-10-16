@@ -89,12 +89,12 @@ gantt
 ### Is the archive still collecting?
 
 ```text
-█████████████████████   2026-09-25 -> 2026-10-15
+█████████████████████   2026-09-26 -> 2026-10-16
 ```
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**43 days, no gaps.** Newest is 2026-10-15, yesterday.
+**44 days, no gaps.** Newest is 2026-10-16, today.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -149,16 +149,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- T-024: postpone Experiment D to the approved October 20 date
-- T-024: named change to the real Owner gate date
-- T-024: acceptance tests
-- lead: close the verified T-023 release
-- T-023: record fresh approvals and guarded integration
-- lead: record T-023 READY and fresh review dispatch
-- T-023: compare observed coverage before a cold baseline write
-- T-023: acceptance tests
+- lead: accept bounded replay re-review and prepare verified integration release
+- T-025: named change (_replay and _assess handoff)
+- T-025: named change (add malformed-recording acceptance)
+- lead: record reviewed demo integration and bounded replay round two
+- lead: record T-024 approvals and green integration with RPC follow-up
+- lead: clarify shared replay helper contract and record next depth study
+- T-025: named change (_replay and _assess handoff)
+- T-015: describe the landing demo's failed simulation
 
-_80 more not shown (88 commits in total)._
+_92 more not shown (100 commits in total)._
 
 ## What I got wrong
 
