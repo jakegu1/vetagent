@@ -164,17 +164,47 @@ def _assess(chain, stem=None):
     path = os.path.join(FIXTURES, "%s.json" % (stem or chain))
     with io.open(path, encoding="utf-8") as f:
         rec = json.load(f)
-    previous_fetch, missing = risk.cf_fetch, []
-    risk.cf_fetch = _replay(rec["responses"], missing)
+    responses = rec.get("responses")
+    if not isinstance(responses, dict):
+        raise AssertionError("incomplete replay for %s (%s), responses must be an object"
+                             % (chain, stem or chain))
+    previous_fetch, missing, malformed = risk.cf_fetch, [], []
+    replay = _replay(responses, missing)
+
+    async def recorded_fetch(url, *args, **kwargs):
+        if url in responses:
+            hit, reason = responses[url], None
+            if not isinstance(hit, dict):
+                reason = "response must be an object"
+            elif "status" not in hit:
+                reason = "status is missing"
+            elif "body" not in hit:
+                reason = "body is missing"
+            elif (isinstance(hit["status"], bool) or not isinstance(hit["status"], int)
+                  or not 100 <= hit["status"] <= 599):
+                reason = "status must be an integer HTTP code from 100 through 599"
+            elif not isinstance(hit["body"], str):
+                reason = "body must be text"
+            if reason:
+                malformed.append("%s: %s" % (url, reason))
+                raise AssertionError("malformed recorded response for %s: %s" % (url, reason))
+        return await replay(url, *args, **kwargs)
+
+    risk.cf_fetch = recorded_fetch
     try:
         result = asyncio.run(risk.assess(rec["address"], chain_hint=chain, verbose=True))
     finally:
         risk.cf_fetch = previous_fetch
         # The engine can catch a callback assertion as an upstream failure. The recording
         # still is incomplete, even if that handling returned a plausible assessment.
-        if missing:
-            raise AssertionError("incomplete replay for %s (%s), unrecorded URL(s): %s"
-                                 % (chain, stem or chain, ", ".join(sorted(set(missing)))))
+        if missing or malformed:
+            details = []
+            if missing:
+                details.append("unrecorded URL(s): %s" % ", ".join(sorted(set(missing))))
+            if malformed:
+                details.append("malformed response(s): %s" % "; ".join(sorted(set(malformed))))
+            raise AssertionError("incomplete replay for %s (%s), %s"
+                                 % (chain, stem or chain, "; ".join(details)))
     return result, rec
 
 
