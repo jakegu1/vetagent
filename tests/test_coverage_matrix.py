@@ -55,6 +55,9 @@ import io
 import json
 import os
 import sys
+import tempfile
+from contextlib import contextmanager
+from unittest.mock import patch
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "src"))
@@ -139,14 +142,17 @@ class _Response:
         return self._body
 
 
-def _replay(responses):
+def _replay(responses, missing=None):
     """A cf_fetch that serves recorded bytes and refuses to invent any."""
+    missing = [] if missing is None else missing
+
     async def _fetch(url, method="GET", headers=None, body=None, **kw):
         hit = responses.get(url)
         if hit is None:
             # Never a silent miss. An unrecorded URL means the engine asked something the
             # recording never saw, and answering "fetch failed" would quietly turn that
             # into a data gap -- the exact confusion this repo keeps paying for.
+            missing.append(url)
             raise AssertionError(
                 "engine requested an unrecorded URL, re-record this chain: %s" % url)
         return _Response(hit["status"], hit["body"])
@@ -158,11 +164,47 @@ def _assess(chain, stem=None):
     path = os.path.join(FIXTURES, "%s.json" % (stem or chain))
     with io.open(path, encoding="utf-8") as f:
         rec = json.load(f)
-    risk.cf_fetch = _replay(rec["responses"])
+    responses = rec.get("responses")
+    if not isinstance(responses, dict):
+        raise AssertionError("incomplete replay for %s (%s), responses must be an object"
+                             % (chain, stem or chain))
+    previous_fetch, missing, malformed = risk.cf_fetch, [], []
+    replay = _replay(responses, missing)
+
+    async def recorded_fetch(url, *args, **kwargs):
+        if url in responses:
+            hit, reason = responses[url], None
+            if not isinstance(hit, dict):
+                reason = "response must be an object"
+            elif "status" not in hit:
+                reason = "status is missing"
+            elif "body" not in hit:
+                reason = "body is missing"
+            elif (isinstance(hit["status"], bool) or not isinstance(hit["status"], int)
+                  or not 100 <= hit["status"] <= 599):
+                reason = "status must be an integer HTTP code from 100 through 599"
+            elif not isinstance(hit["body"], str):
+                reason = "body must be text"
+            if reason:
+                malformed.append("%s: %s" % (url, reason))
+                raise AssertionError("malformed recorded response for %s: %s" % (url, reason))
+        return await replay(url, *args, **kwargs)
+
+    risk.cf_fetch = recorded_fetch
     try:
         result = asyncio.run(risk.assess(rec["address"], chain_hint=chain, verbose=True))
     finally:
-        risk.cf_fetch = None
+        risk.cf_fetch = previous_fetch
+        # The engine can catch a callback assertion as an upstream failure. The recording
+        # still is incomplete, even if that handling returned a plausible assessment.
+        if missing or malformed:
+            details = []
+            if missing:
+                details.append("unrecorded URL(s): %s" % ", ".join(sorted(set(missing))))
+            if malformed:
+                details.append("malformed response(s): %s" % "; ".join(sorted(set(malformed))))
+            raise AssertionError("incomplete replay for %s (%s), %s"
+                                 % (chain, stem or chain, "; ".join(details)))
     return result, rec
 
 
@@ -423,6 +465,304 @@ def test_a_dimension_is_not_claimed_on_a_chain_it_is_not_asked_about():
                 check("%s is not quietly covered on %s (%s), where it is marked n/a"
                       % (name, chain, symbol), observed != COVERED,
                       "engine says %s -- if it is covered there it is not n/a" % observed)
+
+
+@contextmanager
+def _temporary_recording(recording):
+    """Exercise private copies without changing any committed recording."""
+    global FIXTURES
+    previous = FIXTURES
+    with tempfile.TemporaryDirectory(prefix="vetagent-coverage-replay-") as directory:
+        with io.open(os.path.join(directory, "ethereum.json"), "w", encoding="utf-8") as f:
+            json.dump(recording, f)
+        FIXTURES = directory
+        try:
+            yield
+        finally:
+            FIXTURES = previous
+
+
+def test_replay_complete_real_recording_restores_the_previous_fetch():
+    print("\n[replay] complete recorded evidence still reaches the real engine")
+    previous = object()
+    with patch.object(risk, "cf_fetch", previous):
+        result, recording = _assess("ethereum")
+        check("complete Ethereum recording still returns its low verdict",
+              result.get("risk_level") == "low", result.get("risk_level"))
+        check("complete Ethereum recording still has its five responses",
+              len(recording["responses"]) == 5)
+        check("successful replay restores the actual previous fetch",
+              risk.cf_fetch is previous)
+
+
+def test_replay_each_real_requested_response_is_required_after_engine_handling():
+    print("\n[replay] every actually requested Ethereum response is required")
+    with io.open(os.path.join(FIXTURES, "ethereum.json"), encoding="utf-8") as f:
+        recording = json.load(f)
+    requested = []
+    original_replay = _replay
+
+    class _RequestedResponses(dict):
+        def get(self, url, default=None):
+            requested.append(url)
+            return super().get(url, default)
+
+    def tracked_replay(responses, *args, **kwargs):
+        return original_replay(_RequestedResponses(responses), *args, **kwargs)
+
+    with patch.object(sys.modules[__name__], "_replay", tracked_replay):
+        _assess("ethereum")
+    actual_urls = sorted(set(requested))
+    check("complete real engine requests exactly the five recorded Ethereum URLs",
+          len(actual_urls) == 5 and set(actual_urls) == set(recording["responses"]),
+          str(actual_urls))
+    for url in actual_urls:
+        incomplete = json.loads(json.dumps(recording))
+        del incomplete["responses"][url]
+        requested.clear()
+        previous, refusal, unexpected = object(), None, None
+        with _temporary_recording(incomplete), \
+                patch.object(sys.modules[__name__], "_replay", tracked_replay), \
+                patch.object(risk, "cf_fetch", previous):
+            try:
+                _assess("ethereum")
+            except AssertionError as error:
+                refusal = str(error)
+            except Exception as error:
+                unexpected = repr(error)
+            check("removed real response was actually requested: %s" % url,
+                  url in requested, str(requested))
+            check("incomplete real replay is refused: %s" % url,
+                  refusal is not None, unexpected or "engine returned an accepted result")
+            check("refusal identifies the missing real request: %s" % url,
+                  refusal is not None and url in refusal and "ethereum" in refusal,
+                  refusal or unexpected or "no refusal")
+            check("incomplete real replay restores the previous fetch: %s" % url,
+                  risk.cf_fetch is previous)
+
+
+def test_replay_refuses_a_miss_swallowed_by_a_plausible_fake_engine():
+    print("\n[replay] a swallowed callback error cannot validate missing evidence")
+    url = "https://fixture.invalid/unrecorded"
+    for responses in ({}, {url: None}):
+        swallowed, returned = [], []
+
+        async def swallowing_assess(address, chain_hint=None, verbose=False):
+            try:
+                await risk.cf_fetch(url)
+            except Exception as error:
+                swallowed.append(error)
+            returned.append(True)
+            return {"risk_level": "low", "signals": [], "evidence": {}}
+
+        recording = {"address": TOKENS["ethereum"][0][0], "responses": responses}
+        previous, refusal = object(), None
+        with _temporary_recording(recording), \
+                patch.object(risk, "assess", swallowing_assess), \
+                patch.object(risk, "cf_fetch", previous):
+            try:
+                _assess("ethereum")
+            except AssertionError as error:
+                refusal = str(error)
+            check("fake engine catches the ordinary callback assertion and returns low",
+                  len(swallowed) == 1 and isinstance(swallowed[0], AssertionError)
+                  and returned == [True])
+            check("fake engine's plausible result cannot hide missing evidence",
+                  refusal is not None and url in refusal and "ethereum" in refusal,
+                  refusal or "low result was accepted")
+            check("swallowed missing-response replay restores the previous fetch",
+                  risk.cf_fetch is previous)
+
+
+def test_replay_recorded_failures_and_empty_bodies_remain_observed_responses():
+    print("\n[replay] recorded HTTP failures and empty bodies are still recordings")
+    cases = [(200, '{"ok": true}'), (200, ""), (404, '{"error": "not found"}'),
+             (429, ""), (503, b"recorded bytes")]
+    for status, body in cases:
+        url = "https://fixture.invalid/recorded/%s" % status
+        fetch = _replay({url: {"status": status, "body": body}})
+        response = asyncio.run(fetch(url, method="POST", headers={"x-test": "recorded"},
+                                     body="request bytes"))
+        check("recorded status %s and its exact body are preserved" % status,
+              response.status == status and asyncio.run(response.text()) == body)
+
+    url = "https://fixture.invalid/recorded-error"
+    for status, body in cases[:-1]:
+        observed = []
+
+        async def recorded_assess(address, chain_hint=None, verbose=False):
+            response = await risk.cf_fetch(url)
+            observed.append((response.status, await response.text()))
+            return {"risk_level": "unknown"}
+
+        recording = {"address": TOKENS["ethereum"][0][0],
+                     "responses": {url: {"status": status, "body": body}}}
+        previous = object()
+        with _temporary_recording(recording), patch.object(risk, "assess", recorded_assess), \
+                patch.object(risk, "cf_fetch", previous):
+            result, returned_recording = _assess("ethereum")
+            check("observed HTTP %s is accepted through the assessment handoff" % status,
+                  observed == [(status, body)] and result == {"risk_level": "unknown"}
+                  and returned_recording == recording)
+            check("recorded HTTP %s restores the previous fetch" % status,
+                  risk.cf_fetch is previous)
+
+
+def test_replay_engine_exception_preserves_the_error_and_previous_fetch():
+    print("\n[replay] an engine exception cannot replace the previous fetch")
+    expected = RuntimeError("synthetic engine failure")
+
+    async def raising_assess(address, chain_hint=None, verbose=False):
+        raise expected
+
+    previous, observed = object(), None
+    with patch.object(risk, "assess", raising_assess), \
+            patch.object(risk, "cf_fetch", previous):
+        try:
+            _assess("ethereum")
+        except RuntimeError as error:
+            observed = error
+        check("engine exception is preserved", observed is expected)
+        check("engine exception restores the actual previous fetch", risk.cf_fetch is previous)
+
+
+@contextmanager
+def _malformed_replay_network_guard():
+    """The bounded malformed-recording cases may never contact an external host."""
+    import ipaddress
+    import socket
+
+    attempted = []
+    original_connect, original_connect_ex = socket.socket.connect, socket.socket.connect_ex
+    original_getaddrinfo = socket.getaddrinfo
+
+    def local(host):
+        if host is None or host in ("", "localhost"):
+            return True
+        try:
+            return ipaddress.ip_address(host).is_loopback
+        except (ValueError, TypeError):
+            return False
+
+    def deny(address):
+        host = address[0] if isinstance(address, tuple) else address
+        if not local(host):
+            attempted.append(str(address))
+            raise AssertionError("external network forbidden for malformed-recording acceptance")
+
+    def connect(sock, address):
+        deny(address)
+        return original_connect(sock, address)
+
+    def connect_ex(sock, address):
+        deny(address)
+        return original_connect_ex(sock, address)
+
+    def getaddrinfo(host, *args, **kwargs):
+        deny((host,))
+        return original_getaddrinfo(host, *args, **kwargs)
+
+    with patch.object(socket.socket, "connect", connect), \
+            patch.object(socket.socket, "connect_ex", connect_ex), \
+            patch.object(socket, "getaddrinfo", getaddrinfo):
+        yield attempted
+
+
+def test_replay_rejects_malformed_recorded_responses():
+    print("\n[recorded shape] incomplete HTTP observations cannot validate a replay")
+    with io.open(os.path.join(FIXTURES, "ethereum.json"), encoding="utf-8") as f:
+        complete = json.load(f)
+    url = next(url for url in complete["responses"] if "/latest/dex/search?" in url)
+    entry = complete["responses"][url]
+    real_assess = risk.assess
+    malformed = [
+        ("missing status", {"body": entry["body"]}, "status"),
+        ("missing body", {"status": entry["status"]}, "body"),
+        ("empty response object", {}, "status"),
+        ("null response", None, "object"),
+        ("list response", [], "object"),
+        ("text response", "truncated", "object"),
+        ("numeric response", 7, "object"),
+        ("boolean status", {"status": True, "body": ""}, "status"),
+        ("text status", {"status": "200", "body": ""}, "status"),
+        ("float status", {"status": 200.0, "body": ""}, "status"),
+        ("null status", {"status": None, "body": ""}, "status"),
+        ("status below HTTP range", {"status": 99, "body": ""}, "status"),
+        ("status above HTTP range", {"status": 600, "body": ""}, "status"),
+        ("null body", {"status": 200, "body": None}, "body"),
+        ("boolean body", {"status": 200, "body": False}, "body"),
+        ("numeric body", {"status": 200, "body": 0}, "body"),
+        ("list body", {"status": 200, "body": []}, "body"),
+        ("object body", {"status": 200, "body": {}}, "body"),
+    ]
+
+    def exercise(label, recording, detail=None, fake=False, container=False,
+                 expected_response=None):
+        swallowed, returned, observed = [], [], []
+
+        async def swallowing_assess(address, chain_hint=None, verbose=False):
+            try:
+                response = await risk.cf_fetch(url)
+                observed.append((response.status, await response.text()))
+            except Exception as error:
+                swallowed.append(error)
+            returned.append(True)
+            return {"risk_level": "low", "signals": [], "evidence": {}}
+
+        previous, refusal, unexpected, answer = object(), None, None, None
+        name = "%s / %s" % ("fake" if fake else "real", label)
+        with _temporary_recording(recording), patch.object(risk, "cf_fetch", previous), \
+                patch.object(risk, "assess", swallowing_assess if fake else real_assess):
+            try:
+                answer, _recording = _assess("ethereum")
+            except AssertionError as error:
+                refusal = str(error)
+            except Exception as error:
+                unexpected = repr(error)
+            if detail is not None:
+                check("%s: malformed recording is refused" % name,
+                      refusal is not None, unexpected or "engine returned an accepted result")
+                check("%s: refusal names the invalid evidence" % name,
+                      refusal is not None and detail in refusal and "ethereum" in refusal
+                      and (container or url in refusal), refusal or unexpected or "no refusal")
+                if fake and not container:
+                    check("%s: fake catches the ordinary callback error and returns low" % name,
+                          len(swallowed) == 1 and isinstance(swallowed[0], Exception)
+                          and returned == [True], str((swallowed, returned)))
+            else:
+                check("%s: valid recorded status and text remain accepted" % name,
+                      isinstance(answer, dict) and refusal is None and unexpected is None,
+                      refusal or unexpected or "no result")
+                if fake:
+                    check("%s: valid recorded status and body remain exact" % name,
+                          observed == [expected_response] and not swallowed and returned == [True],
+                          str((observed, swallowed, returned)))
+            check("%s: actual previous fetch is restored" % name, risk.cf_fetch is previous)
+
+    with _malformed_replay_network_guard() as attempted:
+        for label, value, detail in malformed:
+            for fake in (False, True):
+                recording = json.loads(json.dumps(complete))
+                recording["responses"][url] = value
+                exercise(label, recording, detail, fake=fake)
+        for label, value in (("missing responses container", None),
+                             ("null responses container", None),
+                             ("list responses container", []),
+                             ("text responses container", "truncated")):
+            for fake in (False, True):
+                recording = json.loads(json.dumps(complete))
+                if label.startswith("missing"):
+                    del recording["responses"]
+                else:
+                    recording["responses"] = value
+                exercise(label, recording, "responses", fake=fake, container=True)
+        for status, body in ((100, ""), (599, "recorded upstream error"), (200, "")):
+            for fake in (False, True):
+                recording = json.loads(json.dumps(complete))
+                recording["responses"][url] = {"status": status, "body": body}
+                exercise("valid HTTP %s" % status, recording, fake=fake,
+                         expected_response=(status, body))
+        check("malformed-recording cases attempt no external network", not attempted, str(attempted))
 
 
 def _age_days(stamp):
