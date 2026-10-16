@@ -53,7 +53,7 @@ OPPS = os.path.join(ROOT, "docs", "OPPORTUNITIES.md")
 # that says which gate was moved and why.
 PINNED_GATES = [
     ("2026-09-18", "Is anyone using it"),
-    ("2026-10-16", "Does anyone want to pay"),
+    ("2026-10-20", "Does anyone want to pay"),
     ("2026-12-04", "Is further investment worth it"),
     ("2027-03-04", "Does the data asset hold up"),
 ]

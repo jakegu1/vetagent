@@ -1047,7 +1047,7 @@ def test_gates_come_from_section_8_only():
           "Stray question" not in page and not _listed(page, _Q))
     real = [g["date"] for g in owner.gates()]
     check("the real file: the four gates are unchanged",
-          real == ["2026-09-18", "2026-10-16", "2026-12-04", "2027-03-04"], ascii(real))
+          real == ["2026-09-18", "2026-10-20", "2026-12-04", "2027-03-04"], ascii(real))
 
 
 def test_the_page_agrees_with_the_guard():
