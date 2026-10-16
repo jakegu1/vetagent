@@ -1,7 +1,7 @@
 ---
 id: T-024
 title: Apply the Owner's Experiment D postponement to 2026-10-20
-status: in_review
+status: done
 level: 3
 size: S
 depends_on: []
@@ -20,6 +20,9 @@ Keep the project's existing UTC date interpretation.
 The immutable execution base is origin/master
 7ec4530b76a65c7f62da266870f9e28b295f919e. Calendar failures at the old due date are
 an expected baseline class; record their actual output rather than claiming a green base.
+The new acceptance tests, boundary controls and mutants are fully offline. The unchanged
+configured full runner includes test_owner_powers.py's existing Ethereum bytecode RPC
+check; preserve that read-only behavior and disclose it rather than inventing a fixture.
 
 ## Goal
 

@@ -7,6 +7,7 @@ this project's older lessons are in `CLAUDE.md`.
 
 | Date | What happened | Rule |
 |---|---|---|
+| 2026-10-16 | T-024's reviewer blocked all network for the purported offline full suite; the unchanged owner-power real-contract test then added bytecode failures because it calls Ethereum RPC for three contracts. The normal configured runner succeeds with RPC available; new acceptance and safe mutants remain genuinely offline | Distinguish offline task acceptance from the complete configured runner. Preserve the real dependency as observed evidence until T-027 separates recorded regression from live monitoring; never invent a fixture or count a blocked read as a contract fact |
 | 2026-09-28 | CI's `tests` stopped at step 6 of 27 on every run for six days, so steps 7 to 27 went unobserved while "one known red" was the whole report | Judge a task with `python lead/checks.py`, which runs every step; read a red CI run as "unknown past this step" |
 | 2026-09-28 | In the adoption dry run, a percentage written as digits and a percent sign in a tracked `lead/*.md` turned `tests/test_number_coverage.py` red | In `lead/` files, write rates as "k of n" |
 | 2026-09-28 | `tests/test_english_only.py` walks the working tree, so even an untracked Chinese file under `lead/` turned it red | Files under `lead/` are English; Chinese goes in chat only |

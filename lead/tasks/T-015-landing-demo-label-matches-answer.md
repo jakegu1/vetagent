@@ -1,7 +1,7 @@
 ---
 id: T-015
 title: Describe the landing demo's failed trade simulation without claiming a proven inability to sell
-status: in_progress
+status: in_review
 level: 3
 size: S
 depends_on: [T-024]
@@ -33,7 +33,9 @@ Do not borrow unreviewed date changes into this branch.
 
 A visitor sees the Owner-confirmed description of a failed simulation. A future edit cannot
 silently restore the stronger claim or change which example that wording describes.
-One small copy correction; zero spend or network; at most two review rounds.
+One small copy correction; zero spend or added network behavior; at most two review rounds.
+New acceptance and mutants are offline. The unchanged configured full runner retains
+test_owner_powers.py's existing Ethereum bytecode RPC check; disclose that dependency.
 
 Only two files:
 - src/landing.html: only the text of the first example button.

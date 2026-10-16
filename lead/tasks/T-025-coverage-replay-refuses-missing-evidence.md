@@ -1,7 +1,7 @@
 ---
 id: T-025
 title: Make coverage replay refuse an incomplete recording after engine error handling
-status: in_progress
+status: in_review
 level: 3
 size: S
 depends_on: [T-024]
@@ -30,7 +30,10 @@ must pass the complete suite. Do not borrow unreviewed date changes into this br
 A missing recording response invalidates replay reliably, including when the engine
 catches the callback's exception and returns a plausible answer. Preserve complete
 recordings' existing behavior and the meaning of recorded HTTP failures.
-One file, zero external calls/spend, at most two review rounds. Stop on an older-test
+One file, no added upstream or spend, at most two review rounds. Replay acceptance and
+mutants make zero external calls. The unchanged configured full runner retains the legacy
+test_owner_powers.py Ethereum bytecode RPC check; disclose that dependency separately.
+Stop on an older-test
 conflict rather than changing fixtures, scoring or the advertised coverage matrix.
 
 ## Scope and conflict search

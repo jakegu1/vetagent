@@ -7,12 +7,11 @@
 
 ## Status in one line
 
-The Owner postponed Experiment D to 2026-10-20 (UTC). T-024 is implementing the date
-across strategy, dependent review entries, guard expectations and generated Owner page.
-Its original question, threshold and unresolved status remain. T-025 is repairing the
-coverage replay handoff so a missing recording cannot survive ordinary engine error
-handling. T-015 applies the previously confirmed demo wording and adds an offline guard.
-All three tasks require fresh independent and adversarial review before integration.
+The Owner postponed Experiment D to 2026-10-20 (UTC). T-024 has fresh independent
+twelve-of-twelve approval and RED-TEAM: none, and is merged into the isolated integration
+branch. Its original question, threshold and unresolved status remain. T-025 repairs the
+coverage replay handoff; T-015 applies the previously confirmed demo wording with a guard.
+Both are in fresh review. Publication follows complete integration and release checks.
 
 Previous verified release:
 

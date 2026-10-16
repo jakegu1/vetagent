@@ -26,6 +26,7 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-021 | Reject invalid market scalars and preserve unavailable depth | 3 | M | T-011, T-019, T-013, T-012 | done (deployed 7da5bdf) |
 | T-022 | Pace scheduled snapshot requests using the verified slower interval | 3 | S | T-020 source | done (real schedule 38165984869) |
 | T-023 | Compare observed coverage before a cold upstream-baseline write | 3 | S | T-016, T-021 | done (published 2a8204f; required master CI 38175829622 passes) |
-| T-024 | Apply the Owner's Experiment D postponement to 2026-10-20 | 3 | S | none | in_progress |
+| T-024 | Apply the Owner's Experiment D postponement to 2026-10-20 | 3 | S | none | done (merged eb13f174; publication pending) |
 | T-025 | Refuse incomplete coverage recordings after engine error handling | 3 | S | T-024 | in_progress |
 | T-026 | Attribute selected fallback-pool depth before a runtime proposal | 3 | S | T-015, T-024, T-025 | draft; review 2026-10-17 |
+| T-027 | Separate recorded power regression from live RPC monitoring | 3 | S | T-015, T-024, T-025 | draft; review 2026-10-17 |

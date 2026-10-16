@@ -53,9 +53,15 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-024 | 3 | codex/t024-experiment-d-oct20, e4bf99d | independent review; adversarial review queued | reviewers | Verify the approved date change and boundary controls before integration |
-| T-025 | 3 | isolated worktree on 7ec4530 | acceptance and implementation; integrates after T-024 | executor | Refuse actual coverage-recording misses after the engine catches errors; fresh reviews |
-| T-015 | 3 | isolated worktree on 7ec4530 | acceptance and implementation; integrates after T-024 | executor | Apply the previously confirmed demo wording with an offline guard; fresh reviews |
+| T-025 | 3 | codex/t025-coverage-replay-evidence, cb1c8ac | independent pass; red-team running | reviewers | Finish fresh adversarial review, integrate after the approved date repair, then full checks |
+| T-015 | 3 | codex/t015-landing-label, bc51fb7 | independent and adversarial reviews | reviewers | Verify exact caption, input identity and immutable guards before integration |
+
+T-024 is merged locally as eb13f174 after independent twelve-of-twelve approval and
+RED-TEAM: none. Both reviewers reproduce exact-head thirty-five-step success, original
+behavioral red and safe mutants. The real fixed-point generator succeeds after merge;
+only newline drift and the recent-commit display are restored from exact external
+backups. The lead's required integrated full check precedes this bookkeeping commit.
+No new production publication or experiment outcome is claimed yet.
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
 permissions and explicitly asked to continue on 2026-10-11. This covers reviewed technical
