@@ -3,9 +3,18 @@
 > This page holds only what the lead needs from you. The project's own dashboard, with its
 > deadlines and gates, is `docs/OWNER.md` (generated). Messages to you are in Chinese; files
 > here are English because the repository is English-only. Maintained by the project lead (AI).
-> Last updated: 2026-10-12 (lead #7, Codex)
+> Last updated: 2026-10-16 (Codex)
 
 ## Status in one line
+
+The Owner postponed Experiment D to 2026-10-20 (UTC). T-024 is implementing the date
+across strategy, dependent review entries, guard expectations and generated Owner page.
+Its original question, threshold and unresolved status remain. T-025 is repairing the
+coverage replay handoff so a missing recording cannot survive ordinary engine error
+handling. T-015 applies the previously confirmed demo wording and adds an offline guard.
+All three tasks require fresh independent and adversarial review before integration.
+
+Previous verified release:
 
 T-016 is deployed and verified. T-020 is published; its real manual pass preserved data,
 recovered missing rows and correctly failed remaining coverage gaps caused by observed
@@ -44,13 +53,13 @@ required master CI with 219/0, one RugCheck probe unobserved after HTTP 400 and 
 collapsed path. T-023 is complete; no real baseline is written or Worker redeployed.
 Snapshot pacing and recovery are complete.
 Execution permissions now work. Autonomy remains A1; this authorization covers the reviewed
-technical release. Experiment D and the 2026-10-16 product gate retain their existing rules.
+technical release. Experiment D retains its existing rules and moves to 2026-10-20.
 
 ## Needs you
 
 | ID | What | Why it's yours | Recommendation | Needed by |
 |---|---|---|---|---|
-| H-13 | On 2026-10-16, write the gate's conclusion in `docs/STRATEGY.md` section 8 as `Resolved: <what Experiment D measured> -> <decision>`, and decide O2, O8, O9 and O11 in `docs/OPPORTUNITIES.md` | The gate's reading and the product decisions are yours | Give the lead the result in one line that morning; it drafts both edits for your yes. Otherwise the build is red, and every deploy blocked, from 00:00 UTC that day until both are done | 2026-10-16, before 02:23 UTC (the first bot run) |
+| H-13 | On 2026-10-20, write the gate's conclusion in `docs/STRATEGY.md` section 8 as `Resolved: <what Experiment D measured> -> <decision>`, and decide O2, O8, O9 and O11 in `docs/OPPORTUNITIES.md` | The gate's reading and the product decisions are yours | Give the lead the result in one line that morning; it drafts both edits for your yes. Otherwise the build is red, and every deploy blocked, from 00:00 UTC that day until both are done | 2026-10-20, before 02:23 UTC (the first bot run) |
 
 ## Done / answered
 
@@ -99,6 +108,11 @@ technical release. Experiment D and the 2026-10-16 product gate retain their exi
 | M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
+
+- **2026-10-16** - lead - Recorded the Owner's explicit Oct-20 Experiment D postponement
+  in ADR-0002 and started T-024. The base full runner is 33/34 solely because the old date
+  is due; no experiment outcome is inferred. Started T-025 after a private offline probe
+  reproduced missing coverage responses surviving the engine's exception handling.
 
 - **2026-10-12** - lead - T-023 is complete on published 2a8204f. Full integrated
   checks pass 34/34 in 81.0 seconds. Final Linux preflight 38175433633 passes all

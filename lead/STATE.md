@@ -4,8 +4,13 @@
 > session starts by reading it. Durable rules live in `AGENTS.md`, `lead/QUALITY.md` and
 > `lead/decisions/`. Test for this file: could a stranger act on every row below?
 
-Last updated: 2026-10-12 by lead session 7 (Codex desktop), during the Owner-authorized
-technical repair release.
+Last updated: 2026-10-16 by Codex, applying the Owner's Experiment D postponement
+and starting a bounded tool-improvement pass.
+
+Current Owner decision: Experiment D moves to 2026-10-20 (ADR-0002). Its original
+thresholds and unresolved state remain. T-024 reconciles the active gate and dependent
+review dates. Historical Oct-16 records are retained with their original dates.
+Uncommitted work in the primary checkout is preserved; this pass uses isolated worktrees.
 
 ## Starting a lead session
 
@@ -48,7 +53,9 @@ technical repair release.
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| none | - | - | The authorized technical release is complete through T-023 | lead | Keep the existing product gate and investigate only separately bounded follow-ups |
+| T-024 | 3 | isolated worktree on 7ec4530 | acceptance and implementation | executor | Apply the approved Oct-20 date, preserve guard behavior, then fresh reviews |
+| T-025 | 3 | isolated worktree on 7ec4530 | acceptance and implementation; integrates after T-024 | executor | Refuse actual coverage-recording misses after the engine catches errors; fresh reviews |
+| T-015 | 3 | isolated worktree on 7ec4530 | acceptance and implementation; integrates after T-024 | executor | Apply the previously confirmed demo wording with an offline guard; fresh reviews |
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
 permissions and explicitly asked to continue on 2026-10-11. This covers reviewed technical
@@ -151,7 +158,7 @@ a long-term reliability rate or the cause of earlier missing nominal triggers.
 
 - H-15's earlier push is already present in public history at a31813b; its old pending entry
   was stale. The current technical release uses its own inspected remote base.
-- **H-13 (told 2026-09-30, needed by 2026-10-16; the Owner agreed to the plan): the 2026-10-16
+- **H-13 (postponed by the Owner on 2026-10-16 to 2026-10-20, ADR-0002): the 2026-10-20
   gate.** From 00:00 UTC that day `tests/test_gates_get_reviewed.py` is red, and so are `tests`
   and every deploy, until (a) the gate's row in `docs/STRATEGY.md` section 8 carries
   `Resolved: <what Experiment D measured> -> <decision>` and (b) O2, O8, O9 and O11 in
@@ -161,7 +168,7 @@ a long-term reliability rate or the cause of earlier missing nominal triggers.
   decisions are the Owner's). Nothing needed from the Owner before then. Since T-007 the
   conclusion needs an ASCII `->` with words on both sides, after `Resolved:`, in the gate's own
   row; a placeholder, U+2192, markup or the template pasted back is refused. Draft it that way,
-  run `python tests/test_gates_get_reviewed.py` with the date forced to 2026-10-16 on the draft,
+  run `python tests/test_gates_get_reviewed.py` with the date forced to 2026-10-20 on the draft,
   and push it before 02:23 UTC (every push needs the Owner's yes).
 - (H-14 done 2026-10-01, as recommended: T-007 merged as `3fb1d3d`, T-008 as `f1a767d`, then
   pushed after preflight run 36744394310 was green on Linux: `a5bcce5..26392ab`, `tests` run
@@ -276,7 +283,8 @@ below are retained as historical context, with their readings refreshed before a
    in three); A2 took the Level 0 to 2 merges off the Owner.
 3. **The old Oct-15 correction deadline is closed** by the truthful Oct-11-UTC entry;
    the unchanged 14-day accountability rule continues to apply.
-4. **2026-10-16: the gate** (H-13). The Owner's page lists it under "Needs you" from 2026-10-02.
+4. **2026-10-20: the gate** (H-13, Owner-approved postponement). The generated Owner page
+   must show this date after T-024; the original decision rule is unchanged.
 
 **Every check that can go red on the calendar alone** (a scan of `tests/` for `date.today()`,
 2026-10-01): the gates and their parked entries in `tests/test_gates_get_reviewed.py`
