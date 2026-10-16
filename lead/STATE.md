@@ -53,7 +53,7 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-024 | 3 | isolated worktree on 7ec4530 | acceptance and implementation | executor | Apply the approved Oct-20 date, preserve guard behavior, then fresh reviews |
+| T-024 | 3 | codex/t024-experiment-d-oct20, e4bf99d | independent review; adversarial review queued | reviewers | Verify the approved date change and boundary controls before integration |
 | T-025 | 3 | isolated worktree on 7ec4530 | acceptance and implementation; integrates after T-024 | executor | Refuse actual coverage-recording misses after the engine catches errors; fresh reviews |
 | T-015 | 3 | isolated worktree on 7ec4530 | acceptance and implementation; integrates after T-024 | executor | Apply the previously confirmed demo wording with an offline guard; fresh reviews |
 

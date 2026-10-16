@@ -1,7 +1,7 @@
 ---
 id: T-015
 title: Describe the landing demo's failed trade simulation without claiming a proven inability to sell
-status: ready
+status: in_progress
 level: 3
 size: S
 depends_on: [T-024]

@@ -1,7 +1,7 @@
 ---
 id: T-025
 title: Make coverage replay refuse an incomplete recording after engine error handling
-status: ready
+status: in_progress
 level: 3
 size: S
 depends_on: [T-024]
@@ -41,6 +41,15 @@ Search _replay, _assess, references, FIXTURES, risk.cf_fetch and all coverage-ma
 Named changes to existing acceptance assertions: none. Existing test function ASTs,
 observers, TOKENS, fixtures, scorecard/engine code and recorded dates remain unchanged.
 The source helper changes are separate from the immutable tests-first commit.
+
+Named source-helper change: only _replay and _assess in this shared test module.
+The kit's file-level contract checker treats a helper implementation edit as a test-file
+edit. Use the explicit commit subject `T-025: named change (_replay and _assess handoff)`
+for that already-scoped implementation; this authorizes no acceptance assertion, input,
+test-function AST or discovery change. Preserve the original tests-only commit exactly.
+If the unpublished implementation was committed with an ordinary subject, preserve its
+old object under a local reference, change only that subject, prove identical tree IDs
+and rerun final exact-head checks. No published history or acceptance commit is rewritten.
 
 No production API, fresh recording, cache/benchmark replay, data fill, provider, permission
 or public-figure change. Do not edit the real fixture to create a mutant.

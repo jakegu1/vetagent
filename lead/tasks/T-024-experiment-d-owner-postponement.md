@@ -1,7 +1,7 @@
 ---
 id: T-024
 title: Apply the Owner's Experiment D postponement to 2026-10-20
-status: ready
+status: in_review
 level: 3
 size: S
 depends_on: []
