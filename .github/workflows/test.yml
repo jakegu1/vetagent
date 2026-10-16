@@ -235,6 +235,9 @@ jobs:
       - name: Benchmark replay is deterministic and never fetches
         run: python tests/test_benchmark_replay.py
 
+      - name: Experiment D preserves its approved deadline and decision requirements
+        run: python tests/test_experiment_d_deadline.py
+
       - name: The deploy runs every step of this job before it deploys
         run: python tests/test_deploy_gate.py
 

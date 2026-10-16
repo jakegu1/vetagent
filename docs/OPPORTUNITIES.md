@@ -60,7 +60,7 @@ methodology exists (arXiv 2201.07220, verified).
 
 ### O2 · Sell measurement to people with capital at risk, not to bot operators
 
-**Blocked until: gate 2026-10-16** (does anyone want to pay)
+**Blocked until: gate 2026-10-20** (does anyone want to pay)
 
 GoPlus prices the same class of data at $199 / $399 / $799 / $1,899 / $3,499 per month,
 roughly 35x above the $99 ceiling STRATEGY.md assumes. That suggests the buyer with real
@@ -162,7 +162,7 @@ that changes.
 
 ### O8 · Peer-relative risk
 
-**Blocked until: gate 2026-10-16** (does anyone want to pay). Date accepted by the owner
+**Blocked until: gate 2026-10-20** (does anyone want to pay). Date accepted by the owner
 2026-09-14. The narrow version it waited on -- turnover over the token rather than one pool
 -- shipped the same day and was measured on the full set: 8 tokens medium -> low (WBTC,
 USDT on Ethereum, BRETT, CLANKER among them) and 1 low -> medium (YFI).
@@ -176,7 +176,7 @@ and adopt only if it removes false alarms without adding a single dead-token mis
 
 ### O9 · Evidence-freshness budget as a caller parameter
 
-**Blocked until: gate 2026-10-16** (does anyone want to pay). Date accepted by the owner
+**Blocked until: gate 2026-10-20** (does anyone want to pay). Date accepted by the owner
 2026-09-14.
 
 Source: ChatGPT evaluation §14.4, `max_age_seconds`. Exposing freshness in every response is
@@ -198,7 +198,7 @@ the verdict would break every caller that exists.
 
 ### O11 · Monetization tiers
 
-**Blocked until: gate 2026-10-16** (does anyone want to pay).
+**Blocked until: gate 2026-10-20** (does anyone want to pay).
 
 Source: ChatGPT evaluation §11. Consistent with STRATEGY pricing and needs no code;
 Experiments D and E decide it. Measured context for that decision, 2026-09-13: every pure
