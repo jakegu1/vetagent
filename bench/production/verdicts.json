@@ -1,9 +1,9 @@
 {
- "window_start": "2026-10-08T12:07:03Z",
- "window_end": "2026-10-15T12:07:03Z",
+ "window_start": "2026-10-09T11:54:14Z",
+ "window_end": "2026-10-16T11:54:14Z",
  "counts": {
-  "low": 11,
-  "medium": 13,
+  "low": 13,
+  "medium": 14,
   "high": 0,
   "unknown": 2
  },
