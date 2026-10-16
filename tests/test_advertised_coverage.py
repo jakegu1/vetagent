@@ -34,9 +34,11 @@ Run: python tests/test_advertised_coverage.py
 """
 
 import io
+import json
 import os
 import re
 import sys
+from html.parser import HTMLParser
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "bench"))
@@ -295,7 +297,69 @@ def read(rel):
         return f.read()
 
 
+class _LandingDemo(HTMLParser):
+    """Read example buttons and the address default from the real landing page."""
+
+    def __init__(self):
+        super().__init__()
+        self.examples = []
+        self.defaults = []
+        self._button = None
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag == "input" and attrs.get("id") == "addr":
+            self.defaults.append(attrs.get("value"))
+        if tag == "button" and "data-a" in attrs:
+            self._button = (attrs, [])
+            self.examples.append(self._button)
+
+    def handle_data(self, data):
+        if self._button is not None:
+            self._button[1].append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "button":
+            self._button = None
+
+
 # --------------------------------------------------------------------- tests
+
+def test_first_landing_example_describes_a_failed_trade_simulation():
+    """The approved label stays attached to the fixed saved example and default."""
+    print("\n[advertising] the first landing example describes a failed simulation")
+    expected_address = "0x50614cc8e44f7814549c223aa31db9296e58057c"
+    demo = _LandingDemo()
+    demo.feed(read("src/landing.html"))
+    demo.close()
+    check("the landing demo keeps three example buttons", len(demo.examples) == 3)
+    attrs, label = demo.examples[0] if demo.examples else ({}, [])
+    check("first example keeps the fixed saved token address",
+          attrs.get("data-a") == expected_address, str(attrs.get("data-a")))
+    check("first example keeps its Ethereum chain hint",
+          attrs.get("data-c") == "ethereum", str(attrs.get("data-c")))
+    check("first example uses the approved simulation-failure label",
+          "".join(label) == "a token whose trade simulation fails", "".join(label))
+    check("the address input defaults to the fixed first example",
+          demo.defaults == [expected_address], str(demo.defaults))
+
+
+def test_saved_landing_example_records_a_simulation_failure():
+    """The dated fixture supports the wording; it does not assert a live verdict."""
+    print("\n[advertising] the saved landing example records a simulation failure")
+    fixture = json.loads(read("tests/fixtures/hp_align_simfail.json"))
+    check("the saved simulation belongs to the fixed first example",
+          fixture.get("token", {}).get("address", "").lower()
+          == "0x50614cc8e44f7814549c223aa31db9296e58057c")
+    check("the saved simulation is on Ethereum",
+          fixture.get("chain", {}).get("id") == "1"
+          and fixture.get("chain", {}).get("name") == "Ethereum")
+    check("the saved simulation explicitly failed",
+          fixture.get("simulationSuccess") is False)
+    error = fixture.get("simulationError")
+    check("the saved simulation contains an error",
+          isinstance(error, str) and bool(error.strip()), str(error))
+
 
 def test_every_dimension_has_a_vocabulary():
     """A dimension with no way of being said is a dimension nobody is checking."""
