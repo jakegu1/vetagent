@@ -596,6 +596,145 @@ def test_replay_engine_exception_preserves_the_error_and_previous_fetch():
         check("engine exception restores the actual previous fetch", risk.cf_fetch is previous)
 
 
+@contextmanager
+def _malformed_replay_network_guard():
+    """The bounded malformed-recording cases may never contact an external host."""
+    import ipaddress
+    import socket
+
+    attempted = []
+    original_connect, original_connect_ex = socket.socket.connect, socket.socket.connect_ex
+    original_getaddrinfo = socket.getaddrinfo
+
+    def local(host):
+        if host is None or host in ("", "localhost"):
+            return True
+        try:
+            return ipaddress.ip_address(host).is_loopback
+        except (ValueError, TypeError):
+            return False
+
+    def deny(address):
+        host = address[0] if isinstance(address, tuple) else address
+        if not local(host):
+            attempted.append(str(address))
+            raise AssertionError("external network forbidden for malformed-recording acceptance")
+
+    def connect(sock, address):
+        deny(address)
+        return original_connect(sock, address)
+
+    def connect_ex(sock, address):
+        deny(address)
+        return original_connect_ex(sock, address)
+
+    def getaddrinfo(host, *args, **kwargs):
+        deny((host,))
+        return original_getaddrinfo(host, *args, **kwargs)
+
+    with patch.object(socket.socket, "connect", connect), \
+            patch.object(socket.socket, "connect_ex", connect_ex), \
+            patch.object(socket, "getaddrinfo", getaddrinfo):
+        yield attempted
+
+
+def test_replay_rejects_malformed_recorded_responses():
+    print("\n[recorded shape] incomplete HTTP observations cannot validate a replay")
+    with io.open(os.path.join(FIXTURES, "ethereum.json"), encoding="utf-8") as f:
+        complete = json.load(f)
+    url = next(url for url in complete["responses"] if "/latest/dex/search?" in url)
+    entry = complete["responses"][url]
+    real_assess = risk.assess
+    malformed = [
+        ("missing status", {"body": entry["body"]}, "status"),
+        ("missing body", {"status": entry["status"]}, "body"),
+        ("empty response object", {}, "status"),
+        ("null response", None, "object"),
+        ("list response", [], "object"),
+        ("text response", "truncated", "object"),
+        ("numeric response", 7, "object"),
+        ("boolean status", {"status": True, "body": ""}, "status"),
+        ("text status", {"status": "200", "body": ""}, "status"),
+        ("float status", {"status": 200.0, "body": ""}, "status"),
+        ("null status", {"status": None, "body": ""}, "status"),
+        ("status below HTTP range", {"status": 99, "body": ""}, "status"),
+        ("status above HTTP range", {"status": 600, "body": ""}, "status"),
+        ("null body", {"status": 200, "body": None}, "body"),
+        ("boolean body", {"status": 200, "body": False}, "body"),
+        ("numeric body", {"status": 200, "body": 0}, "body"),
+        ("list body", {"status": 200, "body": []}, "body"),
+        ("object body", {"status": 200, "body": {}}, "body"),
+    ]
+
+    def exercise(label, recording, detail=None, fake=False, container=False,
+                 expected_response=None):
+        swallowed, returned, observed = [], [], []
+
+        async def swallowing_assess(address, chain_hint=None, verbose=False):
+            try:
+                response = await risk.cf_fetch(url)
+                observed.append((response.status, await response.text()))
+            except Exception as error:
+                swallowed.append(error)
+            returned.append(True)
+            return {"risk_level": "low", "signals": [], "evidence": {}}
+
+        previous, refusal, unexpected, answer = object(), None, None, None
+        name = "%s / %s" % ("fake" if fake else "real", label)
+        with _temporary_recording(recording), patch.object(risk, "cf_fetch", previous), \
+                patch.object(risk, "assess", swallowing_assess if fake else real_assess):
+            try:
+                answer, _recording = _assess("ethereum")
+            except AssertionError as error:
+                refusal = str(error)
+            except Exception as error:
+                unexpected = repr(error)
+            if detail is not None:
+                check("%s: malformed recording is refused" % name,
+                      refusal is not None, unexpected or "engine returned an accepted result")
+                check("%s: refusal names the invalid evidence" % name,
+                      refusal is not None and detail in refusal and "ethereum" in refusal
+                      and (container or url in refusal), refusal or unexpected or "no refusal")
+                if fake and not container:
+                    check("%s: fake catches the ordinary callback error and returns low" % name,
+                          len(swallowed) == 1 and isinstance(swallowed[0], Exception)
+                          and returned == [True], str((swallowed, returned)))
+            else:
+                check("%s: valid recorded status and text remain accepted" % name,
+                      isinstance(answer, dict) and refusal is None and unexpected is None,
+                      refusal or unexpected or "no result")
+                if fake:
+                    check("%s: valid recorded status and body remain exact" % name,
+                          observed == [expected_response] and not swallowed and returned == [True],
+                          str((observed, swallowed, returned)))
+            check("%s: actual previous fetch is restored" % name, risk.cf_fetch is previous)
+
+    with _malformed_replay_network_guard() as attempted:
+        for label, value, detail in malformed:
+            for fake in (False, True):
+                recording = json.loads(json.dumps(complete))
+                recording["responses"][url] = value
+                exercise(label, recording, detail, fake=fake)
+        for label, value in (("missing responses container", None),
+                             ("null responses container", None),
+                             ("list responses container", []),
+                             ("text responses container", "truncated")):
+            for fake in (False, True):
+                recording = json.loads(json.dumps(complete))
+                if label.startswith("missing"):
+                    del recording["responses"]
+                else:
+                    recording["responses"] = value
+                exercise(label, recording, "responses", fake=fake, container=True)
+        for status, body in ((100, ""), (599, "recorded upstream error"), (200, "")):
+            for fake in (False, True):
+                recording = json.loads(json.dumps(complete))
+                recording["responses"][url] = {"status": status, "body": body}
+                exercise("valid HTTP %s" % status, recording, fake=fake,
+                         expected_response=(status, body))
+        check("malformed-recording cases attempt no external network", not attempted, str(attempted))
+
+
 def _age_days(stamp):
     try:
         then = datetime.datetime.strptime(str(stamp)[:10], "%Y-%m-%d").date()
