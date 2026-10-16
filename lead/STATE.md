@@ -4,8 +4,8 @@
 > session starts by reading it. Durable rules live in `AGENTS.md`, `lead/QUALITY.md` and
 > `lead/decisions/`. Test for this file: could a stranger act on every row below?
 
-Last updated: 2026-10-16 by Codex, applying the Owner's Experiment D postponement
-and starting a bounded tool-improvement pass.
+Last updated: 2026-10-16 by Codex, completing the Owner's Experiment D postponement
+and the reviewed three-task technical release with actual snapshot verification.
 
 Current Owner decision: Experiment D moves to 2026-10-20 (ADR-0002). Its original
 thresholds and unresolved state remain. T-024 reconciles the active gate and dependent
@@ -51,27 +51,32 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 ## In flight
 
-| Task | Level | Branch / PR | Stage | Who | Next action |
-|---|---|---|---|---|---|
-| T-015, T-024, T-025 release | 3 | codex/tool-improvements-20261016, merged through 1d0a76f9 | all source reviews approved; integrated gate and release | lead | Run complete integrated checks, exact-head Linux preflight, publish, then verify deployment and a real snapshot |
+Nothing in flight. T-024 is merged as eb13f174, T-015 as 29afd0d9 and T-025 as
+1d0a76f9, all after fresh required independent and adversarial approval. T-025's
+bounded second round fixes the first adversarial finding at frozen 63651083;
+acceptance is 335/0 with four unchanged unsettled cells, complete outputs unchanged,
+and meaningful mutants caught. Original signed evidence remains private.
 
-T-024 is merged locally as eb13f174 after independent twelve-of-twelve approval and
-RED-TEAM: none. Both reviewers reproduce exact-head thirty-five-step success, original
-behavioral red and safe mutants. The real fixed-point generator succeeds after merge;
-only newline drift and the recent-commit display are restored from exact external
-backups. The lead's required integrated full check precedes this bookkeeping commit.
-No new production publication or experiment outcome is claimed yet.
+Published head is 19ea3af. Complete integrated checks pass 35/35 in 112.8 seconds;
+exact-head Linux preflight 38853528116 passes required jobs and all 219 observed
+upstream checks, with no unobserved or collapsed path. Actual deployment 38853922606
+runs its complete suite, uploads Worker version 705371de-9252-45f5-a1a2-ed77a08184bb
+and passes tagged production smoke. The lead independently reads the approved demo
+caption and health at HTTP 200. Master CI 38853922502 also passes required jobs and
+219 fully observed upstream checks. Optional backfill HTTP 400 remains separately parked.
 
-T-015 is merged locally as 29afd0d9 after independent twelve-of-twelve approval
-and RED-TEAM: none. Both reviewers reproduce the one-line copy diff, frozen old
-tests, real caption red and restored mutants. T-025's first red-team catches a partial
-response object bypass. The bounded round-2 repair freezes at 63651083 and passes
-fresh combined independent review at twelve of twelve, RED-TEAM: none material.
-All twelve complete outputs remain identical under one fixed clock, acceptance is
-335/0 with four unchanged unsettled cells, and three mutants fail meaningfully.
-Approved source is merged as 1d0a76f9. The actual fixed-point generator succeeds;
-only proved cosmetic changes are restored from exact external backups. The lead's
-full integrated gate precedes this bookkeeping commit. Actual publication is next.
+Actual manual snapshot 38853950387 passes collection, pool and sellability commits,
+generation and coverage. Independent raw Git counts at 123a856 prove 663 unique pools,
+forty HTTP 200 manifest pages, thirty-seven successful pages and three observed listing
+ends, eight chains and sixteen listing slots, zero pool-collection gaps, and forty-four
+continuous dates from Sep 3 through Oct 16. Every original byte prefix in all 121 prior
+raw NDJSON files is preserved. The optional sellability step records sixteen usable
+answers and nine no-record observations; missing records are not successful simulations.
+Bot CI 38854730840 passes the complete test job at 123a856; its network jobs are
+intentionally skipped for workflow_run. Verified bot commits are merged as 45267d5.
+The real fixed-point generator succeeds, with only proved newline drift restored from
+exact external backups. The final integrated gate precedes this completion-record commit.
+One manual pass proves neither four daily triggers nor long-term scheduled reliability.
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
 permissions and explicitly asked to continue on 2026-10-11. This covers reviewed technical
@@ -225,13 +230,13 @@ a long-term reliability rate or the cause of earlier missing nominal triggers.
 
 ## Next up
 
-Publish the approved T-015/T-024/T-025 integration after its complete local gate
-and exact-head Linux preflight. Verify that required deployment steps actually run,
-read back the tagged homepage and health endpoint, and independently count a real
-Oct-16 raw snapshot pass with all prior raw byte prefixes preserved. Do not infer
-coverage or four daily triggers from a successful workflow badge. Then ready the
-bounded T-026 attribution study and T-027 deterministic-RPC regression split; both
-drafts retain their Oct-17 review date and authorize no new provider or spending.
+T-015, T-024 and T-025 are complete with actual release and snapshot evidence above.
+Next ready the bounded T-026 attribution study and T-027 deterministic-RPC regression
+split; both drafts retain their Oct-17 review date and authorize no new provider or
+spending. The actual deployment also annotates Actions/runtime and runner-image
+migration warnings; verify current official guidance and the complete Python/Worker
+build in an isolated upgrade task before changing those versions. W28's discovery
+status/schema gap remains separately parked; do not reclassify historical usage.
 
 T-011, T-019, T-013, T-012, T-016, T-020, T-021, T-022 and T-023 are complete with their
 actual release or scheduled coverage evidence recorded. T-021 publishes exact 7da5bdf

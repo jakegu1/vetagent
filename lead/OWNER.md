@@ -7,17 +7,21 @@
 
 ## Status in one line
 
-The Owner postponed Experiment D to 2026-10-20 (UTC). T-024 has fresh independent
-twelve-of-twelve approval and RED-TEAM: none, and is merged into the isolated integration
-branch. Its original question, threshold and unresolved status remain. T-025 repairs the
-coverage replay handoff; T-015 applies the previously confirmed demo wording with a guard.
-T-015 also has fresh independent twelve-of-twelve approval and RED-TEAM: none and is
-merged locally. T-025's bounded second round now passes fresh combined independent
-review at twelve of twelve, RED-TEAM: none material, and is merged as 1d0a76f9.
-All twelve complete outputs remain unchanged; missing or malformed recorded evidence
-is refused even when the engine catches its callback error. The complete integrated
-gate precedes this bookkeeping commit. Exact-head Linux preflight, publication,
-actual deployment and a verified Oct-16 snapshot are the next release steps.
+Experiment D is postponed to 2026-10-20 (UTC), with its original rules and unresolved
+state preserved. T-024, T-025 and T-015 are published as 19ea3af after fresh required
+reviews, complete integrated checks and exact-head Linux preflight. Actual deployment
+38853922606 runs and passes the complete suite, Worker upload and tagged smoke; the
+homepage and health are independently read back at HTTP 200. Master CI 38853922502
+passes required jobs and all 219 observed upstream checks. The optional historical
+backfill HTTP 400 remains a separate follow-up; no benchmark accuracy claim changes.
+
+Actual Oct-16 snapshot 38853950387 passes every collection, preservation, generation
+and coverage step. Independent raw counts prove 663 unique pools, forty HTTP 200 pages,
+all eight chains and sixteen listing slots, zero pool-collection gaps, and forty-four
+continuous dates. All 121 prior raw NDJSON files preserve every original byte prefix.
+The optional sellability observations are sixteen usable and nine no-record, kept distinct.
+Bot CI 38854730840 passes at 123a856. The verified bot commits are retained as 45267d5.
+Next are the bounded depth-attribution study and deterministic RPC regression split.
 
 Previous verified release:
 
@@ -113,6 +117,15 @@ technical release. Experiment D retains its existing rules and moves to 2026-10-
 | M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
+
+- **2026-10-16** - lead - Completed the authorized three-task release at 19ea3af.
+  Full integrated checks pass 35/35 in 112.8 seconds. Linux preflight 38853528116
+  and master CI 38853922502 pass required jobs, each with 219 observed upstream
+  checks and no collapsed path. Deployment 38853922606 passes its own 35-step suite,
+  actual upload and tagged smoke; the corrected caption and healthy service are read
+  back. Manual snapshot 38853950387 independently proves 663 unique pools with zero
+  listing gaps and all old raw bytes preserved; bot CI passes. The final integrated
+  check after retaining the bot commits precedes this completion-record commit.
 
 - **2026-10-16** - lead - All three source repairs have fresh required approvals and
   are merged locally: T-024 eb13f174, T-015 29afd0d9 and T-025 1d0a76f9. T-025's first
