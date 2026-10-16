@@ -19,7 +19,7 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-011 | Make benchmark replay deterministic and keep live fills explicitly limited | 2 | M | none | done (deployed fefe6d1) |
 | T-012 | Preserve the liquidity gap for traded pools without claiming no market trace | 3 | M | T-011, T-019, T-013 | done (deployed e657c32) |
 | T-013 | Use validated full pool identifiers for upstream lookups | 3 | M | T-011, T-019 | done (deployed 7f796e4) |
-| T-015 | Describe the demo's failed simulation with the Owner-confirmed wording | 3 | S | T-024 | in_progress |
+| T-015 | Describe the demo's failed simulation with the Owner-confirmed wording | 3 | S | T-024 | done (merged 29afd0d9; publication pending) |
 | T-016 | Distinguish Solana liquidity pools from holder concentration | 2 | S | none | done (deployed c18de92) |
 | T-019 | Fill the benchmark's recorded miss list and publish an attributable replay baseline | 3 | S | T-011 | done (deployed a19c3dc) |
 | T-020 | Recover snapshot failures and report incomplete collection after preserving data | 3 | M | — | done (real schedule 38165984869) |

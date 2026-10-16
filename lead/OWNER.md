@@ -11,7 +11,9 @@ The Owner postponed Experiment D to 2026-10-20 (UTC). T-024 has fresh independen
 twelve-of-twelve approval and RED-TEAM: none, and is merged into the isolated integration
 branch. Its original question, threshold and unresolved status remain. T-025 repairs the
 coverage replay handoff; T-015 applies the previously confirmed demo wording with a guard.
-Both are in fresh review. Publication follows complete integration and release checks.
+T-015 also has fresh independent twelve-of-twelve approval and RED-TEAM: none and is
+merged locally. T-025 needs a bounded second round: partial response objects still
+hide missing evidence. Publication follows that fix, re-review and full release checks.
 
 Previous verified release:
 

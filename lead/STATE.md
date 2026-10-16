@@ -53,8 +53,7 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 | Task | Level | Branch / PR | Stage | Who | Next action |
 |---|---|---|---|---|---|
-| T-025 | 3 | codex/t025-coverage-replay-evidence, cb1c8ac | independent pass; red-team running | reviewers | Finish fresh adversarial review, integrate after the approved date repair, then full checks |
-| T-015 | 3 | codex/t015-landing-label, bc51fb7 | independent and adversarial reviews | reviewers | Verify exact caption, input identity and immutable guards before integration |
+| T-025 | 3 | codex/t025-coverage-replay-evidence, cb1c8ac plus round-2 work | changes requested; bounded executor continuation | executor | Refuse malformed status/body evidence, freeze old tests, then fresh combined round-2 review |
 
 T-024 is merged locally as eb13f174 after independent twelve-of-twelve approval and
 RED-TEAM: none. Both reviewers reproduce exact-head thirty-five-step success, original
@@ -62,6 +61,12 @@ behavioral red and safe mutants. The real fixed-point generator succeeds after m
 only newline drift and the recent-commit display are restored from exact external
 backups. The lead's required integrated full check precedes this bookkeeping commit.
 No new production publication or experiment outcome is claimed yet.
+
+T-015 is merged locally as 29afd0d9 after independent twelve-of-twelve approval
+and RED-TEAM: none. Both reviewers reproduce the one-line copy diff, frozen old
+tests, real caption red and restored mutants. T-025's red-team catches a partial
+response object bypass after its independent pass; lead/reviews/T-025.md records
+the bounded class fix and round-2 bar. Do not publish that source before re-review.
 
 The Owner authorized engineering repairs and prioritized deployment, then restored execution
 permissions and explicitly asked to continue on 2026-10-11. This covers reviewed technical

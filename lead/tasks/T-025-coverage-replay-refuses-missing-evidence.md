@@ -1,7 +1,7 @@
 ---
 id: T-025
 title: Make coverage replay refuse an incomplete recording after engine error handling
-status: in_review
+status: changes_requested
 level: 3
 size: S
 depends_on: [T-024]
@@ -88,3 +88,39 @@ An accidental new endpoint, truncated fixture or stale recording must not masque
 as a successfully measured coverage cell. Ordinary engine exception handling must not
 hide a test failure. Guard the callback-to-assessment seam and restoration; preserve the
 distinction between an observed upstream response and an unobserved fixture entry.
+
+## Round 2 amendment: missing response fields are incomplete evidence
+
+The fresh red-team reproduced a material seam at cb1c8ac. Deleting only a requested
+search response's body still returns low, and the entire frozen matrix runner still
+reports 169 passed and zero failed with its original four unsettled cells. Missing
+status and empty response objects have the same caught-error path. A URL key alone
+does not establish a recorded HTTP observation. This is within the original incomplete
+recording goal; do not reinterpret malformed evidence as an ordinary upstream failure.
+
+Keep the same one-file scope and preserve every old and first-round acceptance function,
+input, helper and discovery AST from cb1c8ac. Authorized additive acceptance name:
+test_replay_rejects_malformed_recorded_responses, plus only new test-local helpers needed
+by it. Commit additions alone as `T-025: named change (add malformed-recording acceptance)`
+and reproduce meaningful failures on cb1c8ac before the helper fix. Do not edit the
+original tests-only commit or rewrite source history.
+
+Validate the recorded response shape outside any engine catch, or retain durable invalid
+evidence accounting checked after the engine returns. An actually requested entry must
+be an object with status and body; status is an integer HTTP code in 100 through 599
+excluding bool, and body is text, including empty text. A malformed responses container
+also invalidates replay. Valid recorded HTTP errors keep their original status/body
+semantics; no fixture or production behavior changes. Inventory existing recordings
+first and stop on an actual valid-fixture conflict.
+
+Bound cases to missing fields, non-object entries/container, invalid status type/range
+and non-text bodies. Exercise both the real assessment and the swallowing fake with a
+diagnostic identifying the requested URL where applicable. All success/failure paths
+preserve the actual prior cf_fetch. Use private copies or memory with network blocked.
+
+Implement only _replay/_assess in a separate explicitly named helper-change commit.
+Prove all earlier original/acceptance ASTs and complete recording outputs unchanged;
+rerun prior mutants and add a mutant bypassing malformed-entry refusal. Then run final
+exact-head acceptance, contract and configured suite against the same sole-calendar
+baseline. Stop after this bounded fix and request one fresh combined independent and
+adversarial round-2 review. No schema feature, new source, recording or scoring work.
