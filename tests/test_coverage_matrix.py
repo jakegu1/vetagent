@@ -55,6 +55,9 @@ import io
 import json
 import os
 import sys
+import tempfile
+from contextlib import contextmanager
+from unittest.mock import patch
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "src"))
@@ -423,6 +426,165 @@ def test_a_dimension_is_not_claimed_on_a_chain_it_is_not_asked_about():
                 check("%s is not quietly covered on %s (%s), where it is marked n/a"
                       % (name, chain, symbol), observed != COVERED,
                       "engine says %s -- if it is covered there it is not n/a" % observed)
+
+
+@contextmanager
+def _temporary_recording(recording):
+    """Exercise private copies without changing any committed recording."""
+    global FIXTURES
+    previous = FIXTURES
+    with tempfile.TemporaryDirectory(prefix="vetagent-coverage-replay-") as directory:
+        with io.open(os.path.join(directory, "ethereum.json"), "w", encoding="utf-8") as f:
+            json.dump(recording, f)
+        FIXTURES = directory
+        try:
+            yield
+        finally:
+            FIXTURES = previous
+
+
+def test_replay_complete_real_recording_restores_the_previous_fetch():
+    print("\n[replay] complete recorded evidence still reaches the real engine")
+    previous = object()
+    with patch.object(risk, "cf_fetch", previous):
+        result, recording = _assess("ethereum")
+        check("complete Ethereum recording still returns its low verdict",
+              result.get("risk_level") == "low", result.get("risk_level"))
+        check("complete Ethereum recording still has its five responses",
+              len(recording["responses"]) == 5)
+        check("successful replay restores the actual previous fetch",
+              risk.cf_fetch is previous)
+
+
+def test_replay_each_real_requested_response_is_required_after_engine_handling():
+    print("\n[replay] every actually requested Ethereum response is required")
+    with io.open(os.path.join(FIXTURES, "ethereum.json"), encoding="utf-8") as f:
+        recording = json.load(f)
+    requested = []
+    original_replay = _replay
+
+    class _RequestedResponses(dict):
+        def get(self, url, default=None):
+            requested.append(url)
+            return super().get(url, default)
+
+    def tracked_replay(responses, *args, **kwargs):
+        return original_replay(_RequestedResponses(responses), *args, **kwargs)
+
+    with patch.object(sys.modules[__name__], "_replay", tracked_replay):
+        _assess("ethereum")
+    actual_urls = sorted(set(requested))
+    check("complete real engine requests exactly the five recorded Ethereum URLs",
+          len(actual_urls) == 5 and set(actual_urls) == set(recording["responses"]),
+          str(actual_urls))
+    for url in actual_urls:
+        incomplete = json.loads(json.dumps(recording))
+        del incomplete["responses"][url]
+        requested.clear()
+        previous, refusal, unexpected = object(), None, None
+        with _temporary_recording(incomplete), \
+                patch.object(sys.modules[__name__], "_replay", tracked_replay), \
+                patch.object(risk, "cf_fetch", previous):
+            try:
+                _assess("ethereum")
+            except AssertionError as error:
+                refusal = str(error)
+            except Exception as error:
+                unexpected = repr(error)
+            check("removed real response was actually requested: %s" % url,
+                  url in requested, str(requested))
+            check("incomplete real replay is refused: %s" % url,
+                  refusal is not None, unexpected or "engine returned an accepted result")
+            check("refusal identifies the missing real request: %s" % url,
+                  refusal is not None and url in refusal and "ethereum" in refusal,
+                  refusal or unexpected or "no refusal")
+            check("incomplete real replay restores the previous fetch: %s" % url,
+                  risk.cf_fetch is previous)
+
+
+def test_replay_refuses_a_miss_swallowed_by_a_plausible_fake_engine():
+    print("\n[replay] a swallowed callback error cannot validate missing evidence")
+    url = "https://fixture.invalid/unrecorded"
+    for responses in ({}, {url: None}):
+        swallowed, returned = [], []
+
+        async def swallowing_assess(address, chain_hint=None, verbose=False):
+            try:
+                await risk.cf_fetch(url)
+            except Exception as error:
+                swallowed.append(error)
+            returned.append(True)
+            return {"risk_level": "low", "signals": [], "evidence": {}}
+
+        recording = {"address": TOKENS["ethereum"][0][0], "responses": responses}
+        previous, refusal = object(), None
+        with _temporary_recording(recording), \
+                patch.object(risk, "assess", swallowing_assess), \
+                patch.object(risk, "cf_fetch", previous):
+            try:
+                _assess("ethereum")
+            except AssertionError as error:
+                refusal = str(error)
+            check("fake engine catches the ordinary callback assertion and returns low",
+                  len(swallowed) == 1 and isinstance(swallowed[0], AssertionError)
+                  and returned == [True])
+            check("fake engine's plausible result cannot hide missing evidence",
+                  refusal is not None and url in refusal and "ethereum" in refusal,
+                  refusal or "low result was accepted")
+            check("swallowed missing-response replay restores the previous fetch",
+                  risk.cf_fetch is previous)
+
+
+def test_replay_recorded_failures_and_empty_bodies_remain_observed_responses():
+    print("\n[replay] recorded HTTP failures and empty bodies are still recordings")
+    cases = [(200, '{"ok": true}'), (200, ""), (404, '{"error": "not found"}'),
+             (429, ""), (503, b"recorded bytes")]
+    for status, body in cases:
+        url = "https://fixture.invalid/recorded/%s" % status
+        fetch = _replay({url: {"status": status, "body": body}})
+        response = asyncio.run(fetch(url, method="POST", headers={"x-test": "recorded"},
+                                     body="request bytes"))
+        check("recorded status %s and its exact body are preserved" % status,
+              response.status == status and asyncio.run(response.text()) == body)
+
+    url = "https://fixture.invalid/recorded-error"
+    for status, body in cases[:-1]:
+        observed = []
+
+        async def recorded_assess(address, chain_hint=None, verbose=False):
+            response = await risk.cf_fetch(url)
+            observed.append((response.status, await response.text()))
+            return {"risk_level": "unknown"}
+
+        recording = {"address": TOKENS["ethereum"][0][0],
+                     "responses": {url: {"status": status, "body": body}}}
+        previous = object()
+        with _temporary_recording(recording), patch.object(risk, "assess", recorded_assess), \
+                patch.object(risk, "cf_fetch", previous):
+            result, returned_recording = _assess("ethereum")
+            check("observed HTTP %s is accepted through the assessment handoff" % status,
+                  observed == [(status, body)] and result == {"risk_level": "unknown"}
+                  and returned_recording == recording)
+            check("recorded HTTP %s restores the previous fetch" % status,
+                  risk.cf_fetch is previous)
+
+
+def test_replay_engine_exception_preserves_the_error_and_previous_fetch():
+    print("\n[replay] an engine exception cannot replace the previous fetch")
+    expected = RuntimeError("synthetic engine failure")
+
+    async def raising_assess(address, chain_hint=None, verbose=False):
+        raise expected
+
+    previous, observed = object(), None
+    with patch.object(risk, "assess", raising_assess), \
+            patch.object(risk, "cf_fetch", previous):
+        try:
+            _assess("ethereum")
+        except RuntimeError as error:
+            observed = error
+        check("engine exception is preserved", observed is expected)
+        check("engine exception restores the actual previous fetch", risk.cf_fetch is previous)
 
 
 def _age_days(stamp):
