@@ -3,9 +3,18 @@
 > This page holds only what the lead needs from you. The project's own dashboard, with its
 > deadlines and gates, is `docs/OWNER.md` (generated). Messages to you are in Chinese; files
 > here are English because the repository is English-only. Maintained by the project lead (AI).
-> Last updated: 2026-10-16 (Codex)
+> Last updated: 2026-10-18 (Codex)
 
 ## Status in one line
+
+The linked improvement batch is in progress: discovery completeness and malformed
+listing handling (T-028), archive freshness/latest-pass health after preservation
+(T-029), and a bounded private fallback-depth attribution study before its runtime
+specification. Independent tasks have separate commits and reviews; engine writers
+are serial and the batch gets one integrated release. No new spending or provider.
+Experiment D remains due Oct 20 with the original unresolved rule.
+
+Last verified release:
 
 Experiment D is postponed to 2026-10-20 (UTC), with its original rules and unresolved
 state preserved. T-024, T-025 and T-015 are published as 19ea3af after fresh required

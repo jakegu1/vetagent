@@ -45,6 +45,14 @@ as removed mistakes and unknown changes. Source rights and any cost remain Owner
 
 ## Readiness gaps
 
+### 2026-10-18 check-in
+
+The lead starts the bounded private evidence study from the current frozen source and
+independent cache copies. Its parent replay must reproduce every committed output before
+instrumentation. This is an investigation before a runtime task, not implementation
+authorization or an exception to the tests-first contract. The runtime specification
+remains draft until actual selection attribution and missing-evidence behavior are known.
+
 The executor's exact source/copy locations, scope, safe instrumentation, expected output
 contract, immutable control and acceptance tests remain to be specified. This draft is
 not authorization to implement a production cap or a claim that the experiment has run.

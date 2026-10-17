@@ -1,0 +1,80 @@
+---
+id: T-028
+title: Preserve discovery completeness across malformed listings and public interfaces
+status: in_progress
+level: 3
+size: M
+depends_on: [T-025]
+decisions: []
+backlog: W28
+---
+
+## Context and goal
+
+new_pools names its successful/failed listings but declares no top-level status.
+It also treats a parsed object without a data list as a successful empty listing.
+A partial scan can look complete; malformed input can abort the other usable listing.
+Make the observed completeness explicit without changing risk verdicts or historic usage.
+
+## Budget and scope
+
+One bounded task, no new spending/provider/live recording. Files in scope:
+src/risk.py (new_pools and a local listing parser only), src/mcp_server.py (discovery
+output schema only), tests/test_mcp.py (additive acceptance helpers/functions/imports).
+No other production helper, scoring, cache/fetch policy, privacy/telemetry code, gate,
+fixture, dependency or permission change. No source work outside these three files.
+
+Use a separate branch/worktree from the lead's ready-spec commit. This is the sole
+writer of src/risk.py in this phase. Preserve every old test/helper/input/discovery AST.
+Existing tests/test_mcp.py discovers test_ functions automatically; add functions there,
+not a new unregistered runner. All new tests are committed first and then frozen.
+
+## Conflict search and named changes
+
+Searched new_pools/new-pools, sources_ok/sources_failed, outputSchema and telemetry
+status use across all test files, plus risk's new-pool regression cases, finite-market
+discovery seam, MCP schema/output comparison and HTTP telemetry handlers. No older
+acceptance change is allowed. Existing all-source failure must still raise RuntimeError;
+MCP/HTTP error envelopes and existing fields/count semantics stay compatible.
+
+## Acceptance criteria
+
+1. Successful discovery includes status exactly ok when both listings were observed,
+   or partial when only one usable listing was observed. Valid empty data: [] is an
+   observed empty result, with status ok when both listings are valid and empty. Count,
+   scanned, limit, order, deduplication, chain defaults and stale disclosure are preserved.
+2. A usable listing is an object with an explicit list-valued data member. Missing/null/
+   scalar/object data and non-object top-level JSON are failures, never empty successes.
+   Malformed row/container types that the existing parser would crash on fail that
+   listing while allowing the other usable listing to return a partial result. Validate
+   into temporary per-listing state so a failure cannot leave unacknowledged half-merged
+   rows. Preserve ordinary optional missing fields accepted by the old tests.
+3. If neither listing is usable, raise the existing RuntimeError. One malformed listing
+   plus one valid empty listing is partial with zero observed pools; two valid empty
+   listings are ok; an older healthy listing must not conceal the current failed one.
+   Endpoint failures remain source failures rather than token-risk evidence.
+4. The real MCP handler's structuredContent and text describe the same status/data.
+   Discovery outputSchema declares status as required with enum [ok, partial] and clear
+   completeness-only semantics. Exercise actual HTTP routing and prospective telemetry
+   with the project's existing offline runtime shim; prior error behavior and self-client
+   separation remain. Do not rewrite usage artifacts, historic gate inputs or their rules.
+5. First commit adds only new acceptance tests in tests/test_mcp.py. Reproduce meaningful
+   red for the original false-empty/completeness behaviors. Commit status/schema and
+   malformed-listing handling as separate source findings, preserving the test contract.
+   In-memory mutants for always-ok, accepting missing data, and losing the usable listing
+   must each fail meaningful assertions. Verify unique replacements and fresh processes.
+6. Freeze a clean final head; original risk, MCP, finite-market and HTTP telemetry runners
+   remain green, then python lead/checks.py passes all configured steps. New acceptance,
+   controls and mutants block external network; the full runner's existing read-only
+   Ethereum RPC dependency is disclosed, not described as wholly offline. Report exact
+   commits, frozen ASTs, red/final outputs, mutants and complete three-file scope.
+
+## Threat model and delivery
+
+Upstream transport success may carry no usable listing; malformed upstream JSON must not
+become market absence or hide the other source. An ok scan may contain no pools; partial
+is completeness, never an investment endorsement. Adding status changes prospective tool
+telemetry only; no retrospective caller/gate reclassification or extra identifying data.
+No live VetAgent request. If later authorized by the lead, every production probe uses
+x-mcp-client: vetagent-manual-probe. Require fresh independent and adversarial review,
+at most two rounds. Write a signed READY and evidence privately; do not merge or push.

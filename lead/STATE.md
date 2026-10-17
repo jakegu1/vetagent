@@ -4,8 +4,8 @@
 > session starts by reading it. Durable rules live in `AGENTS.md`, `lead/QUALITY.md` and
 > `lead/decisions/`. Test for this file: could a stranger act on every row below?
 
-Last updated: 2026-10-16 by Codex, completing the Owner's Experiment D postponement
-and the reviewed three-task technical release with actual snapshot verification.
+Last updated: 2026-10-18 by Codex, starting a linked data-integrity and availability
+batch after reconciling the verified release and scheduled bot data.
 
 Current Owner decision: Experiment D moves to 2026-10-20 (ADR-0002). Its original
 thresholds and unresolved state remain. T-024 reconciles the active gate and dependent
@@ -51,7 +51,27 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 ## In flight
 
-Nothing in flight. T-024 is merged as eb13f174, T-015 as 29afd0d9 and T-025 as
+| Task | Level | Stage | Who | Next action |
+|---|---|---|---|---|
+| T-026 evidence study | bounded private investigation | parent-control and actual selection attribution | investigator | Complete immutable trace, then select a narrow runtime/provenance specification |
+| T-028 | 3 | ready specification; executor dispatch next | lead | Acceptance tests first, discovery status and malformed-listing handling, fresh reviews |
+| T-029 | 3 | ready specification; executor dispatch next | lead | Acceptance tests first, archive health and preservation-first wiring, fresh reviews |
+
+The Owner asks for related gaps to be completed in batches with the highest delivery
+quality. Use a dependency graph: isolated nonoverlapping tasks run in parallel, each
+finding has its own test/fix history and review, overlapping engine changes are serial,
+and the batch gets a complete integrated check and one release. Cap this first batch
+at three implementation tasks; a depth change needs the study evidence and T-028's
+engine freeze first. Existing technical release authorization still applies; no change
+to A1, product gates, spending, providers, privacy or agent permissions.
+
+The Oct-18 check-in fetches origin/master 4669cf0 and retains all scheduled observations
+as 1fbabc5. Its actual configured baseline is 35/35 in 110.9 seconds. The real generator
+succeeds; date/relative-label and recent-commit-only display drift is proved and restored
+from an exact external backup. No source, test or workflow changed upstream. Latest
+completed bot CI 39032278470 passes at 4669cf0. The primary checkout remains untouched.
+
+Previous completed release: T-024 is merged as eb13f174, T-015 as 29afd0d9 and T-025 as
 1d0a76f9, all after fresh required independent and adversarial approval. T-025's
 bounded second round fixes the first adversarial finding at frozen 63651083;
 acceptance is 335/0 with four unchanged unsettled cells, complete outputs unchanged,

@@ -30,3 +30,5 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-025 | Refuse incomplete coverage recordings after engine error handling | 3 | S | T-024 | done (published 19ea3af; actual CI passes) |
 | T-026 | Attribute selected fallback-pool depth before a runtime proposal | 3 | S | T-015, T-024, T-025 | draft; review 2026-10-17 |
 | T-027 | Separate recorded power regression from live RPC monitoring | 3 | S | T-015, T-024, T-025 | draft; review 2026-10-17 |
+| T-028 | Preserve discovery completeness across malformed listings and interfaces | 3 | M | T-025 | in_progress |
+| T-029 | Detect stale/incomplete snapshots after observation preservation | 3 | M | T-020, T-022 | in_progress |
