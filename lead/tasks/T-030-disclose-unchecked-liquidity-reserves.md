@@ -47,6 +47,18 @@ key set in test_finite_market_measurements, existing depth rejection/zero cases 
 the new T-028 contract. Add evidence beside best_pair, never inside its fixed key set.
 Both existing runners automatically discover added test_ functions; no workflow edit.
 
+Replay amendment: the existing finalizer embeds a liquidity signal message in some
+unknown/liquidity-driver recommendations. Keep that same qualification on this caller
+surface; do not add a post-finalization boundary or change _finalize. The initial
+allowlist overlooked this existing copy operation. Before review, add only
+test_unchecked_reserve_qualification_follows_liquidity_recommendation in
+tests/test_risk.py, in a separate tests-only commit named
+"T-030: named change (recommendation qualification)". Preserve every earlier test,
+helper, input and discovery AST, including the first acceptance commit. Show this
+addition failing meaningfully against the original parent, passing against the frozen
+implementation, and failing against an in-memory mutant that strips the qualification
+from the recommendation alone. No numerical rebaseline or implementation change.
+
 ## Acceptance criteria
 
 1. If the selected pool has positive credited depth and its existing reserve-cap result
@@ -54,6 +66,9 @@ Both existing runners automatically discover added test_ functions; no workflow 
    exactly "not_checkable". Its existing liquidity signal message states "Upstream
    estimate; reserve amounts not checked." Signal names, severities and categories stay
    unchanged. No extra signal, data gap or positive verification claim is introduced.
+   When the existing finalizer copies this message into a liquidity-driver
+   recommendation, retain the same exact qualification there. All other recommendation
+   text, advice and next-action behavior stay unchanged; _finalize remains untouched.
 2. For the same selected pool, liquidity exposes liquidity_reserve_check with the same
    value and a note with that same qualification, retaining status ok and all ordinary
    measurements. Its MCP output schema declares the optional field and enum, and its
@@ -68,7 +83,9 @@ Both existing runners automatically discover added test_ functions; no workflow 
    No new request, clock dependency, cache key, address exposure or identifying log.
 4. Exercise real MCP structured/text responses for both tools. Characterize before/after
    pool identity, all numerical fields, signals except the exact allowed message suffix,
-   data gaps and verdict/confidence. Keep old compact-output budgets and display IDs.
+   data gaps and verdict/confidence. Only the same qualification naturally copied into
+   an existing liquidity-driver recommendation may also differ. Keep old compact-output
+   budgets and display IDs.
    First commit adds acceptance tests alone; produce meaningful red for the missing
    disclosure, then freeze them and all earlier ASTs. In-memory mutants omitting the
    marker, labelling only by provider and marking a checked finite-cap pool must fail.
@@ -77,7 +94,11 @@ Both existing runners automatically discover added test_ functions; no workflow 
    external network, cache writes and after-clock use; deliberately watch guards fail.
    Parent reproduces committed JSON and markdown exactly. All 576 benchmark row fields
    and published summaries remain byte-identical after the fix. Whole verbose answers
-   are identical after removing only the conditional marker and exact message suffix.
+   are identical after removing only the conditional marker, exact signal-message suffix,
+   and that same qualification at the existing liquidity-message location in an eligible
+   recommendation. Eligibility requires the positive _NOT_CHECKABLE marker and an
+   existing liquidity-driver recommendation. Do not strip arbitrary recommendation
+   changes or alter an unqualified answer. Report the number of each allowed difference.
    Report gains and regressions as measured zero for the unchanged numeric logic, not
    as an accuracy improvement or a fresh market observation. Preserve source/cache hashes.
 6. Freeze source/tests, complete any lead-owned derived receipt refresh, then freeze a
