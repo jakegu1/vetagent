@@ -706,6 +706,129 @@ def test_discovery_extreme_creation_times_keep_other_listing():
                           [x[0] for x in routed] == ["new", "trending"], str(routed))
 
 
+@contextmanager
+def _t030_mcp_market(fallback):
+    """Feed actual upstream conversion, selection, assessment and MCP serialization locally."""
+    address = "0x" + "ef" * 20
+    anchor = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+    pool = "0x" + "ab" * 32
+    seen = []
+    raw = {"id": "eth_" + pool,
+           "attributes": {"address": pool, "name": "TOKEN / USDC",
+                          "base_token_price_usd": "1", "reserve_in_usd": "250000",
+                          "volume_usd": {"h24": "100000"},
+                          "transactions": {"h24": {"buys": 40, "sells": 35}},
+                          "pool_created_at": "2020-09-13T12:26:40Z"},
+           "relationships": {"base_token": {"data": {"id": "eth_" + address}},
+                             "quote_token": {"data": {"id": "eth_" + anchor}}}}
+    pair = {"chainId": "ethereum", "dexId": "uniswap", "pairAddress": pool,
+            "baseToken": {"address": address, "symbol": ""},
+            "quoteToken": {"address": anchor, "symbol": "USDC"},
+            "priceUsd": "1", "priceNative": "1", "liquidity": {"usd": 250_000},
+            "volume": {"h24": 100_000}, "txns": {"h24": {"buys": 40, "sells": 35}},
+            "pairCreatedAt": 1_600_000_000_000}
+
+    class NetworkForbidden(BaseException):
+        pass
+
+    def no_network(*args, **kwargs):
+        raise NetworkForbidden("T-030 MCP acceptance forbids external network access")
+
+    def loopback_only(operation):
+        def connect(sock, destination):
+            if isinstance(destination, tuple) and destination[0] in ("127.0.0.1", "::1"):
+                return operation(sock, destination)
+            return no_network()
+        return connect
+
+    async def fetch(url, *args, **kwargs):
+        seen.append(url)
+        if url == "https://api.dexscreener.com/latest/dex/tokens/" + address:
+            return {"pairs": [] if fallback else [copy.deepcopy(pair)]}
+        if url == "https://api.geckoterminal.com/api/v2/networks/eth/tokens/" + address + "/pools":
+            return {"data": [copy.deepcopy(raw)]}
+        if url.startswith("https://api.honeypot.is/v2/IsHoneypot?address="):
+            return _load("hp_matic.json")
+        if url.startswith("https://api.dexscreener.com/latest/dex/search?q="):
+            return {"pairs": []}
+        return no_network()
+
+    with patch.object(socket.socket, "connect", loopback_only(socket.socket.connect)), \
+            patch.object(socket.socket, "connect_ex", loopback_only(socket.socket.connect_ex)), \
+            patch.object(socket, "create_connection", no_network), \
+            patch.object(socket, "getaddrinfo", no_network), \
+            patch.object(risk, "cf_fetch", None), \
+            patch.object(risk, "_fetch_json", fetch):
+        yield address, pool, seen
+
+
+def test_unchecked_reserve_disclosure_reaches_both_real_mcp_tools():
+    """The marker must survive the real loader, both assess modes and both MCP payloads."""
+    print("\n[T-030 MCP] unchecked reserve disclosure survives the complete tool seam")
+    note = "Upstream estimate; reserve amounts not checked."
+    for fallback in (False, True):
+        with _t030_mcp_market(fallback) as (address, pool, seen):
+            for tool, extra in (("assess_token_risk", {"verbose": False}),
+                                ("assess_token_risk", {"verbose": True}),
+                                ("get_token_liquidity", {})):
+                start = len(seen)
+                response = call({"jsonrpc": "2.0", "id": 30, "method": "tools/call",
+                                 "params": {"name": tool, "arguments": {
+                                     "address": address, "chain_hint": "ethereum", **extra}}})
+                result = response.get("result") or {}
+                data = result.get("structuredContent") or {}
+                tag = ("fallback" if fallback else "other provider") + " " + tool + str(extra) + ": "
+                check(tag + "normal structured success and text agree",
+                      not result.get("isError") and bool(data)
+                      and data == json.loads(result.get("content", [{}])[0].get("text", "null")), str(response))
+                evidence = data.get("evidence", {}) if tool == "assess_token_risk" else data
+                check(tag + "the conditional reserve marker reaches the client",
+                      evidence.get("liquidity_reserve_check") == "not_checkable", str(data))
+                if tool == "assess_token_risk":
+                    signals = [s for s in data.get("signals", []) if s.get("category") == "liquidity"]
+                    check(tag + "existing adequate signal has the exact qualification",
+                          len(signals) == 1 and signals[0].get("severity") == "ok"
+                          and signals[0].get("name") == "Liquidity is adequate"
+                          and signals[0].get("message") == "Main pair holds $250,000. " + note, str(signals))
+                    check(tag + "the public identifier remains compact",
+                          pool not in json.dumps(data)
+                          and ((evidence.get("best_pair") or {}).get("pair_address") == pool[:48] + "..."
+                               if extra["verbose"] else "pair_address" not in (evidence.get("best_pair") or {})),
+                          str(evidence.get("best_pair")))
+                else:
+                    check(tag + "usable upstream numbers and qualification coexist",
+                          data.get("status") == "ok" and data.get("liquidity_usd") == 250_000
+                          and data.get("price_usd") == 1 and data.get("volume_24h_usd") == 100_000
+                          and data.get("pairs_total") == 1 and data.get("note") == note, str(data))
+                calls = seen[start:]
+                expected = ["https://api.dexscreener.com/latest/dex/tokens/" + address]
+                if fallback:
+                    expected.append("https://api.geckoterminal.com/api/v2/networks/eth/tokens/" + address + "/pools")
+                if tool == "assess_token_risk":
+                    if fallback:
+                        expected.append("https://api.dexscreener.com/latest/dex/search?q=TOKEN")
+                    expected.append("https://api.honeypot.is/v2/IsHoneypot?address=" + address + "&chainID=1")
+                check(tag + "disclosure makes no additional request", calls == expected, str(calls))
+
+
+def test_liquidity_schema_explains_upstream_ok_without_certifying_unmarked_pools():
+    print("\n[T-030 MCP] optional reserve marker and honest status description")
+    tools = call({"jsonrpc": "2.0", "id": 30, "method": "tools/list"})["result"]["tools"]
+    tool = next(t for t in tools if t["name"] == "get_token_liquidity")
+    schema = tool["outputSchema"]
+    field = schema.get("properties", {}).get("liquidity_reserve_check") or {}
+    check("reserve marker is an optional string with exactly the one observed enum",
+          field.get("type") == "string" and field.get("enum") == ["not_checkable"]
+          and "liquidity_reserve_check" not in schema.get("required", []), str(field))
+    description = tool["description"].lower()
+    check("ok explicitly means usable upstream data", "'ok' means usable upstream data" in description, description)
+    check("ok does not certify reserves or executable sell depth",
+          "not independently verified reserves or executable sell depth" in description, description)
+    check("absence of the optional marker never certifies reserves, prices or exits",
+          "missing" in description and "marker" in description and "never" in description
+          and "prices" in description and "exit trade" in description, description)
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)

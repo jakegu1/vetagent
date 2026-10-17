@@ -7,13 +7,17 @@ Run:  python tests/test_risk.py
 """
 
 import asyncio
+import copy
 import datetime
 import io
 import glob
 import json
 import os
 import re
+import socket
 import sys
+from contextlib import contextmanager
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src"))
 
@@ -6275,6 +6279,194 @@ def test_traded_depth_predicate_preserves_malformed_transaction_containers():
                   answer.get("next_action") == ("abstain" if traded else None), str(answer.get("next_action")))
     finally:
         risk._fetch_json = saved_fetch
+
+
+def _t030_pair(usd=250_000, provider="uniswap", reserves=True, chain="ethereum"):
+    """One anchored local pool; amounts and source labels are independent controls."""
+    pair = {"chainId": chain, "dexId": provider,
+            "pairAddress": "0x" + "ab" * 32,
+            "baseToken": {"address": "0x" + "ef" * 20, "symbol": ""},
+            "quoteToken": {"address": USDC, "symbol": "USDC"},
+            "priceUsd": "1", "priceNative": "1", "liquidity": {"usd": usd},
+            "volume": {"h24": 100_000}, "txns": {"h24": {"buys": 40, "sells": 35}},
+            "pairCreatedAt": 1_600_000_000_000}
+    if reserves:
+        pair["liquidity"].update(base=usd / 2, quote=usd / 2)
+    return pair
+
+
+@contextmanager
+def _t030_local_market(pairs, source="dexscreener"):
+    """Run the real assessment/tool with local pairs and a hard network boundary."""
+    class NetworkForbidden(BaseException):
+        pass
+
+    def no_network(*args, **kwargs):
+        raise NetworkForbidden("T-030 acceptance forbids external network access")
+
+    def loopback_only(operation):
+        def connect(sock, address):
+            if isinstance(address, tuple) and address[0] in ("127.0.0.1", "::1"):
+                return operation(sock, address)
+            return no_network()
+        return connect
+
+    async def load_pairs(*args, **kwargs):
+        return copy.deepcopy(pairs), source
+
+    async def fetch(url, *args, **kwargs):
+        if url.startswith("https://api.honeypot.is/v2/IsHoneypot?address="):
+            return _load("hp_matic.json")
+        if url.startswith("https://api.dexscreener.com/latest/dex/search?q="):
+            return {"pairs": []}
+        return no_network()
+
+    clock = risk._BENCH_NOW.set(datetime.datetime(2026, 9, 21, 2, tzinfo=datetime.timezone.utc))
+    try:
+        with patch.object(socket.socket, "connect", loopback_only(socket.socket.connect)), \
+                patch.object(socket.socket, "connect_ex", loopback_only(socket.socket.connect_ex)), \
+                patch.object(socket, "create_connection", no_network), \
+                patch.object(socket, "getaddrinfo", no_network), \
+                patch.object(risk, "cf_fetch", None), \
+                patch.object(risk, "_fetch_json", fetch), \
+                patch.object(risk, "_load_pairs", load_pairs), \
+                patch.object(risk, "_now_iso", return_value="2026-09-21T02:00:00Z"):
+            yield
+    finally:
+        risk._BENCH_NOW.reset(clock)
+
+
+def _t030_answers(pairs, source="dexscreener"):
+    address = (pairs[0]["baseToken"]["address"] if pairs else "0x" + "ef" * 20)
+    chain = pairs[0]["chainId"] if pairs else "ethereum"
+    with _t030_local_market(pairs, source):
+        return [run(risk.assess(address, chain_hint=chain, verbose=verbose))
+                for verbose in (False, True)] + [run(risk.liquidity(address, chain_hint=chain))]
+
+
+def test_unchecked_liquidity_disclosure_preserves_the_complete_selected_answer():
+    """A missing reserve cap adds only its conditional marker and exact qualification."""
+    print("\n[T-030] selected upstream estimates disclose the unchecked reserves")
+    note = "Upstream estimate; reserve amounts not checked."
+    for usd, severity, name in ((2_500, "critical", "Very low liquidity"),
+                                (25_000, "warn", "Thin liquidity"),
+                                (250_000, "ok", "Liquidity is adequate")):
+        for provider in ("uniswap", "geckoterminal"):
+            tag = "%s %s: " % (provider, usd)
+            missing = _t030_pair(usd, provider, reserves=False)
+            checked = _t030_pair(usd, provider, reserves=True)
+            check(tag + "the fixture uses the existing not-checkable sentinel",
+                  risk._independent_depth_cap(missing) is risk._NOT_CHECKABLE)
+            check(tag + "the control has an ordinary finite cap",
+                  risk._independent_depth_cap(checked) == usd)
+            answers, controls = _t030_answers([missing]), _t030_answers([checked])
+            for verbose, answer, control in zip((False, True), answers[:2], controls[:2]):
+                label = tag + ("verbose: " if verbose else "slim: ")
+                evidence = answer.get("evidence") or {}
+                check(label + "reserve marker survives the evidence boundary",
+                      evidence.get("liquidity_reserve_check") == "not_checkable", str(evidence))
+                signals = [s for s in answer["signals"] if s["category"] == "liquidity"]
+                check(label + "the same single liquidity signal carries the exact suffix",
+                      len(signals) == 1 and signals[0]["severity"] == severity
+                      and signals[0]["name"] == name and signals[0]["message"].endswith(" " + note),
+                      str(signals))
+                normalized = copy.deepcopy(answer)
+                normalized["evidence"].pop("liquidity_reserve_check", None)
+                for signal in normalized["signals"]:
+                    if signal["category"] == "liquidity" and signal["message"].endswith(" " + note):
+                        signal["message"] = signal["message"][:-len(" " + note)]
+                check(label + "all other fields, gaps, scores, verdict and confidence are unchanged",
+                      normalized == control, str(normalized))
+                best = evidence.get("best_pair") or {}
+                check(label + "marker is beside the fixed best-pair keys",
+                      "liquidity_reserve_check" not in best and len(best) == (10 if verbose else 9), str(best))
+                check(label + "long display identifiers keep the existing compact boundary",
+                      (best.get("pair_address") == missing["pairAddress"][:48] + "..." if verbose
+                       else "pair_address" not in best)
+                      and missing["pairAddress"] not in json.dumps(answer), str(best))
+            liquidity, control = answers[2], controls[2]
+            check(tag + "liquidity stays ok with the same reserve marker and note",
+                  liquidity.get("status") == "ok"
+                  and liquidity.get("liquidity_reserve_check") == "not_checkable"
+                  and liquidity.get("note") == note, str(liquidity))
+            normalized = copy.deepcopy(liquidity)
+            normalized.pop("liquidity_reserve_check", None)
+            normalized.pop("note", None)
+            check(tag + "every ordinary liquidity field is unchanged", normalized == control, str(normalized))
+
+
+def test_liquidity_reserve_marker_follows_cap_semantics_and_positive_credited_depth():
+    """Provider, missing operands, empty pools and unavailable depth cannot certify a cap."""
+    print("\n[T-030] reserve disclosure follows the existing cap semantics")
+    note = "Upstream estimate; reserve amounts not checked."
+    unknown = _t030_pair(chain="unknown-anchor-chain")
+    both = _t030_pair()
+    both["baseToken"]["address"] = WETH
+    unbacked = _t030_pair(provider="geckoterminal", reserves=False)
+    unbacked["quoteToken"]["address"] = "0x" + "cd" * 20
+    unbacked_amounts = _t030_pair()
+    unbacked_amounts["quoteToken"]["address"] = "0x" + "cd" * 20
+    missing_usd = _t030_pair(reserves=False)
+    missing_usd["liquidity"] = {}
+    malformed = []
+    for field, value in (("quote", float("nan")), ("quote", True), ("quote", "1e309")):
+        pair = _t030_pair()
+        pair["liquidity"][field] = value
+        malformed.append(("invalid reserve " + str(value), pair, risk._INVALID_CAP))
+    bad_native = _t030_pair()
+    bad_native["priceNative"] = "0"
+    missing_one = _t030_pair()
+    missing_one["liquidity"].pop("quote")
+    cases = [("unknown anchor-table chain", unknown, risk._NOT_CHECKABLE, True, "ok"),
+             ("one reserve missing on another provider", missing_one, risk._NOT_CHECKABLE, True, "ok"),
+             ("finite checked fallback", _t030_pair(provider="geckoterminal"), 250_000, False, "ok"),
+             ("both anchors", both, float("inf"), False, "ok"),
+             ("unbacked fallback", unbacked, None, False, "unpriced"),
+             ("unbacked reserve pair", unbacked_amounts, None, False, "unpriced"),
+             ("invalid price operand", bad_native, risk._INVALID_CAP, False, "unpriced"),
+             ("zero depth", _t030_pair(0, reserves=False), risk._NOT_CHECKABLE, False, "drained"),
+             ("missing depth", missing_usd, risk._NOT_CHECKABLE, False, "unpriced"),
+             ("rejected tiny depth", _t030_pair(1e-12, reserves=False), risk._NOT_CHECKABLE, False, "unpriced")]
+    cases += [(label, pair, cap, False, "unpriced") for label, pair, cap in malformed]
+    for label, pair, cap, marked, status in cases:
+        actual_cap = risk._independent_depth_cap(pair)
+        check(label + ": fixture reaches its specified original cap result",
+              actual_cap is cap if cap is None or cap in (risk._NOT_CHECKABLE, risk._INVALID_CAP)
+              else actual_cap == cap)
+        answers = _t030_answers([pair])
+        for verbose, answer in zip((False, True), answers[:2]):
+            tag = label + (" verbose: " if verbose else " slim: ")
+            evidence = answer.get("evidence") or {}
+            check(tag + "marker is present exactly for the positive unchecked case",
+                  evidence.get("liquidity_reserve_check") == "not_checkable" if marked
+                  else "liquidity_reserve_check" not in evidence, str(evidence))
+            qualifies = [s for s in answer["signals"] if note in s["message"]]
+            check(tag + "only that selected liquidity signal is qualified",
+                  len(qualifies) == 1 and qualifies[0]["category"] == "liquidity" if marked
+                  else not qualifies, str(qualifies))
+            if not marked:
+                check(tag + "no positive verification claim is added",
+                      "liquidity_reserve_check" not in json.dumps(answer)
+                      and "reserves verified" not in json.dumps(answer).lower())
+        liquidity = answers[2]
+        check(label + ": liquidity status preserves zero versus unavailable", liquidity.get("status") == status,
+              str(liquidity))
+        check(label + ": liquidity marker and qualification have the same conditional boundary",
+              liquidity.get("liquidity_reserve_check") == "not_checkable" and liquidity.get("note") == note
+              if marked else "liquidity_reserve_check" not in liquidity and note not in liquidity.get("note", ""),
+              str(liquidity))
+        if status == "unpriced":
+            check(label + ": unknown depth remains null", liquidity.get("liquidity_usd", "missing") is None)
+        elif status == "drained":
+            check(label + ": observed empty depth stays zero", liquidity.get("liquidity_usd") == 0)
+    for label, pairs, status in (("no listed pool", [], "not_found"),
+                                  ("request unavailable", None, "unavailable")):
+        answers = _t030_answers(pairs)
+        check(label + ": no selected pool invents no reserve marker or qualification",
+              all("liquidity_reserve_check" not in json.dumps(answer) and note not in json.dumps(answer)
+                  for answer in answers), str(answers))
+        check(label + ": existing liquidity status is retained", answers[2].get("status") == status,
+              str(answers[2]))
 
 
 def main():
