@@ -56,7 +56,7 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 | T-026 evidence study | bounded private investigation | signed evidence complete; hashes independently checked | lead | Carry the provenance-only recommendation into T-030; no numerical cap authorized |
 | T-028 | 3 | final combined review twelve of twelve, no material finding; merged 24c9aa7 | lead | Shared release and actual public-interface readback after T-030 |
 | T-029 | 3 | final combined review twelve of twelve, no material finding; merged a925eec | lead | Verify the new step in the batched production release |
-| T-030 | 3 | frozen fd3c1d1; complete checks green; independent and adversarial review active | reviewers | Verify the conditional disclosures and unchanged numerical/identifier contracts before the shared release |
+| T-030 | 3 | independent twelve of twelve and adversarial none; merged 629b5bc | lead | Complete integrated checks, shared deployment and tagged public-interface readback |
 
 The Owner asks for related gaps to be completed in batches with the highest delivery
 quality. Use a dependency graph: isolated nonoverlapping tasks run in parallel, each
@@ -77,8 +77,12 @@ pass all thirty-five steps in 114.2 seconds. Its isolated immutable replay prese
 576 benchmark rows and both committed result files byte for byte. Complete answers
 differ only by 106 conditional reserve-check markers, 106 exact qualifications and
 four copies of that same qualification in the existing final recommendations. No
-numerical gains or regressions are measured. Fresh independent and adversarial reviews
-are active on this exact frozen head; no batch deployment has occurred yet.
+numerical gains or regressions are measured. Fresh independent review passes twelve
+of twelve and adversarial review has no material finding. Both run all thirty-five
+configured steps themselves; independent replay reproduces the complete frozen
+benchmark, and the adversarial bounded grid compares 372 full answers. Signed reports
+and all sealed artifact hashes are checked before merge 629b5bc. Shared integrated
+checks and actual deployment remain; no batch deployment has occurred yet.
 
 The Oct-18 check-in fetches origin/master 4669cf0 and retains all scheduled observations
 as 1fbabc5. Its actual configured baseline is 35/35 in 110.9 seconds. The real generator

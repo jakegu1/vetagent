@@ -16,9 +16,9 @@ Experiment D remains due Oct 20 with the original unresolved rule.
 
 T-028 and T-029 pass fresh combined round-2 reviews with no material findings and
 are merged. Both separate and combined-base complete checks pass. The actual default
-archive is healthy after the retained-legacy-schema correction. T-030 is frozen at
-fd3c1d1 with all thirty-five configured checks green and both required reviews active;
-the shared release remains. The bounded T-026 evidence study is complete;
+archive is healthy after the retained-legacy-schema correction. T-030 passes both
+required fresh reviews and is merged as 629b5bc. All three tasks are ready for the
+integrated gate and shared release. The bounded T-026 evidence study is complete;
 no numerical reserve cap or new provider is implemented.
 
 Last verified release:
