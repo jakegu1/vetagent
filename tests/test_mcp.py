@@ -619,6 +619,93 @@ def test_t028_real_http_and_mcp_preserve_status_errors_and_prospective_telemetry
                       [x[0] for x in seen] == ["new", "trending"], str(seen))
 
 
+def test_discovery_extreme_creation_times_keep_other_listing():
+    """Creation-time overflow fails one listing without discarding the usable source."""
+    print("\n[T-028] extreme numeric creation times stay inside their listing boundary")
+    for label, value in (("401-digit integer", 10 ** 400), ("finite negative", -1e308)):
+        value = json.loads(json.dumps(value, allow_nan=False))
+        overflow = _t028_pool("2")
+        overflow["attributes"]["pool_created_at"] = value
+        bad = {"data": [_t028_pool("1"), overflow, _t028_pool("3")]}
+        for failed in ("new", "trending"):
+            healthy = "trending" if failed == "new" else "new"
+            for survivor_name, survivor in (("populated", {"data": [_t028_pool("9")]}),
+                                             ("empty", {"data": []}), ("all bad", bad)):
+                new, trending = (bad, survivor) if failed == "new" else (survivor, bad)
+                out, error, seen = _t028_scan(new, trending)
+                tag = "T028 time %s %s %s: " % (label, failed, survivor_name)
+                all_bad = survivor_name == "all bad"
+                expected_rows = [("eth_pool9", healthy)] if survivor_name == "populated" else []
+                if all_bad:
+                    check(tag + "both unusable retain the existing RuntimeError",
+                          isinstance(error, RuntimeError) and str(error)
+                          == "GeckoTerminal request failed; could not scan new pools on ethereum",
+                          repr(error))
+                else:
+                    check(tag + "the usable listing still returns partial",
+                          error is None and out.get("status") == "partial"
+                          and out.get("sources_failed") == [failed] and out.get("sources_ok") == [healthy],
+                          str(out) + repr(error))
+                    check(tag + "bad listing rows are discarded atomically",
+                          out.get("count") == out.get("scanned") == len(expected_rows)
+                          and [(r.get("pool_id"), r.get("kind")) for r in out.get("pools", [])]
+                          == expected_rows, str(out))
+                check(tag + "both listings are attempted", [x[0] for x in seen] == ["new", "trending"],
+                      str(seen))
+                for interface in ("http", "mcp"):
+                    with _t028_runtime(new, trending) as (runtime, recorded, routed):
+                        body = {"jsonrpc": "2.0", "id": 28, "method": "tools/call",
+                                "params": {"name": "find_new_hot_pools",
+                                           "arguments": {"chain": "ethereum"}}}
+
+                        class Request(runtime.FakeRequest):
+                            async def json(self):
+                                return body
+
+                        request = Request("https://offline.invalid" + (
+                            "/mcp" if interface == "mcp" else "/new-pools?chain=ethereum"),
+                            method="POST" if interface == "mcp" else "GET",
+                            headers={"x-mcp-client": "vetagent-manual-probe"})
+                        response = asyncio.run(runtime.entry.Default().fetch(request))
+                        answer = json.loads(response.body)
+                    route_tag = tag + interface + " "
+                    result = answer.get("result", {}) if interface == "mcp" else answer
+                    data = result.get("structuredContent", {}) if interface == "mcp" else result
+                    if all_bad:
+                        if interface == "mcp":
+                            check(route_tag + "all-bad tool error retains the scan failure",
+                                  response.status == 200 and result.get("isError") is True
+                                  and "structuredContent" not in result
+                                  and "Tool execution failed: GeckoTerminal request failed;" in
+                                  result.get("content", [{}])[0].get("text", ""), str(answer))
+                        else:
+                            check(route_tag + "all-bad HTTP error retains the scan failure",
+                                  response.status == 500 and answer.get("error") == "internal_error"
+                                  and answer.get("detail", "").startswith("GeckoTerminal request failed;"),
+                                  str(answer))
+                    else:
+                        check(route_tag + "survivor response is a partial success",
+                              response.status == 200 and not result.get("isError")
+                              and data.get("status") == "partial" and data.get("sources_ok") == [healthy]
+                              and data.get("sources_failed") == [failed], str(answer))
+                        check(route_tag + "response contains only the complete surviving listing",
+                              data.get("count") == data.get("scanned") == len(expected_rows)
+                              and [(r.get("pool_id"), r.get("kind")) for r in data.get("pools", [])]
+                              == expected_rows, str(answer))
+                        if interface == "mcp":
+                            check(route_tag + "text and structured content agree",
+                                  not result.get("isError") and data == json.loads(
+                                      result.get("content", [{}])[0].get("text", "null")),
+                                  str(answer))
+                    check(route_tag + "telemetry distinguishes partial from error",
+                          len(recorded) == 1 and recorded[0] == (
+                              ["tools/call" if interface == "mcp" else "http", "find_new_hot_pools",
+                               "" if all_bad else "partial", "vetagent-manual-probe", "??", ""],
+                              [1.0, 1.0 if all_bad else 0.0]), str(recorded))
+                    check(route_tag + "both local listings were attempted",
+                          [x[0] for x in routed] == ["new", "trending"], str(routed))
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
