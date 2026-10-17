@@ -1,7 +1,7 @@
 ---
 id: T-028
 title: Preserve discovery completeness across malformed listings and public interfaces
-status: in_progress
+status: changes_requested
 level: 3
 size: M
 depends_on: [T-025]
@@ -94,3 +94,26 @@ The lead may restore only proved calendar/recent-log display drift from exact ex
 backups. All original/new tests and source remain frozen. No benchmark result, score,
 threshold or historical usage changes. The full configured gate must then pass before
 READY/review; reviewers use this amended spec as the contract.
+
+### 2026-10-18 round 1: contain numeric creation-time overflow per listing
+
+Adversarial valid-JSON probes reproduce OverflowError for pool_created_at equal to
+an integer with 401 digits or the finite number -1e308. The age helper's numeric
+conversion can raise outside the local listing containment, aborting the other usable
+listing and yielding HTTP/MCP errors. This is the same malformed-listing boundary,
+not a reason to expand the global timestamp or risk logic.
+
+Named additive acceptance change: add
+test_discovery_extreme_creation_times_keep_other_listing to tests/test_mcp.py.
+Keep all first-round ASTs, assertions, fixtures and helpers frozen. Commit this
+addition alone as T-028: named change (creation-time overflow containment), observe
+red on 32ea4ec, then fix only the discovery listing boundary in a separate source
+finding commit. Cover both numeric values in both listing directions, atomic discard
+of the bad listing after an earlier good row, one valid empty survivor, all-bad errors
+and real HTTP/MCP survivor responses. No additional numeric or scoring behavior change.
+
+Do not catch BaseException or weaken the network/mutation guards. A mutant removing
+the overflow containment must be rejected by the added acceptance. Source/tests then
+freeze, the lead separately regenerates the allowed correctness receipt, and the full
+configured runner passes on the final clean head. Round 2 is one fresh combined
+independent/adversarial review of this bar and regressions, without unrelated fronts.
