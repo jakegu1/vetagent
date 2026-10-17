@@ -9,8 +9,8 @@
 
 The linked improvement batch is in progress: discovery completeness and malformed
 listing handling (T-028), archive freshness/latest-pass health after preservation
-(T-029), and a bounded private fallback-depth attribution study before its runtime
-specification. Independent tasks have separate commits and reviews; engine writers
+(T-029), and selected-liquidity reserve-check disclosure (T-030), gated by the bounded
+private attribution study and the discovery engine freeze. Independent tasks have separate commits and reviews; engine writers
 are serial and the batch gets one integrated release. No new spending or provider.
 Experiment D remains due Oct 20 with the original unresolved rule.
 

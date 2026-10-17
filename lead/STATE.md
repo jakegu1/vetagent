@@ -54,8 +54,9 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 | Task | Level | Stage | Who | Next action |
 |---|---|---|---|---|
 | T-026 evidence study | bounded private investigation | parent-control and actual selection attribution | investigator | Complete immutable trace, then select a narrow runtime/provenance specification |
-| T-028 | 3 | ready specification; executor dispatch next | lead | Acceptance tests first, discovery status and malformed-listing handling, fresh reviews |
-| T-029 | 3 | ready specification; executor dispatch next | lead | Acceptance tests first, archive health and preservation-first wiring, fresh reviews |
+| T-028 | 3 | acceptance-first implementation in isolated worktree | executor | Freeze discovery status/malformed-listing head, then fresh independent and red-team reviews |
+| T-029 | 3 | acceptance-first implementation in isolated worktree | executor | Freeze archive health/preservation-first head, then fresh independent and red-team reviews |
+| T-030 | 3 | ready; waiting for T-026 evidence and T-028 source freeze | lead | Disclose unchecked reserve amounts; preserve every numeric and identifier contract |
 
 The Owner asks for related gaps to be completed in batches with the highest delivery
 quality. Use a dependency graph: isolated nonoverlapping tasks run in parallel, each
