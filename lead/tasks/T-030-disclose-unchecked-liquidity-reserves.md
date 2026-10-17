@@ -22,7 +22,8 @@ not disclose that limitation. Qualify it in both assessment and liquidity tool r
 No numerical depth, pool selection, scoring, confidence, verdict, data-gap, provider,
 request set, cache, identifier disclosure, price, threshold, archive or benchmark change.
 Preserve E21 and T-013's compact display identifiers. This is the third and last
-implementation task in the linked batch, dispatched only after T-028's source is frozen.
+implementation task in the linked batch, dispatched only after T-028 passes review and
+is merged by the lead.
 It protects evidence interpretation; stop if it needs a numerical or coverage-policy change.
 
 Files in scope: src/risk.py (_liquidity_signals, liquidity, slim-evidence retention and
@@ -30,6 +31,10 @@ a pure local disclosure helper/constant only), src/mcp_server.py (liquidity sche
 its description only), tests/test_risk.py and tests/test_mcp.py (additive acceptance
 functions/helpers/imports only). Do not change _independent_depth_cap,
 _reported_liquidity, _pick_best, _gt_to_pair, _load_pairs, _finalize or fetch/cache code.
+The lead may regenerate docs/SCORECARD.md in a separate derived-only commit when the
+new assertion totals make its existing correctness receipt stale. Use the existing
+fixed-point script in explicit regenerate mode; restore only proved calendar/recent-log
+display drift from exact external backups. No manual score or benchmark edits.
 
 ## Conflict search and named changes
 
@@ -75,7 +80,8 @@ Both existing runners automatically discover added test_ functions; no workflow 
    are identical after removing only the conditional marker and exact message suffix.
    Report gains and regressions as measured zero for the unchanged numeric logic, not
    as an accuracy improvement or a fresh market observation. Preserve source/cache hashes.
-6. Freeze a clean final head and run python lead/checks.py, all 35 configured steps green.
+6. Freeze source/tests, complete any lead-owned derived receipt refresh, then freeze a
+   clean final head and run python lead/checks.py, all 35 configured steps green.
    New acceptance, controls and mutants are network blocked; disclose the full runner's
    existing read-only Ethereum RPC check. READY supplies exact commits, scope, red/final,
    contract, AST freeze, replay and mutant evidence privately. Fresh independent and
