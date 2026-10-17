@@ -149,16 +149,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- lead: record verified tool release and preserved Oct16 snapshot
-- lead: accept bounded replay re-review and prepare verified integration release
-- T-025: named change (_replay and _assess handoff)
-- T-025: named change (add malformed-recording acceptance)
-- lead: record reviewed demo integration and bounded replay round two
-- lead: record T-024 approvals and green integration with RPC follow-up
-- lead: clarify shared replay helper contract and record next depth study
-- T-025: named change (_replay and _assess handoff)
+- lead: record signed disclosure reviews and approved batch merge
+- lead: record recommendation-copy disclosure incident
+- lead: record frozen disclosure task and start required reviews
+- T-030: regenerate correctness receipt after disclosure assertions
+- T-030: named change (recommendation qualification)
+- lead: preserve reserve qualification in copied recommendations
+- T-030: disclose selected depth with unchecked reserves
+- T-030: acceptance tests
 
-_93 more not shown (101 commits in total)._
+_122 more not shown (130 commits in total)._
 
 ## What I got wrong
 
