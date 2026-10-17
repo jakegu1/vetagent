@@ -56,7 +56,7 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 | T-026 evidence study | bounded private investigation | signed evidence complete; hashes independently checked | lead | Carry the provenance-only recommendation into T-030; no numerical cap authorized |
 | T-028 | 3 | final combined review twelve of twelve, no material finding; merged 24c9aa7 | lead | Shared release and actual public-interface readback after T-030 |
 | T-029 | 3 | final combined review twelve of twelve, no material finding; merged a925eec | lead | Verify the new step in the batched production release |
-| T-030 | 3 | acceptance-first implementation on green merged base 5d37434 | executor | Disclose unchecked reserve amounts; preserve every numeric and identifier contract |
+| T-030 | 3 | frozen fd3c1d1; complete checks green; independent and adversarial review active | reviewers | Verify the conditional disclosures and unchanged numerical/identifier contracts before the shared release |
 
 The Owner asks for related gaps to be completed in batches with the highest delivery
 quality. Use a dependency graph: isolated nonoverlapping tasks run in parallel, each
@@ -70,6 +70,15 @@ Both T-028 and T-029 pass final combined reviews and their separate post-merge g
 The combined source/metadata base passes all thirty-five configured steps in 110.8
 seconds and is committed as 5d37434. T-030 is dispatched only from this reviewed,
 green base. All three implementations will share one final technical release.
+
+T-030 freezes at fd3c1d1 after tests-only 199077a, source af02714, the preregistered
+recommendation-copy acceptance 7d1c0d9 and a separate generated receipt. Complete checks
+pass all thirty-five steps in 114.2 seconds. Its isolated immutable replay preserves all
+576 benchmark rows and both committed result files byte for byte. Complete answers
+differ only by 106 conditional reserve-check markers, 106 exact qualifications and
+four copies of that same qualification in the existing final recommendations. No
+numerical gains or regressions are measured. Fresh independent and adversarial reviews
+are active on this exact frozen head; no batch deployment has occurred yet.
 
 The Oct-18 check-in fetches origin/master 4669cf0 and retains all scheduled observations
 as 1fbabc5. Its actual configured baseline is 35/35 in 110.9 seconds. The real generator

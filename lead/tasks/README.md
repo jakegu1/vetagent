@@ -32,4 +32,4 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-027 | Separate recorded power regression from live RPC monitoring | 3 | S | T-015, T-024, T-025 | draft; review 2026-10-17 |
 | T-028 | Preserve discovery completeness across malformed listings and interfaces | 3 | M | T-025 | done; merged 24c9aa7, batched release pending |
 | T-029 | Detect stale/incomplete snapshots after observation preservation | 3 | M | T-020, T-022 | done; merged a925eec, batched release pending |
-| T-030 | Disclose selected liquidity with unchecked reserve amounts | 3 | M | T-026, T-028 | in_progress |
+| T-030 | Disclose selected liquidity with unchecked reserve amounts | 3 | M | T-026, T-028 | in_review; frozen fd3c1d1, full checks green |
