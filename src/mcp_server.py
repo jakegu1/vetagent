@@ -140,7 +140,11 @@ TOOLS = [
         "description": (
             "Liquidity snapshot for a token's primary trading pair: price, 24h volume, "
             "pair count and the chains it trades on.\n"
-            "Check 'status' before using the numbers. 'ok' means real data. "
+            "Check 'status' before using the numbers. 'ok' means usable upstream data, "
+            "not independently verified reserves or executable sell depth. "
+            "The optional liquidity_reserve_check marker says 'not_checkable' when a "
+            "positive selected estimate has no computable reserve cap. A missing marker "
+            "never asserts that reserves, prices or an exit trade were independently verified. "
             "'unavailable' means the upstream request failed, which does NOT mean the "
             "token has no liquidity. 'not_found' means no trading pair exists for this "
             "address at all. 'unpriced' means pairs exist but no source has costed them, "
@@ -166,6 +170,11 @@ TOOLS = [
                                     "unavailable"]},
                 "price_usd": {"type": ["number", "null"]},
                 "liquidity_usd": {"type": ["number", "null"]},
+                "liquidity_reserve_check": {
+                    "type": "string", "enum": ["not_checkable"],
+                    "description": "The positive upstream estimate was retained, but its "
+                                   "reserve amounts could not be checked. Absence of this "
+                                   "marker makes no verification claim."},
                 "volume_24h_usd": {"type": ["number", "null"]},
                 "pairs_total": {"type": "integer"},
                 "checked_at": _CHECKED_AT,
