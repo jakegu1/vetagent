@@ -4,6 +4,10 @@ Twelve hours is an operational alarm, allowing two nominal collection intervals.
 Pass counts include manual observations; they do not prove scheduled triggers. The
 daily observer shares GitHub's scheduler with collection, so this is not independent
 uptime monitoring. Only manifests are read, never the archived pool observations.
+All JSON and timestamps are validated. Coverage is checked for the latest pass and
+the inclusive last 24 hours; older schema history cannot describe current coverage.
+The optional older_passes_not_checked field counts distinct older passes excluded
+from coverage evaluation and is emitted only when positive.
 """
 
 import argparse
@@ -44,9 +48,10 @@ def _complete(coverage):
 def report(archive_dir=snapshot.OUT_DIR, *, now=None, max_age_hours=12):
     """Return observed health, preserving unavailable measurements as null.
 
-    Invalid input fails closed for the archive as a whole: a truncated current
-    manifest cannot silently reveal an older successful pass instead. All pass
-    timestamps are normalized to UTC before grouping or selecting the latest.
+    Invalid JSON or timestamps anywhere fail closed; all timestamps are normalized
+    to UTC before grouping. Coverage is validated for the latest pass and the
+    inclusive last 24 hours, so legacy history outside that scope cannot mask
+    current health. Invalid relevant coverage never falls back to an older pass.
     """
     max_age_hours = _duration(max_age_hours)
     now = datetime.now(timezone.utc) if now is None else now
@@ -83,11 +88,16 @@ def report(archive_dir=snapshot.OUT_DIR, *, now=None, max_age_hours=12):
                 result["causes"] = {"future_evidence": 1}
                 return result
             passes.setdefault(instant, []).append(entry)
+        latest = max(passes)
+        window_start = now - timedelta(hours=24)
         coverages = {instant: snapshot._coverage(manifest)
-                     for instant, manifest in passes.items()}
+                     for instant, manifest in passes.items()
+                     if instant == latest or instant >= window_start}
+        older_passes = len(passes) - len(coverages)
+        if older_passes:
+            result["older_passes_not_checked"] = older_passes
         if any(coverage[3].get("manifest_invalid") for coverage in coverages.values()):
             return result
-        latest = max(passes)
         coverage = coverages[latest]
         rows, pages, gaps, causes = coverage
         complete = _complete(coverage)
@@ -98,7 +108,6 @@ def report(archive_dir=snapshot.OUT_DIR, *, now=None, max_age_hours=12):
             status = "healthy"
         else:
             status = "stale"
-        window_start = now - timedelta(hours=24)
         recent = [item for instant, item in coverages.items() if window_start <= instant <= now]
         result.update(status=status, latest_seen_at=latest.isoformat(), latest_age_hours=age,
                       observed_passes_24h=len(recent),
