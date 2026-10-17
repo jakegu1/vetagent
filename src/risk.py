@@ -4470,6 +4470,36 @@ async def liquidity(address, chain_hint=None):
     })
 
 
+def _parse_new_pool_listing(data, net, kind):
+    """Parse one complete listing before any of its rows are merged."""
+    if (not isinstance(data, dict) or _is_error_body(data)
+            or not isinstance(data.get("data"), list)):
+        raise ValueError("Unusable pool listing")
+    parsed = {}
+    for p in data["data"]:
+        pid = p.get("id")
+        if not pid or pid in parsed:
+            continue
+        a = p.get("attributes") or {}
+        # Discovery must return the base token that assess_token_risk accepts, not
+        # just a pool identifier. Strip only this network's prefix and escape the
+        # upstream-controlled text, as for every other field reaching the caller.
+        rel = p.get("relationships") or {}
+        base_id = str(((rel.get("base_token") or {}).get("data") or {}).get("id") or "")
+        if base_id.startswith(net + "_"):
+            base_id = base_id[len(net) + 1:]
+        parsed[pid] = {
+            "kind": kind, "pool_id": _ascii_safe(pid, 64),
+            "token_address": _ascii_safe(base_id, 64),
+            "name": _ascii_safe(a.get("name"), 48),
+            "price_usd": _market_round(a.get("base_token_price_usd")),
+            "liquidity_usd": _market_round(a.get("reserve_in_usd")),
+            "volume_24h_usd": _market_round((a.get("volume_usd") or {}).get("h24")),
+            "pool_age_days": _age_days(a.get("pool_created_at")),
+        }
+    return parsed
+
+
 async def new_pools(chain="solana", limit=10):
     """Scan a chain for new and trending pools."""
     _begin_request()
@@ -4494,49 +4524,19 @@ async def new_pools(chain="solana", limit=10):
     for kind, path in (("new", "new_pools"), ("trending", "trending_pools")):
         data = await _fetch_json(
             "https://api.geckoterminal.com/api/v2/networks/%s/%s" % (net, path))
-        # An error body counts as a failed endpoint, not as an empty scan. _fetch_json
-        # already filters these, so this is defence in depth -- but it is the layer that
-        # decides whether the tool says "nothing found", and that sentence is worth
-        # guarding twice.
-        if data is None or _is_error_body(data):
+        # A transport success without an explicit data list is not an observed empty
+        # market. Parsing into temporary state also keeps a malformed later row from
+        # leaking half a failed listing or aborting the other usable source.
+        try:
+            listing = _parse_new_pool_listing(data, net, kind)
+        except (AttributeError, TypeError, ValueError):
             sources_failed.append(kind)
             continue  # this endpoint failed
         sources_ok.append(kind)
         reachable = True
-        for p in (data.get("data") or []):
-            pid = p.get("id")
-            if not pid or pid in merged:
-                continue
-            a = p.get("attributes") or {}
-            # The token address, so the answer can actually be used.
-            #
-            # This tool discovers pools and `assess_token_risk` takes a token address,
-            # and until now the discovery half returned neither: `pool_id` is a
-            # GeckoTerminal identifier, not something the other tool accepts. So the
-            # advertised discovery-to-vetting flow did not connect, and an agent that
-            # found a hot pool had no way to ask whether it was safe -- which is the one
-            # thing this server exists to answer. Found by Glama's automated grader,
-            # which marked the server down for exactly this and was right to.
-            #
-            # GeckoTerminal already returns it on the same response, chain-prefixed
-            # (`base_0x1313...`). The prefix is stripped so the value can be passed
-            # straight back in, and it goes through _ascii_safe like every other
-            # upstream-controlled string.
-            rel = p.get("relationships") or {}
-            base_id = str(((rel.get("base_token") or {}).get("data") or {}).get("id") or "")
-            if base_id.startswith(net + "_"):
-                base_id = base_id[len(net) + 1:]
-            merged[pid] = {
-                # Pool names are upstream text and reach the caller verbatim -- the
-                # same sink as fb77083, through the third tool.
-                "kind": kind, "pool_id": _ascii_safe(pid, 64),
-                "token_address": _ascii_safe(base_id, 64),
-                "name": _ascii_safe(a.get("name"), 48),
-                "price_usd": _market_round(a.get("base_token_price_usd")),
-                "liquidity_usd": _market_round(a.get("reserve_in_usd")),
-                "volume_24h_usd": _market_round((a.get("volume_usd") or {}).get("h24")),
-                "pool_age_days": _age_days(a.get("pool_created_at")),
-            }
+        for pid, row in listing.items():
+            if pid not in merged:
+                merged[pid] = row
     if not reachable:
         # Fail closed: a failed fetch is not the same as no new pools. Returning an
         # empty array would tell the caller "we scanned, there was nothing there".
