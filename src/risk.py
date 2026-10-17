@@ -4529,7 +4529,7 @@ async def new_pools(chain="solana", limit=10):
         # leaking half a failed listing or aborting the other usable source.
         try:
             listing = _parse_new_pool_listing(data, net, kind)
-        except (AttributeError, TypeError, ValueError):
+        except (AttributeError, TypeError, ValueError, OverflowError):
             sources_failed.append(kind)
             continue  # this endpoint failed
         sources_ok.append(kind)
