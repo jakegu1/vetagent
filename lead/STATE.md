@@ -4,8 +4,8 @@
 > session starts by reading it. Durable rules live in `AGENTS.md`, `lead/QUALITY.md` and
 > `lead/decisions/`. Test for this file: could a stranger act on every row below?
 
-Last updated: 2026-10-18 by Codex, starting a linked data-integrity and availability
-batch after reconciling the verified release and scheduled bot data.
+Last updated: 2026-10-18 by Codex, completing the reviewed linked data-integrity batch
+with actual deployment, public-interface readback and snapshot-monitor execution.
 
 Current Owner decision: Experiment D moves to 2026-10-20 (ADR-0002). Its original
 thresholds and unresolved state remain. T-024 reconciles the active gate and dependent
@@ -53,10 +53,42 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 | Task | Level | Stage | Who | Next action |
 |---|---|---|---|---|
-| T-026 evidence study | bounded private investigation | signed evidence complete; hashes independently checked | lead | Carry the provenance-only recommendation into T-030; no numerical cap authorized |
-| T-028 | 3 | final combined review twelve of twelve, no material finding; merged 24c9aa7 | lead | Shared release and actual public-interface readback after T-030 |
-| T-029 | 3 | final combined review twelve of twelve, no material finding; merged a925eec | lead | Verify the new step in the batched production release |
-| T-030 | 3 | independent twelve of twelve and adversarial none; merged 629b5bc | lead | Complete integrated checks, shared deployment and tagged public-interface readback |
+| None | - | T-028, T-029 and T-030 deployed and runtime-verified | lead | Prepare the next bounded availability investigation and T-027; no active executor |
+
+## Latest verified linked release
+
+Published functional head d44d79a contains approved task merges 24c9aa7, a925eec and
+629b5bc. Complete integrated checks pass all thirty-five steps in 110.3 seconds.
+Exact-head Linux preflight 39054837848 and master CI 39055170253 pass required jobs
+and all 219 observed upstream checks, with no unobserved or collapsed path. Actual
+deployment 39055170209 runs the complete suite, uploads Worker version
+173a8b2d-8873-4e75-9384-2e104ca84679 and passes tagged production smoke. The existing
+optional Base backfill RPC HTTP 400 remains a separate unresolved item.
+
+Tagged independent readback confirms the homepage, health and both new tool schemas.
+The first discovery call cannot observe either source; the bounded retry returns
+partial, with new usable and trending failed. One returned token is successfully
+handed to both liquidity and assessment tools. Separate canonical controls actually
+return the conditional reserve marker and qualification from both tools. This is
+working partial-source behavior, not proof that discovery availability is solved.
+Direct current upstream lists parse successfully outside the Worker; the precise
+cause of the different Worker observations remains unconfirmed. No additional source,
+key, provider, numerical change or untagged production request is introduced.
+
+Actual observer run 39055381257 succeeds in order: Commit, Regenerate the pages that
+quote it, Check snapshot freshness and coverage. Its new step reports healthy: latest
+age 0.621 hours, 672 observation rows, forty pages, zero gaps and five complete passes
+among five observed in the last twenty-four hours. Counts include manual observations;
+they are not five scheduled-trigger proofs. The observer reads committed manifests
+and does not itself collect a fresh pool pass. Its data and generated pages are retained
+through 1324b7f, with deployed source and checks unchanged.
+
+Latest actual scheduled snapshot 39052933968 succeeds in collection, preservation,
+generation and coverage. Independent raw Git counts at a907e28 prove 672 observations,
+671 unique pools, eight chains, sixteen listing slots, forty HTTP 200 manifest pages,
+zero gaps and forty-five continuous archive dates. One pool appears in both listing
+kinds; raw observations retain that provenance. Every original byte prefix of all 127
+prior NDJSON files is preserved. This scheduled data is retained before deployment.
 
 The Owner asks for related gaps to be completed in batches with the highest delivery
 quality. Use a dependency graph: isolated nonoverlapping tasks run in parallel, each
@@ -69,7 +101,7 @@ to A1, product gates, spending, providers, privacy or agent permissions.
 Both T-028 and T-029 pass final combined reviews and their separate post-merge gates.
 The combined source/metadata base passes all thirty-five configured steps in 110.8
 seconds and is committed as 5d37434. T-030 is dispatched only from this reviewed,
-green base. All three implementations will share one final technical release.
+green base. All three implementations share the verified release above.
 
 T-030 freezes at fd3c1d1 after tests-only 199077a, source af02714, the preregistered
 recommendation-copy acceptance 7d1c0d9 and a separate generated receipt. Complete checks
@@ -82,7 +114,7 @@ of twelve and adversarial review has no material finding. Both run all thirty-fi
 configured steps themselves; independent replay reproduces the complete frozen
 benchmark, and the adversarial bounded grid compares 372 full answers. Signed reports
 and all sealed artifact hashes are checked before merge 629b5bc. Shared integrated
-checks and actual deployment remain; no batch deployment has occurred yet.
+checks and actual deployment are completed as recorded above.
 
 The Oct-18 check-in fetches origin/master 4669cf0 and retains all scheduled observations
 as 1fbabc5. Its actual configured baseline is 35/35 in 110.9 seconds. The real generator
@@ -96,7 +128,7 @@ bounded second round fixes the first adversarial finding at frozen 63651083;
 acceptance is 335/0 with four unchanged unsettled cells, complete outputs unchanged,
 and meaningful mutants caught. Original signed evidence remains private.
 
-Published head is 19ea3af. Complete integrated checks pass 35/35 in 112.8 seconds;
+That previous release published head 19ea3af. Complete integrated checks pass 35/35 in 112.8 seconds;
 exact-head Linux preflight 38853528116 passes required jobs and all 219 observed
 upstream checks, with no unobserved or collapsed path. Actual deployment 38853922606
 runs its complete suite, uploads Worker version 705371de-9252-45f5-a1a2-ed77a08184bb
@@ -269,13 +301,21 @@ a long-term reliability rate or the cause of earlier missing nominal triggers.
 
 ## Next up
 
-T-015, T-024 and T-025 are complete with actual release and snapshot evidence above.
-Next ready the bounded T-026 attribution study and T-027 deterministic-RPC regression
-split; both drafts retain their Oct-17 review date and authorize no new provider or
-spending. The actual deployment also annotates Actions/runtime and runner-image
-migration warnings; verify current official guidance and the complete Python/Worker
-build in an isolated upgrade task before changing those versions. W28's discovery
-status/schema gap remains separately parked; do not reclassify historical usage.
+T-026 is evidence-complete; T-028, T-029 and T-030 are released. W28's prospective
+discovery status/schema gap is resolved without reclassifying historical usage.
+For the next bounded batch, first investigate the observed Worker discovery
+availability variation: review on 2026-10-19, no new spending, at most one working day
+to distinguish failed transport, unusable bodies and parsing using privacy-safe
+diagnostics and same-response comparisons. New evidence opens this follow-up; it did
+not redirect the completed batch. Do not promise complete-market discovery.
+
+Then ready T-027's deterministic-RPC regression split with real fixture provenance and
+unchanged power/proxy assertions. The draft is not an implementation authorization.
+Further unknown-coverage and numerical reserve work requires separate attribution
+and bidirectional regression evidence. No new provider or spending is authorized.
+Deployment still annotates Actions/runtime and runner-image migration warnings;
+verify current official guidance and the complete Python/Worker build in an isolated
+upgrade task before changing versions. Experiment D remains due Oct 20 unchanged.
 
 T-011, T-019, T-013, T-012, T-016, T-020, T-021, T-022 and T-023 are complete with their
 actual release or scheduled coverage evidence recorded. T-021 publishes exact 7da5bdf

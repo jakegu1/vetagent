@@ -7,21 +7,33 @@
 
 ## Status in one line
 
-The linked improvement batch is in progress: discovery completeness and malformed
-listing handling (T-028), archive freshness/latest-pass health after preservation
-(T-029), and selected-liquidity reserve-check disclosure (T-030), gated by the bounded
-private attribution study and the discovery engine freeze. Independent tasks have separate commits and reviews; engine writers
-are serial and the batch gets one integrated release. No new spending or provider.
-Experiment D remains due Oct 20 with the original unresolved rule.
-
-T-028 and T-029 pass fresh combined round-2 reviews with no material findings and
-are merged. Both separate and combined-base complete checks pass. The actual default
-archive is healthy after the retained-legacy-schema correction. T-030 passes both
-required fresh reviews and is merged as 629b5bc. All three tasks are ready for the
-integrated gate and shared release. The bounded T-026 evidence study is complete;
-no numerical reserve cap or new provider is implemented.
+T-028 discovery completeness, T-029 snapshot health after preservation and T-030
+unchecked-reserve disclosure are deployed on d44d79a after required fresh reviews,
+the complete integrated gate and exact-head Linux preflight. Independent changes
+were parallel, shared-engine changes serial, and the batch has one functional release.
+No new spending or provider. Experiment D remains due Oct 20 with its original rule.
 
 Last verified release:
+
+Actual deployment 39055170209 runs the full suite, Worker upload and production
+smoke. Master CI 39055170253 passes required jobs and all 219 observed upstream
+checks. Tagged readback confirms both new schemas, actual partial discovery and
+the real discovery-to-liquidity/assessment handoff. Canonical controls receive the
+conditional reserve marker in both tools. Discovery first failed both sources and
+later recovered only one; current upstream availability remains a follow-up.
+
+Observer 39055381257 actually succeeds in preservation, generation and the new
+health step, in that order. Latest snapshot age is 0.621 hours, with 672 observation
+rows, forty pages, zero gaps and five complete of five observed passes in a day.
+The separate actual scheduled run 39052933968 contains 671 unique pools; one appears
+in both listing kinds. All 127 previous raw NDJSON byte prefixes are retained across
+forty-five continuous dates. These observations do not prove every scheduled slot.
+
+Next: bounded Worker availability diagnosis, then T-027's deterministic-RPC split.
+The T-026 study is complete; no numerical reserve cap or independent sell-depth
+verification is implemented. Optional historical Base RPC HTTP 400 remains unresolved.
+
+Previous verified release:
 
 Experiment D is postponed to 2026-10-20 (UTC), with its original rules and unresolved
 state preserved. T-024, T-025 and T-015 are published as 19ea3af after fresh required
@@ -37,7 +49,7 @@ all eight chains and sixteen listing slots, zero pool-collection gaps, and forty
 continuous dates. All 121 prior raw NDJSON files preserve every original byte prefix.
 The optional sellability observations are sixteen usable and nine no-record, kept distinct.
 Bot CI 38854730840 passes at 123a856. The verified bot commits are retained as 45267d5.
-Next are the bounded depth-attribution study and deterministic RPC regression split.
+The bounded depth-attribution study was completed in the linked batch above.
 
 Previous verified release:
 
