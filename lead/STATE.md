@@ -54,9 +54,9 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 | Task | Level | Stage | Who | Next action |
 |---|---|---|---|---|
 | T-026 evidence study | bounded private investigation | signed evidence complete; hashes independently checked | lead | Carry the provenance-only recommendation into T-030; no numerical cap authorized |
-| T-028 | 3 | final combined review twelve of twelve, no material finding; merged 24c9aa7 | lead | Complete integrated generation/checks before dispatching the next engine writer |
-| T-029 | 3 | final combined review twelve of twelve, no material finding; merged a925eec | lead | Regenerate and run integrated checks, then verify the new step in the batched production release |
-| T-030 | 3 | ready for executor after the merged-base check | lead | Disclose unchecked reserve amounts; preserve every numeric and identifier contract |
+| T-028 | 3 | final combined review twelve of twelve, no material finding; merged 24c9aa7 | lead | Shared release and actual public-interface readback after T-030 |
+| T-029 | 3 | final combined review twelve of twelve, no material finding; merged a925eec | lead | Verify the new step in the batched production release |
+| T-030 | 3 | acceptance-first implementation on green merged base 5d37434 | executor | Disclose unchecked reserve amounts; preserve every numeric and identifier contract |
 
 The Owner asks for related gaps to be completed in batches with the highest delivery
 quality. Use a dependency graph: isolated nonoverlapping tasks run in parallel, each
@@ -65,6 +65,11 @@ and the batch gets a complete integrated check and one release. Cap this first b
 at three implementation tasks; a depth change needs the study evidence and T-028's
 engine freeze first. Existing technical release authorization still applies; no change
 to A1, product gates, spending, providers, privacy or agent permissions.
+
+Both T-028 and T-029 pass final combined reviews and their separate post-merge gates.
+The combined source/metadata base passes all thirty-five configured steps in 110.8
+seconds and is committed as 5d37434. T-030 is dispatched only from this reviewed,
+green base. All three implementations will share one final technical release.
 
 The Oct-18 check-in fetches origin/master 4669cf0 and retains all scheduled observations
 as 1fbabc5. Its actual configured baseline is 35/35 in 110.9 seconds. The real generator

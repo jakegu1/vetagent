@@ -15,9 +15,9 @@ are serial and the batch gets one integrated release. No new spending or provide
 Experiment D remains due Oct 20 with the original unresolved rule.
 
 T-028 and T-029 pass fresh combined round-2 reviews with no material findings and
-are merged. T-029's merged-base complete checks also pass. The actual default archive
-is healthy after the retained-legacy-schema correction. T-028's combined-base check,
-T-030 and the shared release remain. The bounded T-026 evidence study is complete;
+are merged. Both separate and combined-base complete checks pass. The actual default
+archive is healthy after the retained-legacy-schema correction. T-030 is now being
+implemented from the green combined base; the shared release remains. The bounded T-026 evidence study is complete;
 no numerical reserve cap or new provider is implemented.
 
 Last verified release:
