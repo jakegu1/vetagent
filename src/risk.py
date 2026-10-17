@@ -4548,6 +4548,7 @@ async def new_pools(chain="solana", limit=10):
     # count now describes the array beside it, and scanned says what there was before
     # the cap, so neither number can stand in for the other.
     shown = list(merged.values())[:limit]
-    return _disclosed({"chain": chain, "network": net, "count": len(shown),
+    return _disclosed({"status": "partial" if sources_failed else "ok",
+                       "chain": chain, "network": net, "count": len(shown),
                        "scanned": len(merged), "sources_ok": sources_ok,
                        "sources_failed": sources_failed, "pools": shown})
