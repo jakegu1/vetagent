@@ -53,9 +53,9 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 | Task | Level | Stage | Who | Next action |
 |---|---|---|---|---|
-| T-026 evidence study | bounded private investigation | parent-control and actual selection attribution | investigator | Complete immutable trace, then select a narrow runtime/provenance specification |
-| T-028 | 3 | frozen source; derived receipt refresh before READY | lead | Regenerate the stale MCP assertion receipt, then complete checks and fresh reviews |
-| T-029 | 3 | frozen first-round review; actual legacy archive incompatibility observed | independent and red-team reviewers | Reproduce current/default archive behavior, then bounded compatibility correction |
+| T-026 evidence study | bounded private investigation | signed evidence complete; hashes independently checked | lead | Carry the provenance-only recommendation into T-030; no numerical cap authorized |
+| T-028 | 3 | frozen 32ea4ec; full 35/35; fresh reviews running | independent and red-team reviewers | Finish original-head reviews before merge or the next engine writer |
+| T-029 | 3 | first-round changes requested; bounded correction dispatched | executor | Add the named legacy-history regression first, preserve current fail-closed behavior, then combined review |
 | T-030 | 3 | ready; evidence sealed, waiting for reviewed T-028 merge | lead | Disclose unchecked reserve amounts; preserve every numeric and identifier contract |
 
 The Owner asks for related gaps to be completed in batches with the highest delivery
