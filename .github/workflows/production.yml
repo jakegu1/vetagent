@@ -99,3 +99,6 @@ jobs:
         env:
           PYTHONIOENCODING: utf-8
         run: bash .github/scripts/regenerate-derived.sh "Production probe $(date -u +%F)"
+      - name: Check snapshot freshness and coverage
+        if: always()
+        run: python bench/snapshot_health.py --max-age-hours 12
