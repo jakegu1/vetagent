@@ -6469,6 +6469,50 @@ def test_liquidity_reserve_marker_follows_cap_semantics_and_positive_credited_de
               str(answers[2]))
 
 
+def test_unchecked_reserve_qualification_follows_liquidity_recommendation():
+    """The existing unknown recommendation copies the same qualified liquidity finding."""
+    print("\n[T-030] a copied liquidity finding keeps its reserve qualification")
+    note = " Upstream estimate; reserve amounts not checked."
+    for label, hp in (("no simulator record", risk.NO_DATA),
+                       ("failed simulation", _load("hp_align_simfail.json"))):
+        async def fetch(url, *args, **kwargs):
+            if url.startswith("https://api.honeypot.is/v2/IsHoneypot?address="):
+                return hp
+            raise AssertionError("Unexpected local recommendation fixture request: " + url)
+
+        for verbose in (False, True):
+            answers = []
+            for reserves in (False, True):
+                pair = _t030_pair(2_500, reserves=reserves)
+                with _t030_local_market([pair]), patch.object(risk, "_fetch_json", fetch):
+                    answers.append(run(risk.assess(pair["baseToken"]["address"],
+                                                   chain_hint="ethereum", verbose=verbose)))
+            answer, control = answers
+            tag = label + (" verbose: " if verbose else " slim: ")
+            check(tag + "both answers keep the same unknown liquidity driver",
+                  all(r["risk_level"] == "unknown" and r["driver"]["category"] == "liquidity"
+                      for r in answers), str([(r["risk_level"], r["driver"]) for r in answers]))
+            check(tag + "only the unchecked estimate carries the reserve marker",
+                  answer["evidence"].get("liquidity_reserve_check") == "not_checkable"
+                  and "liquidity_reserve_check" not in control["evidence"], str(answer["evidence"]))
+            signals = [s for s in answer["signals"] if s["category"] == "liquidity"]
+            controls = [s for s in control["signals"] if s["category"] == "liquidity"]
+            check(tag + "the original liquidity finding gains only the exact suffix",
+                  len(signals) == len(controls) == 1
+                  and signals[0]["message"] == controls[0]["message"] + note, str(signals))
+            check(tag + "the existing recommendation copy keeps the same exact qualification",
+                  answer["recommendation"] == control["recommendation"] + note, answer["recommendation"])
+            normalized = copy.deepcopy(answer)
+            normalized["evidence"].pop("liquidity_reserve_check", None)
+            for signal in normalized["signals"]:
+                if signal["category"] == "liquidity" and signal["message"].endswith(note):
+                    signal["message"] = signal["message"][:-len(note)]
+            if normalized["recommendation"].endswith(note):
+                normalized["recommendation"] = normalized["recommendation"][:-len(note)]
+            check(tag + "all other advice, next actions, gaps and complete answer fields stay unchanged",
+                  normalized == control, str(normalized))
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
