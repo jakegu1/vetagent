@@ -55,7 +55,7 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 |---|---|---|---|---|
 | T-026 evidence study | bounded private investigation | signed evidence complete; hashes independently checked | lead | Carry the provenance-only recommendation into T-030; no numerical cap authorized |
 | T-028 | 3 | frozen 32ea4ec; full 35/35; fresh reviews running | independent and red-team reviewers | Finish original-head reviews before merge or the next engine writer |
-| T-029 | 3 | first-round changes requested; bounded correction dispatched | executor | Add the named legacy-history regression first, preserve current fail-closed behavior, then combined review |
+| T-029 | 3 | final combined review twelve of twelve, no material finding; merged a925eec | lead | Regenerate and run integrated checks, then verify the new step in the batched production release |
 | T-030 | 3 | ready; evidence sealed, waiting for reviewed T-028 merge | lead | Disclose unchecked reserve amounts; preserve every numeric and identifier contract |
 
 The Owner asks for related gaps to be completed in batches with the highest delivery

@@ -1,7 +1,7 @@
 ---
 id: T-029
 title: Detect stale or incomplete snapshot evidence after observations are preserved
-status: changes_requested
+status: done
 level: 3
 size: M
 depends_on: [T-020, T-022]

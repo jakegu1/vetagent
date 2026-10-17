@@ -1,7 +1,7 @@
 ---
 id: T-026
 title: Attribute selected fallback-pool depth before proposing reserve verification
-status: draft
+status: done
 level: 3
 size: S
 depends_on: [T-015, T-024, T-025]
@@ -53,6 +53,16 @@ instrumentation. This is an investigation before a runtime task, not implementat
 authorization or an exception to the tests-first contract. The runtime specification
 remains draft until actual selection attribution and missing-evidence behavior are known.
 
-The executor's exact source/copy locations, scope, safe instrumentation, expected output
-contract, immutable control and acceptance tests remain to be specified. This draft is
-not authorization to implement a production cap or a claim that the experiment has run.
+### Evidence completion
+
+The private bounded brief fixed source 1fbabc50, independent input copies, actual object
+attribution, common response clock, immutable parent output and witnessed safety guards.
+The signed study completes those observations; the lead independently verifies its
+sealed file hashes and attributed-row count. Parent and passive trace reproduce every
+committed result and complete answer. No source, cache, label, network fill or benchmark
+rebaseline changes. The observer's later-seller-enrichment correction is retained openly.
+
+The supported next implementation is provenance/wording only, specified separately in
+T-030. This task is done as an evidence investigation, not as reserve verification.
+Numerical caps, custody/decimals/price checks, new RPC/cache policy and executable depth
+remain unimplemented and need the later runtime specification described above.

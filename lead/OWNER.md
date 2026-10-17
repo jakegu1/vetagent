@@ -14,6 +14,11 @@ private attribution study and the discovery engine freeze. Independent tasks hav
 are serial and the batch gets one integrated release. No new spending or provider.
 Experiment D remains due Oct 20 with the original unresolved rule.
 
+T-029 passes fresh combined round-2 review with no material finding and is merged.
+Its actual default archive is healthy after the retained-legacy-schema correction;
+the lead's integrated checks and the shared release still remain. The bounded T-026
+evidence study is complete; no numerical reserve cap or new provider is implemented.
+
 Last verified release:
 
 Experiment D is postponed to 2026-10-20 (UTC), with its original rules and unresolved
