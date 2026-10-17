@@ -7,9 +7,14 @@ Run:  python tests/test_mcp.py
 """
 
 import asyncio
+import copy
+import importlib.util
 import json
 import os
+import socket
 import sys
+from contextlib import contextmanager
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src"))
 
@@ -361,6 +366,344 @@ def test_array_params_are_rejected_not_fatal():
         r = call(body)
         check("a %r id is accepted" % (good_id,), "result" in (r or {}),
               json.dumps(r)[:200])
+
+
+def _t028_pool(suffix):
+    return {"id": "eth_pool" + suffix,
+            "attributes": {"name": "Pool " + suffix, "base_token_price_usd": "1.25",
+                           "reserve_in_usd": "100", "volume_usd": {"h24": "20"}},
+            "relationships": {"base_token": {"data": {"id": "eth_0x" + suffix * 40}}}}
+
+
+@contextmanager
+def _t028_runtime(new, trending, stale=()):
+    """Use the existing Workers shim, real handlers, and explicit local upstreams only."""
+    import test_http_telemetry as runtime
+
+    seen, recorded = [], []
+
+    def no_network(*args, **kwargs):
+        raise AssertionError("T-028 acceptance must not access the network")
+
+    def loopback_only(operation):
+        def connect(sock, address):
+            # Windows asyncio creates its internal socketpair over loopback TCP.
+            if isinstance(address, tuple) and address[0] in ("127.0.0.1", "::1"):
+                return operation(sock, address)
+            return no_network()
+        return connect
+
+    async def fetch(url, *args, **kwargs):
+        prefix = "https://api.geckoterminal.com/api/v2/networks/"
+        if not url.startswith(prefix):
+            raise AssertionError("Unexpected discovery upstream: " + url)
+        path = url.rsplit("/", 1)[-1]
+        if path not in ("new_pools", "trending_pools"):
+            raise AssertionError("Unexpected discovery listing: " + url)
+        kind = "new" if path == "new_pools" else "trending"
+        seen.append((kind, url))
+        if kind in stale:
+            risk._stale_hits().append((url, 321))
+        return copy.deepcopy(new if kind == "new" else trending)
+
+    def record(env, blobs, doubles):
+        recorded.append((list(blobs), list(doubles)))
+
+    with patch.object(socket.socket, "connect", loopback_only(socket.socket.connect)), \
+            patch.object(socket.socket, "connect_ex", loopback_only(socket.socket.connect_ex)), \
+            patch.object(socket, "create_connection", no_network), \
+            patch.object(risk, "cf_fetch", no_network), \
+            patch.object(risk, "_fetch_json", fetch), \
+            patch.object(runtime.entry, "_record", record):
+        yield runtime, recorded, seen
+
+
+def _t028_scan(new, trending, args=("ethereum", 10), stale=()):
+    with _t028_runtime(new, trending, stale) as (_, _, seen):
+        try:
+            result, error = asyncio.run(risk.new_pools(*args)), None
+        except Exception as exc:
+            result, error = {}, exc
+    return result, error, seen
+
+
+def _t028_malformed_listings():
+    containers = [("missing data", {}), ("null data", {"data": None}),
+                  ("zero data", {"data": 0}), ("boolean data", {"data": False}),
+                  ("string data", {"data": "rows"}), ("empty string data", {"data": ""}),
+                  ("object data", {"data": {}}), ("null body", None),
+                  ("array body", []), ("nonempty array body", [{"data": []}]),
+                  ("string body", "rows"), ("number body", 7), ("boolean body", True),
+                  ("error body", {"status": {"error_code": 429}, "data": []})]
+    bad_rows = [("null row", None), ("array row", [1]), ("string row", "row"),
+                ("number row", 7), ("array id", {"id": [1]}),
+                ("object id", {"id": {"value": 1}})]
+    for field in ("attributes", "relationships"):
+        for value in ("invalid", [1], 7):
+            bad_rows.append((field + " " + type(value).__name__,
+                             {"id": "eth_bad", field: value}))
+    for value in ("invalid", [1], 7):
+        bad_rows.append(("volume " + type(value).__name__,
+                         {"id": "eth_bad", "attributes": {"volume_usd": value}}))
+        bad_rows.append(("base token " + type(value).__name__,
+                         {"id": "eth_bad", "relationships": {"base_token": value}}))
+        bad_rows.append(("token data " + type(value).__name__,
+                         {"id": "eth_bad", "relationships": {"base_token": {"data": value}}}))
+    for label, row in bad_rows:
+        polluted = _t028_pool("9")
+        polluted["attributes"]["name"] = "Discarded listing"
+        containers.append((label, {"data": [_t028_pool("1"), polluted, row, _t028_pool("2")]}))
+    return containers
+
+
+def test_t028_discovery_status_preserves_counts_order_and_defaults():
+    print("\n[T-028] completeness is explicit without changing discovery data")
+    first, second, third = (_t028_pool(x) for x in ("1", "2", "3"))
+    duplicate = copy.deepcopy(second)
+    duplicate["attributes"]["name"] = "Later duplicate"
+    out, error, seen = _t028_scan({"data": [first, second]}, {"data": [duplicate, third]},
+                                  args=(" Ethereum ", 2))
+    check("T028 complete discovery succeeds", error is None, repr(error))
+    check("T028 both observed listings mean ok", out.get("status") == "ok", str(out))
+    check("T028 chain normalization is preserved", out.get("chain") == "ethereum"
+          and out.get("network") == "eth", str(out))
+    check("T028 both endpoints were read", [x[0] for x in seen] == ["new", "trending"], str(seen))
+    check("T028 count and scanned keep their different meanings",
+          out.get("count") == 2 and out.get("scanned") == 3, str(out))
+    rows = out.get("pools", [])
+    check("T028 deduplication and order preserve first listing rows",
+          [(r.get("pool_id"), r.get("name"), r.get("kind")) for r in rows]
+          == [("eth_pool1", "Pool 1", "new"), ("eth_pool2", "Pool 2", "new")], str(rows))
+    check("T028 token and finite market fields are unchanged", bool(rows)
+          and rows[0].get("token_address") == "0x" + "1" * 40
+          and [rows[0].get(k) for k in ("price_usd", "liquidity_usd", "volume_24h_usd")]
+          == [1.25, 100.0, 20.0], str(rows))
+    check("T028 fresh scan has timestamp without stale disclosure",
+          bool(out.get("checked_at")) and "served_stale" not in out, str(out))
+    for limit, expected in ((0, 1), (100, 50)):
+        out, error, _ = _t028_scan({"data": [{"id": "pool%d" % i} for i in range(55)]},
+                                   {"data": []}, args=("solana", limit))
+        check("T028 limit %s keeps clamping and optional missing fields" % limit,
+              error is None and out.get("count") == expected and out.get("scanned") == 55
+              and all(r.get("token_address") == "" and r.get("name") == ""
+                      and r.get("price_usd") is None for r in out.get("pools", [])), repr(error))
+    out, error, _ = _t028_scan({"data": []}, {"data": []}, args=())
+    check("T028 default chain remains solana", error is None and out.get("chain") == "solana"
+          and out.get("network") == "solana", str(out))
+    check("T028 two observed empty listings mean ok and zero pools",
+          out.get("status") == "ok" and out.get("count") == out.get("scanned") == 0
+          and out.get("pools") == [] and out.get("sources_ok") == ["new", "trending"]
+          and out.get("sources_failed") == [], str(out))
+
+
+def test_t028_malformed_listing_is_atomic_and_keeps_the_other_listing():
+    print("\n[T-028] malformed listings are failures, with no half-merged rows")
+    survivor = {"data": [_t028_pool("9")]}
+    for label, bad in _t028_malformed_listings():
+        for failed in ("new", "trending"):
+            out, error, seen = _t028_scan(bad if failed == "new" else survivor,
+                                         survivor if failed == "new" else bad)
+            tag = "T028 %s %s: " % (failed, label)
+            healthy = "trending" if failed == "new" else "new"
+            check(tag + "other listing survives", error is None, repr(error))
+            check(tag + "failure is disclosed as partial", out.get("status") == "partial"
+                  and out.get("sources_ok") == [healthy] and out.get("sources_failed") == [failed],
+                  str(out))
+            rows = out.get("pools", [])
+            check(tag + "failed listing contributes no rows or duplicate overrides",
+                  out.get("count") == out.get("scanned") == 1
+                  and [(r.get("pool_id"), r.get("name"), r.get("kind")) for r in rows]
+                  == [("eth_pool9", "Pool 9", healthy)], str(out))
+            check(tag + "both listings are attempted", [x[0] for x in seen] == ["new", "trending"],
+                  str(seen))
+
+
+def test_t028_empty_failure_and_previous_observations_stay_distinct():
+    print("\n[T-028] empty observed results never stand in for failed observations")
+    for label, bad in _t028_malformed_listings():
+        out, error, _ = _t028_scan(bad, {"data": []})
+        check("T028 %s plus observed empty is partial zero" % label,
+              error is None and out.get("status") == "partial"
+              and out.get("count") == out.get("scanned") == 0 and out.get("pools") == []
+              and out.get("sources_ok") == ["trending"] and out.get("sources_failed") == ["new"],
+              str(out) + repr(error))
+        _, error, _ = _t028_scan(bad, bad)
+        check("T028 %s on both listings retains RuntimeError" % label,
+              isinstance(error, RuntimeError) and str(error)
+              == "GeckoTerminal request failed; could not scan new pools on ethereum", repr(error))
+    _t028_scan({"data": [_t028_pool("1")]}, {"data": []})
+    out, error, _ = _t028_scan({"data": [_t028_pool("9")]}, None, stale=("new",))
+    check("T028 an older healthy listing cannot hide the failed listing",
+          error is None and out.get("status") == "partial" and out.get("sources_ok") == ["new"]
+          and out.get("sources_failed") == ["trending"], str(out))
+    check("T028 stale disclosure survives the completeness change",
+          out.get("served_stale") == [{"source": "api.geckoterminal.com", "age_seconds": 321}],
+          str(out))
+
+
+def test_t028_mcp_schema_declares_completeness_only_status():
+    print("\n[T-028] the public tool contract names completeness explicitly")
+    with _t028_runtime({"data": []}, {"data": []}):
+        tools = call({"jsonrpc": "2.0", "id": 28, "method": "tools/list"})["result"]["tools"]
+    schema = next(t for t in tools if t["name"] == "find_new_hot_pools")["outputSchema"]
+    status = schema.get("properties", {}).get("status", {})
+    check("T028 discovery requires status", "status" in schema.get("required", []), str(schema))
+    check("T028 discovery status is exactly ok or partial", status.get("type") == "string"
+          and status.get("enum") == ["ok", "partial"], str(status))
+    description = status.get("description", "").lower()
+    check("T028 status describes completeness and both versus one listing",
+          "completeness" in description and "both" in description and "one" in description,
+          description)
+    check("T028 status makes no token risk endorsement", "risk" in description
+          and ("not" in description or "never" in description), description)
+
+
+def test_t028_real_http_and_mcp_preserve_status_errors_and_prospective_telemetry():
+    print("\n[T-028] real routing carries completeness into future telemetry")
+    good, empty = {"data": [_t028_pool("9")]}, {"data": []}
+    cases = [("complete", good, empty, "ok"), ("partial", good, {}, "partial"),
+             ("partial empty", {}, empty, "partial"), ("malformed failure", {}, {}, None),
+             ("transport failure", None, None, None)]
+    usage_path = os.path.join(os.path.dirname(__file__), "..", "bench", "usage.py")
+    spec = importlib.util.spec_from_file_location("t028_usage", usage_path)
+    usage = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(usage)
+    for label, new, trending, expected in cases:
+        for client in ("vetagent-manual-probe", "integrator-fixture"):
+            for interface in ("http", "mcp"):
+                with _t028_runtime(new, trending) as (runtime, recorded, seen):
+                    body = {"jsonrpc": "2.0", "id": 28, "method": "tools/call",
+                            "params": {"name": "find_new_hot_pools",
+                                       "arguments": {"chain": "ethereum", "limit": 2}}}
+
+                    class Request(runtime.FakeRequest):
+                        async def json(self):
+                            return body
+
+                    request = Request("https://offline.invalid" + (
+                        "/mcp" if interface == "mcp" else "/new-pools?chain=ethereum&limit=2"),
+                        method="POST" if interface == "mcp" else "GET",
+                        headers={"user-agent": "fixture/1", "x-mcp-client": client})
+                    response = asyncio.run(runtime.entry.Default().fetch(request))
+                    answer = json.loads(response.body)
+                tag = "T028 %s %s %s: " % (interface, client, label)
+                if expected is not None:
+                    result = answer.get("result", {}) if interface == "mcp" else answer
+                    data = result.get("structuredContent", {}) if interface == "mcp" else result
+                    check(tag + "successful response carries completeness", response.status == 200
+                          and data.get("status") == expected and not result.get("isError"), str(answer))
+                    if interface == "mcp":
+                        text = result.get("content", [{}])[0].get("text", "null")
+                        check(tag + "structuredContent equals text", data == json.loads(text), str(answer))
+                elif interface == "mcp":
+                    result = answer.get("result", {})
+                    check(tag + "existing tool error envelope is preserved", response.status == 200
+                          and result.get("isError") is True and "structuredContent" not in result
+                          and "Tool execution failed: GeckoTerminal request failed;" in
+                          result.get("content", [{}])[0].get("text", ""), str(answer))
+                else:
+                    check(tag + "existing HTTP error envelope is preserved", response.status == 500
+                          and answer.get("error") == "internal_error"
+                          and answer.get("detail", "").startswith("GeckoTerminal request failed;"), str(answer))
+                check(tag + "prospective telemetry has status or empty error verdict",
+                      len(recorded) == 1 and recorded[0] == (
+                          ["tools/call" if interface == "mcp" else "http", "find_new_hot_pools",
+                           expected or "", client, "??", ""],
+                          [1.0, 0.0 if expected is not None else 1.0]), str(recorded))
+                check(tag + "self client separation is unchanged",
+                      bool(recorded) and usage.is_self(recorded[0][0][3])
+                      == (client == "vetagent-manual-probe"), str(recorded))
+                check(tag + "telemetry contains no pool or token data", "eth_pool" not in json.dumps(recorded)
+                      and "0x" + "9" * 40 not in json.dumps(recorded), str(recorded))
+                check(tag + "real engine reads both local listings",
+                      [x[0] for x in seen] == ["new", "trending"], str(seen))
+
+
+def test_discovery_extreme_creation_times_keep_other_listing():
+    """Creation-time overflow fails one listing without discarding the usable source."""
+    print("\n[T-028] extreme numeric creation times stay inside their listing boundary")
+    for label, value in (("401-digit integer", 10 ** 400), ("finite negative", -1e308)):
+        value = json.loads(json.dumps(value, allow_nan=False))
+        overflow = _t028_pool("2")
+        overflow["attributes"]["pool_created_at"] = value
+        bad = {"data": [_t028_pool("1"), overflow, _t028_pool("3")]}
+        for failed in ("new", "trending"):
+            healthy = "trending" if failed == "new" else "new"
+            for survivor_name, survivor in (("populated", {"data": [_t028_pool("9")]}),
+                                             ("empty", {"data": []}), ("all bad", bad)):
+                new, trending = (bad, survivor) if failed == "new" else (survivor, bad)
+                out, error, seen = _t028_scan(new, trending)
+                tag = "T028 time %s %s %s: " % (label, failed, survivor_name)
+                all_bad = survivor_name == "all bad"
+                expected_rows = [("eth_pool9", healthy)] if survivor_name == "populated" else []
+                if all_bad:
+                    check(tag + "both unusable retain the existing RuntimeError",
+                          isinstance(error, RuntimeError) and str(error)
+                          == "GeckoTerminal request failed; could not scan new pools on ethereum",
+                          repr(error))
+                else:
+                    check(tag + "the usable listing still returns partial",
+                          error is None and out.get("status") == "partial"
+                          and out.get("sources_failed") == [failed] and out.get("sources_ok") == [healthy],
+                          str(out) + repr(error))
+                    check(tag + "bad listing rows are discarded atomically",
+                          out.get("count") == out.get("scanned") == len(expected_rows)
+                          and [(r.get("pool_id"), r.get("kind")) for r in out.get("pools", [])]
+                          == expected_rows, str(out))
+                check(tag + "both listings are attempted", [x[0] for x in seen] == ["new", "trending"],
+                      str(seen))
+                for interface in ("http", "mcp"):
+                    with _t028_runtime(new, trending) as (runtime, recorded, routed):
+                        body = {"jsonrpc": "2.0", "id": 28, "method": "tools/call",
+                                "params": {"name": "find_new_hot_pools",
+                                           "arguments": {"chain": "ethereum"}}}
+
+                        class Request(runtime.FakeRequest):
+                            async def json(self):
+                                return body
+
+                        request = Request("https://offline.invalid" + (
+                            "/mcp" if interface == "mcp" else "/new-pools?chain=ethereum"),
+                            method="POST" if interface == "mcp" else "GET",
+                            headers={"x-mcp-client": "vetagent-manual-probe"})
+                        response = asyncio.run(runtime.entry.Default().fetch(request))
+                        answer = json.loads(response.body)
+                    route_tag = tag + interface + " "
+                    result = answer.get("result", {}) if interface == "mcp" else answer
+                    data = result.get("structuredContent", {}) if interface == "mcp" else result
+                    if all_bad:
+                        if interface == "mcp":
+                            check(route_tag + "all-bad tool error retains the scan failure",
+                                  response.status == 200 and result.get("isError") is True
+                                  and "structuredContent" not in result
+                                  and "Tool execution failed: GeckoTerminal request failed;" in
+                                  result.get("content", [{}])[0].get("text", ""), str(answer))
+                        else:
+                            check(route_tag + "all-bad HTTP error retains the scan failure",
+                                  response.status == 500 and answer.get("error") == "internal_error"
+                                  and answer.get("detail", "").startswith("GeckoTerminal request failed;"),
+                                  str(answer))
+                    else:
+                        check(route_tag + "survivor response is a partial success",
+                              response.status == 200 and not result.get("isError")
+                              and data.get("status") == "partial" and data.get("sources_ok") == [healthy]
+                              and data.get("sources_failed") == [failed], str(answer))
+                        check(route_tag + "response contains only the complete surviving listing",
+                              data.get("count") == data.get("scanned") == len(expected_rows)
+                              and [(r.get("pool_id"), r.get("kind")) for r in data.get("pools", [])]
+                              == expected_rows, str(answer))
+                        if interface == "mcp":
+                            check(route_tag + "text and structured content agree",
+                                  not result.get("isError") and data == json.loads(
+                                      result.get("content", [{}])[0].get("text", "null")),
+                                  str(answer))
+                    check(route_tag + "telemetry distinguishes partial from error",
+                          len(recorded) == 1 and recorded[0] == (
+                              ["tools/call" if interface == "mcp" else "http", "find_new_hot_pools",
+                               "" if all_bad else "partial", "vetagent-manual-probe", "??", ""],
+                              [1.0, 1.0 if all_bad else 0.0]), str(recorded))
+                    check(route_tag + "both local listings were attempted",
+                          [x[0] for x in routed] == ["new", "trending"], str(routed))
 
 
 def main():

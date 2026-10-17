@@ -27,7 +27,7 @@
 
 | Dimension | Item | Score | Max | Evidence |
 |---|---|---|---|---|
-| Correctness | tests all green | 5.0 | 5 | test_risk.py 1106 passed, 0 failed All passed; test_mcp.py 80 passed, 0 failed All passed; test_http_telemetry.py 596 passed, 0 failed All passed |
+| Correctness | tests all green | 5.0 | 5 | test_risk.py 1106 passed, 0 failed All passed; test_mcp.py 682 passed, 0 failed All passed; test_http_telemetry.py 596 passed, 0 failed All passed |
 | Correctness | false positive rate (healthy rated high) | 5.0 | 5 | 1.9% |
 | Correctness | false-block rate (liquid healthy rated medium or high) | 2.0 | 5 | 13.0% (20 of 154) |
 | Correctness | unknown rate (benchmark, cached upstreams) | 2.0 | 5 | 20.7% |

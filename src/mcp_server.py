@@ -208,6 +208,14 @@ TOOLS = [
                 "Discovery only, never an endorsement. Call assess_token_risk on "
                 "token_address before saying anything about a pool's risk.",
             "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": ["ok", "partial"],
+                    "description":
+                        "Completeness only: ok means both listings were observed; "
+                        "partial means only one usable listing was observed. This is "
+                        "not a token risk verdict or a safety endorsement.",
+                },
                 "chain": {"type": "string"},
                 "network": {"type": "string",
                             "description": "The upstream's own name for the chain, "
@@ -274,7 +282,7 @@ TOOLS = [
                     },
                 },
             },
-            "required": ["chain", "network", "count", "scanned",
+            "required": ["status", "chain", "network", "count", "scanned",
                          "sources_ok", "sources_failed", "pools"],
         },
     },
