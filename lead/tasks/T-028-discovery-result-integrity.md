@@ -78,3 +78,19 @@ telemetry only; no retrospective caller/gate reclassification or extra identifyi
 No live VetAgent request. If later authorized by the lead, every production probe uses
 x-mcp-client: vetagent-manual-probe. Require fresh independent and adversarial review,
 at most two rounds. Write a signed READY and evidence privately; do not merge or push.
+
+## Amendments
+
+### 2026-10-18: lead-owned derived correctness-test receipt
+
+The frozen source head's configured checks are 34/35 solely because the generated
+docs/SCORECARD.md correctness receipt still says 80 MCP assertions instead of the
+observed 554. Its production assertions pass; the generator reports exactly that
+one stale normalized line. This is stale derived evidence, not a reason to alter tests.
+
+Add docs/SCORECARD.md to scope solely for the lead to regenerate with the existing
+fixed-point script in explicit regenerate mode and commit separately after source.
+The lead may restore only proved calendar/recent-log display drift from exact external
+backups. All original/new tests and source remain frozen. No benchmark result, score,
+threshold or historical usage changes. The full configured gate must then pass before
+READY/review; reviewers use this amended spec as the contract.

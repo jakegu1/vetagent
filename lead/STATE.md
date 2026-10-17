@@ -54,8 +54,8 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 | Task | Level | Stage | Who | Next action |
 |---|---|---|---|---|
 | T-026 evidence study | bounded private investigation | parent-control and actual selection attribution | investigator | Complete immutable trace, then select a narrow runtime/provenance specification |
-| T-028 | 3 | acceptance-first implementation in isolated worktree | executor | Freeze discovery status/malformed-listing head, then fresh independent and red-team reviews |
-| T-029 | 3 | acceptance-first implementation in isolated worktree | executor | Freeze archive health/preservation-first head, then fresh independent and red-team reviews |
+| T-028 | 3 | frozen source; derived receipt refresh before READY | lead | Regenerate the stale MCP assertion receipt, then complete checks and fresh reviews |
+| T-029 | 3 | frozen first-round review; actual legacy archive incompatibility observed | independent and red-team reviewers | Reproduce current/default archive behavior, then bounded compatibility correction |
 | T-030 | 3 | ready; waiting for T-026 evidence and T-028 source freeze | lead | Disclose unchecked reserve amounts; preserve every numeric and identifier contract |
 
 The Owner asks for related gaps to be completed in batches with the highest delivery
