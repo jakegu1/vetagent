@@ -1,7 +1,7 @@
 ---
 id: T-030
 title: Disclose selected liquidity estimates whose reserve amounts cannot be checked
-status: ready
+status: in_progress
 level: 3
 size: M
 depends_on: [T-026, T-028]

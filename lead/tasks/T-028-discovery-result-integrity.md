@@ -1,7 +1,7 @@
 ---
 id: T-028
 title: Preserve discovery completeness across malformed listings and public interfaces
-status: changes_requested
+status: done
 level: 3
 size: M
 depends_on: [T-025]
