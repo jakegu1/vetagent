@@ -149,6 +149,7 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- lead: record verified linked release and actual snapshot health
 - lead: record signed disclosure reviews and approved batch merge
 - lead: record recommendation-copy disclosure incident
 - lead: record frozen disclosure task and start required reviews
@@ -156,9 +157,8 @@ problem looked like before it was fixed.
 - T-030: named change (recommendation qualification)
 - lead: preserve reserve qualification in copied recommendations
 - T-030: disclose selected depth with unchecked reserves
-- T-030: acceptance tests
 
-_122 more not shown (130 commits in total)._
+_123 more not shown (131 commits in total)._
 
 ## What I got wrong
 
