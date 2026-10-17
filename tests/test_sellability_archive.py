@@ -2063,6 +2063,389 @@ def test_request_gap_collection_budget_is_noop_for_unset_cached_and_noncollectio
                   not replay["http"] and not replay["waits"])
 
 
+# T-029: freshness observes manifests only, after the observer preserves its evidence.
+def _freshness_module():
+    import importlib.util
+    path = os.path.join(ROOT, "bench", "snapshot_health.py")
+    exists = os.path.isfile(path)
+    check("the offline snapshot freshness monitor exists", exists)
+    if not exists:
+        return None
+    spec = importlib.util.spec_from_file_location("snapshot_health_acceptance", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _freshness_now():
+    from datetime import datetime, timezone
+    return datetime(2026, 10, 18, 12, tzinfo=timezone.utc)
+
+
+def _freshness_write(directory, rows, name="runs-2026-10-18.ndjson"):
+    with io.open(os.path.join(directory, name), "w", encoding="utf-8") as fh:
+        fh.write(rows if isinstance(rows, str) else
+                 "".join(json.dumps(row) + "\n" for row in rows))
+
+
+def _freshness_guard(directory):
+    """Block all network, archive writes and pool reads while the monitor runs."""
+    import builtins
+    import socket
+    import urllib.request
+    from contextlib import ExitStack
+    from unittest.mock import patch
+    stack, reads = ExitStack(), []
+    real_io_open, real_open, real_os_open = io.open, builtins.open, os.open
+    archive = os.path.abspath(directory)
+
+    def observe(file, mode):
+        if any(flag in mode for flag in "wax+"):
+            raise AssertionError("monitor attempted a write")
+        if isinstance(file, (str, bytes, os.PathLike)):
+            path = os.path.abspath(os.fsdecode(file))
+            if os.path.dirname(path) == archive:
+                name = os.path.basename(path)
+                if not name.startswith("runs-"):
+                    raise AssertionError("monitor inspected a pool file")
+                reads.append(name)
+
+    def guarded_io(file, mode="r", *args, **kwargs):
+        observe(file, mode)
+        return real_io_open(file, mode, *args, **kwargs)
+
+    def guarded_open(file, mode="r", *args, **kwargs):
+        observe(file, mode)
+        return real_open(file, mode, *args, **kwargs)
+
+    def guarded_os_open(file, flags, *args, **kwargs):
+        if flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC | os.O_APPEND):
+            raise AssertionError("monitor attempted an OS write")
+        observe(file, "r")
+        return real_os_open(file, flags, *args, **kwargs)
+
+    def blocked(*args, **kwargs):
+        raise AssertionError("freshness must not use the network")
+
+    for owner, name in ((socket, "socket"), (socket, "create_connection"),
+                        (urllib.request, "urlopen"), (snapshot, "fetch_json")):
+        stack.enter_context(patch.object(owner, name, side_effect=blocked))
+    stack.enter_context(patch.object(io, "open", side_effect=guarded_io))
+    stack.enter_context(patch.object(builtins, "open", side_effect=guarded_open))
+    stack.enter_context(patch.object(os, "open", side_effect=guarded_os_open))
+    return stack, reads
+
+
+def _freshness_cli(module, directory, extra=()):
+    from contextlib import redirect_stdout, redirect_stderr
+    from datetime import datetime
+    from unittest.mock import patch
+    out, err = io.StringIO(), io.StringIO()
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return _freshness_now().astimezone(tz)
+
+    stack, _ = _freshness_guard(directory)
+    with stack, patch.object(module, "datetime", Clock), redirect_stdout(out), redirect_stderr(err):
+        try:
+            code = module.main(["--archive-dir", directory] + list(extra))
+        except SystemExit as exc:
+            code = exc.code
+    return code, out.getvalue(), err.getvalue()
+
+
+def test_snapshot_freshness_exact_boundary_clock_and_current_coverage():
+    print("\n[freshness] the twelve-hour policy includes its exact boundary")
+    import tempfile
+    from datetime import timedelta, timezone
+    module = _freshness_module()
+    if module is None:
+        return
+    now = _freshness_now()
+    for age, status in ((12, "healthy"), (12 + 1 / 3600, "stale"), (11, "healthy")):
+        with tempfile.TemporaryDirectory() as tmp:
+            stamp = (now - timedelta(hours=age)).isoformat()
+            _freshness_write(tmp, _snapshot_manifest(stamp))
+            stack, _ = _freshness_guard(tmp)
+            with stack:
+                result = module.report(tmp, now=now)
+            check("age %r has the expected boundary status" % age, result["status"] == status)
+            check("age %r reports measured coverage and age" % age,
+                  abs(result["latest_age_hours"] - age) < 1e-8
+                  and result["latest_seen_at"] == stamp
+                  and result["coverage"] == {"complete": True, "rows": 1, "pages": 2, "gaps": 0}
+                  and result["causes"] == {})
+            check("clock output is UTC with the required machine-readable fields",
+                  result["checked_at"] == now.isoformat()
+                  and set(result) == {"checked_at", "status", "latest_seen_at", "latest_age_hours",
+                                      "observed_passes_24h", "complete_passes_24h", "coverage", "causes"})
+    with tempfile.TemporaryDirectory() as tmp:
+        _freshness_write(tmp, _snapshot_manifest(now.isoformat()))
+        stack, _ = _freshness_guard(tmp)
+        with stack:
+            result = module.report(tmp, now=now.astimezone(timezone(timedelta(hours=2))))
+        check("an offset-aware input clock normalizes to UTC", result["checked_at"] == now.isoformat())
+
+
+def test_snapshot_freshness_latest_incomplete_overrides_an_older_complete_pass():
+    print("\n[freshness] the actual newest pass wins even when collection failed")
+    import tempfile
+    module = _freshness_module()
+    if module is None:
+        return
+    old = _snapshot_manifest("2026-10-18T08:00:00+00:00")
+    failed = _snapshot_manifest("2026-10-18T11:00:00+00:00")
+    failed[1].update(outcome="fetch_failed", diagnostics={"error": "http", "status": 429})
+    with tempfile.TemporaryDirectory() as tmp:
+        _freshness_write(tmp, failed + old)
+        stack, _ = _freshness_guard(tmp)
+        with stack:
+            result = module.report(tmp, now=_freshness_now())
+        check("newer failure cannot become old healthy evidence",
+              result["status"] == "incomplete" and result["latest_seen_at"] == failed[0]["seen_at"]
+              and result["latest_age_hours"] == 1)
+        check("real failure causes and pass counts survive",
+              result["causes"] == {"http_429": 1}
+              and result["coverage"] == {"complete": False, "rows": 1, "pages": 2, "gaps": 1}
+              and (result["observed_passes_24h"], result["complete_passes_24h"]) == (2, 1))
+
+
+def test_snapshot_freshness_groups_equivalent_instants_and_ignores_filename_dates():
+    print("\n[freshness] offsets and file order cannot fabricate extra passes")
+    import tempfile
+    module = _freshness_module()
+    if module is None:
+        return
+    newest = _snapshot_manifest("2026-10-18T12:00:00+00:00")
+    newest[1]["seen_at"] = "2026-10-18T14:00:00+02:00"
+    with tempfile.TemporaryDirectory() as tmp:
+        _freshness_write(tmp, _snapshot_manifest("2026-10-18T11:00:00+00:00"),
+                         "runs-9999-12-31.ndjson")
+        _freshness_write(tmp, newest[:1], "runs-0001-01-01.ndjson")
+        _freshness_write(tmp, newest[1:], "runs-other-date.ndjson")
+        stack, _ = _freshness_guard(tmp)
+        with stack:
+            result = module.report(tmp, now=_freshness_now())
+        check("actual instants choose the latest observation across all manifest files",
+              result["status"] == "healthy" and result["latest_seen_at"] == newest[0]["seen_at"]
+              and result["latest_age_hours"] == 0)
+        check("equivalent offsets make one complete pass",
+              (result["observed_passes_24h"], result["complete_passes_24h"]) == (2, 2)
+              and result["coverage"]["pages"] == 2)
+
+
+def test_snapshot_freshness_counts_an_inclusive_window_and_preserves_observed_zero():
+    print("\n[freshness] zero observed passes differs from an unavailable measurement")
+    import tempfile
+    from datetime import timedelta
+    module = _freshness_module()
+    if module is None:
+        return
+    now = _freshness_now()
+    rows = []
+    for hours in (24 + 1 / 3600, 24, 12, 6, 0):
+        part = _snapshot_manifest((now - timedelta(hours=hours)).isoformat())
+        if hours == 6:
+            part[1].update(outcome="skipped", recovery_outcome="budget_exhausted")
+        rows.extend(part)
+    with tempfile.TemporaryDirectory() as tmp:
+        _freshness_write(tmp, rows)
+        stack, _ = _freshness_guard(tmp)
+        with stack:
+            result = module.report(tmp, now=now)
+        check("the inclusive 24-hour window counts distinct actual observed and complete passes",
+              (result["observed_passes_24h"], result["complete_passes_24h"]) == (4, 3))
+        _freshness_write(tmp, rows[:2])
+        stack, _ = _freshness_guard(tmp)
+        with stack:
+            old = module.report(tmp, now=now)
+        check("a valid observed empty window is stale with real zero counts",
+              old["status"] == "stale"
+              and (old["observed_passes_24h"], old["complete_passes_24h"]) == (0, 0)
+              and old["coverage"]["complete"] is True)
+
+
+def test_snapshot_freshness_corrupt_missing_unreadable_and_future_evidence_are_unobserved():
+    print("\n[freshness] unavailable evidence never falls back to an older success")
+    import tempfile
+    from unittest.mock import patch
+    module = _freshness_module()
+    if module is None:
+        return
+    good = _snapshot_manifest("2026-10-18T10:00:00+00:00")
+    prefix = "".join(json.dumps(row) + "\n" for row in good)
+    invalid = [("truncated current", prefix + '{"seen_at":"2026-10-18T11'),
+               ("invalid JSON", prefix + "private-source-value\n"),
+               ("malformed shape", prefix + "[]\n"),
+               ("missing fields", good + [{"seen_at": "2026-10-18T11:00:00+00:00"}]),
+               ("naive timestamp", _snapshot_manifest("2026-10-18T11:00:00")),
+               ("date-only timestamp", _snapshot_manifest("2026-10-18")),
+               ("future timestamp", _snapshot_manifest("2026-10-18T12:00:01+00:00")),
+               ("empty file", "\n"), ("absent manifests", None)]
+    for label, rows in invalid:
+        with tempfile.TemporaryDirectory() as tmp:
+            if rows is not None:
+                _freshness_write(tmp, rows)
+            stack, _ = _freshness_guard(tmp)
+            with stack:
+                result = module.report(tmp, now=_freshness_now())
+            check(label + " is unobserved with unavailable measurements",
+                  result["status"] == "unobserved" and result["coverage"] is None
+                  and result["observed_passes_24h"] is None
+                  and result["complete_passes_24h"] is None
+                  and result["latest_age_hours"] is None and bool(result["causes"]))
+            check(label + " never discloses source content", "private-source-value" not in json.dumps(result))
+    with tempfile.TemporaryDirectory() as tmp:
+        _freshness_write(tmp, good)
+        stack, _ = _freshness_guard(tmp)
+        with stack, patch.object(module.io, "open", side_effect=PermissionError("private-source-value")):
+            unreadable = module.report(tmp, now=_freshness_now())
+        check("an unreadable manifest is unavailable rather than zero",
+              unreadable["status"] == "unobserved" and unreadable["observed_passes_24h"] is None
+              and "private-source-value" not in json.dumps(unreadable))
+        stack, _ = _freshness_guard(tmp)
+        with stack:
+            missing = module.report(os.path.join(tmp, "missing"), now=_freshness_now())
+        check("a missing archive is unavailable rather than zero",
+              missing["status"] == "unobserved" and missing["observed_passes_24h"] is None)
+
+
+def test_snapshot_freshness_reuses_coverage_endings_failures_zero_rows_and_planned_gaps():
+    print("\n[freshness] coverage keeps the collector's original meaning")
+    import tempfile
+    module = _freshness_module()
+    if module is None:
+        return
+    stamp = "2026-10-18T11:00:00+00:00"
+    ending = _snapshot_manifest(stamp)
+    ending[1].update(outcome="end_of_listing")
+    failure = _snapshot_manifest(stamp)
+    failure[1].update(outcome="fetch_failed", diagnostics={"error": "network"})
+    skipped = _snapshot_manifest(stamp)
+    skipped[1].update(outcome="skipped", recovery_outcome="budget_exhausted")
+    planned = [dict(row, chains=["base", "eth"]) for row in ending]
+    past_end = [dict(ending[0], rows=0, pages=2, outcome="end_of_listing"),
+                dict(ending[0], rows=0, pages=2, page=2, outcome="past_end_of_listing"),
+                dict(ending[1], rows=1, outcome="ok")]
+    cases = [ending, failure, skipped, planned, past_end,
+             _snapshot_manifest(stamp, "end_of_listing", rows=0), ending[:1]]
+    for index, rows in enumerate(cases):
+        expected_rows, pages, gaps, causes = snapshot._coverage(rows)
+        complete = expected_rows > 0 and gaps == 0 and not causes
+        with tempfile.TemporaryDirectory() as tmp:
+            _freshness_write(tmp, rows)
+            stack, _ = _freshness_guard(tmp)
+            with stack:
+                result = module.report(tmp, now=_freshness_now())
+            check("coverage case %d is identical to snapshot._coverage" % index,
+                  result["coverage"] == {"complete": complete, "rows": expected_rows,
+                                         "pages": pages, "gaps": gaps}
+                  and result["causes"] == dict(causes)
+                  and result["status"] == ("healthy" if complete else "incomplete")
+                  and result["complete_passes_24h"] == int(complete))
+
+
+def test_snapshot_freshness_is_read_only_redacted_and_validates_aware_clocks():
+    print("\n[freshness] reporting never reads pools, writes files or contacts an upstream")
+    import tempfile
+    from datetime import datetime
+    module = _freshness_module()
+    if module is None:
+        return
+    with tempfile.TemporaryDirectory() as tmp:
+        rows = _snapshot_manifest("2026-10-18T11:00:00+00:00")
+        rows[0]["unused"] = "private-source-value"
+        _freshness_write(tmp, rows, "runs-private-source-value.ndjson")
+        with io.open(os.path.join(tmp, "pools-do-not-read.ndjson"), "w", encoding="utf-8") as fh:
+            fh.write("private-source-value")
+        before = {name: io.open(os.path.join(tmp, name), "rb").read() for name in os.listdir(tmp)}
+        stack, reads = _freshness_guard(tmp)
+        with stack:
+            result = module.report(tmp, now=_freshness_now())
+        after = {name: io.open(os.path.join(tmp, name), "rb").read() for name in os.listdir(tmp)}
+        check("a report reads only manifests and preserves every original byte",
+              result["status"] == "healthy" and reads == ["runs-private-source-value.ndjson"]
+              and before == after and "private-source-value" not in json.dumps(result))
+        stack, _ = _freshness_guard(tmp)
+        with stack:
+            try:
+                module.report(tmp, now=datetime(2026, 10, 18, 12))
+                rejected = False
+            except ValueError:
+                rejected = True
+        check("a naive caller clock cannot claim current health", rejected)
+
+
+def test_snapshot_freshness_cli_exit_codes_default_custom_duration_and_invalid_options():
+    print("\n[freshness] machine-readable health is a hard CLI signal")
+    import tempfile
+    module = _freshness_module()
+    if module is None:
+        return
+    cases = [("healthy", "2026-10-18T00:00:00+00:00", "ok", 0),
+             ("stale", "2026-10-17T23:59:59+00:00", "ok", 1),
+             ("incomplete", "2026-10-18T11:00:00+00:00", "fetch_failed", 1),
+             ("unobserved", None, "ok", 2)]
+    for label, stamp, outcome, expected in cases:
+        with tempfile.TemporaryDirectory() as tmp:
+            if stamp is not None:
+                rows = _snapshot_manifest(stamp)
+                if outcome != "ok":
+                    rows[1]["outcome"] = outcome
+                _freshness_write(tmp, rows)
+            code, out, err = _freshness_cli(module, tmp)
+            result = json.loads(out)
+            check(label + " returns its distinct expected CLI signal and JSON",
+                  code == expected and result["status"] == label and not err)
+            if label == "stale":
+                code, out, err = _freshness_cli(module, tmp, ["--max-age-hours", "13"])
+                check("the explicit finite positive duration is honored",
+                      code == 0 and json.loads(out)["status"] == "healthy" and not err)
+    for value in ("0", "-1", "nan", "inf", "-inf", "not-a-duration"):
+        with tempfile.TemporaryDirectory() as tmp:
+            code, out, err = _freshness_cli(module, tmp, ["--max-age-hours=" + value])
+            check("invalid duration %s fails before reporting" % value,
+                  code == 2 and not out and "finite" in err and "positive" in err)
+    with tempfile.TemporaryDirectory() as tmp:
+        for value in (0, -1, float("nan"), float("inf"), float("-inf")):
+            stack, _ = _freshness_guard(tmp)
+            with stack:
+                try:
+                    module.report(tmp, now=_freshness_now(), max_age_hours=value)
+                    rejected = False
+                except ValueError:
+                    rejected = True
+            check("the pure report also rejects invalid durations %r" % value, rejected)
+
+
+def test_snapshot_freshness_workflow_runs_last_always_and_cannot_swallow_failure():
+    print("\n[freshness] the observer preserves and generates before health can fail")
+    import hashlib
+    import re
+    wf = io.open(os.path.join(ROOT, ".github", "workflows", "production.yml"), encoding="utf-8").read()
+    marker = "      - name: Check snapshot freshness and coverage\n"
+    exists = marker in wf
+    check("the daily observer includes the required snapshot health step", exists)
+    if not exists:
+        return
+    before, health = wf.split(marker, 1)
+    check("all pre-existing observer bytes retain their original commands and order",
+          hashlib.sha256(before.encode("utf-8")).hexdigest() ==
+          "08fd9eb2690e50180a3c6dc2b9db45a3e209bb3c0e45549af44110c6e66f553a")
+    steps = [part.splitlines()[0].strip() for part in re.split(r"- name: ", wf)[1:]]
+    check("health runs after both observation commit and fixed-point generation",
+          steps[-1] == "Check snapshot freshness and coverage"
+          and steps.index("Commit") < steps.index("Regenerate the pages that quote it") < len(steps) - 1)
+    check("health still executes when an earlier observer step failed",
+          re.search(r"^        if: always\(\)$", health, re.M) is not None)
+    check("the health command uses twelve hours and its exit cannot be swallowed",
+          re.search(r"^        run: python bench/snapshot_health\.py --max-age-hours 12$", health, re.M)
+          is not None and "continue-on-error" not in health and "||" not in health
+          and len(re.findall(r"^        run:", health, re.M)) == 1)
+
+
 def main():
     print("=" * 68)
     print("Sellability archive: asking on the day, because later is too late")
