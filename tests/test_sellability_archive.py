@@ -2446,6 +2446,99 @@ def test_snapshot_freshness_workflow_runs_last_always_and_cannot_swallow_failure
           and len(re.findall(r"^        run:", health, re.M)) == 1)
 
 
+def test_snapshot_health_legacy_history_does_not_mask_current_pass():
+    print("\n[freshness] old schema history cannot mask complete or failed current evidence")
+    import tempfile
+    module = _freshness_module()
+    if module is None:
+        return
+    legacy = _snapshot_manifest("2026-10-17T11:59:59+00:00")
+    legacy[1]["seen_at"] = "2026-10-17T13:59:59+02:00"
+    for row in legacy:
+        del row["pages"]
+    older = _snapshot_manifest("2026-10-16T12:00:00+00:00")
+    for outcome in ("ok", "fetch_failed"):
+        latest = _snapshot_manifest("2026-10-18T11:00:00+00:00")
+        latest[1]["outcome"] = outcome
+        current = _snapshot_manifest("2026-10-18T10:00:00+00:00") + latest
+        with tempfile.TemporaryDirectory() as tmp:
+            _freshness_write(tmp, current, "runs-0001-01-01.ndjson")
+            stack, _ = _freshness_guard(tmp)
+            with stack:
+                control = module.report(tmp, now=_freshness_now())
+            _freshness_write(tmp, legacy + older, "runs-9999-12-31.ndjson")
+            stack, _ = _freshness_guard(tmp)
+            with stack:
+                result = module.report(tmp, now=_freshness_now())
+            check(outcome + " current health survives historical legacy manifests",
+                  result["status"] == ("healthy" if outcome == "ok" else "incomplete")
+                  and result["latest_seen_at"] == latest[0]["seen_at"]
+                  and result["observed_passes_24h"] == 2
+                  and result["complete_passes_24h"] == (2 if outcome == "ok" else 1))
+            check(outcome + " discloses distinct excluded instants rather than historical completeness",
+                  result.get("older_passes_not_checked") == 2)
+            ordinary = dict(result)
+            ordinary.pop("older_passes_not_checked", None)
+            check(outcome + " retains every ordinary field and actual coverage outcome",
+                  ordinary == control and "older_passes_not_checked" not in control)
+
+
+def test_snapshot_health_relevant_legacy_or_invalid_evidence_stays_unobserved():
+    print("\n[freshness] the scope boundary cannot bypass relevant coverage or timestamp parsing")
+    import tempfile
+    from unittest.mock import patch
+    module = _freshness_module()
+    if module is None:
+        return
+    good = _snapshot_manifest("2026-10-18T10:00:00+00:00")
+    latest_legacy = _snapshot_manifest("2026-10-18T11:00:00+00:00")
+    boundary_legacy = _snapshot_manifest("2026-10-17T12:00:00+00:00")
+    only_legacy = _snapshot_manifest("2026-10-17T11:59:59+00:00")
+    for rows in (latest_legacy, boundary_legacy, only_legacy):
+        for row in rows:
+            del row["pages"]
+    invalid_latest = _snapshot_manifest("2026-10-18T11:00:00+00:00")
+    invalid_latest[1]["outcome"] = "invalid"
+    missing_time = [{"chain": "base", "kind": "new"}]
+    cases = [("latest legacy", latest_legacy + good, None),
+             ("inclusive boundary legacy", boundary_legacy + good, None),
+             ("only old legacy", only_legacy, None),
+             ("invalid latest", invalid_latest + good, None),
+             ("malformed old JSON", good, "{invalid JSON}"),
+             ("missing old timestamp", good, missing_time),
+             ("naive old timestamp", good, _snapshot_manifest("2026-10-01T12:00:00")),
+             ("date-only old timestamp", good, _snapshot_manifest("2026-10-01")),
+             ("future evidence in an old filename", good,
+              _snapshot_manifest("2026-10-18T12:00:01+00:00")),
+             ("unreadable old input", good,
+              _snapshot_manifest("2026-10-01T12:00:00+00:00"))]
+    for label, rows, extra in cases:
+        with tempfile.TemporaryDirectory() as tmp:
+            _freshness_write(tmp, rows)
+            old_name = "runs-0001-01-01.ndjson"
+            if extra is not None:
+                _freshness_write(tmp, extra, old_name)
+            stack, _ = _freshness_guard(tmp)
+            guarded_open = io.open
+
+            def read_manifest(path, *args, **kwargs):
+                if label == "unreadable old input" and os.path.basename(path) == old_name:
+                    raise PermissionError("private-source-value")
+                return guarded_open(path, *args, **kwargs)
+
+            with stack, patch.object(module.io, "open", side_effect=read_manifest):
+                result = module.report(tmp, now=_freshness_now())
+            check(label + " remains unobserved without any older-success fallback",
+                  result["status"] == "unobserved" and result["coverage"] is None
+                  and result["latest_age_hours"] is None
+                  and result["observed_passes_24h"] is None
+                  and result["complete_passes_24h"] is None and bool(result["causes"]))
+            check(label + " does not expose input text or invent historical coverage",
+                  "private-source-value" not in json.dumps(result)
+                  and ("older_passes_not_checked" not in result
+                       or result["older_passes_not_checked"] > 0))
+
+
 def main():
     print("=" * 68)
     print("Sellability archive: asking on the day, because later is too late")
