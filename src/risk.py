@@ -1287,6 +1287,17 @@ def _independent_depth_cap(pair):
 _NOT_CHECKABLE = object()
 _INVALID_CAP = object()
 
+_LIQUIDITY_RESERVE_NOTE = "Upstream estimate; reserve amounts not checked."
+
+
+def _liquidity_reserve_check(pair):
+    """Disclose the retained positive estimate, without certifying any other cap result."""
+    depth = _reported_liquidity(pair)
+    if depth is not None and depth > 0 and _independent_depth_cap(pair) is _NOT_CHECKABLE:
+        return "not_checkable"
+    return None
+
+
 _UNBACKED_REASON = _gap(_ABOUT_TOKEN,
                         "no pool's depth is priced in an asset we can verify")
 
@@ -1785,6 +1796,11 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
     else:
         signals.append(_sig("ok", "Liquidity is adequate",
                             "Main pair holds $%s." % format(liq, ",.0f"), "liquidity"))
+
+    reserve_check = _liquidity_reserve_check(best)
+    if reserve_check is not None:
+        evidence["liquidity_reserve_check"] = reserve_check
+        signals[-1]["message"] += " " + _LIQUIDITY_RESERVE_NOTE
 
     chains = sorted({p.get("chainId") for p in pairs if p.get("chainId")})
     evidence["chains"] = chains
@@ -4095,6 +4111,7 @@ _SLIM_EVIDENCE_KEYS = (
     # (non-transferable, frozen by default) and behind the only fee figure this engine
     # has on Solana.
     "rugcheck", "token2022", "liquidity_source", "data_gaps", "served_stale",
+    "liquidity_reserve_check",
     "owner_powers",
     "price_change_24h_pct",
     "sellability_from_chain",
@@ -4456,7 +4473,7 @@ async def liquidity(address, chain_hint=None):
                 "pairs_total": len(pairs),
                 "note": "Pairs exist but none could be costed, so the depth is unknown. "
                         "This is not a statement that the token has no liquidity."})
-    return _disclosed({
+    payload = {
         "address": address, "status": "ok", "source": source,
         # Upstream names, escaped like every other upstream string that reaches a caller.
         "best_pair_chain": _ascii_safe(best.get("chainId"), 24),
@@ -4467,7 +4484,12 @@ async def liquidity(address, chain_hint=None):
         "pairs_total": len(pairs),
         "chains": sorted({_ascii_safe(p.get("chainId"), 24)
                           for p in pairs if p.get("chainId")}),
-    })
+    }
+    reserve_check = _liquidity_reserve_check(best)
+    if reserve_check is not None:
+        payload["liquidity_reserve_check"] = reserve_check
+        payload["note"] = _LIQUIDITY_RESERVE_NOTE
+    return _disclosed(payload)
 
 
 def _parse_new_pool_listing(data, net, kind):
