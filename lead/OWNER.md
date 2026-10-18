@@ -9,11 +9,12 @@
 
 T-040 and T-041 are published at d82b98d after fresh reviews, complete combined checks,
 actual Linux builds and successful master CI. The optional operational query succeeds:
-W28's technical transport is verified; W27 remains inconclusive. T-042 passes its fresh
-combined second-round source review and awaits integrated/Linux checks plus a bounded
-eligibility screen. Source rights, product gates, privacy and spending remain Owner
-decisions. W54/W57 long-run clocks are not yet running. Experiment D remains unrun and
-due 2026-10-20 UTC.
+W28's technical transport is verified; W27 remains inconclusive. T-042 is published at
+66ffa4e after the complete combined gate, actual Linux and exact-source master CI;
+its bounded source-eligibility screen is complete without a simulator BUILD claim.
+T-043 implements the durable CI study, with pilot and enrollment still ahead. Source
+rights, product gates, privacy and spending remain Owner decisions. W54/W57 long-run
+clocks are not yet running. Experiment D remains unrun and due 2026-10-20 UTC.
 
 The scoped technical queue T-027 and T-031 through T-039 is complete and deployed
 at d354179. Actual deploy run 39122876006 uploads Worker dd8721cd-babd-43e6-b982-19cec1cdb6fa and passes all 41 required

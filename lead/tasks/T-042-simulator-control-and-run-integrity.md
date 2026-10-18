@@ -1,7 +1,7 @@
 ---
 id: T-042
 title: Make the independent simulator prototype honor its adopted controls and preserve runs
-status: in_progress
+status: done
 level: 3
 size: M
 depends_on: [T-039]

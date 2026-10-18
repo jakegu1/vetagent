@@ -1,7 +1,7 @@
 ---
 id: T-043
 title: Start and preserve the pre-registered RugCheck 48-hour CI observation
-status: ready
+status: in_progress
 level: 3
 size: M
 depends_on: [T-040]

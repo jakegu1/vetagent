@@ -61,11 +61,24 @@ W28's technical status transport is observed directly; attribution remains unkno
 Every measured deployment window remains inconclusive, so W27 is not closed and no
 cold-start or demand conclusion is adopted. Business readings remain outside this repo.
 
-T-042 is approved at b5877a6 by one fresh combined second-round review, twelve of
-twelve and RED-TEAM: none, and integrated by c4c4ce0. The named new regression keeps
-the original tests and historical evidence exact. Next: combined generation/checks,
-actual Linux verification, then at most six current control
-eligibility refreshes. No simulator/score integration or V3 work is authorized by it.
+T-042 is done and published at 66ffa4e after a fresh combined second-round review,
+twelve of twelve and RED-TEAM: none. The complete combined local gate passes all
+forty-two steps with byte-exact before/after source. Actual Linux 39155330318 and
+exact-source master CI 39155725830 pass every required step and both locked builds.
+The bounded predeclared positive-eligibility screen stops when the original minimum
+is unreachable; it supplies no simulation agreement or BUILD decision. W41/W47 stay
+open. The source/test fix preserves the historical reference and every decision bar.
+No simulator/score integration or V3 work follows from this instrument repair.
+
+T-043 is in progress from its ready spec and pre-test timing clarification. It adds
+one independent durable W57 collector and offline registration, with a named narrow
+workflow-pin allowlist extension. CI egress pilot precedes fresh enrollment; the
+scientific window and inference rule remain fixed. No forty-eight-hour clock is
+running yet. T-044 is ready as a bounded W40 quota-pilot instrument, with additive
+tests inside the existing dynamic oracle runner so its files are disjoint from T-043.
+It permits one finite single-date observation, not a started prospective label study,
+continuous full-day availability claim or benchmark rebaseline. Source reviews and
+the root's actual run remain mandatory.
 
 The Owner renews authorization to prioritize the 21 remaining rows, batch related
 autonomous repairs, delegate bounded isolated work, and merge/push/deploy after quality
