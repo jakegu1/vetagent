@@ -62,6 +62,13 @@ cache/access log, all src files, providers, packages, permissions and every deci
    Preserve exact selection provenance, rather than selecting after seeing answers.
    Full --run remains explicitly separate, preserves original U13 and clean sets and all
    active design bars, and cannot silently truncate a control population into a pass.
+   Original clean sets here means the base selection algorithm (fixed target controls
+   plus latest archive answers, twenty per covered clean-control chain), not replacing
+   that algorithm with run 1's historical identities. Capture input provenance. Full
+   positive evaluation covers the declared current archived Ethereum population; any
+   unasked/truncated part prevents BUILD. The six-request eligibility screen may select
+   the stable ordered slice of latest archival candidates already stating the adopted
+   floor, with the other/unasked population explicit; archived eligibility is not current.
 4. **No overwrite or shared state.** Live modes require explicit new isolated output
    and cache paths; reject existing output/cache and protected source/shared-cache paths
    before any network call. Reserve output exclusively, preserve partial observations
@@ -99,4 +106,8 @@ fewer than five means current positive eligibility remains unmeasurable on this 
 
 ## Amendments
 
-None.
+2026-10-19, pre-tests clarification (a): preserve the base cohort-selection algorithm
+and immutable target/reference files rather than freezing a new historical clean set.
+AC3 now states full-population versus bounded eligibility-screen semantics. No old
+test or adopted decision bar changes; write the first acceptance commit after this
+clarification is in the executor's base.
