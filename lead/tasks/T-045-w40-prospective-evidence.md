@@ -180,3 +180,115 @@ For local execution use process-only TMP/TEMP in a real external non-Git tempora
 folder, recording that path in private evidence rather than hardcoding it in the
 repository. Linux uses its actual ordinary temporary directory. Neither platform
 fact is evidence that private raw output may be nested in a Git or safe-output tree.
+
+## Named first-review correction
+
+2026-10-19 (b): independent and adversarial review of
+b9a5178954ea9d0873c99229d0d1b25c42bafbff reproduced four evidence-integrity
+classes despite its actual forty-two-step local gate passing. Hold that source.
+Correct all four in one bounded second implementation round; preserve every
+original policy, helper, source, floor, date, band and independence rule.
+
+Commit acceptance regressions alone before repairs. Append exactly one new
+self-contained nested block at the end of each of the following four existing
+new acceptance functions. Preserve every earlier statement in its original order,
+all other function bodies, all original module/main bytes, and all seven function
+names. Record a mechanical byte/AST comparison after removing only these blocks.
+
+1. test_w40_enrollment_uses_birth_utc_and_never_selects_after_results:
+   exercise real plan -> enroll -> report and actual CLI with a valid row, a row
+   whose chain is an array or object, and a later valid distinct row. Malformed
+   bounded JSON is counted as invalid_row and processing continues; it cannot
+   abort enrollment or lose the later valid row. Add the separate delayed-first-
+   enrollment case with an earlier selection boundary, birth October 1, target
+   October 2 and first immutable ingestion October 3. With no earlier bound
+   enrollment intent, it is missed_before_enrollment. A caller's earlier boundary
+   alone cannot establish prospective selection. Preserve both supplied clocks.
+
+2. test_w40_paired_packet_preserves_raw_sources_times_and_identities:
+   exercise ordinary import and actual CLI when a stage's declared state is an
+   array or object. Classify the bounded malformed value as invalid evidence;
+   preserve prior committed rows, known HTTP/timing evidence and explicit remaining
+   gaps, with fixed safe diagnostics and no traceback or arbitrary prose. A
+   malformed container must not reach hash/set membership as an unhashable value.
+
+3. test_w40_label_replay_preserves_existing_rules_and_observation_states:
+   reproduce the one-year-old candle and the declared historical before_timestamp
+   query through raw -> normal import -> unchanged label helper -> safe report.
+   Historical-only, pre-birth-inconsistent or historical-query-mismatched series
+   cannot supply recent_volume_7d or qualify an otherwise uncorroborated honeypot
+   flag as unsafe. Validate the actual requested daily series and the existing
+   seven-day recent-volume window against its observed acquisition clocks and
+   enrolled birth. Keep a contemporaneous positive control and the original
+   helper's exact behavior. Do not alter labels.py, infer missing volume as zero,
+   claim full time coverage from sparse candles, or introduce a freshness/skew
+   tolerance or new label threshold. Preserve raw/time/query availability as gaps.
+
+4. test_w40_timing_and_endpoint_overlap_never_become_passes:
+   import timeout and transport_error with a valid request_at and response_at null,
+   plus a known 429 with missing response time. Preserve each actual availability
+   category, HTTP status and independently valid request clock; disclose the
+   response clock as missing. An absent response time is not an invalid observed
+   clock. Include actual invalid/reversed-clock controls, fail qualification
+   closed, and never invent a response timestamp or simultaneous/skew pass.
+
+The malformed identity/container, stale-volume, independent-clock and retrospective-
+enrollment repairs each get a separate finding commit with its meaningful red in
+the message. Keep all first-round evidence sealed; new evidence goes in a new
+external round-two directory. Run focused checks and bounded meaningful mutants,
+then request one exact-head globally exclusive full slot. A source-frozen/full-
+pending handoff is acceptable while root owns that slot; do not call it READY.
+One fresh combined second reviewer must reproduce all four closures, verify the
+frozen contract and run the actual complete ordinary inventory before PASS.
+Actual Linux checks precede publication. No source, scheduler, vendor request,
+engine invocation or thirty-day calendar start is added by this repair.
+
+## Named existing-RPC provenance correction
+
+2026-10-19 (b2): a native-producer readiness check independently reproduced an
+AC5/B1 evidence defect on held 9b804c7efd4048168040bbdd7dde3db0c0d81c04.
+The existing engine can call each of its three _CHAIN_RPC roots. The offline
+core's endpoint host set omits them. With the same GT reserve endpoint in label
+and engine, independence_failed and one observed overlap become
+independence_unobserved and zero overlaps merely by adding any actual existing
+RPC dependency. Root's pure zero-network probe reproduces all three cases.
+An unknown endpoint must not erase a separately observed intersection.
+
+Hold that source before publication and before the fresh second review's full
+gate. This is the original endpoint-accounting/information-integrity criterion,
+not a B1 exception, new provider, production source, label bar or tolerance.
+
+Permit exactly one further self-contained nested regression block at the end of
+test_w40_timing_and_endpoint_overlap_never_become_passes, after its frozen (b)
+addition. Preserve every earlier byte, statement order, assertion, helper, other
+function and the original seven-function/module/main contract. Commit this block
+alone first with a meaningful native red on the held source.
+
+Exercise both pure endpoint accounting and the actual paired-packet import/CLI
+readout with the current engine's three exact RPC roots. Known label/engine GT
+intersection remains independence_failed with its hashed overlap retained when
+each RPC root is added. The actual existing RPC dependencies are representable
+as observed endpoint evidence, without calling them or widening live transport.
+A complete nonempty disjoint RPC-only engine control can remain observed.
+
+Also combine a known GT intersection with an additional invalid/unknown endpoint.
+Retain the known valid subset and observed overlap; disclose incomplete/invalid
+endpoint inventory separately and fail independence. A partial disjoint subset
+must remain independence_unobserved, never an observed independence pass. Keep
+existing missing-set controls, safe hashed output, qualified-unsafe refusal for
+overlap/unobserved independence, raw/HTTP/time evidence and all prior rows exact.
+Do not print raw endpoints, identities or arbitrary errors in safe artifacts.
+
+The fix may extend only provenance normalization for the three roots already in
+the frozen engine and preserve partial endpoint observations with explicit
+completeness. It introduces no native request, engine modification, new source,
+eligibility exception, score, deadline, study start or benchmark change. One
+separate same-finding repair commit follows red. Preserve all earlier sealed
+proofs; add new evidence in T045-executor-round2-b2. The current full42/954exact
+remains held-head evidence and must not be rebound.
+
+After focused/current-CLI/contract proof, freeze the corrected head and request
+the root-granted exclusive full slot. The already fresh combined reviewer can
+verify this delta and all original closures on the new frozen head before its
+single final complete gate; it never implements a repair. No further broad
+review round or optional cleanup is added. Actual Linux precedes publication.
