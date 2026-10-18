@@ -357,3 +357,38 @@ Keep the new native test's accepted assertion bytes frozen after its first red.
    safe-stop. Show actual Linux results in CI and actual Windows results locally;
    do not claim an operating-system guarantee from a mock. No new dependency,
    T044/T045 edit, agent permission change or study start is introduced.
+
+## Named native premature-EOF regression
+
+2026-10-19 (a): before READY, an actual localhost probe on held source 9303ef9
+reproduces an original AC4 transport-integrity defect. HTTPResponse.read1 can
+return EOF while the declared Content-Length still has positive remaining bytes.
+A flushed valid JSON prefix is then accepted as a complete response. Preserve
+that meaningful private red and any actual complete gate at its original head;
+do not rebind either to a repaired source.
+
+Permit exactly one self-contained append-only regression block at the end of
+test_w40_native_caps_pacing_deadline_and_cancellation, after its current last
+assertion. Nested fixture classes/helpers/imports belong in that block only.
+All earlier statements/assertions/order, the other six methods, shared helpers,
+original module/main bytes and seven-method discovery remain exact.
+
+Use actual localhost native HTTP: return status 200, declare a Content-Length
+longer than a flushed valid JSON prefix, and close the connection. The known
+status and exact prefix/hash remain retained privately; the body is truncated or
+unavailable and must not be accepted/cached/imported as a complete observation.
+The worker is retired, no retry is introduced and no raw identity/prose enters
+safe output. A counterpart response with exact declared length and the same valid
+JSON remains a complete positive control. Fake only the destination route through
+the existing technical test injection, never the native body reader.
+
+After the running held-head gate completes and its global slot is released, commit
+this ordinary-CI regression alone and reproduce its native red on held 9303ef9.
+Then one separate finding repair rejects premature EOF with remaining declared
+bytes and preserves already observed headers/prefix/retirement. Stay in the same
+new source file; do not edit any other source, rule, bound, original assertion,
+dependency or workflow contract. Re-run focused/native controls, mechanically
+verify the sole approved appended block, freeze the new head and request its own
+root-granted exact-head complete gate. Fresh independent and adversarial review
+and actual Linux remain required before publication; no live request or study
+start follows from this correction.
