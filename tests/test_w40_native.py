@@ -591,6 +591,80 @@ class NativeAcceptance(unittest.TestCase):
                     self.assertEqual(f.clock.mono(), reentry_at)
                     self.assertEqual(len(identity_queries), queries_before)
 
+        # Named (f2): uncertain retirement cannot invalidate Popen's remaining ownership.
+        import gc
+        with Fixture() as f:
+            identities, ownership, unraisable = [], [], []
+            async def inaccessible_before_arm(name, worker):
+                if name != "before_ack":
+                    return
+                identities.append(dict(worker.identity))
+                with patch.object(worker.process, "poll", return_value=None), \
+                     patch.object(native, "identity_alive", side_effect=native.NativeError("cleanup_uncertain")):
+                    try:
+                        await worker.retire()
+                    except native.NativeError as error:
+                        ownership.append({"error": str(error), "returncode": worker.process.returncode,
+                            "handle_closed": getattr(getattr(worker.process, "_handle", None), "closed", None)})
+                    else:
+                        raise AssertionError("inaccessible_identity_accepted")
+            async def contained_failure():
+                async with native.adapter_scope(f.runtime, f.private, token=f.token, chain="base",
+                        route=("127.0.0.1", 1), hooks=inaccessible_before_arm) as adapter:
+                    with self.assertRaisesRegex(native.NativeError, "^cleanup_uncertain$"):
+                        await adapter.fetch(f.ds)
+            with patch.object(sys, "unraisablehook", lambda event: unraisable.append(event.exc_type.__name__)):
+                asyncio.run(contained_failure())
+                gc.collect()
+            self.assertEqual(unraisable, [])
+            self.assertEqual(len(identities), 1)
+            self.assertFalse(native.identity_alive(identities[0]))
+            self.assertEqual(ownership[0]["error"], "cleanup_uncertain")
+            self.assertIsNone(ownership[0]["returncode"])
+            if sys.platform == "win32":
+                self.assertFalse(ownership[0]["handle_closed"])
+            self.assertEqual(native.report(f.runtime)["attempted"], 0)
+            self.assertFalse(list(f.private.glob("attempts/*/invocation.json")))
+            self.assertFalse(list(f.private.glob("attempts/*/sent.json")))
+        for unresolved_exit in (False, True):
+            with Fixture() as f:
+                class OwnedResource:
+                    closed = False
+                    def close(self):
+                        self.closed = True
+                    Close = close
+                class DeferredProcess:
+                    stdin = OwnedResource()
+                    _handle = OwnedResource()
+                    def poll(self):
+                        return None if unresolved_exit else 0
+                    def kill(self):
+                        return None
+                worker = native.NativeWorker({}, directory=f.private / "attempts/01",
+                    permit={}, permit_sha256="0" * 64)
+                worker.process, worker.job = DeferredProcess(), OwnedResource()
+                worker.identity = {"pid": 1, "creation": "1"}
+                original_sleep = asyncio.sleep
+                async def remaining_sleep(seconds):
+                    self.assertGreaterEqual(seconds, 0)
+                    self.assertLessEqual(seconds, .005)
+                    f.clock.advance(seconds)
+                    await original_sleep(0)
+                with patch.object(native.time, "monotonic", f.clock.mono), \
+                     patch.object(native, "identity_alive", side_effect=native.NativeError("cleanup_uncertain")), \
+                     patch.object(native.asyncio, "sleep", remaining_sleep):
+                    started = f.clock.mono()
+                    with self.assertRaisesRegex(native.NativeError, "^cleanup_uncertain$"):
+                        asyncio.run(worker.retire())
+                    self.assertAlmostEqual(f.clock.mono() - started, .4 if unresolved_exit else 0, places=6)
+                    self.assertEqual(worker.process._handle.closed, not unresolved_exit)
+                    self.assertTrue(worker.process.stdin.closed)
+                    self.assertTrue(worker.job.closed)
+                    ended = f.clock.mono()
+                    with self.assertRaisesRegex(native.NativeError, "^cleanup_uncertain$"):
+                        asyncio.run(worker.retire())
+                    self.assertEqual(f.clock.mono(), ended)
+
     def test_w40_native_private_boundary_and_safe_failures(self):
         native = importlib.import_module("w40_native")
         with Fixture() as f:
