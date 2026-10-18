@@ -1,7 +1,7 @@
 ---
 id: T-032
 title: Preserve complete and terminating inclusive backfill log ranges
-status: ready
+status: done
 level: 3
 size: S
 depends_on: [T-027]

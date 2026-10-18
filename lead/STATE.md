@@ -53,7 +53,9 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 | Task | Level | Stage | Who | Next action |
 |---|---|---|---|---|
-| T-027 / T-031 release | 3 | Named compatibility repair independently approved and merged; production unchanged | Lead | Integrated checks and new exact-head Linux preflight, then actual deployment/readback |
+| T-032 | 3 | Done; both fresh reviews approve, merged 106ad21, post-merge 37/37 | Lead | Publish with related technical batch |
+| T-034 | 3 | Round one changes required; unmatched prefixes shadow complete encoded markup | Executor after named amendment (a) | Add frozen regressions first, repair the recognizer, fresh combined final review |
+| T-033 | 3 | Isolated host-lock implementation | Executor | Tests first, actual public-index lock and credential-free Linux build preparation |
 
 ## Autonomous technical continuation
 
@@ -65,15 +67,38 @@ Dependency-related fixes are batched; changes sharing workflow registrations are
 integrated serially. Fresh reviews, the tests-first contract and actual Linux/runtime
 verification remain required. Do not treat unavailable upstream observations as passes.
 
-T-032's protected untracked draft waits for the verified compatibility base. T-034's
-rendered-template guard can then run beside T-032 in a separate worktree. T-033 host
-build locking follows T-032 because both register workflow steps. Separate scoped
+T-032 is approved and integrated. T-034's rendered-template guard runs in a separate
+worktree and its round-one boundary finding is corrected before integration. T-033 host
+build locking starts from T-032's frozen source and integrates after its approval,
+because both register workflow steps. Separate scoped
 follow-ups cover live-backfill observation classification, remaining release guards,
 Node/Pyodide build resolution, action/runner migration and reproduction instructions.
 No new paid service, provider, benchmark rebaseline or product-threshold change is
 implied. Calendar-time and externally unavailable evidence stay explicit gaps.
 
 ## Current batch baseline
+
+Actual required Linux preflight 39099114314 passes at 6898b72. Required master CI
+39099401243 also passes; observed upstream checks are 232 pass, zero failure, zero blind
+and zero partial. Optional historical backfill still records two generic HTTP 400
+failures and is not called successful. Actual deployment 39099401296 executes the
+full thirty-six-step gate, uploads Worker version 6ff81833-7d6d-4019-aab3-1073bc9096f8,
+and passes production smoke. T-027 and T-031 are deployed on that exact functional head.
+
+Tagged dated readback sees complete discovery on Base and Solana and an actual Base
+discovery-to-liquidity/assessment handoff. The assessment remains unknown where sellability
+was not observed. This is an availability observation, not a sustained-uptime claim.
+Observer 39099677836 succeeds in preservation, regeneration and snapshot health, in
+that order. Its two bot commits are retained through 3ef4f45 and merge 7c6c5d0; complete
+post-observer checks pass thirty-six of thirty-six. Later records below retain the
+previous failed preflight and repair history; they do not describe current deployment.
+
+T-032 fresh reviews approve twelve of twelve and RED-TEAM: none. All three sealed
+evidence bundles verify. Merge 106ad21 preserves the tests-only and two separate fix
+commits. Actual generation and the lead's post-merge gate pass all thirty-seven steps
+in 109.7 seconds. T-034 round one
+finds delimiter shadowing in both rejection directions; named amendment (a) keeps
+all frozen assertions and adds only explicit regression tests before correction.
 
 Repair (g) is independently approved twelve of twelve with RED-TEAM: none and merged
 as 76747d3. A different reviewer reproduces the actual old 3.12 failure, verifies

@@ -8,13 +8,15 @@
 ## Status in one line
 
 T-031 existing-provider discovery routing and T-027 deterministic/live RPC separation
-are source-reviewed and integrated. Actual Linux preflight 39097068303 then exposes
-a Python 3.12 structural-test serialization regression; later steps are unobserved,
-not passed. Production remains on the previous verified release. Named repair (g)
-preserves all frozen digests and assertions and passes both local Python runtimes.
-A different fresh regression reviewer passes twelve of twelve with adversarial none;
-repair 76747d3 is integrated. New integrated checks and actual Linux preflight precede
-promotion; the original failed run remains recorded.
+are deployed on 6898b72 after the independently approved compatibility repair, complete
+local gates and actual exact-head Linux preflight. Required master CI and deployment
+pass; production smoke and tagged real tool handoff succeed. The earlier failed Linux
+preflight remains recorded. Optional historical backfill HTTP 400 remains unresolved.
+
+T-032 inclusive-range and invalid-window fixes pass both fresh reviews, are merged,
+and pass the full post-merge thirty-seven-step gate. T-034 round one catches encoded markup hidden behind an
+unmatched literal prefix. It returns for a bounded tests-first correction before
+integration. T-033 host dependency locking proceeds independently.
 
 The Owner authorizes autonomous completion of the known technical-gap queue, retaining
 tests-first commits, bounded fresh reviews and actual deployment checks. Ready tasks
@@ -46,7 +48,7 @@ The separate actual scheduled run 39052933968 contains 671 unique pools; one app
 in both listing kinds. All 127 previous raw NDJSON byte prefixes are retained across
 forty-five continuous dates. These observations do not prove every scheduled slot.
 
-Next: bounded Worker availability diagnosis, then T-027's deterministic-RPC split.
+Next: complete the dependency-ordered technical continuation and its actual Linux gates.
 The T-026 study is complete; no numerical reserve cap or independent sell-depth
 verification is implemented. Optional historical Base RPC HTTP 400 remains unresolved.
 
@@ -162,6 +164,14 @@ technical release. Experiment D retains its existing rules and moves to 2026-10-
 | M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
+
+- **2026-10-18** · lead · T-027 and T-031 deployed on 6898b72 after actual required
+  Linux and master gates, Worker upload and tagged smoke. Base and Solana discovery
+  return complete; one actual discovery result reaches both following tools. These
+  dated observations do not prove sustained availability. Observer preservation,
+  generation and snapshot health pass in order; bot commits are retained. T-032
+  then passes both fresh reviews and actual post-merge 37/37. T-034 round one returns
+  one parser-boundary cause for a named correction; host build locking continues.
 
 - 2026-10-18: Final T-027 review approves 72bf264 after a narrow mixed-line-ending
   repair; all old controls, thirteen earlier tests and live source remain. Combined

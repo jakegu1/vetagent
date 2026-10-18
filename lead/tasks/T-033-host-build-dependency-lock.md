@@ -1,7 +1,7 @@
 ---
 id: T-033
 title: Lock host Python build dependencies and verify credential-free Linux builds
-status: ready
+status: in_progress
 level: 3
 size: M
 depends_on: [T-032]
