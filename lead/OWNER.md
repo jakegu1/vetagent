@@ -7,6 +7,20 @@
 
 ## Status in one line
 
+T-032 through T-037 are deployed at 7ccccf1 with actual upload, smoke, observer and
+following bot CI. T-038's corrected source 57cf0a4 passes fresh independent 12/12 and
+adversarial review with no material findings; all three serialized ordinary/denied
+41-step pairs and exact-head Linux run 39118096886 pass. Its three reviewed source
+blobs are merged in dbbdeb5. The lead completes generation and the integrated gate
+before committing this closure and dispatching T-039, the final scoped wording repair.
+Final publication will batch those two tasks. Real backfill remains partial after
+HTTP 429; no provider access or durable outage history is claimed repaired.
+
+Experiment D remains unresolved and due 2026-10-20 UTC. No new provider, spending,
+permission change or product threshold is authorized by this continuation.
+
+### Earlier release records (historical)
+
 T-031 existing-provider discovery routing and T-027 deterministic/live RPC separation
 are deployed on 6898b72 after the independently approved compatibility repair, complete
 local gates and actual exact-head Linux preflight. Required master CI and deployment
@@ -170,6 +184,12 @@ technical release. Experiment D retains its existing rules and moves to 2026-10-
 | Adoption questions (2026-09-28) | All accepted as recommended: milestone M1, invariants and sign-off list, autonomy A1, `lead/` public and English, local branches without pull requests, Chinese in chat | `lead/decisions/0001-adopt-lead-workflow.md` |
 
 ## Current tasks
+
+| Task | Level | Status | Notes |
+|---|---|---|---|
+| T-039 | 3 | Dispatch after the checked T-038 closure | W55(a) wording only; three additive tests, one production helper, no safety-policy change |
+
+### Earlier task rows (historical)
 
 | Task | Level | Status | Notes |
 |---|---|---|---|

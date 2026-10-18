@@ -1,7 +1,7 @@
 ---
 id: T-038
 title: Separate live backfill observation gaps from genuine decoder failures
-status: in_progress
+status: done
 level: 3
 size: M
 depends_on: [T-032, T-036]

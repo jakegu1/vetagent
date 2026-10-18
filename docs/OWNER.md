@@ -122,7 +122,7 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **15 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **14 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -149,16 +149,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- Lead: approve T-036 source and retain pending production gate
-- T-036: acceptance test fix (keep fixture out of generator discovery)
-- Specify AST-identical fixture syntax correction before T036 READY
-- Specify AST-identical fixture syntax correction before T036 READY
-- T-036: named change (b) refresh only the approved observer-prefix digest
-- T-036: named change (a) account for every refused or outside step record
-- Clarify syntax coverage versus existing offline-reader restrictions
-- Clarify syntax coverage versus existing offline-reader restrictions
+- T-038: named change (a,b) retain observed disproof across gaps
+- T-038: named change (c) acceptance regressions
+- T-038: record independently reproduced publication hold
+- T-038: preregister partial-fact retention regressions
+- T-038: preregister partial-fact retention regressions
+- T-038: named change (a)-(c) classify backfill observations
+- T-038: named change (b) exercise shared budget exhaustion
+- T-038: acceptance test fix (supply stream closed state)
 
-_227 more not shown (235 commits in total)._
+_242 more not shown (250 commits in total)._
 
 ## What I got wrong
 

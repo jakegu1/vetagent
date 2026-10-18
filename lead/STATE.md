@@ -53,7 +53,7 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 | Task | Level | Stage | Who | Next action |
 |---|---|---|---|---|
-| T-038 | 3 | Round two: two observed-fact losses found before publication | Executor | Append the two preregistered regression methods, correct only the named live functions, then repeat fresh reviews and full gates |
+| T-039 | 3 | Dispatch after the integrated T-038 gate and clean closure commit | Executor | Add the three preregistered tests first, then correct only provisional-score wording; preserve E24/E32 and all current verdicts |
 
 ## Autonomous technical continuation
 
@@ -80,6 +80,22 @@ three additive tests in the already-discovered regression runner. W55(b,c) remai
 conditional E24/E32 integration constraints; no scoring or coverage policy changes.
 
 ## Current batch baseline
+
+T-038's corrected source 57cf0a4 passes fresh independent review 12/12 and adversarial
+review with no material findings. The lead verifies all 306 executor, 105 independent
+and 41 adversarial artifact hashes and both detached signatures for each bundle, plus
+both 940-file review source fingerprints. Merge dbbdeb5 preserves all three reviewed
+implementation blobs. Each role's ordinary and inherited-denied inventory passes all
+41 steps, serialized, on actual supported interpreters. The integrated post-merge gate
+must pass before this closure and T-039 dispatch are committed.
+
+Exact-head Linux run 39118096886 passes required checks, 232 observed upstream checks
+with zero failure or blindness, and both clean locked builds. Source/API and downloaded
+artifact bytes match. Its actual live backfill is partial: three boundary predicates
+observed, two log-dependent checks unobserved after HTTP 429, zero failed checks. This
+is classification evidence, not successful pool round trips or provider access repair.
+W51's original split/remove-soft-fail bar is met; durable outage history remains a
+separate limit. T-038 source is complete and queued with T-039 for final publication.
 
 T-038's first frozen candidate 6d1af46 passes the executor's ordinary and inherited-denied
 41-step inventories. Both fresh reviewers nevertheless reproduce two manifestations

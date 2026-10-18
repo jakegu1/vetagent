@@ -1,7 +1,7 @@
 ---
 id: T-039
 title: Describe a withheld provisional score without claiming its chain is unsupported
-status: ready
+status: in_progress
 level: 3
 size: S
 depends_on: [T-038]
