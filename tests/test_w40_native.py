@@ -412,6 +412,55 @@ class NativeAcceptance(unittest.TestCase):
             self.assertEqual(len(f.seen), 1)
             self.assertEqual(native.report(f.runtime)["state"], "start_uncertain")
 
+        # Named (a): a valid JSON prefix is not a complete declared HTTP body.
+        for premature_eof in (False, True):
+            prefix = _json({"observed": True})
+            with Fixture() as f:
+                class LengthHandler(BaseHTTPRequestHandler):
+                    def log_message(self, *_args):
+                        pass
+
+                    def do_GET(self):
+                        self.send_response(200)
+                        self.send_header("Content-Length", str(len(prefix) + (100 if premature_eof else 0)))
+                        self.end_headers()
+                        self.wfile.write(prefix)
+                        self.wfile.flush()
+                        self.close_connection = True
+
+                length_server = ThreadingHTTPServer(("127.0.0.1", 0), LengthHandler)
+                length_thread = threading.Thread(target=length_server.serve_forever, daemon=True)
+                length_thread.start()
+                async def length_control():
+                    async with native.adapter_scope(f.runtime, f.private, token=f.token, chain="base",
+                                                     route=("127.0.0.1", length_server.server_port)) as adapter:
+                        response = await adapter.fetch(f.ds)
+                        self.assertEqual(response.status, 200)
+                        if premature_eof:
+                            with self.assertRaisesRegex(native.NativeError, "^transport_error$"):
+                                await response.text()
+                            self.assertEqual(await risk._cache_get(f.ds), (None, None))
+                        else:
+                            self.assertEqual(json.loads(await response.text()), {"observed": True})
+                        attempt = adapter.attempts[0]
+                        self.assertEqual(len(adapter.attempts), 1)
+                        self.assertEqual(attempt["status"], 200)
+                        self.assertEqual(attempt["raw"], prefix)
+                        self.assertEqual(attempt["retirement"], "exited")
+                        committed = json.loads((attempt["directory"] / "commit.json").read_bytes())
+                        self.assertEqual(committed["body_sha256"], hashlib.sha256(prefix).hexdigest())
+                        self.assertEqual(committed["body_bytes"], len(prefix))
+                        self.assertEqual(committed["state"], "transport_error" if premature_eof else "observed")
+                        staged, body = f.core._stage(native.stage_from_attempt(attempt), datetime.now(timezone.utc))
+                        self.assertEqual(staged["state"], "transport_error" if premature_eof else "observed")
+                        self.assertEqual(body, None if premature_eof else {"observed": True})
+                try:
+                    asyncio.run(length_control())
+                finally:
+                    length_server.shutdown()
+                    length_server.server_close()
+                    length_thread.join(2)
+
     def test_w40_native_private_boundary_and_safe_failures(self):
         native = importlib.import_module("w40_native")
         with Fixture() as f:
