@@ -138,14 +138,19 @@ skips that step and reports no error. The lead independently reproduces all four
 shapes at the exact frozen candidate. This is a validator coverage failure, not
 an observed production incident or a claim that GitHub accepts every malformed form.
 
+The independent reviewer and lead also reproduce the same omission for an indentless
+step list: the existing reader records its lines in the outside list, which the
+consumer never requests. This fifth shape belongs to the same finding. Both refusal
+and outside-step records must be accounted for before claiming complete action coverage.
+
 Permit only the following additional changes to the new acceptance file:
 
 1. A separate tests-only commit adds one named regression function and any solely
-   new fixtures it needs for the four refused-step shapes above. Preserve every
+   new fixtures it needs for the five refused/outside-step shapes above. Preserve every
    original test function, fixture, input and assertion from c37fd41. Run it red
    on the frozen helper on both actual Python versions before the fix.
-2. A subsequent named test-fix commit may change only workflow_errors to reject
-   the existing reader's refused-step evidence before deciding that an absent
+2. A subsequent named-change commit may change only workflow_errors to reject
+   the existing reader's refused/outside-step evidence before deciding that an absent
    uses key means a run-only step. Do not change that reader, its old tests, any
    original assertion, any action/runner policy constant or any workflow source.
 3. Keep known-valid workflows, actual six-file source and future ordinary added
@@ -159,3 +164,42 @@ run the complete ordinary and inherited-denied inventories again on the correcte
 frozen source, sequentially. Publication remains blocked until a bounded fresh
 combined final review approves the corrected source; actual Linux/build/deploy and
 observer evidence remain subsequent release gates. This is the second review round.
+
+### Named amendment (b): refresh the exact observer-prefix pin
+
+The actual 93fc49a ordinary gate exits one, 38/39. Its only failing runner is
+test_sellability_archive.py, 437/1: the existing function
+test_snapshot_freshness_workflow_runs_last_always_and_cannot_swallow_failure
+pins the entire production.yml prefix before the health step. That old hash
+necessarily changes when two approved action references and its runner change.
+The executor stops without editing the assertion; no denied full run starts.
+
+The lead's exact Git-text comparison independently proves that masking only those
+two action lines and one runner line yields identical prefix bytes, and that the
+health suffix is unchanged. The original prefix hash is
+08fd9eb2690e50180a3c6dc2b9db45a3e209bb3c0e45549af44110c6e66f553a.
+The exact approved prefix at 93fc49a is
+91edce0da69f039508cd2d4aab95720309e482607cdb3a96e1194d56baff8cff.
+
+Permit an eighth implementation file, tests/test_sellability_archive.py, solely
+to replace that one hash literal in that one named function with the exact new
+hash above. Freeze every other byte/AST statement and all assertions in that file.
+The permanent guard must continue hashing the exact whole prefix: do not mask
+fields, weaken equality, skip the check, change commands or normalize this guard.
+
+Before the literal correction, add a second named regression function to the new
+T-036 acceptance file. Drive the actual old named function against the exact
+approved workflow and a command/order mutant: the refreshed exact prefix must pass
+and unauthorized byte drift must still fail. Preserve all original first-commit
+acceptance cases. Record its meaningful red on 93fc49a on both actual runtimes.
+The combined additive regression commit precedes both corrections and uses the
+subject `T-036: named change (a,b) regression tests`. Separate correction subjects
+start `T-036: named change (a)` and `T-036: named change (b)`; include the actual
+observed red in their bodies. This is a specified assertion-input refresh, not a
+non-assertion acceptance-fix exception. The generic contract and the independent
+structural proof must both be reported at their actual outcomes.
+
+No further scope expansion is implied. The six workflow files remain byte-frozen
+at 93fc49a through these corrections. A fresh combined second-round reviewer must
+verify both named corrections and every unchanged old/new case before branch
+publication. Actual exact-head Linux and production evidence remain mandatory.
