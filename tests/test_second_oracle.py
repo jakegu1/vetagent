@@ -1598,6 +1598,7 @@ def test_goplus_quota_http_and_exact_result_stages():
 
 def test_goplus_quota_safe_output_and_private_raw():
     import contextlib
+    import types
     from pathlib import Path
     import goplus_quota_probe as q
 
@@ -1612,7 +1613,18 @@ def test_goplus_quota_safe_output_and_private_raw():
     def transport(chain,addr,*,timeout): calls.append(addr); return {"http_status":403,"body":body}
     with tempfile.TemporaryDirectory() as directory:
         root=Path(directory); output=root/"safe"; private=root/"private"
-        result=q.run_plan(plan,ctx,sink=q.FileSink(output),transport=transport,clock=Clock(),private_raw_dir=private)
+        real_os=q.os
+        real_environ=os.environ
+        environment_before=dict(real_environ)
+        local_os=types.SimpleNamespace(**vars(real_os))
+        local_os.environ=dict(real_environ,GITHUB_ACTIONS="false")
+        try:
+            q.os=local_os
+            result=q.run_plan(plan,ctx,sink=q.FileSink(output),transport=transport,clock=Clock(),private_raw_dir=private)
+        finally:
+            q.os=real_os
+        check("synthetic raw fixture restores the real OS dependency and process environment",
+              q.os is real_os and os.environ is real_environ and dict(os.environ)==environment_before)
         safe=b''.join(p.read_bytes() for p in output.iterdir() if p.is_file())
         check("public quota bundle stays below one MiB",len(safe)<=q.SAFE_CAP==1024*1024)
         check("public bundle excludes raw text/addresses/URLs",all(s not in safe for s in (
