@@ -54,6 +54,11 @@ T-040 is in isolated implementation: correct coverage-probe observation and age
 classification before long-run W54/W57 measurements. Next: tests-first implementation,
 fresh independent and adversarial reviews, then serial integration and actual CI.
 
+T-041 is in isolated implementation with disjoint files: add aggregate-only discovery
+status attribution and deployment-window observations. Next: fresh source reviews,
+serial integration, actual Linux checks and one opt-in readout. The existing unchanged
+usage run succeeds but cannot assign a mixed caller's verdict to a particular tool.
+
 The Owner renews authorization to prioritize the 21 remaining rows, batch related
 autonomous repairs, delegate bounded isolated work, and merge/push/deploy after quality
 checks. Owner decisions and genuinely unavailable/calendar evidence are reported
