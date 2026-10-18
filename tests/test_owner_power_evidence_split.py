@@ -133,7 +133,7 @@ class EvidenceSplit(unittest.TestCase):
                 status_path.write_text(json.dumps({"history": history}), encoding="utf-8")
             with contextlib.ExitStack() as stack:
                 stack.enter_context(contextlib.redirect_stdout(out))
-                stack.enter_context(mock.patch.object(urllib.request, "urlopen", http))
+                stack.enter_context(mock.patch.object(monitor, "_owner_rpc_open", http))
                 stack.enter_context(mock.patch.object(socket, "create_connection", denied))
                 stack.enter_context(mock.patch.object(subprocess, "run", denied))
                 if main:
@@ -399,6 +399,40 @@ class EvidenceSplit(unittest.TestCase):
     def test_single_offline_workflow_registration(self):
         workflow = (ROOT / ".github/workflows/test.yml").read_text(encoding="utf-8")
         self.assertEqual(workflow.count("run: python tests/test_owner_power_evidence_split.py"), 1)
+
+    def test_redirects_cannot_send_an_extra_request_or_escape_the_provider(self):
+        from email.message import Message
+        import urllib.response
+        monitor = self.monitor()
+        real_build = urllib.request.build_opener
+        for location in ("https://invalid.example/rpc", PROVIDERS[1]):
+            wire = []
+
+            class Wire(urllib.request.HTTPSHandler):
+                def https_open(self, request):
+                    wire.append(request.full_url)
+                    headers = Message()
+                    headers["Location"] = location
+                    response = urllib.response.addinfourl(
+                        io.BytesIO(b"[]"), headers, request.full_url,
+                        302 if len(wire) == 1 else 200)
+                    response.msg = "Found" if len(wire) == 1 else "OK"
+                    return response
+
+            def local_opener(*handlers):
+                return real_build(*handlers, Wire())
+
+            # Retain the real handler chain and redirect processing with a fake wire.
+            # No global opener is installed, and both possible transports stay local.
+            with self.subTest(location=location), \
+                    mock.patch.object(urllib.request, "build_opener", local_opener), \
+                    mock.patch.object(urllib.request, "urlopen", lambda request, timeout: local_opener().open(request, timeout=timeout)), \
+                    mock.patch.object(socket, "create_connection", denied), \
+                    mock.patch.object(subprocess, "run", denied):
+                body, why = monitor._owner_rpc_post(PROVIDERS[0], [])
+                self.assertEqual(wire, [PROVIDERS[0]], "redirect sent an extra request or escaped the provider")
+                self.assertIsNone(body)
+                self.assertTrue(why)
 
 
 if __name__ == "__main__":
