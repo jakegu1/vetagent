@@ -7,18 +7,28 @@
 
 ## Status in one line
 
-T-038 and T-039 are source-approved and queued for the final technical release.
-At composite 4ee7514, independent review is 12/12 and adversarial review finds
-no material defect. Each role passes a serialized 41-step ordinary/denied pair.
-Actual Linux run 39121657633 and both locked artifact builds pass. The lead
-now completes integrated generation and checks before upload, tagged readback,
-observer preservation, snapshot health and following bot CI. No final runtime
-approval is claimed before those gates. The prior deployed source is 7ccccf1.
+The scoped technical queue T-027 and T-031 through T-039 is complete and deployed
+at d354179. Actual deploy run 39122876006 uploads Worker dd8721cd-babd-43e6-b982-19cec1cdb6fa and passes all 41 required
+offline steps, lock checks and production smoke. Exact-source master CI 39122876094
+passes; both clean Linux build artifacts and their lock bytes are verified.
 
-Experiment D remains unresolved and due 2026-10-20 UTC. Public RPC access can
-still return HTTP 429; no new provider, spending, permission or safety-threshold
-change is included. W55(a) wording is repaired; W55(b,c) remain conditional
-integration constraints, with current complete Solana results unchanged.
+Fresh tagged readback observes complete Base and Solana discovery, two returned
+pools from forty scanned on each chain, and a Base handoff to liquidity and risk.
+The risk answer stays unknown for an unobserved critical check. These are bounded
+runtime observations, not availability, reserve verification or accuracy claims.
+
+Actual production observer 39123168034 passes ordered preservation, page generation and
+snapshot health: 645 rows, 39 pages, 0 gaps, and 4 complete of 4 observed
+24-hour passes. Its bot head b3e5c97 is retained, and following bot CI 39123418604 passes
+the complete 41-step inventory. A fresh independent read-only AC6 addendum checks
+the real release evidence. The lead completes final derived generation/checks
+and publishes this bookkeeping closure without another Worker deployment.
+
+W51 meets its original split/remove-soft-fail bar. Real backfill is still partial
+after HTTP 429: three observations and two unobserved checks, with zero observed
+failures. W55(a) wording is repaired; conditional (b,c), E24/E32 and the existing
+fail-closed policy remain. No new source, spending, permission, benchmark or
+product threshold is introduced. Experiment D is unrun and due 2026-10-20 UTC.
 
 ### Earlier release records (historical)
 
@@ -186,9 +196,9 @@ technical release. Experiment D retains its existing rules and moves to 2026-10-
 
 ## Current tasks
 
-| Task | Level | Status | Notes |
-|---|---|---|---|
-| T-039 | 3 | Source/local approved; actual release gates pending | Composite 4ee7514; three additive tests and one wording helper, no safety-policy change |
+The scoped engineering queue is done and deployed. No new implementation is
+dispatched. H-13 remains the Oct-20 Owner gate; all other sign-off categories and
+A0 autonomy remain unchanged.
 
 ### Earlier task rows (historical)
 

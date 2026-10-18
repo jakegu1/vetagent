@@ -4,8 +4,7 @@
 > session starts by reading it. Durable rules live in `AGENTS.md`, `lead/QUALITY.md` and
 > `lead/decisions/`. Test for this file: could a stranger act on every row below?
 
-Last updated: 2026-10-18 by Codex, starting the next dependency-ordered technical batch:
-existing-provider discovery failover first, deterministic/live RPC separation second.
+Last updated: 2026-10-18 by Codex, after the verified autonomous technical release.
 
 Current Owner decision: Experiment D moves to 2026-10-20 (ADR-0002). Its original
 thresholds and unresolved state remain. T-024 reconciles the active gate and dependent
@@ -51,9 +50,8 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 ## In flight
 
-| Task | Level | Stage | Who | Next action |
-|---|---|---|---|---|
-| T-039 | 3 | Source/local approved at 4ee7514; exact-head Linux and both locked artifacts pass | Lead | Complete integrated generation/gate, then actual upload, tagged readback, observer preservation and following bot CI before done |
+No scoped engineering implementation remains in flight. Final bookkeeping checks
+and publication close this release; they add no product task.
 
 ## Autonomous technical continuation
 
@@ -80,6 +78,31 @@ three additive tests in the already-discovered regression runner. W55(b,c) remai
 conditional E24/E32 integration constraints; no scoring or coverage policy changes.
 
 ## Current batch baseline
+
+The scoped technical queue T-027 and T-031 through T-039 is complete and deployed
+at d354179. Actual deploy run 39122876006 uploads Worker dd8721cd-babd-43e6-b982-19cec1cdb6fa and passes all 41 required
+offline steps, lock checks and production smoke. Exact-source master CI 39122876094
+passes; both clean Linux build artifacts and their lock bytes are verified.
+
+Fresh tagged readback observes complete Base and Solana discovery, two returned
+pools from forty scanned on each chain, and a Base handoff to liquidity and risk.
+The risk answer stays unknown for an unobserved critical check. These are bounded
+runtime observations, not availability, reserve verification or accuracy claims.
+
+Actual production observer 39123168034 passes ordered preservation, page generation and
+snapshot health: 645 rows, 39 pages, 0 gaps, and 4 complete of 4 observed
+24-hour passes. Its bot head b3e5c97 is retained, and following bot CI 39123418604 passes
+the complete 41-step inventory. A fresh independent read-only AC6 addendum checks
+the real release evidence. The lead completes final derived generation/checks
+and publishes this bookkeeping closure without another Worker deployment.
+
+W51 meets its original split/remove-soft-fail bar. Real backfill is still partial
+after HTTP 429: three observations and two unobserved checks, with zero observed
+failures. W55(a) wording is repaired; conditional (b,c), E24/E32 and the existing
+fail-closed policy remain. No new source, spending, permission, benchmark or
+product threshold is introduced. Experiment D is unrun and due 2026-10-20 UTC.
+
+### Prior source-stage record (historical)
 
 T-039 source/local review is approved at composite 4ee7514: independent 12/12
 and adversarial review with no material finding. All three roles complete
@@ -532,6 +555,18 @@ a long-term reliability rate or the cause of earlier missing nominal triggers.
 - (H-1 done 2026-09-28: pushed `c954f43..dc401b9`; CI green on it.)
 
 ## Next up
+
+The scoped engineering queue is complete. Keep snapshots accumulating and
+prepare the Oct-20 Experiment D review from actual Owner feedback; no outreach
+or experiment result is supplied by this release. The remaining open backlog
+items need their stated independent data, calendar time, source permissions,
+bounded runtime measurements or Owner product decisions. Keep each original
+decision rule and the cheapest decisive follow-up visible; do not call these
+items completed because this technical queue is closed. W27 has not been
+measured here; normal upload smoke is not a cold-start experiment. Public
+RPC refusals remain observed access limitations rather than decoder successes.
+
+Earlier autonomous extension plan, retained as history:
 
 The Owner authorizes autonomous completion and deployment of remaining known technical
 gaps. Finish the current two-task release before extending its source. The next concrete
