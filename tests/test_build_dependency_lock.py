@@ -119,7 +119,8 @@ def host_commands(text, job, dry_run=False):
     for command in (INSTALL, SYNC, expected):
         if sum(value == command for _, value in commands) != 1:
             errors.append("%s must run exactly once: %s" % (job, command))
-    allowed = {INSTALL, SYNC, expected, "uv --version"}
+    allowed = {INSTALL, SYNC, expected, "uv --version", TARGET_SYNC, NPM_CI,
+               LOCAL_WRANGLER, LOCK_BASELINE, LOCK_VERIFY, TRACKED_DIFF}
     for _, command in commands:
         if re.search(r"\buv\b|astral\.sh|\b(?:py)?wrangler\b.*\bdeploy\b", command) and command not in allowed:
             errors.append("%s has unpinned or unlocked host tooling; use uv 0.13.1 and --locked" % job)
@@ -127,6 +128,8 @@ def host_commands(text, job, dry_run=False):
                  for command in (INSTALL, SYNC, expected)]
     if None not in positions and positions != sorted(positions):
         errors.append("%s must install pinned uv, sync --locked, then run --locked" % job)
+    if runtime_complete_workflow(text, job):
+        errors.extend(runtime_workflow_errors(text, job))
     return errors
 
 
@@ -171,6 +174,8 @@ def build_errors(text):
         errors.append("build must retain only generated public pylock.toml, failing if it is missing")
     commands = [command for step in steps for command in step["run"]]
     expected = [INSTALL, "uv --version", SYNC, DRY_RUN, "git diff --exit-code"]
+    if runtime_complete_workflow(text, "build"):
+        expected = runtime_expected_commands("build")
     if commands != expected:
         errors.append("build must dry-run without upload, then fail on tracked changes")
     if uploads and steps.index(uploads[0]) <= next((i for i, step in enumerate(steps) if DRY_RUN in step["run"]), len(steps)):
