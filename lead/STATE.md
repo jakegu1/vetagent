@@ -113,6 +113,24 @@ isolates only that fake call's module dependency, retaining the real environment
 and formal guard. Correct and independently verify this test-only seam before a
 new combined/Linux release. Production master remains the prior green b1becd2.
 
+That historical hold is resolved. Named f receives a separate fresh delta review,
+twelve of twelve and RED-TEAM: none. The corrected integrated gate passes all
+forty-three steps at 31cae13 with native exit zero and all 961 tracked files exact.
+Actual Linux preflight 39171150814 and master CI 39171535134 pass all required
+steps, both locked builds, upstream-contract and backfill-roundtrip. T-044 and
+T-045 are published at 31cae13. The sole finite T-044 pilot is now running; its
+unobserved labels and API errors remain distinct from completed HTTP requests.
+No daily allowance, reset, new benchmark or thirty-day start follows.
+
+T-046 c09caa9 is held by its first fresh independent/adversarial reviews. A known
+permission header can be lost at fetch cancellation; committed private sidecars
+can be missing or changed while recovery still imports. Named d/e require tests
+first and separate same-finding repairs, exact old assertions and bounded second
+reviews. No current complete gate is granted at this held source. T-047 remains
+a private ready draft until corrected reviewed native/API and complete-gate
+bindings exist. Native and scheduling are still engineering work, not Owner or
+calendar waits. See lead/reviews/T-046.md for the current decision.
+
 The Owner renews authorization to prioritize the 21 remaining rows, batch related
 autonomous repairs, delegate bounded isolated work, and merge/push/deploy after quality
 checks. Owner decisions and genuinely unavailable/calendar evidence are reported
