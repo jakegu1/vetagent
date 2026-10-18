@@ -64,8 +64,9 @@ integration are still required before dispatch from its integrated base.
   packaging jobs. Do not share their project/vendor environments.
   Capture lock-byte hashes before installation/sync and compare them before upload
   and after dry-run; a normalized git diff alone is not a byte-preservation check.
-- `tests/test_build_dependency_lock.py`: additive offline acceptance only, preserving
-  every T-033 test/input/assertion. Reuse its existing registration; no new test file.
+- `tests/test_build_dependency_lock.py`: additive offline acceptance, preserving
+  every T-033 test/input/assertion. The narrowly named helper adaptation in amendment
+  (a) supports the required extended command sequence. Reuse its existing registration.
 - `docs/HANDOFF.md`: directly corresponding locked setup/sync/deploy and deliberate
   lock-update instructions, with the actual scope/limits. Keep pywrangler authoritative.
 
@@ -123,3 +124,32 @@ propose a bounded amendment before bypassing its packaging path.
 
 The actual T-033 Linux artifact satisfies the runtime-lock readiness prerequisite.
 This task is ready but waits for T-033's fresh reviews and approved integration.
+
+### (a) Preserve old acceptance while validating the extended locked commands
+
+Dispatch-base conflict search reproduces a readiness omission: T-033's
+`host_commands` rejects the required `uv run --locked pywrangler sync`, and
+`build_errors` accepts exactly the original five commands. New npm installation,
+local-version verification and lock-byte guards cannot pass those frozen helpers.
+This conflict is observed before any T-035 tracked edit or acceptance commit.
+
+Keep every original T-033 test function, fixture, input, assertion and negative
+control unchanged. First commit only adds new T-035 acceptance, including meaningful
+red controls for the required extended command sequence. Then permit changes only
+to `host_commands`, `build_errors` and new pure constants/helpers needed to validate
+that explicitly enumerated sequence. The host lock parser and unrelated functions
+remain frozen. Record this named adaptation separately from the tests-only commit.
+
+The old synthetic workflow controls must still pass with their original behavior;
+every original malformed/unlocked/no-secrets/order negative must remain red. The
+actual T-035 workflow must additionally satisfy all new required steps and their
+order, before/after byte checks and exact locked commands. Do not ignore arbitrary
+extra commands, merely project away unrecognized steps, or let removal of all new
+steps select a permissive legacy path. Keep missing-lock, newline-only drift,
+floating-version, missing-verification and upgrade mutants meaningful.
+
+Because implementation helpers and their acceptance share this legacy file, retain
+the raw generic file-level contract result. If it reports BROKEN, do not relabel it
+green or change the checker. Provide an independently reproducible structural proof
+of the named helper exception, every original function/fixture freeze and the new
+tests-only first commit on both actual Python versions.
