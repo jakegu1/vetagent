@@ -878,6 +878,47 @@ def test_gate_encoded_markup_cannot_borrow_a_comment_arrow():
     _check_t034_gate_cases(_COMMENT_GATE_CASES)
 
 
+def test_gate_markup_recognition_resumes_after_unmatched_prefixes():
+    """T-034 amendment (a): unrelated less-than text cannot hide later markup."""
+    print("\n[T-034 (a)] markup recognition resumes after unmatched prefixes")
+    prefixes = ("<3", "<target", "&lt;3", "&lt;target")
+    delimiters = (("literal", "<", ">"), ("named", "&lt;", "&gt;"),
+                  ("decimal", "&#60;", "&#62;"),
+                  ("case-varied hexadecimal", "&#X003C;", "&#x0003e;"),
+                  ("mixed closing", "<", "&gt;"), ("mixed opening", "&lt;", ">"))
+    cases = []
+    for prefix in prefixes:
+        for form, left, right in delimiters:
+            tag = "%s prefix, %s markup" % (prefix, form)
+            cases += [
+                (tag + " cannot borrow a comment arrow",
+                 "Resolved: pending %s %s!-- hidden finding -> hidden decision --%s"
+                 % (prefix, left, right), False),
+                (tag + " ignores a comment's hidden boundary",
+                 "Resolved: %s commitments %s!-- Resolved: ignored --%s -> change segment"
+                 % (prefix, left, right), True),
+                (tag + " ignores a tag's hidden boundary",
+                 "Resolved: %s commitments %sspan title='Resolved: ignored'%s -> change segment"
+                 % (prefix, left, right), True),
+                (tag + " cannot borrow placeholder words",
+                 "Resolved: pending %s %swhat the measurement said%s -> %sdecision%s"
+                 % (prefix, left, right, left, right), False),
+            ]
+        cases += [
+            (prefix + " remains visible literal text",
+             "Resolved: %s commitments -> change segment" % prefix, True),
+            (prefix + " cannot decode an ASCII arrow",
+             "Resolved: %s commitments -&gt; change segment" % prefix, False),
+            (prefix + " cannot decode the first marker",
+             "Resolved&#58; %s commitments -> change segment" % prefix, False),
+            (prefix + " cannot borrow from a second segment",
+             "Resolved: pending %s Resolved: zero -> change segment" % prefix, False),
+            (prefix + " keeps a valid first segment",
+             "Resolved: %s commitments -> change segment Resolved: pending" % prefix, True),
+        ]
+    _check_t034_gate_cases(cases)
+
+
 def main():
     print("=" * 68)
     print("Parked opportunities: are any overdue for review?")
