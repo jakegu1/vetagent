@@ -466,3 +466,84 @@ all old acceptance bytes/AST exact, freeze the corrected head and request its
 own exclusive full gate. Fresh independent/adversarial review and actual Linux
 checks remain required before publication. Neither a core receipt nor a producer
 claim alone proves the first confirmed native invocation or a study start.
+
+## Named committed private-evidence verification regression
+
+2026-10-19 (d): fresh adversarial review on held c09caa9 independently prepares
+complete synthetic packets, then removes one committed engine body, modifies one
+request metadata file, or removes one engine dependency record. The ordinary
+fresh-process recovery entry still imports each packet with exit zero, despite
+the missing or conflicting private evidence. Socket and process creation are
+forbidden in those recovery children. This violates the original AC3/5/6 raw,
+source and immutable cross-process evidence contract. Preserve that held source,
+the clean positive control and each private red before the repair.
+
+Permit exactly one additional self-contained append-only block at the end of
+test_w40_native_partial_acquisition_recovers_without_reask, after named c.
+All earlier assertions/order, helpers, other methods, runner and named a/b/c
+remain exact. Use separate complete synthetic packet fixtures plus actual fresh
+offline recovery processes for missing/changed engine body, committed request
+metadata and dependency inventory representatives. A complete unchanged fixture
+still imports once. Every missing/conflicting committed artifact refuses before
+any new core or producer-completion mutation, with zero vendor re-asks and fixed
+safe diagnostics. Preserve core bytes and never recreate deleted raw evidence.
+
+Close the evidence-verification class in the same new native module. Before
+read_prepared accepts a packet for offline ingest or producer reconciliation,
+verify its journal/code/context binding, exact bounded attempt inventory and
+every declared request/permit/identity/header/commit/progress sidecar, committed
+body length and digest, and the complete ordered engine dependency inventory.
+Observed empty/partial bodies, attempts never invoked, and legitimately absent
+optional artifacts retain their explicit original states; a recorded absence
+must not stand for a missing committed artifact. Validate names/counts/bounds,
+reject gaps/duplicates/conflicts and do not trust a matching prepared-packet
+hash alone. The driver can use this verified readback on later restorations;
+the safe report without a private-directory argument is not a raw-integrity
+certificate. Preserve all real captured dependencies, including cache hits and
+failed calls, with no filtering, deletion, privacy relaxation or expanded caps.
+
+Commit the regression alone with its actual native red, then one separate
+same-finding source repair. Do not change T045, the original tests or any
+scientific/transport limit. Re-run all focused/native and exact-contract checks,
+freeze the new head and request its own exclusive full gate. Earlier full logs
+and prepared seals remain bound to their old heads. Fresh second-round review
+must verify this class along with all earlier corrections before publication.
+
+## Named cancellation-after-known-header refusal regression
+
+2026-10-19 (e): independent review on held c09caa9 uses actual localhost HTTP
+and the frozen risk._fetch_json retry path. The child durably captures HTTP 403;
+an injected native-entry callback then holds parent processing beyond the
+unchanged engine fetch deadline. Cancellation retires that child, but the
+parent loses the known status and records null/interrupted_intent. The engine's
+ordinary retry opens a second physical GET. This violates original AC3 observed
+header retention and AC4 stop on the first actual 401/403. The callback exposes
+a real asynchronous cancellation boundary; no production source was mutated.
+
+Permit one additional self-contained append-only block at the end of
+test_w40_native_caps_pacing_deadline_and_cancellation, after named b. Preserve
+all original statements, helpers, other methods, runner and earlier approved
+blocks exactly. Use the actual native localhost worker and unchanged engine
+retry path. Retain actual 401/403 headers privately before holding the parent
+past its shorter engine deadline. Both permissions must remain observed after
+cancellation and retire the child, and no second physical request may open.
+Include a bounded non-refusal control and the existing before-entry/no-header
+controls; unobserved status remains unobserved rather than becoming a refusal.
+
+In one separate same-finding source repair, reconcile already-durable private
+headers after cancellation, callback failure, worker startup interruption or
+discard/cleanup, before committing the final attempt or admitting any next one.
+Verify the exact bounded current attempt/child/header evidence after retirement;
+do not trust arbitrary raw prose, infer a status from a failure, or make a new
+request to reconstruct it. A confirmed 401/403 latches the original terminal
+permission stop even if body acquisition or parent processing was interrupted.
+Other known statuses remain distinct from missing body/cleanup states. Invalid
+or conflicting evidence must stop safely, never clear a known refusal. Preserve
+the frozen engine functions/retries, physical-attempt bounds and thirty-second
+native admission window; this changes observation readback, not their policies.
+
+Commit the ordinary-CI regression alone and retain its meaningful held-head red,
+then the source repair. Re-run actual native cancellation, refusal, positive and
+parent-death controls plus all focused/contract checks before a newly frozen full
+gate. Fresh second-round independent and adversarial review must close both d/e
+classes and all prior invariants; no live use or study start is implied.
