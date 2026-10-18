@@ -19,6 +19,7 @@ import os
 from pathlib import Path
 import re
 import signal
+import stat
 import subprocess
 import sys
 import threading
@@ -212,6 +213,7 @@ def external(path):
 
 def private_paths(runtime, private_dir, store=None):
     runtime = external(runtime)
+    private_path(private_dir, private_dir, missing=True)
     try:
         private = core._private_directory(private_dir, runtime)
         if store is not None:
@@ -219,6 +221,67 @@ def private_paths(runtime, private_dir, store=None):
     except core.EvidenceError:
         fail("raw_directory_refused")
     return runtime, private
+
+
+def private_path(path, root, *, missing=False):
+    """Verify lexical ancestors before resolving or opening private evidence."""
+    try:
+        path, root = Path(os.path.abspath(path)), Path(os.path.abspath(root))
+        if len(path.parts) > 128 or not path.is_relative_to(root):
+            fail("raw_directory_refused")
+        ancestors = list(reversed(path.parents)) + [path]
+        for number, ancestor in enumerate(ancestors):
+            try:
+                metadata = ancestor.lstat()
+            except FileNotFoundError:
+                if missing:
+                    break
+                fail("raw_directory_refused")
+            mode = getattr(metadata, "st_mode", None)
+            attributes = getattr(metadata, "st_file_attributes", None)
+            if (type(mode) is not int or sys.platform == "win32" and type(attributes) is not int
+                    or stat.S_ISLNK(mode) or attributes is not None and attributes & 0x400
+                    or number < len(ancestors) - 1 and not stat.S_ISDIR(mode)):
+                fail("raw_directory_refused")
+            if stat.S_ISDIR(mode):
+                try:
+                    (ancestor / ".git").lstat()
+                except FileNotFoundError:
+                    pass
+                else:
+                    fail("raw_directory_refused")
+        resolved = path.resolve(strict=not missing)
+        if not resolved.is_relative_to(root.resolve(strict=not missing)):
+            fail("raw_directory_refused")
+        return path
+    except (OSError, TypeError, ValueError, RuntimeError):
+        fail("raw_directory_refused")
+
+
+def private_tree(private):
+    """Metadata-only preflight rejects aliases before any raw tree is consumed."""
+    private = private_path(private, private)
+    pending, count = [(private, 0)], 0
+    limit = len(ROOT_SIDECARS) + 5 + 19 * (len(ATTEMPT_SIDECARS) + 1) + 256 + 2
+    try:
+        while pending:
+            directory, depth = pending.pop()
+            private_path(directory, private)
+            if depth > 3 or not stat.S_ISDIR(directory.lstat().st_mode):
+                fail("raw_directory_refused")
+            for path in directory.iterdir():
+                count += 1
+                if count > limit:
+                    fail("raw_directory_refused")
+                private_path(path, private)
+                metadata = path.lstat()
+                if stat.S_ISDIR(metadata.st_mode):
+                    pending.append((path, depth + 1))
+                elif not stat.S_ISREG(metadata.st_mode):
+                    fail("raw_directory_refused")
+    except (OSError, TypeError, ValueError, RuntimeError):
+        fail("raw_directory_refused")
+    return private
 
 
 def bound_store(store, sources, ordinal):
@@ -564,6 +627,7 @@ def _parent_death(expected):
 
 def _child(path):
     """Internal disarmed worker. stdin EOF before acknowledgement cannot open a socket."""
+    private_path(path, Path(path).parent.parent.parent)
     configuration = parse(read(path, ROW_CAP), ROW_CAP)
     directory = Path(path).parent
     parent = configuration["parent"]
@@ -630,7 +694,7 @@ def _child(path):
         if sys.stdin.buffer.readline(128) != ("body " + configuration["nonce"] + "\n").encode():
             return 0
         size, digest = 0, hashlib.sha256()
-        with (directory / "body.bin").open("r+b") as handle:
+        with private_path(directory / "body.bin", directory.parent.parent).open("r+b") as handle:
             while size <= BODY_CAP:
                 if time.monotonic() >= permit["request_deadline"] - .5:
                     fail("timeout")
@@ -670,15 +734,20 @@ class NativeWorker:
                               "route": list(route) if route is not None else None}
 
     async def wait_file(self, name):
-        while not (self.directory / name).exists():
+        path = self.directory / name
+        while True:
+            private_path(path, self.directory.parent.parent, missing=True)
+            if path.exists():
+                break
             if self.process.poll() is not None:
                 fail("transport_error")
             if time.monotonic() >= self.permit["request_deadline"] - .5:
                 fail("timeout")
             await asyncio.sleep(.005)
-        return parse(read(self.directory / name, ROW_CAP), ROW_CAP)
+        return parse(read(private_path(path, self.directory.parent.parent), ROW_CAP), ROW_CAP)
 
     async def start(self):
+        private_tree(self.directory.parent.parent)
         write_new(self.directory / "request.json", dumps(self.configuration))
         self.process = subprocess.Popen([sys.executable, "-B", str(Path(__file__)), "--native-child", str(self.directory / "request.json")],
             stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -726,7 +795,7 @@ class NativeWorker:
         size = result.get("bytes")
         if type(size) is not int or not 0 <= size <= BODY_CAP:
             fail("invalid_body")
-        with (self.directory / "body.bin").open("rb") as handle:
+        with private_path(self.directory / "body.bin", self.directory.parent.parent).open("rb") as handle:
             raw = handle.read(size)
         if len(raw) != size or sha(raw) != result.get("sha256"):
             fail("invalid_evidence")
@@ -759,6 +828,7 @@ class NativeWorker:
 
 
 def captured_prefix(directory):
+    private_tree(directory.parent.parent)
     for name in ("end.json", "progress.json"):
         path = directory / name
         if not path.exists():
@@ -781,6 +851,7 @@ def captured_prefix(directory):
 def retired_observation(directory, *, request, permit, identity, configuration=None):
     """Read child observations only from the bounded, retired current invocation."""
     directory = Path(directory)
+    private_tree(directory.parent.parent)
     has_headers = (directory / "headers.json").exists()
     if not (directory / "invocation.json").exists():
         if has_headers:
@@ -845,7 +916,7 @@ class Response:
             raw = await attempt["worker"].body()
             if not isinstance(raw, bytes) or len(raw) > BODY_CAP:
                 fail("invalid_body")
-            with (attempt["directory"] / "body.bin").open("r+b") as handle:
+            with private_path(attempt["directory"] / "body.bin", self.adapter.private).open("r+b") as handle:
                 handle.write(raw)
                 handle.flush()
                 os.fsync(handle.fileno())
@@ -1271,7 +1342,7 @@ ROOT_SIDECARS = {"context.json": PACKET_CAP, "engine-answer.json": BODY_CAP, "ca
 
 def evidence_inventory(journal, private, events=None):
     """Bound every native artifact, including explicit absence, before accepting a packet."""
-    private = Path(private)
+    private = private_tree(private)
     events = journal.events if events is None else events
     if not events or events[0].get("kind") != "claim":
         fail("evidence_mismatch")
@@ -1423,6 +1494,7 @@ def evidence_inventory(journal, private, events=None):
 
 def seal(journal, private, packet, *, state="prepared"):
     # The packet carries bounded hashes of all native sidecars, not copies of engine bodies.
+    private_tree(private)
     attempts = []
     for intent in (e for e in journal.events if e["kind"] == "attempt_intent"):
         directory = private / "attempts" / ("%02d" % intent["attempt"])
@@ -1594,6 +1666,7 @@ def report(runtime):
 
 def read_prepared(runtime, private_dir):
     _runtime, private = private_paths(runtime, private_dir)
+    private_tree(private)
     journal = Journal(runtime)
     positions = [i for i, event in enumerate(journal.events) if event["kind"] == "packet_prepared"]
     if not positions:
@@ -1671,6 +1744,7 @@ def read_prepared(runtime, private_dir):
 
 
 def _recover_partial(journal, private):
+    private_tree(private)
     claim = journal.events[0]
     context_raw = read(private / "context.json", PACKET_CAP)
     if sha(context_raw) != claim.get("context_sha256"):
@@ -1763,6 +1837,7 @@ def _recover_partial(journal, private):
 
 def recover(store, sources, runtime, *, private_dir, now=None):
     runtime, private = private_paths(runtime, private_dir, store)
+    private_tree(private)
     journal = Journal(runtime)
     ordinal = journal.binding["ordinal"]
     directory, value, record, _identity, events = bound_store(store, sources, ordinal)
