@@ -37,6 +37,9 @@ jobs:
         run: |
           python -m compileall -q src tests
 
+      - name: Backfill inclusive ranges preserve every block and terminate
+        run: python tests/test_backfill_range_contract.py
+
       - name: Regression tests (offline, real upstream snapshots)
         run: python tests/test_risk.py
 

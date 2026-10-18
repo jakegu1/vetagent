@@ -369,7 +369,7 @@ def logs_in_range(urls, lo, hi, topics, address=None, step=None, floor=200,
     out = []
     step = (hi - lo) if step is None else step
     cur = lo
-    while cur < hi:
+    while cur <= hi:
         end = min(cur + step, hi)
         flt = {"fromBlock": hex(cur), "toBlock": hex(end), "topics": topics}
         if address is not None:
