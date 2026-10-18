@@ -993,6 +993,19 @@ class CheckpointChronologyTests(unittest.TestCase):
                 with self.assertRaises(driver.StudyError):
                     bounded.load(1)
 
+            for malformed in (None, {"id": 3}, {"id": 3, "name": None}):
+                unavailable = driver.GitHubArtifacts(context(7), "synthetic-token")
+                with self.subTest(raw_row=malformed), \
+                        patch.object(unavailable, "request", return_value={"artifacts": [malformed]}), \
+                        self.assertRaises(driver.StudyError):
+                    driver.prepare("tick", unavailable, context(7), EPOCH)
+                self.assertEqual(unavailable.downloads, 0)
+            exhausted = driver.GitHubArtifacts(context(7), "synthetic-token")
+            with patch.object(exhausted, "request", return_value={"artifacts": []}):
+                self.assertEqual(driver.prepare("tick", exhausted, context(7), EPOCH),
+                                 {"action": "idle", "reason": "no_state"})
+            self.assertEqual(exhausted.downloads, 0)
+
     def test_checkpoint_reconstruction_keeps_later_lower_id_generations(self):
         self.assertIsNotNone(driver)
         with patch.object(probe, "curl", side_effect=AssertionError("unexpected vendor request")):
