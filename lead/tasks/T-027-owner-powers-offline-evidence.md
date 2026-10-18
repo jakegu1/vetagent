@@ -75,7 +75,7 @@ or proof of current availability. Do not add raw headers, machine paths/account 
 
 ## Acceptance criteria
 
-1. Strict fixture loading verifies exact whole-file hash pinned outside the fixture,
+1. Strict fixture loading verifies the LF-canonical whole-file hash pinned outside the fixture,
    canonical identities/order, chain/source/capture/finalized-block provenance and recheck,
    complete nonempty hex bytecodes and decoded-byte SHA-256 hashes. Missing, malformed,
    damaged, duplicate, mismatched or incomplete records fail deterministically, without
@@ -132,3 +132,18 @@ review, maximum two rounds. Private signed READY includes commits, provenance au
 red/green logs, named AST diffs, response classification grid, mutants, inherited offline
 proof, fresh live receipt and artifact hashes. The lead merges and deploys under the
 Owner's scoped technical authorization; all other sign-off categories remain unchanged.
+
+## Amendments
+
+### 2026-10-18: measured Windows/Linux serialization equivalence, before acceptance
+
+The genuine candidate has 38,266 bytes and 137 CRLF line endings. Its raw capture hash
+above remains unchanged. Git normalizes the tracked text to LF; that representation's
+SHA-256 is f7d3e06858bc7b9dafd9d2967e903ec8fde2907d4a0e5d1887391adcabe2d62c.
+Define whole-file integrity as SHA-256 after replacing CRLF with LF only. No other
+normalization, whitespace, JSON reserialization, field, bytecode or metadata change.
+Copy the original candidate bytes, retain the original acquisition hash, and pin the
+LF-canonical hash outside the fixture. Do not alter .gitattributes or Git configuration.
+The first acceptance contract covers exact CRLF and exact LF forms, rejecting bare CR
+and every other corruption. The executor confirmed no acceptance was yet written or
+committed, so this clarification precedes and becomes part of the first frozen contract.
