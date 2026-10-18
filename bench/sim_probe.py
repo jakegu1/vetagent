@@ -107,18 +107,29 @@ def _encode(sel, head_args, path=None, path_index=None):
 
 
 def _uint_array_last(ret):
-    data = (ret or "0x")[2:]
-    if len(data) < 128:
+    if not isinstance(ret, str) or not ret.startswith("0x"):
         return None
-    n = int(data[64:128], 16)
-    if n == 0:
+    data = ret[2:]
+    if any(c not in "0123456789abcdefABCDEF" for c in data):
         return None
-    return int(data[64 + 64 * n:128 + 64 * n], 16)
+    try:
+        n = int(data[64:128], 16)
+        if int(data[:64], 16) != 32 or n not in (2, 3) or len(data) != 128 + 64 * n:
+            return None
+        return int(data[-64:], 16)
+    except (ValueError, TypeError):
+        return None
 
 
 def _uint(ret):
-    data = (ret or "0x")[2:]
-    return int(data[:64], 16) if len(data) >= 64 else None
+    if not isinstance(ret, str) or not ret.startswith("0x") or len(ret) != 66:
+        return None
+    if any(c not in "0123456789abcdefABCDEF" for c in ret[2:]):
+        return None
+    try:
+        return int(ret[2:], 16)
+    except ValueError:
+        return None
 
 
 # ---------------------------------------------------------------- transport, cached
@@ -239,48 +250,79 @@ def simulate(chain, token, quote, block):
         params = [{"blockStateCalls": [{"stateOverrides": {SENDER: {"balance": hex(10 ** 19)}},
                                         "calls": c}],
                    "validation": False}, block]
-        out = rpc(chain, "eth_simulateV1", params, "%s|%s|%s|%s" % (tag, token, quote, block))
-        if "transport_error" in out or "error" in out:
-            return None, (out.get("transport_error") or json.dumps(out.get("error"))[:160])
-        return (out.get("result") or [{}])[0].get("calls") or [], None
+        try:
+            out = rpc(chain, "eth_simulateV1", params, "%s|%s|%s|%s" % (tag, token, quote, block))
+        except Exception:
+            return None, "rpc_unobserved"
+        if not isinstance(out, dict) or "transport_error" in out or "error" in out:
+            return None, "rpc_unobserved"
+        result = out.get("result")
+        if not isinstance(result, list) or len(result) != 1 or not isinstance(result[0], dict):
+            return None, "rpc_malformed"
+        observed = result[0].get("calls")
+        if not isinstance(observed, list) or len(observed) != len(c):
+            return None, "rpc_malformed"
+        return observed, None
 
-    def failed(call):
-        return call.get("status") != "0x1"
+    def succeeded(call):
+        return isinstance(call, dict) and call.get("status") == "0x1"
 
-    def why(call):
-        err = call.get("error") or {}
-        return str(err.get("message") or err.get("data") or "reverted")[:120]
+    def setup(observed):
+        if not all(succeeded(x) for x in observed[:3]):
+            return None, None
+        expected = _uint_array_last(observed[0].get("returnData"))
+        balance = _uint(observed[2].get("returnData"))
+        return expected, balance
 
     rec = {"chain": chain, "token": token, "path": path, "block": block}
     first, err = run(calls(), "buy")
     if first is None:
         rec.update(result="rpc_error", detail=err)
         return rec
-    if len(first) < 3 or failed(first[0]):
-        rec.update(result="no_path", detail=why(first[0]) if first else "no calls")
-        return rec
-    expected_buy = _uint_array_last(first[0].get("returnData"))
-    if failed(first[1]):
-        rec.update(result="buy_reverted", detail=why(first[1]))
-        return rec
-    arrived = _uint(first[2].get("returnData"))
-    if not arrived:
-        rec.update(result="buy_no_tokens")
+    for index, result in ((0, "no_path"), (1, "buy_reverted"), (2, "setup_failed")):
+        if isinstance(first[index], dict) and first[index].get("status") == "0x0":
+            rec.update(result=result, detail="buy_setup_failed")
+            return rec
+    expected_buy, arrived = setup(first)
+    if not expected_buy or not arrived:
+        rec.update(result="setup_unobserved", detail="buy_or_balance_unobserved")
         return rec
     rec["buy_tax"] = round(100.0 * (1 - arrived / expected_buy), 2) if expected_buy else None
 
     second, err = run(calls(arrived), "sell")
-    if second is None or len(second) < 7:
-        rec.update(result="rpc_error", detail=err or "short response")
+    if second is None:
+        rec.update(result="rpc_error", detail=err)
         return rec
-    if failed(second[3]):
-        rec.update(result="sell_reverted", detail="approve: " + why(second[3]))
+    repeated_quote, repeated_balance = setup(second)
+    if repeated_quote != expected_buy or repeated_balance != arrived:
+        failed = any(isinstance(x, dict) and x.get("status") == "0x0" for x in second[:3])
+        rec.update(result="setup_failed" if failed else "setup_unobserved",
+                   detail="second_buy_or_balance_unobserved")
         return rec
-    expected_sell = _uint_array_last(second[4].get("returnData")) if not failed(second[4]) else None
-    if failed(second[5]):
-        rec.update(result="sell_reverted", detail=why(second[5]))
+    approval = second[3]
+    if (not succeeded(approval)
+            or (approval.get("returnData") != "0x" and _uint(approval.get("returnData")) != 1)):
+        failed = (isinstance(approval, dict) and (
+            approval.get("status") == "0x0" or _uint(approval.get("returnData")) == 0))
+        rec.update(result="setup_failed" if failed else "setup_unobserved",
+                   detail="approval_unobserved")
         return rec
-    proceeds = _uint(second[6].get("returnData")) or 0
+    expected_sell = (_uint_array_last(second[4].get("returnData"))
+                     if succeeded(second[4]) else None)
+    if not expected_sell:
+        rec.update(result="setup_unobserved", detail="sell_quote_unobserved")
+        return rec
+    sell = second[5]
+    if isinstance(sell, dict) and sell.get("status") == "0x0":
+        rec.update(result="sell_reverted", detail="executed_sell_reverted")
+        return rec
+    if not succeeded(sell) or not succeeded(second[6]):
+        rec.update(result="setup_unobserved", detail="sell_or_proceeds_unobserved")
+        return rec
+    proceeds = _uint(second[6].get("returnData"))
+    if proceeds is None:
+        rec.update(result="setup_unobserved", detail="proceeds_unobserved")
+        return rec
     rec["sell_tax"] = (round(100.0 * (1 - proceeds / expected_sell), 2)
                        if expected_sell else None)
     rec.update(result="sold" if proceeds > 0 else "sell_no_proceeds")
