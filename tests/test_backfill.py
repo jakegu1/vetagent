@@ -329,6 +329,7 @@ def test_decoded_pools_are_real_pools():
 
     verified = 0
     checked = 0
+    complete = 0
     for d in decoded[:6]:
         answers, unreachable = [], False
         for selector in ("0x0dfe1681", "0xd21220a7"):      # token0(), token1()
@@ -342,8 +343,13 @@ def test_decoded_pools_are_real_pools():
                 break
             answers.append(res["result"] or "")
         if unreachable:
-            continue        # the node would not answer; that says nothing either way
+            # A later missing answer cannot erase a disproof already served. A
+            # partial pair can fail, but never earns complete-pair coverage.
+            if any(len(a) < 66 or "0x" + a[-40:].lower() not in d["sides"] for a in answers):
+                checked += 1
+            continue
 
+        complete += 1
         # An address that answers but returns empty is NOT a pool -- which is precisely
         # what a wrong byte offset produces. Skipping those made this assertion pass by
         # ignoring exactly the failures it exists to catch.
@@ -354,10 +360,10 @@ def test_decoded_pools_are_real_pools():
         held = {"0x" + a[-40:].lower() for a in answers}
         if held == d["sides"]:
             verified += 1
-    if checked < 3:
+    if complete < 3:
         _unobserved("three complete token-pair observations")
     # A thin sample is a coverage gap, but cannot erase a contradiction already seen.
-    if (checked and verified != checked) or (len(decoded) >= 3 and checked >= 3):
+    if (checked and verified != checked) or (len(decoded) >= 3 and complete >= 3):
         check("every decoded pool holds exactly the tokens its log named",
               checked > 0 and verified == checked, "%d/%d verified" % (verified, checked))
     else:
@@ -382,8 +388,6 @@ def test_a_day_is_bracketed_by_its_own_boundaries():
     try:
         head = int(backfill.rpc_any(urls, "eth_blockNumber", [])["result"], 16)
         b0 = backfill.block_at(urls, start, head, cfg["block_seconds"])
-        t0 = backfill._timestamp_of(urls, b0)
-        t_next = backfill._timestamp_of(urls, b0 + 1)
     except _OBSERVATION_ERRORS as error:
         _unobserved("the block found is at or before the boundary", error)
         _unobserved("and the very next block is after it -- so it is the last one, not merely one "
@@ -391,10 +395,24 @@ def test_a_day_is_bracketed_by_its_own_boundaries():
         _unobserved("the boundary is within a minute of midnight UTC", error)
         return
 
-    check("the block found is at or before the boundary", t0 <= start)
-    check("and the very next block is after it -- so it is the last one, not merely one "
-          "of many", t_next > start)
-    check("the boundary is within a minute of midnight UTC", start - t0 < 60)
+    # Each timestamp supports its own predicates. Missing the other observation
+    # cannot revoke a valid fact or establish a predicate that still lacks input.
+    try:
+        t0 = backfill._timestamp_of(urls, b0)
+    except _OBSERVATION_ERRORS as error:
+        _unobserved("the block found is at or before the boundary", error)
+        _unobserved("the boundary is within a minute of midnight UTC", error)
+    else:
+        check("the block found is at or before the boundary", t0 <= start)
+        check("the boundary is within a minute of midnight UTC", start - t0 < 60)
+    try:
+        t_next = backfill._timestamp_of(urls, b0 + 1)
+    except _OBSERVATION_ERRORS as error:
+        _unobserved("and the very next block is after it -- so it is the last one, not merely one "
+                    "of many", error)
+    else:
+        check("and the very next block is after it -- so it is the last one, not merely one "
+              "of many", t_next > start)
 
 
 def test_a_refused_range_narrows_the_window_and_skips_no_blocks():
