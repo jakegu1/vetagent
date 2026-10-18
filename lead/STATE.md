@@ -59,6 +59,11 @@ status attribution and deployment-window observations. Next: fresh source review
 serial integration, actual Linux checks and one opt-in readout. The existing unchanged
 usage run succeeds but cannot assign a mixed caller's verdict to a particular tool.
 
+T-042 is in isolated implementation with disjoint prototype/archive-test files: enforce
+the adopted same-day positive floor, classify simulation setup failures and preserve
+outputs. Next: fresh reviews and actual Linux checks, then at most six current control
+eligibility refreshes. No simulator/score integration or V3 work is authorized by it.
+
 The Owner renews authorization to prioritize the 21 remaining rows, batch related
 autonomous repairs, delegate bounded isolated work, and merge/push/deploy after quality
 checks. Owner decisions and genuinely unavailable/calendar evidence are reported
