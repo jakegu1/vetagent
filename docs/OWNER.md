@@ -122,7 +122,7 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **16 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **15 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -149,16 +149,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- Lead: record verified AST repair and green integrated Python 3.12 gate
-- T-036: preregister supported action and runner pins with bot verification
-- T-035: preregister separate target and Node resolution guard
-- Lead: record autonomous queue and actual failed Linux promotion gate
-- T-033: retain actual target lock for the dependent packaging task
-- T-033: specify locked host builds and real Linux packaging gate
-- T-034: specify rendered gate template guard before execution
-- T-027: acceptance test fix (g) canonical AST dumps across Python versions
+- Preregister checksum baseline order correction without weakening old guard
+- Record fresh release-safeguard approvals and retained prerequisite
+- Name frozen build-validator adaptation before T-035 tests
+- Clarify frozen gate-origin and raw-tag regression bar
+- Record reviewed host lock and uninterrupted post-merge gate
+- T-034: protect complete raw markup before encoded candidates
+- T-035: clarify byte-level lock checks before build and upload
+- T-034: named change (c) raw-markup regression tests
 
-_153 more not shown (161 commits in total)._
+_191 more not shown (199 commits in total)._
 
 ## What I got wrong
 
