@@ -217,3 +217,10 @@ Never edit tracked files while a configured runner is active. Retain any already
 running old-head result as such; do not count it as final-source verification. Finish
 the same final-source affected/compile/freeze/ordinary/inherited-denied evidence and
 the independent bounded regression recheck required by amendment (b).
+
+For avoidance of doubt, (c) does not supersede the frozen unmatched-prefix examples
+in (a). The old raw matcher stays byte-identical; its broad wildcard match is not a
+new precedence promise for an unmatched `<target ... &lt;span ...>` prefix. Preserve
+both the complete quoted raw-tag cases in (c) and the complete inner encoded-fragment
+cases in (a). The final bounded recheck must verify both without changing any input,
+assertion or helper. No universal HTML equivalence is claimed.
