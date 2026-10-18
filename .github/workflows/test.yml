@@ -40,6 +40,12 @@ jobs:
       - name: Backfill inclusive ranges preserve every block and terminate
         run: python tests/test_backfill_range_contract.py
 
+      - name: Backfill deterministic decoder and range controls
+        run: python tests/test_backfill.py --offline
+
+      - name: Backfill observation classification and acquisition bounds
+        run: python tests/test_backfill_observation_contract.py
+
       - name: Host SDK dependencies stay locked and Linux builds need no deploy credentials
         run: python tests/test_build_dependency_lock.py
 
@@ -351,16 +357,13 @@ jobs:
       - name: Verify upstream API contracts
         run: python tests/test_upstream_contract.py
 
-  # Still soft, and named rather than assumed. test_backfill.py round-trips decoded pool
-  # addresses against the chain -- the only assertion that can catch a wrong byte offset --
-  # but it has not been taught the outage/absence split above, so an RPC hiccup and a
-  # decoder defect still look identical to it. Hard-failing it would be the exact error
-  # E30 removes from the job above. It stays here, on its own, until it can tell them
-  # apart; `docs/BACKLOG.md` carries the work.
+  # Genuine decoder/boundary and local failures are hard failures. Unavailable live
+  # observations remain explicit blind/partial counts; this job has no durable outage
+  # history or alert consumer. Required deterministic coverage runs in test above.
   backfill-roundtrip:
     if: github.event_name != 'workflow_run'
     runs-on: ubuntu-24.04
-    continue-on-error: true
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
