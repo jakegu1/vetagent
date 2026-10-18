@@ -157,3 +157,26 @@ are sufficient for queue engineering; missing per-row fetch timestamps remain ga
 Only actual new spending/source rights, changed origin/eligibility/bars/independence
 policy or publication under the Owner's name requires a new Owner decision. Do not
 turn routine implementation or source parsing into an approval wait.
+
+## Named fixture clarification
+
+2026-10-19 (a): the executor's positive synthetic imports correctly encounter the
+production raw-retention guard on a CI host, and the default local temporary folder
+may itself be inside an unrelated Git worktree. Do not weaken the source guard or
+change an assertion to accommodate either environment.
+
+Permit only the nested Fixture.__enter__/__exit__ helper inside the first new
+test_w40_plan_is_offline_source_bound_and_not_started function to temporarily patch
+CI and GITHUB_ACTIONS to empty values for its synthetic fixture lifetime, restoring
+both exact prior values in finally/exit. The existing explicit CI-refusal test must
+still override those values to true and exercise the real rejection. This is bounded
+test-environment simulation for fake raw packets, not permission to change workflow,
+generator or real runtime environments to bypass a guard. Preserve every assertion,
+input, old byte and all other acceptance-function bodies. Commit the named helper
+adjustment alone with its original platform failure evidence. The normal CLI still
+honors actual CI flags and refuses raw retention before writes.
+
+For local execution use process-only TMP/TEMP in a real external non-Git temporary
+folder, recording that path in private evidence rather than hardcoding it in the
+repository. Linux uses its actual ordinary temporary directory. Neither platform
+fact is evidence that private raw output may be nested in a Git or safe-output tree.
