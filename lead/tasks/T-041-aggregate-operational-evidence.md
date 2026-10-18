@@ -1,7 +1,7 @@
 ---
 id: T-041
 title: Measure discovery verdict attribution and deployment windows without caller identities
-status: in_progress
+status: done
 level: 3
 size: M
 depends_on: [T-028, T-039]

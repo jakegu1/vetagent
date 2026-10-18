@@ -50,20 +50,21 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 ## In flight
 
-T-040 round two is approved at 153a936: fresh combined PASS twelve of twelve and
-RED-TEAM: none. The own-primary append/restart regression and original tests are frozen.
-T-041 is approved at ab02f298 by fresh independent and adversarial reviews. Both sources
-and the latest bot archive are integrated by a3578b6. Next: derived generation, complete
-combined checks, actual Linux preflight and the explicit aggregate readout.
+T-040 and T-041 are done and published at d82b98d. The complete combined forty-two-step
+gate passes, actual Linux preflight 39152663431 passes both locked builds and required
+steps, and exact-head master CI 39153214714 succeeds. Fresh reviews and red evidence
+are recorded in their review decisions. The current Worker source remains d354179;
+these operator/instrument changes require no new Worker upload.
 
-The existing unchanged usage run succeeds but cannot assign a mixed caller's verdict
-to a particular tool. T-041 supplies the bounded observation, not an adoption verdict.
+The optional aggregate readout 39152986970 succeeds at the exact reviewed source.
+W28's technical status transport is observed directly; attribution remains unknown.
+Every measured deployment window remains inconclusive, so W27 is not closed and no
+cold-start or demand conclusion is adopted. Business readings remain outside this repo.
 
-T-042 first-round complete checks pass after the representation-only spec correction,
-but both fresh reviews find missing source classifications counted as exclusions and
-cached. The lead reproduces this and null-RPC caching, names one additive red-first
-test in amendment (c), and holds that source. Next: executor repair, one fresh combined
-round-two review, actual Linux checks, then at most six current control
+T-042 is approved at b5877a6 by one fresh combined second-round review, twelve of
+twelve and RED-TEAM: none, and integrated by c4c4ce0. The named new regression keeps
+the original tests and historical evidence exact. Next: combined generation/checks,
+actual Linux verification, then at most six current control
 eligibility refreshes. No simulator/score integration or V3 work is authorized by it.
 
 The Owner renews authorization to prioritize the 21 remaining rows, batch related
@@ -73,8 +74,8 @@ together. No permission, source-rights, spending, scoring-band or product-gate w
 
 Latest scheduled snapshot commits through 1c50bc1 are retained by normal source merge
 a3578b6. The original clean baseline passes all 41 configured steps in 170.7 seconds.
-The existing usage workflow completes at actual run 39147089385. Its client profiles
-cannot bind mixed-tool verdicts to discovery, so this does not close W28. The exact
+The earlier usage workflow 39147089385 cannot bind mixed-tool verdicts to discovery;
+the new direct query supplies that missing technical observation. The exact
 original next-ten W48 cohort is independently read back: every actual smoke executes
 and records a 429 with reconciled colo totals. The original unlogged cause remains
 unestablished; no new flood or limiter rewrite is warranted.

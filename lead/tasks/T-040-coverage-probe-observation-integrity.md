@@ -1,7 +1,7 @@
 ---
 id: T-040
 title: Keep failed requests and invalid ages out of coverage-probe observations
-status: in_progress
+status: done
 level: 3
 size: M
 depends_on: [T-039]
