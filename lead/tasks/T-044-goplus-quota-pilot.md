@@ -321,7 +321,8 @@ as held-source evidence, without rebinding it to a repair.
 
 Permit one additional self-contained regression block at the end of the existing
 (e) nested partial-persistence block in
-test_goplus_quota_pilot_preserves_partial_intents_and_persistence. Preserve all
+test_goplus_quota_partial_intents_and_persistence, specifically its existing
+pin_round2_partial_receipt_error nested block. Preserve all
 earlier statements, order, assertions, other functions and the seven-function
 runner contract. Exercise both immediate failure return and real standalone CLI
 report against the same torn ledger. With no valid terminal event, elapsed_seconds
