@@ -492,6 +492,47 @@ class NativeAcceptance(unittest.TestCase):
                 self.assertEqual(len(calls), 0 if changed_request_deadline else 1)
                 self.assertEqual(native.report(f.runtime)["attempted"], 0 if changed_request_deadline else 1)
 
+        # Named (e): a child-observed refusal survives parent cancellation or callback failure.
+        for captured_status, callback_failure in ((401, False), (403, False), (403, True), (200, False)):
+            with Fixture() as f, server(_json({"observed": True}), status=captured_status) as (port, calls, _):
+                held_entries = 0
+                async def hold_after_headers(name, worker):
+                    nonlocal held_entries
+                    if name != "native_entry":
+                        return
+                    held_entries += 1
+                    if held_entries != 1:
+                        return
+                    for _ in range(100):
+                        if (worker.directory / "headers.json").exists():
+                            break
+                        await asyncio.sleep(.005)
+                    self.assertEqual(json.loads((worker.directory / "headers.json").read_bytes())["status"], captured_status)
+                    if callback_failure:
+                        raise ValueError()
+                    await asyncio.sleep(1)
+                async def refusal_control():
+                    async with native.adapter_scope(f.runtime, f.private, token=f.token, chain="base",
+                            route=("127.0.0.1", port), hooks=hold_after_headers) as adapter:
+                        answer = await risk._fetch_json(f.ds, retries=1, timeout=.7)
+                        if captured_status in (401, 403):
+                            self.assertIsNone(answer)
+                            self.assertEqual(len(adapter.attempts), 1)
+                            self.assertTrue(adapter.stopped)
+                        else:
+                            self.assertEqual(answer, {"observed": True})
+                            self.assertEqual(len(adapter.attempts), 2)
+                        first = adapter.attempts[0]
+                        self.assertEqual(first["status"], captured_status)
+                        self.assertEqual(first["retirement"], "exited")
+                        self.assertFalse(native.identity_alive(first["identity"]))
+                        headers = [event for event in adapter.journal.events if event["kind"] == "headers" and event["attempt"] == 1]
+                        self.assertEqual(len(headers), 1)
+                        self.assertEqual(headers[0]["status"], captured_status)
+                        self.assertEqual(json.loads((first["directory"] / "commit.json").read_bytes())["status"], captured_status)
+                asyncio.run(refusal_control())
+                self.assertEqual(len(calls), 1 if captured_status in (401, 403) else 2)
+
     def test_w40_native_private_boundary_and_safe_failures(self):
         native = importlib.import_module("w40_native")
         with Fixture() as f:
