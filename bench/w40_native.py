@@ -893,7 +893,7 @@ class Adapter:
             if set(permit) != set(proposed):
                 fail("policy_refused")
             for key in proposed:
-                if key in ("expires_mono", "request_deadline", "packet_deadline", "external_deadline"):
+                if key in ("expires_mono", "packet_deadline", "external_deadline"):
                     if type(permit[key]) not in (int, float) or not math.isfinite(permit[key]) or permit[key] > proposed[key]:
                         fail("policy_refused")
                 elif permit[key] != proposed[key]:
