@@ -347,8 +347,14 @@ def prepare(phase, store, ctx, now, study=None, pilot_id=None):
         state["parent"] = reference
         state["generation"] += 1
         if previous["manifest"]["kind"] == "intent":
+            # The intent already contains the durable result-chain parent/chunks.
+            # Preserve that chain and name the lost intent as separate evidence.
+            state["parent"] = copy.deepcopy(previous["state"]["parent"])
+            state["lost_intent"] = reference
             if "slot" in state:
                 state["slots"].append({"slot": state["slot"], "status": "not_observed"})
+            state.setdefault("losses", []).append({"reason": "lost_checkpoint", "slot": state.get("slot"),
+                                                     "intent": reference, "recorded_at": now})
             state["status"] = "lost_checkpoint"
             return {"action": "checkpoint", "state": state, "phase": "tick", "prepared_at": now}
         state["chunks"].append(reference)
