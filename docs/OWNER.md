@@ -149,16 +149,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- lead: close verified transport and smoke observations and record simulator approval
-- T-042: keep incomplete source envelopes unobserved and uncached
-- T-042: acceptance tests for unobserved source envelopes
-- lead: record approved first source batch and the held simulator round
-- lead: require unobserved source replies to stay out of simulator exclusions and caches
-- lead: require unobserved source replies to stay out of simulator exclusions and caches
-- T-040: bind retries to their own primary after append-restart red
-- T-040: named change (b) append restart acceptance test
+- lead: name fresh-process producer completion regression
+- lead: require consistent native request deadline permits
+- lead: pin native premature EOF evidence before repair
+- lead: approve the isolated Linux fixture correction
+- T-044: named change (f) isolate the synthetic raw-retention fixture
+- lead: isolate the synthetic raw fixture after Linux refusal
+- lead: dispatch bounded native prospective packet adapter
+- lead: approve corrected prospective evidence source
 
-_218 more not shown (226 commits in total)._
+_270 more not shown (278 commits in total)._
 
 ## What I got wrong
 
