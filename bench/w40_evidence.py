@@ -275,6 +275,8 @@ def _rows(source):
 def _identity(row):
     if not isinstance(row, dict):
         _error("invalid_row")
+    if not isinstance(row.get("chain"), str):
+        _error("invalid_row")
     net_to_chain = {net: chain for chain, net in labels.GT_NETWORK.items()}
     chain = net_to_chain.get(row.get("chain"), row.get("chain"))
     if chain not in labels.GOPLUS_CHAIN_ID:
@@ -533,7 +535,7 @@ def _stage(field, imported):
         raw_error = "missing_raw"
     observed_state = field.get("state")
     if observed_state != "observed":
-        result["state"] = observed_state if observed_state in STATES else "invalid_evidence"
+        result["state"] = observed_state if isinstance(observed_state, str) and observed_state in STATES else "invalid_evidence"
         return result, None
     if result["http_status"] != 200:
         result["state"] = ("http_429" if status == 429 else "http_refusal" if type(status) is int and 300 <= status < 500 else "http_failure")
@@ -886,7 +888,8 @@ def report(output, *, now, live_start=None):
         receipt = receipts.get(ordinal)
         if receipt:
             stage = receipt.get("oracle", {})
-            if stage.get("state") not in STATES or stage.get("label") not in (None, "unsafe", "safe", "centralized"):
+            if (not isinstance(stage.get("state"), str) or stage["state"] not in STATES
+                    or stage.get("label") not in (None, "unsafe", "safe", "centralized")):
                 _error("history_corrupt")
             oracle_states[stage["state"]] = oracle_states.get(stage["state"], 0) + 1
             oracle_unasked += int(stage["state"] == "not_asked")
