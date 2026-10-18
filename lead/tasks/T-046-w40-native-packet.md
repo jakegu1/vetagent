@@ -508,3 +508,42 @@ scientific/transport limit. Re-run all focused/native and exact-contract checks,
 freeze the new head and request its own exclusive full gate. Earlier full logs
 and prepared seals remain bound to their old heads. Fresh second-round review
 must verify this class along with all earlier corrections before publication.
+
+## Named cancellation-after-known-header refusal regression
+
+2026-10-19 (e): independent review on held c09caa9 uses actual localhost HTTP
+and the frozen risk._fetch_json retry path. The child durably captures HTTP 403;
+an injected native-entry callback then holds parent processing beyond the
+unchanged engine fetch deadline. Cancellation retires that child, but the
+parent loses the known status and records null/interrupted_intent. The engine's
+ordinary retry opens a second physical GET. This violates original AC3 observed
+header retention and AC4 stop on the first actual 401/403. The callback exposes
+a real asynchronous cancellation boundary; no production source was mutated.
+
+Permit one additional self-contained append-only block at the end of
+test_w40_native_caps_pacing_deadline_and_cancellation, after named b. Preserve
+all original statements, helpers, other methods, runner and earlier approved
+blocks exactly. Use the actual native localhost worker and unchanged engine
+retry path. Retain actual 401/403 headers privately before holding the parent
+past its shorter engine deadline. Both permissions must remain observed after
+cancellation and retire the child, and no second physical request may open.
+Include a bounded non-refusal control and the existing before-entry/no-header
+controls; unobserved status remains unobserved rather than becoming a refusal.
+
+In one separate same-finding source repair, reconcile already-durable private
+headers after cancellation, callback failure, worker startup interruption or
+discard/cleanup, before committing the final attempt or admitting any next one.
+Verify the exact bounded current attempt/child/header evidence after retirement;
+do not trust arbitrary raw prose, infer a status from a failure, or make a new
+request to reconstruct it. A confirmed 401/403 latches the original terminal
+permission stop even if body acquisition or parent processing was interrupted.
+Other known statuses remain distinct from missing body/cleanup states. Invalid
+or conflicting evidence must stop safely, never clear a known refusal. Preserve
+the frozen engine functions/retries, physical-attempt bounds and thirty-second
+native admission window; this changes observation readback, not their policies.
+
+Commit the ordinary-CI regression alone and retain its meaningful held-head red,
+then the source repair. Re-run actual native cancellation, refusal, positive and
+parent-death controls plus all focused/contract checks before a newly frozen full
+gate. Fresh second-round independent and adversarial review must close both d/e
+classes and all prior invariants; no live use or study start is implied.
