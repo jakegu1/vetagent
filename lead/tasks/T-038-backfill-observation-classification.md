@@ -261,3 +261,59 @@ reds with the corrected frozen acceptance, then freeze that input. Restoring thi
 inadequate input is not a valid budget guard; an actual attempt-65 escape must still
 be detected. No assertion, resource limit or genuine-decoder predicate is weakened.
 
+### Round-two amendment (c): retain a fact across a later acquisition gap
+
+Fresh independent and adversarial probes at frozen 6d1af46 find the same evidence-loss
+cause at two seams, despite the executor's ordinary and inherited-denied 41-step
+inventories passing. The lead independently reproduces both directions on actual
+Python 3.12 and 3.13, using the actual CLI and standard-library fake transports with
+network denied. These are failures of the existing AC2-5, not new product policy.
+
+First, a served valid empty token0 answer followed by unavailable token1 is discarded
+by the per-pair unreachable branch. With otherwise healthy candidates, the live result
+is partial, exit zero and zero failed checks. The identical served empty answer with
+token1 available is red, exit one. Second, actual block_at plus the existing before
+bias supplies valid t0 = start + 2, but a later unavailable next-block timestamp makes
+all three boundary predicates unobserved, erasing the already decidable false first
+predicate. The matched fully served control is red. Keep these failing receipts.
+
+Before any correction, append exactly two regression methods to the existing new
+acceptance class, without changing any of its existing nine methods, helpers, inputs,
+assertions, messages or registration:
+
+- test_observed_contract_disproof_survives_a_later_call_gap
+- test_observed_boundary_disproof_survives_a_later_timestamp_gap
+
+Use additive local fake-node subclasses/patches inside those methods. Drive the same
+actual CLI, real decoder, real block_at and current bounded adapter; do not replace a
+live test with a model. The contract grid must include served empty, short valid DATA
+and a valid address outside the expected log-side set before the later HTTP-500 gap,
+plus matched fully served bad controls and a good first answer with a missing second
+answer. Each observed disproof must give red/exit one and retain a separate unobserved
+gap; the good partial control must give zero genuine failures and explicit coverage
+uncertainty. Do not count a partially observed pair toward the three-complete-pair
+minimum or turn a partially observed good answer into aggregate success.
+
+The boundary grid must include the existing actual-search before and midnight biases
+with the later next timestamp unavailable, matching served bad controls, and a valid
+t0 with the later next observation unavailable. Preserve all three original check
+names and predicates. Report only the independently undecidable predicate unobserved;
+evaluate each already decidable predicate from its valid observation, including its
+failure. Missing t0 cannot establish either t0-dependent predicate. No fabricated
+timestamp or changed search/date input is allowed.
+
+Commit those two additive methods alone, with meaningful red on 6d1af46 in both real
+interpreters, then freeze them. Correct only the existing named live functions (a,b)
+so later acquisition failures cannot erase observed disproof. If counters need to
+distinguish complete pairs from partial observed failures, keep the original final
+predicate checked > 0 and verified == checked and the three-complete-pair floor.
+Do not change the adapter, workflows, original acceptance or other frozen files.
+One correction commit covers this single fact-retention finding and names both reds.
+
+Kill in-memory mutants restoring each old evidence-loss branch. Re-run all eleven
+acceptance methods, original eighteen checks, frozen-byte/predicate proofs, both real
+interpreter compatibility and the complete ordinary/denied inventory at the new clean
+head. Obtain fresh independent and adversarial re-review of the correction, then the
+exact-head Linux proof. This is the second review round; further material findings
+must be reported under the lead-run cap rather than silently widening scope or tests.
+
