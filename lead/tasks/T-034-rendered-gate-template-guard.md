@@ -153,3 +153,36 @@ The generic file-level tests-first checker remains reported as BROKEN because th
 legacy guard and its self-tests share a file. The named structural proof must establish
 the original function/fixture freeze and the two additive-test commits; never describe
 that generic result as passing or change the checker to hide it.
+
+### (b) Blocking regression found by the combined final review
+
+The round-two candidate 067c7ec still case-folds HTML entity names. That is not a
+valid decoding rule: `&lt;` and `&LT;` decode to `<`, while `&Lt;` decodes to U+226A
+and `&lT;` remains literal. A falsely recognized comment opener can still hide the
+start of a later complete encoded fragment. The lead independently compares frozen
+Git sources: `Resolved: <3 commitments &Lt;!-- invalid &lt;span title='Resolved:
+ignored'&gt; --&gt; -> change segment` is answered at 6898b72 and wrongly refused at
+af6eef8 and 067c7ec. The same prefix also allows a hidden comment arrow to answer a
+pending row. This is a regression in the preserved visible-text/hidden-marker seam,
+so it meets the explicit regression exception to the two-round bounce cap. It is
+not authorization for another general parser or semantic review round.
+
+Freeze both previous tests-only commits and every existing function/fixture/input/
+assertion. Add only `test_gate_entity_name_case_cannot_shadow_complete_markup` and
+Owner `test_entity_name_case_stays_consistent_on_owner_surfaces` first, in a separate
+tests-only commit with actual red on 067c7ec. Cover the exact regression and hidden
+arrow refusal through all actual shared-rule seams. Use a bounded grid distinguishing
+valid literal/named/decimal/hexadecimal bracket aliases from the invalid mixed-case
+named aliases at openers and closers; a non-bracket entity must never masquerade as
+a bracket or prevent later complete markup recognition. Keep valid numeric x/hex
+case variations and every previously accepted literal-text control.
+
+Repair only encoded-recognition constants/compiler flags and their direct comments;
+the 067c7ec helper body, `_MARKUP`, `_ARROWS`, `PINNED_GATES`, all source documents and
+the Owner generator remain frozen. A delimiter recognized as an encoded bracket
+must single-decode to that exact bracket. No global/recursive row decode. A mutant
+restoring the incorrect named-entity case folding must fail the new tests on both
+actual runtimes. Preserve the failed candidate and review evidence. Complete the
+same affected-runner, old/new freeze, compile, ordinary/inherited-denied and local
+integrity evidence bar; an independent reviewer rechecks this bounded regression
+correction before integration. Optional new preferences remain follow-ups.
