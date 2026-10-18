@@ -64,6 +64,10 @@ No existing test change is authorized. Report a conflict before editing an old t
    HTTP 200 empty/scalar/list/error-only bodies are not successful report observations.
    A valid report that supplies no holder list remains a successful observation of
    missing holder coverage; do not require holders in order to observe their absence.
+   Boolean, nonnumeric, nonfinite and negative scores cannot produce a valid score band
+   or a clean-score conclusion. Keep the raw field distinguishable as unavailable or
+   malformed evidence; retain separately valid holder observations on the same report.
+   Existing valid numeric bands and their boundaries remain unchanged.
 3. **Historical seam.** report() independently excludes non-200 and unusable rows even
    if an old input claims body=ok. A mixed file reports unavailable requests separately
    and computes holder/score changes only from valid observations; an all-unusable file
@@ -99,4 +103,8 @@ unmeasured until a separately reviewed pilot and observation plan run.
 
 ## Amendments
 
-None.
+2026-10-19, pre-tests amendment (a): the same bounded falsification observes boolean,
+NaN, infinite and negative scores entering bands, and strings/objects raising in band().
+AC2 explicitly includes field-level validity. Before the first acceptance commit, add
+synthetic valid-boundary and invalid-score controls, including a usable holder report
+whose score is unreadable. No existing test or production threshold change is allowed.
