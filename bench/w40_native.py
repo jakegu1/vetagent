@@ -778,6 +778,59 @@ def captured_prefix(directory):
     return None
 
 
+def retired_observation(directory, *, request, permit, identity, configuration=None):
+    """Read child observations only from the bounded, retired current invocation."""
+    directory = Path(directory)
+    has_headers = (directory / "headers.json").exists()
+    if not (directory / "invocation.json").exists():
+        if has_headers:
+            fail("invalid_evidence")
+        return None, None
+    for path in directory.iterdir():
+        cap = ATTEMPT_SIDECARS.get(path.name)
+        if cap is None or not path.is_file() or path.is_symlink() or path.stat().st_size > cap:
+            fail("invalid_evidence")
+    def value(name):
+        return parse(read(directory / name, ROW_CAP), ROW_CAP)
+    config = value("request.json")
+    digest = sha(dumps(permit))
+    if (not isinstance(config, dict) or set(config) != {"request", "permit", "permit_sha256", "parent", "nonce", "route"}
+            or config["request"] != request or value("metadata.json") != request
+            or config["permit"] != permit or value("permit.json") != permit or config["permit_sha256"] != digest
+            or configuration is not None and config != configuration):
+        fail("invalid_evidence")
+    if (not isinstance(identity, dict) or set(identity) != {"pid", "creation", "token", "parent"}
+            or type(identity["pid"]) is not int or identity["pid"] <= 0
+            or not isinstance(identity["creation"], str) or not identity["creation"].isdigit()
+            or type(identity["parent"]) is not int or identity["parent"] != config["parent"]
+            or not isinstance(identity["token"], str) or re.fullmatch(r"[0-9a-f]{32}", identity["token"]) is None
+            or identity["token"] != config["nonce"] or identity_alive(identity)
+            or value("identity.json") != identity or value("creation.json") != identity
+            or value("ready.json") != {"identity_sha256": sha(dumps(identity))}
+            or value("arming.json") != {"permit_sha256": digest}):
+        fail("invalid_evidence")
+    invocation = value("invocation.json")
+    if (not isinstance(invocation, dict) or set(invocation) != {"utc", "monotonic", "permit_sha256"}
+            or invocation["permit_sha256"] != digest
+            or type(invocation["monotonic"]) not in (int, float) or not math.isfinite(invocation["monotonic"])
+            or not permit["request_deadline"] - ATTEMPT_SECONDS <= invocation["monotonic"] < min(permit["expires_mono"], permit["request_deadline"])
+            or core._time(invocation["utc"]).date().isoformat() != permit["reserved_date"]):
+        fail("invalid_evidence")
+    if not has_headers:
+        return invocation, None
+    headers = value("headers.json")
+    if (value("sent.json") != {"state": "observed"}
+            or not isinstance(headers, dict) or set(headers) != {"status", "headers", "utc", "monotonic"}
+            or type(headers["status"]) is not int or not 100 <= headers["status"] <= 599
+            or not isinstance(headers["headers"], list) or len(headers["headers"]) > 100
+            or any(not isinstance(pair, list) or len(pair) != 2 or any(not isinstance(v, str) for v in pair) for pair in headers["headers"])
+            or type(headers["monotonic"]) not in (int, float) or not math.isfinite(headers["monotonic"])
+            or not invocation["monotonic"] <= headers["monotonic"] <= permit["request_deadline"]
+            or core._time(headers["utc"]) < core._time(invocation["utc"])):
+        fail("invalid_evidence")
+    return invocation, headers
+
+
 class Response:
     def __init__(self, adapter, attempt):
         self.adapter, self.attempt = adapter, attempt
@@ -836,6 +889,7 @@ class Adapter:
         self.cache = {}
         self.cache_events = []
         self.stopped, self.start_uncertain = False, False
+        self.policy_failed = False
         self.stop_reason = None
         self.transition, self.finishing = asyncio.Lock(), asyncio.Lock()
         (self.private / "attempts").mkdir(exist_ok=True)
@@ -869,11 +923,53 @@ class Adapter:
     def observe(self, kind, attempt, **fields):
         event = dict(kind=kind, attempt=attempt["number"], permit_sha256=attempt["permit_sha256"], **fields)
         self.journal.append(kind, **{k: v for k, v in event.items() if k != "kind"})
+        if self.policy_failed:
+            return
         try:
             self.policy.observe(MappingProxyType(event))
         except BaseException:
             self.stopped = self.start_uncertain = True
+            self.policy_failed = True
             fail("policy_failure")
+
+    def final_observe(self, kind, attempt, **fields):
+        try:
+            self.observe(kind, attempt, **fields)
+        except NativeError as exc:
+            if str(exc) != "policy_failure" or not self.policy_failed:
+                raise
+
+    def reconcile_observation(self, attempt, invocation, headers):
+        if invocation is None:
+            if attempt["invocation"] is not None or attempt["status"] is not None:
+                fail("invalid_evidence")
+            return
+        if attempt["invocation"] is not None and attempt["invocation"] != invocation:
+            fail("invalid_evidence")
+        attempt["invocation"] = invocation
+        self.last_start[attempt["request"]["host"]] = invocation["monotonic"]
+        if headers is not None:
+            if attempt["status"] is not None and attempt["status"] != headers["status"]:
+                fail("invalid_evidence")
+            attempt.update(status=headers["status"], headers_at=headers["utc"])
+            if headers["status"] in (401, 403):
+                self.stopped = True
+                self.stop_reason = "http_refusal"
+        elif attempt["status"] is not None:
+            fail("invalid_evidence")
+        for kind, value in (("native_invocation", invocation), ("headers", headers)):
+            if value is None:
+                continue
+            fields = {key: value[key] for key in ("utc", "monotonic")}
+            if kind == "headers":
+                fields["status"] = value["status"]
+            events = [e for e in self.journal.events if e["kind"] == kind and e.get("attempt") == attempt["number"]]
+            if events:
+                expected = dict(kind=kind, attempt=attempt["number"], permit_sha256=attempt["permit_sha256"], **fields)
+                if len(events) != 1 or events[0] != expected:
+                    fail("invalid_evidence")
+            else:
+                self.final_observe(kind, attempt, **fields)
 
     async def fetch(self, url, *, method="GET", body=None, headers=None, role="engine"):
         async with self.transition:
@@ -965,10 +1061,10 @@ class Adapter:
                 fail("invalid_body")
             sample = getattr(worker, "header_sample", None) or self.sample()
             attempt["headers_at"] = sample["utc"]
-            self.observe("headers", attempt, status=status, utc=sample["utc"], monotonic=sample["monotonic"])
             if status in (401, 403):
                 self.stopped = True
                 self.stop_reason = "http_refusal"
+            self.observe("headers", attempt, status=status, utc=sample["utc"], monotonic=sample["monotonic"])
             return Response(self, attempt)
         except asyncio.CancelledError:
             attempt.update(state="interrupted_intent", reason="interrupted")
@@ -980,7 +1076,8 @@ class Adapter:
             if code in ("source_drift", "clock_failure", "persistence_failed", "cleanup_uncertain", "policy_failure",
                         "policy_refused", "permit_expired", "packet_deadline", "attempt_cap"):
                 self.stopped = True
-                self.stop_reason = code
+                if self.stop_reason != "http_refusal":
+                    self.stop_reason = code
             await self.finish(attempt)
             fail(code)
 
@@ -992,6 +1089,9 @@ class Adapter:
         if attempt["ended"]:
             return
         worker = attempt["worker"]
+        if attempt["status"] in (401, 403):
+            self.stopped = True
+            self.stop_reason = "http_refusal"
         try:
             retirement = await worker.retire() if worker else "exited"
             if retirement != "exited":
@@ -999,6 +1099,10 @@ class Adapter:
             attempt["retirement"] = retirement
             if worker is not None:
                 attempt["identity"] = worker.identity
+                if isinstance(worker, NativeWorker):
+                    invocation, headers = retired_observation(attempt["directory"], request=attempt["request"],
+                        permit=worker.permit, identity=worker.identity, configuration=worker.configuration)
+                    self.reconcile_observation(attempt, invocation, headers)
                 if attempt["raw"] is None and hasattr(worker, "snapshot"):
                     attempt["raw"] = worker.snapshot()
             if attempt["status"] is not None and attempt["state"] == "not_invoked":
@@ -1007,7 +1111,7 @@ class Adapter:
             if attempt["invocation"] is None and (attempt["directory"] / "invocation.json").exists():
                 attempt["invocation"] = parse(read(attempt["directory"] / "invocation.json", ROW_CAP), ROW_CAP)
                 self.last_start[attempt["request"]["host"]] = attempt["invocation"]["monotonic"]
-                self.observe("native_invocation", attempt, utc=attempt["invocation"]["utc"], monotonic=attempt["invocation"]["monotonic"])
+                self.final_observe("native_invocation", attempt, utc=attempt["invocation"]["utc"], monotonic=attempt["invocation"]["monotonic"])
             if (attempt["invocation"] is None and (attempt["directory"] / "arming.json").exists()
                     and not (attempt["directory"] / "end.json").exists()):
                 self.stopped = self.start_uncertain = True
@@ -1019,8 +1123,8 @@ class Adapter:
                           body_bytes=len(raw) if raw is not None else 0,
                           response_at=attempt.get("response_at", attempt.get("headers_at")))
             write_new(attempt["directory"] / "commit.json", dumps(fields))
-            self.observe("attempt_end", attempt, **fields)
-            self.observe("child_retired", attempt, state="exited",
+            self.final_observe("attempt_end", attempt, **fields)
+            self.final_observe("child_retired", attempt, state="exited",
                          identity_sha256=sha(dumps(attempt["identity"])) if attempt["identity"] is not None else None)
         except BaseException:
             self.stopped = True
@@ -1607,14 +1711,20 @@ def _recover_partial(journal, private):
         if role == "reserve":
             packet["endpoints"]["eligibility"].append(url)
         entry = directory / "invocation.json"
-        invocation = parse(read(entry, ROW_CAP), ROW_CAP) if entry.exists() else None
+        invocation, headers = None, None
+        permit_path = directory / "permit.json"
+        permit_hash = sha(read(permit_path, ROW_CAP)) if permit_path.exists() else "0" * 64
+        if entry.exists() or (directory / "headers.json").exists():
+            permit = parse(read(permit_path, ROW_CAP), ROW_CAP)
+            invocation, headers = retired_observation(directory, request=metadata, permit=permit, identity=identity)
         arming = (directory / "arming.json").exists()
         uncertain |= arming and invocation is None
         attempt = {"state": "interrupted_intent", "reason": "interrupted", "status": None,
                    "raw": None, "invocation": invocation}
-        if (directory / "headers.json").exists():
-            headers = parse(read(directory / "headers.json", ROW_CAP), ROW_CAP)
+        if headers is not None:
             attempt.update(status=headers["status"], headers_at=headers["utc"])
+            if headers["status"] in (401, 403):
+                packet["native_stop_reason"] = "http_refusal"
         commit_path = directory / "commit.json"
         if commit_path.exists():
             committed = parse(read(commit_path, ROW_CAP), ROW_CAP)
@@ -1640,11 +1750,12 @@ def _recover_partial(journal, private):
         if role != "engine":
             packet[role] = stage_from_attempt(attempt)
         if not any(e["kind"] == "child_retired" and e["attempt"] == number for e in journal.events):
-            permit_path = directory / "permit.json"
-            permit_hash = sha(read(permit_path, ROW_CAP)) if permit_path.exists() else "0" * 64
             if invocation and not any(e["kind"] == "native_invocation" and e["attempt"] == number for e in journal.events):
                 journal.append("native_invocation", attempt=number, permit_sha256=permit_hash,
                                utc=invocation["utc"], monotonic=invocation["monotonic"])
+            if headers and not any(e["kind"] == "headers" and e["attempt"] == number for e in journal.events):
+                journal.append("headers", attempt=number, permit_sha256=permit_hash,
+                               status=headers["status"], utc=headers["utc"], monotonic=headers["monotonic"])
             journal.append("child_retired", attempt=number, permit_sha256=permit_hash,
                            identity_sha256=sha(dumps(identity)), state="exited")
     return seal(journal, private, packet, state="start_uncertain" if uncertain else "prepared")
