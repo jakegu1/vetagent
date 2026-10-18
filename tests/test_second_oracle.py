@@ -1258,6 +1258,71 @@ def test_goplus_quota_run_caps_pacing_and_utc_bounds():
     check("elapsed run budget stops before another full timeout",result["counts"]["claimed"]==1
           and result["stop_reason"]=="run_deadline")
 
+    # Native total-deadline regression pin authorized by T044 clarification (d).
+    def pin_native_total_deadline_supervisor():
+        class Clock:
+            def __init__(self): self.now=0.0
+            def monotonic(self): return self.now
+        clock=Clock()
+        workers=[]
+        class Worker:
+            def __init__(self): self.live=False; self.terminated=False; self.killed=False; self.closed=False; self.waits=[]
+            def start(self):
+                assert not any(w.live for w in workers if w is not self)
+                self.live=True
+            def is_alive(self): return self.live
+            def join(self,timeout):
+                self.waits.append(timeout)
+                if self.live: clock.now+=timeout
+            def terminate(self): self.terminated=True
+            def kill(self): self.killed=True; self.live=False
+            def status(self): return 403
+            def result(self): raise AssertionError("expired worker body must stay unavailable")
+            def close(self): assert not self.live; self.closed=True
+        def factory(chain,address,timeout):
+            assert chain=="base" and timeout==30
+            worker=Worker(); workers.append(worker); return worker
+        replies=[q._supervised_request("base","0x"+"1"*40,timeout=30,worker_factory=factory,clock=clock)
+                 for _ in range(2)]
+        check("native deadline retires each worker with bounded cleanup before another starts",
+              len(workers)==2 and all(w.terminated and w.killed and w.closed and not w.live for w in workers)
+              and all(len(w.waits)==3 and 0<w.waits[0]<=30+1e-9
+                      and all(0<=wait<=0.05 for wait in w.waits[1:]) for w in workers)
+              and all(reply=={"http_status":403,"error":"timeout"} for reply in replies)
+              and 60<=clock.now<=60.11)
+        original=q._supervised_request
+        routed=[]
+        def supervised(chain,address,*,timeout,**kwargs):
+            routed.append(timeout); return {"http_status":403,"error":"timeout"}
+        try:
+            q._supervised_request=supervised
+            reply=q.request_once("base","0x"+"1"*40)
+        finally:
+            q._supervised_request=original
+        safe=q.classify(reply,"0x"+"1"*40)
+        check("default native transport always uses the bounded supervisor without public raw output",
+              routed==[30] and safe["http_status"]==403 and safe["body_state"]=="timeout"
+              and safe["captured_body_sha256"] is None and safe["label_state"]=="unobserved"
+              and "PRIVATE" not in json.dumps(safe))
+        interrupted=[]
+        class InterruptWorker(Worker):
+            def join(self,timeout):
+                if not self.terminated:
+                    interrupted.append(True)
+                    raise KeyboardInterrupt()
+                return super().join(timeout)
+        def interrupted_factory(chain,address,timeout):
+            worker=InterruptWorker(); workers.append(worker); return worker
+        try:
+            q._supervised_request("base","0x"+"1"*40,timeout=30,worker_factory=interrupted_factory,clock=clock)
+        except KeyboardInterrupt:
+            propagated=True
+        else:
+            propagated=False
+        check("native supervisor interruption retires its worker and propagates",
+              propagated and interrupted==[True] and workers[-1].closed and not workers[-1].live)
+    pin_native_total_deadline_supervisor()
+
 
 def test_goplus_quota_http_and_exact_result_stages():
     import goplus_quota_probe as q
@@ -1343,6 +1408,47 @@ def test_goplus_quota_http_and_exact_result_stages():
               and first["body_complete"] is None and first["label_state"]=="unobserved"
               and all(cell["state"]=="not_asked" for cell in report["cells"][1:]))
     pin_permission_headers_then_body_timeout()
+
+    # Native body-exception regression pin authorized by T044 clarification (d).
+    def pin_native_permission_body_exception():
+        import http.client
+        class Clock:
+            def __init__(self): self.now=0.0
+            def time(self): return 1792281600.0+self.now
+            def monotonic(self): return self.now
+            def sleep(self,n): self.now+=n
+        class Sink:
+            def begin(self,plan): pass
+            def append(self,event): pass
+            def save(self,report): pass
+        class Response:
+            status=403
+            def __enter__(self): return self
+            def __exit__(self,*args): pass
+            def read(self,n): raise http.client.IncompleteRead(b'PRIVATE-PARTIAL',19)
+        class Opener:
+            def __init__(self,response): self.calls=0; self.response=response
+            def open(self,*args,**kwargs): self.calls+=1; return self.response()
+        raw=json.dumps({"tokens":[{"chain":"base","address":"0x%040x"%(i+1)} for i in range(316)]}).encode()
+        context=q.context_from_bytes(raw,"a"*40,hashlib.sha256(raw).hexdigest(),"b"*64)
+        opener=Opener(Response)
+        def transport(chain,address,*,timeout): return q.request_once(chain,address,timeout=timeout,opener=opener)
+        report=q.run_plan(q.make_plan(context),context,sink=Sink(),transport=transport,clock=Clock())
+        first=report["cells"][0]
+        check("native HTTPException keeps permission evidence and stops after one attempt",
+              opener.calls==1 and report["counts"]["claimed"]==1 and report["counts"]["attempted"]==1
+              and report["counts"]["not_asked"]==315 and report["stop_reason"]=="permission_refused"
+              and first["http_status"]==403 and first["http_state"]=="permission_refused"
+              and first["body_state"]=="transport" and first["captured_body_sha256"] is None
+              and first["label_state"]=="unobserved" and "PRIVATE-PARTIAL" not in json.dumps(report))
+        class InterruptedResponse(Response):
+            def read(self,n): raise KeyboardInterrupt()
+        opener=Opener(InterruptedResponse)
+        report=q.run_plan(q.make_plan(context),context,sink=Sink(),transport=transport,clock=Clock())
+        check("native body interruption reaches the run interruption handler without retry",
+              opener.calls==1 and report["stop_reason"]=="interrupted" and report["counts"]["uncertain"]==1
+              and report["counts"]["attempted"]==0 and report["counts"]["not_asked"]==315)
+    pin_native_permission_body_exception()
 
 
 def test_goplus_quota_safe_output_and_private_raw():
