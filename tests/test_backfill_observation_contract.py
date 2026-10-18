@@ -70,6 +70,7 @@ class Stream:
     def __init__(self, raw, node, timeout):
         self.raw_bytes, self.offset, self.node = raw, 0, node
         self.timeout = timeout
+        self.closed = False
         self.raw = types.SimpleNamespace(_sock=self)
 
     def settimeout(self, value):
@@ -97,7 +98,7 @@ class Stream:
         return self.read(amount)
 
     def close(self):
-        pass
+        self.closed = True
 
 
 class Node:
