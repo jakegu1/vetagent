@@ -186,3 +186,34 @@ actual runtimes. Preserve the failed candidate and review evidence. Complete the
 same affected-runner, old/new freeze, compile, ordinary/inherited-denied and local
 integrity evidence bar; an independent reviewer rechecks this bounded regression
 correction before integration. Optional new preferences remain follow-ups.
+
+### (c) Preserve already-recognized raw markup as a whole
+
+Before sealing the entity-name correction, the lead's bounded Git-byte probe finds
+another demonstrated compatibility regression in the unmatched-origin repair. The
+row `Resolved: <3 commitments <span title='Resolved: ignored &lt;b'> -> change
+segment` is answered by original 6898b72 and af6eef8, but rejected by 067c7ec and
+1d6663f. The span is complete existing raw markup: `_MARKUP.fullmatch` returns a
+match in all four versions. Removing its inner encoded fragment first consumes its
+closing bracket, exposing the otherwise hidden marker. This is an existing raw-tag
+contract regression and falls within the same narrowly permitted cap exception.
+
+Keep every prior test/fixture/input/assertion frozen. Add only guard function
+`test_existing_raw_markup_is_not_split_by_encoded_candidates` and Owner function
+`test_raw_markup_entities_preserve_hidden_marker_owner_seams`, in a new tests-only
+commit, actually red on 1d6663f. Cover hidden-marker positions before/after embedded
+named/decimal/hex bracket text in complete old raw tags, with ordinary valid raw
+and encoded controls. Verify the old raw matcher itself recognizes the promised
+raw-tag cases. Use the actual shared helper/due/Owner surfaces, not a second parser.
+
+Only recognition constants/compiler flags/direct comments may implement the fix;
+the helper body and `_MARKUP` remain frozen. Protect a complete existing raw fragment
+as a whole before considering its internal encoded candidates. Do not globally
+decode text or change what the old raw matcher recognizes. Removing that protection
+must make the new regression fail on both actual runtimes. Preserve all previous
+origin and entity-case regressions. No broader markup preference or parser rewrite.
+
+Never edit tracked files while a configured runner is active. Retain any already
+running old-head result as such; do not count it as final-source verification. Finish
+the same final-source affected/compile/freeze/ordinary/inherited-denied evidence and
+the independent bounded regression recheck required by amendment (b).
