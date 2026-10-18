@@ -235,3 +235,29 @@ network denial. Then freeze both corrected fixture methods; no other acceptance
 change is implied. This is a specified non-assertion pre-READY correction, not a
 relaxed assertion, new review round, or a change to the eight acceptance criteria.
 
+### Named amendment (b): actually exceed the shared attempt budget
+
+The new test_shared_attempt_and_deadline_budgets_and_read_timeouts calls
+exercise("fallback_budget") with its frozen default of three candidates. The bounded
+same-engine probe completes exactly 64 HTTP attempts and observes every fact, so
+there is no sixty-fifth attempt for the budget to refuse. Its expected partial state
+does not characterize exhaustion. This is an inadequate test input, not a reason to
+lower the existing cap or misreport a fully observed run as partial.
+
+Permit only that one call to become exercise("fallback_budget", candidates=4) in
+that one new test. A private probe with four candidates reaches the same 64 actual
+attempts and records the next observation as unavailable, with zero genuine failures.
+All partial-state, exact-64 and alternating-provider assertions remain frozen. Keep
+the default candidate count and every other call, payload, case, assertion and
+implementation budget unchanged. Four is below the unchanged six-candidate cap and
+does not replace the unchanged three-observed-pair minimum.
+
+Use a separate tests-only commit titled T-038: named change (b) exercise shared budget
+exhaustion, after the specified stream correction and before any implementation
+commit. Preserve the original failed input result. Record the actual three/four-input
+comparison on both interpreters and prove that this one keyword addition is the only
+input change, with every assertion AST unchanged. Repeat contained canonical parent
+reds with the corrected frozen acceptance, then freeze that input. Restoring this
+inadequate input is not a valid budget guard; an actual attempt-65 escape must still
+be detected. No assertion, resource limit or genuine-decoder predicate is weakened.
+
