@@ -540,7 +540,7 @@ def test_default_generated_monitor_retains_collapse_names_and_status():
     check("status retains failures and observation counts",
           status["failures"] == [] and status["unobserved_sources"] == []
           and status["unobserved_probes"] == 0)
-    check("the default monitor still discovers its other tests", len(receipt["other_tests"]) == 10)
+    check("the default monitor still discovers its other tests", len(receipt["other_tests"]) == 12)
     check("monitor is offline and leaves committed data intact",
           not receipt["network"] and receipt["protected"])
 
