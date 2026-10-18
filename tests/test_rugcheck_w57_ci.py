@@ -398,7 +398,7 @@ class StudyTests(unittest.TestCase):
         early = observed(1, 900, 1)
         late = observed(175, 44 * 3600, 80)
         answer = driver.readout(state, enrollment + [early, late])
-        self.assertEqual(answer["proposal"], "different_rule_e14_review")
+        self.assertEqual(answer["proposal"], "inconclusive")
         self.assertTrue(answer["censored"])
         self.assertEqual(answer["events"][0]["interval_start"], early["ts"])
         self.assertEqual(answer["events"][0]["interval_end"], late["ts"])
@@ -429,6 +429,287 @@ class StudyTests(unittest.TestCase):
         self.assertIn("steps.intent.outputs.artifact-id", text)
         self.assertIn("always()", text[text.index("id: collect"):])
         self.assertIn("test_rugcheck_w57_ci.py", (ROOT / ".github/workflows/test.yml").read_text(encoding="utf-8"))
+
+    def test_readout_discloses_groups_field_denominators_and_unattempted_gaps(self):
+        self.need()
+        clock, store, _, _, initial, _ = self.active()
+        start = initial["result_state"]["started_at"]
+        old = {i: data for i, (_, data) in store.items.items()}
+        service = type("ArtifactService", (), {})()
+        service.list, service.load = store.list, store.load
+        service.reads = service.downloads = 0
+        def publish(folder, kind, ctx):
+            state = json.loads((folder / "state.json").read_text(encoding="utf-8"))
+            target = io.BytesIO()
+            with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
+                for path in sorted(folder.iterdir()):
+                    archive.writestr(path.name, path.read_bytes())
+            ident = max(store.items, default=0) + 1
+            store.items[ident] = ({"id": ident, "name": driver.artifact_name(state, kind, ctx),
+                                  "expired": False, "provenance": copy.deepcopy(ctx)}, target.getvalue())
+            return ident
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            def cli(args, ctx):
+                with patch.object(driver, "_context_env", return_value=ctx), \
+                        patch.object(driver, "GitHubArtifacts", return_value=service), \
+                        patch.object(driver.time, "time", side_effect=clock), \
+                        patch.object(driver.collect, "__defaults__", (clock, clock.sleep, None)), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    return driver.main(args)
+            def tick(run, elapsed, slow=False):
+                clock.value = start + elapsed
+                ctx, folder = context(run), base / str(run)
+                failures = {m: ("503", {"score_normalised": 1}) for _, m in probe.MAJORS}
+                fetch, _ = self.vendor(clock, failures=failures)
+                def raw(url):
+                    result = fetch(url)
+                    if "rugcheck" in url:
+                        if slow:
+                            clock.sleep(30)
+                        if result[0] == "200":
+                            result[1]["token_extensions"] = {"permanentDelegate": False,
+                                "pausableConfig": "false", "mintCloseAuthority": True}
+                            result[1]["freezeAuthority"] = result[1]["mintAuthority"] = False
+                            m = url.split("/tokens/", 1)[1].split("/", 1)[0]
+                            if m in (mint(0), mint(1)):
+                                result[1]["totalHolders"] = -3 if m == mint(0) else float("nan")
+                    return result
+                with patch.object(probe, "curl", side_effect=raw):
+                    self.assertEqual(cli(["prepare", "--phase", "tick", "--study", "study-one", "--out", str(folder)], ctx), 0)
+                    intent = publish(folder / "intent", "intent", ctx)
+                    self.assertEqual(cli(["collect", "--out", str(folder), "--intent", str(intent)], ctx), 0)
+                return publish(folder / "result", "result", ctx)
+            tick(5, 0)
+            tick(6, 3 * 900)
+            latest = tick(7, 4 * 900, slow=True)
+            report_dir = base / "report"
+            self.assertEqual(cli(["prepare", "--phase", "report", "--study", "study-one", "--out", str(report_dir)], context(8)), 0)
+            answer = json.loads((report_dir / "result/report.json").read_text(encoding="utf-8"))
+        fresh, control = answer["coverage"]["fresh"], answer["coverage"]["control"]
+        self.assertEqual((fresh["population"], control["population"]), (45, 18))
+        self.assertEqual(fresh["scheduled_slots"], 193)
+        self.assertEqual((fresh["slots"]["4"]["attempted_cells"], fresh["slots"]["4"]["never_attempted_cells"]), (11, 34))
+        self.assertEqual(control["slots"]["4"]["never_attempted_cells"], 18)
+        self.assertEqual(control["fields"]["score_normalised"]["attempted_unavailable_or_invalid"], 36)
+        self.assertEqual(fresh["fields"]["score_normalised"]["attempted_unavailable_or_invalid"], 0)
+        self.assertEqual(answer["unavailable_score_cells"], 0)
+        self.assertEqual(answer["not_observed_score_cells"], 45 * 193 - 101)
+        self.assertEqual(fresh["fields"]["totalHolders"]["attempted_unavailable_or_invalid"], 6)
+        self.assertEqual(fresh["fields"]["permanentDelegate"]["usable"], 101)
+        self.assertEqual(fresh["fields"]["pausableConfig"]["usable"], 0)
+        self.assertEqual(fresh["fields"]["pausableConfig"]["attempted_unavailable_or_invalid"], 101)
+        self.assertEqual(fresh["fields"]["mintCloseAuthority"]["usable"], 101)
+        self.assertEqual(fresh["fields"]["freeze_or_mint"]["usable"], 101)
+        self.assertEqual(fresh["fields"]["detectedAt"]["usable"], 101)
+        self.assertEqual(fresh["fields"]["topHolders_n"]["usable"], 101)
+        self.assertEqual(answer["missing_slot_intervals"][0]["slots"], [1, 2])
+        self.assertEqual([r["slot"] for r in fresh["observation_intervals"]], [0, 3, 4])
+        rows = store.load(latest)["rows"]
+        first = next(r for r in rows if r.get("mint") == mint(0))
+        self.assertIsNone(first["totalHolders"])
+        self.assertIsNone(first["gated"]["pausableConfig"])
+        self.assertIs(first["gated"]["permanentDelegate"], False)
+        self.assertEqual(first["score_normalised"], 1)
+        self.assertTrue(all(store.items[i][1] == data for i, data in old.items()))
+
+    def test_cli_interruption_preserves_a_restorable_partial_checkpoint(self):
+        self.need()
+        clock, store, _, _, _, _ = self.active()
+        prior = {i: data for i, (_, data) in store.items.items()}
+        service = type("ArtifactService", (), {})()
+        service.list, service.load = store.list, store.load
+        service.reads = service.downloads = 0
+        ctx = context(8)
+        def publish(folder, kind):
+            state = json.loads((folder / "state.json").read_text(encoding="utf-8"))
+            target = io.BytesIO()
+            with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
+                for path in sorted(folder.iterdir()):
+                    archive.writestr(path.name, path.read_bytes())
+            ident = max(store.items, default=0) + 1
+            store.items[ident] = ({"id": ident, "name": driver.artifact_name(state, kind, ctx),
+                                  "expired": False, "provenance": copy.deepcopy(ctx)}, target.getvalue())
+            return ident
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory) / "job"
+            fetch, calls = self.vendor(clock)
+            def interrupted(url):
+                if len(calls) == 1:
+                    raise KeyboardInterrupt()
+                return fetch(url)
+            with patch.object(driver, "_context_env", return_value=ctx), \
+                    patch.object(driver, "GitHubArtifacts", return_value=service), \
+                    patch.object(driver.time, "time", side_effect=clock), \
+                    patch.object(driver.collect, "__defaults__", (clock, clock.sleep, None)), \
+                    contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(driver.main(["prepare", "--phase", "tick", "--study", "study-one", "--out", str(folder)]), 0)
+                intent = publish(folder / "intent", "intent")
+                with patch.object(probe, "curl", side_effect=interrupted):
+                    try:
+                        driver.main(["collect", "--out", str(folder), "--intent", str(intent)])
+                    except KeyboardInterrupt:
+                        pass
+                try:
+                    finalized = driver.main(["finalize", "--out", str(folder)])
+                except SystemExit as exc:
+                    finalized = exc.code
+                self.assertEqual(finalized, 0, "always-preserve must finalize the actual interrupted journal")
+            result = publish(folder / "result", "result")
+        decoded = store.load(result)
+        self.assertEqual(len([r for r in decoded["rows"] if r.get("body") == "ok"]), 1)
+        self.assertIn(decoded["state"]["status"], ("failed", "lost_checkpoint"))
+        with patch.object(probe, "curl", side_effect=AssertionError("interrupted slot replay")):
+            self.assertEqual(driver.prepare("tick", store, context(9), clock(), study="study-one")["action"], "idle")
+            answer = driver.reconstruct(store, context(9), "study-one")
+        self.assertTrue(answer["censored"])
+        self.assertEqual(answer["coverage"]["fresh"]["attempted_cells"], 1)
+        self.assertTrue(all(store.items[i][1] == data for i, data in prior.items()))
+        workflow = (ROOT / ".github/workflows/rugcheck-w57.yml").read_text(encoding="utf-8")
+        self.assertIn("finalize --out", workflow)
+        self.assertLess(workflow.index("finalize --out"), workflow.index("name: Preserve completed and partial observations"))
+
+    def test_intent_only_terminal_checkpoint_reconstructs_without_replay(self):
+        self.need()
+        clock, store, previous_id, _, _, _ = self.active()
+        prior = {i: data for i, (_, data) in store.items.items()}
+        service = type("ArtifactService", (), {})()
+        service.list, service.load = store.list, store.load
+        service.reads = service.downloads = 0
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            def cli(args, ctx):
+                with patch.object(driver, "_context_env", return_value=ctx), \
+                        patch.object(driver, "GitHubArtifacts", return_value=service), \
+                        patch.object(driver.time, "time", side_effect=clock), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    return driver.main(args)
+            with patch.object(probe, "curl", side_effect=AssertionError("lost intent replay")):
+                first, second, report_dir = base / "first", base / "second", base / "report"
+                self.assertEqual(cli(["prepare", "--phase", "tick", "--study", "study-one", "--out", str(first)], context(5)), 0)
+                plan = json.loads((first / "plan.json").read_text(encoding="utf-8"))
+                intent = store.publish(plan["state"], [], "intent", context(5))
+                intent_digest = store.load(intent)["digest"]
+                self.assertEqual(cli(["prepare", "--phase", "tick", "--study", "study-one", "--out", str(second)], context(6)), 0)
+                lost = json.loads((second / "plan.json").read_text(encoding="utf-8"))
+                self.assertEqual(lost["action"], "checkpoint")
+                result_state = json.loads((second / "result/state.json").read_text(encoding="utf-8"))
+                result = store.publish(result_state, [], "result", context(6))
+                self.assertEqual(cli(["prepare", "--phase", "report", "--study", "study-one", "--out", str(report_dir)], context(7)), 0)
+                report = json.loads((report_dir / "result/report.json").read_text(encoding="utf-8"))
+        state = store.load(result)["state"]
+        self.assertEqual(state["status"], "lost_checkpoint")
+        self.assertEqual(state["lost_intent"], {"id": intent, "digest": intent_digest})
+        self.assertEqual(state["parent"]["id"], previous_id)
+        self.assertEqual(report["losses"][0]["reason"], "lost_checkpoint")
+        self.assertEqual(report["losses"][0]["slot"], 0)
+        self.assertEqual(report["fresh_enrolled"], 45)
+        self.assertTrue(report["censored"])
+        self.assertTrue(all(store.items[i][1] == data for i, data in prior.items()))
+
+    def test_crossing_intervals_do_not_assert_a_right_endpoint_as_a_lower_bound(self):
+        self.need()
+        clock, store, _, _, initial, _ = self.active()
+        state = initial["result_state"]
+        start = state["started_at"]
+        origins = {m["mint"]: m["enrollment"]["detectedAt"] for m in state["cohort"] if m["group"] == "fresh"}
+        service = type("ArtifactService", (), {})()
+        service.list, service.load = store.list, store.load
+        service.reads = service.downloads = 0
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            def cli(args, ctx):
+                with patch.object(driver, "_context_env", return_value=ctx), \
+                        patch.object(driver, "GitHubArtifacts", return_value=service), \
+                        patch.object(driver.time, "time", side_effect=clock), \
+                        patch.object(driver.collect, "__defaults__", (clock, clock.sleep, None)), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    return driver.main(args)
+            def tick(run, hours, score, unavailable=False):
+                clock.value = start + hours * 3600
+                ctx, folder = context(run), base / str(run)
+                fetch, _ = self.vendor(clock)
+                def raw(url):
+                    code, body = fetch(url)
+                    if "rugcheck" in url:
+                        if unavailable:
+                            return "429", {"score_normalised": 1}
+                        m = url.split("/tokens/", 1)[1].split("/", 1)[0]
+                        body["score_normalised"] = score
+                        body["detectedAt"] = origins.get(m, body["detectedAt"])
+                    return code, body
+                self.assertEqual(cli(["prepare", "--phase", "tick", "--study", "study-one", "--out", str(folder)], ctx), 0)
+                plan = json.loads((folder / "plan.json").read_text(encoding="utf-8"))
+                intent = store.publish(plan["state"], [], "intent", ctx)
+                with patch.object(probe, "curl", side_effect=raw):
+                    self.assertEqual(cli(["collect", "--out", str(folder), "--intent", str(intent)], ctx), 0)
+                rows = [json.loads(line) for line in (folder / "result/observations.jsonl").read_text(encoding="utf-8").splitlines()]
+                result_state = json.loads((folder / "result/state.json").read_text(encoding="utf-8"))
+                store.publish(result_state, rows, "result", ctx)
+            tick(5, 0, 1)
+            tick(6, 20, 1, unavailable=True)
+            tick(7, 44, 80)
+            wide = driver.reconstruct(store, context(8), "study-one")
+            self.assertEqual(wide["proposal"], "inconclusive")
+            event = wide["events"][0]
+            self.assertEqual(event["tail_location"], "ambiguous")
+            self.assertLess(event["elapsed_interval_minutes"][0], 43.2 * 60)
+            self.assertGreater(event["elapsed_interval_minutes"][1], 43.2 * 60)
+            self.assertEqual(len(event["index_age_interval_minutes"]), 2)
+            bound = wide.get("proposed_lower_bound_minutes")
+            self.assertTrue(bound is None or bound <= event["index_age_interval_minutes"][0])
+            tick(9, 44.5, 1)
+            tick(10, 45, 80)
+            tail = driver.reconstruct(store, context(11), "study-one")
+            self.assertEqual(tail["proposal"], "different_rule_e14_review")
+            latest = tail["latest_flip"]
+            self.assertEqual(latest["tail_location"], "within_final_tenth")
+            self.assertGreaterEqual(latest["elapsed_interval_minutes"][0], 43.2 * 60)
+            self.assertLessEqual(tail["proposed_lower_bound_minutes"], latest["index_age_interval_minutes"][0])
+            self.assertEqual(tail["final_tenth_start"], start + 48 * 3600 * 0.9)
+
+    def test_normalized_overflow_preserves_prior_rows_and_an_explicit_receipt(self):
+        self.need()
+        clock, store, _, _, _, _ = self.active()
+        old = {i: data for i, (_, data) in store.items.items()}
+        service = type("ArtifactService", (), {})()
+        service.list, service.load = store.list, store.load
+        service.reads = service.downloads = 0
+        ctx = context(8)
+        fetch, calls = self.vendor(clock)
+        def raw(url):
+            code, body = fetch(url)
+            if len(calls) == 2:
+                body["score_normalised"] = 10 ** 2500
+            return code, body
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory) / "job"
+            with patch.object(driver, "_context_env", return_value=ctx), \
+                    patch.object(driver, "GitHubArtifacts", return_value=service), \
+                    patch.object(driver.time, "time", side_effect=clock), \
+                    patch.object(driver.collect, "__defaults__", (clock, clock.sleep, None)), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(driver.main(["prepare", "--phase", "tick", "--study", "study-one", "--out", str(folder)]), 0)
+                plan = json.loads((folder / "plan.json").read_text(encoding="utf-8"))
+                intent = store.publish(plan["state"], [], "intent", ctx)
+                with patch.object(probe, "curl", side_effect=raw):
+                    self.assertEqual(driver.main(["collect", "--out", str(folder), "--intent", str(intent)]), 0)
+            state = json.loads((folder / "result/state.json").read_text(encoding="utf-8"))
+            rows = [json.loads(line) for line in (folder / "result/observations.jsonl").read_text(encoding="utf-8").splitlines()]
+            data = io.BytesIO()
+            with zipfile.ZipFile(data, "w", zipfile.ZIP_DEFLATED) as archive:
+                for path in sorted((folder / "result").iterdir()):
+                    archive.writestr(path.name, path.read_bytes())
+        decoded = driver.decode_bundle(data.getvalue(), ctx, context(9))
+        self.assertEqual(state["status"], "overflow")
+        self.assertEqual(state["failure"], "row_overflow")
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(rows[0]["score_normalised"], 1)
+        receipt = next(r for r in decoded["rows"] if r.get("kind") == "overflow_receipt")
+        self.assertEqual((receipt["reason"], receipt["mint"], receipt["slot"]), ("row_overflow", mint(1), 0))
+        self.assertLessEqual(len(driver.encoded(receipt)), 2048)
+        self.assertLessEqual(len(data.getvalue()), 1024 * 1024)
+        self.assertTrue(all(store.items[i][1] == previous for i, previous in old.items()))
 
 
 if __name__ == "__main__":
