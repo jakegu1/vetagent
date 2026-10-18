@@ -890,7 +890,7 @@ class CheckpointChronologyTests(unittest.TestCase):
                     self.assertEqual((plan["state"]["started_at"], plan["state"]["ends_at"]),
                                      (active["started_at"], active["ends_at"]))
                     self.assertEqual([slot["slot"] for slot in plan["state"]["slots"] if slot["status"] == "not_observed"],
-                                     list(range(1, 7)))
+                                     list(range(7)))
                     self.assertLessEqual(service.reads, 12)
                     self.assertLessEqual(service.downloads, 2)
                 for phase in ("pilot", "start"):
@@ -1033,10 +1033,16 @@ class CheckpointChronologyTests(unittest.TestCase):
                 else:
                     fixture["runs"][3]["path"] = "other.yml"
                 service, requests, transport = self.service(fixture, report=True)
-                with self.subTest(defect=defect), transport, self.assertRaises(driver.StudyError):
-                    driver.reconstruct(service, context(7), "study-one")
-                self.assertTrue(self.downloads(requests) and self.downloads(requests)[0] == latest,
-                                "a damaged latest checkpoint must not downgrade to an older report")
+                with patch.object(service, "load", wraps=service.load) as attempted:
+                    with self.subTest(defect=defect), transport, self.assertRaises(driver.StudyError):
+                        driver.reconstruct(service, context(7), "study-one")
+                self.assertTrue(attempted.call_args_list)
+                self.assertEqual(attempted.call_args_list[0].args[0], latest)
+                if defect == "provenance":
+                    self.assertEqual(self.downloads(requests), [])
+                else:
+                    self.assertTrue(self.downloads(requests) and self.downloads(requests)[0] == latest,
+                                    "a damaged latest checkpoint must not downgrade to an older report")
 
 
 if __name__ == "__main__":
