@@ -26,6 +26,7 @@ import labels
 REQUEST_CAP = 316
 GAP_SECONDS = 2.1
 REQUEST_TIMEOUT = 30
+_CLEANUP_SECONDS = 0.05
 RUN_SECONDS = 1800
 BODY_CAP = 256 * 1024
 SAFE_CAP = 1024 * 1024
@@ -35,7 +36,7 @@ _HASH = re.compile(r"[0-9a-f]{64}")
 _COMMIT = re.compile(r"[0-9a-f]{40}")
 _ADDRESS = re.compile(r"0x[0-9a-fA-F]{40}")
 _REASONS = {"completed", "permission_refused", "run_deadline", "utc_day_end",
-            "persistence_failed", "interrupted"}
+            "persistence_failed", "interrupted", "transport_cleanup_failed"}
 LIMITATIONS = [
     "Single-date paced quota/throughput pilot; not continuous 24-hour observation.",
     "daily reset unobserved; remaining allowance and shared usage unknown.",
@@ -182,8 +183,8 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def request_once(chain, address, *, timeout=REQUEST_TIMEOUT, opener=None):
-    """Exactly one keyless GET to the already-used held-out endpoint."""
+def _request_body(chain, address, *, timeout, opener=None, on_headers=None):
+    """Native single GET; only the supervisor gives this an absolute deadline."""
     if (chain not in labels.GOPLUS_CHAIN_ID or not isinstance(address, str) or not _ADDRESS.fullmatch(address)
             or timeout != REQUEST_TIMEOUT):
         raise ValueError("invalid_request")
@@ -199,12 +200,141 @@ def request_once(chain, address, *, timeout=REQUEST_TIMEOUT, opener=None):
             response = exc
         with response:
             status = getattr(response, "status", getattr(response, "code", None))
+            if on_headers is not None:
+                on_headers(status)
             return {"http_status": status, "body": response.read(BODY_CAP + 1)}
     except (TimeoutError, urllib.error.URLError) as exc:
         timed_out = isinstance(exc, TimeoutError) or isinstance(getattr(exc, "reason", None), TimeoutError)
         return {"http_status": status, "error": "timeout" if timed_out else "transport"}
     except (OSError, ValueError, http.client.HTTPException):
         return {"http_status": status, "error": "transport"}
+
+
+def _native_child(chain, address, timeout, state, body):
+    """One short-lived worker; bounded anonymous memory is its only result channel."""
+    quiet = os.open(os.devnull, os.O_WRONLY)
+    try:
+        os.dup2(quiet, 1)
+        os.dup2(quiet, 2)
+    finally:
+        os.close(quiet)
+
+    def headers(status):
+        if type(status) is int and 100 <= status <= 599:
+            state[0] = status
+
+    try:
+        reply = _request_body(chain, address, timeout=timeout, on_headers=headers)
+        headers(reply.get("http_status"))
+        raw = reply.get("body")
+        if isinstance(raw, bytes):
+            captured = raw[:BODY_CAP + 1]
+            body[:len(captured)] = captured
+            state[2] = len(captured)
+            state[1] = 1  # Publish completion only after every bounded byte is copied.
+        else:
+            state[1] = 2 if reply.get("error") == "timeout" else 3
+    except Exception:
+        state[1] = 3  # No arbitrary exception text or raw stdout crosses the boundary.
+
+
+class _NativeWorker:
+    def __init__(self, chain, address, timeout):
+        import multiprocessing
+
+        context = multiprocessing.get_context("spawn")
+        self.state = context.RawArray("i", 3)
+        self.body = context.RawArray("B", BODY_CAP + 1)
+        self.process = context.Process(target=_native_child, args=(chain, address, timeout, self.state, self.body))
+
+    def start(self):
+        self.process.start()
+
+    def is_alive(self):
+        return self.process.is_alive()
+
+    def join(self, timeout):
+        self.process.join(timeout)
+
+    def terminate(self):
+        self.process.terminate()
+
+    def kill(self):
+        self.process.kill()
+
+    def status(self):
+        status = self.state[0]
+        return status if 100 <= status <= 599 else 0
+
+    def result(self):
+        kind, size = self.state[1], self.state[2]
+        if kind == 1 and 0 <= size <= BODY_CAP + 1:
+            return {"http_status": self.status(), "body": bytes(self.body[:size])}
+        return {"http_status": self.status(), "error": "timeout" if kind == 2 else "transport"}
+
+    def close(self):
+        self.process.close()
+
+
+class _NativeCleanupFailed(RuntimeError):
+    def __init__(self, status):
+        super().__init__("transport_cleanup_failed")
+        self.status = status
+
+
+def _retire_worker(worker):
+    # No request may remain in flight when this returns to the run loop.
+    if worker.is_alive():
+        try:
+            worker.terminate()
+        except OSError:
+            pass
+        worker.join(_CLEANUP_SECONDS)
+    if worker.is_alive():
+        try:
+            worker.kill()
+        except OSError:
+            pass
+        worker.join(_CLEANUP_SECONDS)
+    if worker.is_alive():
+        raise _NativeCleanupFailed(worker.status())
+    worker.close()
+
+
+def _supervised_request(chain, address, *, timeout, worker_factory=None, clock=None):
+    """Absolute connection/header/body budget, then at most 100 ms of reaping."""
+    current = clock or time
+    deadline = current.monotonic() + timeout
+    worker = (worker_factory or _NativeWorker)(chain, address, timeout)
+    expired = False
+    try:
+        worker.start()
+        while worker.is_alive():
+            remaining = deadline - current.monotonic()
+            if remaining <= 0:
+                expired = True
+                break
+            worker.join(remaining)
+        expired = expired or current.monotonic() > deadline
+    finally:
+        _retire_worker(worker)
+    if expired:
+        return {"http_status": worker.status(), "error": "timeout"}
+    return worker.result()
+
+
+def request_once(chain, address, *, timeout=REQUEST_TIMEOUT, opener=None):
+    """Default native calls are supervised; explicit opener injection is test-only.
+
+    The synchronous injected opener preserves deterministic parent-visible fake reads.
+    It does not provide an absolute deadline and is never selectable by CLI or env.
+    """
+    if (chain not in labels.GOPLUS_CHAIN_ID or not isinstance(address, str) or not _ADDRESS.fullmatch(address)
+            or timeout != REQUEST_TIMEOUT):
+        raise ValueError("invalid_request")
+    if opener is not None:
+        return _request_body(chain, address, timeout=timeout, opener=opener)
+    return _supervised_request(chain, address, timeout=timeout)
 
 
 def classify(reply, address, *, recent_volume=None, labeler=None):
@@ -406,6 +536,7 @@ def run_plan(plan, context, *, sink, transport=None, clock=None, private_raw_dir
         raise ValueError("invalid_clock")
     start_day = datetime.fromtimestamp(wall, timezone.utc).date()
     day_end = datetime.combine(start_day + timedelta(days=1), datetime.min.time(), timezone.utc).timestamp()
+    request_window = REQUEST_TIMEOUT + 2 * _CLEANUP_SECONDS
     sink.begin(plan)
     events, raw_manifest = [], {}
     reason, last_start = "completed", None
@@ -421,27 +552,31 @@ def run_plan(plan, context, *, sink, transport=None, clock=None, private_raw_dir
         sink.save(_report(plan, events, "interrupted"))
         for index in plan["indices"]:
             wait = max(0, last_start + GAP_SECONDS - current.monotonic()) if last_start is not None else 0
-            if current.time() + wait + REQUEST_TIMEOUT > day_end or datetime.fromtimestamp(current.time(), timezone.utc).date() != start_day:
+            if current.time() + wait + request_window > day_end or datetime.fromtimestamp(current.time(), timezone.utc).date() != start_day:
                 reason = "utc_day_end"
                 break
-            if current.monotonic() + wait + REQUEST_TIMEOUT > mono + RUN_SECONDS:
+            if current.monotonic() + wait + request_window > mono + RUN_SECONDS:
                 reason = "run_deadline"
                 break
             scheduled = _utc(current.time() + wait)
             if wait:
                 current.sleep(wait)
-            if current.time() + REQUEST_TIMEOUT > day_end:
+            if current.time() + request_window > day_end:
                 reason = "utc_day_end"
                 break
-            if current.monotonic() + REQUEST_TIMEOUT > mono + RUN_SECONDS:
+            if current.monotonic() + request_window > mono + RUN_SECONDS:
                 reason = "run_deadline"
                 break
             actual_start = current.monotonic()
             append({"kind": "intent", "index": index, "scheduled_at": scheduled, "request_at": _utc(current.time()), "mono": actual_start})
             row = context["tokens"][index]
             last_start = actual_start
+            cleanup_failed = False
             try:
                 reply = fetch(row["chain"], row["address"], timeout=REQUEST_TIMEOUT)
+            except _NativeCleanupFailed as exc:
+                reply = {"http_status": exc.status, "error": "transport"}
+                cleanup_failed = True
             except KeyboardInterrupt:
                 reason = "interrupted"
                 break
@@ -460,6 +595,9 @@ def run_plan(plan, context, *, sink, transport=None, clock=None, private_raw_dir
                 _durable(temporary, _encode(raw_manifest), "wb")
                 os.replace(temporary, raw_dir / "manifest.json")
             sink.save(_report(plan, events, "interrupted"))
+            if cleanup_failed:
+                reason = "transport_cleanup_failed"
+                break
             if observation["http_status"] in (401, 403):
                 reason = "permission_refused"
                 break
