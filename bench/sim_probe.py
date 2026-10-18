@@ -24,6 +24,7 @@ import glob
 import hashlib
 import io
 import json
+import math
 import os
 import sys
 import time
@@ -165,6 +166,45 @@ def hp_shape(hp):
     if is_hp is True and (not ok or (sell or 0) >= 50):
         return "proven", buy, sell
     return "other", buy, sell
+
+
+def _number(value):
+    if value is None or isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        return None
+    try:
+        number = float(value)
+    except (ValueError, TypeError, OverflowError):
+        return None
+    return number if math.isfinite(number) else None
+
+
+def control_eligibility(hp, group, observed_day, run_day):
+    """Separate a same-day source observation from the simulator's agreement."""
+    result = {"eligibility": "unobserved", "reason": "control_unavailable"}
+    try:
+        valid_day = (datetime.date.fromisoformat(run_day).isoformat() == run_day
+                     and observed_day == run_day)
+    except (ValueError, TypeError):
+        valid_day = False
+    if not valid_day:
+        return dict(result, reason="not_same_day")
+    if (not isinstance(hp, dict) or not isinstance(hp.get("honeypotResult"), dict)
+            or "transport_error" in hp or "error" in hp):
+        return result
+    try:
+        shape, _, _ = hp_shape(hp)
+    except (TypeError, ValueError, AttributeError):
+        return dict(result, reason="control_malformed")
+    if shape != ("clean" if group == "C-clean" else "proven"):
+        return {"eligibility": "excluded", "reason": "shape_changed"}
+    if group == "C-honeypot":
+        pair = hp.get("pair")
+        amount = _number(pair.get("liquidity")) if isinstance(pair, dict) else None
+        if amount is None:
+            return dict(result, reason="liquidity_unobserved")
+        if amount < 1000:
+            return {"eligibility": "excluded", "reason": "below_floor"}
+    return {"eligibility": "eligible", "reason": "same_day_control"}
 
 
 # ---------------------------------------------------------------- the simulation
@@ -315,7 +355,9 @@ def main():
             rec.update(symbol=t.get("symbol") or "", hp_today=shape, hp_buy_tax=hp_buy,
                        hp_sell_tax=hp_sell)
             want = "clean" if group == "C-clean" else "proven"
-            rec["countable"] = shape == want
+            rec.update(control_eligibility(
+                hp, group, datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"), day))
+            rec["countable"] = rec["eligibility"] == "eligible"
             if group == "C-clean":
                 rec["agrees"] = bool(rec["countable"] and rec["result"] == "sold"
                                      and rec.get("buy_tax") is not None
