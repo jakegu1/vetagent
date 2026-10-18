@@ -476,14 +476,24 @@ def report(path):
 
     _score_verdict(by)
 
-    pairs = [(r, [x for x in first if x["mint"] == r["mint"] and x["sweep"] == r["sweep"]
-                  and _holder_state(x) is not None])
-             for r in ok if r.get("immediate_retry") and _holder_state(r) is not None]
-    agree = sum(1 for r, primary in pairs
-                if any(_holder_state(x) == _holder_state(r) for x in primary))
-    total = sum(1 for _, primary in pairs if primary)
+    # The writer appends, and each invocation starts again at sweep 1. Associate a retry
+    # with its preceding primary envelope before filtering failed observations: an old
+    # usable row with the same mint/sweep cannot stand in for this request's failed one.
+    pairs, primary = [], None
+    for r in rows:
+        if not isinstance(r, dict):
+            primary = None
+        elif not r.get("immediate_retry"):
+            primary = r
+        elif _usable_observation(r) and _holder_state(r) is not None:
+            matching = (_usable_observation(primary) and _holder_state(primary) is not None
+                        and primary["mint"] == r["mint"] and primary["sweep"] == r["sweep"])
+            pairs.append((r, primary if matching else None))
+    agree = sum(1 for r, primary in pairs if primary is not None
+                and _holder_state(primary) == _holder_state(r))
+    total = sum(1 for _, primary in pairs if primary is not None)
     print("immediate retries agreeing with their own sweep: %d of %d" % (agree, total))
-    unmatched = sum(1 for _, primary in pairs if not primary)
+    unmatched = sum(1 for _, primary in pairs if primary is None)
     if unmatched:
         print("immediate retries without a usable matching primary: %d" % unmatched)
     return 0
