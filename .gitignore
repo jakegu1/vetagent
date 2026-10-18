@@ -10,7 +10,6 @@ node_modules/
 
 # Build artifacts (should NOT be in repo)
 python_modules/
-pylock.toml
 
 # Secrets — NEVER commit
 .env

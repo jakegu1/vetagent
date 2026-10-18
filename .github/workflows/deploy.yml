@@ -20,6 +20,7 @@ on:
       - "uv.lock"
       - "package.json"
       - "package-lock.json"
+      - "pylock.toml"
       - "wrangler.jsonc"
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
@@ -66,6 +67,10 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Record committed lock byte hashes
+        if: steps.creds.outputs.ready == 'true'
+        run: sha256sum uv.lock pylock.toml package-lock.json > "$RUNNER_TEMP/build-locks.sha256"
+
       # Tests first. Shipping a risk-screening tool without them puts silent failure
       # right back in.
       #
@@ -95,6 +100,18 @@ jobs:
       - name: Sync dependencies
         if: steps.creds.outputs.ready == 'true'
         run: uv sync --locked
+
+      - name: Sync inspected target packages
+        if: steps.creds.outputs.ready == 'true'
+        run: uv run --locked pywrangler sync
+
+      - name: Verify lock bytes before upload
+        if: steps.creds.outputs.ready == 'true'
+        run: sha256sum --check "$RUNNER_TEMP/build-locks.sha256"
+
+      - name: Check tracked files before upload
+        if: steps.creds.outputs.ready == 'true'
+        run: git diff --exit-code
 
       # Must be pywrangler, not bare wrangler: bare wrangler does not vendor workers-py,
       # so the deployed Worker fails on startup with ModuleNotFoundError: No module named

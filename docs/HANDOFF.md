@@ -80,7 +80,7 @@ wrangler.jsonc   — Cloudflare config (routes: vetagent.dev custom_domain)
 | 7 | git push through the proxy hangs (HTTP408); direct is more reliable | `git -c http.proxy= -c https.proxy= push` |
 | 8 | GeckoTerminal uses `eth`, chain_hint/DexScreener use `ethereum` | one chain-name mapping (fallback branch fixed)|
 | 9 | Relative imports fail | use absolute `import risk`, not `from . import` |
-| 10 | **pywrangler does not run on Windows** — it wants to build an emscripten pyodide venv, which Windows does not support | deploy from CI (`.github/workflows/deploy.yml`); in a pinch use WSL: `XDG_CONFIG_HOME=/mnt/c/Users/<you>/AppData/Roaming/xdg.config uv run --locked pywrangler deploy` to reuse the OAuth session Windows already has |
+| 10 | **pywrangler does not run on Windows** — it wants to build an emscripten pyodide venv, which Windows does not support | deploy from CI (`.github/workflows/deploy.yml`); the WSL fallback must use the checked Linux setup/sync/deploy sequence below with its own platform environment |
 | 11 | Bare `wrangler deploy` builds fine but the **deployed Worker crashes on startup** — `ModuleNotFoundError: No module named 'workers'`, because it does not vendor workers-py | always `uv run --locked pywrangler deploy`. A passing dry-run **does not mean** it runs; it never checks runtime imports |
 | 12 | `git pull origin master` while on another branch merges master into the current branch, leaving local master stale | before deploying, compare with `git rev-parse --short master origin/master` — don't ship against old code |
 | 13 | **A refusal can arrive inside a `200 OK`.** A rate-limited JSON-RPC call comes back as a normal array whose entries hold `{"code": -32016, "message": "over rate limit"}` instead of a result. Skipping entries with no `result` turned "the node would not answer" into "this pool has no tokens" — a day whose first sampled window held 10,522 swaps was recorded as **0 pools traded** | `rpc_batch` retries unanswered ids across passes and prints what never came back. Never let an unanswered call become a fact |
@@ -161,14 +161,21 @@ Suggested approach (ordered by feasibility):
 
 ```bash
 cd ~/projects/vetagent-worker
-# Linux or WSL; CI is the normal deployment path (D2).
+# Linux or WSL with Node 22; CI is the normal deployment path (D2).
+LOCK_HASHES="$(mktemp)"
+sha256sum uv.lock pylock.toml package-lock.json > "$LOCK_HASHES"
 python -m pip install --no-deps uv==0.13.1
 npm ci --ignore-scripts --no-audit --no-fund
 uv sync --locked
+uv run --locked pywrangler sync
+sha256sum --check "$LOCK_HASHES"
+git diff --exit-code
 uv run --locked pywrangler dev --port 8787     # local test
 # deploy (credentials via env vars, never written into git)
 export CLOUDFLARE_API_TOKEN=<from Jake>
 export CLOUDFLARE_ACCOUNT_ID=<from the private note, W13>
+sha256sum --check "$LOCK_HASHES"
+git diff --exit-code
 uv run --locked pywrangler deploy
 ```
 
@@ -193,15 +200,17 @@ uv run --locked pywrangler deploy
 ### 🖥️ Developing on your own machine (Jake's box)
 1. `git clone https://github.com/jakegu1/vetagent.git && cd vetagent`
 2. Install the pinned host tool: `python -m pip install --no-deps uv==0.13.1`.
-3. `npm ci --ignore-scripts --no-audit --no-fund` installs the exact Wrangler 4.151.1 development tool and public transitive Node lock without install hooks. `uv sync --locked` installs the SDKs and host dependencies from the committed `uv.lock`.
+3. On Linux or WSL, start at the lock-byte capture in the setup sequence above before installing anything. It uses `npm ci --ignore-scripts --no-audit --no-fund` for exact Wrangler 4.151.1 and its public transitive lock without hooks, and `uv sync --locked` for the committed host SDK lock. Native Windows can run those host-only installation commands without starting target setup.
 4. **Cloudflare credentials**: ask Jake for `CLOUDFLARE_API_TOKEN` (set it as a local env var only, **never write it into git**). Create one in the Cloudflare dashboard → My Profile → API Tokens (scope it to `Workers: Edit` + `Account: Read`, nothing more). Or just `npx wrangler login` (OAuth, safest).
-5. On Linux or WSL, use `uv run --locked pywrangler dev` to test locally and `uv run --locked pywrangler deploy` for the deployment path (D1). Production normally ships through CI (D2) and retains its production smoke checks (D3). Native Windows can sync host dependencies and run offline checks; do not run pywrangler or Pyodide setup there.
+5. On Linux or WSL, follow the setup sequence above: capture lock-byte hashes before installation, run explicit `uv run --locked pywrangler sync`, then verify those hashes and the tracked diff before `uv run --locked pywrangler deploy` (D1). Production normally ships through CI (D2) and retains its production smoke checks (D3). Native Windows can sync host dependencies and run offline checks; do not run pywrangler or Pyodide setup there.
 
 For an intentional host lock update, review the two SDK pins in `pyproject.toml`, use uv 0.13.1, and run `uv lock --no-config --default-index https://pypi.org/simple`. Review the complete `uv.lock` diff, run `uv lock --check` and `uv sync --locked`, then run the offline suite. Commit the reviewed project and lock changes together. A missing or stale lock is an error during normal sync/deploy, never an invitation to regenerate it silently.
 
 The private Node manifest pins Wrangler 4.151.1 only as a development tool. pywrangler remains the packaging/deployment entry point and resolves that installed local package. CI checks the local Wrangler JavaScript entry directly, with no npm/npx installation fallback. For an intentional Node lock update, explicitly review the Wrangler version in `package.json`, generate the public transitive lock with `npm install --package-lock-only --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org/`, then review both manifests and verify a clean `npm ci --ignore-scripts --no-audit --no-fund`. This does not claim bit-for-bit bundle or platform-runtime identity.
 
-The separate Linux `build` job in `test.yml` follows the offline job on branch pushes, without deployment secrets. It runs `uv run --locked pywrangler deploy --dry-run`, rejects tracked-file changes and retains only the generated public `pylock.toml` as a build artifact for runtime-lock work. A successful dry-run is packaging evidence; actual deployment and runtime import/smoke checks remain required before claiming a working production release.
+The committed `pylock.toml` is the inspected Linux target lock, distinct from the host `uv.lock`: it selects workers-runtime-sdk 1.9.4 and retains its public wheel hash and actual Python target metadata. Normal explicit `uv run --locked pywrangler sync` uses that existing target resolution without an upgrade flag. A deliberate target-package update needs its own reviewed version decision, a real supported Linux sync/build, and retained target-lock/distribution provenance; do not edit a runtime lock by guesswork or reset a changed lock to conceal drift. Review and commit intended lock changes together, then require two clean Linux packaging passes.
+
+The separate Linux `build` job in `test.yml` follows the single offline job on branch pushes, without deployment secrets. Its fixed two-entry matrix uses independent clean project/vendor environments. Each job records raw lock hashes before installation, verifies its local Wrangler, syncs the locked host and target, and checks all lock bytes plus the tracked diff before `uv run --locked pywrangler deploy --dry-run` and again afterward. Newline-only lock changes fail the byte guard even when normalized Git diff is empty. Each job retains only the public target lock under a distinct matrix artifact name. These locks constrain selected package resolutions; they do not pin the runner OS or SDK-selected platform interpreters or prove bit-for-bit bundles. Actual deployment and runtime import/smoke checks remain required before claiming a working production release.
 
 > Two options: `wrangler login` OAuth (safest, no token to hand around) and an API token (stable across networks). On a remote server the API token is more reliable; for local development prefer OAuth.
 

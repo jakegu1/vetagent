@@ -259,6 +259,10 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        clean-build: [1, 2]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -272,6 +276,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+
+      - name: Record committed lock byte hashes
+        run: sha256sum uv.lock pylock.toml package-lock.json > "$RUNNER_TEMP/build-locks.sha256"
 
       - name: Install uv
         run: python -m pip install --no-deps uv==0.13.1
@@ -288,15 +295,27 @@ jobs:
       - name: Sync dependencies
         run: uv sync --locked
 
+      - name: Sync inspected target packages
+        run: uv run --locked pywrangler sync
+
+      - name: Verify lock bytes before packaging
+        run: sha256sum --check "$RUNNER_TEMP/build-locks.sha256"
+
+      - name: Check tracked files before packaging
+        run: git diff --exit-code
+
       - name: Build without credentials or upload
         run: uv run --locked pywrangler deploy --dry-run
+
+      - name: Verify lock bytes after packaging
+        run: sha256sum --check "$RUNNER_TEMP/build-locks.sha256"
 
       - name: Check tracked files
         run: git diff --exit-code
 
       - uses: actions/upload-artifact@v4
         with:
-          name: public-python-runtime-lock
+          name: public-python-runtime-lock-${{ matrix.clean-build }}
           path: pylock.toml
           if-no-files-found: error
           retention-days: 7
