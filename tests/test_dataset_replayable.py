@@ -115,6 +115,340 @@ def test_the_committed_dataset_is_replayable():
         check("the committed dataset carries every field the labeller reads", True)
 
 
+def test_w40_plan_is_offline_source_bound_and_not_started(_support=False):
+    import base64
+    import copy
+    import hashlib
+    import importlib
+    import pathlib
+    import tempfile
+    import contextlib
+    from unittest.mock import patch
+    core = importlib.import_module("w40_evidence")
+
+    class Fixture:
+        token = "0x" + "1" * 40
+        pool = "0x" + "a" * 40
+
+        def __enter__(self):
+            self.temp = tempfile.TemporaryDirectory()
+            self.root = pathlib.Path(self.temp.name)
+            self.sources = []
+            self.output = self.root / "safe"
+            self.private = self.root / "private"
+            return self
+
+        def __exit__(self, *args):
+            self.temp.cleanup()
+
+        def row(self, **changes):
+            item = {"chain": "base", "base_token": "base_" + self.token,
+                    "pool_address": self.pool, "pool_id": "base_" + self.pool,
+                    "pool_created_at": "2026-10-01T00:00:00Z",
+                    "seen_at": "2026-10-01T01:00:00Z", "reserve_usd": "1"}
+            item.update(changes)
+            return item
+
+        def setup(self, rows=None, raw=None, **kwargs):
+            path = self.root / "pools.ndjson"
+            data = raw if raw is not None else b"".join(
+                (json.dumps(r, allow_nan=False) + "\n").encode("utf-8")
+                for r in (rows if rows is not None else [self.row()]))
+            path.write_bytes(data)
+            self.sources = [{"path": str(path), "bytes": len(data),
+                             "sha256": hashlib.sha256(data).hexdigest()}]
+            self.plan = core.plan("1" * 40, self.sources)
+            core.enroll(self.plan, self.sources,
+                        boundary=kwargs.get("boundary", "2026-10-01T02:00:00Z"),
+                        ingested_at=kwargs.get("ingested_at", "2026-10-01T02:00:00Z"),
+                        output=self.output)
+            return core.report(self.output, now="2026-10-03T00:00:00Z")
+
+        def stage(self, body, **changes):
+            raw = json.dumps(body, allow_nan=False, separators=(",", ":")).encode("utf-8")
+            value = {"state": "observed", "http_status": 200,
+                     "request_at": "2026-10-02T00:00:00Z",
+                     "response_at": "2026-10-02T00:00:02Z",
+                     "raw": base64.b64encode(raw).decode("ascii"),
+                     "sha256": hashlib.sha256(raw).hexdigest()}
+            value.update(changes)
+            return value
+
+        def packet(self, ordinal=1):
+            records = core.report(self.output, now="2026-10-03T00:00:00Z")["rows"]
+            record = next(r for r in records if r["ordinal"] == ordinal)
+            address = self.token if ordinal == 1 else "0x" + str(ordinal) * 40
+            pool = self.pool if ordinal == 1 else "0x" + "b" * 40
+            fields = {k: "0" for k in (
+                "is_honeypot", "cannot_sell_all", "cannot_buy", "selfdestruct",
+                "personal_slippage_modifiable", "transfer_pausable", "is_blacklisted",
+                "slippage_modifiable", "can_take_back_ownership", "owner_change_balance",
+                "is_mintable", "trust_list")}
+            fields.update(is_open_source="1", holder_count="600", buy_tax="0",
+                          sell_tax="0", owner_address="", is_in_cex={"listed": "0"})
+            fields["is_honeypot"] = "1"
+            reserve = {"data": {"id": "base_" + pool,
+                                "attributes": {"address": pool, "reserve_in_usd": "5000"}}}
+            ohlcv = {"data": {"attributes": {"ohlcv_list": [[1790899200, 1, 1, 1, 1, 2000]]}}}
+            engine = {"address": address, "risk_level": "unknown", "signals": [],
+                      "evidence": {"best_pair": {"chain": "base", "pair_address": pool}}}
+            return {"schema": 1, "plan_sha256": self.plan["plan_sha256"],
+                    "ordinal": ordinal, "source_ref": record["source_ref"],
+                    "chain": "base", "token": address, "pool": pool,
+                    "engine_source_commit": self.plan["source_commit"],
+                    "engine_sha256": self.plan["engine_sha256"],
+                    "engine_context_at": "2026-10-02T00:00:01Z",
+                    "reserve": self.stage(reserve), "ohlcv": self.stage(ohlcv),
+                    "oracle": self.stage({"code": 1, "result": {address: fields}}),
+                    "engine": self.stage(engine),
+                    "endpoints": {"label": ["https://api.gopluslabs.io/api/v1/token_security/8453?contract_addresses=" + address,
+                                                "https://api.geckoterminal.com/api/v2/networks/base/pools/" + pool + "/ohlcv/day"],
+                                  "engine": ["https://api.dexscreener.com/latest/dex/tokens/" + address],
+                                  "eligibility": ["https://api.geckoterminal.com/api/v2/networks/base/pools/" + pool]}}
+
+        def ingest(self, packet, **kwargs):
+            raw = packet if isinstance(packet, bytes) else json.dumps(packet, allow_nan=False).encode("utf-8")
+            return core.ingest(self.output, self.sources, raw,
+                               private_dir=kwargs.get("private_dir", self.private),
+                               imported_at="2026-10-03T00:00:00Z")
+
+        def reject(self, operation, reason):
+            try:
+                operation()
+            except core.EvidenceError as exc:
+                return str(exc) == reason
+            return False
+
+    if _support:
+        return core, Fixture, copy, patch, contextlib
+    with Fixture() as f, patch("urllib.request.urlopen", side_effect=AssertionError("network")), patch("time.sleep", side_effect=AssertionError("sleep")):
+        report = f.setup()
+        check("W40 plans and reports never start a study", f.plan["state"] == report["state"] == "not_started")
+        check("W40 original rules are fixed metadata", f.plan["rules"] == {"age_hours": 24, "reserve_usd": 5000, "days": 30, "unsafe_tokens": 18})
+        check("W40 plan binds source, rule, label and engine hashes", all(len(f.plan[k]) == 64 for k in ("plan_sha256", "rule_sha256", "label_sha256", "engine_sha256")))
+        source = pathlib.Path(f.sources[0]["path"])
+        source.write_bytes(source.read_bytes() + b"{}\n")
+        check("W40 append-only bytes do not rewrite the declared prefix", core.plan("1" * 40, f.sources)["plan_sha256"] == f.plan["plan_sha256"])
+        source.write_bytes(b"X" + source.read_bytes()[1:])
+        check("W40 changed source refuses before identity resolution", f.reject(lambda: core.plan("1" * 40, f.sources), "source_hash_mismatch"))
+        safe = json.dumps(report) + json.dumps(f.plan)
+        check("W40 source paths and addresses never enter safe outputs", f.token not in safe and str(f.root) not in safe and "https://" not in safe)
+        default = core.main([])
+        check("W40 default CLI is offline help", default == 0)
+
+
+def test_w40_enrollment_uses_birth_utc_and_never_selects_after_results():
+    core, Fixture, copy, patch, _ = test_w40_plan_is_offline_source_bound_and_not_started(True)
+    with Fixture() as f:
+        first = f.row(pool_created_at="2026-10-01T08:00:00+08:00", goplus_label="unsafe", risk_level="low")
+        duplicate = f.row(pool_address="0x" + "c" * 40, fetched_at="2026-10-01T01:30:00Z", reserve_usd="999999")
+        invalid = f.row(base_token="base_0x" + "3" * 40, pool_created_at="2026-10-01T00:00:00")
+        future = f.row(base_token="base_0x" + "4" * 40, pool_created_at="2026-10-05T00:00:00Z")
+        unsupported = f.row(chain="solana", base_token="solana_example")
+        missed = f.row(base_token="base_0x" + "5" * 40, pool_created_at="2026-09-28T00:00:00Z", seen_at="2026-09-28T01:00:00Z")
+        contradiction = f.row(base_token="base_0x" + "6" * 40, fetched_at="2026-09-30T00:00:00Z")
+        report = f.setup([first, duplicate, invalid, future, unsupported, missed, contradiction])
+        row = report["rows"][0]
+        check("W40 target is normalized birth plus 24h, not first seen", row["target_at"] == "2026-10-02T00:00:00Z")
+        check("W40 missing fetched_at stays missing", row["fetched_at"] is None and row["fetch_time_state"] == "missing")
+        check("W40 first pool and raw source reference stay fixed", row["source_ref"]["line"] == 1 and report["enrolled"] == 1)
+        counts = report["enrollment_counts"]
+        check("W40 all excluded rows have named denominators", counts == {"enrolled": 1, "duplicate": 1, "invalid_clock": 2, "future_clock": 1, "unsupported": 1, "missed_before_enrollment": 1, "invalid_row": 0, "row_cap": 0, "cohort_cap": 0})
+        check("W40 repeated enrollment cannot select a richer pool", f.reject(lambda: core.enroll(f.plan, f.sources, boundary="2026-10-01T02:00:00Z", ingested_at="2026-10-01T02:00:00Z", output=f.output), "existing_store"))
+    with Fixture() as f, patch.object(core, "COHORT_CAP", 1):
+        report = f.setup([f.row(), f.row(base_token="base_0x" + "2" * 40, pool_address="0x" + "b" * 40)])
+        check("W40 operational cohort cap discloses every omitted row", report["enrolled"] == 1 and report["enrollment_counts"]["cohort_cap"] == 1 and report["limits"]["cohort"] == 1)
+    with Fixture() as f:
+        report = f.setup(raw=b"X" * (core.ROW_CAP + 1) + b"\n" + (json.dumps(f.row()) + "\n").encode())
+        check("W40 bounds rows before parsing and preserves later valid rows", report["enrollment_counts"]["row_cap"] == 1 and report["enrolled"] == 1)
+
+
+def test_w40_paired_packet_preserves_raw_sources_times_and_identities():
+    core, Fixture, copy, patch, _ = test_w40_plan_is_offline_source_bound_and_not_started(True)
+    with Fixture() as f:
+        f.setup()
+        packet = f.packet()
+        receipt = f.ingest(packet)
+        report = core.report(f.output, now="2026-10-03T00:00:00Z")
+        check("W40 raw packet is private, source-bound and hashed", receipt["packet_sha256"] and len(list(f.private.glob("*.packet"))) == 1 and report["receipts"] == 1)
+        check("W40 every stage retains its actual request and response times", all(receipt[k]["request_at"] == "2026-10-02T00:00:00Z" and receipt[k]["response_at"] == "2026-10-02T00:00:02Z" and len(receipt[k]["raw_sha256"]) == 64 for k in ("reserve", "ohlcv", "oracle", "engine")))
+        check("W40 unknown engine remains a real unknown answer", receipt["engine"]["verdict"] == "unknown" and receipt["engine"]["state"] == "observed")
+        safe = b"".join(p.read_bytes() for p in f.output.rglob("*.json"))
+        check("W40 safe history never stores raw identity or answer prose", f.token.encode() not in safe and f.pool.encode() not in safe and b"risk_level" not in safe)
+    for alteration, expected in (("hash", "invalid_evidence"), ("missing", "missing_raw"), ("parsed", "invalid_evidence"), ("pool", "invalid_evidence")):
+        with Fixture() as f:
+            f.setup()
+            packet = f.packet()
+            if alteration == "hash":
+                packet["reserve"]["sha256"] = "f" * 64
+            elif alteration == "missing":
+                del packet["reserve"]["raw"]
+            elif alteration == "parsed":
+                packet["reserve"]["parsed"] = {"invented": True}
+            else:
+                packet["pool"] = "0x" + "f" * 40
+            receipt = f.ingest(packet)
+            check("W40 %s material never becomes an observed reserve" % alteration, receipt["reserve"]["state"] == expected and not receipt["qualified_unsafe_observed"])
+    with Fixture() as f:
+        f.setup()
+        packet = f.packet()
+        packet["plan_sha256"] = "f" * 64
+        check("W40 packet cannot cross plans", f.reject(lambda: f.ingest(packet), "plan_mismatch"))
+        packet = f.packet()
+        packet["ordinal"] = 999
+        check("W40 packet must name an enrolled ordinal", f.reject(lambda: f.ingest(packet), "ordinal_not_enrolled"))
+
+
+def test_w40_label_replay_preserves_existing_rules_and_observation_states():
+    core, Fixture, copy, patch, _ = test_w40_plan_is_offline_source_bound_and_not_started(True)
+    cases = (("valid", "observed", "unsafe"), ("429", "http_429", None),
+             ("403", "http_refusal", None), ("timeout", "timeout", None),
+             ("not_asked", "not_asked", None), ("interrupted", "interrupted_intent", None),
+             ("wrong_result", "invalid_evidence", None), ("api_error", "invalid_body", None),
+             ("empty_volume", "observed", None), ("bad_volume", "observed", None),
+             ("missing_field", "observed", None), ("bad_tax", "observed", None))
+    for kind, state, label in cases:
+        with Fixture() as f:
+            f.setup()
+            packet = f.packet()
+            oracle = json.loads(__import__("base64").b64decode(packet["oracle"]["raw"]))
+            if kind in ("429", "403"):
+                packet["oracle"]["http_status"] = int(kind)
+            elif kind in ("timeout", "not_asked", "interrupted"):
+                packet["oracle"]["state"] = {"interrupted": "interrupted_intent"}.get(kind, kind)
+            elif kind == "wrong_result":
+                oracle["result"] = {"0x" + "f" * 40: next(iter(oracle["result"].values()))}
+                packet["oracle"] = f.stage(oracle)
+            elif kind == "api_error":
+                packet["oracle"] = f.stage({"code": 2, "result": oracle["result"]})
+            elif kind == "empty_volume":
+                packet["ohlcv"] = f.stage({"data": {"attributes": {"ohlcv_list": []}}})
+            elif kind == "bad_volume":
+                packet["ohlcv"] = f.stage({"data": {"attributes": {"ohlcv_list": [[1790899200, 1, 1, 1, 1, "NaN"]]}}})
+            elif kind == "missing_field":
+                del oracle["result"][f.token]["sell_tax"]
+                packet["oracle"] = f.stage(oracle)
+            elif kind == "bad_tax":
+                oracle["result"][f.token]["sell_tax"] = "Infinity"
+                packet["oracle"] = f.stage(oracle)
+            receipt = f.ingest(packet)
+            check("W40 %s retains independent HTTP/field/label availability" % kind, receipt["oracle"]["state"] == state and receipt["oracle"]["label"] == label)
+            if kind == "valid":
+                check("W40 young OHLCV supplies B11 volume without an outcome label", receipt["ohlcv"]["recent_volume_7d"] == 2000 and receipt["ohlcv"]["outcome_label"] is None)
+            if kind in ("empty_volume", "bad_volume"):
+                check("W40 unavailable volume never becomes zero", receipt["ohlcv"]["recent_volume_7d"] is None and receipt["oracle"]["label_state"] == "returned_null")
+    with Fixture() as f:
+        f.setup()
+        packet = f.packet()
+        packet["reserve"] = f.stage({"data": {"id": "base_" + f.pool, "attributes": {"address": f.pool, "reserve_in_usd": "4999.99"}}})
+        receipt = f.ingest(packet)
+        check("W40 below-floor reserve is measured, not missing or qualified", receipt["reserve"]["state"] == "observed" and receipt["reserve"]["reserve_usd"] == 4999.99 and not receipt["qualified_unsafe_observed"])
+
+
+def test_w40_timing_and_endpoint_overlap_never_become_passes():
+    core, Fixture, copy, patch, _ = test_w40_plan_is_offline_source_bound_and_not_started(True)
+    for kind in ("late", "overlap", "empty", "pool"):
+        with Fixture() as f:
+            f.setup()
+            packet = f.packet()
+            if kind == "late":
+                packet["oracle"]["request_at"] = "2026-10-02T00:10:00Z"
+                packet["oracle"]["response_at"] = "2026-10-02T00:10:02Z"
+            elif kind == "overlap":
+                packet["endpoints"]["engine"].append(packet["endpoints"]["label"][1])
+            elif kind == "empty":
+                packet["endpoints"]["label"] = []
+            else:
+                engine = {"address": f.token, "risk_level": "low", "signals": [],
+                          "evidence": {"best_pair": {"chain": "base", "pair_address": "0x" + "f" * 40}}}
+                packet["engine"] = f.stage(engine)
+            receipt = f.ingest(packet)
+            if kind == "late":
+                check("W40 actual lateness and skew remain numeric without a tolerance claim", receipt["timing"]["lateness_seconds"] == 600 and receipt["timing"]["skew_seconds"] == 602 and receipt["timing"]["tolerance"] is None)
+            elif kind == "overlap":
+                check("W40 real endpoint intersection fails independence", receipt["independence"]["state"] == "independence_failed" and len(receipt["independence"]["overlap"]) == 1 and not receipt["qualified_unsafe_observed"])
+            elif kind == "empty":
+                check("W40 missing endpoint set is unobserved, never empty-intersection success", receipt["independence"]["state"] == "independence_unobserved" and not receipt["qualified_unsafe_observed"])
+            else:
+                check("W40 different selected engine pool stays visible", receipt["pool_mismatch"] is True and not receipt["qualified_unsafe_observed"])
+            check("W40 shared eligibility evidence remains disclosed", receipt["independence"]["eligibility_shared"] in (True, False) and receipt["timing"]["simultaneous_claim"] is False)
+
+
+def test_w40_partial_history_is_append_only_private_and_recoverable():
+    core, Fixture, copy, patch, contextlib = test_w40_plan_is_offline_source_bound_and_not_started(True)
+    import hashlib
+    import pathlib
+    import io as stream
+    with Fixture() as f:
+        f.setup([f.row(), f.row(base_token="base_0x" + "2" * 40, pool_address="0x" + "b" * 40)])
+        first = f.packet()
+        f.ingest(first)
+        before = {str(p.relative_to(f.output)): p.read_bytes() for p in f.output.rglob("*.json")}
+        check("W40 committed ordinal cannot be overwritten", f.reject(lambda: f.ingest(first), "existing_receipt"))
+        check("W40 refusal leaves every previous safe byte exact", before == {str(p.relative_to(f.output)): p.read_bytes() for p in f.output.rglob("*.json")})
+        real = core._atomic_index
+        def fail_commit(path, index):
+            if index["last"] == 7:
+                raise OSError("private sentinel must not be printed")
+            return real(path, index)
+        with patch.object(core, "_atomic_index", side_effect=fail_commit):
+            check("W40 failed final persistence is fixed-category failure", f.reject(lambda: f.ingest(f.packet(2)), "persistence_failed"))
+        report = core.report(f.output, now="2026-10-03T00:00:00Z")
+        check("W40 earlier receipt survives uncertain second import", report["receipts"] == 1 and report["pending_intents"] == 1 and report["orphan_events"] == 1)
+        check("W40 repeat uncertain import cannot resume or overwrite", f.reject(lambda: f.ingest(f.packet(2)), "incomplete_history"))
+    for location in ("nested", "git", "ci"):
+        with Fixture() as f:
+            f.setup()
+            raw = f.private
+            if location == "nested":
+                raw = f.output / "raw"
+            elif location == "git":
+                raw = f.root / "checkout" / "raw"
+                raw.parent.mkdir()
+                (raw.parent / ".git").write_text("gitdir: example", encoding="utf-8")
+            environment = {"CI": "true"} if location == "ci" else {"CI": "", "GITHUB_ACTIONS": ""}
+            with patch.dict(os.environ, environment):
+                check("W40 %s raw location refuses before raw writes" % location, f.reject(lambda: f.ingest(f.packet(), private_dir=raw), "raw_directory_refused") and not raw.exists())
+    with Fixture() as f:
+        f.setup()
+        lock = f.output / ".writer"
+        lock.write_bytes(b"occupied")
+        check("W40 overlapping writer is refused", f.reject(lambda: f.ingest(f.packet()), "writer_busy"))
+        lock.unlink()
+        check("W40 packet is bounded before JSON parsing", f.reject(lambda: f.ingest(b"X" * (core.PACKET_CAP + 1)), "packet_limit"))
+        packet = f.packet()
+        packet["reserve"]["raw"] = __import__("base64").b64encode(b"X" * (core.RAW_CAP + 1)).decode()
+        check("W40 raw field is bounded before decoding/parsing", f.reject(lambda: f.ingest(packet), "raw_limit"))
+
+
+def test_w40_readout_keeps_original_calendar_bar_and_every_denominator():
+    core, Fixture, copy, patch, contextlib = test_w40_plan_is_offline_source_bound_and_not_started(True)
+    with Fixture() as f:
+        f.setup([f.row(), f.row(base_token="base_0x" + "2" * 40, pool_address="0x" + "b" * 40)])
+        f.ingest(f.packet())
+        report = core.report(f.output, now="2026-11-02T00:00:00Z")
+        check("W40 even complete-looking imported evidence cannot start the clock", report["state"] == "not_started" and report["original_unsafe_target"] == 18 and report["qualified_unsafe_observed"] == 1)
+        check("W40 unasked denominator survives independently of label counts", report["enrolled"] == 2 and report["receipts"] == 1 and report["unasked"] == 1 and report["outcome"] == "not_evaluated")
+        start = {"schema": 1, "plan_sha256": f.plan["plan_sha256"], "source_commit": f.plan["source_commit"],
+                 "started_at": "2026-10-03T00:00:00Z", "evidence_sha256": "e" * 64}
+        before = core.report(f.output, now="2026-11-01T23:59:59Z", live_start=start)
+        after = core.report(f.output, now="2026-11-02T00:00:00Z", live_start=start)
+        check("W40 thirty-day boundary is exact and external receipt stays declared", before["state"] == "not_due" and after["state"] == "readout_due" and after["clock_evidence"] == "declared_external_observation")
+        check("W40 due readout never automatically declares W40 success", after["outcome"] == "not_evaluated" and after["original_unsafe_target"] == 18)
+        check("W40 reports stay within their byte bound", len(json.dumps(after).encode()) <= core.REPORT_CAP)
+        altered = copy.deepcopy(start)
+        altered["plan_sha256"] = "f" * 64
+        check("W40 unrelated quota or old-study receipt cannot start this plan", f.reject(lambda: core.report(f.output, now="2026-11-02T00:00:00Z", live_start=altered), "invalid_live_start"))
+        packet = f.packet(2)
+        packet["oracle"]["http_status"] = 429
+        f.ingest(packet)
+        final = core.report(f.output, now="2026-11-02T00:00:00Z")
+        check("W40 refusal never contributes an unsafe observation", final["qualified_unsafe_observed"] == 1 and final["oracle_states"]["http_429"] == 1 and final["unasked"] == 0)
+    with Fixture() as f:
+        report = f.setup([])
+        check("W40 zero denominators stay zero, without fabricated rates", report["enrolled"] == report["receipts"] == report["unasked"] == report["qualified_unsafe_observed"] == 0 and report["enrollment_complete"])
+
+
 def main():
     print("=" * 68)
     print("The frozen dataset can re-derive its own labels")
