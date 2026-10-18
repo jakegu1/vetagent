@@ -2863,6 +2863,142 @@ def test_sim_probe_plan_refresh_and_outputs_are_bounded_and_non_destructive():
     check("raw targets and Run 1 are byte-identical", before == after)
 
 
+def test_sim_probe_unobserved_responses_never_become_exclusions_or_cache_hits():
+    """A missing source verdict and a cached malformed envelope remain unobserved."""
+    import contextlib
+    import copy
+    import hashlib
+    import tempfile
+    from pathlib import Path
+    from unittest.mock import patch
+    import sim_probe as probe
+    day = "2026-10-19"
+    positive = {"honeypotResult": {"isHoneypot": True}, "simulationSuccess": False,
+                "pair": {"liquidity": 1000}}
+    negative = {"honeypotResult": {"isHoneypot": False}, "simulationSuccess": True,
+                "simulationResult": {"buyTax": 0, "sellTax": 0}}
+    invalid_hp = [{}, {"honeypotResult": {}}, {"honeypotResult": None}]
+    for value in (None, "true", "false", 0, 1, [], {}):
+        invalid_hp.append({"honeypotResult": {"isHoneypot": value},
+                           "simulationSuccess": True, "pair": {"liquidity": 1000}})
+    for body in invalid_hp:
+        for group in ("C-clean", "C-honeypot"):
+            result = probe.control_eligibility(body, group, day, day)
+            check("a missing or non-Boolean source verdict is unobserved for either control",
+                  result["eligibility"] == "unobserved")
+    check("an explicit negative remains an observed positive-control exclusion",
+          probe.control_eligibility(negative, "C-honeypot", day, day)["eligibility"] ==
+          "excluded")
+    check("valid positive and clean classifications still qualify",
+          probe.control_eligibility(positive, "C-honeypot", day, day)["eligibility"] ==
+          "eligible"
+          and probe.control_eligibility(negative, "C-clean", day, day)["eligibility"] ==
+          "eligible")
+
+    class Reply:
+        def __init__(self, body):
+            self.body = body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return json.dumps(self.body).encode("utf-8")
+
+    hp_url = "https://api.honeypot.is/v2/IsHoneypot"
+    block_payload = {"jsonrpc": "2.0", "id": 1, "method": "eth_blockNumber", "params": []}
+    simulation_payload = {"jsonrpc": "2.0", "id": 1, "method": "eth_simulateV1", "params": []}
+    nested_revert = {"result": [{"calls": [
+        {"status": "0x1", "returnData": "0x"},
+        {"status": "0x0", "error": {"code": 3, "message": "private-source-value"}}]}]}
+    valid = [(positive, None), (negative, None), ({"result": "0x123"}, block_payload),
+             (nested_revert, simulation_payload)]
+    invalid = [(body, None) for body in invalid_hp]
+    invalid += [(body, block_payload) for body in
+                (None, [], {}, {"result": None}, {"result": False}, {"result": 0},
+                 {"result": ""}, {"result": "not-hex"}, {"result": {}},
+                 {"error": {"message": "private-source-value"}})]
+    invalid += [(body, simulation_payload) for body in
+                ({"result": None}, {"result": []}, {"result": {}}, {"result": [None]},
+                 {"result": [{}]}, {"result": [{"calls": []}]},
+                 {"result": [{"calls": [None]}]}, {"result": [{"calls": [{}]}]})]
+    for index, (body, payload) in enumerate(invalid + valid):
+        observed = index >= len(invalid)
+        with tempfile.TemporaryDirectory() as tmp:
+            key = "source-case-" + str(index)
+            with patch.object(probe, "_ACTIVE_CACHE", tmp), \
+                 patch.object(probe.urllib.request, "urlopen",
+                              side_effect=lambda *a, **k: Reply(copy.deepcopy(body))) as network, \
+                 patch.object(probe.time, "sleep"):
+                first = probe._post(hp_url if payload is None else probe.RPC["bsc"], payload, key)
+                second = probe._post(hp_url if payload is None else probe.RPC["bsc"], payload, key)
+            if observed:
+                check("a valid observed HP or RPC response retains ordinary cache reuse",
+                      first == second == body and network.call_count == 1
+                      and len(list(Path(tmp).iterdir())) == 1)
+            else:
+                check("repeated invalid source replies are unobserved and never cached",
+                      isinstance(first, dict) and isinstance(second, dict)
+                      and "transport_error" in first and "transport_error" in second
+                      and network.call_count == 2 and not list(Path(tmp).iterdir())
+                      and "private-source-value" not in json.dumps([first, second]))
+
+    prior = [(body, payload, False) for body, payload in invalid]
+    prior += [(body, payload, True) for body, payload in valid]
+    prior += [("invalid JSON", None, False)]
+    for index, (body, payload, observed) in enumerate(prior):
+        with tempfile.TemporaryDirectory() as tmp:
+            key = "prior-case-" + str(index)
+            cached = Path(tmp) / (hashlib.sha256(key.encode()).hexdigest()[:40] + ".json")
+            data = b"{broken-json" if body == "invalid JSON" else json.dumps(body).encode("utf-8")
+            cached.write_bytes(data)
+            with patch.object(probe, "_ACTIVE_CACHE", tmp), \
+                 patch.object(probe.urllib.request, "urlopen",
+                              side_effect=AssertionError("network forbidden")):
+                result = probe._post(hp_url if payload is None else probe.RPC["bsc"], payload, key)
+            check("prior cache bytes are preserved regardless of source-envelope validity",
+                  cached.read_bytes() == data and len(list(Path(tmp).iterdir())) == 1)
+            check("cache reads enforce the same minimum envelope as fresh observations",
+                  result == body if observed else
+                  isinstance(result, dict) and "transport_error" in result)
+
+    plan = probe.make_plan()
+    candidates = [{"chain": "ethereum", "token": "0x" + ("%040x" % n),
+                   "quote": probe.WNATIVE["ethereum"], "archived_liquidity": 1000}
+                  for n in range(1, 7)]
+    plan["sets"]["C-honeypot"] = candidates
+    plan["refresh_candidates"] = candidates
+    for name, body, expected in (
+            ("empty", {"honeypotResult": {}}, (0, 0, 2, 0)),
+            ("null", {"honeypotResult": {"isHoneypot": None}}, (0, 0, 2, 0)),
+            ("string", {"honeypotResult": {"isHoneypot": "true"}}, (0, 0, 2, 0)),
+            ("positive", positive, (6, 0, 0, 6)),
+            ("negative", negative, (0, 2, 0, 2))):
+        with tempfile.TemporaryDirectory() as tmp:
+            output, cache = Path(tmp) / (name + ".jsonl"), Path(tmp) / "new-cache"
+            console = io.StringIO()
+            with patch.object(probe, "make_plan", return_value=copy.deepcopy(plan)), \
+                 patch.object(probe, "_day", return_value=day), \
+                 patch.object(probe.urllib.request, "urlopen",
+                              side_effect=lambda *a, **k: Reply(copy.deepcopy(body))) as network, \
+                 patch.object(probe.time, "sleep"), contextlib.redirect_stdout(console):
+                code = probe.main(["--refresh-controls", "--out", str(output),
+                                   "--cache", str(cache)])
+            rows = [json.loads(line) for line in output.read_text(encoding="utf-8").splitlines()]
+            summary = rows[-1]["summary"]
+            check("the real transport-to-refresh seam preserves observed versus unobserved counts",
+                  code == 0 and (summary["eligible"], summary["excluded"],
+                                 summary["unobserved"], len(list(cache.iterdir()))) == expected
+                  and network.call_count == (6 if name == "positive" else 2)
+                  and summary["not_asked"] == (0 if name == "positive" else 4))
+            check("source-only seam diagnostics remain bounded with no agreement claim",
+                  "0x" not in console.getvalue() and "private-source-value" not in console.getvalue()
+                  and "BUILD" not in json.dumps(summary) and "agrees" not in json.dumps(summary))
+
+
 def main():
     print("=" * 68)
     print("Sellability archive: asking on the day, because later is too late")
