@@ -1308,6 +1308,42 @@ def test_goplus_quota_http_and_exact_result_stages():
           and opener.calls[0][1]==30 and got["http_status"]==429)
     check("quota redirect handler never follows",q.NoRedirect().redirect_request(None,None,302,"x",{},"https://example.invalid") is None)
 
+    # Retrospective ordinary-CI pin authorized by T044 clarification (c).
+    def pin_permission_headers_then_body_timeout():
+        class Clock:
+            def __init__(self): self.now=0.0
+            def time(self): return 1792281600.0+self.now
+            def monotonic(self): return self.now
+            def sleep(self,n): self.now+=n
+        class Sink:
+            def begin(self,plan): pass
+            def append(self,event): pass
+            def save(self,report): pass
+        class Response:
+            status=403
+            def __enter__(self): return self
+            def __exit__(self,*args): pass
+            def read(self,n): raise TimeoutError("PRIVATE-BODY-TIMEOUT")
+        class Opener:
+            def __init__(self): self.calls=0
+            def open(self,*args,**kwargs): self.calls+=1; return Response()
+        raw=json.dumps({"tokens":[{"chain":"base","address":"0x%040x"%(i+1)} for i in range(316)]}).encode()
+        context=q.context_from_bytes(raw,"a"*40,hashlib.sha256(raw).hexdigest(),"b"*64)
+        opener=Opener()
+        def transport(chain,address,*,timeout):
+            return q.request_once(chain,address,timeout=timeout,opener=opener)
+        report=q.run_plan(q.make_plan(context),context,sink=Sink(),transport=transport,clock=Clock())
+        first=report["cells"][0]
+        check("permission headers survive a body timeout without a second attempt",
+              opener.calls==1 and report["counts"]["claimed"]==1 and report["counts"]["attempted"]==1
+              and report["counts"]["completed_http"]==1 and report["counts"]["transport_errors"]==1
+              and report["counts"]["not_asked"]==315 and report["stop_reason"]=="permission_refused"
+              and first["http_status"]==403 and first["http_state"]=="permission_refused"
+              and first["body_state"]=="timeout" and first["captured_body_sha256"] is None
+              and first["body_complete"] is None and first["label_state"]=="unobserved"
+              and all(cell["state"]=="not_asked" for cell in report["cells"][1:]))
+    pin_permission_headers_then_body_timeout()
+
 
 def test_goplus_quota_safe_output_and_private_raw():
     import contextlib
@@ -1349,6 +1385,32 @@ def test_goplus_quota_safe_output_and_private_raw():
             refused=False
         check("raw retention refuses any Git worktree ancestor",refused and len(calls)==before)
 
+    # Retrospective ordinary-CI pin authorized by T044 clarification (c).
+    def pin_nested_private_raw():
+        from pathlib import Path
+        class Clock:
+            def time(self): return 1792281600.0
+            def monotonic(self): return 0.0
+            def sleep(self,n): raise AssertionError("nested raw must refuse before calls")
+        raw=json.dumps({"tokens":[{"chain":"base","address":"0x%040x"%(i+1)} for i in range(316)]}).encode()
+        context=q.context_from_bytes(raw,"a"*40,hashlib.sha256(raw).hexdigest(),"b"*64)
+        calls=[]
+        def transport(chain,address,*,timeout):
+            calls.append(address)
+            return {"http_status":403,"body":b'PRIVATE-NESTED-RAW'}
+        with tempfile.TemporaryDirectory() as directory:
+            safe=Path(directory)/"safe"
+            try:
+                q.run_plan(q.make_plan(context),context,sink=q.FileSink(safe),transport=transport,
+                           clock=Clock(),private_raw_dir=safe/"raw")
+            except ValueError:
+                refused=True
+            else:
+                refused=False
+            check("private raw nested in the safe bundle refuses before calls",
+                  refused and not calls and not safe.exists())
+    pin_nested_private_raw()
+
 
 def test_goplus_quota_partial_intents_and_persistence():
     from pathlib import Path
@@ -1388,6 +1450,44 @@ def test_goplus_quota_partial_intents_and_persistence():
         result=q.run_plan(plan,ctx,sink=Broken(),transport=interrupted,clock=Clock())
         check("intent persistence failure stops before any call",len(calls)==1 and result["stop_reason"]=="persistence_failed"
               and result["counts"]["claimed"]==0 and result["counts"]["not_asked"]==316)
+
+    # Retrospective ordinary-CI pin authorized by T044 clarification (c).
+    def pin_torn_final_receipt():
+        from pathlib import Path
+        class Clock:
+            def __init__(self): self.now=0.0
+            def time(self): return 1792281600.0+self.now
+            def monotonic(self): return self.now
+            def sleep(self,n): self.now+=n
+        raw=json.dumps({"tokens":[{"chain":"base","address":"0x%040x"%(i+1)} for i in range(316)]}).encode()
+        context=q.context_from_bytes(raw,"a"*40,hashlib.sha256(raw).hexdigest(),"b"*64)
+        calls=[]
+        def transport(chain,address,*,timeout):
+            calls.append(address)
+            if len(calls)==2: raise KeyboardInterrupt()
+            return {"http_status":429,"body":b'{}'}
+        with tempfile.TemporaryDirectory() as directory:
+            path=Path(directory)/"torn"
+            q.run_plan(q.make_plan(context),context,sink=q.FileSink(path),transport=transport,clock=Clock())
+            ledger=path/"receipts.jsonl"
+            lines=ledger.read_bytes().splitlines(keepends=True)
+            assert json.loads(lines[-1])["kind"]=="stop"
+            ledger.write_bytes(b''.join(lines[:-1])+b'{"kind":"receipt","index":1')
+            before={p.name:p.read_bytes() for p in path.iterdir() if p.is_file()}
+            try:
+                restored=q.read_report(path)
+                preserved=(restored["counts"]["claimed"]==2 and restored["counts"]["completed_http"]==1
+                           and restored["counts"]["rate_limited"]==1 and restored["counts"]["uncertain"]==1
+                           and restored["counts"]["not_asked"]==314 and restored["available"] is False
+                           and restored["ledger_tail_state"]=="incomplete"
+                           and restored["cells"][0]["http_status"]==429
+                           and restored["cells"][1]["reason"]=="missing_receipt")
+            except (ValueError,KeyError):
+                preserved=False
+            check("torn final quota receipt retains complete prior evidence and bytes",
+                  preserved and len(calls)==2
+                  and before=={p.name:p.read_bytes() for p in path.iterdir() if p.is_file()})
+    pin_torn_final_receipt()
 
 
 def test_goplus_quota_readout_denominators_and_limits():
