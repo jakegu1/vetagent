@@ -21,6 +21,7 @@ Run:  python tests/test_gates_get_reviewed.py
 """
 
 import datetime
+import html
 import io
 import os
 import re
@@ -111,28 +112,43 @@ _ARROWS = ("->",)
 # and does not end in "-", so "<3 commitments -> ..." and an arrow before ">" survive.
 _MARKUP = re.compile(r"<!--.*?-->|<[A-Za-z/](?:[^<>]*[^<>-])?>|&#?\w+;")
 
+# Recognize complete literal/single-encoded fragments before stripping raw entities.
+# Whole comments come first: an inner arrow must not end a generic fragment early.
+_LT = r"(?:<|&lt;|&#0*60;|&#x0*3c;)"
+_GT = r"(?:>|&gt;|&#0*62;|&#x0*3e;)"
+_ENCODED_MARKUP = re.compile(
+    _LT + r"!--.*?--" + _GT + "|" + _LT + r".*?" + _GT, re.I)
+
 
 def gate_row_answered(row):
     """True when a gate row carries a written conclusion. The one statement of the rule.
 
-    The conclusion is the text after the row's first "Resolved:". It must hold an ASCII
-    arrow, "->", with at least one letter or digit on each side of it, both sides within
-    that text: "Resolved: <what the measurement said> -> <decision>". U+2192 is not the
+    The conclusion is the text after the row's first visible literal "Resolved:" and
+    before the next visible literal "Resolved:". It must hold an ASCII arrow, "->", with
+    at least one letter or digit on each side of it, both sides within that segment:
+    "Resolved: <what the measurement said> -> <decision>". U+2192 is not the
     conclusion's arrow: the table's own action text uses it, so a placeholder put before
     that text, or in the test cell, would be answered by the table's pre-registered arrows
     (measured on 8e14f10, while it counted). A conclusion written with U+2192 is refused,
     and the failure message says why. HTML comments, tags and entities are removed from
-    the row first (_MARKUP): a reader never sees them, so the failure message's own
+    the row first (_MARKUP), including complete single-encoded markup fragments:
+    entities are decoded only to recognize markup, never to create a marker or arrow.
+    A reader never sees markup content, so the failure message's own
     template "<what the measurement said> -> <decision>" is not a conclusion, and a
     comment's closing "-->" is not an arrow. Markdown emphasis, backticks, pipes and
     whitespace are not content, so a bare "Resolved:", a one-word "Resolved: no",
     "Resolved: TBD", "Resolved: -> continue" and "**Resolved:** ** -> **" are all refused.
-    Undecided is an answer ("... -> undecided"); silence is not.
+    Undecided is an answer ("... -> undecided"); silence is not. A literal "Resolved:"
+    inside quoted prose is also a segment boundary; one inside removed markup is not.
 
     The due-gate check below calls it. Keep its name and signature: T-009 relies on them.
     """
+    row = _ENCODED_MARKUP.sub(
+        lambda m: " " if _MARKUP.fullmatch(html.unescape(m.group(0)))
+        else m.group(0), row)
     row = _MARKUP.sub(" ", row)
     _, found, conclusion = row.partition("Resolved:")
+    conclusion = conclusion.partition("Resolved:")[0]
     content = [i for i, ch in enumerate(conclusion) if ch.isalnum()]
     if not found or not content:
         return False
