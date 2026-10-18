@@ -681,6 +681,18 @@ def test_runtime_actual_byte_commands_refuse_newline_only_drift():
         check("restored exact fixture bytes pass the byte guard", run(LOCK_VERIFY).returncode == 0)
 
 
+# T-035 amendment (b): the existing offline gate precedes checksum capture.
+def test_runtime_deploy_checksum_capture_follows_gate_before_install():
+    text = (ROOT / ".github/workflows/deploy.yml").read_text(encoding="utf-8")
+    commands = [command for step in workflow.steps(workflow.jobs(text).get("deploy", [])) for command in step["run"]]
+    required = (OFFLINE, LOCK_BASELINE, INSTALL, NPM_CI, SYNC, TARGET_SYNC, DEPLOY)
+    unique = all(commands.count(command) == 1 for command in required)
+    ordered = unique and commands.index(OFFLINE) < commands.index(LOCK_BASELINE) < min(
+        commands.index(command) for command in (INSTALL, NPM_CI, SYNC, TARGET_SYNC, DEPLOY))
+    check("deploy captures raw lock bytes after the offline gate and before any dependency install or sync",
+          ordered, "retain the old gate ordering and capture checksums before project dependency preparation")
+
+
 def main():
     for name, function in sorted((name, value) for name, value in globals().items() if name.startswith("test_")):
         EXECUTED.append(name)
