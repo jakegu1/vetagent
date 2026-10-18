@@ -7,43 +7,20 @@
 
 ## Status in one line
 
-T-040 and T-041 are published at d82b98d after fresh reviews, complete combined checks,
-actual Linux builds and successful master CI. The optional operational query succeeds:
-W28's technical transport is verified; W27 remains inconclusive. T-042 is published at
-66ffa4e after the complete combined gate, actual Linux and exact-source master CI;
-its bounded source-eligibility screen is complete without a simulator BUILD claim.
-T-043 is published at b1becd2: actual Linux/master gates and the real pilot pass.
-Fresh enrollment starts the fixed forty-eight-hour clock at 2026-10-18T20:48:40Z;
-the first actual scheduled resume remains to be observed. T-044 source passes fresh
-combined review before integration/Linux and its sole real pilot. T-045 passes
-fresh combined review after its existing-RPC endpoint repair. Both sources are
-integrated locally; the combined gate and Linux publication checks are next.
-W54 and the thirty-day
-W40 clock remain unstarted. Source rights, product gates, privacy and spending stay
-Owner decisions. Experiment D remains unrun and due 2026-10-20 UTC.
+The deployed Worker remains d354179. Operator/evidence tasks through T-045 are
+published after actual complete/Linux/master gates; the sole quota pilot is
+complete without implying sustainable availability or a new study start.
+T-046 and T-048 reviewed source integration proceeds through the combined
+forty-four-command release gate. Runtime and scientific outcomes stay separate.
 
-The scoped technical queue T-027 and T-031 through T-039 is complete and deployed
-at d354179. Actual deploy run 39122876006 uploads Worker dd8721cd-babd-43e6-b982-19cec1cdb6fa and passes all 41 required
-offline steps, lock checks and production smoke. Exact-source master CI 39122876094
-passes; both clean Linux build artifacts and their lock bytes are verified.
-
-Fresh tagged readback observes complete Base and Solana discovery, two returned
-pools from forty scanned on each chain, and a Base handoff to liquidity and risk.
-The risk answer stays unknown for an unobserved critical check. These are bounded
-runtime observations, not availability, reserve verification or accuracy claims.
-
-Actual production observer 39123168034 passes ordered preservation, page generation and
-snapshot health: 645 rows, 39 pages, 0 gaps, and 4 complete of 4 observed
-24-hour passes. Its bot head b3e5c97 is retained, and following bot CI 39123418604 passes
-the complete 41-step inventory. A fresh independent read-only AC6 addendum checks
-the real release evidence. The lead completes final derived generation/checks
-and publishes this bookkeeping closure without another Worker deployment.
-
-W51 meets its original split/remove-soft-fail bar. Real backfill is still partial
-after HTTP 429: three observations and two unobserved checks, with zero observed
-failures. W55(a) wording is repaired; conditional (b,c), E24/E32 and the existing
-fail-closed policy remain. No new source, spending, permission, benchmark or
-product threshold is introduced. Experiment D is unrun and due 2026-10-20 UTC.
+The remaining local W40 engineering is split into verified archive input,
+durable queue/runtime and owned scheduling (T-047, T-049, T-050). Ordinary
+engineering continues under the Owner's existing technical authorization.
+No thirty-day clock has started. W57's original cron revealed a checkpoint
+selection defect; T-048 publication must be followed by the original study's
+actual source_changed terminal before a distinct explicit new study.
+Experiment D remains unrun and due 2026-10-20 UTC. Sign-off categories and
+pre-registered scientific rules are unchanged.
 
 ### Earlier release records (historical)
 
@@ -211,12 +188,11 @@ technical release. Experiment D retains its existing rules and moves to 2026-10-
 
 ## Current tasks
 
-The earlier production queue is done and deployed. Authorized residual instrument
-repairs T-043 through T-045 are being released through independent gates; W57's
-elapsed observation is running, not yet answered. Native paired acquisition and
-local durable scheduling are the next engineering dependencies after the corrected
-offline core. H-13 remains the Oct-20 Owner gate; all other sign-off categories
-and A0 autonomy remain unchanged.
+See lead/STATE.md for the current source, release and runtime gates. T-046/T-048
+source integration is followed by three separate M-sized source/runtime/scheduler
+loops. Actual first-entry and elapsed observation evidence remain independent of
+code/registration success. H-13 is the Oct-20 Owner gate; routine technical work
+does not need another approval.
 
 ### Earlier task rows (historical)
 

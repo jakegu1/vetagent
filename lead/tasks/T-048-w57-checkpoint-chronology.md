@@ -1,7 +1,7 @@
 ---
 id: T-048
 title: Select W57 checkpoints by verified chronology rather than opaque Artifact ID
-status: ready
+status: in_review
 level: 3
 size: M
 depends_on: [T-043]
