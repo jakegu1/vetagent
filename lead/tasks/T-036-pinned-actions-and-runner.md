@@ -150,12 +150,20 @@ Permit only the following additional changes to the new acceptance file:
    original test function, fixture, input and assertion from c37fd41. Run it red
    on the frozen helper on both actual Python versions before the fix.
 2. A subsequent named-change commit may change only workflow_errors to reject
-   the existing reader's refused/outside-step evidence before deciding that an absent
+   unaccounted or syntactically unsupported refused/outside-step evidence before deciding that an absent
    uses key means a run-only step. Do not change that reader, its old tests, any
    original assertion, any action/runner policy constant or any workflow source.
 3. Keep known-valid workflows, actual six-file source and future ordinary added
    steps/soft-fail removal accepted. No command hashes, whole-workflow freezing,
    general YAML parser, new dependency or permission change is authorized.
+
+The reused reader deliberately refuses some pin-valid Node/upload action references
+and non-pin operational metadata for its offline-execution role. Do not turn those
+documented operational restrictions into a broader pin policy: the frozen valid
+four-action fixture and actual workflows must still pass. Account explicitly for
+known supported records while refusing unparsed step/key syntax, including when
+a valid enumerated uses key is also present. A blanket ignore of refused/outside
+records or an ignore whenever any uses key exists does not satisfy amendment (a).
 
 Freeze the additive regression after its tests-only commit. Prove all other new
 definitions and original acceptance inputs exact, and demonstrate a removed-refusal
