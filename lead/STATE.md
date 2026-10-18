@@ -53,8 +53,8 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 | Task | Level | Stage | Who | Next action |
 |---|---|---|---|---|
-| T-031 | 3 | Ready for isolated implementation after green baseline | discovery executor | Existing-provider discovery failover; independent and adversarial review before merge |
-| T-027 | 3 | Read-only preparation; implementation queued behind T-031 | lead | Finish provenance and monitoring specification, then implement after the first reviewed merge |
+| T-031 | 3 | Frozen head 358f210 in independent and adversarial review | reviewers | Reproduce each criterion and full checks; merge only after both verdicts pass |
+| T-027 | 3 | Ready, provenance and fresh full-suite red verified | lead | Implement from the reviewed green T-031 merge; retain exact original contract controls |
 
 ## Current batch baseline
 
@@ -76,6 +76,21 @@ error. A separate external-network-blocked reproduction through the real fetch p
 proves the configured keyed discovery route is never called when keyless replies 429.
 The production refusal status and current key configuration remain unconfirmed.
 T-031 repairs this measured bypass without adding a provider or changing risk logic.
+
+T-031's tests-only 19d6632 yields 196 meaningful MCP failures and the preregistered
+endpoint-template mismatch. Source ab3632b fixes the one new_pools routing finding;
+generated receipt 358f210 is the clean frozen head. Its actual configured checks pass
+35/35 in 118.9 seconds. The lead verifies both detached integrity signatures and all
+thirty-five sealed artifact hashes before independent and adversarial review. No
+review verdict, merge, deployment or live availability improvement is claimed yet.
+
+T-027 preparation obtains genuine bytecode at finalized Ethereum block 26216600 with
+four bounded requests to an existing provider and a same-block hash recheck. The lead
+independently checks all raw receipt/code hashes. The unchanged original controls give
+six passes when supplied that recorded code with network denied. The complete old
+runner under inherited network controls passes 34/35 in 195.6 seconds, failing only
+owner powers (51 passes, four failures); all 238 Python processes load the guard.
+T-027's ready specification preserves deterministic controls and separate live coverage.
 
 ## Latest verified linked release
 
