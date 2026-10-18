@@ -175,7 +175,7 @@ def decode_bundle(data, provenance, expected):
         for row in rows:
             if row.get("kind") == "listing":
                 key = ("listing", row.get("phase"), row.get("page"))
-            elif row.get("kind") == "report":
+            elif row.get("kind") in ("report", "overflow_receipt"):
                 key = ("report", row.get("phase"), row.get("slot"), row.get("mint"), row.get("attempt"))
             else:
                 raise StudyError("invalid_observation")
@@ -465,7 +465,21 @@ def collect(plan, intent_id, store, ctx, clock=time.time, sleep=time.sleep, on_r
             requested_at = clock()
             state["requests"]["rugcheck"] += 1
             raw = _observe_fields(label, mint)
-        rec = _row(raw, state, label, mint, clock(), slot)
+        try:
+            rec = _row(raw, state, label, mint, clock(), slot)
+        except StudyError as exc:
+            if str(exc) != "row_overflow":
+                raise
+            receipt = {"kind": "overflow_receipt", "reason": "row_overflow", "study": state["study"],
+                       "phase": phase, "slot": slot, "sweep": slot + 1 if slot is not None else 0,
+                       "mint": mint, "label": label, "attempt": 0, "ts": clock(),
+                       "http": str(raw.get("http", "0"))[:3], "body": "invalid",
+                       "score_normalised": None, "score_state": "overflow", "request_started_at": requested_at,
+                       "raw_score_type": type(raw.get("score_normalised")).__name__,
+                       "raw_score_digest": sha(repr(raw.get("score_normalised")).encode("utf-8"))}
+            emit(receipt)
+            state.setdefault("losses", []).append({"reason": "row_overflow", "slot": slot, "mint": mint})
+            raise
         rec["request_started_at"] = requested_at
         if slot is not None:
             rec["due_at"] = state["started_at"] + slot * INTERVAL
@@ -553,6 +567,11 @@ def collect(plan, intent_id, store, ctx, clock=time.time, sleep=time.sleep, on_r
                 report(member["label"], member["mint"], slot)
             state["slots"].append({"slot": slot, "status": "partial" if any(r["body"] == "not_observed" for r in rows) else "observed"})
             state["status"] = "completed" if slot == LAST_SLOT else "active"
+    except StudyError as exc:
+        state["status"] = "overflow" if str(exc) == "row_overflow" else "failed"
+        state["failure"] = "row_overflow" if str(exc) == "row_overflow" else "collection_unavailable"
+        if phase == "tick" and not any(s["slot"] == state["slot"] for s in state["slots"]):
+            state["slots"].append({"slot": state["slot"], "status": "partial"})
     except Exception:
         # Preserve already written measurements; the unexpected local failure is terminal.
         state["status"] = "failed"
