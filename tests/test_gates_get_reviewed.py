@@ -21,6 +21,7 @@ Run:  python tests/test_gates_get_reviewed.py
 """
 
 import datetime
+import html
 import io
 import os
 import re
@@ -111,28 +112,53 @@ _ARROWS = ("->",)
 # and does not end in "-", so "<3 commitments -> ..." and an arrow before ">" survive.
 _MARKUP = re.compile(r"<!--.*?-->|<[A-Za-z/](?:[^<>]*[^<>-])?>|&#?\w+;")
 
+# Recognize complete literal/single-encoded fragments before stripping raw entities.
+# Whole comments come first: an inner arrow must not end a generic fragment early.
+# A generic candidate must stop before another opener, so unmatched less-than text
+# cannot consume a later complete comment or tag that still needs recognition.
+# Named entities are case-sensitive: &Lt; and &Gt; are different characters.
+# Only numeric hexadecimal syntax has interchangeable x/X and digit-letter case.
+# Protect complete existing raw comments/tags before their inner encoded candidates;
+# the final raw pass still removes them when decoding changes their match shape.
+# Drop only _MARKUP's final entity alternative, which must not hide encoded openers.
+# An encoded opener before the first attribute quote still ends an unmatched prefix.
+_LT = r"(?:<|&lt;|&LT;|&#0*60;|&#[xX]0*3[cC];)"
+_GT = r"(?:>|&gt;|&GT;|&#0*62;|&#[xX]0*3[eE];)"
+_ENCODED_MARKUP = re.compile(
+    _MARKUP.pattern.rsplit("|", 1)[0].replace("|<", "|(?!<[^<>\"']*" + _LT + ")<", 1)
+    + "|" + _LT + r"!--.*?--" + _GT + "|" + _LT
+    + r"(?:(?!" + _LT + r").)*?" + _GT)
+
 
 def gate_row_answered(row):
     """True when a gate row carries a written conclusion. The one statement of the rule.
 
-    The conclusion is the text after the row's first "Resolved:". It must hold an ASCII
-    arrow, "->", with at least one letter or digit on each side of it, both sides within
-    that text: "Resolved: <what the measurement said> -> <decision>". U+2192 is not the
+    The conclusion is the text after the row's first visible literal "Resolved:" and
+    before the next visible literal "Resolved:". It must hold an ASCII arrow, "->", with
+    at least one letter or digit on each side of it, both sides within that segment:
+    "Resolved: <what the measurement said> -> <decision>". U+2192 is not the
     conclusion's arrow: the table's own action text uses it, so a placeholder put before
     that text, or in the test cell, would be answered by the table's pre-registered arrows
     (measured on 8e14f10, while it counted). A conclusion written with U+2192 is refused,
     and the failure message says why. HTML comments, tags and entities are removed from
-    the row first (_MARKUP): a reader never sees them, so the failure message's own
+    the row first (_MARKUP), including complete single-encoded markup fragments:
+    entities are decoded only to recognize markup, never to create a marker or arrow.
+    A reader never sees markup content, so the failure message's own
     template "<what the measurement said> -> <decision>" is not a conclusion, and a
     comment's closing "-->" is not an arrow. Markdown emphasis, backticks, pipes and
     whitespace are not content, so a bare "Resolved:", a one-word "Resolved: no",
     "Resolved: TBD", "Resolved: -> continue" and "**Resolved:** ** -> **" are all refused.
-    Undecided is an answer ("... -> undecided"); silence is not.
+    Undecided is an answer ("... -> undecided"); silence is not. A literal "Resolved:"
+    inside quoted prose is also a segment boundary; one inside removed markup is not.
 
     The due-gate check below calls it. Keep its name and signature: T-009 relies on them.
     """
+    row = _ENCODED_MARKUP.sub(
+        lambda m: " " if _MARKUP.fullmatch(html.unescape(m.group(0)))
+        else m.group(0), row)
     row = _MARKUP.sub(" ", row)
     _, found, conclusion = row.partition("Resolved:")
+    conclusion = conclusion.partition("Resolved:")[0]
     content = [i for i, ch in enumerate(conclusion) if ch.isalnum()]
     if not found or not content:
         return False
@@ -717,6 +743,268 @@ def test_guard_self_tests_leave_no_trace():
           "created: %s, inside the repository: %s, still there: %s"
           % (bool(scratch), bool(scratch) and _inside(scratch, ROOT),
              bool(scratch) and os.path.exists(scratch)))
+
+
+# T-034: displayed templates and pasted instructions cannot answer a gate. These are
+# additive fixtures: the earlier T-007 cases remain the compatibility contract.
+def _rendered_template_gate_cases():
+    """The actual emitted template with single-encoded markup delimiters only.
+
+    Keep its ASCII decision arrow literal, so a refusal has to recognize the encoded
+    placeholders rather than merely reject an encoded arrow.
+    """
+    message = _emitted_message()
+    template = message.split("'")[1] if message.count("'") >= 2 else ""
+    sides = template.split(" -> ")
+    delimiters = (
+        ("named", "&lt;", "&gt;"),
+        ("uppercase named", "&LT;", "&GT;"),
+        ("decimal", "&#60;", "&#62;"),
+        ("hexadecimal", "&#x3c;", "&#x3e;"),
+        ("leading-zero case-varied", "&#X00003C;", "&#x000003e;"),
+        ("literal left and named right", "<", "&gt;"),
+        ("decimal left and literal right", "&#060;", ">"),
+        ("named left and hexadecimal right", "&lt;", "&#X03E;"),
+        ("hexadecimal left and decimal right", "&#x03c;", "&#00062;"),
+    )
+    cases = [("literal emitted template", template, False)]
+    for label, left, right in delimiters:
+        encoded = " -> ".join(s.replace("<", left).replace(">", right) for s in sides)
+        cases.append((label + " template", encoded, False))
+    cases += [
+        ("encoded template inside a code span", "`" + cases[1][1] + "`", False),
+        ("prefixed full failure instruction", "Resolved: " + message, False),
+        ("emphasized prefix before full instruction", "**Resolved:** " + message, False),
+    ]
+    return cases
+
+
+_FIRST_SEGMENT_GATE_CASES = (
+    ("bare first segment", "Resolved: Resolved: zero commitments -> change segment", False),
+    ("pending first segment", "Resolved: pending; Resolved: zero commitments -> change segment",
+     False),
+    ("first finding borrows a later arrow",
+     "Resolved: zero commitments measured; Resolved: decide -> change segment", False),
+    ("emphasized bare first segment",
+     "**Resolved:** **Resolved:** zero commitments -> change segment", False),
+    ("valid first segment and bare second",
+     "Resolved: zero commitments -> change segment; Resolved:", True),
+    ("valid first segment and valid second",
+     "Resolved: zero commitments -> change segment; Resolved: another reading -> undecided",
+     True),
+    ("quoted literal marker is a boundary",
+     "Resolved: the log printed 'Resolved:' twice -> inspect the log", False),
+    ("encoded colon in later prose stays raw",
+     "Resolved: the log printed 'Resolved&#58;' twice -> inspect the log", True),
+    ("encoded first marker", "Resolved&#58; zero commitments -> change segment", False),
+    ("hexadecimal encoded first marker",
+     "Resolved&#x3a; zero commitments -> change segment", False),
+    ("encoded greater-than in ASCII arrow",
+     "Resolved: zero commitments -&gt; change segment", False),
+    ("decimal encoded ASCII arrow",
+     "Resolved: zero commitments &#45;&#62; change segment", False),
+    ("hexadecimal encoded ASCII arrow",
+     "Resolved: zero commitments &#x2d;&#x3e; change segment", False),
+    ("literal right arrow",
+     "Resolved: zero commitments %s change segment" % _RIGHT_ARROW, False),
+    ("named right arrow", "Resolved: zero commitments &rarr; change segment", False),
+    ("decimal right arrow", "Resolved: zero commitments &#8594; change segment", False),
+    ("hexadecimal right arrow", "Resolved: zero commitments &#x2192; change segment", False),
+    ("literal markup cannot join an arrow",
+     "Resolved: zero commitments -<b></b>> change segment", False),
+    ("encoded markup cannot join an arrow",
+     "Resolved: zero commitments -&lt;b&gt;&lt;/b&gt;> change segment", False),
+    ("double-escaped brackets stay raw",
+     "Resolved: &amp;lt;what the measurement said&amp;gt; -> &amp;lt;decision&amp;gt;", True),
+    ("unflattering conclusion", "Resolved: zero commitments measured -> change segment", True),
+    ("undecided conclusion", "Resolved: one commitment measured -> undecided", True),
+)
+
+
+_COMMENT_GATE_CASES = (
+    ("literal comment arrow", "Resolved: pending <!-- finding -> decision -->", False),
+    ("encoded comment arrow", "Resolved: pending &lt;!-- finding -> decision --&gt;", False),
+    ("mixed comment arrow", "Resolved: pending <!-- finding -> decision --&gt;", False),
+    ("numeric encoded comment arrow",
+     "Resolved: pending &#X00003C;!-- finding -> decision --&#00062;", False),
+    ("literal hidden first marker", "<!-- Resolved: finding -> decision --> Resolved: pending",
+     False),
+    ("encoded hidden first marker",
+     "&lt;!-- Resolved: finding -> decision --&gt; Resolved: pending", False),
+    ("literal hidden boundary",
+     "Resolved: zero commitments <!-- Resolved: ignored --> -> change segment", True),
+    ("encoded hidden boundary",
+     "Resolved: zero commitments &lt;!-- Resolved: ignored --&gt; -> change segment", True),
+    ("mixed hidden boundary",
+     "Resolved: zero commitments &#60;!-- Resolved: ignored --> -> change segment", True),
+    ("literal tag hides a boundary",
+     "Resolved: zero commitments <span title='Resolved: ignored'> -> change segment", True),
+    ("encoded tag hides a boundary",
+     "Resolved: zero commitments &lt;span title='Resolved: ignored'&gt; -> change segment", True),
+    ("less-than digit stays text", "Resolved: <3 commitments -> change segment", True),
+    ("less-than target stays text", "Resolved: <target -> change segment", True),
+    ("encoded less-than digit stays text", "Resolved: &lt;3 commitments -> change segment", True),
+    ("encoded less-than target stays text",
+     "Resolved: &lt;target -> change segment", True),
+    ("old bold positive", "Resolved: 0 commitments -> <b>no</b>, pick a different segment", True),
+    ("encoded bold positive",
+     "Resolved: 0 commitments -> &lt;b&gt;no&lt;/b&gt;, pick a different segment", True),
+    ("entities between raw words",
+     "Resolved: zero&nbsp;commitments -> change&nbsp;segment", True),
+)
+
+
+def _check_t034_gate_cases(cases):
+    """Judge synthetic rows through both the shared helper and the actual due check."""
+    for label, text, answered in cases:
+        strategy, row = _with_1016_cells(_TEST_1016, _ACTION_1016 + " " + text)
+        verdicts, error, _ = _run_due_gate_check(strategy, _GATE_DAY)
+        verdict = _verdict(verdicts, "2026-10-16")
+        check("T-034 due check %s: %s" % (answered, label),
+              verdict == [answered] and error is None, _said(verdict, error))
+        got = gate_row_answered(row)
+        check("T-034 shared helper %s: %s" % (answered, label), got is answered,
+              "returned %r for %s" % (got, ascii(text)))
+
+
+def test_gate_rejects_encoded_templates_and_prefixed_instructions():
+    """T-034 AC 1: the emitted template and complete instructions remain unanswered."""
+    print("\n[T-034] encoded templates and prefixed instructions are not conclusions")
+    message = _emitted_message()
+    check("T-034 derives its template from the actual failure instruction",
+          message.count("'") >= 2 and " -> " in message.split("'")[1], ascii(message))
+    _check_t034_gate_cases(_rendered_template_gate_cases())
+
+
+def test_gate_first_segment_preserves_literal_marker_and_arrow_rules():
+    """T-034 AC 2/3: only the first visible segment and raw literal syntax qualify."""
+    print("\n[T-034] first-segment boundaries preserve literal syntax")
+    _check_t034_gate_cases(_FIRST_SEGMENT_GATE_CASES)
+
+
+def test_gate_encoded_markup_cannot_borrow_a_comment_arrow():
+    """T-034 AC 3: whole comments hide arrows and markers before generic fragments."""
+    print("\n[T-034] comments cannot supply arrows or hidden segment boundaries")
+    _check_t034_gate_cases(_COMMENT_GATE_CASES)
+
+
+def test_gate_markup_recognition_resumes_after_unmatched_prefixes():
+    """T-034 amendment (a): unrelated less-than text cannot hide later markup."""
+    print("\n[T-034 (a)] markup recognition resumes after unmatched prefixes")
+    prefixes = ("<3", "<target", "&lt;3", "&lt;target")
+    delimiters = (("literal", "<", ">"), ("named", "&lt;", "&gt;"),
+                  ("decimal", "&#60;", "&#62;"),
+                  ("case-varied hexadecimal", "&#X003C;", "&#x0003e;"),
+                  ("mixed closing", "<", "&gt;"), ("mixed opening", "&lt;", ">"))
+    cases = []
+    for prefix in prefixes:
+        for form, left, right in delimiters:
+            tag = "%s prefix, %s markup" % (prefix, form)
+            cases += [
+                (tag + " cannot borrow a comment arrow",
+                 "Resolved: pending %s %s!-- hidden finding -> hidden decision --%s"
+                 % (prefix, left, right), False),
+                (tag + " ignores a comment's hidden boundary",
+                 "Resolved: %s commitments %s!-- Resolved: ignored --%s -> change segment"
+                 % (prefix, left, right), True),
+                (tag + " ignores a tag's hidden boundary",
+                 "Resolved: %s commitments %sspan title='Resolved: ignored'%s -> change segment"
+                 % (prefix, left, right), True),
+                (tag + " cannot borrow placeholder words",
+                 "Resolved: pending %s %swhat the measurement said%s -> %sdecision%s"
+                 % (prefix, left, right, left, right), False),
+            ]
+        cases += [
+            (prefix + " remains visible literal text",
+             "Resolved: %s commitments -> change segment" % prefix, True),
+            (prefix + " cannot decode an ASCII arrow",
+             "Resolved: %s commitments -&gt; change segment" % prefix, False),
+            (prefix + " cannot decode the first marker",
+             "Resolved&#58; %s commitments -> change segment" % prefix, False),
+            (prefix + " cannot borrow from a second segment",
+             "Resolved: pending %s Resolved: zero -> change segment" % prefix, False),
+            (prefix + " keeps a valid first segment",
+             "Resolved: %s commitments -> change segment Resolved: pending" % prefix, True),
+        ]
+    _check_t034_gate_cases(cases)
+
+
+def test_gate_entity_name_case_cannot_shadow_complete_markup():
+    """T-034 amendment (b): only entities decoding to brackets are delimiters."""
+    print("\n[T-034 (b)] entity names retain their actual case-sensitive meaning")
+    aliases = (("<", _LT, ("<", "&lt;", "&LT;", "&#060;", "&#x03c;", "&#X003C;",
+                           "&Lt;", "&lT;")),
+               (">", _GT, (">", "&gt;", "&GT;", "&#0062;", "&#x03e;", "&#X003E;",
+                           "&Gt;", "&gT;")))
+    for bracket, pattern, spellings in aliases:
+        for spelling in spellings:
+            recognized = re.fullmatch(pattern, spelling, _ENCODED_MARKUP.flags) is not None
+            check("T-034 (b) delimiter meaning: %s" % spelling,
+                  recognized == (html.unescape(spelling) == bracket),
+                  "recognized %r, decoded %s" % (recognized, ascii(html.unescape(spelling))))
+    forms = (("literal", "<", ">"), ("named lower", "&lt;", "&gt;"),
+             ("named upper", "&LT;", "&GT;"), ("decimal", "&#060;", "&#0062;"),
+             ("hex lower", "&#x03c;", "&#x03e;"), ("hex upper", "&#X003C;", "&#X003E;"))
+    template = _emitted_message().split("'")[1]
+    cases = []
+    for form, left, right in forms:
+        encoded = " -> ".join(side.replace("<", left).replace(">", right)
+                              for side in template.split(" -> "))
+        cases += [(form + " valid template", encoded, False),
+                  (form + " valid hidden marker",
+                   "Resolved: <3 commitments %sspan title='Resolved: ignored'%s -> change segment"
+                   % (left, right), True),
+                  (form + " valid hidden arrow",
+                   "Resolved: pending %s!-- finding -> decision --%s" % (left, right), False)]
+        for invalid in ("&Lt;", "&lT;"):
+            tag = form + " after invalid opener " + invalid
+            cases += [(tag + " hidden arrow",
+                       "Resolved: pending %s!-- invalid %s!-- finding -> decision --%s"
+                       % (invalid, left, right), False),
+                      (tag + " hidden marker",
+                       "Resolved: <3 commitments %s!-- invalid %sspan title='Resolved: ignored'%s --%s -> change segment"
+                       % (invalid, left, right, right), True)]
+        for invalid in ("&Gt;", "&gT;"):
+            tag = form + " with invalid closer " + invalid
+            cases += [(tag + " hidden arrow",
+                       "Resolved: pending %s!-- noise --%s finding -> decision --%s"
+                       % (left, invalid, right), False),
+                      (tag + " hidden comment marker",
+                       "Resolved: <3 commitments %s!-- noise --%s Resolved: ignored --%s -> change segment"
+                       % (left, invalid, right), True),
+                      (tag + " hidden tag marker",
+                       "Resolved: <3 commitments %sspan title='noise %s Resolved: ignored'%s -> change segment"
+                       % (left, invalid, right), True)]
+    for invalid in ("&Lt;", "&lT;"):
+        cases.append((invalid + " remains literal prose",
+                      "Resolved: <3 commitments %s plain prose -> change segment" % invalid, True))
+    _check_t034_gate_cases(cases)
+
+
+def test_existing_raw_markup_is_not_split_by_encoded_candidates():
+    """T-034 amendment (c): old complete raw tags protect their hidden markers."""
+    print("\n[T-034 (c)] complete existing raw markup is recognized as a whole")
+    entities = ("&lt;", "&LT;", "&#060;", "&#x03c;", "&#X003C;",
+                "&gt;", "&GT;", "&#0062;", "&#x03e;", "&#X003E;")
+    cases = []
+    for entity in entities:
+        for where, content in (("before", "Resolved: ignored %sb" % entity),
+                               ("after", "%sb Resolved: ignored" % entity)):
+            label = "%s marker %s entity" % (entity, where)
+            tag = "<span title='%s'>" % content
+            check("T-034 (c) old raw matcher recognizes " + label,
+                  _MARKUP.fullmatch(tag) is not None, ascii(tag))
+            cases.append((label, "Resolved: <3 commitments %s -> change segment" % tag, True))
+    cases += [
+        ("ordinary raw emphasis", "Resolved: <3 commitments <b>no</b> -> change segment", True),
+        ("ordinary raw hidden marker",
+         "Resolved: <3 commitments <span title='Resolved: ignored'> -> change segment", True),
+        ("ordinary encoded hidden marker",
+         "Resolved: <3 commitments &lt;span title='Resolved: ignored'&gt; -> change segment", True),
+        ("ordinary encoded hidden arrow",
+         "Resolved: pending &lt;!-- finding -> decision --&gt;", False),
+    ]
+    _check_t034_gate_cases(cases)
 
 
 def main():
