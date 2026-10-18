@@ -18,18 +18,18 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       # fetch-depth: 0, because tools/rounds.py reads the whole history and
       # score_at() does `git show <commit>:docs/SCORECARD.md`. The default depth
       # of 1 made test_rounds.py fail on every push from R11 onwards, and because
       # it fails early the three steps after it -- the backlog check, the
       # owner-power suite and the scorecard -- had never run in CI at all.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
 
@@ -42,6 +42,9 @@ jobs:
 
       - name: Host SDK dependencies stay locked and Linux builds need no deploy credentials
         run: python tests/test_build_dependency_lock.py
+
+      - name: Workflow actions and runner images stay pinned
+        run: python tests/test_workflow_runtime_pins.py
 
       - name: Regression tests (offline, real upstream snapshots)
         run: python tests/test_risk.py
@@ -255,7 +258,7 @@ jobs:
   build:
     if: github.event_name != 'workflow_run'
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: read
@@ -264,16 +267,16 @@ jobs:
       matrix:
         clean-build: [1, 2]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
 
@@ -313,7 +316,7 @@ jobs:
       - name: Check tracked files
         run: git diff --exit-code
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: public-python-runtime-lock-${{ matrix.clean-build }}
           path: pylock.toml
@@ -339,10 +342,10 @@ jobs:
     # Real upstream requests. Not on a bot's workflow_run: those come five times a day and
     # can move nothing this job checks.
     if: github.event_name != 'workflow_run'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
       - name: Verify upstream API contracts
@@ -356,11 +359,11 @@ jobs:
   # apart; `docs/BACKLOG.md` carries the work.
   backfill-roundtrip:
     if: github.event_name != 'workflow_run'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
       - name: Backfill decoder round-trip
@@ -379,11 +382,11 @@ jobs:
   # the work the job was not.
   benchmark:
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
       - name: Rebuild a small labelled dataset from scratch
@@ -392,7 +395,7 @@ jobs:
         # The independence assertions exit non-zero on failure, and must not be ignored:
         # a benchmark that argues in a circle does more harm than no benchmark at all.
         run: python bench/run_benchmark.py
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: pipeline-smoke-test-results
           path: |
