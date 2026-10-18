@@ -140,10 +140,25 @@ Why it is built this way:
 - **`unknown` rate reported alongside recall.** A tool that answers `unknown` to
   everything has perfect recall and zero value.
 
+<!-- benchmark-reproduction:current:start -->
+The benchmark uses the pinned logical clock 2026-09-21T02:00:00Z. Use an isolated
+working copy and a matching local cache for reproduction:
+
 ```bash
-python bench/build_dataset.py --limit 250   # sample + label (independent sources)
-python bench/run_benchmark.py               # score the local engine, write results.md
+python bench/run_benchmark.py --replay
 ```
+
+Replay makes no network requests. A missing answer returns exit 4, lists missing URLs,
+and leaves existing result files unchanged. A complete replay can write
+bench/results.json and bench/results.md. The cache is not tracked or published with
+this repository; a fresh clone is not guaranteed to reproduce the published figures.
+
+Plain run mode can fetch missing answers and write dated cache entries. An intentional
+refresh uses `python bench/run_benchmark.py --fill missing-urls.txt` with a reviewed explicit
+HTTPS URL list; it deduplicates the list and skips usable recorded entries. Run a
+separate --replay afterwards. A pinned logical clock is not a historical measurement
+of upstream state: new answers can change the results.
+<!-- benchmark-reproduction:current:end -->
 
 ---
 
