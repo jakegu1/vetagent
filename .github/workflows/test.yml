@@ -259,6 +259,10 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        clean-build: [1, 2]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -273,24 +277,45 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Record committed lock byte hashes
+        run: sha256sum uv.lock pylock.toml package-lock.json > "$RUNNER_TEMP/build-locks.sha256"
+
       - name: Install uv
         run: python -m pip install --no-deps uv==0.13.1
 
       - name: Verify uv version
         run: uv --version
 
+      - name: Install locked Node tooling
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Verify local Wrangler
+        run: node -e "const {execFileSync}=require('node:child_process'); const version=execFileSync(process.execPath,['./node_modules/wrangler/bin/wrangler.js','--version'],{encoding:'utf8'}).trim(); console.log(version); if(version!=='4.151.1') process.exit(1)"
+
       - name: Sync dependencies
         run: uv sync --locked
 
+      - name: Sync inspected target packages
+        run: uv run --locked pywrangler sync
+
+      - name: Verify lock bytes before packaging
+        run: sha256sum --check "$RUNNER_TEMP/build-locks.sha256"
+
+      - name: Check tracked files before packaging
+        run: git diff --exit-code
+
       - name: Build without credentials or upload
         run: uv run --locked pywrangler deploy --dry-run
+
+      - name: Verify lock bytes after packaging
+        run: sha256sum --check "$RUNNER_TEMP/build-locks.sha256"
 
       - name: Check tracked files
         run: git diff --exit-code
 
       - uses: actions/upload-artifact@v4
         with:
-          name: public-python-runtime-lock
+          name: public-python-runtime-lock-${{ matrix.clean-build }}
           path: pylock.toml
           if-no-files-found: error
           retention-days: 7

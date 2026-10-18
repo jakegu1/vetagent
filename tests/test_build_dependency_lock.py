@@ -119,7 +119,8 @@ def host_commands(text, job, dry_run=False):
     for command in (INSTALL, SYNC, expected):
         if sum(value == command for _, value in commands) != 1:
             errors.append("%s must run exactly once: %s" % (job, command))
-    allowed = {INSTALL, SYNC, expected, "uv --version"}
+    allowed = {INSTALL, SYNC, expected, "uv --version", TARGET_SYNC, NPM_CI,
+               LOCAL_WRANGLER, LOCK_BASELINE, LOCK_VERIFY, TRACKED_DIFF}
     for _, command in commands:
         if re.search(r"\buv\b|astral\.sh|\b(?:py)?wrangler\b.*\bdeploy\b", command) and command not in allowed:
             errors.append("%s has unpinned or unlocked host tooling; use uv 0.13.1 and --locked" % job)
@@ -127,6 +128,8 @@ def host_commands(text, job, dry_run=False):
                  for command in (INSTALL, SYNC, expected)]
     if None not in positions and positions != sorted(positions):
         errors.append("%s must install pinned uv, sync --locked, then run --locked" % job)
+    if runtime_complete_workflow(text, job):
+        errors.extend(runtime_workflow_errors(text, job))
     return errors
 
 
@@ -171,6 +174,8 @@ def build_errors(text):
         errors.append("build must retain only generated public pylock.toml, failing if it is missing")
     commands = [command for step in steps for command in step["run"]]
     expected = [INSTALL, "uv --version", SYNC, DRY_RUN, "git diff --exit-code"]
+    if runtime_complete_workflow(text, "build"):
+        expected = runtime_expected_commands("build")
     if commands != expected:
         errors.append("build must dry-run without upload, then fail on tracked changes")
     if uploads and steps.index(uploads[0]) <= next((i for i, step in enumerate(steps) if DRY_RUN in step["run"]), len(steps)):
@@ -345,6 +350,347 @@ def test_synthetic_workflow_negative_controls_are_refused():
         assert BUILD_WORKFLOW.count(old) == 1
         errors = build_errors(BUILD_WORKFLOW.replace(old, new, 1))
         check("build " + name + " turns the guard red", bool(errors), errors)
+
+
+# T-035 additive acceptance. The original T-033 functions, fixtures and controls stay frozen.
+import base64
+import hashlib
+import json
+import os
+import shutil
+import tempfile
+
+NPM_CI = "npm ci --ignore-scripts --no-audit --no-fund"
+LOCAL_WRANGLER = ("node -e \"const {execFileSync}=require('node:child_process'); "
+                  "const version=execFileSync(process.execPath,['./node_modules/wrangler/bin/wrangler.js','--version'],"
+                  "{encoding:'utf8'}).trim(); console.log(version); if(version!=='4.151.1') process.exit(1)\"")
+LOCK_BASELINE = 'sha256sum uv.lock pylock.toml package-lock.json > "$RUNNER_TEMP/build-locks.sha256"'
+LOCK_VERIFY = 'sha256sum --check "$RUNNER_TEMP/build-locks.sha256"'
+TARGET_SYNC = "uv run --locked pywrangler sync"
+OFFLINE = "python .github/scripts/offline_suite.py"
+TRACKED_DIFF = "git diff --exit-code"
+RUNTIME_WHEEL_SHA = "2bd6f5788fd6fdd38ff677e37c93fd92b37ff3a3ab33b43b7ed84ba50688a647"
+RUNTIME_WHEEL_URL = ("https://files.pythonhosted.org/packages/ff/0d/"
+                     "e042cc8ac587699e7479db34dee27bd653297d709386b22e926d2672bbc8/"
+                     "workers_runtime_sdk-1.9.4-py3-none-any.whl")
+
+
+def node_lock_errors(project_text, lock_text):
+    errors = []
+    try:
+        project = json.loads(project_text) if project_text is not None else None
+    except (ValueError, TypeError):
+        project = None
+    if not isinstance(project, dict):
+        return ["package.json is missing or invalid JSON; commit a private dev-only Wrangler manifest"]
+    if project.get("private") is not True or project.get("dependencies", {}) != {} or project.get("scripts", {}) != {}:
+        errors.append("package.json must be private, dev-only and have no publish/install scripts")
+    if project.get("devDependencies") != {"wrangler": "4.151.1"}:
+        errors.append("pin exactly wrangler 4.151.1 as the only development dependency")
+    if any(key in project for key in ("publishConfig", "workspaces", "optionalDependencies")):
+        errors.append("keep the build manifest free of publishing, workspaces and runtime dependencies")
+    try:
+        lock = json.loads(lock_text) if lock_text is not None else None
+    except (ValueError, TypeError):
+        lock = None
+    if not isinstance(lock, dict):
+        return errors + ["package-lock.json is missing or invalid JSON; generate it with public npm"]
+    packages = lock.get("packages")
+    if lock.get("lockfileVersion") != 3 or not isinstance(packages, dict):
+        return errors + ["package-lock.json must contain the npm version 3 packages lock"]
+    root = packages.get("", {})
+    if root.get("devDependencies") != {"wrangler": "4.151.1"} or root.get("dependencies", {}) != {}:
+        errors.append("npm lock root must retain the exact dev-only Wrangler pin")
+    if packages.get("node_modules/wrangler", {}).get("version") != "4.151.1":
+        errors.append("npm lock must resolve wrangler 4.151.1")
+    for name, package in packages.items():
+        if not name:
+            continue
+        if not isinstance(package, dict):
+            errors.append("npm lock package entries must be objects")
+            continue
+        if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.+-]+)?", str(package.get("version", ""))):
+            errors.append("npm lock %s needs an exact resolved version" % name)
+        url = urlsplit(str(package.get("resolved", "")))
+        if (url.scheme != "https" or url.hostname != "registry.npmjs.org" or url.username
+                or url.password or url.query or url.fragment or package.get("link")):
+            errors.append("npm lock %s needs a credential-free public npm distribution" % name)
+        integrity = str(package.get("integrity", ""))
+        try:
+            valid_hash = integrity.startswith("sha512-") and len(base64.b64decode(integrity[7:], validate=True)) == 64
+        except (ValueError, TypeError):
+            valid_hash = False
+        if not valid_hash:
+            errors.append("npm lock %s needs a SHA512 distribution integrity hash" % name)
+    return errors
+
+
+def target_lock_errors(text, ignored=False):
+    errors = ["pylock.toml is ignored; track the inspected Linux target lock"] if ignored else []
+    if text is None:
+        return errors + ["pylock.toml is missing; use the inspected Linux target artifact"]
+    try:
+        lock = tomllib.loads(text)
+    except tomllib.TOMLDecodeError:
+        return errors + ["pylock.toml must be valid target-lock TOML"]
+    if (lock.get("lock-version") != "1.0" or lock.get("created-by") != "uv"
+            or lock.get("requires-python") != ">=3.13.2"):
+        errors.append("retain the actual Linux target metadata, distinct from the host lock")
+    packages = lock.get("packages")
+    if not isinstance(packages, list) or len(packages) != 1:
+        return errors + ["target lock must contain only workers-runtime-sdk 1.9.4"]
+    package = packages[0]
+    if package.get("name") != "workers-runtime-sdk" or package.get("version") != "1.9.4":
+        errors.append("target lock must select workers-runtime-sdk 1.9.4")
+    wheels = package.get("wheels", [])
+    if (len(wheels) != 1 or wheels[0].get("url") != RUNTIME_WHEEL_URL
+            or wheels[0].get("hashes") != {"sha256": RUNTIME_WHEEL_SHA}
+            or any(key not in {"name", "version", "wheels"} for key in package)):
+        errors.append("target lock must retain the inspected public SDK wheel URL and SHA256, without local sources")
+    return errors
+
+
+def runtime_expected_commands(job):
+    if job == "build":
+        return [LOCK_BASELINE, INSTALL, "uv --version", NPM_CI, LOCAL_WRANGLER, SYNC,
+                TARGET_SYNC, LOCK_VERIFY, TRACKED_DIFF, DRY_RUN, LOCK_VERIFY, TRACKED_DIFF]
+    return [OFFLINE, LOCK_BASELINE, INSTALL, NPM_CI, LOCAL_WRANGLER, SYNC,
+            TARGET_SYNC, LOCK_VERIFY, TRACKED_DIFF, DEPLOY]
+
+
+def runtime_complete_workflow(text, job):
+    # Original T-033 fixtures are partial workflow documents. Real workflows contain
+    # the pre-existing offline job/gate even if every new T-035 step is deleted.
+    jobs = workflow.jobs(text)
+    if job == "build":
+        return "test" in jobs
+    return any(OFFLINE in step["run"] for step in workflow.steps(jobs.get(job, [])))
+
+
+def runtime_workflow_errors(text, job):
+    lines = workflow.jobs(text).get(job)
+    if not lines:
+        return [job + " job is missing"]
+    steps = workflow.steps(lines)
+    relevant = []
+    expected = runtime_expected_commands(job)
+    errors = []
+    for step in steps:
+        if job == "deploy" and step["keys"].get("id") == "creds":
+            continue
+        for command in step["run"]:
+            relevant.append(command)
+            if job == "deploy" and command == DEPLOY:
+                break
+        if job == "deploy" and DEPLOY in step["run"]:
+            break
+    if relevant != expected:
+        errors.append(job + " must capture lock bytes before installs, npm ci, verify local Wrangler, sync locked host/target, check bytes and diff before upload; build also checks after dry-run")
+    body = "\n".join(lines)
+    if "--upgrade" in body:
+        errors.append(job + " must not upgrade target resolution")
+    for step in steps:
+        if any(command in expected for command in step["run"]):
+            keys = step["keys"]
+            if "continue-on-error" in keys or "shell" in keys or "working-directory" in keys:
+                errors.append(job + " locked steps must not soft-fail or change execution context")
+            if job == "deploy" and keys.get("if") != "steps.creds.outputs.ready == 'true'":
+                errors.append("deploy locked steps must keep the deployment credential condition")
+            if job == "build" and any(key in keys for key in ("if", "env", "continue-on-error")):
+                errors.append("build locked steps must remain credential-free and reachable")
+    if job == "build":
+        if not re.search(r"^      fail-fast: false\s*$", body, re.M) or not re.search(r"^        clean-build: \[1, 2\]\s*$", body, re.M):
+            errors.append("build must use exactly two independent clean matrix entries with fail-fast false")
+        matrices = re.findall(r"^      matrix:\n((?:        [^\n]*\n)*)", body + "\n", re.M)
+        if len(matrices) != 1 or matrices[0].strip() != "clean-build: [1, 2]":
+            errors.append("build matrix must remain bounded at exactly two")
+        uploads = [step for step in steps if step["keys"].get("uses", "").startswith("actions/upload-artifact@")]
+        if len(uploads) != 1 or uploads[0]["with"].get("name") != "public-python-runtime-lock-${{ matrix.clean-build }}":
+            errors.append("build artifacts must have distinct fixed-matrix names")
+    return errors
+
+
+NODE_PROJECT = json.dumps({"name": "vetagent-build-tools", "version": "0.1.0", "private": True,
+                           "devDependencies": {"wrangler": "4.151.1"}})
+NODE_LOCK = json.dumps({"lockfileVersion": 3, "packages": {
+    "": {"devDependencies": {"wrangler": "4.151.1"}},
+    "node_modules/wrangler": {"version": "4.151.1", "resolved": "https://registry.npmjs.org/wrangler/-/wrangler-4.151.1.tgz",
+                               "integrity": "sha512-" + base64.b64encode(b"x" * 64).decode("ascii")}}})
+TARGET_LOCK = ('lock-version = "1.0"\ncreated-by = "uv"\nrequires-python = ">=3.13.2"\n'
+               '[[packages]]\nname = "workers-runtime-sdk"\nversion = "1.9.4"\n'
+               'wheels = [{ url = "%s", hashes = { sha256 = "%s" } }]\n') % (RUNTIME_WHEEL_URL, RUNTIME_WHEEL_SHA)
+
+
+def runtime_fixture(job):
+    header = "jobs:\n"
+    if job == "build":
+        header += "  test:\n    steps:\n      - run: python tests/test_risk.py\n"
+    text = header + "  " + job + ":\n    runs-on: ubuntu-latest\n"
+    if job == "build":
+        text += "    strategy:\n      fail-fast: false\n      matrix:\n        clean-build: [1, 2]\n"
+    text += "    steps:\n"
+    for number, command in enumerate(runtime_expected_commands(job)):
+        text += "      - name: locked step %d\n" % number
+        if job == "deploy":
+            text += "        if: steps.creds.outputs.ready == 'true'\n"
+        text += "        run: " + command + "\n"
+    if job == "build":
+        text += ("      - uses: actions/upload-artifact@v4\n        with:\n"
+                 "          name: public-python-runtime-lock-${{ matrix.clean-build }}\n"
+                 "          path: pylock.toml\n          if-no-files-found: error\n")
+    return text
+
+
+def test_runtime_actual_node_and_target_locks():
+    values = {}
+    for name in ("package.json", "package-lock.json", "pylock.toml"):
+        path = ROOT / name
+        values[name] = path.read_text(encoding="utf-8") if path.is_file() else None
+    errors = node_lock_errors(values["package.json"], values["package-lock.json"])
+    check("actual public transitive npm lock pins dev-only Wrangler", not errors, "; ".join(errors))
+    ignored = subprocess.run(["git", "check-ignore", "--no-index", "--quiet", "pylock.toml"], cwd=ROOT).returncode
+    errors = target_lock_errors(values["pylock.toml"], ignored == 0)
+    check("actual Linux target lock retains inspected SDK distribution", ignored in (0, 1) and not errors, "; ".join(errors))
+    for name in values:
+        tracked = subprocess.run(["git", "ls-files", "--error-unmatch", name], cwd=ROOT, capture_output=True).returncode == 0
+        check(name + " is a tracked lock input", tracked)
+
+
+def test_runtime_actual_workflows_enforce_extended_sequence():
+    for name, job in (("deploy.yml", "deploy"), ("test.yml", "build")):
+        text = (ROOT / ".github/workflows" / name).read_text(encoding="utf-8")
+        errors = runtime_workflow_errors(text, job)
+        check("actual " + job + " locks Node/target and byte-checks in order", not errors, "; ".join(errors))
+        if job == "deploy":
+            header = text.split("jobs:", 1)[0]
+            for path in ("package.json", "package-lock.json", "pylock.toml"):
+                check(path + " changes trigger deploy", bool(re.search(r'^\s+- ["\']' + re.escape(path) + r'["\']\s*$', header, re.M)))
+
+
+def test_runtime_synthetic_positive_controls():
+    check("synthetic public npm lock control", not node_lock_errors(NODE_PROJECT, NODE_LOCK))
+    check("synthetic inspected target lock control", not target_lock_errors(TARGET_LOCK))
+    for job in ("deploy", "build"):
+        check("synthetic extended " + job + " sequence control", not runtime_workflow_errors(runtime_fixture(job), job))
+
+
+def test_runtime_synthetic_resolution_negative_controls():
+    controls = (
+        ("missing npm lock", NODE_PROJECT, None, "package-lock.json"),
+        ("floating Wrangler", NODE_PROJECT.replace("4.151.1", "^4.151.1"), NODE_LOCK, "pin exactly"),
+        ("project install hook", NODE_PROJECT[:-1] + ', "scripts": {"postinstall": "echo hook"}}', NODE_LOCK, "no publish/install"),
+        ("missing npm integrity", NODE_PROJECT, NODE_LOCK.replace('"integrity":', '"missing-integrity":'), "integrity hash"),
+        ("private npm source", NODE_PROJECT, NODE_LOCK.replace("registry.npmjs.org", "packages.invalid"), "public npm"),
+        ("credential npm source", NODE_PROJECT, NODE_LOCK.replace("https://registry", "https://user:password@registry"), "credential-free"),
+        ("mismatched locked Wrangler", NODE_PROJECT, NODE_LOCK.replace('"version": "4.151.1"', '"version": "4.151.0"'), "resolve wrangler"),
+    )
+    for label, project, lock, expected in controls:
+        errors = node_lock_errors(project, lock)
+        check(label + " is refused", any(expected in error for error in errors), errors)
+    for label, lock, ignored, expected in (
+            ("missing target lock", None, False, "is missing"),
+            ("ignored target lock", TARGET_LOCK, True, "is ignored"),
+            ("wrong target SDK", TARGET_LOCK.replace('version = "1.9.4"', 'version = "1.9.5"'), False, "1.9.4"),
+            ("unhashed target wheel", TARGET_LOCK.replace("sha256", "missing-hash"), False, "SHA256"),
+            ("host lock used as target", TARGET_LOCK.replace(">=3.13.2", ">=3.12"), False, "target metadata"),
+            ("private target wheel", TARGET_LOCK.replace("files.pythonhosted.org", "packages.invalid"), False, "public SDK")):
+        errors = target_lock_errors(lock, ignored)
+        check(label + " is refused", any(expected in error for error in errors), errors)
+
+
+def test_runtime_synthetic_workflow_negative_controls():
+    for job in ("deploy", "build"):
+        source = runtime_fixture(job)
+        controls = (("no npm ci", NPM_CI, "npm install"),
+                    ("install hooks enabled", NPM_CI, "npm ci"),
+                    ("fallback version check", LOCAL_WRANGLER, "npx --yes wrangler --version"),
+                    ("no explicit target sync", TARGET_SYNC, "echo omitted target sync"),
+                    ("target upgrade", TARGET_SYNC, TARGET_SYNC + " --upgrade"),
+                    ("no byte baseline", LOCK_BASELINE, "echo omitted baseline"),
+                    ("no pre-upload byte guard", LOCK_VERIFY, "echo omitted byte guard"),
+                    ("no separate tracked diff", TRACKED_DIFF, "echo omitted diff"))
+        for label, old, new in controls:
+            assert old in source
+            errors = runtime_workflow_errors(source.replace(old, new, 1), job)
+            check(job + " " + label + " is refused", bool(errors), errors)
+        late = source.replace("        run: " + LOCK_BASELINE, "        run: BASELINE_PLACEHOLDER", 1)
+        late = late.replace("        run: " + NPM_CI, "        run: " + LOCK_BASELINE, 1)
+        late = late.replace("        run: BASELINE_PLACEHOLDER", "        run: " + NPM_CI, 1)
+        check(job + " baseline after installation is refused", bool(runtime_workflow_errors(late, job)))
+        removed = source
+        for command in (LOCK_BASELINE, NPM_CI, LOCAL_WRANGLER, TARGET_SYNC, LOCK_VERIFY):
+            removed = removed.replace("        run: " + command, "        run: echo removed new step")
+        check(job + " deleting all new steps cannot select legacy acceptance", bool(runtime_workflow_errors(removed, job)))
+    build = runtime_fixture("build")
+    for label, old, new in (("unbounded matrix", "clean-build: [1, 2]", "clean-build: [1, 2, 3]"),
+                             ("additional matrix axis", "clean-build: [1, 2]", "clean-build: [1, 2]\n        extra: [1, 2]"),
+                             ("artifact collision", "public-python-runtime-lock-${{ matrix.clean-build }}", "public-python-runtime-lock")):
+        check(label + " is refused", bool(runtime_workflow_errors(build.replace(old, new, 1), "build")))
+
+
+def test_runtime_named_helpers_validate_complete_extended_workflows():
+    # Use the existing real workflow context so deletion of new steps cannot opt out.
+    for name, job in (("deploy.yml", "deploy"), ("test.yml", "build")):
+        actual = (ROOT / ".github/workflows" / name).read_text(encoding="utf-8")
+        check(job + " complete workflow retains its pre-existing offline context", runtime_complete_workflow(actual, job))
+        errors = host_commands(runtime_fixture(job), job, dry_run=(job == "build"))
+        check(job + " named helper validates the enumerated complete extended sequence", not errors, errors)
+        removed = actual
+        for command in (LOCK_BASELINE, NPM_CI, LOCAL_WRANGLER, TARGET_SYNC, LOCK_VERIFY):
+            removed = removed.replace("run: " + command, "run: echo omitted runtime step")
+        check(job + " named helper requires T-035 even when new steps are absent",
+              bool(host_commands(removed, job, dry_run=(job == "build"))))
+
+
+def test_runtime_actual_byte_commands_refuse_newline_only_drift():
+    actual = (ROOT / ".github/workflows/test.yml").read_text(encoding="utf-8")
+    commands = [command for step in workflow.steps(workflow.jobs(actual).get("build", [])) for command in step["run"]]
+    if LOCK_BASELINE not in commands or LOCK_VERIFY not in commands:
+        check("actual byte-check commands exist for executable newline control", False,
+              "capture raw lock hashes before installation and compare before upload/after dry-run")
+        return
+    bash = shutil.which("bash")
+    if os.name == "nt":
+        candidate = Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git/bin/bash.exe"
+        if candidate.is_file():
+            bash = str(candidate)
+    check("bash is available to execute the actual CI byte commands", bool(bash))
+    if not bash:
+        return
+    with tempfile.TemporaryDirectory(prefix="vetagent-t035-byte-") as directory:
+        root = Path(directory)
+        files = ("uv.lock", "pylock.toml", "package-lock.json")
+        for name in files:
+            (root / name).write_bytes(b"fixture\n")
+        for args in (("init", "--quiet"), ("config", "core.autocrlf", "true"), ("add", *files)):
+            subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+        env = dict(os.environ, RUNNER_TEMP=root.as_posix())
+        def run(command):
+            return subprocess.run([bash, "--noprofile", "--norc", "-c", command], cwd=root, env=env,
+                                  capture_output=True, text=True, timeout=15)
+        baseline = run(commands[commands.index(LOCK_BASELINE)])
+        check("actual raw hash baseline executes", baseline.returncode == 0, baseline.stderr)
+        check("actual byte guard accepts unchanged lock bytes", run(LOCK_VERIFY).returncode == 0)
+        for name in files:
+            (root / name).write_bytes(b"fixture\r\n")
+            normalized = subprocess.run(["git", "diff", "--exit-code"], cwd=root, capture_output=True)
+            result = run(LOCK_VERIFY)
+            check(name + " newline-only change is invisible to normalized git diff", normalized.returncode == 0)
+            check(name + " newline-only change fails the actual byte guard", result.returncode != 0 and "FAILED" in result.stdout, result.stdout + result.stderr)
+            (root / name).write_bytes(b"fixture\n")
+        check("restored exact fixture bytes pass the byte guard", run(LOCK_VERIFY).returncode == 0)
+
+
+# T-035 amendment (b): the existing offline gate precedes checksum capture.
+def test_runtime_deploy_checksum_capture_follows_gate_before_install():
+    text = (ROOT / ".github/workflows/deploy.yml").read_text(encoding="utf-8")
+    commands = [command for step in workflow.steps(workflow.jobs(text).get("deploy", [])) for command in step["run"]]
+    required = (OFFLINE, LOCK_BASELINE, INSTALL, NPM_CI, SYNC, TARGET_SYNC, DEPLOY)
+    unique = all(commands.count(command) == 1 for command in required)
+    ordered = unique and commands.index(OFFLINE) < commands.index(LOCK_BASELINE) < min(
+        commands.index(command) for command in (INSTALL, NPM_CI, SYNC, TARGET_SYNC, DEPLOY))
+    check("deploy captures raw lock bytes after the offline gate and before any dependency install or sync",
+          ordered, "retain the old gate ordering and capture checksums before project dependency preparation")
 
 
 def main():
