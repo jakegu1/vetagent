@@ -56,7 +56,7 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 | T-032 | 3 | Done; both fresh reviews approve, merged 106ad21, post-merge 37/37 | Lead | Publish with related technical batch |
 | T-034 | 3 | Done; final fresh approval, merged 7ef54e0, uninterrupted integrated 38/38 | Lead | Publish with related technical batch |
 | T-035 | 3 | Corrected frozen source 52363a3; named baseline-order repair preserves old guard | Executor and actual Linux CI | Finish uninterrupted ordinary/denied evidence, two clean Linux builds, then fresh reviews |
-| T-037 | 3 | Both fresh reviews approve frozen 35507df; all three evidence seals verified | Lead | Wait for T-034 approval/integration, then merge and check the combined head |
+| T-037 | 3 | Done; both fresh reviews approve, merged a98c7af, uninterrupted combined 38/38 | Lead | Publish with related technical batch |
 
 ## Autonomous technical continuation
 
@@ -124,6 +124,10 @@ Legacy backlog reconciliation closes W50's already implemented canonical/wording
 W28 remains open only for post-release usage evidence; W59 remains open only for
 unproved historical attribution, with per-answer timestamps explicitly deferred.
 Their original incidents remain. The changed generated Owner count follows the source.
+
+T-037 is merged after the checked T-034 prerequisite. Its actual generation succeeds,
+and the uninterrupted combined gate passes thirty-eight of thirty-eight in 140.5
+seconds. Both reviewed source and historical measurement boundaries remain intact.
 
 Repair (g) is independently approved twelve of twelve with RED-TEAM: none and merged
 as 76747d3. A different reviewer reproduces the actual old 3.12 failure, verifies
