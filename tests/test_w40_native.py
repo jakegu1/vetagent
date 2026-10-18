@@ -724,6 +724,67 @@ class NativeAcceptance(unittest.TestCase):
                     manifest=native.code_manifest(), clock=f.clock, transport=f.transport, engine=f.engine))["state"], "prepared")
                 self.assertEqual(len(f.seen), 6)
 
+        # Named (d): matching packet bytes do not replace committed private evidence.
+        for corruption in ("clean", "missing_body", "changed_body", "changed_metadata", "missing_dependency",
+                           "changed_dependency", "missing_commit", "changed_permit", "changed_context", "extra_attempt"):
+            with Fixture() as f:
+                f.collect()
+                if corruption == "missing_body":
+                    (f.private / "attempts/05/body.bin").unlink()
+                elif corruption == "changed_body":
+                    path = f.private / "attempts/05/body.bin"
+                    path.write_bytes(b"X" + path.read_bytes()[1:])
+                elif corruption == "changed_metadata":
+                    (f.private / "attempts/05/metadata.json").write_bytes(_json({"changed": True}))
+                elif corruption == "missing_dependency":
+                    sorted((f.private / "dependencies").glob("*.json"))[0].unlink()
+                elif corruption == "changed_dependency":
+                    sorted((f.private / "dependencies").glob("*.json"))[0].write_bytes(_json({"changed": True}))
+                elif corruption == "missing_commit":
+                    (f.private / "attempts/05/commit.json").unlink()
+                elif corruption == "changed_permit":
+                    path = f.private / "attempts/05/permit.json"
+                    value = json.loads(path.read_bytes())
+                    value["request_deadline"] -= 1
+                    path.write_bytes(_json(value))
+                elif corruption == "changed_context":
+                    path = f.private / "context.json"
+                    value = json.loads(path.read_bytes())
+                    value["configuration"]["keyless"] = False
+                    path.write_bytes(_json(value))
+                elif corruption == "extra_attempt":
+                    (f.private / "attempts/06").mkdir()
+                source_manifest = f.root / "sources.json"
+                source_manifest.write_bytes(_json(f.sources))
+                protected_core = {p: p.read_bytes() for p in f.store.rglob("*") if p.is_file()}
+                protected_runtime = {p: p.read_bytes() for p in f.runtime.rglob("*") if p.is_file()}
+                protected_private = {p: p.read_bytes() for p in f.private.rglob("*") if p.is_file()}
+                no_transport = "\n".join([
+                    "import pathlib,socket,subprocess,sys",
+                    "from unittest.mock import patch",
+                    "sys.path[:0]=[sys.argv[1]+'/bench',sys.argv[1]+'/src']",
+                    "import w40_native as n",
+                    "with patch('socket.socket',side_effect=AssertionError('offline')),patch('subprocess.Popen',side_effect=AssertionError('offline')):",
+                    "    raise SystemExit(n.main(sys.argv[2:]))",
+                ])
+                result = subprocess.run([sys.executable, "-B", "-c", no_transport, str(ROOT), "recover",
+                    "--store", str(f.store), "--sources", str(source_manifest), "--runtime", str(f.runtime),
+                    "--private-dir", str(f.private)], cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
+                self.assertEqual(result.stderr, b"")
+                self.assertEqual(len(f.seen), 5)
+                self.assertEqual(result.returncode, 0 if corruption == "clean" else 2)
+                if corruption == "clean":
+                    self.assertEqual(json.loads(result.stdout)["state"], "imported")
+                    duplicate = run_cli("recover", "--store", f.store, "--sources", source_manifest,
+                                        "--runtime", f.runtime, "--private-dir", f.private)
+                    self.assertEqual(duplicate.returncode, 2)
+                    self.assertEqual(json.loads(duplicate.stdout), {"error": "existing_receipt"})
+                else:
+                    self.assertRegex(json.loads(result.stdout)["error"], "^[a-z_]+$")
+                    self.assertEqual({p: p.read_bytes() for p in f.store.rglob("*") if p.is_file()}, protected_core)
+                    self.assertEqual({p: p.read_bytes() for p in f.runtime.rglob("*") if p.is_file()}, protected_runtime)
+                    self.assertEqual({p: p.read_bytes() for p in f.private.rglob("*") if p.is_file()}, protected_private)
+
     def test_w40_native_cli_and_existing_contract(self):
         native = importlib.import_module("w40_native")
         for arguments in ((), ("--help",), ("plan", "--help"), ("collect-one", "--help"), ("report", "--help"), ("recover", "--help")):
