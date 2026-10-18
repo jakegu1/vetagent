@@ -53,7 +53,7 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 | Task | Level | Stage | Who | Next action |
 |---|---|---|---|---|
-| T-038 | 3 | Dispatch prepared after actual T-036 deployment, observer and following bot CI | Executor | Start from clean checked closure head; strict classification plus two required registrations |
+| T-038 | 3 | Round two: two observed-fact losses found before publication | Executor | Append the two preregistered regression methods, correct only the named live functions, then repeat fresh reviews and full gates |
 
 ## Autonomous technical continuation
 
@@ -80,6 +80,14 @@ three additive tests in the already-discovered regression runner. W55(b,c) remai
 conditional E24/E32 integration constraints; no scoring or coverage policy changes.
 
 ## Current batch baseline
+
+T-038's first frozen candidate 6d1af46 passes the executor's ordinary and inherited-denied
+41-step inventories. Both fresh reviewers nevertheless reproduce two manifestations
+of one evidence-loss cause: a later unavailable selector or next-block timestamp erases
+an already observed contradiction. The lead reproduces both on real Python 3.12 and
+3.13. Publication is held. Preregistered amendment (c) adds exactly two regression
+methods before the narrow correction; all original assertions and floors stay frozen.
+No full review of this known failing candidate is represented as approval.
 
 T-032 through T-037 are now published at 7ccccf1. Exact pinned-action Linux preflight
 39112259345 passes required checks and both locked builds with downloaded artifact
