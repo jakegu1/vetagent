@@ -257,6 +257,51 @@ def plan(store, sources, ordinal, *, now):
             "lateness_seconds": (instant - target).total_seconds(), "manifest": manifest}
 
 
+def producer_claims(directory, value, events):
+    """A completion file is evidence only when bound to the actual core receipt."""
+    claims = directory / "native-claims"
+    if not claims.exists():
+        return {}
+    records = {e["record"]["ordinal"]: e["record"] for e in events if e.get("kind") == "enrollment"}
+    receipts = {e["ordinal"]: e["receipt"] for e in events if e.get("kind") == "receipt"}
+    names = set()
+    try:
+        for path in claims.iterdir():
+            if not path.is_file() or not re.fullmatch(r"\d{8}\.(?:json|done)", path.name) or len(names) >= 2 * core.COHORT_CAP:
+                fail("history_corrupt")
+            names.add(path.name)
+    except OSError:
+        fail("history_corrupt")
+    if any(name.endswith(".done") and name[:-5] + ".json" not in names for name in names):
+        fail("history_corrupt")
+    result, code_hash = {}, sha(dumps(code_manifest()))
+    for name in sorted(name for name in names if name.endswith(".json")):
+        ordinal = int(name[:8])
+        raw = read(claims / name, ROW_CAP)
+        claim = parse(raw, ROW_CAP)
+        record, receipt = records.get(ordinal), receipts.get(ordinal)
+        if (not isinstance(claim, dict) or record is None
+                or set(claim) != {"ordinal", "plan_sha256", "source_ref", "code_sha256", "claim_sha256"}
+                or type(claim.get("ordinal")) is not int or claim["ordinal"] != ordinal
+                or claim["plan_sha256"] != value["plan_sha256"] or claim["source_ref"] != record["source_ref"]
+                or claim["code_sha256"] != code_hash or not core._hex(claim["claim_sha256"])):
+            fail("history_corrupt")
+        expected = None
+        if receipt is not None:
+            if (receipt.get("ordinal") != ordinal or receipt.get("source_ref") != record["source_ref"]
+                    or not core._hex(receipt.get("packet_sha256"))):
+                fail("history_corrupt")
+            expected = {"ordinal": ordinal, "plan_sha256": value["plan_sha256"],
+                        "claim_sha256": sha(raw), "receipt_sha256": sha(dumps(receipt)),
+                        "packet_sha256": receipt["packet_sha256"]}
+        marker = claims / (name[:-5] + ".done")
+        completed = marker.exists()
+        if completed and (expected is None or parse(read(marker, ROW_CAP), ROW_CAP) != expected):
+            fail("history_corrupt")
+        result[ordinal] = {"claim": claim, "receipt": receipt, "done": completed, "marker": expected}
+    return result
+
+
 def safe(value):
     if value is None or type(value) is bool:
         return True
@@ -1185,10 +1230,8 @@ async def _collect_one(store, sources, ordinal, *, runtime, private_dir, live=Fa
     if any(e.get("kind") in ("intent", "receipt") and e.get("ordinal") == ordinal for e in events):
         fail("existing_receipt")
     claims = directory / "native-claims"
-    if claims.exists():
-        for entry in claims.glob("*.json"):
-            if not (claims / (entry.stem + ".done")).exists():
-                fail("existing_claim")
+    if any(not item["done"] for item in producer_claims(directory, value, events).values()):
+        fail("existing_claim")
     if runtime.exists() or private.exists():
         fail("existing_claim")
     packet = base_packet(value, record, identity)
@@ -1401,9 +1444,16 @@ def recover(store, sources, runtime, *, private_dir, now=None):
     actual_claim = parse(read(directory / "native-claims" / ("%08d.json" % ordinal), ROW_CAP), ROW_CAP)
     if actual_claim != expected_claim:
         fail("conflicting_claim")
-    if any(e.get("kind") == "receipt" and e.get("ordinal") == ordinal for e in events):
+    claims = producer_claims(directory, value, events)
+    own = claims.get(ordinal)
+    if own is None:
+        fail("conflicting_claim")
+    existing = own["receipt"]
+    if own["done"]:
         fail("existing_receipt")
     if not any(e["kind"] == "packet_prepared" for e in journal.events):
+        if existing is not None:
+            fail("packet_unprepared")
         _recover_partial(journal, private)
     for intent in (e for e in journal.events if e["kind"] == "attempt_intent"):
         retirement = next((e for e in journal.events if e["kind"] == "child_retired"
@@ -1422,19 +1472,40 @@ def recover(store, sources, runtime, *, private_dir, now=None):
             fail("cleanup_uncertain")
     packet = read_prepared(runtime, private)
     raw = dumps(packet)
+    digest = sha(raw)
+    producer_results = [e for e in journal.events if e["kind"] == "import_result"]
+    if (len(producer_results) > 1 or any(e.get("state") != "imported" or e.get("packet_sha256") != digest for e in producer_results)
+            or producer_results and existing is None):
+        fail("history_corrupt")
+    if existing is not None:
+        if existing.get("packet_sha256") != digest:
+            fail("packet_mismatch")
+        receipt = existing
+    else:
+        try:
+            receipt = core.ingest(store, sources, raw, private_dir=private / "core-import", imported_at=now or iso(Clock().utc()))
+        except core.EvidenceError as exc:
+            fail(str(exc) if str(exc) in ("existing_receipt", "incomplete_history") else "import_failed")
+    # This readback is authoritative even if the producer died after the real core write.
+    _d, current_plan, _r, _i, actual_events = bound_store(store, sources, ordinal)
+    current_claims = producer_claims(directory, current_plan, actual_events)
+    completed = current_claims[ordinal]
+    if completed["receipt"] != receipt or receipt.get("packet_sha256") != digest:
+        fail("import_uncertain")
+    if not producer_results:
+        try:
+            journal.append("import_result", state="imported", packet_sha256=digest)
+        except NativeError:
+            # Do not clear an orphan or repair a native journal after a failed write.
+            # A clean independently verified readback may still finish the done marker.
+            Journal(runtime)
+    marker = directory / "native-claims" / ("%08d.done" % ordinal)
     try:
-        receipt = core.ingest(store, sources, raw, private_dir=private / "core-import", imported_at=now or iso(Clock().utc()))
-    except core.EvidenceError as exc:
-        fail(str(exc) if str(exc) in ("existing_receipt", "incomplete_history") else "import_failed")
-    try:
-        journal.append("import_result", state="imported", packet_sha256=receipt["packet_sha256"])
-        marker = directory / "native-claims" / ("%08d.done" % ordinal)
-        write_new(marker, dumps({"packet_sha256": receipt["packet_sha256"]}))
+        write_new(marker, dumps(completed["marker"]))
     except NativeError:
-        # A producer's final write can fail after the immutable core receipt succeeded.
-        _d, _v, _r, _i, actual_events = bound_store(store, sources, ordinal)
-        if not any(e.get("kind") == "receipt" and e.get("ordinal") == ordinal
-                   and e["receipt"].get("packet_sha256") == sha(raw) for e in actual_events):
+        # Concurrent identical producer completion is harmless; partial/conflict is not.
+        verified = producer_claims(directory, current_plan, actual_events)[ordinal]
+        if not verified["done"]:
             fail("import_uncertain")
     return {"state": "imported", "ordinal": ordinal, "packet_sha256": receipt["packet_sha256"]}
 
