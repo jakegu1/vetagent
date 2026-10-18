@@ -22,7 +22,7 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
    CI for all six workflows, not only `test.yml` (the command is in `CLAUDE.md`). Fix this file
    if it drifted.
 4. Act on each row's next action. Then start the next ready task if WIP allows. Autonomy is
-   **A1** (`lead/config.yml`): spec, dispatch, review and decide; merges and pushes need Owner
+   **A0** (`lead/config.yml`): spec, dispatch, review and decide; merges and pushes need Owner
    authorization. The scoped technical release authorization below is already present.
 5. Run `python lead/checks.py` before every commit to master, lead bookkeeping included.
 6. Check the rotation rule (`lead-handoff`). Update this file and commit.
@@ -33,7 +33,7 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
   `CLAUDE.md`'s lead block, the untagged-probe hook in `.claude/settings.json` and the
   SessionStart hook in `.claude/settings.local.json` load. **The SessionStart hook works:** at
   the start of lead session 2 the first 80 lines of this file appeared on their own.
-- **Autonomy is A1.** The lead plans, dispatches and reviews; scoped Owner authorization is
+- **Autonomy is A0.** The lead plans, dispatches and reviews; scoped Owner authorization is
   required for merges and pushes. The technical release authorization below does not change
   money, legal, privacy, permission-file or pre-registered product-gate requirements.
 - **M1's clock is running** since run 36445100361 (2026-09-28 15:38 UTC, head `dc401b9`); still
@@ -54,6 +54,24 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 | Task | Level | Stage | Who | Next action |
 |---|---|---|---|---|
 | T-027 / T-031 release | 3 | Preflight-only Python AST compatibility regression; production unchanged | Compatibility executor / lead | Named test fix (g), exact cross-runtime verification, fresh regression review and Linux preflight |
+
+## Autonomous technical continuation
+
+The Owner explicitly authorizes continuing the known technical-gap queue while away,
+including the choice of bounded delegation, quality verification, technical merges,
+pushes and deployment. This extends the earlier two-task batch cap, not the sign-off
+categories for money, source rights, privacy, permission files or product gates.
+Dependency-related fixes are batched; changes sharing workflow registrations are
+integrated serially. Fresh reviews, the tests-first contract and actual Linux/runtime
+verification remain required. Do not treat unavailable upstream observations as passes.
+
+T-032's protected untracked draft waits for the verified compatibility base. T-034's
+rendered-template guard can then run beside T-032 in a separate worktree. T-033 host
+build locking follows T-032 because both register workflow steps. Separate scoped
+follow-ups cover live-backfill observation classification, remaining release guards,
+Node/Pyodide build resolution, action/runner migration and reproduction instructions.
+No new paid service, provider, benchmark rebaseline or product-threshold change is
+implied. Calendar-time and externally unavailable evidence stay explicit gaps.
 
 ## Current batch baseline
 
@@ -76,8 +94,9 @@ merge a77d1e1. Source approval does not claim deployment; the actual release sta
 The Owner asks to continue the same method, repair upstream access fluctuation first,
 then separate live RPC test dependencies, and deploy directly after quality checks.
 This is scoped technical merge, push and deployment authorization; other sign-off
-categories and A1 remain unchanged. Cap this batch at two implementation tasks with
-serial source changes and bounded independent/adversarial reviews.
+categories remain unchanged. The original two-implementation batch uses serial source
+changes and bounded independent/adversarial reviews; the newer autonomous continuation
+above authorizes the subsequent known technical-gap batches.
 
 The integration branch retains scheduled data through b13aac2. The real fixed-point
 generator succeeds; exact external backups restore only proved calendar/recent-log

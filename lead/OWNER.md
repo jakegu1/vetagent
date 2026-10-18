@@ -8,11 +8,17 @@
 ## Status in one line
 
 T-031 existing-provider discovery routing and T-027 deterministic/live RPC separation
-are reviewed and merged, with final T-027 combined review twelve of twelve and adversarial
-none. Both final configured inventories pass all thirty-six steps, including inherited
-network denial. Actual post-merge checks and deployment are now being performed.
-Autonomous technical work continues with the ready T-032 inclusive-range repair. No new
-provider, spending or product-gate change; Experiment D remains due Oct 20.
+are source-reviewed and integrated. Actual Linux preflight 39097068303 then exposes
+a Python 3.12 structural-test serialization regression; later steps are unobserved,
+not passed. Production remains on the previous verified release. Named repair (g)
+preserves all frozen digests and assertions and passes both local Python runtimes;
+fresh regression review and a new actual Linux preflight precede promotion.
+
+The Owner authorizes autonomous completion of the known technical-gap queue, retaining
+tests-first commits, bounded fresh reviews and actual deployment checks. Ready tasks
+cover complete backfill ranges, rendered gate templates and locked host builds; related
+release/observation/runtime hardening follows. No new provider, spending or product-gate
+change; Experiment D remains due Oct 20. Calendar and source-rights gaps remain explicit.
 
 Previous completed batch:
 
