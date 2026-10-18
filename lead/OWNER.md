@@ -7,17 +7,18 @@
 
 ## Status in one line
 
-T-032 through T-037 are deployed at 7ccccf1 with actual upload, smoke, observer and
-following bot CI. T-038's corrected source 57cf0a4 passes fresh independent 12/12 and
-adversarial review with no material findings; all three serialized ordinary/denied
-41-step pairs and exact-head Linux run 39118096886 pass. Its three reviewed source
-blobs are merged in dbbdeb5. The lead completes generation and the integrated gate
-before committing this closure and dispatching T-039, the final scoped wording repair.
-Final publication will batch those two tasks. Real backfill remains partial after
-HTTP 429; no provider access or durable outage history is claimed repaired.
+T-038 and T-039 are source-approved and queued for the final technical release.
+At composite 4ee7514, independent review is 12/12 and adversarial review finds
+no material defect. Each role passes a serialized 41-step ordinary/denied pair.
+Actual Linux run 39121657633 and both locked artifact builds pass. The lead
+now completes integrated generation and checks before upload, tagged readback,
+observer preservation, snapshot health and following bot CI. No final runtime
+approval is claimed before those gates. The prior deployed source is 7ccccf1.
 
-Experiment D remains unresolved and due 2026-10-20 UTC. No new provider, spending,
-permission change or product threshold is authorized by this continuation.
+Experiment D remains unresolved and due 2026-10-20 UTC. Public RPC access can
+still return HTTP 429; no new provider, spending, permission or safety-threshold
+change is included. W55(a) wording is repaired; W55(b,c) remain conditional
+integration constraints, with current complete Solana results unchanged.
 
 ### Earlier release records (historical)
 
@@ -187,7 +188,7 @@ technical release. Experiment D retains its existing rules and moves to 2026-10-
 
 | Task | Level | Status | Notes |
 |---|---|---|---|
-| T-039 | 3 | Dispatch after the checked T-038 closure | W55(a) wording only; three additive tests, one production helper, no safety-policy change |
+| T-039 | 3 | Source/local approved; actual release gates pending | Composite 4ee7514; three additive tests and one wording helper, no safety-policy change |
 
 ### Earlier task rows (historical)
 

@@ -53,7 +53,7 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 | Task | Level | Stage | Who | Next action |
 |---|---|---|---|---|
-| T-039 | 3 | Dispatch after the integrated T-038 gate and clean closure commit | Executor | Add the three preregistered tests first, then correct only provisional-score wording; preserve E24/E32 and all current verdicts |
+| T-039 | 3 | Source/local approved at 4ee7514; exact-head Linux and both locked artifacts pass | Lead | Complete integrated generation/gate, then actual upload, tagged readback, observer preservation and following bot CI before done |
 
 ## Autonomous technical continuation
 
@@ -80,6 +80,25 @@ three additive tests in the already-discovered regression runner. W55(b,c) remai
 conditional E24/E32 integration constraints; no scoring or coverage policy changes.
 
 ## Current batch baseline
+
+T-039 source/local review is approved at composite 4ee7514: independent 12/12
+and adversarial review with no material finding. All three roles complete
+serialized ordinary and inherited-denied 41-step inventories. The code freeze
+ce24316 changes four lines in one helper after three additive tests at 1a346de.
+All previous tests and current complete Solana result shapes remain exact.
+The source-only 40/41 attempt is retained: normal lead generation repairs the
+stale risk-test count from 1336 to the measured 1408 in a separate child commit.
+No accuracy figure, safety rule or benchmark is changed.
+
+Exact-head Linux run 39121657633 passes required checks, all 232 upstream
+checks and both locked builds; source/API and downloaded artifact bytes are
+verified. Live backfill remains partial after HTTP 429: three observations,
+two unobserved checks and zero failures. Root integration/generation and the
+actual release/readback/observer/bot-CI gates are still required; T-039 remains
+in progress until those lead-owned gates complete. W55(a) is repaired in this
+reviewed source; conditional W55(b,c), E24 and E32 remain in force.
+
+### Earlier source and release records (historical)
 
 T-038's corrected source 57cf0a4 passes fresh independent review 12/12 and adversarial
 review with no material findings. The lead verifies all 306 executor, 105 independent
