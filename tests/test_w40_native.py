@@ -533,6 +533,64 @@ class NativeAcceptance(unittest.TestCase):
                 asyncio.run(refusal_control())
                 self.assertEqual(len(calls), 1 if captured_status in (401, 403) else 2)
 
+        # Named (f): an available exit code does not prove matching-identity retirement.
+        for retirement_case in ("eventually_retired", "persistent", "inaccessible"):
+            with Fixture() as f:
+                class Resource:
+                    closed = False
+                    def close(self):
+                        self.closed = True
+                    Close = close
+                class Process:
+                    stdin = Resource()
+                    _handle = Resource()
+                    def poll(self):
+                        return 0
+                    def kill(self):
+                        raise AssertionError("exit_code_already_available")
+                worker = native.NativeWorker({}, directory=f.private / "attempts/01",
+                    permit={}, permit_sha256="0" * 64)
+                worker.process, worker.job = Process(), Resource()
+                worker.identity = {"pid": 1, "creation": "1"}
+                identity_queries = []
+                def matching_identity(identity):
+                    self.assertIs(identity, worker.identity)
+                    identity_queries.append(f.clock.mono())
+                    if retirement_case == "inaccessible":
+                        raise native.NativeError("cleanup_uncertain")
+                    return retirement_case == "persistent" or f.clock.mono() < 100.03
+                original_sleep = asyncio.sleep
+                async def bounded_sleep(seconds):
+                    self.assertGreaterEqual(seconds, 0)
+                    self.assertLessEqual(seconds, .005)
+                    f.clock.advance(seconds)
+                    await original_sleep(0)
+                with patch.object(native.time, "monotonic", f.clock.mono), \
+                     patch.object(native, "identity_alive", matching_identity), \
+                     patch.object(native.asyncio, "sleep", bounded_sleep):
+                    start = f.clock.mono()
+                    if retirement_case == "eventually_retired":
+                        self.assertEqual(asyncio.run(worker.retire()), "exited")
+                        self.assertGreaterEqual(f.clock.mono() - start, .03)
+                    else:
+                        with self.assertRaisesRegex(native.NativeError, "^cleanup_uncertain$"):
+                            asyncio.run(worker.retire())
+                        if retirement_case == "persistent":
+                            self.assertAlmostEqual(f.clock.mono() - start, .4, places=6)
+                    self.assertLessEqual(f.clock.mono() - start, .4 + 1e-9)
+                    self.assertTrue(worker.process._handle.closed)
+                    self.assertTrue(worker.process.stdin.closed)
+                    self.assertTrue(worker.job.closed)
+                    queries_before = len(identity_queries)
+                    reentry_at = f.clock.mono()
+                    if retirement_case == "eventually_retired":
+                        self.assertEqual(asyncio.run(worker.retire()), "exited")
+                    else:
+                        with self.assertRaisesRegex(native.NativeError, "^cleanup_uncertain$"):
+                            asyncio.run(worker.retire())
+                    self.assertEqual(f.clock.mono(), reentry_at)
+                    self.assertEqual(len(identity_queries), queries_before)
+
     def test_w40_native_private_boundary_and_safe_failures(self):
         native = importlib.import_module("w40_native")
         with Fixture() as f:
