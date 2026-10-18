@@ -70,12 +70,14 @@ is unreachable; it supplies no simulation agreement or BUILD decision. W41/W47 s
 open. The source/test fix preserves the historical reference and every decision bar.
 No simulator/score integration or V3 work follows from this instrument repair.
 
-T-043 is in progress from its ready spec and pre-test timing clarification. It adds
-one independent durable W57 collector and offline registration, with a named narrow
-workflow-pin allowlist extension. CI egress pilot precedes fresh enrollment; the
-scientific window and inference rule remain fixed. No forty-eight-hour clock is
-running yet. T-044 is ready as a bounded W40 quota-pilot instrument, with additive
-tests inside the existing dynamic oracle runner so its files are disjoint from T-043.
+T-043's first independent review requires changes (seven of twelve) and its adversarial
+review finds three material recovery/inference defects despite the actual forty-three-
+step gate passing. Its unpublished candidate is held. Named amendment (b) adds the
+missing evidence/recovery regressions before a bounded second repair/review round.
+CI egress pilot precedes fresh enrollment; the scientific window and inference rule
+remain fixed. No forty-eight-hour clock is running yet. T-044 is in progress as a
+bounded W40 quota-pilot instrument, with additive tests inside the existing dynamic
+oracle runner so its files are disjoint from T-043.
 It permits one finite single-date observation, not a started prospective label study,
 continuous full-day availability claim or benchmark rebaseline. Source reviews and
 the root's actual run remain mandatory.
