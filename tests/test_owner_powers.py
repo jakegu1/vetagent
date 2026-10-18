@@ -479,7 +479,10 @@ def _owner_fixture_object(pairs):
 def _load_owner_power_fixture(path=None):
     """Read the audited historical recording; never acquire or refresh it implicitly."""
     with open(path if path is not None else _OWNER_POWER_FIXTURE, "rb") as stream:
-        raw = stream.read().replace(b"\r\n", b"\n")
+        raw = stream.read()
+    lf = raw.replace(b"\r\n", b"\n")
+    _owner_fixture_require(raw == lf or raw == lf.replace(b"\n", b"\r\n"))
+    raw = lf
     _owner_fixture_require(b"\r" not in raw and hashlib.sha256(raw).hexdigest()
                            == _OWNER_POWER_FIXTURE_SHA256)
     try:
