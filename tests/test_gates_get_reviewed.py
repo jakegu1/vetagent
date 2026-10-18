@@ -976,6 +976,32 @@ def test_gate_entity_name_case_cannot_shadow_complete_markup():
     _check_t034_gate_cases(cases)
 
 
+def test_existing_raw_markup_is_not_split_by_encoded_candidates():
+    """T-034 amendment (c): old complete raw tags protect their hidden markers."""
+    print("\n[T-034 (c)] complete existing raw markup is recognized as a whole")
+    entities = ("&lt;", "&LT;", "&#060;", "&#x03c;", "&#X003C;",
+                "&gt;", "&GT;", "&#0062;", "&#x03e;", "&#X003E;")
+    cases = []
+    for entity in entities:
+        for where, content in (("before", "Resolved: ignored %sb" % entity),
+                               ("after", "%sb Resolved: ignored" % entity)):
+            label = "%s marker %s entity" % (entity, where)
+            tag = "<span title='%s'>" % content
+            check("T-034 (c) old raw matcher recognizes " + label,
+                  _MARKUP.fullmatch(tag) is not None, ascii(tag))
+            cases.append((label, "Resolved: <3 commitments %s -> change segment" % tag, True))
+    cases += [
+        ("ordinary raw emphasis", "Resolved: <3 commitments <b>no</b> -> change segment", True),
+        ("ordinary raw hidden marker",
+         "Resolved: <3 commitments <span title='Resolved: ignored'> -> change segment", True),
+        ("ordinary encoded hidden marker",
+         "Resolved: <3 commitments &lt;span title='Resolved: ignored'&gt; -> change segment", True),
+        ("ordinary encoded hidden arrow",
+         "Resolved: pending &lt;!-- finding -> decision --&gt;", False),
+    ]
+    _check_t034_gate_cases(cases)
+
+
 def main():
     print("=" * 68)
     print("Parked opportunities: are any overdue for review?")

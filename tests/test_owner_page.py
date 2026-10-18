@@ -1237,6 +1237,50 @@ def test_entity_name_case_stays_consistent_on_owner_surfaces():
                and body is not None and "docs/STRATEGY.md" in body and not _ids(body)), ascii((rows, body)))
 
 
+def test_raw_markup_entities_preserve_hidden_marker_owner_seams():
+    """T-034 amendment (c): old complete raw tags remain whole on Owner surfaces."""
+    print("\n[T-034 (c)] raw markup entities preserve the Owner's hidden-marker seam")
+    entities = ("&lt;", "&LT;", "&#060;", "&#x03c;", "&#X003C;",
+                "&gt;", "&GT;", "&#0062;", "&#x03e;", "&#X003E;")
+    cases = []
+    for entity in entities:
+        for where, content in (("before", "Resolved: ignored %sb" % entity),
+                               ("after", "%sb Resolved: ignored" % entity)):
+            tag = "<span title='%s'>" % content
+            cases.append(("%s marker %s entity" % (entity, where),
+                          "Resolved: <3 commitments %s -> change segment" % tag, True))
+    cases += [
+        ("ordinary raw emphasis", "Resolved: <3 commitments <b>no</b> -> change segment", True),
+        ("ordinary raw hidden marker",
+         "Resolved: <3 commitments <span title='Resolved: ignored'> -> change segment", True),
+        ("ordinary encoded hidden marker",
+         "Resolved: <3 commitments &lt;span title='Resolved: ignored'&gt; -> change segment", True),
+        ("ordinary encoded hidden arrow",
+         "Resolved: pending &lt;!-- finding -> decision --&gt;", False),
+    ]
+    opps = _opportunities(closed=(("O2", "2026-10-16"), ("O8", "2026-10-16")))
+    for label, text, answered in cases:
+        strategy = _four_gates(text)
+        row = [ln for ln in strategy.splitlines() if ln.startswith("| 2026-10-16 ")][0]
+        check("T-034 (c) loaded helper %s: %s" % (answered, label),
+              owner.gate_guard().gate_row_answered(row) is answered)
+        got = [g["answered"] for g in _with_sources(owner.gates, strategy, opps)
+               if g["date"] == "2026-10-16"]
+        check("T-034 (c) owner.gates() %s: %s" % (answered, label), got == [answered], ascii(got))
+        page = _page(_DAY, strategy, opps, _NO_OWNER_ITEMS)
+        cell, timeline = _gate_table_when(page, "2026-10-16"), _timeline_label(page, "2026-10-16")
+        check("T-034 (c) gate table %s: %s" % (answered, label),
+              _reads_answered(cell) if answered else cell == "**TODAY**", ascii(cell))
+        check("T-034 (c) timeline %s: %s" % (answered, label),
+              _reads_answered(timeline) if answered else timeline == _Q + " - TODAY", ascii(timeline))
+        rows = [r for r in _needs_you_rows(page) if _Q in " | ".join(r)]
+        body = _gate_subsection(page, _Q)
+        check("T-034 (c) Needs you with entries closed: %s" % label,
+              not _listed(page, _Q) if answered else
+              (len(rows) == 1 and rows[0][:2] == ["**TODAY**", "2026-10-16"]
+               and body is not None and "docs/STRATEGY.md" in body and not _ids(body)), ascii((rows, body)))
+
+
 def main():
     print("=" * 68)
     print("Owner page: the one document written for someone not reading code")
