@@ -922,6 +922,58 @@ def test_gate_markup_recognition_resumes_after_unmatched_prefixes():
     _check_t034_gate_cases(cases)
 
 
+def test_gate_entity_name_case_cannot_shadow_complete_markup():
+    """T-034 amendment (b): only entities decoding to brackets are delimiters."""
+    print("\n[T-034 (b)] entity names retain their actual case-sensitive meaning")
+    aliases = (("<", _LT, ("<", "&lt;", "&LT;", "&#060;", "&#x03c;", "&#X003C;",
+                           "&Lt;", "&lT;")),
+               (">", _GT, (">", "&gt;", "&GT;", "&#0062;", "&#x03e;", "&#X003E;",
+                           "&Gt;", "&gT;")))
+    for bracket, pattern, spellings in aliases:
+        for spelling in spellings:
+            recognized = re.fullmatch(pattern, spelling, _ENCODED_MARKUP.flags) is not None
+            check("T-034 (b) delimiter meaning: %s" % spelling,
+                  recognized == (html.unescape(spelling) == bracket),
+                  "recognized %r, decoded %s" % (recognized, ascii(html.unescape(spelling))))
+    forms = (("literal", "<", ">"), ("named lower", "&lt;", "&gt;"),
+             ("named upper", "&LT;", "&GT;"), ("decimal", "&#060;", "&#0062;"),
+             ("hex lower", "&#x03c;", "&#x03e;"), ("hex upper", "&#X003C;", "&#X003E;"))
+    template = _emitted_message().split("'")[1]
+    cases = []
+    for form, left, right in forms:
+        encoded = " -> ".join(side.replace("<", left).replace(">", right)
+                              for side in template.split(" -> "))
+        cases += [(form + " valid template", encoded, False),
+                  (form + " valid hidden marker",
+                   "Resolved: <3 commitments %sspan title='Resolved: ignored'%s -> change segment"
+                   % (left, right), True),
+                  (form + " valid hidden arrow",
+                   "Resolved: pending %s!-- finding -> decision --%s" % (left, right), False)]
+        for invalid in ("&Lt;", "&lT;"):
+            tag = form + " after invalid opener " + invalid
+            cases += [(tag + " hidden arrow",
+                       "Resolved: pending %s!-- invalid %s!-- finding -> decision --%s"
+                       % (invalid, left, right), False),
+                      (tag + " hidden marker",
+                       "Resolved: <3 commitments %s!-- invalid %sspan title='Resolved: ignored'%s --%s -> change segment"
+                       % (invalid, left, right, right), True)]
+        for invalid in ("&Gt;", "&gT;"):
+            tag = form + " with invalid closer " + invalid
+            cases += [(tag + " hidden arrow",
+                       "Resolved: pending %s!-- noise --%s finding -> decision --%s"
+                       % (left, invalid, right), False),
+                      (tag + " hidden comment marker",
+                       "Resolved: <3 commitments %s!-- noise --%s Resolved: ignored --%s -> change segment"
+                       % (left, invalid, right), True),
+                      (tag + " hidden tag marker",
+                       "Resolved: <3 commitments %sspan title='noise %s Resolved: ignored'%s -> change segment"
+                       % (left, invalid, right), True)]
+    for invalid in ("&Lt;", "&lT;"):
+        cases.append((invalid + " remains literal prose",
+                      "Resolved: <3 commitments %s plain prose -> change segment" % invalid, True))
+    _check_t034_gate_cases(cases)
+
+
 def main():
     print("=" * 68)
     print("Parked opportunities: are any overdue for review?")

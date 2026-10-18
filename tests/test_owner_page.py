@@ -1175,6 +1175,68 @@ def test_shadowed_encoded_markup_stays_consistent_on_owner_surfaces():
               ascii((rows, body)))
 
 
+def test_entity_name_case_stays_consistent_on_owner_surfaces():
+    """T-034 amendment (b): entity-name meaning agrees on actual Owner surfaces."""
+    print("\n[T-034 (b)] entity-name case remains consistent on Owner surfaces")
+    forms = (("literal", "<", ">"), ("named lower", "&lt;", "&gt;"),
+             ("named upper", "&LT;", "&GT;"), ("decimal", "&#060;", "&#0062;"),
+             ("hex lower", "&#x03c;", "&#x03e;"), ("hex upper", "&#X003C;", "&#X003E;"))
+    template = owner.gate_guard()._emitted_message().split("'")[1]
+    cases = []
+    for form, left, right in forms:
+        encoded = " -> ".join(side.replace("<", left).replace(">", right)
+                              for side in template.split(" -> "))
+        cases += [(form + " valid template", encoded, False),
+                  (form + " valid hidden marker",
+                   "Resolved: <3 commitments %sspan title='Resolved: ignored'%s -> change segment"
+                   % (left, right), True),
+                  (form + " valid hidden arrow",
+                   "Resolved: pending %s!-- finding -> decision --%s" % (left, right), False)]
+        for invalid in ("&Lt;", "&lT;"):
+            tag = form + " after invalid opener " + invalid
+            cases += [(tag + " hidden arrow",
+                       "Resolved: pending %s!-- invalid %s!-- finding -> decision --%s"
+                       % (invalid, left, right), False),
+                      (tag + " hidden marker",
+                       "Resolved: <3 commitments %s!-- invalid %sspan title='Resolved: ignored'%s --%s -> change segment"
+                       % (invalid, left, right, right), True)]
+        for invalid in ("&Gt;", "&gT;"):
+            tag = form + " with invalid closer " + invalid
+            cases += [(tag + " hidden arrow",
+                       "Resolved: pending %s!-- noise --%s finding -> decision --%s"
+                       % (left, invalid, right), False),
+                      (tag + " hidden comment marker",
+                       "Resolved: <3 commitments %s!-- noise --%s Resolved: ignored --%s -> change segment"
+                       % (left, invalid, right), True),
+                      (tag + " hidden tag marker",
+                       "Resolved: <3 commitments %sspan title='noise %s Resolved: ignored'%s -> change segment"
+                       % (left, invalid, right), True)]
+    for invalid in ("&Lt;", "&lT;"):
+        cases.append((invalid + " remains literal prose",
+                      "Resolved: <3 commitments %s plain prose -> change segment" % invalid, True))
+    opps = _opportunities(closed=(("O2", "2026-10-16"), ("O8", "2026-10-16")))
+    for label, text, answered in cases:
+        strategy = _four_gates(text)
+        row = [ln for ln in strategy.splitlines() if ln.startswith("| 2026-10-16 ")][0]
+        check("T-034 (b) loaded helper %s: %s" % (answered, label),
+              owner.gate_guard().gate_row_answered(row) is answered)
+        got = [g["answered"] for g in _with_sources(owner.gates, strategy, opps)
+               if g["date"] == "2026-10-16"]
+        check("T-034 (b) owner.gates() %s: %s" % (answered, label), got == [answered], ascii(got))
+        page = _page(_DAY, strategy, opps, _NO_OWNER_ITEMS)
+        cell, timeline = _gate_table_when(page, "2026-10-16"), _timeline_label(page, "2026-10-16")
+        check("T-034 (b) gate table %s: %s" % (answered, label),
+              _reads_answered(cell) if answered else cell == "**TODAY**", ascii(cell))
+        check("T-034 (b) timeline %s: %s" % (answered, label),
+              _reads_answered(timeline) if answered else timeline == _Q + " - TODAY", ascii(timeline))
+        rows = [r for r in _needs_you_rows(page) if _Q in " | ".join(r)]
+        body = _gate_subsection(page, _Q)
+        check("T-034 (b) Needs you with entries closed: %s" % label,
+              not _listed(page, _Q) if answered else
+              (len(rows) == 1 and rows[0][:2] == ["**TODAY**", "2026-10-16"]
+               and body is not None and "docs/STRATEGY.md" in body and not _ids(body)), ascii((rows, body)))
+
+
 def main():
     print("=" * 68)
     print("Owner page: the one document written for someone not reading code")
