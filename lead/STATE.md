@@ -76,8 +76,15 @@ forty-three-step checks, Linux preflight 39163825119 and exact-source master CI
 restores its preceding pilot Artifact before fresh enrollment. Forty-five fresh
 members and eighteen controls are frozen. The real scientific window runs from
 2026-10-18T20:48:40.293557Z through 2026-10-20T20:48:40.293557Z. First actual
-scheduled resume remains to be observed. No scientific conclusion is available.
-Do not edit its driver, original probe or independent workflow while it is active.
+scheduled entry 39172893956 runs but returns idle with no Artifact or new sample.
+A replay of actual metadata and saved ZIPs proves an older pilot's larger opaque
+Artifact ID hides the later active start. The same class can bypass active-study
+admission and truncate reconstruction. T-048 repairs the chronological adapter
+contract with tests first and fresh reviews. Its named controlled replacement
+preserves the existing source_changed guard: an actual later cron must retire
+the original frozen study before any separate explicit new study. No old clock,
+cohort, source or observation is reset, continued or rebound. Probe/workflow stay
+exact. No scientific conclusion or successful scheduled resume is claimed.
 
 T-044 corrected source 6d300a3 passes fresh combined second review, twelve of
 twelve and RED-TEAM: none. The reviewer independently closes the native deadline,
@@ -118,18 +125,24 @@ twelve of twelve and RED-TEAM: none. The corrected integrated gate passes all
 forty-three steps at 31cae13 with native exit zero and all 961 tracked files exact.
 Actual Linux preflight 39171150814 and master CI 39171535134 pass all required
 steps, both locked builds, upstream-contract and backfill-roundtrip. T-044 and
-T-045 are published at 31cae13. The sole finite T-044 pilot is now running; its
-unobserved labels and API errors remain distinct from completed HTTP requests.
+T-045 are published at 31cae13. The sole finite T-044 pilot completes with 316
+HTTP responses: 112 match the requested token and 204 are API4029 business-limit
+responses. Its label function returns 104 nonnull values, while only 89 satisfy
+the strict observed-state contract. These are different denominators; availability
+is false. All original source/data bytes remain exact and no repeat is run.
 No daily allowance, reset, new benchmark or thirty-day start follows.
 
-T-046 c09caa9 is held by its first fresh independent/adversarial reviews. A known
-permission header can be lost at fetch cancellation; committed private sidecars
-can be missing or changed while recovery still imports. Named d/e require tests
-first and separate same-finding repairs, exact old assertions and bounded second
-reviews. No current complete gate is granted at this held source. T-047 remains
-a private ready draft until corrected reviewed native/API and complete-gate
-bindings exist. Native and scheduling are still engineering work, not Owner or
-calendar waits. See lead/reviews/T-046.md for the current decision.
+T-046 d01b485 closes the first-review header and raw-inventory counterexamples
+and passes its own actual forty-four-step gate with exact tracked bytes. The
+second review still reproduces a private ancestor symlink/junction into a real
+Git repository accepting offline recovery. Named d2 is dispatched as a narrow
+privacy invariant closure; the held gate is not rebound to its future repair.
+First-run Windows cleanup failures remain recorded with unresolved historical
+handle ownership; bounded rechecks pass without test/helper changes. A private
+prepared-seal helper drift is also retained explicitly, with old and executed
+bytes independently bound; no old seal is rewritten. T-047 remains a private
+ready draft until corrected reviewed native/API and complete-gate bindings exist.
+Native and scheduling remain engineering work. See lead/reviews/T-046.md.
 
 The Owner renews authorization to prioritize the 21 remaining rows, batch related
 autonomous repairs, delegate bounded isolated work, and merge/push/deploy after quality
