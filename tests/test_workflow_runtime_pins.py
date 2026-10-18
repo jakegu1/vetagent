@@ -280,7 +280,8 @@ def test_observer_prefix_refresh_preserves_the_actual_exact_guard():
         readings = invoke(approved)
         check("the actual old function accepts the exact approved observer workflow",
               bool(readings) and all(condition for _, condition in readings), readings)
-        command = "python bench/production_probe.py --write"
+        command = ("python bench/production_probe.py"
+                   " --write")
         assert approved.count(command) == 1
         changed = approved.replace(command, "python bench/production_probe.py", 1)
         readings = invoke(changed)
