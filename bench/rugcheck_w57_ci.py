@@ -373,6 +373,35 @@ def prepare(phase, store, ctx, now, study=None, pilot_id=None):
     return {"action": "collect", "state": state, "phase": phase, "prepared_at": now}
 
 
+def _observe_fields(label, mint):
+    """Keep availability from the same response which the unchanged probe observes.
+
+    observe() intentionally exposes Boolean summaries. Its default False cannot tell
+    a missing source value from a measured negative, so capture only these fields while
+    its single existing transport call runs. There is no second upstream request.
+    """
+    transport, captured = probe.curl, {}
+    def capture(url):
+        code, body = transport(url)
+        if str(code) == "200" and isinstance(body, dict):
+            extensions = body.get("token_extensions")
+            extensions = extensions if isinstance(extensions, dict) else {}
+            captured.update({key: extensions.get(key) if type(extensions.get(key)) is bool else None
+                             for key in ("permanentDelegate", "pausableConfig", "mintCloseAuthority")})
+            authorities = [body.get("freezeAuthority"), body.get("mintAuthority")]
+            captured["freeze_or_mint"] = (True if any(type(x) is bool and x for x in authorities)
+                                           else False if all(type(x) is bool and not x for x in authorities) else None)
+        return code, body
+    probe.curl = capture
+    try:
+        observed = probe.observe(label, mint, "scores")
+    finally:
+        probe.curl = transport
+    observed["gated"] = {key: captured.get(key) for key in
+                         ("permanentDelegate", "pausableConfig", "mintCloseAuthority", "freeze_or_mint")}
+    return observed
+
+
 def _row(raw, state, label, mint, now, slot=None):
     usable = (isinstance(raw, dict) and str(raw.get("http")) == "200"
               and raw.get("body") == "ok" and probe._has_report_fields(raw))
@@ -389,11 +418,11 @@ def _row(raw, state, label, mint, now, slot=None):
            "score_normalised": score if valid_score else None,
            "score_state": "observed" if valid_score else "unavailable_or_invalid",
            "detectedAt": detected,
-           "gated": {k: bool((raw.get("gated") or {}).get(k)) for k in
+           "gated": {k: (raw.get("gated") or {}).get(k) if usable and type((raw.get("gated") or {}).get(k)) is bool else None for k in
                      ("permanentDelegate", "pausableConfig", "mintCloseAuthority", "freeze_or_mint")}}
     for key in ("totalHolders", "topHolders_n"):
         value = raw.get(key)
-        rec[key] = value if usable and type(value) in (int, float) and math.isfinite(value) else None
+        rec[key] = value if usable and type(value) is int and value >= 0 else None
     rec["age_minutes"] = probe.age_minutes(detected, datetime.datetime.fromtimestamp(now, datetime.timezone.utc))
     if len(encoded(rec)) > 2048:
         raise StudyError("row_overflow")
@@ -429,7 +458,7 @@ def collect(plan, intent_id, store, ctx, clock=time.time, sleep=time.sleep, on_r
         else:
             requested_at = clock()
             state["requests"]["rugcheck"] += 1
-            raw = probe.observe(label, mint, "scores")
+            raw = _observe_fields(label, mint)
         rec = _row(raw, state, label, mint, clock(), slot)
         rec["request_started_at"] = requested_at
         if slot is not None:
@@ -528,6 +557,81 @@ def collect(plan, intent_id, store, ctx, clock=time.time, sleep=time.sleep, on_r
     return state, rows
 
 
+def _attempted(row):
+    if "request_started_at" in row:
+        return number(row["request_started_at"])
+    return row.get("body") != "not_observed"
+
+
+def _missing_intervals(state):
+    missing = [s["slot"] for s in state["slots"] if s["status"] == "not_observed"]
+    groups = []
+    for slot in missing:
+        if groups and groups[-1][-1] + 1 == slot:
+            groups[-1].append(slot)
+        else:
+            groups.append([slot])
+    return [{"slots": group, "due_start": state["started_at"] + group[0] * INTERVAL,
+             "due_end": min(state["ends_at"], state["started_at"] + (group[-1] + 1) * INTERVAL)}
+            for group in groups] if state["started_at"] is not None else []
+
+
+def _coverage(state, rows):
+    powers = ("permanentDelegate", "pausableConfig", "mintCloseAuthority", "freeze_or_mint")
+    fields = ("score_normalised", "detectedAt", "totalHolders", "topHolders_n", *powers)
+    result = {}
+    for group in ("fresh", "control"):
+        members = {m["mint"] for m in state["cohort"] if m["group"] == group}
+        expected = len(members) * (LAST_SLOT + 1)
+        item = {"population": len(members), "scheduled_slots": LAST_SLOT + 1, "expected_cells": expected,
+                "attempted_cells": 0, "never_attempted_cells": expected, "attempted_failed_requests": 0,
+                "fields": {key: {"usable": 0, "attempted_unavailable_or_invalid": 0,
+                                  "outside_window": 0, "never_attempted": expected} for key in fields},
+                "slots": {str(s["slot"]): {"attempted_cells": 0, "never_attempted_cells": len(members)} for s in state["slots"]},
+                "observation_intervals": []}
+        seen, intervals = set(), {}
+        for row in rows:
+            if row.get("phase") != "tick" or row.get("mint") not in members:
+                continue
+            slot = row.get("slot")
+            if type(slot) is not int or not 0 <= slot <= LAST_SLOT or not number(row.get("ts")):
+                raise StudyError("invalid_observation")
+            key = (slot, row["mint"], row.get("attempt"))
+            if key in seen:
+                raise StudyError("duplicate_observation")
+            seen.add(key)
+            counts = item["slots"].setdefault(str(slot), {"attempted_cells": 0, "never_attempted_cells": len(members)})
+            if not _attempted(row):
+                continue
+            item["attempted_cells"] += 1
+            item["never_attempted_cells"] -= 1
+            counts["attempted_cells"] += 1
+            counts["never_attempted_cells"] -= 1
+            intervals.setdefault(slot, []).append(row["ts"])
+            envelope = str(row.get("http")) == "200" and row.get("body") == "ok"
+            if not envelope:
+                item["attempted_failed_requests"] += 1
+            outside = state["started_at"] is None or not state["started_at"] <= row["ts"] <= state["ends_at"]
+            for field in fields:
+                field_counts = item["fields"][field]
+                field_counts["never_attempted"] -= 1
+                value = (row.get("gated") or {}).get(field) if field in powers else row.get(field)
+                if field in powers:
+                    valid = type(value) is bool
+                elif field in ("totalHolders", "topHolders_n"):
+                    valid = type(value) is int and value >= 0
+                elif field == "detectedAt":
+                    age = probe.age_minutes(value, datetime.datetime.fromtimestamp(row["ts"], datetime.timezone.utc))
+                    valid = age is not None and age >= 0
+                else:
+                    valid = probe.band(value) is not None
+                field_counts["outside_window" if outside else "usable" if envelope and valid else "attempted_unavailable_or_invalid"] += 1
+        item["observation_intervals"] = [{"slot": slot, "first_response_at": min(values), "last_response_at": max(values),
+                                           "responses": len(values)} for slot, values in sorted(intervals.items())]
+        result[group] = item
+    return result
+
+
 def readout(state, rows):
     _validate_state(state)
     fresh = [m for m in state["cohort"] if m["group"] == "fresh"]
@@ -536,7 +640,9 @@ def readout(state, rows):
     answer = {"study": state["study"], "fresh_enrolled": len(fresh), "started_at": start, "ends_at": end,
               "duration_seconds": DURATION, "final_tenth_start": None if start is None else start + DURATION * 0.9,
               "events": [], "outside_window_observations": 0, "unavailable_score_cells": 0,
-              "censored": True, "negative_tail_established": False, "proposal": "inconclusive"}
+              "censored": True, "negative_tail_established": False, "proposal": "inconclusive",
+              "coverage": _coverage(state, rows), "missing_slot_intervals": _missing_intervals(state),
+              "losses": copy.deepcopy(state.get("losses", []))}
     if start is None:
         return answer
     keys = set()
@@ -549,6 +655,8 @@ def readout(state, rows):
         keys.add(key)
         if not number(row.get("ts")) or type(row.get("slot")) is not int or not 0 <= row["slot"] <= LAST_SLOT:
             raise StudyError("invalid_observation")
+        if not _attempted(row):
+            continue
         if row["ts"] > end or row["ts"] < start:
             answer["outside_window_observations"] += 1
             continue
@@ -575,7 +683,8 @@ def readout(state, rows):
     expected = len(fresh) * (LAST_SLOT + 1)
     answer["observed_score_cells"] = observed
     answer["expected_score_cells"] = expected
-    answer["not_observed_score_cells"] = max(0, expected - len(keys))
+    answer["not_observed_score_cells"] = answer["coverage"]["fresh"]["fields"]["score_normalised"]["never_attempted"]
+    answer["unavailable_score_cells"] = answer["coverage"]["fresh"]["fields"]["score_normalised"]["attempted_unavailable_or_invalid"]
     answer["censored"] = observed != expected or bool(answer["outside_window_observations"])
     if answer["events"]:
         latest = max(answer["events"], key=lambda row: row["interval_end"])
