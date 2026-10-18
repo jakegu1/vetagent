@@ -47,6 +47,7 @@ import argparse
 import collections
 import datetime
 import json
+import math
 import os
 import subprocess
 import sys
@@ -68,8 +69,18 @@ BANDS = ((50, "critical"), (20, "warn"), (0, "ok"))
 ESTABLISHED_AT = 5
 
 
+def _nonnegative_number(value):
+    """A measured numeric field, excluding booleans, malformed values and infinities."""
+    if type(value) is int:
+        return value if value >= 0 else None
+    if type(value) is float and math.isfinite(value) and value >= 0:
+        return value
+    return None
+
+
 def band(x):
-    """Which engine band a score falls in, or None if there was no score to read."""
+    """Which engine band a score falls in, or None if no usable score was read."""
+    x = _nonnegative_number(x)
     if x is None:
         return None
     for floor, name in BANDS:
@@ -343,7 +354,7 @@ def _score_verdict(by):
     for m in fresh:
         g = sorted(by[m], key=lambda r: r["sweep"])
         under = [r for r in g
-                 if r.get("score_normalised") is not None
+                 if band(r.get("score_normalised")) is not None
                  and r["score_normalised"] <= ESTABLISHED_AT]
         if not under:
             continue
@@ -352,8 +363,8 @@ def _score_verdict(by):
                          if (r.get("gated") or {}).get(k)})
         if powers:
             under_and_gated.append((m, g, powers))
-        side = [None if r.get("score_normalised") is None
-                else r["score_normalised"] <= ESTABLISHED_AT for r in g]
+        values = [_nonnegative_number(r.get("score_normalised")) for r in g]
+        side = [None if value is None else value <= ESTABLISHED_AT for value in values]
         if len({s for s in side if s is not None}) > 1:
             flipped.append((m, g))
     print("fresh mints that read <=%d in at least one sweep: %d of %d"
@@ -405,7 +416,8 @@ def report(path):
                                [(r["sweep"], r.get("topHolders_n", 0) > 0) for r in g]))
 
     moved = [m for m, g in by.items()
-             if len({r.get("score_normalised") for r in g}) > 1]
+             if len({_nonnegative_number(r.get("score_normalised")) for r in g
+                     if band(r.get("score_normalised")) is not None}) > 1]
     print("mints whose score_normalised moved: %d" % len(moved))
     for m in moved:
         g = sorted(by[m], key=lambda r: r["sweep"])
