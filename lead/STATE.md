@@ -74,6 +74,11 @@ Node/Pyodide build resolution, action/runner migration and reproduction instruct
 No new paid service, provider, benchmark rebaseline or product-threshold change is
 implied. Calendar-time and externally unavailable evidence stay explicit gaps.
 
+A bounded two-runtime residual probe reproduces W55(a)'s latent false chain wording.
+T-039 is ready after checked T-038 source integration, restricted to that helper and
+three additive tests in the already-discovered regression runner. W55(b,c) remain
+conditional E24/E32 integration constraints; no scoring or coverage policy changes.
+
 ## Current batch baseline
 
 T-032 through T-037 are now published at 7ccccf1. Exact pinned-action Linux preflight

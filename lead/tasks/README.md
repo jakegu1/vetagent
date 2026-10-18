@@ -41,3 +41,4 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-036 | Pin supported Node 24 actions and the verified Ubuntu runner generation | 3 | M | T-033, T-035 | done; deployed 7ccccf1, actual observer and following bot CI pass |
 | T-037 | Make release guards and reproduction instructions report unavailable evidence | 3 | M | T-032, T-034 | done; both reviews approve, merged a98c7af, uninterrupted combined 38/38 |
 | T-038 | Separate unavailable backfill observations from decoder contradictions | 3 | M | T-032, T-036 | in_progress; dispatch from checked post-observer closure head |
+| T-039 | Describe a withheld provisional score without a false unsupported-chain claim | 3 | S | T-038 | ready; only W55(a), wait for checked T-038 source integration |
