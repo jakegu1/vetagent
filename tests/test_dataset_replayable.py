@@ -131,15 +131,24 @@ def test_w40_plan_is_offline_source_bound_and_not_started(_support=False):
         pool = "0x" + "a" * 40
 
         def __enter__(self):
-            self.temp = tempfile.TemporaryDirectory()
-            self.root = pathlib.Path(self.temp.name)
-            self.sources = []
-            self.output = self.root / "safe"
-            self.private = self.root / "private"
-            return self
+            self.environment = patch.dict(os.environ, {"CI": "", "GITHUB_ACTIONS": ""})
+            self.environment.__enter__()
+            try:
+                self.temp = tempfile.TemporaryDirectory()
+                self.root = pathlib.Path(self.temp.name)
+                self.sources = []
+                self.output = self.root / "safe"
+                self.private = self.root / "private"
+                return self
+            except BaseException:
+                self.environment.__exit__(*sys.exc_info())
+                raise
 
         def __exit__(self, *args):
-            self.temp.cleanup()
+            try:
+                self.temp.cleanup()
+            finally:
+                self.environment.__exit__(*args)
 
         def row(self, **changes):
             item = {"chain": "base", "base_token": "base_" + self.token,
