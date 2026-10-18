@@ -121,7 +121,7 @@ def aggregate_reply(reply, *, tool, cohort, start, end):
             seen.add(key)
             n, count, interval = (_count(row[k]) for k in
                                   ("weighted_count", "sampled_rows", "max_sample_interval"))
-            if count < 1 or interval < 1 or not count <= n <= count * interval:
+            if count < 1 or interval < 1 or not count + interval - 1 <= n <= count * interval:
                 raise ValueError("inconsistent_counts")
             weighted += n
             stored += count
