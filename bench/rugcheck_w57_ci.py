@@ -638,6 +638,18 @@ def _coverage(state, rows):
     return result
 
 
+def _index_time(value):
+    if not isinstance(value, str) or "T" not in value:
+        return None
+    try:
+        parsed = datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=datetime.timezone.utc)
+        return parsed.timestamp()
+    except (ValueError, OverflowError, OSError):
+        return None
+
+
 def readout(state, rows):
     _validate_state(state)
     fresh = [m for m in state["cohort"] if m["group"] == "fresh"]
@@ -680,11 +692,22 @@ def readout(state, rows):
             if probe.band(row["score_normalised"]) == "ok":
                 clean = row
             elif clean is not None:
-                age = probe.age_minutes(row.get("detectedAt"),
-                                        datetime.datetime.fromtimestamp(row["ts"], datetime.timezone.utc))
+                left_age = probe.age_minutes(clean.get("detectedAt"),
+                                             datetime.datetime.fromtimestamp(clean["ts"], datetime.timezone.utc))
+                right_age = probe.age_minutes(row.get("detectedAt"),
+                                              datetime.datetime.fromtimestamp(row["ts"], datetime.timezone.utc))
+                origins = [_index_time(r.get("detectedAt")) for r in (clean, row, member["enrollment"])]
+                compatible = (all(x is not None for x in origins) and len(set(origins)) == 1
+                              and left_age is not None and right_age is not None and 0 <= left_age <= right_age)
+                boundary = start + DURATION * 0.9
+                location = ("within_final_tenth" if clean["ts"] >= boundary else
+                            "before_final_tenth" if row["ts"] < boundary else "ambiguous")
                 answer["events"].append({"mint": member["mint"], "interval_start": clean["ts"],
                     "interval_end": row["ts"], "elapsed_minutes": (row["ts"] - start) / 60,
-                    "index_age_minutes": age, "gap_censored": row["slot"] != clean["slot"] + 1})
+                    "elapsed_interval_minutes": [(clean["ts"] - start) / 60, (row["ts"] - start) / 60],
+                    "index_age_interval_minutes": [left_age, right_age], "index_origin_compatible": compatible,
+                    "lower_bound_minutes": left_age if compatible else None, "tail_location": location,
+                    "gap_censored": row["slot"] != clean["slot"] + 1})
                 clean = None
     expected = len(fresh) * (LAST_SLOT + 1)
     answer["observed_score_cells"] = observed
@@ -695,9 +718,10 @@ def readout(state, rows):
     if answer["events"]:
         latest = max(answer["events"], key=lambda row: row["interval_end"])
         answer["latest_flip"] = latest
-        answer["proposed_lower_bound_minutes"] = latest["index_age_minutes"]
-        answer["proposal"] = ("different_rule_e14_review" if latest["interval_end"] >= start + DURATION * 0.9
-                              else "larger_window_lower_bound_with_censoring")
+        answer["proposed_lower_bound_minutes"] = latest["lower_bound_minutes"]
+        answer["proposal"] = ("different_rule_e14_review" if latest["tail_location"] == "within_final_tenth"
+                              else "larger_window_lower_bound_with_censoring" if latest["tail_location"] == "before_final_tenth"
+                              and latest["lower_bound_minutes"] is not None else "inconclusive")
     elif not answer["censored"] and len(fresh) >= FRESH_MIN:
         answer["proposal"] = "no_flip_observed"
     return answer
