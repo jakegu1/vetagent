@@ -546,9 +546,15 @@ def run_plan(plan, context, *, sink, transport=None, clock=None, private_raw_dir
     sink.begin(plan)
     events, raw_manifest = [], {}
     reason, last_start = "completed", None
+    ledger_failed = False
 
     def append(event):
-        sink.append(event)
+        nonlocal ledger_failed
+        try:
+            sink.append(event)
+        except (OSError, ValueError, OverflowError, KeyboardInterrupt):
+            ledger_failed = True
+            raise
         events.append(event)
 
     def admission(wait=0):
@@ -627,10 +633,11 @@ def run_plan(plan, context, *, sink, transport=None, clock=None, private_raw_dir
         reason = "persistence_failed"
     except KeyboardInterrupt:
         reason = "interrupted"
-    try:
-        append({"kind": "stop", "at": _utc(current.time()), "mono": current.monotonic(), "reason": reason})
-    except (OSError, ValueError):
-        reason = "persistence_failed"
+    if not ledger_failed:
+        try:
+            append({"kind": "stop", "at": _utc(current.time()), "mono": current.monotonic(), "reason": reason})
+        except (OSError, ValueError):
+            reason = "persistence_failed"
     report = _report(plan, events, reason)
     try:
         sink.save(report)
