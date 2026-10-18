@@ -250,6 +250,51 @@ jobs:
       - name: The deploy runs every step of this job before it deploys
         run: python tests/test_deploy_gate.py
 
+  # Package on branches without deployment credentials. A dry-run validates packaging;
+  # production deployment and runtime smoke remain separate gates.
+  build:
+    if: github.event_name != 'workflow_run'
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install uv
+        run: python -m pip install --no-deps uv==0.13.1
+
+      - name: Verify uv version
+        run: uv --version
+
+      - name: Sync dependencies
+        run: uv sync --locked
+
+      - name: Build without credentials or upload
+        run: uv run --locked pywrangler deploy --dry-run
+
+      - name: Check tracked files
+        run: git diff --exit-code
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-python-runtime-lock
+          path: pylock.toml
+          if-no-files-found: error
+          retention-days: 7
+
   # Upstream contract monitor: real API calls that check the fields we depend on still exist.
   # Separate from the unit tests: a third-party outage turns it red, which is the signal.
   # DECISIONS E30. This job was `continue-on-error: true` until 2026-09-20, for a reason

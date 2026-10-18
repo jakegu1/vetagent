@@ -198,6 +198,8 @@ uv run --locked pywrangler deploy
 
 For an intentional host lock update, review the two SDK pins in `pyproject.toml`, use uv 0.13.1, and run `uv lock --no-config --default-index https://pypi.org/simple`. Review the complete `uv.lock` diff, run `uv lock --check` and `uv sync --locked`, then run the offline suite. Commit the reviewed project and lock changes together. A missing or stale lock is an error during normal sync/deploy, never an invitation to regenerate it silently. This locks host Python resolution; Node and Pyodide runtime resolution remain separate work, so this is not a claim that the entire build is reproducible.
 
+The separate Linux `build` job in `test.yml` follows the offline job on branch pushes, without deployment secrets. It runs `uv run --locked pywrangler deploy --dry-run`, rejects tracked-file changes and retains only the generated public `pylock.toml` as a build artifact for runtime-lock work. A successful dry-run is packaging evidence; actual deployment and runtime import/smoke checks remain required before claiming a working production release.
+
 > Two options: `wrangler login` OAuth (safest, no token to hand around) and an API token (stable across networks). On a remote server the API token is more reliable; for local development prefer OAuth.
 
 ## 7. Asking the owner for resources
