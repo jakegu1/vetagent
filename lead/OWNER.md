@@ -11,8 +11,10 @@ T-031 existing-provider discovery routing and T-027 deterministic/live RPC separ
 are source-reviewed and integrated. Actual Linux preflight 39097068303 then exposes
 a Python 3.12 structural-test serialization regression; later steps are unobserved,
 not passed. Production remains on the previous verified release. Named repair (g)
-preserves all frozen digests and assertions and passes both local Python runtimes;
-fresh regression review and a new actual Linux preflight precede promotion.
+preserves all frozen digests and assertions and passes both local Python runtimes.
+A different fresh regression reviewer passes twelve of twelve with adversarial none;
+repair 76747d3 is integrated. New integrated checks and actual Linux preflight precede
+promotion; the original failed run remains recorded.
 
 The Owner authorizes autonomous completion of the known technical-gap queue, retaining
 tests-first commits, bounded fresh reviews and actual deployment checks. Ready tasks

@@ -53,7 +53,7 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 | Task | Level | Stage | Who | Next action |
 |---|---|---|---|---|
-| T-027 / T-031 release | 3 | Preflight-only Python AST compatibility regression; production unchanged | Compatibility executor / lead | Named test fix (g), exact cross-runtime verification, fresh regression review and Linux preflight |
+| T-027 / T-031 release | 3 | Named compatibility repair independently approved and merged; production unchanged | Lead | Integrated checks and new exact-head Linux preflight, then actual deployment/readback |
 
 ## Autonomous technical continuation
 
@@ -74,6 +74,13 @@ No new paid service, provider, benchmark rebaseline or product-threshold change 
 implied. Calendar-time and externally unavailable evidence stay explicit gaps.
 
 ## Current batch baseline
+
+Repair (g) is independently approved twelve of twelve with RED-TEAM: none and merged
+as 76747d3. A different reviewer reproduces the actual old 3.12 failure, verifies
+unchanged digests/assertions and meaningful mutants on both runtimes, and passes
+ordinary/inherited-denied thirty-six-step inventories. The lead verifies both sealed
+eighty-one-artifact bundles and their two signatures each. Windows evidence does not
+replace the new required exact-head Linux preflight; production promotion is pending.
 
 Preflight 39097068303 fails T-027's structural acceptance under Python 3.12.15 because
 the frozen 3.13 AST serialization omits empty fields. Later ordinary CI steps are skipped,

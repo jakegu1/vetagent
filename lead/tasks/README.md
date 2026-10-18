@@ -29,7 +29,7 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-024 | Apply the Owner's Experiment D postponement to 2026-10-20 | 3 | S | none | done (published 19ea3af; actual CI passes) |
 | T-025 | Refuse incomplete coverage recordings after engine error handling | 3 | S | T-024 | done (published 19ea3af; actual CI passes) |
 | T-026 | Attribute selected fallback-pool depth before a runtime proposal | 3 | S | T-015, T-024, T-025 | done; evidence only, numerical cap not implemented |
-| T-027 | Separate recorded power regression from live RPC monitoring | 3 | M | T-015, T-024, T-025, T-031 | changes_requested; actual Linux AST compatibility regression, named fix (g) in fresh review |
+| T-027 | Separate recorded power regression from live RPC monitoring | 3 | M | T-015, T-024, T-025, T-031 | done; repair (g) independently 12/12 and adversarial none, merged 76747d3; new Linux promotion pending |
 | T-028 | Preserve discovery completeness across malformed listings and interfaces | 3 | M | T-025 | done; deployed d44d79a, actual partial handoff observed |
 | T-029 | Detect stale/incomplete snapshots after observation preservation | 3 | M | T-020, T-022 | done; deployed d44d79a, actual monitor 39055381257 |
 | T-030 | Disclose selected liquidity with unchecked reserve amounts | 3 | M | T-026, T-028 | done; deployed d44d79a, both live markers observed |
@@ -37,3 +37,5 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-032 | Preserve complete and terminating inclusive backfill ranges | 3 | S | T-027 | ready; protected draft paused before first commit until verified compatibility base |
 | T-033 | Lock host Python build dependencies and verify credential-free Linux builds | 3 | M | T-032 | ready |
 | T-034 | Keep rendered templates and pasted instructions from answering a gate | 3 | S | none | ready |
+| T-035 | Lock existing Node and Pyodide package resolutions before deployment | 3 | M | T-033 | draft; actual Linux target-lock provenance required |
+| T-036 | Pin supported Node 24 actions and the verified Ubuntu runner generation | 3 | M | T-033, T-035 | draft; actual locked Linux build prerequisites |
