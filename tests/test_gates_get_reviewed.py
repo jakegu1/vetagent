@@ -118,10 +118,15 @@ _MARKUP = re.compile(r"<!--.*?-->|<[A-Za-z/](?:[^<>]*[^<>-])?>|&#?\w+;")
 # cannot consume a later complete comment or tag that still needs recognition.
 # Named entities are case-sensitive: &Lt; and &Gt; are different characters.
 # Only numeric hexadecimal syntax has interchangeable x/X and digit-letter case.
+# Protect complete existing raw comments/tags before their inner encoded candidates;
+# the final raw pass still removes them when decoding changes their match shape.
+# Drop only _MARKUP's final entity alternative, which must not hide encoded openers.
+# An encoded opener before the first attribute quote still ends an unmatched prefix.
 _LT = r"(?:<|&lt;|&LT;|&#0*60;|&#[xX]0*3[cC];)"
 _GT = r"(?:>|&gt;|&GT;|&#0*62;|&#[xX]0*3[eE];)"
 _ENCODED_MARKUP = re.compile(
-    _LT + r"!--.*?--" + _GT + "|" + _LT
+    _MARKUP.pattern.rsplit("|", 1)[0].replace("|<", "|(?!<[^<>\"']*" + _LT + ")<", 1)
+    + "|" + _LT + r"!--.*?--" + _GT + "|" + _LT
     + r"(?:(?!" + _LT + r").)*?" + _GT)
 
 
