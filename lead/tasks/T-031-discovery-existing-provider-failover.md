@@ -29,7 +29,8 @@ No new provider, account, key, paid feature or permission is part of this task.
 ## Scope and conflict search
 
 Files in scope: src/risk.py (new_pools only; a narrowly local discovery helper if
-necessary), tests/test_mcp.py (additive imports/helpers/test functions only).
+necessary), tests/test_mcp.py (additive imports/helpers/test functions only), and
+tests/test_upstream_contract.py (the named template-set change below only).
 The lead alone may regenerate docs/SCORECARD.md in a separate derived-receipt commit.
 Freeze every other production function and every pre-existing test/helper/input AST.
 No fetch/cache policy, configuration, schema, benchmark, scoring, telemetry, permission,
@@ -38,9 +39,18 @@ dependency, fixture or legal-text change. The existing runner discovers added te
 Searched all tests for new_pools, _onchain_sources, configure, CG_DEMO_KEY, request
 headers, RuntimeError, exact discovery errors, stale disclosure and outputSchema.
 Existing T-028 tests include exact generic error equality for malformed stub listings.
-No older test change is authorized. Preserve that message when no fetch diagnostic
+No older test-function change is authorized. Preserve that message when no fetch diagnostic
 exists; actual fetch failures may append existing sanitized provider/status detail.
 All risk/finite-market/MCP/HTTP discovery handoff expectations remain compatible.
+
+Named change (a): in tests/test_upstream_contract.py, PROBED_TEMPLATES.geckoterminal,
+remove only https://api.geckoterminal.com/api/v2/networks/%s/%s after discovery uses
+the existing generic provider URL templates. Its new and trending GECKO_PATHS probes
+remain unchanged and covered by https://api.geckoterminal.com/api/v2/%s. Preserve
+the complete bidirectional test_every_upstream_endpoint_is_probed function and every
+other constant/assertion, including the keyed-twin exemption and frozen baseline.
+Include this named change in the first tests-only commit; against the parent its
+coverage assertion is also expected to be red until the old engine template is gone.
 
 ## Acceptance criteria
 
@@ -66,7 +76,8 @@ All risk/finite-market/MCP/HTTP discovery handoff expectations remain compatible
    recorded telemetry or captured logs. Actual all-source fetch failures may append
    _failure_detail for the two known providers; no raw exception/body/URL is exposed.
    Existing generic errors remain exact when no safe detail exists.
-5. Commit acceptance tests alone first and reproduce behavioral red for the bypass.
+5. Commit acceptance tests and named template change (a) alone first and reproduce
+   behavioral red for the bypass and template mismatch.
    Keep them frozen. Source fix is one finding commit with the observed red in its
    message. Mutants bypassing the keyed route, stopping at malformed keyed JSON and
    forwarding the key to the keyless host each cause meaningful acceptance failures.
