@@ -53,11 +53,7 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 | Task | Level | Stage | Who | Next action |
 |---|---|---|---|---|
-| T-032 | 3 | Done; both fresh reviews approve, merged 106ad21, post-merge 37/37 | Lead | Publish with related technical batch |
-| T-034 | 3 | Done; final fresh approval, merged 7ef54e0, uninterrupted integrated 38/38 | Lead | Publish with related technical batch |
-| T-035 | 3 | Done; both fresh reviews approve, merged f8ee485, uninterrupted integrated 38/38 | Lead | Publish with related technical batch |
-| T-036 | 3 | Source approved and merged 34fc8b9; actual pinned Linux builds and artifacts verified | Lead | Complete integrated gate, authorized upload/smoke and observer/bot CI before Done |
-| T-037 | 3 | Done; both fresh reviews approve, merged a98c7af, uninterrupted combined 38/38 | Lead | Publish with related technical batch |
+| T-038 | 3 | Dispatch prepared after actual T-036 deployment, observer and following bot CI | Executor | Start from clean checked closure head; strict classification plus two required registrations |
 
 ## Autonomous technical continuation
 
@@ -79,6 +75,21 @@ No new paid service, provider, benchmark rebaseline or product-threshold change 
 implied. Calendar-time and externally unavailable evidence stay explicit gaps.
 
 ## Current batch baseline
+
+T-032 through T-037 are now published at 7ccccf1. Exact pinned-action Linux preflight
+39112259345 passes required checks and both locked builds with downloaded artifact
+verification. Actual deploy 39113209299 runs all 39 checks, lock-byte verification,
+Worker upload and smoke. Master CI 39113209253 passes required jobs and 232 observed
+upstream checks with zero failure or blindness; the old optional backfill still fails
+twice with HTTP 400 and is not called repaired.
+
+Observer 39113455277 actually passes preservation, generation and snapshot health
+in order. At 09:01 UTC coverage is 645 rows, 39 pages and zero gaps, four complete
+of four observed daily passes. Bot commits c63185a and a56fc2e are retained in merge
+98caefe. Actual following bot CI 39113715264 passes the full 39-step inventory;
+other jobs are intentionally skipped. Generation and the integrated post-observer
+gate must finish before this closure/dispatch is committed. T-038 changes classification,
+not provider access. Experiment D remains unresolved and due 2026-10-20 UTC.
 
 Actual required Linux preflight 39099114314 passes at 6898b72. Required master CI
 39099401243 also passes; observed upstream checks are 232 pass, zero failure, zero blind

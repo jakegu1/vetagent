@@ -1,7 +1,7 @@
 ---
 id: T-038
 title: Separate live backfill observation gaps from genuine decoder failures
-status: ready
+status: in_progress
 level: 3
 size: M
 depends_on: [T-032, T-036]
@@ -205,5 +205,11 @@ No additional live access, terms/documentation refresh or benchmark was performe
 
 ## Amendments
 
-None. Counts and workflow registration are reconciled against the actual dispatch base.
+T-036's frozen source is approved and integrated. Actual production run 39113209299
+uploads the Worker and passes smoke at 7ccccf1; observer 39113455277 passes preservation,
+generation and snapshot health in order. Its bot commits are retained in merge 98caefe,
+and actual following bot CI 39113715264 passes all 39 required offline steps. The lead
+completes generation and the post-observer integrated gate before committing dispatch.
+Dispatch uses that subsequent clean bookkeeping head, with 39 required steps before
+the two registrations. No T-038 implementation has started at this preregistration.
 

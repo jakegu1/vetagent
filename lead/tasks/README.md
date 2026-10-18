@@ -38,6 +38,6 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-033 | Lock host Python build dependencies and verify credential-free Linux builds | 3 | M | T-032 | done; both reviews approve, merged 6f91f7a, uninterrupted post-merge 38/38 |
 | T-034 | Keep rendered templates and pasted instructions from answering a gate | 3 | S | none | done; fresh twelve of twelve, merged 7ef54e0, uninterrupted integrated 38/38 |
 | T-035 | Lock existing Node and Pyodide package resolutions before deployment | 3 | M | T-033 | done; fresh reviews approve, merged f8ee485, uninterrupted combined 38/38 |
-| T-036 | Pin supported Node 24 actions and the verified Ubuntu runner generation | 3 | M | T-033, T-035 | in_progress; approved checked prerequisite, exact official pins reverified |
+| T-036 | Pin supported Node 24 actions and the verified Ubuntu runner generation | 3 | M | T-033, T-035 | done; deployed 7ccccf1, actual observer and following bot CI pass |
 | T-037 | Make release guards and reproduction instructions report unavailable evidence | 3 | M | T-032, T-034 | done; both reviews approve, merged a98c7af, uninterrupted combined 38/38 |
-| T-038 | Separate unavailable backfill observations from decoder contradictions | 3 | M | T-032, T-036 | ready; prerequisite integration required |
+| T-038 | Separate unavailable backfill observations from decoder contradictions | 3 | M | T-032, T-036 | in_progress; dispatch from checked post-observer closure head |

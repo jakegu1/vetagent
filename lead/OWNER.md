@@ -32,6 +32,14 @@ the six-workflow semantics and the specified exact-prefix hash refresh. Producti
 deployment and observer/bot-CI proof remain mandatory release requirements.
 T-038 follows with required offline backfill checks and honest live classifications.
 
+T-032 through T-037 are now deployed at 7ccccf1: actual upload and production smoke
+pass in run 39113209299. Observer 39113455277 passes preservation, regeneration and
+snapshot health. Its two bot commits are retained in merge 98caefe and following
+bot CI 39113715264 passes the complete 39-step gate. The lead completes the integrated
+post-observer gate before committing closure and dispatching T-038. Snapshot coverage
+at 09:01 UTC is 645 rows, 39 pages and zero gaps, four complete of four observed daily
+passes. This does not establish every nominal slot or repair historical RPC access.
+
 The Owner authorizes autonomous completion of the known technical-gap queue, retaining
 tests-first commits, bounded fresh reviews and actual deployment checks. Ready tasks
 cover complete backfill ranges, rendered gate templates and locked host builds; related

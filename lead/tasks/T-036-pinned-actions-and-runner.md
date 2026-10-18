@@ -1,7 +1,7 @@
 ---
 id: T-036
 title: Pin supported Node 24 actions and the verified Ubuntu runner generation
-status: in_review
+status: done
 level: 3
 size: M
 depends_on: [T-033, T-035]
