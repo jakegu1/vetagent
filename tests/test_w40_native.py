@@ -606,6 +606,124 @@ class NativeAcceptance(unittest.TestCase):
             with self.assertRaisesRegex(native.NativeError, "^existing_receipt$"):
                 f.recover()
 
+        # Named (c): finish only missing producer state after a real core-success death.
+        import shutil
+        for producer_phase in ("before_result", "before_done"):
+            with Fixture() as f:
+                first_row = {"chain": "base", "base_token": "base_" + f.token,
+                             "pool_address": f.pool, "pool_created_at": "2026-10-01T00:00:00Z",
+                             "seen_at": "2026-10-01T01:00:00Z"}
+                second_row = dict(first_row, base_token="base_0x" + "2" * 40, pool_address="0x" + "b" * 40)
+                source_bytes = _json(first_row) + b"\n" + _json(second_row) + b"\n"
+                source_path = f.root / "two-source.ndjson"
+                source_path.write_bytes(source_bytes)
+                f.sources = [{"path": str(source_path), "bytes": len(source_bytes),
+                              "sha256": hashlib.sha256(source_bytes).hexdigest()}]
+                f.store = f.root / "two-store"
+                f.plan = f.core.plan("1" * 40, f.sources)
+                f.core.enroll(f.plan, f.sources, boundary="2026-10-01T02:00:00Z",
+                             ingested_at="2026-10-01T02:00:00Z", output=f.store)
+                f.collect()
+                config = f.root / "producer.json"
+                config.write_bytes(_json({"store": str(f.store), "sources": f.sources,
+                    "runtime": str(f.runtime), "private": str(f.private), "phase": producer_phase}))
+                producer_code = "\n".join([
+                    "import json,os,pathlib,sys",
+                    "sys.path[:0]=[sys.argv[1]+'/bench',sys.argv[1]+'/src']",
+                    "import w40_native as n",
+                    "c=json.loads(pathlib.Path(sys.argv[2]).read_bytes())",
+                    "old_append,old_write=n.Journal.append,n.write_new",
+                    "def append(journal,kind,**fields):",
+                    "    if c['phase']=='before_result' and kind=='import_result': os._exit(7)",
+                    "    return old_append(journal,kind,**fields)",
+                    "def write(path,raw):",
+                    "    if c['phase']=='before_done' and pathlib.Path(path).suffix=='.done': os._exit(7)",
+                    "    return old_write(path,raw)",
+                    "n.Journal.append,n.write_new=append,write",
+                    "n.recover(c['store'],c['sources'],c['runtime'],private_dir=c['private'])",
+                ])
+                producer = subprocess.run([sys.executable, "-B", "-c", producer_code, str(ROOT), str(config)],
+                    cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
+                self.assertEqual(producer.returncode, 7)
+                self.assertFalse((f.store / "native-claims/00000001.done").exists())
+                self.assertEqual(f.core.report(f.store, now=native.iso(native.Clock().utc()))["receipts"], 1)
+                core_before = {p: p.read_bytes() for p in f.store.rglob("*") if p.is_file() and "native-claims" not in p.parts}
+                with self.assertRaisesRegex(native.NativeError, "^existing_claim$"):
+                    asyncio.run(native.collect_one(f.store, f.sources, 2, runtime=f.root / "blocked-runtime",
+                        private_dir=f.root / "blocked-private", live=True, manifest=native.code_manifest(),
+                        clock=f.clock, transport=f.transport, engine=f.engine))
+                source_manifest = f.root / "sources.json"
+                source_manifest.write_bytes(_json(f.sources))
+                for corruption in ("packet", "claim", "source", "receipt", "core_pending", "cleanup", "done", "conflict"):
+                    clone = f.root / ("negative-" + corruption)
+                    clone.mkdir()
+                    for original_path, name in ((f.store, "store"), (f.runtime, "runtime"), (f.private, "private")):
+                        shutil.copytree(original_path, clone / name)
+                    negative_sources = f.sources
+                    if corruption == "packet":
+                        packet_path = clone / "private/prepared.bin"
+                        packet_path.write_bytes(b"X" + packet_path.read_bytes()[1:])
+                    elif corruption == "claim":
+                        claim_path = clone / "store/native-claims/00000001.json"
+                        value = json.loads(claim_path.read_bytes())
+                        value["code_sha256"] = "0" * 64
+                        claim_path.write_bytes(_json(value))
+                    elif corruption == "source":
+                        bad_source = clone / "bad-source.ndjson"
+                        bad_source.write_bytes(b"X" + source_bytes[1:])
+                        negative_sources = [dict(f.sources[0], path=str(bad_source))]
+                    elif corruption == "receipt":
+                        receipt_path = sorted((clone / "store/events").glob("*.json"))[-1]
+                        value = json.loads(receipt_path.read_bytes())
+                        value["payload"]["receipt"]["packet_sha256"] = "0" * 64
+                        receipt_path.write_bytes(_json(value))
+                    elif corruption == "core_pending":
+                        index = json.loads((clone / "store/index.json").read_bytes())
+                        (clone / "store/events" / ("%08d.json" % (index["last"] + 1))).write_bytes(b"{}")
+                    elif corruption == "cleanup":
+                        (clone / "private/attempts/01/creation.json").write_bytes(_json({
+                            "pid": os.getpid(), "creation": native.creation_identity(os.getpid())}))
+                    else:
+                        (clone / "store/native-claims/00000001.done").write_bytes(
+                            b"{" if corruption == "done" else _json({"packet_sha256": "0" * 64}))
+                    negative_manifest = clone / "sources.json"
+                    negative_manifest.write_bytes(_json(negative_sources))
+                    protected_core = {p: p.read_bytes() for p in (clone / "store").rglob("*")
+                                      if p.is_file() and "native-claims" not in p.parts}
+                    refused = run_cli("recover", "--store", clone / "store", "--sources", negative_manifest,
+                                      "--runtime", clone / "runtime", "--private-dir", clone / "private")
+                    self.assertEqual(refused.returncode, 2)
+                    self.assertTrue(all(p.read_bytes() == raw for p, raw in protected_core.items()))
+                    if corruption in ("done", "conflict"):
+                        with self.assertRaises(native.NativeError):
+                            asyncio.run(native.collect_one(clone / "store", f.sources, 2,
+                                runtime=clone / "next-runtime", private_dir=clone / "next-private", live=True,
+                                manifest=native.code_manifest(), clock=f.clock, transport=f.transport, engine=f.engine))
+                recovery_code = "\n".join([
+                    "import pathlib,sys",
+                    "sys.path[:0]=[sys.argv[1]+'/bench',sys.argv[1]+'/src']",
+                    "import w40_native as n",
+                    "def forbidden(*args,**kwargs): raise AssertionError('offline_import_reasked')",
+                    "n.core.ingest=forbidden",
+                    "raise SystemExit(n.main(sys.argv[2:]))",
+                ])
+                recovered = subprocess.run([sys.executable, "-B", "-c", recovery_code, str(ROOT), "recover",
+                    "--store", str(f.store), "--sources", str(source_manifest), "--runtime", str(f.runtime),
+                    "--private-dir", str(f.private)], cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
+                self.assertEqual(recovered.returncode, 0, recovered.stdout.decode())
+                self.assertEqual(json.loads(recovered.stdout)["state"], "imported")
+                self.assertTrue((f.store / "native-claims/00000001.done").is_file())
+                self.assertTrue(all(p.read_bytes() == raw for p, raw in core_before.items()))
+                self.assertEqual(len(f.seen), 5)
+                again = run_cli("recover", "--store", f.store, "--sources", source_manifest,
+                                "--runtime", f.runtime, "--private-dir", f.private)
+                self.assertEqual(again.returncode, 2)
+                self.assertEqual(json.loads(again.stdout), {"error": "existing_receipt"})
+                self.assertEqual(asyncio.run(native.collect_one(f.store, f.sources, 2,
+                    runtime=f.root / "next-runtime", private_dir=f.root / "next-private", live=True,
+                    manifest=native.code_manifest(), clock=f.clock, transport=f.transport, engine=f.engine))["state"], "prepared")
+                self.assertEqual(len(f.seen), 6)
+
     def test_w40_native_cli_and_existing_contract(self):
         native = importlib.import_module("w40_native")
         for arguments in ((), ("--help",), ("plan", "--help"), ("collect-one", "--help"), ("report", "--help"), ("recover", "--help")):
