@@ -392,3 +392,32 @@ verify the sole approved appended block, freeze the new head and request its own
 root-granted exact-head complete gate. Fresh independent and adversarial review
 and actual Linux remain required before publication; no live request or study
 start follows from this correction.
+
+## Named policy-request-deadline consistency regression
+
+2026-10-19 (b): a separate native localhost probe on held 9303ef9 returns a
+policy permit whose request_deadline is twenty-five seconds earlier while the
+proposed thirty-second allowance remains unchanged. One actual GET still opens.
+That mismatched permit must not silently shrink the native observation window.
+Preserve the independent red and the held source's actual complete log.
+
+Permit exactly one more self-contained append-only block in
+test_w40_native_caps_pacing_deadline_and_cancellation, after the named a block.
+Keep all previous assertions/order, helpers, other methods and runner exact.
+An injected policy preserves all proposed identity and allowance fields but
+shortens only request_deadline. With the actual native localhost destination
+fixture, the permit refuses before invocation and no server request occurs.
+Keep an unchanged-permit positive control, existing expiry controls and shorter
+external packet/tick/study boundary refusals. Original engine cancellation at its
+own deadline still retires the worker; it does not change the admitted permit.
+
+The technical choice is that the proposed native request_deadline is an immutable
+permit identity field. The external policy may refuse or tighten its external
+expiry/packet/tick/study boundary, provided a full proposed allowance still fits;
+it cannot change the native request deadline while retaining that allowance.
+Commit this additional regression alone with its meaningful red, then one separate
+same-finding repair in the new native module. No test weakening, policy/source,
+quota, study window, engine function or accepted fixture change is allowed.
+Both a and b require current focused/native proof, a new frozen exact-head full
+gate and fresh independent/adversarial review before publication. The old 44-step
+green at 9303ef9 is held-source evidence only.
