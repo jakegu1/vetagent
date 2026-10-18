@@ -116,11 +116,13 @@ _MARKUP = re.compile(r"<!--.*?-->|<[A-Za-z/](?:[^<>]*[^<>-])?>|&#?\w+;")
 # Whole comments come first: an inner arrow must not end a generic fragment early.
 # A generic candidate must stop before another opener, so unmatched less-than text
 # cannot consume a later complete comment or tag that still needs recognition.
-_LT = r"(?:<|&lt;|&#0*60;|&#x0*3c;)"
-_GT = r"(?:>|&gt;|&#0*62;|&#x0*3e;)"
+# Named entities are case-sensitive: &Lt; and &Gt; are different characters.
+# Only numeric hexadecimal syntax has interchangeable x/X and digit-letter case.
+_LT = r"(?:<|&lt;|&LT;|&#0*60;|&#[xX]0*3[cC];)"
+_GT = r"(?:>|&gt;|&GT;|&#0*62;|&#[xX]0*3[eE];)"
 _ENCODED_MARKUP = re.compile(
     _LT + r"!--.*?--" + _GT + "|" + _LT
-    + r"(?:(?!" + _LT + r").)*?" + _GT, re.I)
+    + r"(?:(?!" + _LT + r").)*?" + _GT)
 
 
 def gate_row_answered(row):
