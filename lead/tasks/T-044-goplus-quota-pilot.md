@@ -206,3 +206,19 @@ prefix/main bytes and expose exactly the same seven added functions. After the f
 acceptance commit, permit only those two split-argument changes in a separate named
 test-only commit. No assertion, test input, coverage, timing rule or implementation
 workaround changes; every old statement and all other acceptance bytes remain frozen.
+
+2026-10-19 (c), named additive regression pins before READY: three executor scratch
+reds expose raw-directory nesting inside the safe output, a torn final receipt, and
+an HTTP permission header whose body then times out. Their private red probes precede
+the respective source repairs, but ordinary CI must retain these exact combinations.
+Permit only one new self-contained check block, with nested helpers/imports, inside
+each corresponding existing added acceptance function: safe_output_and_private_raw,
+partial_intents_and_persistence, and http_and_exact_result_stages. Keep every previous
+statement/assertion in these functions in the same order, every other function exact,
+the seven-function set, original module/main bytes and timing/network/disk contracts.
+Commit these additive pins alone, reproduce each against its named pre-fix module
+in a controlled isolated/in-memory overlay, then verify the corrected source. Do not
+rewrite the existing repair history or describe retrospective CI pins as earlier
+commits. No implementation changes are authorized by this amendment. The native
+permission/body-timeout case must show one attempted request, the retained permission
+status, distinct unobserved body, and all remaining indices unasked; no retry.
