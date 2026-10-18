@@ -14,9 +14,11 @@ pass; production smoke and tagged real tool handoff succeed. The earlier failed 
 preflight remains recorded. Optional historical backfill HTTP 400 remains unresolved.
 
 T-032 inclusive-range and invalid-window fixes pass both fresh reviews, are merged,
-and pass the full post-merge thirty-seven-step gate. T-034 round one catches encoded markup hidden behind an
-unmatched literal prefix. It returns for a bounded tests-first correction before
-integration. T-033 host dependency locking proceeds independently.
+and pass the full post-merge thirty-seven-step gate. T-034's combined review catches
+a remaining entity-name case regression; a constants-only correction is isolated
+before integration. T-033 host dependency locking has independent approval and actual
+credential-free Linux packaging evidence; adversarial review continues. T-037's five
+release/reporting repairs are frozen for fresh reviews, with no real benchmark run.
 
 The Owner authorizes autonomous completion of the known technical-gap queue, retaining
 tests-first commits, bounded fresh reviews and actual deployment checks. Ready tasks

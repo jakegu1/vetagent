@@ -54,9 +54,9 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 | Task | Level | Stage | Who | Next action |
 |---|---|---|---|---|
 | T-032 | 3 | Done; both fresh reviews approve, merged 106ad21, post-merge 37/37 | Lead | Publish with related technical batch |
-| T-034 | 3 | Round one changes required; unmatched prefixes shadow complete encoded markup | Executor after named amendment (a) | Add frozen regressions first, repair the recognizer, fresh combined final review |
-| T-033 | 3 | Isolated host-lock implementation | Executor | Tests first, actual public-index lock and credential-free Linux build preparation |
-| T-037 | 3 | Isolated eight-file safeguards and reproduction task under amendment (a) | Executor | Five tests-first findings; preserve newer inputs and wait for T-034 approval before integration |
+| T-034 | 3 | Blocking entity-name case regression after combined round two | Executor under named amendment (b) | Add frozen regressions first; constants-only correction and independent bounded regression recheck |
+| T-033 | 3 | Independent PASS 12/12; fresh adversarial review running | Reviewers | Keep exact source 2b03cbc; actual Linux package evidence exists; no integration before both approvals |
+| T-037 | 3 | Five fixes frozen at 35507df; independent review running | Reviewers | Preserve frozen cases and exact historical bytes; T-034 remains a hard later integration gate |
 
 ## Autonomous technical continuation
 

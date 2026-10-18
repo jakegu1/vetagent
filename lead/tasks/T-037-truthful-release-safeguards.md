@@ -1,7 +1,7 @@
 ---
 id: T-037
 title: Keep release safeguards and reproduction instructions truthful
-status: in_progress
+status: in_review
 level: 3
 size: M
 depends_on: [T-032, T-034]
