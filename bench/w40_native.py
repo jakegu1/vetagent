@@ -1158,6 +1158,165 @@ def base_packet(value, record, identity):
             "endpoints": {"label": [], "engine": [], "eligibility": []}}
 
 
+ATTEMPT_SIDECARS = {name: ROW_CAP for name in (
+    "metadata.json", "permit.json", "request.json", "identity.json", "creation.json", "ready.json",
+    "arming.json", "invocation.json", "sent.json", "headers.json", "commit.json", "progress.json", "end.json")}
+ATTEMPT_SIDECARS.update({"body.bin": BODY_CAP + 1, "metadata-reserve.bin": ROW_CAP})
+ROOT_SIDECARS = {"context.json": PACKET_CAP, "engine-answer.json": BODY_CAP, "cache-history.json": PACKET_CAP}
+
+
+def evidence_inventory(journal, private, events=None):
+    """Bound every native artifact, including explicit absence, before accepting a packet."""
+    private = Path(private)
+    events = journal.events if events is None else events
+    if not events or events[0].get("kind") != "claim":
+        fail("evidence_mismatch")
+    manifest = code_manifest()
+    claim = events[0]
+    if claim.get("manifest") != manifest or journal.binding.get("code_sha256") != sha(dumps(manifest)):
+        fail("source_drift")
+    allowed_root = set(ROOT_SIDECARS) | {"prepared.bin", "attempts", "dependencies", "core-import"}
+    try:
+        if any(path.name not in allowed_root for path in private.iterdir()):
+            fail("evidence_mismatch")
+    except OSError:
+        fail("evidence_mismatch")
+    def reference(path, cap):
+        if not path.exists():
+            return None, None
+        if not path.is_file() or path.is_symlink():
+            fail("evidence_mismatch")
+        raw = read(path, cap)
+        return {"bytes": len(raw), "sha256": sha(raw)}, raw
+    roots, root_values = {}, {}
+    for name, cap in ROOT_SIDECARS.items():
+        roots[name], raw = reference(private / name, cap)
+        root_values[name] = parse(raw, cap) if raw is not None else None
+    context = root_values["context.json"]
+    if (not isinstance(context, dict) or set(context) != {"packet", "manifest", "configuration"}
+            or roots["context.json"]["sha256"] != claim.get("context_sha256")
+            or context["manifest"] != manifest or not isinstance(context["packet"], dict)):
+        fail("evidence_mismatch")
+    base = context["packet"]
+    if (base.get("plan_sha256") != journal.binding.get("plan_sha256")
+            or base.get("source_ref") != journal.binding.get("source_ref")
+            or type(base.get("ordinal")) is not int or base["ordinal"] != journal.binding.get("ordinal")
+            or base.get("engine_sha256") != manifest["engine_sha256"]
+            or core._address(base.get("token")) != base.get("token") or core._pool(base.get("pool")) != base.get("pool")):
+        fail("evidence_mismatch")
+    configuration = context["configuration"]
+    config_keys = {"keyless", "empty_cache", "cache_initial_entries", "native_transport", "fixture_route", "frozen_assess", "configured_at"}
+    if (not isinstance(configuration, dict) or set(configuration) != config_keys
+            or configuration["keyless"] is not True or configuration["empty_cache"] is not True
+            or type(configuration["cache_initial_entries"]) is not int or configuration["cache_initial_entries"] != 0
+            or any(type(configuration[key]) is not bool for key in ("native_transport", "fixture_route", "frozen_assess"))):
+        fail("evidence_mismatch")
+    core._time(configuration["configured_at"])
+    intents = [event for event in events if event["kind"] == "attempt_intent"]
+    if len(intents) > 19 or sum(e["role"] == "engine" for e in intents) > 16 or sum(e["role"] != "engine" for e in intents) > 3:
+        fail("evidence_limit")
+    attempt_dir = private / "attempts"
+    attempt_present = attempt_dir.exists()
+    expected_names = ["%02d" % n for n in range(1, len(intents) + 1)]
+    if not attempt_present and intents:
+        fail("evidence_mismatch")
+    if attempt_present:
+        if not attempt_dir.is_dir() or sorted(p.name for p in attempt_dir.iterdir()) != expected_names:
+            fail("evidence_mismatch")
+    attempts = []
+    for number, intent in enumerate(intents, 1):
+        if intent.get("attempt") != number or intent.get("role") not in ("reserve", "ohlcv", "oracle", "engine") or intent.get("host") not in GAPS:
+            fail("evidence_mismatch")
+        directory = attempt_dir / ("%02d" % number)
+        if not directory.is_dir() or directory.is_symlink() or any(p.name not in ATTEMPT_SIDECARS for p in directory.iterdir()):
+            fail("evidence_mismatch")
+        references, values, raws = {}, {}, {}
+        for name, cap in ATTEMPT_SIDECARS.items():
+            references[name], raw = reference(directory / name, cap)
+            raws[name] = raw
+            values[name] = parse(raw, cap) if raw is not None and name.endswith(".json") else None
+        metadata = values["metadata.json"]
+        if metadata is not None:
+            expected_request = validate_request(metadata.get("url"), role=intent["role"], token=base["token"], chain=base["chain"],
+                method=metadata.get("method"), body=metadata.get("body"), headers=metadata.get("headers"))
+            if metadata != expected_request or metadata.get("host") != intent["host"]:
+                fail("evidence_mismatch")
+        commit = values["commit.json"]
+        for name in ("commit.json", "progress.json", "end.json"):
+            value = values[name]
+            if value is None:
+                continue
+            if not isinstance(value, dict):
+                fail("evidence_mismatch")
+            count = value.get("body_bytes" if name == "commit.json" else "bytes")
+            digest = value.get("body_sha256" if name == "commit.json" else "sha256")
+            if type(count) is not int or not 0 <= count <= BODY_CAP + 1:
+                fail("evidence_mismatch")
+            if digest is not None:
+                body = raws["body.bin"]
+                if not core._hex(digest) or body is None or count > len(body) or sha(body[:count]) != digest:
+                    fail("evidence_mismatch")
+            elif count != 0:
+                fail("evidence_mismatch")
+        permit = values["permit.json"]
+        if permit is not None:
+            if (not isinstance(permit, dict) or permit.get("attempt") != number or permit.get("ordinal") != base["ordinal"]
+                    or permit.get("plan_sha256") != base["plan_sha256"] or permit.get("code_sha256") != journal.binding["code_sha256"]
+                    or permit.get("role") != intent["role"] or permit.get("host") != intent["host"]
+                    or permit.get("allowance_seconds") != ATTEMPT_SECONDS or permit.get("private_bytes") != PRIVATE_ALLOWANCE):
+                fail("evidence_mismatch")
+        request = values["request.json"]
+        if request is not None and (not isinstance(request, dict) or request.get("request") != metadata
+                or request.get("permit") != permit or request.get("permit_sha256") != sha(dumps(permit))):
+            fail("evidence_mismatch")
+        identity, creation = values["identity.json"], values["creation.json"]
+        if identity is not None and creation is not None and identity != creation:
+            fail("evidence_mismatch")
+        ready = values["ready.json"]
+        if ready is not None and (identity is None or ready != {"identity_sha256": sha(dumps(identity))}):
+            fail("evidence_mismatch")
+        for kind in ("native_invocation", "headers", "attempt_end", "child_retired"):
+            matches = [event for event in events if event["kind"] == kind and event.get("attempt") == number]
+            if len(matches) > 1:
+                fail("evidence_mismatch")
+            if permit is not None and any(event.get("permit_sha256") != sha(dumps(permit)) for event in matches):
+                fail("evidence_mismatch")
+            if kind == "attempt_end" and matches and (commit is None or any(matches[0].get(k) != v for k, v in commit.items())):
+                fail("evidence_mismatch")
+            if kind == "child_retired" and matches and matches[0].get("identity_sha256") is not None:
+                if (identity or creation) is None or matches[0]["identity_sha256"] != sha(dumps(identity or creation)):
+                    fail("evidence_mismatch")
+        if values["headers.json"] is not None:
+            headers = values["headers.json"]
+            if (not isinstance(headers, dict) or type(headers.get("status")) is not int or not 100 <= headers["status"] <= 599
+                    or not isinstance(headers.get("headers"), list) or len(headers["headers"]) > 100):
+                fail("evidence_mismatch")
+            core._time(headers["utc"])
+        attempts.append({"attempt": number, "role": intent["role"], "host": intent["host"], "sidecars": references})
+    dependency_dir = private / "dependencies"
+    dependency_present = dependency_dir.exists()
+    paths = sorted(dependency_dir.iterdir()) if dependency_present else []
+    if len(paths) > 256:
+        fail("evidence_limit")
+    dependencies, dependency_values = [], []
+    for number, path in enumerate(paths, 1):
+        if path.name != "%04d.json" % number:
+            fail("evidence_mismatch")
+        ref, raw = reference(path, ROW_CAP)
+        dependency = parse(raw, ROW_CAP)
+        if (not isinstance(dependency, dict) or dependency.get("kind") not in ("get", "put")
+                or not isinstance(dependency.get("url"), str) or len(dependency["url"]) > 4096):
+            fail("evidence_mismatch")
+        core._time(dependency["at"])
+        dependencies.append(dict(sequence=number, **ref))
+        dependency_values.append(dependency)
+    history = root_values["cache-history.json"]
+    if history is not None and history != dependency_values:
+        fail("evidence_mismatch")
+    return {"roots": roots, "attempts_directory": attempt_present, "attempts": attempts,
+            "dependencies_directory": dependency_present, "dependencies": dependencies}
+
+
 def seal(journal, private, packet, *, state="prepared"):
     # The packet carries bounded hashes of all native sidecars, not copies of engine bodies.
     attempts = []
@@ -1173,7 +1332,8 @@ def seal(journal, private, packet, *, state="prepared"):
     dependencies = sorted((private / "dependencies").glob("*.json"))
     packet["native_provenance"] = {"code_sha256": journal.binding["code_sha256"],
         "journal_sha256": journal.head, "attempts": attempts,
-        "dependencies_sha256": sha(dumps([sha(read(path, ROW_CAP)) for path in dependencies]))}
+        "dependencies_sha256": sha(dumps([sha(read(path, ROW_CAP)) for path in dependencies])),
+        "inventory": evidence_inventory(journal, private)}
     raw = dumps(packet)
     if len(raw) > PACKET_CAP:
         fail("packet_limit")
@@ -1329,21 +1489,81 @@ def report(runtime):
 
 
 def read_prepared(runtime, private_dir):
+    _runtime, private = private_paths(runtime, private_dir)
     journal = Journal(runtime)
-    prepared = next((e for e in journal.events if e["kind"] == "packet_prepared"), None)
-    if prepared is None:
+    positions = [i for i, event in enumerate(journal.events) if event["kind"] == "packet_prepared"]
+    if not positions:
         fail("packet_unprepared")
+    if len(positions) != 1:
+        fail("evidence_mismatch")
+    position = positions[0]
+    prepared = journal.events[position]
+    tail = journal.events[position + 1:]
+    if len(tail) > 1 or any(event["kind"] != "import_result" or event.get("packet_sha256") != prepared["packet_sha256"] for event in tail):
+        fail("evidence_mismatch")
     size = prepared["packet_bytes"]
     if type(size) is not int or not 0 < size <= PACKET_CAP:
         fail("packet_limit")
     try:
-        with (Path(private_dir) / "prepared.bin").open("rb") as handle:
+        if (private / "prepared.bin").is_symlink() or (private / "prepared.bin").stat().st_size != PACKET_CAP:
+            fail("evidence_mismatch")
+        with (private / "prepared.bin").open("rb") as handle:
             raw = handle.read(size)
     except OSError:
         fail("input_unavailable")
     if len(raw) != size or sha(raw) != prepared["packet_sha256"]:
         fail("packet_mismatch")
-    return parse(raw, PACKET_CAP)
+    packet = parse(raw, PACKET_CAP)
+    provenance = packet.get("native_provenance") if isinstance(packet, dict) else None
+    event = parse(read(journal.directory / "events" / ("%04d.json" % (position + 1)), ROW_CAP), ROW_CAP)
+    if (not isinstance(provenance, dict) or provenance.get("code_sha256") != journal.binding["code_sha256"]
+            or provenance.get("journal_sha256") != event["parent_sha256"]
+            or provenance.get("inventory") != evidence_inventory(journal, private, journal.events[:position])):
+        fail("evidence_mismatch")
+    context = parse(read(private / "context.json", PACKET_CAP), PACKET_CAP)["packet"]
+    for key in ("schema", "plan_sha256", "ordinal", "source_ref", "chain", "token", "pool", "engine_source_commit", "engine_sha256"):
+        if packet.get(key) != context.get(key):
+            fail("evidence_mismatch")
+    dependencies = provenance["inventory"]["dependencies"]
+    if provenance.get("dependencies_sha256") != sha(dumps([entry["sha256"] for entry in dependencies])):
+        fail("evidence_mismatch")
+    declared_attempts = []
+    for attempt in provenance["inventory"]["attempts"]:
+        entry = {key: attempt[key] for key in ("attempt", "role", "host")}
+        for name, key in (("metadata.json", "request_sha256"), ("permit.json", "permit_sha256"),
+                          ("identity.json", "identity_sha256"), ("headers.json", "headers_sha256"),
+                          ("commit.json", "commit_sha256"), ("progress.json", "progress_sha256")):
+            reference = attempt["sidecars"][name]
+            entry[key] = reference["sha256"] if reference is not None else None
+        declared_attempts.append(entry)
+    if provenance.get("attempts") != declared_attempts:
+        fail("evidence_mismatch")
+    for name in ("reserve", "ohlcv", "oracle", "engine"):
+        field = packet.get(name)
+        if not isinstance(field, dict):
+            fail("evidence_mismatch")
+        if field.get("raw") is not None:
+            try:
+                body = base64.b64decode(field["raw"], validate=True)
+            except (ValueError, TypeError):
+                fail("evidence_mismatch")
+            if len(body) > BODY_CAP + 1 or sha(body) != field.get("sha256"):
+                fail("evidence_mismatch")
+            if name != "engine":
+                attempts = [attempt for attempt in provenance["inventory"]["attempts"] if attempt["role"] == name]
+                if len(attempts) != 1:
+                    fail("evidence_mismatch")
+                directory = private / "attempts" / ("%02d" % attempts[0]["attempt"])
+                if (directory / "commit.json").exists():
+                    commit = parse(read(directory / "commit.json", ROW_CAP), ROW_CAP)
+                    if field["sha256"] != commit.get("body_sha256") or len(body) != commit.get("body_bytes"):
+                        fail("evidence_mismatch")
+                elif captured_prefix(directory) != body:
+                    fail("evidence_mismatch")
+    answer = provenance["inventory"]["roots"]["engine-answer.json"]
+    if packet.get("engine", {}).get("state") == "observed" and (answer is None or packet["engine"].get("sha256") != answer["sha256"]):
+        fail("evidence_mismatch")
+    return packet
 
 
 def _recover_partial(journal, private):
@@ -1399,7 +1619,7 @@ def _recover_partial(journal, private):
         if commit_path.exists():
             committed = parse(read(commit_path, ROW_CAP), ROW_CAP)
             size = committed["body_bytes"]
-            if size:
+            if committed["body_sha256"] is not None:
                 with (directory / "body.bin").open("rb") as handle:
                     raw = handle.read(size)
                 if len(raw) != size or sha(raw) != committed["body_sha256"]:
@@ -1480,6 +1700,12 @@ def recover(store, sources, runtime, *, private_dir, now=None):
     if existing is not None:
         if existing.get("packet_sha256") != digest:
             fail("packet_mismatch")
+        imported_raw = private / "core-import"
+        if imported_raw.is_symlink() or not imported_raw.is_dir():
+            fail("evidence_mismatch")
+        if (sha(read(imported_raw / (digest + ".packet"), PACKET_CAP)) != digest
+                or sha(read(imported_raw / (digest + ".replay.json"), core.RAW_CAP)) != existing.get("replay_sha256")):
+            fail("evidence_mismatch")
         receipt = existing
     else:
         try:
@@ -1559,6 +1785,7 @@ def main(argv=None):
     except BaseException as exc:
         codes = {"raw_directory_refused", "live_required", "not_due", "source_drift", "source_hash_mismatch",
                  "existing_receipt", "existing_claim", "incomplete_history", "cleanup_uncertain", "packet_mismatch",
+                 "evidence_mismatch", "evidence_limit",
                  "invalid_arguments", "input_unavailable", "invalid_store", "history_corrupt", "import_failed"}
         code = str(exc) if isinstance(exc, NativeError) and str(exc) in codes else "operation_failed"
         print(dumps({"error": code}).decode())
