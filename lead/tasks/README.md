@@ -45,6 +45,6 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-040 | Keep failed requests and invalid ages out of coverage-probe observations | 3 | M | T-039 | done; published d82b98d, actual Linux and complete master CI pass |
 | T-041 | Measure discovery status and deployment windows with aggregate-only evidence | 3 | M | T-028, T-039 | done; published d82b98d, actual optional readout succeeds, observation sufficiency separate |
 | T-042 | Honor adopted simulator controls and preserve independent experiment runs | 3 | M | T-039 | done; published 66ffa4e, actual Linux/master CI and bounded screen complete; simulator decision remains open |
-| T-043 | Preserve the pre-registered RugCheck study across bounded CI jobs | 3 | M | T-040 | in progress; first review held, named evidence/recovery corrections before second review and pilot |
-| T-044 | Measure the existing held-out oracle quota without hidden retries or data publication | 3 | M | none | in progress; native transport boundary corrections before fresh reviews and single-date pilot |
-| T-045 | Preserve prospective enrollment and independently replayable paired evidence | 3 | M | none | in progress; disjoint offline core only, no live collector or thirty-day clock |
+| T-043 | Preserve the pre-registered RugCheck study across bounded CI jobs | 3 | M | T-040 | published b1becd2; actual pilot/start pass, forty-eight-hour clock active, first scheduled resume pending |
+| T-044 | Measure the existing held-out oracle quota without hidden retries or data publication | 3 | M | none | source approved 6d300a3; integrated/Linux/master gates and sole live pilot next |
+| T-045 | Preserve prospective enrollment and independently replayable paired evidence | 3 | M | none | held for named b2 existing-RPC provenance seam before fresh final checks; no thirty-day clock |

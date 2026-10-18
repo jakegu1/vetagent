@@ -12,9 +12,13 @@ actual Linux builds and successful master CI. The optional operational query suc
 W28's technical transport is verified; W27 remains inconclusive. T-042 is published at
 66ffa4e after the complete combined gate, actual Linux and exact-source master CI;
 its bounded source-eligibility screen is complete without a simulator BUILD claim.
-T-043 implements the durable CI study, with pilot and enrollment still ahead. Source
-rights, product gates, privacy and spending remain Owner decisions. W54/W57 long-run
-clocks are not yet running. Experiment D remains unrun and due 2026-10-20 UTC.
+T-043 is published at b1becd2: actual Linux/master gates and the real pilot pass.
+Fresh enrollment starts the fixed forty-eight-hour clock at 2026-10-18T20:48:40Z;
+the first actual scheduled resume remains to be observed. T-044 source passes fresh
+combined review before integration/Linux and its sole real pilot. T-045's existing-
+RPC endpoint seam is held for correction before publication. W54 and the thirty-day
+W40 clock remain unstarted. Source rights, product gates, privacy and spending stay
+Owner decisions. Experiment D remains unrun and due 2026-10-20 UTC.
 
 The scoped technical queue T-027 and T-031 through T-039 is complete and deployed
 at d354179. Actual deploy run 39122876006 uploads Worker dd8721cd-babd-43e6-b982-19cec1cdb6fa and passes all 41 required
@@ -205,9 +209,12 @@ technical release. Experiment D retains its existing rules and moves to 2026-10-
 
 ## Current tasks
 
-The scoped engineering queue is done and deployed. No new implementation is
-dispatched. H-13 remains the Oct-20 Owner gate; all other sign-off categories and
-A0 autonomy remain unchanged.
+The earlier production queue is done and deployed. Authorized residual instrument
+repairs T-043 through T-045 are being released through independent gates; W57's
+elapsed observation is running, not yet answered. Native paired acquisition and
+local durable scheduling are the next engineering dependencies after the corrected
+offline core. H-13 remains the Oct-20 Owner gate; all other sign-off categories
+and A0 autonomy remain unchanged.
 
 ### Earlier task rows (historical)
 
@@ -226,6 +233,13 @@ A0 autonomy remain unchanged.
 | M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
+
+- **2026-10-19** · lead · T-043 passes actual publication, real pilot and cross-run
+  enrollment. Its fixed forty-eight-hour clock is running; first scheduled resume
+  and terminal readout remain later observations. T-044's final source passes fresh
+  combined review, twelve of twelve and adversarial none. T-045's four corrections
+  pass executor checks, but a reproduced existing-RPC overlap seam remains held
+  for named b2 before final source review. No study outcome or policy change follows.
 
 - **2026-10-18** · lead · T-027 and T-031 deployed on 6898b72 after actual required
   Linux and master gates, Worker upload and tagged smoke. Base and Solana discovery

@@ -18,7 +18,7 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 2. `git fetch`, then compare `master` with `origin/master`. Bots push to master several times a
    day; when behind, merge (never rebase) before starting work.
 3. Reconcile: for each in-flight row, check the real branch, worktree or subagent result, and
-   CI for all six workflows, not only `test.yml` (the command is in `CLAUDE.md`). Fix this file
+   CI for all configured workflows, not only `test.yml` (the command is in `CLAUDE.md`). Fix this file
    if it drifted.
 4. Act on each row's next action. Then start the next ready task if WIP allows. Autonomy is
    **A0** (`lead/config.yml`): spec, dispatch, review and decide; merges and pushes need Owner
@@ -70,25 +70,30 @@ is unreachable; it supplies no simulation agreement or BUILD decision. W41/W47 s
 open. The source/test fix preserves the historical reference and every decision bar.
 No simulator/score integration or V3 work follows from this instrument repair.
 
-T-043's corrected source 04b0f489 passes the fresh combined second review, twelve
-of twelve and RED-TEAM: none. The reviewer independently closes all five original
-findings and the domain-format regression; its actual forty-three-step gate passes
-with exact tracked bytes. The lead approves source integration, followed by actual
-Linux/master gates, CI egress pilot and fresh enrollment. The scientific window and
-inference rule remain fixed. No forty-eight-hour clock is running yet. T-044 is in progress as a
-bounded W40 quota-pilot instrument, with additive tests inside the existing dynamic
-oracle runner so its files are disjoint from T-043.
-It permits one finite single-date observation, not a started prospective label study,
-continuous full-day availability claim or benchmark rebaseline. Source reviews and
-the root's actual run remain mandatory.
+T-043 is published at b1becd2 after fresh combined second review, actual integrated
+forty-three-step checks, Linux preflight 39163825119 and exact-source master CI
+39164250877. The real pilot 39164614718 passes and explicit start 39164798771
+restores its preceding pilot Artifact before fresh enrollment. Forty-five fresh
+members and eighteen controls are frozen. The real scientific window runs from
+2026-10-18T20:48:40.293557Z through 2026-10-20T20:48:40.293557Z. First actual
+scheduled resume remains to be observed. No scientific conclusion is available.
+Do not edit its driver, original probe or independent workflow while it is active.
 
-T-044's held candidate passes the actual forty-two-step gate, but additional native
-body-exception and absolute-deadline reds require named amendment (d) before READY.
-T-045 implements the disjoint offline prospective evidence contract: birth-based
-enrollment, complete source/time/identity packets and immutable partial history.
-It makes no live calls and starts no thirty-day clock. Live collection and actual
-cross-run restoration remain engineering prerequisites after this core, not an
-invented Owner wait. The three implementation scopes do not overlap.
+T-044 corrected source 6d300a3 passes fresh combined second review, twelve of
+twelve and RED-TEAM: none. The reviewer independently closes the native deadline,
+header/body, pacing/admission, torn persistence, deep decoder and unknown terminal
+elapsed cases, with an actual forty-two-step gate and exact tracked bytes. The
+lead approves source integration followed by actual integrated/Linux/master gates
+and the sole finite single-date pilot. No daily allowance, reset, unsafe yield or
+thirty-day W40 clock has been observed by that source review.
+
+T-045's four original evidence corrections pass focused checks and the actual
+forty-two-step executor gate. A subsequent producer-seam check reproduces an
+additional original-AC5 defect: an existing RPC dependency erases known endpoint
+overlap. Named b2 repairs endpoint provenance before the still-fresh second review
+and its final complete gate. Hold 9b804c7; retain its evidence without rebinding.
+The core remains offline. Native acquisition, at-label collection and actual
+cross-process scheduling remain engineering work, not a calendar or Owner wait.
 
 The Owner renews authorization to prioritize the 21 remaining rows, batch related
 autonomous repairs, delegate bounded isolated work, and merge/push/deploy after quality
