@@ -37,6 +37,16 @@ set -uo pipefail
 mode="${1:-}"
 ref="${GITHUB_REF_NAME:-master}"
 
+run_generator() {
+  local output status
+  output=$("$@")
+  status=$?
+  if [ "$status" -ne 0 ] && [ -n "$output" ]; then
+    printf '%s\n' "$output"
+  fi
+  return "$status"
+}
+
 regenerate() {
   # A fixed point, at most three passes: publish_numbers reads the maturity total out of
   # docs/SCORECARD.md, which scorecard.py rewrites, so one pass in either order can leave
@@ -44,10 +54,10 @@ regenerate() {
   local pass before after
   for pass in 1 2 3; do
     before=$(git diff --binary | md5sum)
-    python bench/scorecard.py --write >/dev/null || { echo "::error::scorecard.py failed"; return 1; }
-    python bench/publish_numbers.py --write >/dev/null || { echo "::error::publish_numbers.py failed"; return 1; }
-    python tools/owner.py --write >/dev/null || { echo "::error::owner.py failed"; return 1; }
-    python tools/rounds.py --write >/dev/null || { echo "::error::rounds.py failed"; return 1; }
+    run_generator python bench/scorecard.py --write || { echo "::error::scorecard.py failed"; return 1; }
+    run_generator python bench/publish_numbers.py --write || { echo "::error::publish_numbers.py failed"; return 1; }
+    run_generator python tools/owner.py --write || { echo "::error::owner.py failed"; return 1; }
+    run_generator python tools/rounds.py --write || { echo "::error::rounds.py failed"; return 1; }
     after=$(git diff --binary | md5sum)
     if [ "$before" = "$after" ]; then
       return 0
