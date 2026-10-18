@@ -192,3 +192,31 @@ weaken either guard. Preserve every other new and original assertion, helper,
 method, main and fixture. Commit only these named acceptance corrections before
 the one-finding source fix; retain the original three-test red and first repair
 run as historical evidence rather than rewriting them.
+
+## Named malformed-listing versus observed-absence regression
+
+2026-10-19 (b): a lead-owned offline probe at held 647c12b injects a one-row
+Artifact listing containing a non-object, an object missing name, or an object
+whose name is null. All three return idle/no_state rather than refusing. The
+matching-name filter discards an unclassifiable record before the strict
+chronology validator can see it. That is an original AC2 metadata gap, not
+observed absence. The source-specific full run, if already active, must finish
+untouched and remain held-source evidence only.
+
+Permit one self-contained append-only block at the end of the new
+test_checkpoint_chronology_fails_closed_on_invalid_or_ambiguous_metadata method.
+Keep every other original and new assertion, helper, method and main exact,
+including the named expectation corrections above. Through the actual production
+list/prepare port with synthetic listing transport, all three malformed-row
+representatives must raise StudyError before any checkpoint download or Vendor
+call. An explicitly empty exhausted listing still returns idle/no_state. Preserve
+the original valid-unrelated-name paging fixture and its five-page bound.
+
+Commit only the appended regression with its actual red, then one separate
+same-finding driver repair. Validate that each raw listing row has an object and
+a usable string name before classifying matching versus explicitly unrelated
+Artifacts. Unclassifiable/malformed metadata is unavailable, never an empty
+history. Do not introduce numeric-ID fallback, alter source/history/scientific
+guards, change original fixtures or increase any page/read/download budget.
+Freeze a new exact head and obtain its own full gate before fresh reviews;
+retain the earlier prepared seal and actual full log without relabeling them.
