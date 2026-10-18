@@ -9,6 +9,7 @@ A short single-date run is not continuous 24-hour or prospective evidence.
 import argparse
 from datetime import datetime, timedelta, timezone
 import hashlib
+import http.client
 import json
 import math
 import os
@@ -202,7 +203,7 @@ def request_once(chain, address, *, timeout=REQUEST_TIMEOUT, opener=None):
     except (TimeoutError, urllib.error.URLError) as exc:
         timed_out = isinstance(exc, TimeoutError) or isinstance(getattr(exc, "reason", None), TimeoutError)
         return {"http_status": status, "error": "timeout" if timed_out else "transport"}
-    except (OSError, ValueError):
+    except (OSError, ValueError, http.client.HTTPException):
         return {"http_status": status, "error": "transport"}
 
 
