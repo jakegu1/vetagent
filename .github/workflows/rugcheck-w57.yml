@@ -1,0 +1,229 @@
+name: rugcheck-w57
+
+on:
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: Explicit pilot, start, or offline readout
+        type: choice
+        options: [pilot, start, report]
+        required: true
+      study:
+        description: New study ID for pilot/start; existing ID for report
+        type: string
+        required: false
+      pilot:
+        description: Successful pilot Artifact numeric ID required by start
+        type: string
+        required: false
+  schedule:
+    - cron: "*/15 * * * *"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: rugcheck-w57-study
+  cancel-in-progress: false
+
+env:
+  W57_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  PYTHONIOENCODING: utf-8
+
+# Cron only resumes one frozen study. Root disables this workflow after terminal readout.
+# No vendor call precedes a durable intent; result preservation precedes the failure signal.
+jobs:
+  pilot:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.phase == 'pilot' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Prepare a bounded checkpoint
+        id: prepare
+        env:
+          STUDY_ID: ${{ inputs.study }}
+          PILOT_ID: ${{ inputs.pilot }}
+        run: python bench/rugcheck_w57_ci.py prepare --phase pilot --study "$STUDY_ID" --pilot "$PILOT_ID" --out "$RUNNER_TEMP/w57"
+      - name: Persist intent before any vendor request
+        id: intent
+        if: ${{ steps.prepare.outputs.action == 'collect' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.prepare.outputs.intent-name }}
+          path: ${{ runner.temp }}/w57/intent
+          if-no-files-found: error
+          retention-days: 7
+      - name: Collect one bounded phase
+        id: collect
+        if: ${{ steps.prepare.outputs.action == 'collect' && steps.intent.outcome == 'success' }}
+        continue-on-error: true
+        env:
+          INTENT_ID: ${{ steps.intent.outputs.artifact-id }}
+        run: python bench/rugcheck_w57_ci.py collect --out "$RUNNER_TEMP/w57" --intent "$INTENT_ID"
+      - name: Preserve completed and partial observations
+        id: result
+        if: ${{ always() && steps.prepare.outputs.ready == 'true' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.prepare.outputs.result-name }}
+          path: ${{ runner.temp }}/w57/result
+          if-no-files-found: error
+          retention-days: 7
+      - name: Signal failure only after preservation
+        if: ${{ always() && steps.prepare.outputs.ready == 'true' }}
+        env:
+          UPLOAD_OUTCOME: ${{ steps.result.outcome }}
+        run: python bench/rugcheck_w57_ci.py finish --out "$RUNNER_TEMP/w57" --uploaded "$UPLOAD_OUTCOME"
+
+  start:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.phase == 'start' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Prepare a bounded checkpoint
+        id: prepare
+        env:
+          STUDY_ID: ${{ inputs.study }}
+          PILOT_ID: ${{ inputs.pilot }}
+        run: python bench/rugcheck_w57_ci.py prepare --phase start --study "$STUDY_ID" --pilot "$PILOT_ID" --out "$RUNNER_TEMP/w57"
+      - name: Persist intent before any vendor request
+        id: intent
+        if: ${{ steps.prepare.outputs.action == 'collect' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.prepare.outputs.intent-name }}
+          path: ${{ runner.temp }}/w57/intent
+          if-no-files-found: error
+          retention-days: 7
+      - name: Collect one bounded phase
+        id: collect
+        if: ${{ steps.prepare.outputs.action == 'collect' && steps.intent.outcome == 'success' }}
+        continue-on-error: true
+        env:
+          INTENT_ID: ${{ steps.intent.outputs.artifact-id }}
+        run: python bench/rugcheck_w57_ci.py collect --out "$RUNNER_TEMP/w57" --intent "$INTENT_ID"
+      - name: Preserve completed and partial observations
+        id: result
+        if: ${{ always() && steps.prepare.outputs.ready == 'true' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.prepare.outputs.result-name }}
+          path: ${{ runner.temp }}/w57/result
+          if-no-files-found: error
+          retention-days: 7
+      - name: Signal failure only after preservation
+        if: ${{ always() && steps.prepare.outputs.ready == 'true' }}
+        env:
+          UPLOAD_OUTCOME: ${{ steps.result.outcome }}
+        run: python bench/rugcheck_w57_ci.py finish --out "$RUNNER_TEMP/w57" --uploaded "$UPLOAD_OUTCOME"
+
+  tick:
+    if: ${{ github.event_name == 'schedule' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Prepare a bounded checkpoint
+        id: prepare
+        env:
+          STUDY_ID: ${{ inputs.study }}
+          PILOT_ID: ${{ inputs.pilot }}
+        run: python bench/rugcheck_w57_ci.py prepare --phase tick --study "$STUDY_ID" --pilot "$PILOT_ID" --out "$RUNNER_TEMP/w57"
+      - name: Persist intent before any vendor request
+        id: intent
+        if: ${{ steps.prepare.outputs.action == 'collect' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.prepare.outputs.intent-name }}
+          path: ${{ runner.temp }}/w57/intent
+          if-no-files-found: error
+          retention-days: 7
+      - name: Collect one bounded phase
+        id: collect
+        if: ${{ steps.prepare.outputs.action == 'collect' && steps.intent.outcome == 'success' }}
+        continue-on-error: true
+        env:
+          INTENT_ID: ${{ steps.intent.outputs.artifact-id }}
+        run: python bench/rugcheck_w57_ci.py collect --out "$RUNNER_TEMP/w57" --intent "$INTENT_ID"
+      - name: Preserve completed and partial observations
+        id: result
+        if: ${{ always() && steps.prepare.outputs.ready == 'true' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.prepare.outputs.result-name }}
+          path: ${{ runner.temp }}/w57/result
+          if-no-files-found: error
+          retention-days: 7
+      - name: Signal failure only after preservation
+        if: ${{ always() && steps.prepare.outputs.ready == 'true' }}
+        env:
+          UPLOAD_OUTCOME: ${{ steps.result.outcome }}
+        run: python bench/rugcheck_w57_ci.py finish --out "$RUNNER_TEMP/w57" --uploaded "$UPLOAD_OUTCOME"
+
+  report:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.phase == 'report' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Prepare a bounded checkpoint
+        id: prepare
+        env:
+          STUDY_ID: ${{ inputs.study }}
+          PILOT_ID: ${{ inputs.pilot }}
+        run: python bench/rugcheck_w57_ci.py prepare --phase report --study "$STUDY_ID" --pilot "$PILOT_ID" --out "$RUNNER_TEMP/w57"
+      - name: Persist intent before any vendor request
+        id: intent
+        if: ${{ steps.prepare.outputs.action == 'collect' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.prepare.outputs.intent-name }}
+          path: ${{ runner.temp }}/w57/intent
+          if-no-files-found: error
+          retention-days: 7
+      - name: Collect one bounded phase
+        id: collect
+        if: ${{ steps.prepare.outputs.action == 'collect' && steps.intent.outcome == 'success' }}
+        continue-on-error: true
+        env:
+          INTENT_ID: ${{ steps.intent.outputs.artifact-id }}
+        run: python bench/rugcheck_w57_ci.py collect --out "$RUNNER_TEMP/w57" --intent "$INTENT_ID"
+      - name: Preserve completed and partial observations
+        id: result
+        if: ${{ always() && steps.prepare.outputs.ready == 'true' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.prepare.outputs.result-name }}
+          path: ${{ runner.temp }}/w57/result
+          if-no-files-found: error
+          retention-days: 7
+      - name: Signal failure only after preservation
+        if: ${{ always() && steps.prepare.outputs.ready == 'true' }}
+        env:
+          UPLOAD_OUTCOME: ${{ steps.result.outcome }}
+        run: python bench/rugcheck_w57_ci.py finish --out "$RUNNER_TEMP/w57" --uploaded "$UPLOAD_OUTCOME"
+
