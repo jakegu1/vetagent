@@ -153,3 +153,28 @@ the raw generic file-level contract result. If it reports BROKEN, do not relabel
 green or change the checker. Provide an independently reproducible structural proof
 of the named helper exception, every original function/fixture freeze and the new
 tests-only first commit on both actual Python versions.
+
+### (b) Keep checksum reads after the existing offline gate
+
+At frozen candidate 92cc60a, the actual ordinary inventory gives thirty-seven of
+thirty-eight, with one old deployment-order assertion red. Its frozen tooling
+recognizer deliberately matches `uv` in the new `sha256sum uv.lock ...` command.
+The candidate puts that checksum baseline before the offline gate, while this spec
+requires it before installation/sync. Those requirements do not require a pre-gate
+read. The new `runtime_expected_commands` deploy list unnecessarily imposes one.
+
+Preserve the failed pushed source and its actual CI result. Before correction, add
+only `test_runtime_deploy_checksum_capture_follows_gate_before_install` in a new
+tests-only commit; make it actually red on 92cc60a. It must require the existing
+offline gate, then the byte baseline, then every installation/sync, with the final
+verification still before upload. Existing old/new tests and their inputs/assertions
+remain frozen. Do not change the old TOOLING recognizer or deployment guard.
+
+Then permit only moving the existing deploy baseline step immediately after the
+offline gate and swapping OFFLINE/LOCK_BASELINE in the deploy return list of
+`runtime_expected_commands`. The build sequence and all other helper behavior stay
+unchanged. This one named helper-list adaptation is a structural exception, not
+permission to change the first-commit assertion bar. Reverting the order must make
+the new test and old deploy gate red. Repeat the final affected and complete gates,
+and obtain actual two-build Linux evidence at the corrected immutable source before
+fresh approval. Never amend the already pushed bad head or count its skipped builds.
