@@ -172,3 +172,23 @@ test byte through that compatible port boundary. No fixture-only amendment or
 numeric-ID fallback is adopted. The initial implementation base is 4037eca;
 the configured complete inventory there is forty-three steps, with T046's
 independent addition integrated serially later. No worker upload is needed.
+
+## Named new-regression expectation correction
+
+2026-10-19: the acceptance-only commit 87d46e7 demonstrates all three intended
+chronology reds. The first source repair exposes two incorrect expectations in
+that new class; no original test expectation is wrong or changed. The original
+start has slots=[] rather than an observed slot zero, so a first tick at slot
+seven must preserve all missing slots zero through six. In the new chronology
+method only, replace list(range(1, 7)) with list(range(7)).
+
+In the new reconstruction method's damaged-latest cases only, instrument the
+actual service.load with a wraps spy and assert its first attempted checkpoint
+is the latest, retaining every existing StudyError assertion. An invalid run
+provenance must refuse before downloading any ZIP, so assert zero ZIP downloads
+for that case. For the remaining damaged-latest cases retain the existing first
+ZIP-is-latest assertion. Do not force a download across a provenance refusal or
+weaken either guard. Preserve every other new and original assertion, helper,
+method, main and fixture. Commit only these named acceptance corrections before
+the one-finding source fix; retain the original three-test red and first repair
+run as historical evidence rather than rewriting them.
