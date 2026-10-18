@@ -183,3 +183,38 @@ The executor's current three uncommitted implementation files are backed up exte
 before the lead applies this spec-only amendment. Original first commit a2cf5f6 and
 base 0f05e8a stand. No other acceptance edits or scope expansion is allowed. Reviewers
 verify both named changes exactly, and the full ordinary/inherited-offline gates remain.
+
+### 2026-10-18: round-one bounce, exact two-form serialization
+
+Both fresh reviewers and the lead reproduce one narrow conformance defect at d505aa1:
+one CRLF with the other 136 line endings LF loads successfully, although it is neither
+the exact LF nor exact CRLF representation promised above. The normalized hash formula
+alone permits mixed endings. No semantic bytecode or provenance corruption is observed.
+The two-form promise stays; this amendment specifies its missing pre-normalization guard.
+
+Threat model: partial editor/transfer line-ending conversion must not silently widen
+the expressly allowed two representations of the audited recording. Every original
+provenance, hash, contract-control and live-observation requirement remains decided.
+
+Required fix and test: named change (e) adds exactly one new offline acceptance test
+for mixed endings in both directions, with deliberate rejection assertions. Preserve
+all thirteen existing tests, cases, inputs and assertions byte for byte. Commit that
+addition alone and record meaningful red against d505aa1 before implementation.
+Named implementation change (f) may change only the loader's initial byte read and
+line-ending guard in tests/test_owner_powers.py: require the original bytes to equal
+either their LF canonical form or that form's exact CRLF expansion, before applying
+the existing whole-file pin and all existing schema checks. Commit the finding alone.
+Do not change the fixture, its pin, any original control, live monitor or workflow.
+
+If trivial items: none. No other findings are added to this bounce. Existing-provider
+scope, original six controls, all old monitoring rules and thresholds, and all named
+changes (a) through (d) are settled and are not reopened. The first tests-only commit
+and all source/benchmark freezes remain unchanged.
+
+Round-two bar: one fresh combined independent/adversarial reviewer verifies both mixed
+forms fail, exact LF/CRLF still pass, all original assertions and unrelated bytes remain,
+and a normalization-only mutant is killed. Run the complete ordinary and inherited
+network-denied inventories again at the clean frozen head, plus compileall and the
+tests-first contract. Reuse the already sealed bounded live receipt because no live
+code changes; do not manufacture another current observation. After this bounded second
+round, only invariants, security, privacy, data loss or regressions can bounce again.
