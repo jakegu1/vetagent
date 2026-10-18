@@ -127,3 +127,35 @@ Fresh exact official metadata for all four pins and their node24 declarations wa
 reverified with sixteen bounded GETs. A read-only same-interpreter compatibility
 probe finds no required edit to existing assertions or fixtures. The new permanent
 pin test must remain limited to workflow set, action identity and runner policy.
+
+### Named amendment (a): account for refused step syntax
+
+Before branch publication, the fresh adversarial reviewer reproduces a coverage
+gap in the frozen policy at c37fd41 and 93fc49a. A single-quoted or double-quoted
+uses key, a flow-map action step, or an unclosed quoted key is recorded in the
+existing step reader's refused list, with no enumerated uses value. The new policy
+skips that step and reports no error. The lead independently reproduces all four
+shapes at the exact frozen candidate. This is a validator coverage failure, not
+an observed production incident or a claim that GitHub accepts every malformed form.
+
+Permit only the following additional changes to the new acceptance file:
+
+1. A separate tests-only commit adds one named regression function and any solely
+   new fixtures it needs for the four refused-step shapes above. Preserve every
+   original test function, fixture, input and assertion from c37fd41. Run it red
+   on the frozen helper on both actual Python versions before the fix.
+2. A subsequent named test-fix commit may change only workflow_errors to reject
+   the existing reader's refused-step evidence before deciding that an absent
+   uses key means a run-only step. Do not change that reader, its old tests, any
+   original assertion, any action/runner policy constant or any workflow source.
+3. Keep known-valid workflows, actual six-file source and future ordinary added
+   steps/soft-fail removal accepted. No command hashes, whole-workflow freezing,
+   general YAML parser, new dependency or permission change is authorized.
+
+Freeze the additive regression after its tests-only commit. Prove all other new
+definitions and original acceptance inputs exact, and demonstrate a removed-refusal
+mutant red. Preserve the original full-run results as old-candidate evidence only;
+run the complete ordinary and inherited-denied inventories again on the corrected
+frozen source, sequentially. Publication remains blocked until a bounded fresh
+combined final review approves the corrected source; actual Linux/build/deploy and
+observer evidence remain subsequent release gates. This is the second review round.
