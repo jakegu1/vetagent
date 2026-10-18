@@ -227,3 +227,72 @@ nominal interval after the scientific end. This is a bounded scheduling grace on
 the original elapsed scientific window, final-tenth bounds and inference bar do not
 move. Responses after the scientific end remain outside-window observations. Apply
 this clarification before freezing the first acceptance-test commit.
+
+## Named first-review correction
+
+2026-10-19 (b): first-round independent and adversarial review of
+8b927582fc5478cd71f7460c4edadb475f1de569 found five related evidence and recovery
+defects despite the actual 43-step offline gate passing. Correct these in one bounded
+second implementation round. This corrects the data supplied to the original inference
+rule; it changes no score band, duration, final-tenth boundary, enrollment rule or
+production policy. Do not publish the reviewed defective head.
+
+Add exactly five regression methods to tests/test_rugcheck_w57_ci.py, committing the
+tests before the repairs. Use these names and exercise the actual CLI/observe/persist/
+restore/readout seams with only clock, vendor and Artifact transports substituted:
+
+1. test_readout_discloses_groups_field_denominators_and_unattempted_gaps:
+   disclose both fixed populations, scheduled/missing slots and actual observation
+   intervals. For score, detectedAt, holder count and each retained gated field,
+   distinguish usable fields, attempted but unavailable/invalid fields, outside-window
+   readings and never-attempted cells. A budget-limited sweep with eleven actual calls
+   must not count its thirty-four unasked fresh cells as failed requests. Control-group
+   failures must affect the control coverage report. Missing or nonboolean source
+   powers must not acquire an observed false value merely through normalization, and
+   negative/nonfinite holder values must not become valid holder observations. Preserve
+   separately usable fields when another field fails. These are availability statements,
+   not additional signals or new policy thresholds.
+2. test_cli_interruption_preserves_a_restorable_partial_checkpoint:
+   prepare and persist intent, flush measurements through the real observe seam, then
+   interrupt collection before normal finalization. Package the exact upload directory,
+   decode, restore, resume and reconstruct. Preserve verified partial measurements and
+   a coherent terminal receipt, or explicitly retain unverifiable raw evidence separately
+   and record lost observations. No corrupt zero-row manifest may shadow flushed rows;
+   no new vendor request may replay the interrupted slot. Earlier bundles remain exact.
+3. test_intent_only_terminal_checkpoint_reconstructs_without_replay:
+   publish an intent, omit its result, prepare and publish the next terminal checkpoint,
+   then reconstruct the report. Preserve the lost intent's ID/digest, missing slot,
+   frozen population/source and valid prior result chain. Report the loss and censoring
+   without a history_chain exception or a vendor retry.
+4. test_crossing_intervals_do_not_assert_a_right_endpoint_as_a_lower_bound:
+   retain both elapsed and index-age interval endpoints. A clean observation before
+   the final-tenth boundary, intervening unavailable/missing cells and first dangerous
+   observation at forty-four hours cannot locate the transition inside the final tenth.
+   Its report remains inconclusive about that policy proposal, exposing the ambiguous
+   crossing instead of asserting a definite tail event. Do not label the right endpoint
+   as a lower bound. Any numeric lower bound must be supported by the last verified
+   clean endpoint and compatible indexing-origin evidence; otherwise it is unavailable.
+   Include an interval wholly within the final tenth as the positive control. Preserve
+   the original forty-eight-hour and 0.9 bounds and outside-window exclusions.
+5. test_normalized_overflow_preserves_prior_rows_and_an_explicit_receipt:
+   after one ordinary flushed response, an oversized normalized finite integer raises
+   the existing row bound. Retain the prior row and a valid restorable terminal bundle,
+   plus a bounded explicit overflow reason/receipt identifying the lost observation.
+   Do not raise the row, bundle, state or request ceilings to make this example pass.
+
+Exactly one old acceptance assertion is corrected by name: in
+test_readout_uses_fixed_time_final_tenth_and_marks_late_or_missing_samples_censored,
+replace the expected proposal different_rule_e14_review for the existing wide
+early-clean/late-dangerous interval with inconclusive. That fixture spans almost the
+entire study and cannot locate a tail transition. Preserve every other existing test
+statement, fixture and assertion in that method and all fourteen other original
+methods byte-for-byte. No change to the pin-policy test, T040 tests, historical reference,
+workflow guards, engine or scientific bar is authorized by this amendment.
+
+Keep the implementation repair within the original driver/workflow scope. Separate
+commits per reproduced finding may share the preceding tests-only commit. Record each
+red's native exit and failing assertion, the exact old/new test delta, prior evidence
+hashes and controlled restoration proof. Re-run focused checks and one root-granted
+exclusive full inventory on the frozen repaired head. The second fresh review covers
+all named corrections, the CLI seams and preserved invariants before Linux, pilot or
+start. The two-round review cap still applies.
