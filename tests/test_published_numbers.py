@@ -974,6 +974,135 @@ def check_the_docstring_usage_is_true():
           ["python", "bench/publish_numbers.py"] in commands, "usage lines: %r" % usage)
 
 
+@recorded
+def check_owner_power_artifact_unavailability_is_reported():
+    print("\n[T-037] unavailable owner-power measurements remain visibly unmeasured")
+    from unittest.mock import patch
+    missing = object()
+    cases = (("missing", missing), ("syntax", '{"powers":'), ("top array", "[]"),
+             ("powers array", '{"powers":[{}]}'), ("power row", '{"powers":{"x":[]}}'),
+             ("pooled array", '{"pooled":[1]}'), ("oos array", '{"out_of_sample":[1]}'),
+             ("oos row", '{"out_of_sample":{"pooled":[1]}}'),
+             ("read denied", PermissionError), ("read race", FileNotFoundError))
+    targets = [t for t in publish_numbers.TARGETS if t[2].startswith("power_")]
+    check("owner-power targets exist", bool(targets))
+    for name, content in cases:
+        def run(tmp):
+            path = os.path.join(tmp, "bench", "owner_powers.json")
+            if content is missing:
+                os.remove(path)
+            elif not isinstance(content, type):
+                with io.open(path, "w", encoding="utf-8") as f:
+                    f.write(content)
+            original_open = io.open
+
+            def artifact_open(file, *args, **kwargs):
+                if (isinstance(content, type)
+                        and os.path.normcase(os.path.abspath(file)) == os.path.normcase(path)):
+                    raise content("synthetic artifact read failure")
+                return original_open(file, *args, **kwargs)
+
+            before = [published(tmp, t) for t in targets]
+            with patch.object(publish_numbers.io, "open", artifact_open):
+                try:
+                    measured = publish_numbers._owner_power_figures()
+                    error = None
+                except Exception:
+                    measured, error = None, raised()
+                check("%s produces no owner-power measurement" % name,
+                      measured == {} and error is None, error or str(measured))
+                for write in (False, True):
+                    stale, error = scan_entries(write)
+                    check("%s scan(write=%s) finishes" % (name, write), error is None, error or "")
+                    for t in targets:
+                        check("  missing %s is explicitly not measured" % label(t),
+                              error is None and not_measured(entries(stale, t), t[2]),
+                              error or str(entries(stale, t)))
+                for argv in ((), ("--write",)):
+                    status, out = run_main(*argv)
+                    check("%s main%s reports unavailable input without traceback" % (name, argv),
+                          status == 1 and "Traceback" not in out
+                          and "bench/owner_powers.json" in out and "not measured (power_" in out,
+                          "returned %r: %s" % (status, tail(out)))
+            check("%s leaves every owner-power target unchanged" % name,
+                  [published(tmp, t) for t in targets] == before)
+        in_a_copy(run)
+    empty = {"power_pooled_pct": None, "power_pooled_before_pct": None,
+             "power_tax_oos_pct": None, "power_blacklist_oos_pct": None,
+             "power_pause_oos_pct": None, "power_mint_oos_pct": None, "power_pooled_oos_pct": None}
+    valid = {"powers": {"pause": {"oracle_flag": "transfer_pausable", "mined_pct": "75.0",
+                                  "shipped_pct": None},
+                        "ignored": {"oracle_flag": "unselected", "mined_pct": "99.0"}},
+             "pooled": {"mined_pct": "12.5"}, "out_of_sample": {"pooled": {"pct": "10.0"}}}
+    expected = dict(empty, power_pause_pct="75.0", power_pause_before_pct=None,
+                    power_pooled_pct="12.5", power_pooled_oos_pct="10.0")
+    for data, want in (({"powers": None, "pooled": None, "out_of_sample": None}, empty),
+                       ({"powers": {}, "pooled": {}, "out_of_sample": {}}, empty),
+                       ({"powers": [], "pooled": [], "out_of_sample": []}, empty),
+                       (valid, expected)):
+        def run_valid(tmp):
+            with io.open(os.path.join(tmp, "bench", "owner_powers.json"), "w", encoding="utf-8") as f:
+                json.dump(data, f)
+            check("valid, null, falsey and unknown-flag policy stays unchanged",
+                  publish_numbers._owner_power_figures() == want)
+        in_a_copy(run_valid)
+
+
+def _benchmark_recipe_errors(doc, clock):
+    start, end = ("<!-- benchmark-reproduction:current:%s -->" % p for p in ("start", "end"))
+    if doc.count(start) != 1 or doc.count(end) != 1:
+        return ["one current reproduction block is required"]
+    block = doc.split(start, 1)[1].split(end, 1)[0]
+    fence = chr(96) * 3
+    commands = [l.strip() for code in re.findall(fence + r"bash\s*\n(.*?)" + fence, block, re.S)
+                for l in code.splitlines() if l.strip() and not l.lstrip().startswith("#")]
+    errors = [] if commands == ["python bench/run_benchmark.py --replay"] else ["default replay command"]
+    for needle in (clock, "no network requests", "exit 4", "lists missing URLs",
+                   "leaves existing result files unchanged", "complete replay can",
+                   "cache is not tracked or published", "fresh clone is not guaranteed",
+                   "Plain run mode can fetch", "--fill missing-urls.txt", "reviewed explicit",
+                   "separate --replay", "not a historical measurement"):
+        if needle not in " ".join(block.split()):
+            errors.append(needle)
+    return errors
+
+
+@recorded
+def check_benchmark_reproduction_guidance_is_current():
+    print("\n[T-037] the current reproduction recipe reflects benchmark source")
+    import ast
+    from datetime import datetime, timezone
+    with io.open(os.path.join(REPO, "bench", "run_benchmark.py"), encoding="utf-8") as f:
+        tree = ast.parse(f.read())
+    value = next(n.value for n in tree.body if isinstance(n, ast.Assign)
+                 and any(isinstance(t, ast.Name) and t.id == "BENCH_CLOCK" for t in n.targets))
+    check("the source clock remains an explicit UTC datetime", isinstance(value, ast.Call)
+          and isinstance(value.func, ast.Name) and value.func.id == "datetime"
+          and len(value.keywords) == 1 and value.keywords[0].arg == "tzinfo"
+          and ast.dump(value.keywords[0].value) == ast.dump(
+              ast.Attribute(value=ast.Name(id="timezone", ctx=ast.Load()), attr="utc", ctx=ast.Load())))
+    clock = datetime(*(ast.literal_eval(n) for n in value.args),
+                     tzinfo=timezone.utc).isoformat().replace("+00:00", "Z")
+    for rel in ("README.md", "docs/EXPERIMENT_C.md"):
+        with io.open(os.path.join(REPO, rel), encoding="utf-8") as f:
+            errors = _benchmark_recipe_errors(f.read(), clock)
+        check("%s has truthful current reproduction guidance" % rel, not errors, str(errors))
+    fence = chr(96) * 3
+    sample = ("<!-- benchmark-reproduction:current:start -->\n" + clock + "\n" + fence
+              + "bash\npython bench/run_benchmark.py --replay\n" + fence + "\n"
+              "no network requests; exit 4; lists missing URLs; leaves existing result files unchanged\n"
+              "a complete replay can write results; cache is not tracked or published\n"
+              "a fresh clone is not guaranteed; Plain run mode can fetch\n"
+              "--fill missing-urls.txt uses a reviewed explicit list; separate --replay\n"
+              "a pinned logical clock is not a historical measurement\n"
+              "<!-- benchmark-reproduction:current:end -->")
+    check("the recipe guard accepts a complete current block",
+          not _benchmark_recipe_errors(sample, clock))
+    for needle in (" --replay\n", clock, "no network requests", "cache is not tracked or published"):
+        check("the recipe guard rejects removal of %r" % needle,
+              bool(_benchmark_recipe_errors(sample.replace(needle, "omitted", 1), clock)))
+
+
 def main():
     print("=" * 66)
     print("Published accuracy figures match the benchmark")
