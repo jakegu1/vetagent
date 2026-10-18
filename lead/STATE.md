@@ -173,6 +173,25 @@ T-027's ready specification preserves deterministic controls and separate live c
 
 ## Latest verified linked release
 
+Published functional head 6898b72 contains T-031 discovery routing and the reviewed
+T-027 recorded/live separation with compatibility repair (g). Exact-head preflight
+39099114314 and master CI 39099401243 pass required jobs; actual deployment
+39099401296 executes all thirty-six offline steps, uploads Worker version
+6ff81833-7d6d-4019-aab3-1073bc9096f8 and passes tagged production smoke. Observed
+upstream contracts are 232 pass with zero failed, unobserved or collapsed paths.
+Optional historical backfill still has two HTTP 400 failures, kept separate.
+
+Tagged Base and Solana discovery return complete new/trending listings, and an
+actual Base result reaches both liquidity and risk tools. Unknown sellability is
+still unknown. Production observer 39099677836 preserves records, regenerates and
+checks snapshot health successfully. Its bot commits through 3ef4f45 are retained;
+actual following workflow_run CI 39099886952 passes the complete offline job on
+that exact bot head. These dated observations do not prove sustained availability
+or every intended snapshot slot. T-032 is subsequently integrated and checked but
+is not part of this already deployed head.
+
+## Previous verified linked release
+
 Published functional head d44d79a contains approved task merges 24c9aa7, a925eec and
 629b5bc. Complete integrated checks pass all thirty-five steps in 110.3 seconds.
 Exact-head Linux preflight 39054837848 and master CI 39055170253 pass required jobs
