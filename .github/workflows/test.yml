@@ -46,6 +46,9 @@ jobs:
       - name: Backfill observation classification and acquisition bounds
         run: python tests/test_backfill_observation_contract.py
 
+      - name: Coverage-probe observations preserve HTTP and cohort boundaries
+        run: python tests/test_rugcheck_coverage_probe.py
+
       - name: Host SDK dependencies stay locked and Linux builds need no deploy credentials
         run: python tests/test_build_dependency_lock.py
 
