@@ -56,7 +56,7 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 | T-032 | 3 | Done; both fresh reviews approve, merged 106ad21, post-merge 37/37 | Lead | Publish with related technical batch |
 | T-034 | 3 | Done; final fresh approval, merged 7ef54e0, uninterrupted integrated 38/38 | Lead | Publish with related technical batch |
 | T-035 | 3 | Done; both fresh reviews approve, merged f8ee485, uninterrupted integrated 38/38 | Lead | Publish with related technical batch |
-| T-036 | 3 | In progress after approved T-035 and retained scheduled bot history | Executor | Seven-file pin/runner scope, tests first; no old fixture edits |
+| T-036 | 3 | Source approved and merged 34fc8b9; actual pinned Linux builds and artifacts verified | Lead | Complete integrated gate, authorized upload/smoke and observer/bot CI before Done |
 | T-037 | 3 | Done; both fresh reviews approve, merged a98c7af, uninterrupted combined 38/38 | Lead | Publish with related technical batch |
 
 ## Autonomous technical continuation

@@ -24,9 +24,12 @@ the uninterrupted integrated thirty-eight-step gate. T-037's five release/report
 independent and adversarial reviews and are merged after T-034's checked integration,
 with no real benchmark run. The complete combined gate passes thirty-eight of thirty-eight.
 
-T-036 now pins the verified supported action implementations and Ubuntu image;
-the six-workflow scope preserves all other workflow semantics. Its actual Linux
-build, production deployment and observer/bot-CI proof remain release requirements.
+T-036's final frozen source passes a fresh combined review, source-quality 12/12
+and RED-TEAM: none, with both ordinary and inherited-denied 39-step gates. Exact-head
+Linux run 39112259345 passes required checks and two independent locked builds;
+downloaded artifact digests and target-lock bytes match source. Merge 34fc8b9 retains
+the six-workflow semantics and the specified exact-prefix hash refresh. Production
+deployment and observer/bot-CI proof remain mandatory release requirements.
 T-038 follows with required offline backfill checks and honest live classifications.
 
 The Owner authorizes autonomous completion of the known technical-gap queue, retaining
