@@ -153,8 +153,7 @@ PROBED_TEMPLATES = {
     "rugcheck": {"https://api.rugcheck.xyz/v1/tokens/%s/report"},
     "honeypot.is": {"https://api.honeypot.is/v2/IsHoneypot?address=%s"},
     "dexscreener": {"https://api.dexscreener.com/latest/dex/tokens/%s"},
-    "geckoterminal": {"https://api.geckoterminal.com/api/v2/%s",
-                      "https://api.geckoterminal.com/api/v2/networks/%s/%s"},
+    "geckoterminal": {"https://api.geckoterminal.com/api/v2/%s"},
 }
 # Endpoints the engine uses that this file deliberately does not probe, each with why.
 # An entry here is a decision, not an oversight; an endpoint in neither map is a failure.

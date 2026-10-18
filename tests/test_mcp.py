@@ -15,6 +15,10 @@ import socket
 import sys
 from contextlib import contextmanager
 from unittest.mock import patch
+import io
+from contextlib import redirect_stderr, redirect_stdout
+from datetime import datetime, timezone
+from types import SimpleNamespace
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src"))
 
@@ -827,6 +831,371 @@ def test_liquidity_schema_explains_upstream_ok_without_certifying_unmarked_pools
     check("absence of the optional marker never certifies reserves, prices or exits",
           "missing" in description and "marker" in description and "never" in description
           and "prices" in description and "exit trade" in description, description)
+
+
+def _t031_reply(body, status=200):
+    return status, json.dumps(body)
+
+
+def _t031_pool(suffix, net="eth"):
+    row = _t028_pool(suffix)
+    row["id"] = net + "_pool" + suffix
+    address = "1" * 43 + suffix if net == "solana" else "0x" + suffix * 40
+    row["relationships"]["base_token"]["data"]["id"] = net + "_" + address
+    row["attributes"]["pool_created_at"] = "2026-10-16T00:00:00Z"
+    return row
+
+
+@contextmanager
+def _t031_runtime(outcomes, key="t031-synthetic-header-only-credential", cache=None,
+                  real_fetch=risk._fetch_json):
+    """Exercise real retries/cache/fetch and handlers with all upstreams local and bounded."""
+    import test_http_telemetry as runtime
+
+    state = {"requests": [], "cache_reads": [], "cache_writes": [], "sleeps": [],
+             "recorded": [], "blocked": [], "logs": io.StringIO(), "unexpected": []}
+    cached = copy.deepcopy(cache or {})
+    env = SimpleNamespace(CG_DEMO_KEY=key) if key is not None else None
+
+    def no_network(*args, **kwargs):
+        state["blocked"].append("external network blocked")
+        raise AssertionError("T-031 acceptance must not access external networking")
+
+    def loopback_only(operation):
+        def connect(sock, address):
+            if isinstance(address, tuple) and address[0] in ("127.0.0.1", "::1"):
+                return operation(sock, address)
+            return no_network()
+        return connect
+
+    def route(url):
+        for provider, prefix in (("coingecko", "https://api.coingecko.com/api/v3/onchain/"),
+                                 ("geckoterminal", "https://api.geckoterminal.com/api/v2/")):
+            if url.startswith(prefix):
+                parts = url[len(prefix):].split("/")
+                if len(parts) == 3 and parts[0] == "networks" and parts[2] in (
+                        "new_pools", "trending_pools"):
+                    return provider, "new" if parts[2] == "new_pools" else "trending"
+        state["unexpected"].append("unexpected URL")
+        raise AssertionError("Unexpected local discovery upstream")
+
+    async def fetch(url, **kwargs):
+        provider, kind = route(url)
+        state["requests"].append((provider, kind, url, dict(kwargs.get("headers") or {})))
+        if len(state["requests"]) > 12:
+            raise AssertionError("Discovery exceeded two providers times three attempts per listing")
+        response = outcomes.get((provider, kind), _t031_reply({"data": []}))
+        if isinstance(response, Exception):
+            raise response
+        status, text = response
+
+        class Response:
+            async def text(self):
+                return text
+
+        answer = Response()
+        answer.status = status
+        return answer
+
+    async def cache_get(url):
+        state["cache_reads"].append(url)
+        return copy.deepcopy(cached.get(route(url), (None, None)))
+
+    async def cache_put(url, data, ttl=None):
+        state["cache_writes"].append(url)
+        cached[route(url)] = copy.deepcopy(data), 0
+
+    async def sleep(delay):
+        state["sleeps"].append(delay)
+
+    def record(env, blobs, doubles):
+        state["recorded"].append((list(blobs), list(doubles)))
+
+    with patch.object(socket.socket, "connect", loopback_only(socket.socket.connect)), \
+            patch.object(socket.socket, "connect_ex", loopback_only(socket.socket.connect_ex)), \
+            patch.object(socket, "create_connection", no_network), \
+            patch.object(socket, "getaddrinfo", no_network), \
+            patch.object(risk, "cf_fetch", fetch), \
+            patch.object(risk, "_fetch_json", real_fetch), \
+            patch.object(risk, "_cache_get", cache_get), \
+            patch.object(risk, "_cache_put", cache_put), \
+            patch.object(risk.asyncio, "sleep", sleep), \
+            patch.object(risk, "_clock_now", lambda: datetime(2026, 10, 18, tzinfo=timezone.utc)), \
+            patch.object(risk, "_now_iso", lambda: "2026-10-18T00:00:00Z"), \
+            patch.dict(risk._ONCHAIN, risk._ONCHAIN.copy(), clear=True), \
+            patch.object(runtime.entry, "_record", record), \
+            redirect_stdout(state["logs"]), redirect_stderr(state["logs"]):
+        risk.configure(env)
+        yield runtime, state, env
+
+
+def _t031_scan(outcomes, key="t031-synthetic-header-only-credential", cache=None,
+                args=("ethereum", 10)):
+    with _t031_runtime(outcomes, key=key, cache=cache) as (_, state, _):
+        try:
+            answer, error = asyncio.run(risk.new_pools(*args)), None
+        except Exception as exc:
+            answer, error = {}, exc
+    return answer, error, state
+
+
+def _t031_trace(state):
+    return [(provider, kind) for provider, kind, _, _ in state["requests"]]
+
+
+def _t031_private(tag, state, answer, error=None):
+    marker = "t031-synthetic-header-only-credential"
+    visible = json.dumps([answer, str(error), state["recorded"], state["cache_reads"],
+                          state["cache_writes"], state["logs"].getvalue()])
+    check(tag + "credential never reaches output, errors, cache keys, telemetry or logs",
+          marker not in visible)
+    check(tag + "credential is only the keyed host header",
+          all(marker not in url and headers.get("Accept") == "application/json"
+              and (headers.get("x-cg-demo-api-key") == marker if provider == "coingecko"
+                   else "x-cg-demo-api-key" not in headers and marker not in str(headers))
+              for provider, _, url, headers in state["requests"]))
+    check(tag + "upstreams remain bounded local fixtures",
+          len(state["requests"]) <= 12 and not state["blocked"] and not state["unexpected"])
+
+
+def test_t031_keyed_preference_and_independent_listing_fallback():
+    print("\n[T-031] existing configured provider is preferred separately for each listing")
+    for fallback in ((), ("new",), ("trending",), ("new", "trending")):
+        outcomes, expected = {}, []
+        for kind, suffix in (("new", "1"), ("trending", "2")):
+            outcomes[("coingecko", kind)] = (_t031_reply({}, 429) if kind in fallback else
+                                               _t031_reply({"data": [_t031_pool(suffix)]}))
+            outcomes[("geckoterminal", kind)] = _t031_reply({"data": [_t031_pool(suffix)]})
+            expected.append(("coingecko", kind))
+            if kind in fallback:
+                expected.append(("geckoterminal", kind))
+        answer, error, state = _t031_scan(outcomes)
+        tag = "T031 fallback %s: " % (fallback,)
+        check(tag + "keyed source is first and only necessary fallback is called",
+              _t031_trace(state) == expected, str(_t031_trace(state)))
+        check(tag + "provider redundancy remains two observed listing kinds",
+              error is None and answer.get("status") == "ok"
+              and answer.get("sources_ok") == ["new", "trending"]
+              and answer.get("sources_failed") == [] and answer.get("count") == answer.get("scanned") == 2)
+        check(tag + "rows retain listing order and usable token addresses",
+              [(row["pool_id"], row["kind"]) for row in answer.get("pools", [])]
+              == [("eth_pool1", "new"), ("eth_pool2", "trending")]
+              and all(risk.validate_address(row["token_address"]) for row in answer.get("pools", [])))
+        _t031_private(tag, state, answer, error)
+    empty = {("coingecko", kind): _t031_reply({"data": []}) for kind in ("new", "trending")}
+    empty.update({("geckoterminal", kind): _t031_reply({"data": [_t031_pool("9")]})
+                  for kind in ("new", "trending")})
+    answer, error, state = _t031_scan(empty)
+    check("T031 valid keyed empty is final without a redundant copy", error is None
+          and answer.get("status") == "ok" and answer.get("count") == answer.get("scanned") == 0
+          and answer.get("pools") == []
+          and _t031_trace(state) == [("coingecko", "new"), ("coingecko", "trending")])
+    _t031_private("T031 keyed empty: ", state, answer, error)
+
+
+def test_t031_no_or_invalid_key_preserves_complete_parent_answer():
+    print("\n[T-031] no usable key keeps the exact unkeyed answer")
+    first, second = _t031_pool("1"), _t031_pool("2")
+    duplicate = copy.deepcopy(first)
+    duplicate["attributes"]["name"] = "Discarded later duplicate"
+    outcomes = {("geckoterminal", "new"): _t031_reply({"data": [first]}),
+                ("geckoterminal", "trending"): _t031_reply({"data": [duplicate, second]})}
+    expected = {"status": "ok", "chain": "ethereum", "network": "eth", "count": 1,
+                "scanned": 2, "sources_ok": ["new", "trending"], "sources_failed": [],
+                "pools": [{"kind": "new", "pool_id": "eth_pool1", "token_address": "0x" + "1" * 40,
+                           "name": "Pool 1", "price_usd": 1.25, "liquidity_usd": 100.0,
+                           "volume_24h_usd": 20.0, "pool_age_days": 2}],
+                "checked_at": "2026-10-18T00:00:00Z"}
+    for key in (None, "", "short", "\x01", "contains spaces but is long", "a" * 20 + "\x01"):
+        answer, error, state = _t031_scan(outcomes, key=key, args=(" Ethereum ", 0))
+        check("T031 absent or unusable key preserves every parent answer field",
+              error is None and answer == expected)
+        check("T031 absent or unusable key only calls the original provider",
+              _t031_trace(state) == [("geckoterminal", "new"), ("geckoterminal", "trending")])
+        _t031_private("T031 keyless: ", state, answer, error)
+
+
+def test_t031_bad_provider_replies_fall_back_before_atomic_merge():
+    print("\n[T-031] transport, containers and later malformed rows all trigger fallback")
+    failures = [(label, _t031_reply(body), 1) for label, body in _t028_malformed_listings()]
+    failures.extend([("invalid JSON", (200, "{broken"), 3),
+                     ("HTTP refusal", _t031_reply({}, 503), 3),
+                     ("transport exception", OSError("private transport text"), 3)])
+    for label, bad, attempts in failures:
+        for failed in ("new", "trending"):
+            other = "trending" if failed == "new" else "new"
+            outcomes = {("coingecko", failed): bad,
+                        ("geckoterminal", failed): _t031_reply({"data": [_t031_pool("9")]}),
+                        ("coingecko", other): _t031_reply({"data": [_t031_pool("8")]})}
+            answer, error, state = _t031_scan(outcomes)
+            tag = "T031 %s %s: " % (failed, label)
+            expected = [("coingecko", "new")] * (attempts if failed == "new" else 1)
+            if failed == "new":
+                expected.append(("geckoterminal", "new"))
+            expected.extend([("coingecko", "trending")] * (attempts if failed == "trending" else 1))
+            if failed == "trending":
+                expected.append(("geckoterminal", "trending"))
+            check(tag + "real fetch attempts retain retry bounds and independent routes",
+                  _t031_trace(state) == expected, str(_t031_trace(state)))
+            check(tag + "complete fallback observes both listings", error is None
+                  and answer.get("status") == "ok" and answer.get("sources_ok") == ["new", "trending"]
+                  and answer.get("sources_failed") == [])
+            wanted = [("eth_pool9", "Pool 9", failed), ("eth_pool8", "Pool 8", other)]
+            if failed == "trending":
+                wanted.reverse()
+            check(tag + "no partial row or duplicate override survives the failed provider",
+                  answer.get("count") == answer.get("scanned") == 2
+                  and [(row["pool_id"], row["name"], row["kind"]) for row in answer.get("pools", [])] == wanted)
+            check(tag + "backoff remains the existing fetch policy",
+                  state["sleeps"] == ([0.3, 0.6] if attempts == 3 else []))
+            _t031_private(tag, state, answer, error)
+
+
+def test_t031_partial_empty_and_total_failure_keep_truthful_diagnostics():
+    print("\n[T-031] listing completeness and safe all-source diagnostics stay distinct")
+    for failed in ("new", "trending"):
+        other = "trending" if failed == "new" else "new"
+        for rows in ([], [_t031_pool("9")]):
+            outcomes = {(provider, failed): _t031_reply({"data": [_t031_pool("1"), None]})
+                        for provider in ("coingecko", "geckoterminal")}
+            outcomes[("coingecko", other)] = _t031_reply({"data": rows})
+            answer, error, state = _t031_scan(outcomes)
+            check("T031 all providers failing one listing yields truthful partial or partial-empty",
+                  error is None and answer.get("status") == "partial"
+                  and answer.get("sources_failed") == [failed] and answer.get("sources_ok") == [other]
+                  and answer.get("count") == answer.get("scanned") == len(rows)
+                  and all(row["kind"] == other for row in answer.get("pools", [])))
+            check("T031 both listings are attempted after an all-provider listing failure",
+                  _t031_trace(state) == ([("coingecko", "new"), ("geckoterminal", "new"),
+                                         ("coingecko", "trending")] if failed == "new" else
+                                        [("coingecko", "new"), ("coingecko", "trending"),
+                                         ("geckoterminal", "trending")]))
+            _t031_private("T031 partial: ", state, answer, error)
+    generic = "GeckoTerminal request failed; could not scan new pools on ethereum"
+    cases = [("no safe fetch detail", _t031_reply({}), ""),
+             ("HTTP status", _t031_reply({}, 429), "coingecko 429, geckoterminal 429"),
+             ("numeric API code", _t031_reply({"error_code": 10010}, 401),
+              "coingecko 401 (10010), geckoterminal 401 (10010)"),
+             ("error body", _t031_reply({"status": {"error_code": 429}}),
+              "coingecko error body 429, geckoterminal error body 429"),
+             ("invalid JSON", (200, "raw private HTML {"),
+              "coingecko JSONDecodeError, geckoterminal JSONDecodeError"),
+             ("transport", OSError("raw private URL https://private.invalid/"),
+              "coingecko OSError, geckoterminal OSError"),
+             ("hostile error text", _t031_reply({"status": {
+                 "error_code": "t031-synthetic-header-only-credential https://private.invalid/"}}), "")]
+    for label, response, detail in cases:
+        outcomes = {(provider, kind): response for provider in ("coingecko", "geckoterminal")
+                    for kind in ("new", "trending")}
+        answer, error, state = _t031_scan(outcomes)
+        check("T031 %s keeps RuntimeError with only known safe provider detail" % label,
+              isinstance(error, RuntimeError) and str(error) == generic + (" (%s)" % detail if detail else ""))
+        check("T031 all-source failure never exposes raw bodies, exception messages or URLs",
+              "private" not in str(error) and "http" not in str(error))
+        _t031_private("T031 total failure: ", state, answer, error)
+
+
+def test_t031_real_cache_policy_and_disclosure_survive_provider_failover():
+    print("\n[T-031] actual cache freshness and stale disclosures survive the route")
+    for provider in ("coingecko", "geckoterminal"):
+        for age in (20, 321):
+            cache = {(provider, kind): ({"data": [_t031_pool(suffix)]}, age)
+                     for kind, suffix in (("new", "1"), ("trending", "2"))}
+            outcomes = {(name, kind): _t031_reply({}, 429)
+                        for name in ("coingecko", "geckoterminal") for kind in ("new", "trending")}
+            answer, error, state = _t031_scan(outcomes, cache=cache)
+            check("T031 usable cached listing prevents redundant provider reads", error is None
+                  and answer.get("status") == "ok" and answer.get("count") == 2
+                  and len(state["requests"]) == (0 if age == 20 else 2)
+                  + (2 if provider == "geckoterminal" else 0))
+            expected = [{"source": "api.%s.com" % provider, "age_seconds": age}] * 2
+            check("T031 only stale cache gets its original provider and age disclosure",
+                  answer.get("served_stale") == expected if age == 321 else "served_stale" not in answer)
+            _t031_private("T031 cache: ", state, answer, error)
+    expired = {("coingecko", kind): ({"data": [_t031_pool("1")]}, 901)
+               for kind in ("new", "trending")}
+    outcomes = {("coingecko", kind): _t031_reply({}, 429) for kind in ("new", "trending")}
+    answer, error, state = _t031_scan(outcomes, cache=expired)
+    check("T031 expired cache is discarded before keyless observed empty fallback", error is None
+          and answer.get("status") == "ok" and answer.get("pools") == []
+          and "served_stale" not in answer and len(state["requests"]) == 4)
+
+
+def test_t031_real_http_and_mcp_keep_provider_keys_out_of_public_surfaces():
+    print("\n[T-031] real HTTP/MCP route through actual fetch with private header auth")
+    for interface in ("http", "mcp"):
+        for mode in ("complete", "partial empty", "failure"):
+            outcomes = {(provider, kind): _t031_reply({}, 429)
+                        for provider in ("coingecko", "geckoterminal") for kind in ("new", "trending")}
+            if mode != "failure":
+                outcomes[("coingecko", "new")] = _t031_reply(
+                    {"data": [_t031_pool("1", "solana")] if mode == "complete" else []})
+            if mode == "complete":
+                outcomes[("geckoterminal", "trending")] = _t031_reply({"data": []})
+            with _t031_runtime(outcomes) as (runtime, state, env):
+                body = {"jsonrpc": "2.0", "id": 31, "method": "tools/call",
+                        "params": {"name": "find_new_hot_pools", "arguments": {"chain": "solana", "limit": 1}}}
+
+                class Request(runtime.FakeRequest):
+                    async def json(self):
+                        return body
+
+                request = Request("https://offline.invalid" + (
+                    "/mcp" if interface == "mcp" else "/new-pools?chain=solana&limit=1"),
+                    method="POST" if interface == "mcp" else "GET",
+                    headers={"x-mcp-client": "vetagent-manual-probe"})
+                worker = runtime.entry.Default()
+                worker.env = env
+                response = asyncio.run(worker.fetch(request))
+                answer = json.loads(response.body)
+            result = answer.get("result", {}) if interface == "mcp" else answer
+            data = result.get("structuredContent", {}) if interface == "mcp" else result
+            expected = {"complete": "ok", "partial empty": "partial", "failure": ""}[mode]
+            tag = "T031 %s %s: " % (interface, mode)
+            if expected:
+                check(tag + "real response preserves listing status", response.status == 200
+                      and data.get("status") == expected and not result.get("isError"))
+                check(tag + "Solana token survives discovery handoff", mode != "complete"
+                      or (data.get("pools") or [{}])[0].get("token_address") == "1" * 44)
+                if interface == "mcp":
+                    check(tag + "structured and text payloads match",
+                          not result.get("isError") and data == json.loads(
+                              result.get("content", [{}])[0].get("text", "null")))
+            elif interface == "mcp":
+                check(tag + "real tool error retains safe provider status", response.status == 200
+                      and result.get("isError") is True and "structuredContent" not in result
+                      and "(coingecko 429, geckoterminal 429)" in result.get("content", [{}])[0].get("text", ""))
+            else:
+                check(tag + "real HTTP error retains safe provider status", response.status == 500
+                      and answer.get("error") == "internal_error"
+                      and answer.get("detail", "").endswith("(coingecko 429, geckoterminal 429)"))
+            check(tag + "telemetry keeps prospective completeness with no listing data",
+                  state["recorded"] == [(["tools/call" if interface == "mcp" else "http",
+                                           "find_new_hot_pools", expected, "vetagent-manual-probe", "??", ""],
+                                          [1.0, 0.0 if expected else 1.0])])
+            _t031_private(tag, state, answer)
+
+
+def test_t031_limits_validation_and_network_block_are_preserved():
+    print("\n[T-031] input limits and the acceptance network guard are real")
+    outcomes = {("coingecko", "new"): _t031_reply({"data": [{"id": "pool%d" % i} for i in range(55)]})}
+    for limit, expected in ((-1, 1), ("100", 50), (2, 2)):
+        answer, error, state = _t031_scan(outcomes, args=(" BASE ", limit))
+        check("T031 original limits and chain normalization survive provider preference",
+              error is None and answer.get("count") == expected and answer.get("scanned") == 55
+              and answer.get("chain") == answer.get("network") == "base"
+              and [row["pool_id"] for row in answer.get("pools", [])] == ["pool%d" % i for i in range(expected)])
+        _t031_private("T031 limits: ", state, answer, error)
+    for args in (("invalid/chain", 1), ("ethereum", "invalid"), ("ethereum", None)):
+        _, error, state = _t031_scan({}, args=args)
+        check("T031 invalid input still fails before any provider/cache access", isinstance(error, ValueError)
+              and not state["requests"] and not state["cache_reads"])
+    with _t031_runtime({}) as (_, state, _):
+        try:
+            socket.create_connection(("blocked.invalid", 443))
+        except AssertionError:
+            pass
+    check("T031 external networking guard is observed failing", state["blocked"] == ["external network blocked"])
 
 
 def main():
