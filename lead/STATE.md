@@ -107,6 +107,12 @@ It must preserve the reviewed cores and active study source exactly. Shared dura
 admission/observation ports and hard-parent-death containment are fixed before tests.
 No live native acquisition precedes the published gates and actual T-044 readout.
 
+Actual Linux preflight 39167914083 holds publication: the synthetic positive raw
+fixture inherits the actual CI flag and is correctly refused. Named T-044 f
+isolates only that fake call's module dependency, retaining the real environment
+and formal guard. Correct and independently verify this test-only seam before a
+new combined/Linux release. Production master remains the prior green b1becd2.
+
 The Owner renews authorization to prioritize the 21 remaining rows, batch related
 autonomous repairs, delegate bounded isolated work, and merge/push/deploy after quality
 checks. Owner decisions and genuinely unavailable/calendar evidence are reported

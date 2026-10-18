@@ -340,3 +340,36 @@ new focused pass and one new exact-head globally exclusive full slot before
 READY. The fresh combined second review must close (e2) with (c), (d) and (e).
 This is evidence correction within the existing repair round, with no policy,
 provider, queue, request allowance, deadline or study-calendar change.
+
+## Named Linux synthetic-fixture correction
+
+2026-10-19 (f): actual pre-publication Linux run 39167914083 at cdf6fac
+reaches the containing oracle runner and returns 617 passed, one failed. The
+positive synthetic raw-retention call inside
+test_goplus_quota_safe_output_and_private_raw inherits the real CI environment;
+the unchanged formal source correctly raises ci_raw_refused. The Windows local
+gate was green. Preserve both actual logs and stop publication until corrected.
+
+Permit a test-only isolated environment fixture around that one positive call.
+Use a scoped proxy of this imported module's os dependency: unchanged real OS
+functions and a copied synthetic environment for the fake transport only. Do not
+clear or replace the actual process os.environ, CI/GITHUB_ACTIONS flags, CLI
+environment, suite runner or production module. Restore the exact original module
+dependency in finally/context exit. The existing assignment/call, all assertions,
+inputs, statements/order elsewhere, seven top-level functions and original runner
+contract stay exact. No assertion is deleted, weakened, caught or skipped.
+
+Add only local fixture imports/helper setup, that scope wrapper and a restoration
+check. Prove the actual process environment object/content and original dependency
+remain unchanged, even if the fake call raises. Keep the following real ci=True
+refusal and all genuine environment/CLI refusal controls outside the mock. The
+actual Linux refusal above remains preserved evidence for the unmodified guard.
+No synthetic marker reaches a public safe artifact. No real provider is called.
+
+This same-criterion fixture correction requires its own named test-only commit,
+with the actual Linux/focused CI-environment red before it. There is no source
+implementation change. A bounded independent delta review must reproduce the
+focused runner with and without actual CI flags, exact old/assertion preservation
+and genuine raw refusal. Root then runs the corrected combined gate and actual
+Linux checks before publication. This is the post-second-round actual CI regression
+exception, not another broad implementation/review cycle or a privacy waiver.
