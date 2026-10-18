@@ -243,6 +243,7 @@ class GitHubArtifacts:
             raise StudyError("artifact_transport_unavailable") from None
 
     def list(self):
+        """Return checkpoints oldest first; Artifact IDs are opaque identifiers."""
         found, pages = [], 0
         for kind in ("result", "intent"):
             for page in range(1, 6):
@@ -255,14 +256,51 @@ class GitHubArtifacts:
                 rows = body.get("artifacts") if isinstance(body, dict) else None
                 if not isinstance(rows, list):
                     raise StudyError("artifact_metadata")
+                if any(not isinstance(row, dict) or not isinstance(row.get("name"), str)
+                       or not row["name"].strip() for row in rows):
+                    raise StudyError("artifact_metadata")
                 matched = [row for row in rows if isinstance(row, dict) and row.get("name") == name]
                 found.extend(matched)
-                self.metadata.update({row["id"]: row for row in matched if type(row.get("id")) is int})
                 if len(rows) < 100:
                     break
             else:
                 raise StudyError("artifact_scan_limit")
-        return found
+        ordered = self._chronological(found)
+        self.metadata = {row["id"]: row for row in ordered}
+        return ordered
+
+    def _chronological(self, rows):
+        seen, publications, moments = set(), set(), {}
+        ordered = []
+        for row in rows:
+            try:
+                ident, created, run = row["id"], row["created_at"], row["workflow_run"]
+                kind = ARTIFACT.fullmatch(row["name"])[1]
+                if (type(ident) is not int or ident <= 0 or ident in seen
+                        or not isinstance(created, str)
+                        or not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|\+00:00)", created)
+                        or not isinstance(run, dict) or type(run.get("id")) is not int or run["id"] <= 0
+                        or not re.fullmatch(r"[0-9a-f]{40}", str(run.get("head_sha", "")))
+                        or run.get("head_branch") != self.ctx["default_branch"]):
+                    raise StudyError("artifact_chronology")
+                moment = datetime.datetime.fromisoformat(created.replace("Z", "+00:00"))
+                identity = (run["id"], run["head_sha"], run["head_branch"])
+                publication = (run["id"], kind)
+                if publication in publications:
+                    raise StudyError("artifact_chronology")
+                publications.add(publication)
+                seen.add(ident)
+                moments.setdefault(moment, []).append((kind, identity))
+                ordered.append((moment, kind == "result", row))
+            except StudyError:
+                raise
+            except (KeyError, TypeError, ValueError, AttributeError, IndexError):
+                raise StudyError("artifact_chronology") from None
+        for tied in moments.values():
+            if len(tied) > 1 and (len(tied) != 2 or {kind for kind, _ in tied} != {"intent", "result"}
+                                  or tied[0][1] != tied[1][1]):
+                raise StudyError("artifact_chronology_ambiguous")
+        return [row for _, _, row in sorted(ordered, key=lambda item: item[:2])]
 
     def load(self, ident):
         if self.downloads >= self.max_downloads or type(ident) is not int or ident <= 0:
@@ -313,7 +351,7 @@ def prepare(phase, store, ctx, now, study=None, pilot_id=None):
         raise StudyError("invalid_phase")
     metadata = [m for m in store.list() if ARTIFACT.fullmatch(str(m.get("name", "")))
                 and ARTIFACT.fullmatch(m["name"])[1] != "report"]
-    metadata.sort(key=lambda m: m["id"])
+    # Artifact adapters publish oldest-to-newest chronology; never re-sort by ID.
     loaded = {}
     def load(ident):
         if ident not in loaded:
@@ -796,7 +834,7 @@ def reconstruct(store, ctx, study):
     if not candidates:
         raise StudyError("no_study_results")
     latest = None
-    for meta in sorted(candidates, key=lambda m: m["id"], reverse=True)[:195]:
+    for meta in reversed(candidates[-195:]):
         candidate = store.load(meta["id"])
         if candidate["state"]["study"] == study:
             latest = candidate

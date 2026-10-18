@@ -781,5 +781,282 @@ class StudyTests(unittest.TestCase):
         self.assertTrue(all(store.items[i][1] == previous for i, previous in old.items()))
 
 
+class CheckpointChronologyTests(unittest.TestCase):
+    """Opaque Artifact IDs never determine the study's publication chronology."""
+
+    def fixture(self, later=False, ids=None):
+        harness = StudyTests("test_slots_use_wall_time_skip_gaps_and_do_not_recruit_again")
+        clock, memory, active, _, _, _ = harness.active()
+        if later:
+            clock.sleep(1800)
+            fetch, _ = harness.vendor(clock)
+            with patch.object(probe, "curl", side_effect=fetch):
+                harness.job("tick", memory, clock, context(3), "study-one")
+        old = list(memory.items)
+        ids = ids or ([701, 904, 500, 800, 499, 600] if later else [701, 904, 500, 800])
+        self.assertEqual(len(ids), len(old))
+        references, metadata, payloads, runs, decoded = {}, [], {}, {}, {}
+
+        def rebound(value):
+            if isinstance(value, dict):
+                if set(value) == {"id", "digest"}:
+                    return copy.deepcopy(references[value["id"]])
+                return {key: rebound(item) for key, item in value.items()}
+            if isinstance(value, list):
+                return [rebound(item) for item in value]
+            return copy.deepcopy(value)
+
+        for order, (original, ident) in enumerate(zip(old, ids)):
+            part = memory.load(original)
+            state, ctx = rebound(part["state"]), part["manifest"]["context"]
+            data = driver.bundle_bytes(state, part["rows"], part["manifest"]["kind"], ctx)
+            item = driver.decode_bundle(data, ctx, context(7))
+            references[original] = {"id": ident, "digest": item["digest"]}
+            payloads[ident], decoded[ident] = data, item
+            metadata.append({"id": ident, "name": driver.artifact_name(state, item["manifest"]["kind"], ctx),
+                             "expired": False, "size_in_bytes": len(data),
+                             "digest": "sha256:" + hashlib.sha256(data).hexdigest(),
+                             "created_at": stamp(EPOCH - 600 + order * 60).replace("+00:00", "Z"),
+                             "workflow_run": {"id": ctx["run_id"], "head_sha": ctx["head"],
+                                              "head_branch": "master", "repository_id": 1,
+                                              "head_repository_id": 1}})
+            runs[ctx["run_id"]] = {"id": ctx["run_id"], "repository": {"full_name": ctx["repository"]},
+                                   "head_repository": {"full_name": ctx["repository"]},
+                                   "path": driver.WORKFLOW, "head_branch": "master", "head_sha": ctx["head"],
+                                   "event": "workflow_dispatch"}
+        return {"clock": clock, "metadata": metadata, "payloads": payloads, "runs": runs,
+                "decoded": decoded, "active": ids[old.index(active)], "ids": ids}
+
+    def service(self, fixture, ctx=None, report=False, reverse=False, pages=None):
+        ctx = ctx or context(7)
+        service = driver.GitHubArtifacts(ctx, "synthetic-token", max_reads=600 if report else 12,
+                                         max_downloads=195 if report else 2,
+                                         seconds=720 if report else 110)
+        requests = []
+        by_id = {row["id"]: row for row in fixture["metadata"] if type(row.get("id")) is int}
+
+        def request(path, binary=False):
+            service._count(2 if binary else 1)
+            requests.append((path, binary))
+            prefix = "/repos/synthetic/study/actions/"
+            self.assertTrue(path.startswith(prefix), "the real adapter must keep its owned endpoint")
+            tail = path[len(prefix):]
+            if tail.startswith("artifacts?name="):
+                kind = tail.split("w57-", 1)[1].split("-v1", 1)[0]
+                page = int(tail.rsplit("page=", 1)[1])
+                if pages is not None:
+                    rows = pages.get((kind, page), [])
+                else:
+                    rows = [row for row in fixture["metadata"] if row.get("name") == "w57-%s-v1" % kind]
+                    if reverse:
+                        rows = list(reversed(rows))
+                    rows = rows[(page - 1) * 100:page * 100]
+                return {"total_count": len(rows), "artifacts": copy.deepcopy(rows)}
+            if tail.startswith("runs/"):
+                return copy.deepcopy(fixture["runs"][int(tail.split("/")[1])])
+            if tail.endswith("/zip"):
+                return fixture["payloads"][int(tail.split("/")[1])]
+            if tail.startswith("artifacts/"):
+                return copy.deepcopy(by_id[int(tail.split("/")[1])])
+            self.fail("unexpected control-plane route")
+
+        return service, requests, patch.object(service, "request", side_effect=request)
+
+    def downloads(self, requests):
+        return [int(path.split("/artifacts/", 1)[1].split("/", 1)[0])
+                for path, binary in requests if binary]
+
+    def rewrite(self, fixture, ident, change):
+        item = fixture["decoded"][ident]
+        state, rows, ctx = copy.deepcopy(item["state"]), copy.deepcopy(item["rows"]), item["manifest"]["context"]
+        change(state, rows)
+        fixture["payloads"][ident] = driver.bundle_bytes(state, rows, item["manifest"]["kind"], ctx)
+
+    def test_checkpoint_chronology_ignores_nonmonotonic_artifact_ids(self):
+        self.assertIsNotNone(driver)
+        with patch.object(probe, "curl", side_effect=AssertionError("unexpected vendor request")):
+            for ids in ([701, 904, 500, 800], [9, 40, 30, 1]):
+                fixture = self.fixture(ids=ids)
+                active = fixture["decoded"][fixture["active"]]["state"]
+                now = active["started_at"] + 7 * driver.INTERVAL + 1
+                for reverse in (False, True):
+                    service, requests, transport = self.service(fixture, reverse=reverse)
+                    with transport:
+                        plan = driver.prepare("tick", service, context(7), now)
+                    self.assertEqual(plan["action"], "collect", "a newer active start must supersede its earlier terminal pilot")
+                    self.assertEqual(self.downloads(requests), [fixture["active"]])
+                    self.assertEqual(plan["state"]["slot"], 7)
+                    self.assertEqual(plan["state"]["cohort"], active["cohort"])
+                    self.assertEqual((plan["state"]["started_at"], plan["state"]["ends_at"]),
+                                     (active["started_at"], active["ends_at"]))
+                    self.assertEqual([slot["slot"] for slot in plan["state"]["slots"] if slot["status"] == "not_observed"],
+                                     list(range(7)))
+                    self.assertLessEqual(service.reads, 12)
+                    self.assertLessEqual(service.downloads, 2)
+                for phase in ("pilot", "start"):
+                    service, _, transport = self.service(fixture)
+                    with transport, self.assertRaises(driver.StudyError):
+                        driver.prepare(phase, service, context(7), now, study="another-study", pilot_id=ids[1])
+                changed = context(7)
+                changed["source"]["driver"] = "e" * 64
+                service, _, transport = self.service(fixture, changed)
+                with transport:
+                    terminal = driver.prepare("tick", service, changed, now)
+                self.assertEqual((terminal["action"], terminal["state"]["status"]), ("checkpoint", "source_changed"))
+                for key in ("source", "cohort", "started_at", "ends_at"):
+                    self.assertEqual(terminal["state"][key], active[key])
+                self.assertEqual(terminal["state"]["chunks"][:-1], active["chunks"])
+                self.assertEqual(terminal["state"]["chunks"][-1]["id"], fixture["active"])
+                orphan = self.fixture(later=True)
+                del orphan["payloads"][orphan["ids"][-1]]
+                orphan["metadata"] = orphan["metadata"][:-1]
+                service, requests, transport = self.service(orphan)
+                with transport:
+                    lost = driver.prepare("tick", service, context(7), now)
+                self.assertEqual((lost["action"], lost["state"]["status"]), ("checkpoint", "lost_checkpoint"))
+                self.assertEqual(lost["state"]["lost_intent"]["id"], orphan["ids"][-2])
+                self.assertEqual(self.downloads(requests), [orphan["ids"][-2]])
+
+            paged = self.fixture()
+            results = [row for row in paged["metadata"] if row["name"] == "w57-result-v1"]
+            padding = []
+            for index in range(98):
+                row = copy.deepcopy(results[0])
+                row.update(id=10000 + index, created_at=stamp(EPOCH - 20000 + index).replace("+00:00", "Z"))
+                row["workflow_run"]["id"] = 10000 + index
+                padding.append(row)
+            pages = {("result", 1): list(reversed(padding + results)), ("result", 2): [],
+                     ("intent", 1): [row for row in paged["metadata"] if row["name"] == "w57-intent-v1"]}
+            paged["metadata"].extend(padding)
+            service, requests, transport = self.service(paged, pages=pages)
+            with transport:
+                plan = driver.prepare("tick", service, context(7), now)
+            self.assertEqual(plan["action"], "collect")
+            self.assertEqual(self.downloads(requests), [paged["active"]])
+            self.assertEqual(len([path for path, binary in requests if "artifacts?name=" in path]), 3)
+
+    def test_checkpoint_chronology_fails_closed_on_invalid_or_ambiguous_metadata(self):
+        self.assertIsNotNone(driver)
+        changes = [("missing_time", lambda row: row.pop("created_at")),
+                   ("bad_time", lambda row: row.update(created_at="unavailable")),
+                   ("naive_time", lambda row: row.update(created_at="2026-10-20T00:00:00")),
+                   ("invalid_date", lambda row: row.update(created_at="2026-02-30T00:00:00Z")),
+                   ("non_utc_time", lambda row: row.update(created_at="2026-10-20T00:00:00+08:00")),
+                   ("invalid_id", lambda row: row.update(id=0)),
+                   ("boolean_id", lambda row: row.update(id=True)),
+                   ("missing_run", lambda row: row.pop("workflow_run")),
+                   ("boolean_run", lambda row: row["workflow_run"].update(id=True)),
+                   ("missing_run_head", lambda row: row["workflow_run"].pop("head_sha"))]
+        with patch.object(probe, "curl", side_effect=AssertionError("unexpected vendor request")):
+            for name, change in changes:
+                fixture = self.fixture()
+                change(fixture["metadata"][-1])
+                service, requests, transport = self.service(fixture)
+                with self.subTest(name=name), transport, self.assertRaises(driver.StudyError):
+                    driver.prepare("tick", service, context(7), fixture["clock"]() + 1800)
+                self.assertEqual(self.downloads(requests), [], "invalid chronology must stop before checkpoint downloads")
+            for duplicate in (False, True):
+                fixture = self.fixture()
+                row = copy.deepcopy(fixture["metadata"][-1])
+                if not duplicate:
+                    row["id"] += 100
+                    row["workflow_run"]["id"] += 100
+                fixture["metadata"].append(row)
+                service, requests, transport = self.service(fixture)
+                with self.subTest(duplicate=duplicate), transport, self.assertRaises(driver.StudyError):
+                    service.list()
+                self.assertEqual(self.downloads(requests), [])
+            tied = self.fixture()
+            tied["metadata"][-2]["created_at"] = tied["metadata"][-1]["created_at"]
+            tied["metadata"][-2]["id"] = 999999
+            service, requests, transport = self.service(tied)
+            with transport:
+                plan = driver.prepare("tick", service, context(7), tied["clock"]() + 1800)
+            self.assertEqual(plan["action"], "collect")
+            self.assertEqual(self.downloads(requests), [tied["active"]])
+            for conflict in ("head", "kind"):
+                fixture = copy.deepcopy(tied)
+                if conflict == "head":
+                    fixture["metadata"][-2]["workflow_run"]["head_sha"] = "f" * 40
+                else:
+                    fixture["metadata"][-2]["name"] = "w57-result-v1"
+                service, _, transport = self.service(fixture)
+                with self.subTest(conflict=conflict), transport, self.assertRaises(driver.StudyError):
+                    service.list()
+            bounded = driver.GitHubArtifacts(context(7), "synthetic-token")
+            with patch.object(bounded, "request", return_value={"artifacts": [{"name": "unrelated"}] * 100}) as request:
+                with self.assertRaises(driver.StudyError):
+                    bounded.list()
+                self.assertEqual(request.call_count, 5)
+            bounded.downloads = 2
+            with patch.object(bounded, "request", side_effect=AssertionError("download limit escaped")):
+                with self.assertRaises(driver.StudyError):
+                    bounded.load(1)
+
+            for malformed in (None, {"id": 3}, {"id": 3, "name": None}):
+                unavailable = driver.GitHubArtifacts(context(7), "synthetic-token")
+                with self.subTest(raw_row=malformed), \
+                        patch.object(unavailable, "request", return_value={"artifacts": [malformed]}), \
+                        self.assertRaises(driver.StudyError):
+                    driver.prepare("tick", unavailable, context(7), EPOCH)
+                self.assertEqual(unavailable.downloads, 0)
+            exhausted = driver.GitHubArtifacts(context(7), "synthetic-token")
+            with patch.object(exhausted, "request", return_value={"artifacts": []}):
+                self.assertEqual(driver.prepare("tick", exhausted, context(7), EPOCH),
+                                 {"action": "idle", "reason": "no_state"})
+            self.assertEqual(exhausted.downloads, 0)
+
+    def test_checkpoint_reconstruction_keeps_later_lower_id_generations(self):
+        self.assertIsNotNone(driver)
+        with patch.object(probe, "curl", side_effect=AssertionError("unexpected vendor request")):
+            for reverse in (False, True):
+                fixture = self.fixture(later=True)
+                latest, earlier = fixture["ids"][-1], fixture["active"]
+                service, requests, transport = self.service(fixture, report=True, reverse=reverse)
+                with transport:
+                    answer = driver.reconstruct(service, context(7), "study-one")
+                self.assertEqual(self.downloads(requests), [latest, earlier], "a larger pilot or older ID must not truncate later study history")
+                rows = fixture["decoded"][earlier]["rows"] + fixture["decoded"][latest]["rows"]
+                expected = driver.readout(fixture["decoded"][latest]["state"], rows)
+                self.assertEqual(answer, expected)
+                self.assertTrue(answer["censored"])
+                self.assertLessEqual(service.downloads, 195)
+                self.assertLessEqual(service.reads, 600)
+            for defect in ("digest", "parent", "cohort", "provenance", "source"):
+                fixture = self.fixture(later=True)
+                latest = fixture["ids"][-1]
+                if defect == "digest":
+                    data = io.BytesIO()
+                    with zipfile.ZipFile(io.BytesIO(fixture["payloads"][latest])) as source, \
+                            zipfile.ZipFile(data, "w", zipfile.ZIP_DEFLATED) as target:
+                        for name in source.namelist():
+                            raw = source.read(name)
+                            if name == "manifest.json":
+                                manifest = json.loads(raw)
+                                manifest["files"]["observations.jsonl"] = "f" * 64
+                                raw = driver.encoded(manifest)
+                            target.writestr(name, raw)
+                    fixture["payloads"][latest] = data.getvalue()
+                elif defect == "parent":
+                    self.rewrite(fixture, latest, lambda state, rows: state["parent"].update(digest="f" * 64))
+                elif defect == "cohort":
+                    self.rewrite(fixture, latest, lambda state, rows: state["cohort"][0].update(mint=mint(200)))
+                elif defect == "source":
+                    self.rewrite(fixture, latest, lambda state, rows: state["source"].update(driver="e" * 64))
+                else:
+                    fixture["runs"][3]["path"] = "other.yml"
+                service, requests, transport = self.service(fixture, report=True)
+                with patch.object(service, "load", wraps=service.load) as attempted:
+                    with self.subTest(defect=defect), transport, self.assertRaises(driver.StudyError):
+                        driver.reconstruct(service, context(7), "study-one")
+                self.assertTrue(attempted.call_args_list)
+                self.assertEqual(attempted.call_args_list[0].args[0], latest)
+                if defect == "provenance":
+                    self.assertEqual(self.downloads(requests), [])
+                else:
+                    self.assertTrue(self.downloads(requests) and self.downloads(requests)[0] == latest,
+                                    "a damaged latest checkpoint must not downgrade to an older report")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
