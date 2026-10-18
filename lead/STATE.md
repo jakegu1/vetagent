@@ -4,7 +4,7 @@
 > session starts by reading it. Durable rules live in `AGENTS.md`, `lead/QUALITY.md` and
 > `lead/decisions/`. Test for this file: could a stranger act on every row below?
 
-Last updated: 2026-10-18 by Codex, after the verified autonomous technical release.
+Last updated: 2026-10-19 by Codex, at the residual-gap continuation check-in.
 
 Current Owner decision: Experiment D moves to 2026-10-20 (ADR-0002). Its original
 thresholds and unresolved state remain. T-024 reconciles the active gate and dependent
@@ -50,8 +50,19 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 ## In flight
 
-No scoped engineering implementation remains in flight. Final bookkeeping checks
-and publication close this release; they add no product task.
+T-040 is in isolated implementation: correct coverage-probe observation and age
+classification before long-run W54/W57 measurements. Next: tests-first implementation,
+fresh independent and adversarial reviews, then serial integration and actual CI.
+
+The Owner renews authorization to prioritize the 21 remaining rows, batch related
+autonomous repairs, delegate bounded isolated work, and merge/push/deploy after quality
+checks. Owner decisions and genuinely unavailable/calendar evidence are reported
+together. No permission, source-rights, spending, scoring-band or product-gate waiver.
+
+Latest scheduled snapshot commits through 1b18025 are retained by normal merge
+268f852. The actual clean baseline passes all 41 configured steps in 170.7 seconds.
+The existing usage workflow is dispatched unchanged for post-release telemetry
+observation; a queued workflow is not evidence of a measured usage result.
 
 ## Autonomous technical continuation
 

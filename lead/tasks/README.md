@@ -42,3 +42,4 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-037 | Make release guards and reproduction instructions report unavailable evidence | 3 | M | T-032, T-034 | done; deployed d354179; actual upload, observer and following bot CI pass |
 | T-038 | Separate unavailable backfill observations from decoder contradictions | 3 | M | T-032, T-036 | done; deployed d354179; actual upload, observer and following bot CI pass |
 | T-039 | Describe a withheld provisional score without a false unsupported-chain claim | 3 | S | T-038 | done; deployed d354179; actual upload, observer and following bot CI pass |
+| T-040 | Keep failed requests and invalid ages out of coverage-probe observations | 3 | M | T-039 | in progress; isolated implementation, fresh reviews and integration next |

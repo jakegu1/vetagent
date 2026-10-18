@@ -3,9 +3,14 @@
 > This page holds only what the lead needs from you. The project's own dashboard, with its
 > deadlines and gates, is `docs/OWNER.md` (generated). Messages to you are in Chinese; files
 > here are English because the repository is English-only. Maintained by the project lead (AI).
-> Last updated: 2026-10-18 (Codex)
+> Last updated: 2026-10-19 (Codex)
 
 ## Status in one line
+
+The Owner authorizes the residual-gap batch. T-040 repairs the observation instrument
+before new W54/W57 studies. Existing source rights, product gates, privacy and spending
+remain Owner decisions. The latest retained snapshot baseline passes all 41 checks;
+the existing usage workflow is dispatched for actual post-release evidence.
 
 The scoped technical queue T-027 and T-031 through T-039 is complete and deployed
 at d354179. Actual deploy run 39122876006 uploads Worker dd8721cd-babd-43e6-b982-19cec1cdb6fa and passes all 41 required
