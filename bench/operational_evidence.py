@@ -271,7 +271,10 @@ def observe(source, *, captured_at, days=90, deploy_limit=10, release_run=RELEAS
     if (type(days) is not int or not 1 <= days <= 90 or type(deploy_limit) is not int
             or not 1 <= deploy_limit <= 10 or type(release_run) is not int or not 1 <= release_run <= 10 ** 15):
         raise ValueError("invalid_limits")
-    floor = capture - timedelta(days=days)
+    try:
+        floor = capture - timedelta(days=days)
+    except OverflowError as exc:
+        raise ValueError("invalid_capture_range") from exc
     report = {"schema_version": 1, "captured_at": _iso(capture), "available": True,
               "interpretation": "descriptive; no causal or no-effect verdict",
               "cohort_labels": {"self": "known vetagent-* self traffic", "other": "other traffic; attribution unknown"},
@@ -428,7 +431,7 @@ def main(argv=None):
             raise ValueError("explicit_mode_required")
         report = observe(source, captured_at=captured_at, days=args.days,
                          deploy_limit=args.deploy_limit, release_run=args.release_run)
-    except (ValueError, TypeError, KeyError, OSError, UnicodeError):
+    except (ValueError, TypeError, KeyError, OSError, UnicodeError, OverflowError):
         report = {"schema_version": 1, "available": False, "state": "unavailable",
                   "reason": "invalid_input_or_missing_explicit_live_configuration"}
     encoded = json.dumps(report, sort_keys=True, indent=2, allow_nan=False) + "\n"
