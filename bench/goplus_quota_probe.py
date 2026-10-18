@@ -36,13 +36,14 @@ _HASH = re.compile(r"[0-9a-f]{64}")
 _COMMIT = re.compile(r"[0-9a-f]{40}")
 _ADDRESS = re.compile(r"0x[0-9a-fA-F]{40}")
 _REASONS = {"completed", "permission_refused", "run_deadline", "utc_day_end",
-            "persistence_failed", "interrupted", "transport_cleanup_failed"}
+            "persistence_failed", "interrupted", "transport_cleanup_failed", "clock_unavailable"}
 LIMITATIONS = [
     "Single-date paced quota/throughput pilot; not continuous 24-hour observation.",
     "daily reset unobserved; remaining allowance and shared usage unknown.",
     "Historical fixed workload; not a T+24h indexing sample or a 30-day study.",
     "No new labels, unsafe yield, demand or BUILD decision is measured.",
     "Attempted counts receipted transport invocations; pending intents remain uncertain.",
+    "Claim time precedes persistence; a missing request_at means actual invocation time is unobserved.",
 ]
 
 
@@ -476,17 +477,21 @@ def _report(plan, events, reason=None):
     for index in plan["indices"]:
         cell = {"index": index}
         intent, receipt = intents.get(index), receipts.get(index)
+        if intent is not None:
+            cell.update(scheduled_at=intent["scheduled_at"], claimed_at=intent.get("claimed_at", intent.get("request_at")))
         if intent is None:
             cell.update(state="not_asked", reason=stop)
         elif receipt is None:
-            cell.update(state="unobserved", reason="missing_receipt", scheduled_at=intent["scheduled_at"], request_at=intent["request_at"])
+            cell.update(state="unobserved", reason="missing_receipt")
         else:
             observation = receipt["observation"]
             valid = observation["label_state"] == "returned" and all(
                 value in ("integer", "finite") for value in observation["field_states"].values())
             cell.update(observation)
-            cell.update(state="observed" if valid else "unobserved", scheduled_at=intent["scheduled_at"],
-                        request_at=intent["request_at"], response_at=receipt["response_at"], duration_seconds=receipt["duration_seconds"])
+            cell.update(state="observed" if valid else "unobserved", response_at=receipt["response_at"],
+                        duration_seconds=receipt["duration_seconds"])
+            if "request_at" in receipt:
+                cell["request_at"] = receipt["request_at"]
         cells.append(cell)
     observed = list(receipts.values())
     counts = {"requested": len(plan["indices"]), "claimed": len(intents), "attempted": len(receipts),
@@ -503,7 +508,8 @@ def _report(plan, events, reason=None):
                         for state in ("finite", "integer", "missing", "invalid", "unobserved")}
                 for field in ("buy_tax", "sell_tax", "holder_count")}
     end_mono = stops[-1]["mono"] if stops else max(
-        (intents[e["index"]]["mono"] + e["duration_seconds"] for e in observed), default=starts[0]["mono"] if starts else 0)
+        (e.get("request_mono", intents[e["index"]]["mono"]) + e["duration_seconds"] for e in observed),
+        default=starts[0]["mono"] if starts else 0)
     elapsed = max(0, end_mono - starts[0]["mono"]) if starts else 0
     return {"schema_version": 1, "source_commit": plan["source_commit"], "dataset_sha256": plan["dataset_sha256"],
             "label_code_sha256": plan["label_code_sha256"], "queue_sha256": plan["queue_sha256"],
@@ -545,6 +551,17 @@ def run_plan(plan, context, *, sink, transport=None, clock=None, private_raw_dir
         sink.append(event)
         events.append(event)
 
+    def admission(wait=0):
+        now_wall, now_mono = current.time(), current.monotonic()
+        if _finite(now_wall) is None or _finite(now_mono) is None:
+            return "clock_unavailable", now_wall, now_mono
+        if (datetime.fromtimestamp(now_wall, timezone.utc).date() != start_day
+                or now_wall + wait + request_window > day_end):
+            return "utc_day_end", now_wall, now_mono
+        if now_mono + wait + request_window > mono + RUN_SECONDS:
+            return "run_deadline", now_wall, now_mono
+        return None, now_wall, now_mono
+
     try:
         append({"kind": "start", "at": _utc(wall), "mono": mono})
         if raw_dir is not None:
@@ -552,24 +569,28 @@ def run_plan(plan, context, *, sink, transport=None, clock=None, private_raw_dir
         sink.save(_report(plan, events, "interrupted"))
         for index in plan["indices"]:
             wait = max(0, last_start + GAP_SECONDS - current.monotonic()) if last_start is not None else 0
-            if current.time() + wait + request_window > day_end or datetime.fromtimestamp(current.time(), timezone.utc).date() != start_day:
-                reason = "utc_day_end"
+            blocked, claim_wall, claim_mono = admission(wait)
+            if blocked:
+                reason = blocked
                 break
-            if current.monotonic() + wait + request_window > mono + RUN_SECONDS:
-                reason = "run_deadline"
-                break
-            scheduled = _utc(current.time() + wait)
-            if wait:
-                current.sleep(wait)
-            if current.time() + request_window > day_end:
-                reason = "utc_day_end"
-                break
-            if current.monotonic() + request_window > mono + RUN_SECONDS:
-                reason = "run_deadline"
-                break
-            actual_start = current.monotonic()
-            append({"kind": "intent", "index": index, "scheduled_at": scheduled, "request_at": _utc(current.time()), "mono": actual_start})
+            scheduled = _utc(claim_wall + wait)
+            append({"kind": "intent", "index": index, "scheduled_at": scheduled, "claimed_at": _utc(claim_wall), "mono": claim_mono})
             row = context["tokens"][index]
+            # Durable persistence and pacing can both consume the available window.
+            # Re-admit after each, then capture the actual invocation without more I/O.
+            while True:
+                wait = max(0, last_start + GAP_SECONDS - current.monotonic()) if last_start is not None else 0
+                blocked, request_wall, actual_start = admission(wait)
+                if blocked or not wait:
+                    break
+                current.sleep(wait)
+                if current.monotonic() <= actual_start:
+                    blocked = "clock_unavailable"
+                    break
+            if blocked:
+                reason = blocked
+                break
+            request_at = _utc(request_wall)
             last_start = actual_start
             cleanup_failed = False
             try:
@@ -582,11 +603,12 @@ def run_plan(plan, context, *, sink, transport=None, clock=None, private_raw_dir
                 break
             except Exception:
                 reply = {"http_status": 0, "error": "transport"}
+            response_at, response_mono = _utc(current.time()), current.monotonic()
             facts = row.get("outcome_facts")
             volume = facts.get("recent_volume_7d") if isinstance(facts, dict) else None
             observation = classify(reply, row["address"], recent_volume=volume)
-            append({"kind": "receipt", "index": index, "response_at": _utc(current.time()),
-                    "duration_seconds": max(0, current.monotonic() - actual_start), "observation": observation})
+            append({"kind": "receipt", "index": index, "request_at": request_at, "request_mono": actual_start,
+                    "response_at": response_at, "duration_seconds": max(0, response_mono - actual_start), "observation": observation})
             if raw_dir is not None and isinstance(reply, dict) and isinstance(reply.get("body"), bytes):
                 body = reply["body"][:BODY_CAP]
                 _durable(raw_dir / ("%06d.bin" % index), body)
@@ -651,7 +673,7 @@ def read_report(path):
     if sum(p.stat().st_size for p in entries) > SAFE_CAP:
         raise ValueError("oversized_bundle")
     plan = _public_plan(json.loads((directory / "plan.json").read_text(encoding="utf-8")))
-    events, claimed, answered = [], set(), set()
+    events, claimed, answered, intents = [], set(), set(), {}
     ledger = (directory / "receipts.jsonl").read_bytes()
     tail_complete = not ledger or ledger.endswith(b"\n")
     lines = ledger.splitlines(keepends=True)
@@ -667,17 +689,20 @@ def read_report(path):
             raise ValueError("invalid_event")
         kind = event.get("kind")
         keys = {"start": {"kind", "at", "mono"}, "stop": {"kind", "at", "mono", "reason"},
-                "intent": {"kind", "index", "scheduled_at", "request_at", "mono"},
-                "receipt": {"kind", "index", "response_at", "duration_seconds", "observation"}}
-        if not isinstance(kind, str) or kind not in keys or set(event) != keys[kind]:
+                "intent": {"kind", "index", "scheduled_at", "claimed_at", "mono"},
+                "receipt": {"kind", "index", "request_at", "request_mono", "response_at", "duration_seconds", "observation"}}
+        legacy = {"intent": {"kind", "index", "scheduled_at", "request_at", "mono"},
+                  "receipt": {"kind", "index", "response_at", "duration_seconds", "observation"}}
+        if (not isinstance(kind, str) or kind not in keys
+                or set(event) != keys[kind] and set(event) != legacy.get(kind)):
             raise ValueError("invalid_event")
-        for field in ("at", "scheduled_at", "request_at", "response_at"):
+        for field in ("at", "scheduled_at", "claimed_at", "request_at", "response_at"):
             if field in event:
                 value = event[field]
                 if not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z", value):
                     raise ValueError("invalid_time")
                 datetime.fromisoformat(value.replace("Z", "+00:00"))
-        for field in ("mono", "duration_seconds"):
+        for field in ("mono", "request_mono", "duration_seconds"):
             if field in event and (type(event[field]) not in (int, float) or _finite(event[field]) is None):
                 raise ValueError("invalid_duration")
         if kind == "start" and events or kind == "stop" and event["reason"] not in _REASONS:
@@ -692,9 +717,14 @@ def read_report(path):
                 if index in claimed or index != plan["indices"][len(claimed)]:
                     raise ValueError("duplicate_or_reordered_intent")
                 claimed.add(index)
+                intents[index] = event
             else:
                 if index not in claimed or index in answered:
                     raise ValueError("orphan_receipt")
+                if ("claimed_at" in intents[index]) != ("request_at" in event):
+                    raise ValueError("inconsistent_request_time")
+                if "request_mono" in event and event["request_mono"] < intents[index]["mono"]:
+                    raise ValueError("invalid_request_time")
                 _safe_observation(event["observation"])
                 answered.add(index)
         events.append(event)
