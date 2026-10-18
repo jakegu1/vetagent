@@ -1,7 +1,7 @@
 ---
 id: T-034
 title: Keep rendered templates and pasted instructions from answering a gate
-status: ready
+status: changes_requested
 level: 3
 size: S
 depends_on: []
@@ -117,4 +117,39 @@ as evidence, not described as a successful implementation.
 
 ## Amendments
 
-None.
+### (a) Round-one delimiter shadowing, registered before correction
+
+Both fresh reviewers and the lead reproduce a remaining AC 3/4 failure at af6eef8.
+`Resolved: pending <3 &lt;!-- hidden finding -> hidden decision --&gt;` is falsely
+answered by the helper, real due-gate check and Owner surfaces. Its literal-comment
+control is refused. An unmatched `<3` or `<target` prefix can make a generic encoded
+fragment consume the start of a later complete fragment, preventing its recognition.
+The same cause can falsely reject a valid conclusion by exposing a hidden marker:
+`Resolved: <3 commitments &lt;span title='Resolved: ignored'&gt; -> change segment`.
+Keep both directions: hidden content cannot answer, and a valid visible first segment
+cannot be rejected by a hidden marker after an otherwise supported literal prefix.
+
+The original tests-only commit, all old cases, and all existing new acceptance inputs
+and assertions remain frozen. First add only two named regression functions:
+`test_gate_markup_recognition_resumes_after_unmatched_prefixes` in the guard runner,
+and `test_shadowed_encoded_markup_stays_consistent_on_owner_surfaces` in the Owner
+runner. Use a bounded literal/single-encoded prefix and comment/tag grid, covering
+helper, actual due check, gate table, timeline and Needs you. Preserve successful
+literal-text controls, segment boundaries, encoded-arrow/marker refusals and every
+original expectation. Commit these additive tests alone and observe red on af6eef8
+before repairing the recognizer. No existing fixture array may be expanded or weakened.
+
+Repair only the already-authorized encoded-fragment constants/helper/comments. An
+invalid generic candidate must not hide a later complete recognized fragment. Do not
+globally decode text, change `_MARKUP`, `_ARROWS`, dates, thresholds, source documents,
+or the Owner generator. A comment-only prepass is insufficient unless complete encoded
+tags and hidden-marker controls also pass. Keep the failed round-one candidate and
+reviews as evidence. Remove this repair in an isolated mutant and require the added
+regressions to fail on both actual Python versions. Re-run the three affected runners,
+one full ordinary and one inherited-denied configured inventory, compile and structural
+frozen-case proof. A fresh combined independent/adversarial round-two review is required.
+
+The generic file-level tests-first checker remains reported as BROKEN because this
+legacy guard and its self-tests share a file. The named structural proof must establish
+the original function/fixture freeze and the two additive-test commits; never describe
+that generic result as passing or change the checker to hide it.
