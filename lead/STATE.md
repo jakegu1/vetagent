@@ -53,7 +53,7 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 | Task | Level | Stage | Who | Next action |
 |---|---|---|---|---|
-| T-027 | 3 | Isolated implementation from reviewed green T-031 integration | RPC separation executor | Preserve original controls, add deterministic fixture and separate live monitor, then independent/adversarial review |
+| T-027 | 3 | Frozen second-round repair 72bf264; complete ordinary and inherited-offline gates green | Fresh combined reviewer | Verify exact two-form serialization bar, then integrate and release |
 
 ## Current batch baseline
 
@@ -348,6 +348,25 @@ a long-term reliability rate or the cause of earlier missing nominal triggers.
 - (H-1 done 2026-09-28: pushed `c954f43..dc401b9`; CI green on it.)
 
 ## Next up
+
+The Owner authorizes autonomous completion and deployment of remaining known technical
+gaps. Finish the current two-task release before extending its source. The next concrete
+ready task is T-032, whose network-denied reproductions show an omitted inclusive terminal
+block and nonterminating negative-window configurations. W51's actual HTTP-400 origin
+and outage/defect distinction remain separate; do not blanket-retry an unexamined error.
+Current official GitHub guidance and exact first-party release/runtime metadata are
+being checked before an isolated Actions/runner migration task. Guard-template and parser
+findings receive distinct bounded specifications rather than a miscellaneous refactor.
+
+This extension protects existing data and the checks that make releases reviewable.
+Keep one active implementation when workflow registrations overlap, parallel read-only
+investigation/reviews, at most three total task WIP and the workspace agent cap. Each
+finding keeps its own red-before-fix commit and each task its required fresh review.
+Stop adding tasks when only preregistered calendar/data prerequisites or Owner sign-off
+categories remain; record their cheapest decisive next experiment without changing the
+bar or calling them complete. No new provider, spending, legal text or product gate.
+
+Earlier release planning, retained as history:
 
 T-026 is evidence-complete; T-028, T-029 and T-030 are released. W28's prospective
 discovery status/schema gap is resolved without reclassifying historical usage.

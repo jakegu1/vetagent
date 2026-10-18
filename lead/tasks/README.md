@@ -34,3 +34,4 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-029 | Detect stale/incomplete snapshots after observation preservation | 3 | M | T-020, T-022 | done; deployed d44d79a, actual monitor 39055381257 |
 | T-030 | Disclose selected liquidity with unchecked reserve amounts | 3 | M | T-026, T-028 | done; deployed d44d79a, both live markers observed |
 | T-031 | Route discovery through existing configured on-chain providers | 3 | S | T-028, T-030 | done; reviewed merge 32a94f9, integrated 35/35, batch deployment pending |
+| T-032 | Preserve complete and terminating inclusive backfill ranges | 3 | S | T-027 | ready; deterministic terminal-block and negative-window reproductions |
