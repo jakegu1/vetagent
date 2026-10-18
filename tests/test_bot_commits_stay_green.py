@@ -770,6 +770,22 @@ def test_on_actions_the_bots_still_run(h):
           and r.after["origin"] == h.scratch.base["origin"], r.changed)
 
 
+def _repository_read_errors(before, after, with_status=False):
+    """Describe failed observations by field/status, never by their private output."""
+    labels = ("identity", "HEAD", "tracked status") if with_status else ("identity", "HEAD")
+    errors = []
+    for side, reading in (("before", before), ("after", after)):
+        if len(reading) != len(labels):
+            errors.append("%s repository observations could not be read (wrong size)" % side)
+            continue
+        for i, (code, text) in enumerate(reading):
+            # git config --get-regexp returns 1 for an observed absence of matching keys.
+            usable = code == 0 or i == 0 and code == 1 and not text
+            if not usable:
+                errors.append("%s %s could not be read (exit %s)" % (side, labels[i], code))
+    return errors
+
+
 def test_this_repository_was_not_reached(h):
     print("\n[bots] this repository is as it was before the calls")
     if not h.calls:
@@ -777,6 +793,11 @@ def test_this_repository_was_not_reached(h):
                 h.why or "the script was not run")
         return
     now = _this_repository()
+    unreadable = _repository_read_errors(h.this_repository, now)
+    check("its before and after repository observations completed", not unreadable,
+          "; ".join(unreadable))
+    if unreadable:
+        return
     check("its git identity and HEAD are what they were before the first call",
           now == h.this_repository, _what_moved(h.this_repository, now))
 
@@ -1394,6 +1415,11 @@ def test_snapshot_commit_did_not_reach_this_repository(s):
                 s.why or "the script was not run")
         return
     now = _this_repository_with_status()
+    unreadable = _repository_read_errors(s.this_repository, now, with_status=True)
+    check("its before and after repository observations completed", not unreadable,
+          "; ".join(unreadable))
+    if unreadable:
+        return
     check("its git identity, HEAD and status (tracked files) are what they were before the "
           "first call", now == s.this_repository, _what_moved_here(s.this_repository, now))
 
