@@ -49,6 +49,9 @@ jobs:
       - name: Coverage-probe observations preserve HTTP and cohort boundaries
         run: python tests/test_rugcheck_coverage_probe.py
 
+      - name: The finite W57 CI study preserves cohort clocks and Artifact checkpoints
+        run: python tests/test_rugcheck_w57_ci.py
+
       - name: Host SDK dependencies stay locked and Linux builds need no deploy credentials
         run: python tests/test_build_dependency_lock.py
 
