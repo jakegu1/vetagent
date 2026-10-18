@@ -68,6 +68,9 @@ jobs:
         env:
           INTENT_ID: ${{ steps.intent.outputs.artifact-id }}
         run: python bench/rugcheck_w57_ci.py collect --out "$RUNNER_TEMP/w57" --intent "$INTENT_ID"
+      - name: Seal the local journal before preservation
+        if: ${{ always() && steps.prepare.outputs.ready == 'true' }}
+        run: python bench/rugcheck_w57_ci.py finalize --out "$RUNNER_TEMP/w57"
       - name: Preserve completed and partial observations
         id: result
         if: ${{ always() && steps.prepare.outputs.ready == 'true' }}
@@ -116,6 +119,9 @@ jobs:
         env:
           INTENT_ID: ${{ steps.intent.outputs.artifact-id }}
         run: python bench/rugcheck_w57_ci.py collect --out "$RUNNER_TEMP/w57" --intent "$INTENT_ID"
+      - name: Seal the local journal before preservation
+        if: ${{ always() && steps.prepare.outputs.ready == 'true' }}
+        run: python bench/rugcheck_w57_ci.py finalize --out "$RUNNER_TEMP/w57"
       - name: Preserve completed and partial observations
         id: result
         if: ${{ always() && steps.prepare.outputs.ready == 'true' }}
@@ -164,6 +170,9 @@ jobs:
         env:
           INTENT_ID: ${{ steps.intent.outputs.artifact-id }}
         run: python bench/rugcheck_w57_ci.py collect --out "$RUNNER_TEMP/w57" --intent "$INTENT_ID"
+      - name: Seal the local journal before preservation
+        if: ${{ always() && steps.prepare.outputs.ready == 'true' }}
+        run: python bench/rugcheck_w57_ci.py finalize --out "$RUNNER_TEMP/w57"
       - name: Preserve completed and partial observations
         id: result
         if: ${{ always() && steps.prepare.outputs.ready == 'true' }}
@@ -212,6 +221,9 @@ jobs:
         env:
           INTENT_ID: ${{ steps.intent.outputs.artifact-id }}
         run: python bench/rugcheck_w57_ci.py collect --out "$RUNNER_TEMP/w57" --intent "$INTENT_ID"
+      - name: Seal the local journal before preservation
+        if: ${{ always() && steps.prepare.outputs.ready == 'true' }}
+        run: python bench/rugcheck_w57_ci.py finalize --out "$RUNNER_TEMP/w57"
       - name: Preserve completed and partial observations
         id: result
         if: ${{ always() && steps.prepare.outputs.ready == 'true' }}

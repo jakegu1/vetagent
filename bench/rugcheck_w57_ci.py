@@ -119,7 +119,7 @@ def _validate_state(state):
         raise StudyError("state_overflow")
 
 
-def _bundle_files(state, rows, kind, ctx):
+def _bundle_files(state, rows, kind, ctx, unverified=None):
     _validate_state(state)
     if kind not in ("intent", "result") or not isinstance(rows, list) or len(rows) > 256:
         raise StudyError("bundle_bounds")
@@ -128,7 +128,13 @@ def _bundle_files(state, rows, kind, ctx):
     manifest = {"schema": SCHEMA, "kind": kind, "study": state["study"],
                 "generation": state["generation"], "parent": state["parent"], "context": ctx,
                 "rows": len(rows), "files": {"state.json": sha(state_data), "observations.jsonl": sha(row_data)}}
-    files = {"state.json": state_data, "observations.jsonl": row_data, "manifest.json": encoded(manifest)}
+    files = {"state.json": state_data, "observations.jsonl": row_data}
+    if unverified is not None:
+        if kind != "result" or not isinstance(unverified, bytes):
+            raise StudyError("bundle_files")
+        files["unverified.jsonl"] = unverified
+        manifest["files"]["unverified.jsonl"] = sha(unverified)
+    files["manifest.json"] = encoded(manifest)
     limit = INTENT_BYTES if kind == "intent" else BUNDLE_BYTES
     if sum(map(len, files.values())) > limit:
         raise StudyError("bundle_overflow")
@@ -154,8 +160,9 @@ def decode_bundle(data, provenance, expected):
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
             entries = archive.infolist()
             names = [x.filename for x in entries]
-            if (set(names) != {"state.json", "manifest.json", "observations.jsonl"}
-                    or len(entries) != 3 or sum(x.file_size for x in entries) > BUNDLE_BYTES
+            required = {"state.json", "manifest.json", "observations.jsonl"}
+            if (set(names) not in (required, required | {"unverified.jsonl"})
+                    or len(entries) != len(set(names)) or sum(x.file_size for x in entries) > BUNDLE_BYTES
                     or any(x.flag_bits & 1 for x in entries)):
                 raise StudyError("bundle_files")
             files = {name: archive.read(name) for name in names}
@@ -168,8 +175,8 @@ def decode_bundle(data, provenance, expected):
                 or manifest.get("study") != state["study"] or manifest.get("generation") != state["generation"]
                 or manifest.get("parent") != state["parent"] or manifest.get("rows") != len(rows)
                 or len(rows) > 256 or any(not isinstance(row, dict) for row in rows)
-                or manifest.get("files") != {"state.json": sha(files["state.json"]),
-                                             "observations.jsonl": sha(files["observations.jsonl"])}):
+                or manifest.get("files") != {name: sha(data) for name, data in files.items() if name != "manifest.json"}
+                or (manifest["kind"] == "intent" and "unverified.jsonl" in files)):
             raise StudyError("bundle_manifest")
         keys = []
         for row in rows:
@@ -791,12 +798,75 @@ def _context_env():
         raise StudyError("ci_context_unavailable") from None
 
 
-def write_bundle(folder, state, rows, kind, ctx):
+def write_bundle(folder, state, rows, kind, ctx, unverified=None):
     folder.mkdir(parents=True, exist_ok=True)
-    for name, data in _bundle_files(state, rows, kind, ctx).items():
+    for name, data in _bundle_files(state, rows, kind, ctx, unverified).items():
         temporary = folder / (name + ".tmp")
         temporary.write_bytes(data)
         os.replace(temporary, folder / name)
+
+
+def finalize(out, ctx):
+    """Seal the flushed local journal before always-upload, without any transport."""
+    folder = out / "result"
+    if (folder / "report.json").exists():
+        return
+    names = ("state.json", "observations.jsonl", "manifest.json", "unverified.jsonl")
+    files = {name: (folder / name).read_bytes() for name in names if (folder / name).exists()}
+    if sum(map(len, files.values())) > BUNDLE_BYTES:
+        raise StudyError("bundle_overflow")
+    target = io.BytesIO()
+    with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
+        for name, data in files.items():
+            archive.writestr(name, data)
+    try:
+        decoded = decode_bundle(target.getvalue(), ctx, ctx)
+        if decoded["state"]["status"] == "lost_checkpoint" and (out / "collection.json").exists():
+            raise StudyError("collection_interrupted")
+    except StudyError:
+        plan = json.loads((out / "plan.json").read_bytes())
+        state = copy.deepcopy(plan["state"])
+        # Trust only the exact locally prepared intent, never an arbitrary state file.
+        for name, data in _bundle_files(state, [], "intent", ctx).items():
+            if (out / "intent" / name).read_bytes() != data:
+                raise StudyError("intent_mismatch")
+        rows, unverified = [], b""
+        journal = files.get("observations.jsonl", b"")
+        offset = 0
+        for line in journal.splitlines(keepends=True):
+            try:
+                row = json.loads(line)
+                if (len(rows) >= 256 or len(line) > 2049 or not isinstance(row, dict)
+                        or encoded(row) + b"\n" != line or row.get("phase") != plan["phase"]
+                        or row.get("kind") not in ("report", "listing", "overflow_receipt")
+                        or (row["kind"] != "listing" and row.get("study") != state["study"])):
+                    raise ValueError()
+            except (ValueError, TypeError):
+                unverified = journal[offset:]
+                break
+            rows.append(row)
+            offset += len(line)
+        receipt = json.loads((out / "collection.json").read_bytes())
+        if type(receipt.get("id")) is not int or receipt["id"] <= 0:
+            raise StudyError("intent_mismatch")
+        digest = sha((out / "intent/manifest.json").read_bytes())
+        state["intent"] = {"id": receipt["id"], "digest": digest}
+        state["status"], state["failure"] = "failed", "collection_interrupted"
+        state["request_accounting"] = "partial_after_interruption"
+        for row in rows:
+            if row["kind"] == "listing" and row.get("body") != "not_observed":
+                state["requests"]["gecko"] += 1
+            elif row["kind"] != "listing" and _attempted(row):
+                state["requests"]["rugcheck"] += 1
+        if plan["phase"] == "tick" and not any(s["slot"] == state["slot"] for s in state["slots"]):
+            state["slots"].append({"slot": state["slot"], "status": "partial"})
+        loss = {"reason": "collection_interrupted", "slot": state.get("slot"), "retained_rows": len(rows),
+                "unverified_bytes": len(unverified), "inflight_request_unavailable": True}
+        state.setdefault("losses", []).append(loss)
+        write_bundle(folder, state, rows, "result", ctx, unverified or None)
+    # A killed atomic replacement can leave a temporary file; it is not an upload entry.
+    for name in names:
+        (folder / (name + ".tmp")).unlink(missing_ok=True)
 
 
 def _output(name, value):
@@ -816,6 +886,8 @@ def main(argv=None):
     c = sub.add_parser("collect")
     c.add_argument("--out", required=True)
     c.add_argument("--intent", type=int, required=True)
+    seal = sub.add_parser("finalize")
+    seal.add_argument("--out", required=True)
     f = sub.add_parser("finish")
     f.add_argument("--out", required=True)
     f.add_argument("--uploaded", required=True)
@@ -833,6 +905,10 @@ def main(argv=None):
             state = json.loads((out / "result/state.json").read_text(encoding="utf-8"))
             return 0 if state["status"] in ("pilot_passed", "active", "completed") else 2
         ctx = _context_env()
+        if args.command == "finalize":
+            finalize(out, ctx)
+            print("W57 local checkpoint sealed")
+            return 0
         store = GitHubArtifacts(ctx, os.environ.get("GITHUB_TOKEN", ""),
                                 max_reads=600 if getattr(args, "phase", None) == "report" else 12,
                                 max_downloads=195 if getattr(args, "phase", None) == "report" else 2,
@@ -876,6 +952,7 @@ def main(argv=None):
             plan = json.loads((out / "plan.json").read_text(encoding="utf-8"))
             store.reads = plan.get("artifact_reads", 0)
             store.downloads = plan.get("artifact_downloads", 0)
+            (out / "collection.json").write_bytes(encoded({"id": args.intent}))
             with (out / "result/observations.jsonl").open("wb") as stream:
                 def append(rec):
                     stream.write(encoded(rec) + b"\n")
