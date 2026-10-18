@@ -257,3 +257,53 @@ repeat the bounded native local transport seam after repair, before any real pil
 Retain the earlier green 42-step candidate's evidence as held, not READY. Freeze the
 repaired head, reproduce the added reds, run focused checks, then request a new
 exclusive full slot and fresh independent plus adversarial reviews.
+
+2026-10-19 (e), named first-review corrections: independent review of b7133b7
+requires changes (seven of twelve); adversarial review reproduces three material
+classes despite the actual forty-two-step inventory and native deadline checks
+passing. Keep that source held. Apply one bounded second implementation/review round.
+Do not change the queue, caps, source, label rule, old assertions or scientific bar.
+
+Add exactly one self-contained nested regression block at the end of each of these
+three existing added acceptance functions, retaining all prior statements/assertions
+and their order, every other function exact and the original seven-function set.
+Commit the three additions alone before the repairs; then separate fix commits per
+finding, with each specific assertion's native parent-red evidence retained.
+
+1. run_caps_pacing_and_utc_bounds: exercise real run_plan and durable FileSink seams
+   with fake-clock latency during intent persistence and pacing sleep. Actual transport
+   invocation starts must remain at least 2.1 seconds apart. Capture actual invocation
+   time immediately before transport, distinguishing it from the earlier durable
+   intent time; persisted evidence must not mislabel an intent timestamp as actual
+   transport time. Recheck the chosen UTC date, remaining absolute timeout/cleanup
+   allowance and thirty-minute budget after every blocking persistence/pacing step
+   before opening transport. Cover both forward and backward wall-date changes and
+   exact run/day edges. A durable intent whose request cannot begin must remain an
+   explicit consumed/unopened or uncertain cell, with truthful denominators and no
+   live retry. Do not open a request after its available day/run budget became too
+   short while persisting its intent. No silent extra requests or source changes.
+2. partial_intents_and_persistence: a real FileSink subclass flushes a prefix of the
+   second receipt and then raises OSError. Continue through real run_plan return and
+   the actual offline CLI report against the exact remaining bytes. It must recover
+   the preceding complete HTTP 429 and both durable claims, explicitly retaining the
+   second missing/uncertain response and remaining unasked cells. Do not append a
+   stop record onto a torn JSON fragment, erase partial evidence, skip arbitrary
+   corrupt interior records or report a completed/available pilot. Earlier complete
+   receipts and the original torn bytes remain auditable, with no replay or network.
+3. http_and_exact_result_stages: a bounded deeply nested JSON response triggers the
+   native decoder's recursion limit within the existing response byte cap. Through
+   real classify/run/CLI/report, retain a known HTTP 403 as a refusal, report malformed/
+   unavailable body state, consume one claim and leave 315 unasked with no retry.
+   No uncaught RecursionError, raw exception, traceback, local path or body sentinel
+   may reach console/error output. Include an ordinary HTTP-200 malformed-body
+   control; it does not become an API/label observation. Preserve the fixed source
+   HTTP/body/result/label stages and the child output/privacy boundary.
+
+The repair stays in the existing new module. No acceptance weakening, provider,
+package, workflow, public raw channel, benchmark/cache write or live call is allowed.
+Retain all earlier native-deadline and header/body evidence with original source IDs;
+do not rebind prior green logs to the repaired head. Re-run focused/CLI/contract checks,
+request one exclusive actual full inventory on the new frozen head, and send that
+head to one fresh combined second reviewer under the two-round cap. Root then performs
+the actual Linux/integrated gates before its sole live pilot. Known failure evidence
+is not a provider-capacity measurement and does not veto the project.
