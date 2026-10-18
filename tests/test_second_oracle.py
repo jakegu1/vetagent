@@ -1157,6 +1157,778 @@ def the_run_touched_nothing():
           "%.2f s" % elapsed)
 
 
+def test_goplus_quota_plan_is_offline_fixed_and_source_bound():
+    import copy
+    import goplus_quota_probe as q
+
+    def context(count=318):
+        tokens = [{"chain": "base", "address": "0x%040x" % (i + 1),
+                   "goplus_label": "unsafe" if i % 2 else "safe"} for i in range(count)]
+        raw = json.dumps({"tokens": tokens}).encode()
+        return q.context_from_bytes(raw, "a" * 40, hashlib.sha256(raw).hexdigest(), "b" * 64)
+
+    ctx = context()
+    plan = q.make_plan(ctx)
+    check("quota queue takes exactly the first 316 original indices", plan["indices"] == list(range(316)))
+    check("quota plan binds source, dataset and label code", plan["source_commit"] == "a" * 40
+          and plan["dataset_sha256"] == ctx["dataset_sha256"] and plan["label_code_sha256"] == "b" * 64)
+    check("quota plan is byte deterministic", q.make_plan(ctx) == plan)
+    check("quota plan contains no identity", all(t["address"] not in json.dumps(plan) for t in ctx["tokens"]))
+    altered = copy.deepcopy(ctx)
+    for row in altered["tokens"]:
+        row["goplus_label"] = "centralized"
+    check("quota selection does not inspect labels", q.make_plan(altered)["indices"] == plan["indices"])
+    for change in (dict(indices=list(reversed(plan["indices"]))), dict(indices=plan["indices"] + [316]),
+                   dict(indices=[0] * 316), dict(dataset_sha256="c" * 64),
+                   dict(label_code_sha256="c" * 64), dict(source_commit="c" * 40)):
+        bad = dict(plan, **change)
+        try:
+            q.validate_plan(bad, ctx)
+        except ValueError:
+            refused = True
+        else:
+            refused = False
+        check("changed/reordered/duplicate/oversize quota plans refuse", refused)
+    for count in (0, 315):
+        try:
+            q.make_plan(context(count))
+        except ValueError:
+            refused = True
+        else:
+            refused = False
+        check("underfilled quota source refuses before calls", refused)
+    raw = json.dumps({"tokens": ctx["tokens"]}).encode()
+    try:
+        q.context_from_bytes(raw, "a" * 40, "c" * 64, "b" * 64)
+    except ValueError:
+        refused = True
+    else:
+        refused = False
+    check("source bytes must match declared hash", refused)
+
+
+def test_goplus_quota_run_caps_pacing_and_utc_bounds():
+    import datetime
+    import goplus_quota_probe as q
+
+    class Clock:
+        def __init__(self, wall=1792281600.0): self.wall, self.mono = wall, 0.0
+        def time(self): return self.wall
+        def monotonic(self): return self.mono
+        def sleep(self, n): self.wall += n; self.mono += n
+    class Sink:
+        def begin(self, plan): self.plan = plan; self.events = []
+        def append(self, event): self.events.append(event)
+        def save(self, report): self.report = report
+    raw = json.dumps({"tokens": [{"chain": "base", "address": "0x%040x" % (i+1)} for i in range(317)]}).encode()
+    ctx = q.context_from_bytes(raw, "a"*40, hashlib.sha256(raw).hexdigest(), "b"*64)
+    plan = q.make_plan(ctx)
+    clock, sink, starts = Clock(), Sink(), []
+    def transport(chain, addr, *, timeout):
+        starts.append(clock.monotonic())
+        check("quota transport timeout is thirty seconds", timeout == 30)
+        return {"http_status": 429, "body": b'{"code":2,"message":"PRIVATE-QUOTA"}'}
+    report = q.run_plan(plan, ctx, sink=sink, transport=transport, clock=clock)
+    check("all quota attempts are capped at 316 with no 429 retry", len(starts) == 316
+          and report["counts"]["claimed"] == 316 and report["counts"]["rate_limited"] == 316)
+    check("quota calls obey start spacing without real waits", all(b-a >= 2.1-1e-9 for a,b in zip(starts,starts[1:])))
+    check("a 429 observation is non-success, never a label", report["available"] is False
+          and report["counts"]["label_returned"] == 0)
+    before = len(starts)
+    try:
+        q.run_plan(dict(plan, indices=plan["indices"]+[316]), ctx, sink=Sink(), transport=transport, clock=clock)
+    except ValueError:
+        refused = True
+    else:
+        refused = False
+    check("317th planned attempt refuses before transport", refused and len(starts) == before)
+    close = datetime.datetime(2026,10,18,23,59,45,tzinfo=datetime.timezone.utc).timestamp()
+    stopped = q.run_plan(plan, ctx, sink=Sink(), transport=transport, clock=Clock(close))
+    check("full timeout must fit before UTC midnight", stopped["counts"]["claimed"] == 0
+          and stopped["counts"]["not_asked"] == 316 and stopped["stop_reason"] == "utc_day_end")
+    for status in (401,403):
+        calls = []
+        def auth(chain, addr, *, timeout): calls.append(addr); return {"http_status":status,"body":b'{}'}
+        result=q.run_plan(plan,ctx,sink=Sink(),transport=auth,clock=Clock())
+        check("first permission refusal stops remaining quota",len(calls)==1 and result["counts"]["not_asked"]==315
+              and result["stop_reason"]=="permission_refused")
+    slow_clock=Clock()
+    def slow(chain,addr,*,timeout): slow_clock.sleep(1771); return {"http_status":500,"body":b'{}'}
+    result=q.run_plan(plan,ctx,sink=Sink(),transport=slow,clock=slow_clock)
+    check("elapsed run budget stops before another full timeout",result["counts"]["claimed"]==1
+          and result["stop_reason"]=="run_deadline")
+
+    # Native total-deadline regression pin authorized by T044 clarification (d).
+    def pin_native_total_deadline_supervisor():
+        class Clock:
+            def __init__(self): self.now=0.0
+            def monotonic(self): return self.now
+        clock=Clock()
+        workers=[]
+        class Worker:
+            def __init__(self): self.live=False; self.terminated=False; self.killed=False; self.closed=False; self.waits=[]
+            def start(self):
+                assert not any(w.live for w in workers if w is not self)
+                self.live=True
+            def is_alive(self): return self.live
+            def join(self,timeout):
+                self.waits.append(timeout)
+                if self.live: clock.now+=timeout
+            def terminate(self): self.terminated=True
+            def kill(self): self.killed=True; self.live=False
+            def status(self): return 403
+            def result(self): raise AssertionError("expired worker body must stay unavailable")
+            def close(self): assert not self.live; self.closed=True
+        def factory(chain,address,timeout):
+            assert chain=="base" and timeout==30
+            worker=Worker(); workers.append(worker); return worker
+        replies=[q._supervised_request("base","0x"+"1"*40,timeout=30,worker_factory=factory,clock=clock)
+                 for _ in range(2)]
+        check("native deadline retires each worker with bounded cleanup before another starts",
+              len(workers)==2 and all(w.terminated and w.killed and w.closed and not w.live for w in workers)
+              and all(len(w.waits)==3 and 0<w.waits[0]<=30+1e-9
+                      and all(0<=wait<=0.05 for wait in w.waits[1:]) for w in workers)
+              and all(reply=={"http_status":403,"error":"timeout"} for reply in replies)
+              and 60<=clock.now<=60.11)
+        original=q._supervised_request
+        routed=[]
+        def supervised(chain,address,*,timeout,**kwargs):
+            routed.append(timeout); return {"http_status":403,"error":"timeout"}
+        try:
+            q._supervised_request=supervised
+            reply=q.request_once("base","0x"+"1"*40)
+        finally:
+            q._supervised_request=original
+        safe=q.classify(reply,"0x"+"1"*40)
+        check("default native transport always uses the bounded supervisor without public raw output",
+              routed==[30] and safe["http_status"]==403 and safe["body_state"]=="timeout"
+              and safe["captured_body_sha256"] is None and safe["label_state"]=="unobserved"
+              and "PRIVATE" not in json.dumps(safe))
+        interrupted=[]
+        class InterruptWorker(Worker):
+            def join(self,timeout):
+                if not self.terminated:
+                    interrupted.append(True)
+                    raise KeyboardInterrupt()
+                return super().join(timeout)
+        def interrupted_factory(chain,address,timeout):
+            worker=InterruptWorker(); workers.append(worker); return worker
+        try:
+            q._supervised_request("base","0x"+"1"*40,timeout=30,worker_factory=interrupted_factory,clock=clock)
+        except KeyboardInterrupt:
+            propagated=True
+        else:
+            propagated=False
+        check("native supervisor interruption retires its worker and propagates",
+              propagated and interrupted==[True] and workers[-1].closed and not workers[-1].live)
+    pin_native_total_deadline_supervisor()
+
+    # Bounded first-review correction authorized by T044 clarification (e).
+    def pin_round2_durable_timing_boundaries():
+        import datetime
+        from pathlib import Path
+        class Clock:
+            def __init__(self,wall,backward_sleep=False): self.wall=wall; self.mono=0.0; self.backward_sleep=backward_sleep
+            def time(self): return self.wall
+            def monotonic(self): return self.mono
+            def sleep(self,n):
+                self.wall+=n; self.mono+=n
+                if self.backward_sleep: self.wall-=86400
+        raw=json.dumps({"tokens":[{"chain":"base","address":"0x%040x"%(i+1)} for i in range(316)]}).encode()
+        context=q.context_from_bytes(raw,"a"*40,hashlib.sha256(raw).hexdigest(),"b"*64)
+        plan=q.make_plan(context)
+        window=q.REQUEST_TIMEOUT+2*q._CLEANUP_SECONDS
+        base=1792281600.0
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            def run_case(name,wall,latency_wall,latency_mono,statuses=(403,),backward_sleep=False):
+                clock=Clock(wall,backward_sleep); starts=[]; replies=iter(statuses)
+                class SlowIntent(q.FileSink):
+                    def append(self,event):
+                        super().append(event)
+                        if event["kind"]=="intent" and event["index"]==0:
+                            clock.wall+=latency_wall; clock.mono+=latency_mono
+                def transport(chain,address,*,timeout):
+                    starts.append((clock.monotonic(),clock.time()))
+                    return {"http_status":next(replies),"body":b'{}'}
+                path=root/name
+                report=q.run_plan(plan,context,sink=SlowIntent(path),transport=transport,clock=clock)
+                return report,q.read_report(path),starts,[json.loads(line) for line in (path/"receipts.jsonl").read_bytes().splitlines()]
+            report,restored,starts,events=run_case("spacing",base+100,3,3,(429,403))
+            actual=[datetime.datetime.fromtimestamp(wall,datetime.timezone.utc).isoformat(timespec="milliseconds").replace("+00:00","Z")
+                    for mono,wall in starts]
+            intents=[event for event in events if event["kind"]=="intent"]
+            receipts=[event for event in events if event["kind"]=="receipt"]
+            check("durable intent latency preserves actual transport spacing and truthful persisted starts",
+                  len(starts)==2 and starts[1][0]-starts[0][0]>=2.1-1e-9
+                  and [cell.get("request_at") for cell in restored["cells"][:2]]==actual
+                  and [event.get("request_at") for event in receipts]==actual
+                  and all("claimed_at" in event and "request_at" not in event for event in intents)
+                  and restored["cells"][0].get("claimed_at")==intents[0].get("claimed_at")
+                  and restored["cells"][0].get("claimed_at")!=actual[0]
+                  and all(cell["duration_seconds"]==0 for cell in restored["cells"][:2]))
+            cases=[("exact-day",base+86400-window,0,0,1,"permission_refused"),
+                   ("late-day",base+86400-window-0.1,0.2,0.2,0,"utc_day_end"),
+                   ("exact-run",base+100,q.RUN_SECONDS-window,q.RUN_SECONDS-window,1,"permission_refused"),
+                   ("late-run",base+100,q.RUN_SECONDS-window+0.2,q.RUN_SECONDS-window+0.2,0,"run_deadline"),
+                   ("backward-intent",base+0.1,-1,0.2,0,"utc_day_end")]
+            for name,wall,delay_wall,delay_mono,expected,reason in cases:
+                report,restored,starts,events=run_case(name,wall,delay_wall,delay_mono)
+                counts=restored["counts"]
+                check("post-intent admission retains exact day/run edges and consumed unopened claims: "+name,
+                      len(starts)==expected and report["stop_reason"]==reason
+                      and counts["claimed"]==1 and counts["attempted"]==expected
+                      and counts["uncertain"]==1-expected and counts["not_asked"]==315
+                      and (expected==1 or "request_at" not in restored["cells"][0]))
+            report,restored,starts,events=run_case("backward-pacing",base+100,0,0,(429,403),True)
+            counts=restored["counts"]
+            check("pacing wait rechecks the chosen UTC date after a backward wall step",
+                  len(starts)==1 and report["stop_reason"]=="utc_day_end"
+                  and counts["attempted"]==1 and counts["claimed"] in (1,2)
+                  and counts["uncertain"]==counts["claimed"]-1 and counts["not_asked"]==316-counts["claimed"])
+    pin_round2_durable_timing_boundaries()
+
+
+def test_goplus_quota_http_and_exact_result_stages():
+    import goplus_quota_probe as q
+
+    addr="0x"+"1"*40
+    called=[]
+    def labeler(payload, address, recent_volume_7d=None):
+        called.append((payload,address,recent_volume_7d)); return "safe",[],{}
+    def reply(status,body): return {"http_status":status,"body":json.dumps(body).encode()}
+    data={"buy_tax":"0","sell_tax":"0.01","holder_count":"500"}
+    good=reply(200,{"code":1,"result":{addr:data}})
+    cell=q.classify(good,addr,recent_volume=1234,labeler=labeler)
+    check("matching GoPlus data has separate observed stages",cell["http_state"]=="observed"
+          and cell["result_state"]=="matched" and cell["label_state"]=="returned"
+          and cell["field_states"]=={"buy_tax":"finite","sell_tax":"finite","holder_count":"integer"})
+    check("labeler gets actual finite volume",called[-1][2]==1234)
+    for body in ({"code":2,"message":"PRIVATE-QUOTA","result":{}},
+                 {"code":1,"result":{"0x"+"2"*40:data}}, {"code":1,"result":{}},
+                 {"code":1,"result":{addr:[]}}):
+        before=len(called); bad=q.classify(reply(200,body),addr,labeler=labeler)
+        check("error or another contract never reaches label fallback",len(called)==before
+              and bad["label_state"]=="unobserved")
+    for status,state in ((429,"rate_limited"),(403,"permission_refused"),(500,"http_error"),(302,"redirect")):
+        before=len(called); bad=q.classify(reply(status,{"code":1,"result":{addr:data}}),addr,labeler=labeler)
+        check("HTTP failures keep their measured stage",bad["http_state"]==state
+              and bad["label_state"]=="unobserved" and len(called)==before)
+    for raw,state in ((b'',"empty"),(b'PRIVATE-QUOTA',"malformed"),(b'\xff',"malformed"),
+                      (b'x'*(q.BODY_CAP+1),"truncated")):
+        bad=q.classify({"http_status":200,"body":raw},addr,labeler=labeler)
+        check("body gaps are distinct",bad["body_state"]==state and bad["label_state"]=="unobserved")
+    bad=q.classify(reply(200,{"code":1,"result":{addr:{"buy_tax":"NaN","sell_tax":None}}}),addr,
+                   recent_volume=float("inf"),labeler=labeler)
+    check("missing/nonfinite fields are not zero",bad["field_states"]=={
+          "buy_tax":"invalid","sell_tax":"missing","holder_count":"missing"} and called[-1][2] is None)
+    for error in ("timeout","transport"):
+        bad=q.classify({"http_status":0,"error":error},addr,labeler=labeler)
+        check("transport absence remains unobserved",bad["http_state"]==error and bad["body_state"]=="unobserved")
+    class Response:
+        status=429
+        def __enter__(self): return self
+        def __exit__(self,*a): pass
+        def read(self,n): check("GoPlus bounded read includes overflow byte",n==q.BODY_CAP+1); return b'{}'
+    class Opener:
+        def __init__(self): self.calls=[]
+        def open(self,req,timeout): self.calls.append((req,timeout)); return Response()
+    opener=Opener(); got=q.request_once("base",addr,opener=opener)
+    check("native transport performs exactly one GET",len(opener.calls)==1 and opener.calls[0][0].get_method()=="GET"
+          and opener.calls[0][1]==30 and got["http_status"]==429)
+    check("quota redirect handler never follows",q.NoRedirect().redirect_request(None,None,302,"x",{},"https://example.invalid") is None)
+
+    # Retrospective ordinary-CI pin authorized by T044 clarification (c).
+    def pin_permission_headers_then_body_timeout():
+        class Clock:
+            def __init__(self): self.now=0.0
+            def time(self): return 1792281600.0+self.now
+            def monotonic(self): return self.now
+            def sleep(self,n): self.now+=n
+        class Sink:
+            def begin(self,plan): pass
+            def append(self,event): pass
+            def save(self,report): pass
+        class Response:
+            status=403
+            def __enter__(self): return self
+            def __exit__(self,*args): pass
+            def read(self,n): raise TimeoutError("PRIVATE-BODY-TIMEOUT")
+        class Opener:
+            def __init__(self): self.calls=0
+            def open(self,*args,**kwargs): self.calls+=1; return Response()
+        raw=json.dumps({"tokens":[{"chain":"base","address":"0x%040x"%(i+1)} for i in range(316)]}).encode()
+        context=q.context_from_bytes(raw,"a"*40,hashlib.sha256(raw).hexdigest(),"b"*64)
+        opener=Opener()
+        def transport(chain,address,*,timeout):
+            return q.request_once(chain,address,timeout=timeout,opener=opener)
+        report=q.run_plan(q.make_plan(context),context,sink=Sink(),transport=transport,clock=Clock())
+        first=report["cells"][0]
+        check("permission headers survive a body timeout without a second attempt",
+              opener.calls==1 and report["counts"]["claimed"]==1 and report["counts"]["attempted"]==1
+              and report["counts"]["completed_http"]==1 and report["counts"]["transport_errors"]==1
+              and report["counts"]["not_asked"]==315 and report["stop_reason"]=="permission_refused"
+              and first["http_status"]==403 and first["http_state"]=="permission_refused"
+              and first["body_state"]=="timeout" and first["captured_body_sha256"] is None
+              and first["body_complete"] is None and first["label_state"]=="unobserved"
+              and all(cell["state"]=="not_asked" for cell in report["cells"][1:]))
+    pin_permission_headers_then_body_timeout()
+
+    # Native body-exception regression pin authorized by T044 clarification (d).
+    def pin_native_permission_body_exception():
+        import http.client
+        class Clock:
+            def __init__(self): self.now=0.0
+            def time(self): return 1792281600.0+self.now
+            def monotonic(self): return self.now
+            def sleep(self,n): self.now+=n
+        class Sink:
+            def begin(self,plan): pass
+            def append(self,event): pass
+            def save(self,report): pass
+        class Response:
+            status=403
+            def __enter__(self): return self
+            def __exit__(self,*args): pass
+            def read(self,n): raise http.client.IncompleteRead(b'PRIVATE-PARTIAL',19)
+        class Opener:
+            def __init__(self,response): self.calls=0; self.response=response
+            def open(self,*args,**kwargs): self.calls+=1; return self.response()
+        raw=json.dumps({"tokens":[{"chain":"base","address":"0x%040x"%(i+1)} for i in range(316)]}).encode()
+        context=q.context_from_bytes(raw,"a"*40,hashlib.sha256(raw).hexdigest(),"b"*64)
+        opener=Opener(Response)
+        def transport(chain,address,*,timeout): return q.request_once(chain,address,timeout=timeout,opener=opener)
+        report=q.run_plan(q.make_plan(context),context,sink=Sink(),transport=transport,clock=Clock())
+        first=report["cells"][0]
+        check("native HTTPException keeps permission evidence and stops after one attempt",
+              opener.calls==1 and report["counts"]["claimed"]==1 and report["counts"]["attempted"]==1
+              and report["counts"]["not_asked"]==315 and report["stop_reason"]=="permission_refused"
+              and first["http_status"]==403 and first["http_state"]=="permission_refused"
+              and first["body_state"]=="transport" and first["captured_body_sha256"] is None
+              and first["label_state"]=="unobserved" and "PRIVATE-PARTIAL" not in json.dumps(report))
+        class InterruptedResponse(Response):
+            def read(self,n): raise KeyboardInterrupt()
+        opener=Opener(InterruptedResponse)
+        report=q.run_plan(q.make_plan(context),context,sink=Sink(),transport=transport,clock=Clock())
+        check("native body interruption reaches the run interruption handler without retry",
+              opener.calls==1 and report["stop_reason"]=="interrupted" and report["counts"]["uncertain"]==1
+              and report["counts"]["attempted"]==0 and report["counts"]["not_asked"]==315)
+    pin_native_permission_body_exception()
+
+    # Bounded first-review correction authorized by T044 clarification (e).
+    def pin_round2_deep_json_cli():
+        import contextlib
+        from pathlib import Path
+        deep=b'['*20000+b'"PRIVATE-DEEP-BODY"'+b']'*20000
+        try:
+            json.loads(deep)
+        except RecursionError:
+            native_recursion=True
+        else:
+            native_recursion=False
+        check("within-cap nested JSON reaches the native decoder recursion boundary",native_recursion and len(deep)<q.BODY_CAP)
+        address="0x"+"1"*40; labels_called=[]
+        def labeler(*args,**kwargs): labels_called.append(True); return "safe",[],{}
+        try:
+            cell=q.classify({"http_status":403,"body":deep},address,labeler=labeler)
+        except RecursionError:
+            cell={}
+        check("bounded decoder recursion retains the known permission stage and malformed body",
+              cell.get("http_status")==403 and cell.get("http_state")=="permission_refused"
+              and cell.get("body_state")=="malformed" and cell.get("label_state")=="unobserved"
+              and cell.get("captured_body_sha256")==hashlib.sha256(deep).hexdigest() and not labels_called)
+        control=q.classify({"http_status":200,"body":b'PRIVATE-ORDINARY-MALFORMED'},address,labeler=labeler)
+        check("ordinary HTTP200 malformed JSON remains unavailable to API and labels",
+              control["http_state"]=="observed" and control["body_state"]=="malformed"
+              and control["api_state"]=="unobserved" and control["label_state"]=="unobserved" and not labels_called)
+        class Clock:
+            def time(self): return 1792281600.0
+            def monotonic(self): return 0.0
+            def sleep(self,n): raise AssertionError("permission recursion must stop before another request")
+        raw=json.dumps({"tokens":[{"chain":"base","address":"0x%040x"%(i+1)} for i in range(316)]}).encode()
+        context=q.context_from_bytes(raw,"a"*40,hashlib.sha256(raw).hexdigest(),"b"*64)
+        original=q.labels.goplus_label
+        q.labels.goplus_label=labeler
+        try:
+            with tempfile.TemporaryDirectory() as directory:
+                root=Path(directory); dataset=root/"dataset.json"; dataset.write_bytes(raw); plan=root/"plan.json"; output=root/"run"
+                def loader(path,source):
+                    if Path(path).read_bytes()!=raw or source!="a"*40: raise ValueError("PRIVATE-DEEP-SOURCE")
+                    return context
+                calls=[]
+                def transport(chain,requested,*,timeout): calls.append(requested); return {"http_status":403,"body":deep}
+                console=io.StringIO(); errors=io.StringIO(); escaped=False
+                with contextlib.redirect_stdout(console),contextlib.redirect_stderr(errors):
+                    planned=q.main(["plan","--dataset",str(dataset),"--source","a"*40,"--output",str(plan)],context_loader=loader)
+                    try:
+                        status=q.main(["run","--dataset",str(dataset),"--plan",str(plan),"--output",str(output)],
+                                      context_loader=loader,transport=transport,clock=Clock())
+                    except RecursionError:
+                        escaped=True; status=None
+                    read_status=q.main(["report","--output",str(output)])
+                restored=q.read_report(output); first=restored["cells"][0]
+                check("real CLI retains one deep-body refusal and315unasked without decoder escape",
+                      planned==0 and status==1 and read_status==1 and not escaped and len(calls)==1
+                      and restored["counts"]["claimed"]==1 and restored["counts"]["attempted"]==1
+                      and restored["counts"]["not_asked"]==315 and restored["counts"]["label_returned"]==0
+                      and first.get("http_status")==403 and first.get("body_state")=="malformed" and not labels_called)
+                deep_path=root/"deep.json"; deep_path.write_bytes(deep)
+                bad_report=root/"deep-report"; bad_report.mkdir()
+                (bad_report/"plan.json").write_bytes(deep); (bad_report/"receipts.jsonl").write_bytes(b'')
+                def deep_loader(path,source):
+                    return q.context_from_bytes(deep,"a"*40,hashlib.sha256(deep).hexdigest(),"b"*64)
+                inputs=[(["plan","--dataset",str(deep_path),"--source","a"*40,"--output",str(root/"deep-plan")],deep_loader),
+                        (["run","--dataset",str(dataset),"--plan",str(deep_path),"--output",str(root/"deep-run")],loader),
+                        (["report","--output",str(bad_report)],None)]
+                for argv,chosen_loader in inputs:
+                    with contextlib.redirect_stdout(console),contextlib.redirect_stderr(errors):
+                        try:
+                            rejected=q.main(argv,context_loader=chosen_loader,transport=transport,clock=Clock())
+                        except RecursionError:
+                            rejected=None
+                    check("CLI source/plan/report decoder recursion stays inside the safe failure boundary",rejected==1 and len(calls)==1)
+                emitted=console.getvalue()+errors.getvalue()
+                check("deep JSON console excludes tracebacks body text addresses and private paths",
+                      all(marker not in emitted for marker in ("Traceback","RecursionError","PRIVATE-DEEP",str(root),address,"https://"))
+                      and errors.getvalue()=="")
+        finally:
+            q.labels.goplus_label=original
+    pin_round2_deep_json_cli()
+
+
+def test_goplus_quota_safe_output_and_private_raw():
+    import contextlib
+    from pathlib import Path
+    import goplus_quota_probe as q
+
+    class Clock:
+        def time(self): return 1792281600.0
+        def monotonic(self): return 0.0
+        def sleep(self,n): raise AssertionError("one permission call must not sleep")
+    raw=json.dumps({"tokens":[{"chain":"base","address":"0x%040x"%(i+1)} for i in range(316)]}).encode()
+    ctx=q.context_from_bytes(raw,"a"*40,hashlib.sha256(raw).hexdigest(),"b"*64); plan=q.make_plan(ctx)
+    body=b'{"message":"PRIVATE-QUOTA-RAW","account":"ACCOUNT-SENTINEL"}'
+    calls=[]
+    def transport(chain,addr,*,timeout): calls.append(addr); return {"http_status":403,"body":body}
+    with tempfile.TemporaryDirectory() as directory:
+        root=Path(directory); output=root/"safe"; private=root/"private"
+        result=q.run_plan(plan,ctx,sink=q.FileSink(output),transport=transport,clock=Clock(),private_raw_dir=private)
+        safe=b''.join(p.read_bytes() for p in output.iterdir() if p.is_file())
+        check("public quota bundle stays below one MiB",len(safe)<=q.SAFE_CAP==1024*1024)
+        check("public bundle excludes raw text/addresses/URLs",all(s not in safe for s in (
+              body,b"PRIVATE-QUOTA-RAW",b"ACCOUNT-SENTINEL",ctx["tokens"][0]["address"].encode(),b"https://")))
+        check("explicit private raw directory retains captured bytes",any(p.read_bytes()==body for p in private.rglob("*") if p.is_file()))
+        before=len(calls)
+        try:
+            q.run_plan(plan,ctx,sink=q.FileSink(root/"ci-safe"),transport=transport,clock=Clock(),
+                       private_raw_dir=root/"ci-raw",ci=True)
+        except ValueError:
+            refused=True
+        else:
+            refused=False
+        check("CI refuses raw retention before calls",refused and len(calls)==before)
+        nested=root/"worktree"; nested.mkdir(); (nested/".git").write_text("gitdir: sentinel",encoding="utf-8")
+        try:
+            q.run_plan(plan,ctx,sink=q.FileSink(root/"nested-safe"),transport=transport,clock=Clock(),private_raw_dir=nested/"raw")
+        except ValueError:
+            refused=True
+        else:
+            refused=False
+        check("raw retention refuses any Git worktree ancestor",refused and len(calls)==before)
+
+    # Retrospective ordinary-CI pin authorized by T044 clarification (c).
+    def pin_nested_private_raw():
+        from pathlib import Path
+        class Clock:
+            def time(self): return 1792281600.0
+            def monotonic(self): return 0.0
+            def sleep(self,n): raise AssertionError("nested raw must refuse before calls")
+        raw=json.dumps({"tokens":[{"chain":"base","address":"0x%040x"%(i+1)} for i in range(316)]}).encode()
+        context=q.context_from_bytes(raw,"a"*40,hashlib.sha256(raw).hexdigest(),"b"*64)
+        calls=[]
+        def transport(chain,address,*,timeout):
+            calls.append(address)
+            return {"http_status":403,"body":b'PRIVATE-NESTED-RAW'}
+        with tempfile.TemporaryDirectory() as directory:
+            safe=Path(directory)/"safe"
+            try:
+                q.run_plan(q.make_plan(context),context,sink=q.FileSink(safe),transport=transport,
+                           clock=Clock(),private_raw_dir=safe/"raw")
+            except ValueError:
+                refused=True
+            else:
+                refused=False
+            check("private raw nested in the safe bundle refuses before calls",
+                  refused and not calls and not safe.exists())
+    pin_nested_private_raw()
+
+
+def test_goplus_quota_partial_intents_and_persistence():
+    from pathlib import Path
+    import goplus_quota_probe as q
+
+    class Clock:
+        def time(self): return 1792281600.0
+        def monotonic(self): return 0.0
+        def sleep(self,n): raise AssertionError("interrupted quota never retries")
+    raw=json.dumps({"tokens":[{"chain":"base","address":"0x%040x"%(i+1)} for i in range(316)]}).encode()
+    ctx=q.context_from_bytes(raw,"a"*40,hashlib.sha256(raw).hexdigest(),"b"*64); plan=q.make_plan(ctx)
+    with tempfile.TemporaryDirectory() as directory:
+        path=Path(directory)/"interrupted"; calls=[]
+        def interrupted(chain,addr,*,timeout):
+            calls.append(addr)
+            journal=(path/"receipts.jsonl").read_text(encoding="utf-8")
+            check("durable intent exists before transport",'"kind":"intent"' in journal)
+            raise KeyboardInterrupt()
+        result=q.run_plan(plan,ctx,sink=q.FileSink(path),transport=interrupted,clock=Clock())
+        restored=q.read_report(path)
+        check("intent-only interruption stays uncertain",len(calls)==1 and restored["counts"]["claimed"]==1
+              and restored["counts"]["uncertain"]==1 and restored["counts"]["not_asked"]==315
+              and restored["available"] is False)
+        before={p.name:p.read_bytes() for p in path.iterdir() if p.is_file()}
+        try:
+            q.run_plan(plan,ctx,sink=q.FileSink(path),transport=interrupted,clock=Clock())
+        except (ValueError,FileExistsError):
+            refused=True
+        else:
+            refused=False
+        check("restart refuses and preserves all earlier files",refused and len(calls)==1
+              and before=={p.name:p.read_bytes() for p in path.iterdir() if p.is_file()})
+        class Broken:
+            def begin(self,plan): pass
+            def append(self,event): raise OSError("PRIVATE-PERSISTENCE")
+            def save(self,report): pass
+        result=q.run_plan(plan,ctx,sink=Broken(),transport=interrupted,clock=Clock())
+        check("intent persistence failure stops before any call",len(calls)==1 and result["stop_reason"]=="persistence_failed"
+              and result["counts"]["claimed"]==0 and result["counts"]["not_asked"]==316)
+
+    # Retrospective ordinary-CI pin authorized by T044 clarification (c).
+    def pin_torn_final_receipt():
+        from pathlib import Path
+        class Clock:
+            def __init__(self): self.now=0.0
+            def time(self): return 1792281600.0+self.now
+            def monotonic(self): return self.now
+            def sleep(self,n): self.now+=n
+        raw=json.dumps({"tokens":[{"chain":"base","address":"0x%040x"%(i+1)} for i in range(316)]}).encode()
+        context=q.context_from_bytes(raw,"a"*40,hashlib.sha256(raw).hexdigest(),"b"*64)
+        calls=[]
+        def transport(chain,address,*,timeout):
+            calls.append(address)
+            if len(calls)==2: raise KeyboardInterrupt()
+            return {"http_status":429,"body":b'{}'}
+        with tempfile.TemporaryDirectory() as directory:
+            path=Path(directory)/"torn"
+            q.run_plan(q.make_plan(context),context,sink=q.FileSink(path),transport=transport,clock=Clock())
+            ledger=path/"receipts.jsonl"
+            lines=ledger.read_bytes().splitlines(keepends=True)
+            assert json.loads(lines[-1])["kind"]=="stop"
+            ledger.write_bytes(b''.join(lines[:-1])+b'{"kind":"receipt","index":1')
+            before={p.name:p.read_bytes() for p in path.iterdir() if p.is_file()}
+            try:
+                restored=q.read_report(path)
+                preserved=(restored["counts"]["claimed"]==2 and restored["counts"]["completed_http"]==1
+                           and restored["counts"]["rate_limited"]==1 and restored["counts"]["uncertain"]==1
+                           and restored["counts"]["not_asked"]==314 and restored["available"] is False
+                           and restored["ledger_tail_state"]=="incomplete"
+                           and restored["cells"][0]["http_status"]==429
+                           and restored["cells"][1]["reason"]=="missing_receipt")
+            except (ValueError,KeyError):
+                preserved=False
+            check("torn final quota receipt retains complete prior evidence and bytes",
+                  preserved and len(calls)==2
+                  and before=={p.name:p.read_bytes() for p in path.iterdir() if p.is_file()})
+    pin_torn_final_receipt()
+
+    # Bounded first-review correction authorized by T044 clarification (e).
+    def pin_round2_partial_receipt_error():
+        import contextlib
+        import os
+        from pathlib import Path
+        class Clock:
+            def __init__(self): self.now=0.0
+            def time(self): return 1792281600.0+self.now
+            def monotonic(self): return self.now
+            def sleep(self,n): self.now+=n
+        raw=json.dumps({"tokens":[{"chain":"base","address":"0x%040x"%(i+1)} for i in range(316)]}).encode()
+        context=q.context_from_bytes(raw,"a"*40,hashlib.sha256(raw).hexdigest(),"b"*64)
+        calls=[]
+        def transport(chain,address,*,timeout): calls.append(address); return {"http_status":429,"body":b'{}'}
+        with tempfile.TemporaryDirectory() as directory:
+            path=Path(directory)/"partial"
+            class PartialReceipt(q.FileSink):
+                def append(self,event):
+                    if event["kind"]=="receipt" and event["index"]==1:
+                        encoded=q._encode(event)
+                        with (self.path/"receipts.jsonl").open("ab") as handle:
+                            handle.write(encoded[:47]); handle.flush(); os.fsync(handle.fileno())
+                        self.torn=(self.path/"receipts.jsonl").read_bytes()
+                        raise OSError("PRIVATE-PARTIAL-WRITE")
+                    return super().append(event)
+            sink=PartialReceipt(path)
+            result=q.run_plan(q.make_plan(context),context,sink=sink,transport=transport,clock=Clock())
+            ledger=path/"receipts.jsonl"
+            check("receipt append failure retains the original torn bytes without terminal concatenation",
+                  len(calls)==2 and result["stop_reason"]=="persistence_failed" and ledger.read_bytes()==sink.torn)
+            console=io.StringIO(); errors=io.StringIO()
+            with contextlib.redirect_stdout(console),contextlib.redirect_stderr(errors):
+                status=q.main(["report","--output",str(path)])
+            try:
+                restored=q.read_report(path)
+                readable=(restored["counts"]["claimed"]==2 and restored["counts"]["completed_http"]==1
+                          and restored["counts"]["rate_limited"]==1 and restored["counts"]["uncertain"]==1
+                          and restored["counts"]["not_asked"]==314 and restored["available"] is False
+                          and restored["ledger_tail_state"]=="incomplete"
+                          and restored["cells"][0]["http_status"]==429
+                          and restored["cells"][1]["reason"]=="missing_receipt"
+                          and restored["receipt_bytes_sha256"]==hashlib.sha256(sink.torn).hexdigest())
+            except (ValueError,KeyError):
+                readable=False
+            decoded=json.loads(console.getvalue())
+            check("real offline CLI recovers prior429 both claims uncertain slot and314unasked after partial error",
+                  status==1 and readable and decoded.get("counts")==restored["counts"]
+                  and ledger.read_bytes()==sink.torn and len(calls)==2 and errors.getvalue()=="")
+            corrupt=Path(directory)/"corrupt"; corrupt.mkdir()
+            (corrupt/"plan.json").write_bytes((path/"plan.json").read_bytes())
+            lines=ledger.read_bytes().splitlines(keepends=True)
+            invalid=lines[0]+b'{"kind":\n'+b''.join(lines[1:])
+            (corrupt/"receipts.jsonl").write_bytes(invalid)
+            try:
+                q.read_report(corrupt)
+            except ValueError:
+                refused=True
+            else:
+                refused=False
+            check("partial-tail recovery never skips a corrupt interior record",
+                  refused and (corrupt/"receipts.jsonl").read_bytes()==invalid)
+
+            # Same-finding terminal-time correction authorized by T044 clarification (e2).
+            def pin_unobserved_elapsed_after_partial_append():
+                command=[sys.executable,"-B",str(Path(ROOT)/"bench/goplus_quota_probe.py"),"report","--output",str(path)]
+                standalone=subprocess.run(command,capture_output=True,text=True,encoding="utf-8",timeout=5)
+                recovered=json.loads(standalone.stdout)
+                observed=q.read_report(path)
+                expected=(2,1,1,1,314)
+                keys=("claimed","attempted","rate_limited","uncertain","not_asked")
+                check("partial append immediate and standalone readout keep unobserved elapsed null",
+                      result["ended_at"] is None and result["elapsed_seconds"] is None and result["elapsed_minutes"] is None
+                      and result["started_at"] is not None and tuple(result["counts"][key] for key in keys)==expected
+                      and standalone.returncode==1 and standalone.stderr==""
+                      and "elapsed_seconds" in recovered and "elapsed_minutes" in recovered
+                      and recovered["ended_at"] is None and recovered["elapsed_seconds"] is None and recovered["elapsed_minutes"] is None
+                      and recovered["started_at"]==result["started_at"]
+                      and tuple(recovered.get("counts",{}).get(key) for key in keys)==expected
+                      and observed["cells"][0]["http_status"]==429 and observed["cells"][0].get("request_at") is not None
+                      and observed["cells"][1].get("claimed_at") is not None and "request_at" not in observed["cells"][1]
+                      and ledger.read_bytes()==sink.torn and len(calls)==2)
+                positive_calls=[]
+                def positive_transport(chain,address,*,timeout):
+                    positive_calls.append(address)
+                    return {"http_status":429 if len(positive_calls)==1 else 403,"body":b'{}'}
+                positive_path=Path(directory)/"valid-terminal"
+                positive=q.run_plan(q.make_plan(context),context,sink=q.FileSink(positive_path),transport=positive_transport,clock=Clock())
+                positive_cli=subprocess.run(command[:-1]+[str(positive_path)],capture_output=True,text=True,encoding="utf-8",timeout=5)
+                positive_read=json.loads(positive_cli.stdout)
+                check("valid terminal immediate and standalone readout retain actual positive elapsed",
+                      len(positive_calls)==2 and positive["ended_at"] is not None and positive["elapsed_seconds"]>0
+                      and abs(positive["elapsed_seconds"]-q.GAP_SECONDS)<1e-9
+                      and positive["elapsed_minutes"]==positive["elapsed_seconds"]/60
+                      and positive_cli.returncode==1 and positive_cli.stderr==""
+                      and positive_read["elapsed_seconds"]==positive["elapsed_seconds"]
+                      and positive_read["elapsed_minutes"]==positive["elapsed_minutes"])
+            pin_unobserved_elapsed_after_partial_append()
+    pin_round2_partial_receipt_error()
+
+
+def test_goplus_quota_readout_denominators_and_limits():
+    import goplus_quota_probe as q
+
+    class Clock:
+        def __init__(self): self.now=0.0
+        def time(self): return 1792281600.0+self.now
+        def monotonic(self): return self.now
+        def sleep(self,n): self.now+=n
+    class Sink:
+        def begin(self,plan): self.plan=plan; self.events=[]
+        def append(self,event): self.events.append(event)
+        def save(self,report): self.report=report
+    raw=json.dumps({"tokens":[{"chain":"base","address":"0x%040x"%(i+1)} for i in range(316)]}).encode()
+    ctx=q.context_from_bytes(raw,"a"*40,hashlib.sha256(raw).hexdigest(),"b"*64); plan=q.make_plan(ctx)
+    statuses=iter([429,500,403]); sink=Sink()
+    def transport(chain,addr,*,timeout): return {"http_status":next(statuses),"body":b'{}'}
+    result=q.run_plan(plan,ctx,sink=sink,transport=transport,clock=Clock())
+    counts=result["counts"]
+    check("quota readout preserves every denominator",(counts["requested"],counts["claimed"],counts["attempted"],
+          counts["completed_http"],counts["rate_limited"],counts["not_asked"],counts["unobserved_label"])
+          ==(316,3,3,3,1,313,3))
+    check("quota cells have exactly the frozen queue indices",[r["index"] for r in result["cells"]]==plan["indices"])
+    check("short quota run reports actual elapsed minutes",0<result["elapsed_seconds"]<60
+          and result["last_observation_at"] is not None and result["first_observation_at"] is not None)
+    text=json.dumps(result)
+    check("quota limitations expressly reject daily and prospective claims",all(term in text for term in (
+          "not continuous 24-hour", "daily reset unobserved", "not a T+24h", "30-day", "shared usage unknown")))
+    check("quota report never computes demand or unsafe yield",all(term not in result for term in ("unsafe_yield","external_users","build_decision")))
+
+
+def test_goplus_quota_cli_and_existing_runner_contract():
+    import ast
+    import contextlib
+    from pathlib import Path
+    import goplus_quota_probe as q
+
+    class Clock:
+        def time(self): return 1792281600.0
+        def monotonic(self): return 0.0
+        def sleep(self,n): raise AssertionError("CLI permission refusal stops immediately")
+    raw=json.dumps({"tokens":[{"chain":"base","address":"0x%040x"%(i+1)} for i in range(316)]}).encode()
+    ctx=q.context_from_bytes(raw,"a"*40,hashlib.sha256(raw).hexdigest(),"b"*64)
+    calls=[]
+    def loader(path,source):
+        if Path(path).read_bytes()!=raw or source!="a"*40: raise ValueError("PRIVATE-SOURCE")
+        return ctx
+    def transport(chain,addr,*,timeout): calls.append(addr); return {"http_status":403,"body":b'{"message":"PRIVATE-CLI"}'}
+    with tempfile.TemporaryDirectory() as directory:
+        root=Path(directory); dataset=root/"dataset.json"; dataset.write_bytes(raw); plan=root/"plan.json"; output=root/"run"
+        console=io.StringIO()
+        with contextlib.redirect_stdout(console),contextlib.redirect_stderr(console):
+            default=q.main([])
+            planned=q.main(["plan","--dataset",str(dataset),"--source","a"*40,"--output",str(plan)],context_loader=loader)
+            run_status=q.main(["run","--dataset",str(dataset),"--plan",str(plan),"--output",str(output)],
+                              context_loader=loader,transport=transport,clock=Clock())
+            report_status=q.main(["report","--output",str(output)])
+        check("real quota CLI is default offline and plan/run/report usable",default!=0 and planned==0
+              and run_status!=0 and report_status!=0 and len(calls)==1 and (output/"report.json").is_file())
+        check("real quota CLI output is sanitized",all(s not in console.getvalue() for s in (
+              "PRIVATE-CLI","PRIVATE-SOURCE",ctx["tokens"][0]["address"],str(dataset),"https://")))
+        dataset.write_bytes(raw+b' ')
+        with contextlib.redirect_stdout(io.StringIO()):
+            status=q.main(["run","--dataset",str(dataset),"--plan",str(plan),"--output",str(root/"wrong")],
+                          context_loader=loader,transport=transport,clock=Clock())
+        check("CLI source mismatch refuses before transport",status!=0 and len(calls)==1)
+        actual=Path(ROOT)/"bench/dataset.json"
+        context=q.load_context(actual,"00a9a5c4c9c51dbb532b1f7696c88fd58a11ac66")
+        check("real source loader binds the actual Git dataset blob",context["dataset_sha256"]==hashlib.sha256(actual.read_bytes()).hexdigest())
+        try:
+            q.load_context(dataset,"00a9a5c4c9c51dbb532b1f7696c88fd58a11ac66")
+        except ValueError:
+            refused=True
+        else:
+            refused=False
+        check("real Git source mismatch is refused",refused)
+    base=subprocess.check_output(["git","show","00a9a5c4c9c51dbb532b1f7696c88fd58a11ac66:tests/test_second_oracle.py"],cwd=ROOT).decode()
+    current=Path(__file__).read_text(encoding="utf-8")
+    prefix,suffix=base.split("\ndef main():\n",1)
+    left,right=current.split("\ndef main():\n",1)
+    check("all original oracle test bytes and runner remain frozen",left.startswith(prefix) and suffix==right)
+    additions=ast.parse(left[len(prefix):]).body
+    expected={"test_goplus_quota_plan_is_offline_fixed_and_source_bound", "test_goplus_quota_run_caps_pacing_and_utc_bounds",
+              "test_goplus_quota_http_and_exact_result_stages", "test_goplus_quota_safe_output_and_private_raw",
+              "test_goplus_quota_partial_intents_and_persistence", "test_goplus_quota_readout_denominators_and_limits",
+              "test_goplus_quota_cli_and_existing_runner_contract"}
+    check("exactly seven named additive functions run through the existing dynamic runner",len(additions)==7
+          and all(isinstance(n,ast.FunctionDef) for n in additions) and {n.name for n in additions}==expected)
+
+
 def main():
     print("=" * 70)
     print("second_oracle.py: the W5 check on the adversarial cohort, run safely")
