@@ -7,6 +7,15 @@
 
 ## Status in one line
 
+T-031 existing-provider discovery routing and T-027 deterministic/live RPC separation
+are reviewed and merged, with final T-027 combined review twelve of twelve and adversarial
+none. Both final configured inventories pass all thirty-six steps, including inherited
+network denial. Actual post-merge checks and deployment are now being performed.
+Autonomous technical work continues with the ready T-032 inclusive-range repair. No new
+provider, spending or product-gate change; Experiment D remains due Oct 20.
+
+Previous completed batch:
+
 T-028 discovery completeness, T-029 snapshot health after preservation and T-030
 unchecked-reserve disclosure are deployed on d44d79a after required fresh reviews,
 the complete integrated gate and exact-head Linux preflight. Independent changes
@@ -145,6 +154,14 @@ technical release. Experiment D retains its existing rules and moves to 2026-10-
 | M1 CI green and staying green | `tests` green on every master run for 7 consecutive days | clock running since 2026-09-28 15:38 UTC, still green after the H-10 push; done on 2026-10-05 if no run goes red |
 
 ## Log (newest first)
+
+- 2026-10-18: Final T-027 review approves 72bf264 after a narrow mixed-line-ending
+  repair; all old controls, thirteen earlier tests and live source remain. Combined
+  review is twelve of twelve, adversarial none; thirty-six-step ordinary and inherited
+  denied-network runs pass independently. Merge a77d1e1 follows verified artifact seals.
+  Unified T-031/T-027 deployment is pending actual release checks. T-032 is ready from
+  reproduced inclusive-tail loss and negative-window loops; W51's provider refusal is
+  observed separately from decoder correctness.
 
 - 2026-10-18: T-031 reviewed source is merged as 32a94f9 after independent 12/12 and
   adversarial none. All integrated checks pass 35/35 in 110.7 seconds. T-027 begins

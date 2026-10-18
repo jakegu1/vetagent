@@ -1,7 +1,7 @@
 ---
 id: T-027
 title: Separate recorded owner-power regression evidence from live RPC monitoring
-status: in_progress
+status: done
 level: 3
 size: M
 depends_on: [T-015, T-024, T-025, T-031]

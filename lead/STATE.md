@@ -53,9 +53,16 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 | Task | Level | Stage | Who | Next action |
 |---|---|---|---|---|
-| T-027 | 3 | Frozen second-round repair 72bf264; complete ordinary and inherited-offline gates green | Fresh combined reviewer | Verify exact two-form serialization bar, then integrate and release |
+| T-027 / T-031 release | 3 | Both reviewed sources merged; T-027 merge a77d1e1 | Lead | Actual post-merge generation/checks, Linux preflight, deployment and tagged readback |
 
 ## Current batch baseline
+
+T-027 final combined review passes twelve of twelve with RED-TEAM: none. Its fresh
+ordinary and inherited-denied runners both pass all thirty-six steps. The initial
+mixed-line-ending finding is retained and fixed under the exact two-form bar; all
+original controls and live code remain. The lead verifies the fifty-artifact combined
+seal and forty-six-artifact final executor seal, including both signatures each, before
+merge a77d1e1. Source approval does not claim deployment; the actual release stages follow.
 
 The Owner asks to continue the same method, repair upstream access fluctuation first,
 then separate live RPC test dependencies, and deploy directly after quality checks.
