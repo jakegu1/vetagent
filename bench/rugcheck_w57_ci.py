@@ -394,16 +394,53 @@ def _observe_fields(label, mint):
     its single existing transport call runs. There is no second upstream request.
     """
     transport, captured = probe.curl, {}
+    def public_key(value):
+        if value is None:
+            return False
+        if isinstance(value, str) and MINT.fullmatch(value.strip()):
+            return value.strip() != "1" * 32
+        return None
+    def extension(fields, key, authority=None):
+        if key not in fields:
+            return None
+        value = fields[key]
+        if value is None or type(value) is bool:
+            return False if value is None else value
+        if authority is not None:
+            if isinstance(value, dict):
+                return public_key(value[authority]) if authority in value else None
+            return public_key(value)
+        # The existing pausable capability is the configuration's presence, not its
+        # current paused flag. Reject an unreadable configuration rather than bool().
+        if (isinstance(value, dict) and "authority" in value and type(value.get("paused")) is bool
+                and public_key(value["authority"]) is not None):
+            return True
+        return None
+    def authority(fields, key):
+        if key not in fields:
+            return None
+        value = fields[key]
+        if type(value) is bool:
+            return value
+        # The stored PYUSD fixture also carries a readable account-info object.
+        if (isinstance(value, dict) and isinstance(value.get("owner"), str) and MINT.fullmatch(value["owner"])
+                and type(value.get("executable")) is bool and type(value.get("lamports")) is int
+                and value["lamports"] >= 0 and isinstance(value.get("data"), list)
+                and len(value["data"]) == 2 and isinstance(value["data"][0], str)
+                and value["data"][1] == "base64"):
+            return True
+        return public_key(value)
     def capture(url):
         code, body = transport(url)
         if str(code) == "200" and isinstance(body, dict):
             extensions = body.get("token_extensions")
             extensions = extensions if isinstance(extensions, dict) else {}
-            captured.update({key: extensions.get(key) if type(extensions.get(key)) is bool else None
-                             for key in ("permanentDelegate", "pausableConfig", "mintCloseAuthority")})
-            authorities = [body.get("freezeAuthority"), body.get("mintAuthority")]
-            captured["freeze_or_mint"] = (True if any(type(x) is bool and x for x in authorities)
-                                           else False if all(type(x) is bool and not x for x in authorities) else None)
+            captured.update({"permanentDelegate": extension(extensions, "permanentDelegate", "delegate"),
+                             "pausableConfig": extension(extensions, "pausableConfig"),
+                             "mintCloseAuthority": extension(extensions, "mintCloseAuthority", "closeAuthority")})
+            authorities = [authority(body, key) for key in ("freezeAuthority", "mintAuthority")]
+            captured["freeze_or_mint"] = (True if any(x is True for x in authorities)
+                                           else False if all(x is False for x in authorities) else None)
         return code, body
     probe.curl = capture
     try:
