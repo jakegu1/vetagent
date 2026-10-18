@@ -117,3 +117,21 @@ agreement bars as ratios rather than percentage literals. The number-coverage gu
 correctly rejected this newly tracked task prose as an unscanned surface. This changes
 no value, implementation, acceptance test or decision; retain the failed full-suite
 receipt and rerun the configured checks after this documentation correction.
+
+2026-10-19, round-one bounce (c): an empty/missing/non-Boolean Honeypot classification
+was recorded as excluded rather than unobserved; incomplete HP replies and null RPC
+results could also be cached. The lead independently reproduced both seams without
+real transport. Before the source fix, append only the named acceptance function
+test_sim_probe_unobserved_responses_never_become_exclusions_or_cache_hits; preserve
+the original module text/AST and the three first-commit acceptance functions exactly.
+Exercise the real transport-to-refresh path, repeated malformed HP/RPC responses,
+malformed prior cache entries, and valid observed positive/negative/RPC controls.
+Failed or malformed observations must remain bounded unobserved evidence and cannot
+be replayed as successful cached replies. A cache entry must satisfy the same minimum
+source-envelope contract as a fresh reply. Do not overwrite or delete prior evidence.
+Keep an explicit negative source verdict distinguishable from a missing verdict;
+retain valid nested executed-sell failures and every adopted shape/bar. Commit the
+new red test alone, then one bounded observation/cache fix. Round two uses one fresh
+combined independent/adversarial reviewer of the complete frozen result, followed by
+root's actual Linux and bounded eligibility-refresh gates. No new simulator, provider,
+product scoring or long-run experiment is authorized by this amendment.
