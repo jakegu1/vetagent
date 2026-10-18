@@ -29,7 +29,7 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-024 | Apply the Owner's Experiment D postponement to 2026-10-20 | 3 | S | none | done (published 19ea3af; actual CI passes) |
 | T-025 | Refuse incomplete coverage recordings after engine error handling | 3 | S | T-024 | done (published 19ea3af; actual CI passes) |
 | T-026 | Attribute selected fallback-pool depth before a runtime proposal | 3 | S | T-015, T-024, T-025 | done; evidence only, numerical cap not implemented |
-| T-027 | Separate recorded power regression from live RPC monitoring | 3 | S | T-015, T-024, T-025 | draft; next bounded batch, provenance first |
+| T-027 | Separate recorded power regression from live RPC monitoring | 3 | M | T-015, T-024, T-025, T-031 | ready; provenance and full-suite red verified, starts after reviewed T-031 |
 | T-028 | Preserve discovery completeness across malformed listings and interfaces | 3 | M | T-025 | done; deployed d44d79a, actual partial handoff observed |
 | T-029 | Detect stale/incomplete snapshots after observation preservation | 3 | M | T-020, T-022 | done; deployed d44d79a, actual monitor 39055381257 |
 | T-030 | Disclose selected liquidity with unchecked reserve amounts | 3 | M | T-026, T-028 | done; deployed d44d79a, both live markers observed |
