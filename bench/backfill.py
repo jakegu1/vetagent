@@ -367,7 +367,12 @@ def logs_in_range(urls, lo, hi, topics, address=None, step=None, floor=200,
       exactly where trading was heaviest. `cur` advances only past blocks actually read.
     """
     out = []
+    if lo > hi:
+        return out
     step = (hi - lo) if step is None else step
+    for name, value in (("step", step), ("floor", floor)):
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise ValueError("%s must be a nonnegative integer" % name)
     cur = lo
     while cur <= hi:
         end = min(cur + step, hi)
