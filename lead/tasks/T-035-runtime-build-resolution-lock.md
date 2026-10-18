@@ -1,7 +1,7 @@
 ---
 id: T-035
 title: Lock the existing Node and Pyodide package resolutions before deployment
-status: draft
+status: ready
 level: 3
 size: M
 depends_on: [T-033]
@@ -30,6 +30,18 @@ matches the deployed source wheel. Retain the exact build run/head/hash provenan
 If it differs, preserve the observation and amend the spec before choosing a version;
 do not silently promote the latest resolver result or edit a lock by guesswork.
 
+This prerequisite is now observed: actual branch run 39101343947 at frozen T-033
+source 2b03cbc038393b6ba535fd2fb3c1dc7edb4e30b2 passes its required test job and
+credential-free Linux build. The public-python-runtime-lock artifact is retrieved;
+its pylock.toml SHA-256 is
+1d4e5ceb928c16b36ed5afd945d567e480535b1d55a677930e1969f59095ec90.
+It contains only workers-runtime-sdk 1.9.4, requires Python >=3.13.2, and references
+the public wheel SHA-256
+2bd6f5788fd6fdd38ff677e37c93fd92b37ff3a3ab33b43b7ed84ba50688a647,
+matching the separately inspected deployed SDK wheel. Artifact/run provenance is
+verified separately from the file bytes. T-033's fresh source reviews and approved
+integration are still required before dispatch from its integrated base.
+
 ## Scope and conflict search
 
 - New root `package.json` and `package-lock.json`: private project, exact dev-only
@@ -46,6 +58,10 @@ do not silently promote the latest resolver result or edit a lock by guesswork.
   npm lock bytes remain unchanged before real upload and after dry-run. Include the
   new lock/manifests in deploy path triggers. Preserve required offline and smoke
   gates, existing job conditions and the no-secrets build's lack of credentials.
+  A fixed two-entry build matrix is allowed to prove two independent clean Linux
+  checkouts without duplicating the entire offline test job. Keep the matrix bounded
+  at two, retain needs: test and its workflow_run exclusion, and verify both actual
+  packaging jobs. Do not share their project/vendor environments.
 - `tests/test_build_dependency_lock.py`: additive offline acceptance only, preserving
   every T-033 test/input/assertion. Reuse its existing registration; no new test file.
 - `docs/HANDOFF.md`: directly corresponding locked setup/sync/deploy and deliberate
@@ -100,4 +116,5 @@ propose a bounded amendment before bypassing its packaging path.
 
 ## Amendments
 
-None; prerequisite evidence is still pending, so this task is not dispatched.
+The actual T-033 Linux artifact satisfies the runtime-lock readiness prerequisite.
+This task is ready but waits for T-033's fresh reviews and approved integration.
