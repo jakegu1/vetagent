@@ -547,3 +547,44 @@ then the source repair. Re-run actual native cancellation, refusal, positive and
 parent-death controls plus all focused/contract checks before a newly frozen full
 gate. Fresh second-round independent and adversarial review must close both d/e
 classes and all prior invariants; no live use or study start is implied.
+
+## Named private-evidence ancestor-alias regression
+
+2026-10-19 (d2): the second adversarial review on held d01b485 moves an
+otherwise unchanged attempts container into a real isolated Git repository and
+replaces the expected container with a directory symlink or an actual Windows
+directory junction. Fresh ordinary offline recovery still imports with exit
+zero, although the public external-path validator refuses that alias. All raw
+hashes match and no socket or worker is opened. This is a residual of named d
+and original AC5's private evidence boundary, not permission to change scope.
+
+Permit exactly one further self-contained append-only block at the end of
+test_w40_native_partial_acquisition_recovers_without_reask, after named d.
+Keep every original and previously approved statement, helper, other method and
+runner exact. Use separate unchanged positive and ancestor-alias negative
+fixtures. Exercise a real directory symlink on supported systems and an actual
+Windows junction on Windows; record the actual alias type and real Git target.
+A fresh normal recovery must refuse before reading aliased raw evidence or
+mutating core or producer completion, with zero transport calls or worker
+spawns. Assert all core and prior producer bytes unchanged. The intact external
+private fixture still imports once; do not silently omit either platform's
+applicable negative or replace a junction with a symlink.
+
+Validate the whole private path ancestry, including each traversed container,
+before enumeration or opening a declared evidence artifact. Require bounded
+filesystem metadata checks, resolved containment in the verified external
+private root and the existing no-Git boundary. Reject symlink, junction or
+other reparse aliases on any relevant ancestor, rather than checking only the
+final attempt directory. Apply the same boundary before read_prepared,
+partial recovery, retired-header readback and import/reconciliation can consume
+private evidence or change durable state. Missing or ambiguous metadata stops
+safely; do not repair an alias or move/delete evidence to proceed.
+
+Commit the append-only regression alone with its meaningful held-head red,
+then one separate same-finding native-module repair. Preserve every held log
+and seal, including the recorded private full-runner seal drift. Re-run focused
+and contract checks, freeze the exact repaired head, and request its own full
+gate. A bounded fresh privacy-delta review must close this invariant; retain
+the second-round reviews rather than resetting their round count. Actual Linux
+and integrated/master gates remain mandatory before publication. A cleanup
+failure in any prior run remains a recorded failure, never relabeled green.
