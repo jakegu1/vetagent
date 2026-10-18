@@ -116,6 +116,8 @@ _TOKENS = re.compile(r"""("(?:[^"\\]|\\.)*"|'(?:[^']|'')*'|["'\[\]{}])""")
 def _closed(value):
     """False when a value opens a quote, `[` or `{` that its own line does not close."""
     v = value.strip()
+    if v.startswith(("&", "!")):
+        return False                         # do not interpret YAML anchors or tags
     if v[:1] == '"':
         return re.match(r'"(?:[^"\\]|\\.)*"', v) is not None
     if v[:1] == "'":

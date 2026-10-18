@@ -100,6 +100,8 @@ def _closed(value):
     steps, with nothing refused (measured 2026-09-29). So the line that opens it is refused.
     """
     v = value.strip()
+    if v.startswith(("&", "!")):
+        return False                         # node properties are outside this parser's subset
     if v[:1] not in ("'", '"', "[", "{"):
         return True
     depth, quote, i = 0, None, 0
