@@ -45,3 +45,4 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-040 | Keep failed requests and invalid ages out of coverage-probe observations | 3 | M | T-039 | done; published d82b98d, actual Linux and complete master CI pass |
 | T-041 | Measure discovery status and deployment windows with aggregate-only evidence | 3 | M | T-028, T-039 | done; published d82b98d, actual optional readout succeeds, observation sufficiency separate |
 | T-042 | Honor adopted simulator controls and preserve independent experiment runs | 3 | M | T-039 | source approved and integrated; combined checks, actual Linux and bounded refresh pending |
+| T-043 | Preserve the pre-registered RugCheck study across bounded CI jobs | 3 | M | T-040 | ready; independent durable collector, pilot before any study start |
