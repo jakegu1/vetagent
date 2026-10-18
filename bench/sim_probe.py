@@ -138,6 +138,29 @@ def _uint(ret):
 
 # ---------------------------------------------------------------- transport, cached
 
+def _source_envelope(out, payload):
+    """Minimum observed source contract, shared by fresh replies and cache reads."""
+    if not isinstance(out, dict) or not out or "error" in out or "transport_error" in out:
+        return False
+    if payload is None:
+        result = out.get("honeypotResult")
+        return isinstance(result, dict) and type(result.get("isHoneypot")) is bool
+    if not isinstance(payload, dict):
+        return False
+    result = out.get("result")
+    if payload.get("method") == "eth_blockNumber":
+        return (isinstance(result, str) and result.startswith("0x") and len(result) > 2
+                and all(c in "0123456789abcdefABCDEF" for c in result[2:]))
+    if payload.get("method") != "eth_simulateV1":
+        return False
+    if not isinstance(result, list) or len(result) != 1 or not isinstance(result[0], dict):
+        return False
+    calls = result[0].get("calls")
+    return (isinstance(calls, list) and bool(calls)
+            and all(isinstance(call, dict) and call.get("status") in ("0x0", "0x1")
+                    for call in calls))
+
+
 def _post(url, payload, key):
     if _ACTIVE_CACHE is None:
         return {"transport_error": "run_not_reserved"}
@@ -145,9 +168,10 @@ def _post(url, payload, key):
     if os.path.exists(path):
         try:
             with io.open(path, encoding="utf-8") as cached:
-                return json.load(cached)
+                out = json.load(cached)
         except (OSError, ValueError):
             return {"transport_error": "cache_unreadable"}
+        return out if _source_envelope(out, payload) else {"transport_error": "cache_malformed"}
     body = json.dumps(payload).encode() if payload is not None else None
     req = urllib.request.Request(url, data=body, headers={
         "content-type": "application/json", "user-agent": "vetagent-research/0.1"})
@@ -159,9 +183,7 @@ def _post(url, payload, key):
     except Exception:
         out = {"transport_error": "request_failed"}
     time.sleep(0.6)
-    if (not isinstance(out, dict) or not out or "error" in out
-            or (payload is None and not isinstance(out.get("honeypotResult"), dict))
-            or (payload is not None and "result" not in out)):
+    if not _source_envelope(out, payload):
         return {"transport_error": "response_malformed"}
     if "transport_error" not in out:
         with io.open(path, "x", encoding="utf-8") as cached:
@@ -213,8 +235,7 @@ def control_eligibility(hp, group, observed_day, run_day):
         valid_day = False
     if not valid_day:
         return dict(result, reason="not_same_day")
-    if (not isinstance(hp, dict) or not isinstance(hp.get("honeypotResult"), dict)
-            or "transport_error" in hp or "error" in hp):
+    if not _source_envelope(hp, None):
         return result
     try:
         shape, _, _ = hp_shape(hp)
