@@ -296,3 +296,30 @@ hashes and controlled restoration proof. Re-run focused checks and one root-gran
 exclusive full inventory on the frozen repaired head. The second fresh review covers
 all named corrections, the CLI seams and preserved invariants before Linux, pilot or
 start. The two-round review cap still applies.
+
+2026-10-19 (b2): before the repaired head's full gate, the lead reproduces a regression
+on 3ee244197a055002ce25cf61261fe19f2649b2d4: strict-Boolean-only capture discards the
+existing permanentDelegate object and freeze/mint public-key forms. The unchanged
+probe observes these positive powers; the new capture changes them to unavailable.
+Existing risk tests and engine source already use these domain shapes. Preserving
+availability must not silently remove meaningful existing signals.
+
+Permit exactly one additive self-contained block at the end of the new
+test_readout_discloses_groups_field_denominators_and_unattempted_gaps method.
+Preserve every previous statement/assertion in order, all other new methods and the
+original fifteen-method contract including its sole named proposal correction.
+Commit this block alone and reproduce the existing-domain red before the repair.
+Cover supported permanent-delegate/close-authority objects, pausable configuration
+objects and freeze/mint public keys through real observe, normalized row, persistence,
+restore and field coverage. Retain their usable declared positive power observations.
+Explicitly supplied schema-valid null/no-authority values, genuinely missing fields
+and malformed values remain distinguishable; an arbitrary truthy string such as
+false is not authenticated as a public key or configuration. Use the existing engine/
+fixture source shapes and no new signal, policy, score, permission or provider.
+
+Keep the repair inside the same-response capture/normalization helpers in the driver;
+do not modify T040, engine helpers, old tests or references, and do not add a request.
+This is the same bounded second implementation round, not a third review round.
+Freeze the new corrected head and run its own focused/full evidence before the
+fresh combined second review. Keep the prior clean-head evidence with its original
+source identity; it does not certify this later source.
