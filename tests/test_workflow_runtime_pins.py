@@ -58,8 +58,53 @@ def workflow_errors(name, text):
                    if (match := re.fullmatch(r"    runs-on:\s*(.*?)\s*", line))]
         if runners != ["ubuntu-24.04"]:
             errors.append(label + ": runner must be exactly one explicit ubuntu-24.04")
-        for step in workflow.steps(lines):
+        outside = []
+        parsed = workflow.steps(lines, outside)
+        if outside:
+            errors.append(label + ": action coverage cannot ignore lines outside parsed steps")
+        # Retain each parsed step's source context only to account for literal
+        # action-input payloads, which the offline reader flags as non-key lines.
+        raw_steps = []
+        at = next((i for i, line in enumerate(lines) if re.fullmatch(r"\s*steps:\s*", line)), None)
+        dash = None
+        if at is not None:
+            for line in lines[at + 1:]:
+                indent = workflow._indent(line)
+                if indent <= workflow._indent(lines[at]):
+                    break
+                marker = re.match(r"^( *)- (.*)$", line)
+                if marker and (dash is None or indent == dash):
+                    dash = indent
+                    raw_steps.append([" " * (indent + 2) + marker.group(2)])
+                elif raw_steps:
+                    raw_steps[-1].append(line)
+        if len(raw_steps) != len(parsed):
+            errors.append(label + ": action coverage lacks complete step source context")
+        for index, step in enumerate(parsed):
             reference = step["keys"].get("uses")
+            # The reader recognizes these non-action fields but does not execute
+            # them locally. Node/upload actions are likewise recognized here.
+            accounted = {"uses: " + reference} if reference is not None else set()
+            for key in workflow.NOT_APPLIED:
+                if key in step["keys"]:
+                    value = step["keys"][key]
+                    accounted.add(key + ":" + (" " + value if value else ""))
+            within, scalar = None, None
+            for line in raw_steps[index] if index < len(raw_steps) else []:
+                indent = workflow._indent(line)
+                if scalar is not None and indent > scalar:
+                    accounted.add(line.strip())
+                    continue
+                scalar = None
+                if within is not None and indent <= within:
+                    within = None
+                literal = re.fullmatch(r"\s*([A-Za-z0-9_-]+):\s*([|>][0-9+-]*)\s*", line)
+                if within is not None and literal and step["with"].get(literal.group(1)) == literal.group(2):
+                    scalar = indent
+                if re.fullmatch(r"\s*with:\s*", line):
+                    within = indent
+            if any(line not in accounted for line in step["refused"]):
+                errors.append(label + ": action coverage cannot ignore refused step syntax")
             if reference is None:
                 continue
             match = ACTION_REF.fullmatch(reference)
