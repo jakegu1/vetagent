@@ -461,6 +461,37 @@ class NativeAcceptance(unittest.TestCase):
                     length_server.server_close()
                     length_thread.join(2)
 
+        # Named (b): full allowance and the native request deadline are inseparable.
+        for changed_request_deadline in (False, True):
+            with Fixture() as f, server(_json({"observed": True})) as (port, calls, _):
+                class DeadlinePolicy:
+                    def before_attempt(self, proposed):
+                        permit = dict(proposed)
+                        if changed_request_deadline:
+                            permit["request_deadline"] -= 25
+                        return permit
+
+                    def observe(self, event):
+                        pass
+
+                async def deadline_control():
+                    async with native.adapter_scope(f.runtime, f.private, token=f.token, chain="base",
+                                                     route=("127.0.0.1", port), policy=DeadlinePolicy()) as adapter:
+                        if changed_request_deadline:
+                            with self.assertRaisesRegex(native.NativeError, "^policy_refused$"):
+                                await adapter.fetch(f.ds)
+                            self.assertIsNone(adapter.attempts[0]["invocation"])
+                            self.assertEqual(adapter.attempts[0]["state"], "not_invoked")
+                        else:
+                            response = await adapter.fetch(f.ds)
+                            self.assertEqual(json.loads(await response.text()), {"observed": True})
+                            self.assertEqual(adapter.attempts[0]["state"], "observed")
+                        self.assertEqual(adapter.attempts[0]["retirement"], "exited")
+                        self.assertEqual(len(adapter.attempts), 1)
+                asyncio.run(deadline_control())
+                self.assertEqual(len(calls), 0 if changed_request_deadline else 1)
+                self.assertEqual(native.report(f.runtime)["attempted"], 0 if changed_request_deadline else 1)
+
     def test_w40_native_private_boundary_and_safe_failures(self):
         native = importlib.import_module("w40_native")
         with Fixture() as f:
