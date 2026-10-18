@@ -1467,8 +1467,8 @@ def test_goplus_quota_cli_and_existing_runner_contract():
         check("real Git source mismatch is refused",refused)
     base=subprocess.check_output(["git","show","00a9a5c4c9c51dbb532b1f7696c88fd58a11ac66:tests/test_second_oracle.py"],cwd=ROOT).decode()
     current=Path(__file__).read_text(encoding="utf-8")
-    prefix,suffix=base.split("def main():",1)
-    left,right=current.split("def main():",1)
+    prefix,suffix=base.split("\ndef main():\n",1)
+    left,right=current.split("\ndef main():\n",1)
     check("all original oracle test bytes and runner remain frozen",left.startswith(prefix) and suffix==right)
     additions=ast.parse(left[len(prefix):]).body
     expected={"test_goplus_quota_plan_is_offline_fixed_and_source_bound", "test_goplus_quota_run_caps_pacing_and_utc_bounds",
