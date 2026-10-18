@@ -497,21 +497,31 @@ def _raw_fields(packet):
 
 def _stage(field, imported):
     result = {"state": "not_asked", "http_status": None, "request_at": None,
-              "response_at": None, "raw_sha256": None, "field_coverage": False}
+              "response_at": None, "raw_sha256": None, "field_coverage": False,
+              "request_time_state": "missing", "response_time_state": "missing",
+              "timing_state": "missing_clock"}
     if field is None:
         return result, None
     if not isinstance(field, dict):
         result["state"] = "invalid_evidence"
         return result, None
-    try:
-        begin, end = _time(field.get("request_at")), _time(field.get("response_at"))
-        if begin > end or end > imported:
-            _error("invalid_clock")
-        result.update(request_at=_iso(begin), response_at=_iso(end))
-    except EvidenceError:
-        if field.get("state") not in ("not_asked", "interrupted_intent", "budget_exhausted"):
-            result["state"] = "invalid_clock"
-            return result, None
+    clocks = {}
+    for name, time_state in (("request_at", "request_time_state"), ("response_at", "response_time_state")):
+        if field.get(name) is None:
+            continue
+        try:
+            clock = _time(field[name])
+        except EvidenceError:
+            result[time_state] = "invalid"
+        else:
+            result[name] = _iso(clock)
+            result[time_state] = "observed" if clock <= imported else "invalid"
+            clocks[name] = clock
+    if ("invalid" in (result["request_time_state"], result["response_time_state"])
+            or (len(clocks) == 2 and clocks["request_at"] > clocks["response_at"])):
+        result["timing_state"] = "invalid_clock"
+    elif all(result[name] == "observed" for name in ("request_time_state", "response_time_state")):
+        result["timing_state"] = "observed"
     status = field.get("http_status")
     result["http_status"] = status if type(status) is int and 100 <= status <= 599 else None
     body, raw_error = None, None
@@ -643,6 +653,9 @@ def _volume(stage, body, born_at):
     stage.update(recent_volume_7d=None, outcome_label=None, recent_days_observed=0,
                  recent_window_complete=False, recent_window_state="unavailable")
     if stage["state"] != "observed":
+        return None
+    if stage["timing_state"] != "observed":
+        stage["recent_window_state"] = stage["timing_state"]
         return None
     try:
         rows = body["data"]["attributes"]["ohlcv_list"]
@@ -792,7 +805,9 @@ def _receipt(packet, record, identity, value, imported):
             engine["state"] = "invalid_body"
     independence = _independence(packet)
     timing = {"age_seconds": None, "lateness_seconds": None, "skew_seconds": None,
-              "tolerance": None, "simultaneous_claim": False}
+              "tolerance": None, "simultaneous_claim": False,
+              "range_state": "observed" if all(s["timing_state"] == "observed" for s in stages.values()) else "incomplete",
+              "skew_scope": "known_clocks_only"}
     label_time = stages["oracle"]["request_at"]
     if label_time:
         timing.update(age_seconds=(_time(label_time) - _time(record["born_at"])).total_seconds(),
@@ -803,6 +818,7 @@ def _receipt(packet, record, identity, value, imported):
         timing["skew_seconds"] = (max(time_values) - min(time_values)).total_seconds()
     # This is an evidence-availability count, never a tolerated-skew or W40 success rule.
     qualified = (all(stages[k]["state"] == "observed" for k in stages)
+                 and all(stages[k]["timing_state"] == "observed" for k in stages)
                  and reserve["reserve_usd"] is not None and reserve["reserve_usd"] >= RULES["reserve_usd"]
                  and stages["oracle"]["label"] == "unsafe" and engine["verdict"] is not None
                  and independence["state"] == "independence_observed" and not pool_mismatch
