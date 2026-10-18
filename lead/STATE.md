@@ -56,7 +56,7 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 | T-032 | 3 | Done; both fresh reviews approve, merged 106ad21, post-merge 37/37 | Lead | Publish with related technical batch |
 | T-034 | 3 | Named regressions (b)/(c) corrected at frozen 37db9fd; final clean denied check pending | Executor | Preserve every earlier case; finish serialized evidence, then fresh bounded regression review |
 | T-035 | 3 | In progress from approved, integrated and checked T-033 | Executor | Lock existing Node and target-runtime resolutions; prove two clean Linux builds |
-| T-037 | 3 | Independent approves twelve of twelve; fresh red-team completing evidence | Reviewers | Preserve frozen cases and exact historical bytes; T-034 remains a hard later integration gate |
+| T-037 | 3 | Both fresh reviews approve frozen 35507df; all three evidence seals verified | Lead | Wait for T-034 approval/integration, then merge and check the combined head |
 
 ## Autonomous technical continuation
 

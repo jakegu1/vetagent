@@ -19,7 +19,8 @@ are corrected in isolation before a fresh bounded recheck. T-033 host dependency
 locking passes both fresh reviews, actual credential-free Linux packaging and the
 uninterrupted thirty-eight-step post-merge gate. T-035 now locks the remaining Node
 and target-runtime resolutions. T-037's five release/reporting repairs pass fresh
-independent review; adversarial verification is completing, with no real benchmark run.
+independent and adversarial reviews, with no real benchmark run; integration waits
+for T-034 and the complete combined gate.
 
 The Owner authorizes autonomous completion of the known technical-gap queue, retaining
 tests-first commits, bounded fresh reviews and actual deployment checks. Ready tasks
