@@ -31,6 +31,7 @@ Implementation files in scope:
 - tests/test_upstream_contract.py: named additive live implementation (b) only.
 - tests/test_owner_power_evidence_split.py: new acceptance tests.
 - .github/workflows/test.yml: exactly one offline step registering the new acceptance.
+- tests/test_upstream_contract_is_observed.py: named discovery-count change (c) only.
 
 The lead alone may regenerate docs/SCORECARD.md separately if needed. Existing runners,
 deploy/production workflows, baseline, monitor rules, every src function, benchmark and
@@ -40,7 +41,7 @@ Searched CASES, real-contract test, rpc_batch/eth_getCode, fixture loading, powe
 controls, discovered live functions, status/unobserved sources, workflow registration and
 runner inventory across tests/workflows. The recall guard scans owner-test prose: retain
 recall claims. The existing observed-monitor harness stubs added live tests dynamically;
-keep that entire file and its twelve-test contract unchanged. Existing enforcement and
+keep its twelve-test contract unchanged except the exact named count change (c) below. Existing enforcement and
 deploy guards derive registration. Do not add RPC to JSON-field PROBED_TEMPLATES or
 re-freeze upstream_baseline.json.
 
@@ -147,3 +148,38 @@ LF-canonical hash outside the fixture. Do not alter .gitattributes or Git config
 The first acceptance contract covers exact CRLF and exact LF forms, rejecting bare CR
 and every other corruption. The executor confirmed no acceptance was yet written or
 committed, so this clarification precedes and becomes part of the first frozen contract.
+
+### 2026-10-18: exact discovery-count correction and bounded redirect refusal
+
+The working separation passes its frozen twelve-test acceptance. The unchanged durable
+observer instead reproduces 187 passes and one failure: its repeated discovered-function
+count is hard-coded to ten, and the new live function adds two invocations. The earlier
+preparation mistook dynamic stubbing for a dynamic expected count. This is a specification
+miss, not permission to hide the new function or remove the guard.
+
+Named change (c): in tests/test_upstream_contract_is_observed.py, only
+test_default_generated_monitor_retains_collapse_names_and_status changes its assertion
+literal len(receipt['other_tests']) == 10 to == 12. Preserve the assertion, all cases,
+messages, other functions, history, rule thresholds and the total twelve test functions.
+Commit this named test adaptation alone, retaining the observed 187/1 red and 188/0 green.
+
+urllib.urlopen follows HTTP redirects by default, which can contact an unapproved host
+or exceed this new monitor's explicit HTTP budget. Extend implementation (b) with local
+_owner_rpc_open and a no-redirect handler; no global opener mutation, extra provider,
+implicit retry or redirect request. Redirect replies are sanitized unobserved responses
+and may proceed only to the already listed next provider under the same fixed budget.
+
+Named change (d): tests/test_owner_power_evidence_split.py may change only its HTTP
+injection wiring from urllib.request.urlopen to monitor._owner_rpc_open, preserving
+every original assertion, case, input, guard and test. Add one redirect-denial test that
+drives the real local handler/opener boundary with external networking blocked, verifies
+no redirect target is contacted and rejects a redirect-following mutant. Keep the local
+transport-handler injection distinct from the existing response-classification fakes.
+Commit this named acceptance adaptation/addition alone; observe meaningful red before
+the redirect implementation. Any temporary uncommitted implementation used for that red
+is copied byte-exact outside the repo and identified by its hash in the evidence.
+
+The executor's current three uncommitted implementation files are backed up externally
+before the lead applies this spec-only amendment. Original first commit a2cf5f6 and
+base 0f05e8a stand. No other acceptance edits or scope expansion is allowed. Reviewers
+verify both named changes exactly, and the full ordinary/inherited-offline gates remain.
