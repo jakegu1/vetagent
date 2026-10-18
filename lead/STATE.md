@@ -82,6 +82,14 @@ It permits one finite single-date observation, not a started prospective label s
 continuous full-day availability claim or benchmark rebaseline. Source reviews and
 the root's actual run remain mandatory.
 
+T-044's held candidate passes the actual forty-two-step gate, but additional native
+body-exception and absolute-deadline reds require named amendment (d) before READY.
+T-045 implements the disjoint offline prospective evidence contract: birth-based
+enrollment, complete source/time/identity packets and immutable partial history.
+It makes no live calls and starts no thirty-day clock. Live collection and actual
+cross-run restoration remain engineering prerequisites after this core, not an
+invented Owner wait. The three implementation scopes do not overlap.
+
 The Owner renews authorization to prioritize the 21 remaining rows, batch related
 autonomous repairs, delegate bounded isolated work, and merge/push/deploy after quality
 checks. Owner decisions and genuinely unavailable/calendar evidence are reported
