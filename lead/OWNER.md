@@ -18,10 +18,16 @@ and pass the full post-merge thirty-seven-step gate. T-034's named parser regres
 pass the fresh bounded recheck and the complete thirty-eight-step integrated gate.
 T-033 host dependency
 locking passes both fresh reviews, actual credential-free Linux packaging and the
-uninterrupted thirty-eight-step post-merge gate. T-035 now locks the remaining Node
-and target-runtime resolutions. T-037's five release/reporting repairs pass fresh
+uninterrupted thirty-eight-step post-merge gate. T-035's remaining Node and target
+runtime locks also pass both fresh reviews, actual two-build Linux evidence and
+the uninterrupted integrated thirty-eight-step gate. T-037's five release/reporting repairs pass fresh
 independent and adversarial reviews and are merged after T-034's checked integration,
 with no real benchmark run. The complete combined gate passes thirty-eight of thirty-eight.
+
+T-036 now pins the verified supported action implementations and Ubuntu image;
+the six-workflow scope preserves all other workflow semantics. Its actual Linux
+build, production deployment and observer/bot-CI proof remain release requirements.
+T-038 follows with required offline backfill checks and honest live classifications.
 
 The Owner authorizes autonomous completion of the known technical-gap queue, retaining
 tests-first commits, bounded fresh reviews and actual deployment checks. Ready tasks

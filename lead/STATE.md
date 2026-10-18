@@ -55,7 +55,8 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 |---|---|---|---|---|
 | T-032 | 3 | Done; both fresh reviews approve, merged 106ad21, post-merge 37/37 | Lead | Publish with related technical batch |
 | T-034 | 3 | Done; final fresh approval, merged 7ef54e0, uninterrupted integrated 38/38 | Lead | Publish with related technical batch |
-| T-035 | 3 | READY at 52363a3; local ordinary/denied 38/38 and actual two-build Linux proof | Fresh independent and adversarial reviewers | Verify frozen cases, named exceptions and actual source/artifact provenance before integration |
+| T-035 | 3 | Done; both fresh reviews approve, merged f8ee485, uninterrupted integrated 38/38 | Lead | Publish with related technical batch |
+| T-036 | 3 | In progress after approved T-035 and retained scheduled bot history | Executor | Seven-file pin/runner scope, tests first; no old fixture edits |
 | T-037 | 3 | Done; both fresh reviews approve, merged a98c7af, uninterrupted combined 38/38 | Lead | Publish with related technical batch |
 
 ## Autonomous technical continuation
@@ -128,6 +129,15 @@ Their original incidents remain. The changed generated Owner count follows the s
 T-037 is merged after the checked T-034 prerequisite. Its actual generation succeeds,
 and the uninterrupted combined gate passes thirty-eight of thirty-eight in 140.5
 seconds. Both reviewed source and historical measurement boundaries remain intact.
+
+T-035's fresh independent twelve-of-twelve and adversarial no-finding verdicts are
+verified against their sealed artifacts and all 932 source files. Merge f8ee485
+retains all eight reviewed source blobs exactly. Scheduled snapshot 39106995775
+and following bot CI 39107544010 succeed; all three bot commits are retained.
+Generation completes and the uninterrupted combined gate passes 38/38 in 138.8
+seconds at 07:42 UTC. A first root attempt overlapped generation and is excluded,
+preserving its actual zero exit. T-036 starts from the subsequent clean bookkeeping
+head; T-038 remains dependency-blocked pending the verified action migration.
 
 Repair (g) is independently approved twelve of twelve with RED-TEAM: none and merged
 as 76747d3. A different reviewer reproduces the actual old 3.12 failure, verifies

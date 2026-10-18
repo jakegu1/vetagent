@@ -1,7 +1,7 @@
 ---
 id: T-036
 title: Pin supported Node 24 actions and the verified Ubuntu runner generation
-status: ready
+status: in_progress
 level: 3
 size: M
 depends_on: [T-033, T-035]
@@ -115,3 +115,15 @@ and complete integrated gate. No T-036 implementation has started.
 
 The actual sixth workflow is zone-check.yml; the draft's zone.yml was a scope-name
 typo. The corrected scope is still exactly six existing workflows and one new test.
+
+Both fresh T-035 reviews now approve its exact source, retained in merge f8ee485.
+The successful scheduled snapshot and following bot CI are retained before that
+merge. Actual generation completes and the uninterrupted combined gate passes
+38/38 in 138.8 seconds at 2026-10-18 07:42 UTC. A prior overlapping generation/check
+attempt remains excluded despite its actual zero exit. Dispatch uses the lead's
+subsequent clean bookkeeping head, not either old preparation source.
+
+Fresh exact official metadata for all four pins and their node24 declarations was
+reverified with sixteen bounded GETs. A read-only same-interpreter compatibility
+probe finds no required edit to existing assertions or fixtures. The new permanent
+pin test must remain limited to workflow set, action identity and runner policy.
