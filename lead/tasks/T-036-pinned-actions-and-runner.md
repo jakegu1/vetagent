@@ -1,7 +1,7 @@
 ---
 id: T-036
 title: Pin supported Node 24 actions and the verified Ubuntu runner generation
-status: draft
+status: ready
 level: 3
 size: M
 depends_on: [T-033, T-035]
@@ -45,9 +45,16 @@ Primary references:
 
 All six existing workflow YAML files, limited to their `uses` action references and
 `runs-on` labels, plus the new offline acceptance registration in test.yml:
-deploy.yml, production.yml, snapshot.yml, test.yml, usage.yml and zone.yml.
+deploy.yml, production.yml, snapshot.yml, test.yml, usage.yml and zone-check.yml.
 Use full commit SHAs with release comments and explicit ubuntu-24.04. The seventh
 file is new `tests/test_workflow_runtime_pins.py`, registered exactly once.
+
+The permanent new test guards action identities/pins, runner labels and the covered
+workflow set. Prove the unchanged remaining workflow semantics against the dispatch
+base in independent structural evidence. Do not embed a hash of every unrelated
+workflow command/key into the permanent pin test: deliberate later task changes
+must still be possible without weakening the action/runner checks. Existing guards
+continue to own deployment order, offline inventory and bot behavior.
 
 First commit adds only new offline acceptance, runs red against the floating/old
 actual workflow set and freezes its cases/assertions. Keep all existing tests and
@@ -97,4 +104,14 @@ for stabilizing today's measured supported image.
 
 ## Amendments
 
-None; prerequisite evidence is pending, so this task is not dispatched.
+Actual T-033 source run 39101343947 and corrected T-035 source run 39106159784
+satisfy the Linux-evidence readiness requirement. The latter executes two independent
+clean Ubuntu 24.04 builds at 52363a3 with local Wrangler 4.151.1, successful stock
+target sync, before/after byte checks and downloaded runtime-lock artifacts matching
+the inspected target file. The lead binds both job/artifact/source records separately.
+This is packaging evidence, not production promotion or a standalone installed-SDK
+metadata readback. Dispatch still waits for T-035's fresh reviews, approved integration
+and complete integrated gate. No T-036 implementation has started.
+
+The actual sixth workflow is zone-check.yml; the draft's zone.yml was a scope-name
+typo. The corrected scope is still exactly six existing workflows and one new test.

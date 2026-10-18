@@ -1,7 +1,7 @@
 ---
 id: T-035
 title: Lock the existing Node and Pyodide package resolutions before deployment
-status: in_progress
+status: in_review
 level: 3
 size: M
 depends_on: [T-033]

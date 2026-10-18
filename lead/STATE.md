@@ -55,7 +55,7 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 |---|---|---|---|---|
 | T-032 | 3 | Done; both fresh reviews approve, merged 106ad21, post-merge 37/37 | Lead | Publish with related technical batch |
 | T-034 | 3 | Done; final fresh approval, merged 7ef54e0, uninterrupted integrated 38/38 | Lead | Publish with related technical batch |
-| T-035 | 3 | Corrected frozen source 52363a3; named baseline-order repair preserves old guard | Executor and actual Linux CI | Finish uninterrupted ordinary/denied evidence, two clean Linux builds, then fresh reviews |
+| T-035 | 3 | READY at 52363a3; local ordinary/denied 38/38 and actual two-build Linux proof | Fresh independent and adversarial reviewers | Verify frozen cases, named exceptions and actual source/artifact provenance before integration |
 | T-037 | 3 | Done; both fresh reviews approve, merged a98c7af, uninterrupted combined 38/38 | Lead | Publish with related technical batch |
 
 ## Autonomous technical continuation
