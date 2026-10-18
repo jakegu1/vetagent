@@ -435,5 +435,24 @@ class EvidenceSplit(unittest.TestCase):
                 self.assertTrue(why)
 
 
+    def test_mixed_line_endings_are_neither_allowed_recording_form(self):
+        owner = self.owner()
+        loader = self.loader(owner)
+        lf = FIXTURE.read_bytes().replace(b"\r\n", b"\n")
+        crlf = lf.replace(b"\n", b"\r\n")
+        mixed = (lf.replace(b"\n", b"\r\n", 1), crlf.replace(b"\r\n", b"\n", 1))
+        with tempfile.TemporaryDirectory(prefix="owner-mixed-line-forms-") as temp, \
+                mock.patch.object(urllib.request, "urlopen", denied), \
+                mock.patch.object(subprocess, "run", denied):
+            path = Path(temp) / "recording.json"
+            for direction, raw in zip(("one CRLF among LF", "one LF among CRLF"), mixed):
+                with self.subTest(direction=direction):
+                    self.assertNotEqual(raw, lf)
+                    self.assertNotEqual(raw, crlf)
+                    path.write_bytes(raw)
+                    with self.assertRaises(ValueError):
+                        loader(path)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
