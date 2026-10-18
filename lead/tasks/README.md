@@ -36,7 +36,7 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-031 | Route discovery through existing configured on-chain providers | 3 | S | T-028, T-030 | done; deployed 6898b72 and tagged both-chain discovery observed |
 | T-032 | Preserve complete and terminating inclusive backfill ranges | 3 | S | T-027 | done; both reviews approve, merged 106ad21, post-merge 37/37 |
 | T-033 | Lock host Python build dependencies and verify credential-free Linux builds | 3 | M | T-032 | done; both reviews approve, merged 6f91f7a, uninterrupted post-merge 38/38 |
-| T-034 | Keep rendered templates and pasted instructions from answering a gate | 3 | S | none | named regressions corrected at 37db9fd; final clean evidence and fresh bounded recheck |
+| T-034 | Keep rendered templates and pasted instructions from answering a gate | 3 | S | none | done; fresh twelve of twelve, merged 7ef54e0, uninterrupted integrated 38/38 |
 | T-035 | Lock existing Node and Pyodide package resolutions before deployment | 3 | M | T-033 | in_progress; checked prerequisite integrated, actual Linux target-lock provenance verified |
 | T-036 | Pin supported Node 24 actions and the verified Ubuntu runner generation | 3 | M | T-033, T-035 | draft; actual locked Linux build prerequisites |
 | T-037 | Make release guards and reproduction instructions report unavailable evidence | 3 | M | T-032, T-034 | both fresh reviews approve; frozen 35507df waits for T-034 integration |

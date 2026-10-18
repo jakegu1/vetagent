@@ -54,8 +54,8 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 | Task | Level | Stage | Who | Next action |
 |---|---|---|---|---|
 | T-032 | 3 | Done; both fresh reviews approve, merged 106ad21, post-merge 37/37 | Lead | Publish with related technical batch |
-| T-034 | 3 | Named regressions (b)/(c) corrected at frozen 37db9fd; final clean denied check pending | Executor | Preserve every earlier case; finish serialized evidence, then fresh bounded regression review |
-| T-035 | 3 | In progress from approved, integrated and checked T-033 | Executor | Lock existing Node and target-runtime resolutions; prove two clean Linux builds |
+| T-034 | 3 | Done; final fresh approval, merged 7ef54e0, uninterrupted integrated 38/38 | Lead | Publish with related technical batch |
+| T-035 | 3 | Corrected frozen source 52363a3; named baseline-order repair preserves old guard | Executor and actual Linux CI | Finish uninterrupted ordinary/denied evidence, two clean Linux builds, then fresh reviews |
 | T-037 | 3 | Both fresh reviews approve frozen 35507df; all three evidence seals verified | Lead | Wait for T-034 approval/integration, then merge and check the combined head |
 
 ## Autonomous technical continuation
@@ -107,6 +107,23 @@ An earlier concurrent run stalls in Windows standard-library socket-pair creatio
 its interrupted nested scorecard attempt is retained and is not the release proof,
 even though the outer generator exits zero. The clean retry changes no source or guard.
 Complete local inventories are now serialized. T-035 starts from the checked base.
+
+T-034's final bounded reviewer approves twelve of twelve with RED-TEAM: none; both
+final evidence seals verify. Merge 7ef54e0 retains the reviewed source exactly and
+the lead's spec-tail clarification. Actual generation and the integrated gate pass
+thirty-eight of thirty-eight in 133.8 seconds. T-037's prerequisite is satisfied.
+
+T-035's first frozen candidate 92cc60a fails one unchanged deployment-order guard,
+both locally and in actual Linux run 39105738395. Its packaging job is skipped,
+not passed. Amendment (b) adds the observed regression first, then moves the hash
+baseline after the offline gate but before dependency installation/sync; it changes
+no old guard. Corrected 52363a3 is frozen for new complete and actual Linux evidence.
+Production remains on the verified release while this build-only candidate is checked.
+
+Legacy backlog reconciliation closes W50's already implemented canonical/wording fix.
+W28 remains open only for post-release usage evidence; W59 remains open only for
+unproved historical attribution, with per-answer timestamps explicitly deferred.
+Their original incidents remain. The changed generated Owner count follows the source.
 
 Repair (g) is independently approved twelve of twelve with RED-TEAM: none and merged
 as 76747d3. A different reviewer reproduces the actual old 3.12 failure, verifies

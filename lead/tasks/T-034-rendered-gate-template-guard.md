@@ -1,7 +1,7 @@
 ---
 id: T-034
 title: Keep rendered templates and pasted instructions from answering a gate
-status: changes_requested
+status: done
 level: 3
 size: S
 depends_on: []

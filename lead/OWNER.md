@@ -15,7 +15,8 @@ preflight remains recorded. Optional historical backfill HTTP 400 remains unreso
 
 T-032 inclusive-range and invalid-window fixes pass both fresh reviews, are merged,
 and pass the full post-merge thirty-seven-step gate. T-034's named parser regressions
-are corrected in isolation before a fresh bounded recheck. T-033 host dependency
+pass the fresh bounded recheck and the complete thirty-eight-step integrated gate.
+T-033 host dependency
 locking passes both fresh reviews, actual credential-free Linux packaging and the
 uninterrupted thirty-eight-step post-merge gate. T-035 now locks the remaining Node
 and target-runtime resolutions. T-037's five release/reporting repairs pass fresh
