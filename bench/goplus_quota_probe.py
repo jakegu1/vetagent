@@ -391,6 +391,9 @@ def run_plan(plan, context, *, sink, transport=None, clock=None, private_raw_dir
     raw_dir = _outside_git(private_raw_dir) if private_raw_dir is not None else None
     if raw_dir is not None and raw_dir.exists():
         raise ValueError("existing_raw_refused")
+    if raw_dir is not None and isinstance(sink, FileSink) and (
+            raw_dir.is_relative_to(sink.path) or sink.path.is_relative_to(raw_dir)):
+        raise ValueError("raw_and_safe_outputs_overlap")
     current, fetch = clock or Clock(), transport or request_once
     wall, mono = current.time(), current.monotonic()
     if _finite(wall) is None or _finite(mono) is None:
