@@ -149,16 +149,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Lead: record verified T-039 source and partial backfill evidence
+- T-039: regenerate measured risk test count after stale-page red
+- T-039: name withheld provisional score coverage truthfully
+- T-039: acceptance tests
+- Lead: close verified T-038 source and dispatch T-039 wording
 - T-038: named change (a,b) retain observed disproof across gaps
 - T-038: named change (c) acceptance regressions
 - T-038: record independently reproduced publication hold
-- T-038: preregister partial-fact retention regressions
-- T-038: preregister partial-fact retention regressions
-- T-038: named change (a)-(c) classify backfill observations
-- T-038: named change (b) exercise shared budget exhaustion
-- T-038: acceptance test fix (supply stream closed state)
 
-_242 more not shown (250 commits in total)._
+_247 more not shown (255 commits in total)._
 
 ## What I got wrong
 
