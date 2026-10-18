@@ -40,6 +40,9 @@ jobs:
       - name: Backfill inclusive ranges preserve every block and terminate
         run: python tests/test_backfill_range_contract.py
 
+      - name: Host SDK dependencies stay locked and Linux builds need no deploy credentials
+        run: python tests/test_build_dependency_lock.py
+
       - name: Regression tests (offline, real upstream snapshots)
         run: python tests/test_risk.py
 

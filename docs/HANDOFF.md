@@ -73,15 +73,15 @@ wrangler.jsonc   — Cloudflare config (routes: vetagent.dev custom_domain)
 |---|---|---|
 | 1 | The Worker entry class **must be named `Default`**, otherwise you get "no fetch handler" | fixed class name `class Default(WorkerEntrypoint)` |
 | 2 | `request.url` is a **string**, not an object | use `from urllib.parse import urlparse` |
-| 3 | Needs `uv >= 0.12.3` | already on 0.12.9; `uv self update` |
-| 4 | Use `pywrangler`, not bare `wrangler` (it bundles the deps)| `.venv/bin/pywrangler dev/deploy` |
+| 3 | Host build tooling uses uv 0.13.1 and the committed host dependency lock | `python -m pip install --no-deps uv==0.13.1`, then `uv sync --locked` |
+| 4 | Use `pywrangler`, not bare `wrangler` (it bundles the deps)| `uv run --locked pywrangler dev` or `uv run --locked pywrangler deploy` |
 | 5 | The first request after a cold start can time out | `_fetch_json` already retries with exponential backoff (2 attempts)|
 | 6 | The official `mcp` package will not install on Pyodide | hand-rolled MCP endpoint |
 | 7 | git push through the proxy hangs (HTTP408); direct is more reliable | `git -c http.proxy= -c https.proxy= push` |
 | 8 | GeckoTerminal uses `eth`, chain_hint/DexScreener use `ethereum` | one chain-name mapping (fallback branch fixed)|
 | 9 | Relative imports fail | use absolute `import risk`, not `from . import` |
-| 10 | **pywrangler does not run on Windows** — it wants to build an emscripten pyodide venv, which Windows does not support | deploy from CI (`.github/workflows/deploy.yml`); in a pinch use WSL: `XDG_CONFIG_HOME=/mnt/c/Users/<you>/AppData/Roaming/xdg.config uv run pywrangler deploy` to reuse the OAuth session Windows already has |
-| 11 | Bare `wrangler deploy` builds fine but the **deployed Worker crashes on startup** — `ModuleNotFoundError: No module named 'workers'`, because it does not vendor workers-py | always `uv run pywrangler deploy`. A passing dry-run **does not mean** it runs; it never checks runtime imports |
+| 10 | **pywrangler does not run on Windows** — it wants to build an emscripten pyodide venv, which Windows does not support | deploy from CI (`.github/workflows/deploy.yml`); in a pinch use WSL: `XDG_CONFIG_HOME=/mnt/c/Users/<you>/AppData/Roaming/xdg.config uv run --locked pywrangler deploy` to reuse the OAuth session Windows already has |
+| 11 | Bare `wrangler deploy` builds fine but the **deployed Worker crashes on startup** — `ModuleNotFoundError: No module named 'workers'`, because it does not vendor workers-py | always `uv run --locked pywrangler deploy`. A passing dry-run **does not mean** it runs; it never checks runtime imports |
 | 12 | `git pull origin master` while on another branch merges master into the current branch, leaving local master stale | before deploying, compare with `git rev-parse --short master origin/master` — don't ship against old code |
 | 13 | **A refusal can arrive inside a `200 OK`.** A rate-limited JSON-RPC call comes back as a normal array whose entries hold `{"code": -32016, "message": "over rate limit"}` instead of a result. Skipping entries with no `result` turned "the node would not answer" into "this pool has no tokens" — a day whose first sampled window held 10,522 swaps was recorded as **0 pools traded** | `rpc_batch` retries unanswered ids across passes and prints what never came back. Never let an unanswered call become a fact |
 | 14 | `mainnet.base.org` caps a JSON-RPC batch at **10 calls** and answers an 11th with a single error **object**, not an array — so an `isinstance(payload, list)` check fails and the whole chunk silently vanishes | halve the chunk and retry the same offset; endpoints disagree about the cap, so discover it rather than hard-coding one |
@@ -161,12 +161,14 @@ Suggested approach (ordered by feasibility):
 
 ```bash
 cd ~/projects/vetagent-worker
-# sync deps
-.venv/bin/pywrangler dev --port 8787            # local test
+# Linux or WSL; CI is the normal deployment path (D2).
+python -m pip install --no-deps uv==0.13.1
+uv sync --locked
+uv run --locked pywrangler dev --port 8787     # local test
 # deploy (credentials via env vars, never written into git)
 export CLOUDFLARE_API_TOKEN=<from Jake>
 export CLOUDFLARE_ACCOUNT_ID=<from the private note, W13>
-.venv/bin/pywrangler deploy
+uv run --locked pywrangler deploy
 ```
 
 > **W13, and what removing them does and does not achieve.** The Cloudflare account id
@@ -189,10 +191,12 @@ export CLOUDFLARE_ACCOUNT_ID=<from the private note, W13>
 
 ### 🖥️ Developing on your own machine (Jake's box)
 1. `git clone https://github.com/jakegu1/vetagent.git && cd vetagent`
-2. Install `uv` (>=0.12.3): `pip install uv` or `curl -LsSf https://astral.sh/uv/install.sh | sh`
-3. `uv sync` (installs workers-py + workers-runtime-sdk)
+2. Install the pinned host tool: `python -m pip install --no-deps uv==0.13.1`.
+3. `uv sync --locked` installs the SDKs and host dependencies from the committed `uv.lock`.
 4. **Cloudflare credentials**: ask Jake for `CLOUDFLARE_API_TOKEN` (set it as a local env var only, **never write it into git**). Create one in the Cloudflare dashboard → My Profile → API Tokens (scope it to `Workers: Edit` + `Account: Read`, nothing more). Or just `npx wrangler login` (OAuth, safest).
-5. `npx wrangler dev` to test locally; `npx wrangler deploy` to ship.
+5. On Linux or WSL, use `uv run --locked pywrangler dev` to test locally and `uv run --locked pywrangler deploy` for the deployment path (D1). Production normally ships through CI (D2) and retains its production smoke checks (D3). Native Windows can sync host dependencies and run offline checks; do not run pywrangler or Pyodide setup there.
+
+For an intentional host lock update, review the two SDK pins in `pyproject.toml`, use uv 0.13.1, and run `uv lock --no-config --default-index https://pypi.org/simple`. Review the complete `uv.lock` diff, run `uv lock --check` and `uv sync --locked`, then run the offline suite. Commit the reviewed project and lock changes together. A missing or stale lock is an error during normal sync/deploy, never an invitation to regenerate it silently. This locks host Python resolution; Node and Pyodide runtime resolution remain separate work, so this is not a claim that the entire build is reproducible.
 
 > Two options: `wrangler login` OAuth (safest, no token to hand around) and an API token (stable across networks). On a remote server the API token is more reliable; for local development prefer OAuth.
 
