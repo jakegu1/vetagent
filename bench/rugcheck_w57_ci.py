@@ -256,6 +256,9 @@ class GitHubArtifacts:
                 rows = body.get("artifacts") if isinstance(body, dict) else None
                 if not isinstance(rows, list):
                     raise StudyError("artifact_metadata")
+                if any(not isinstance(row, dict) or not isinstance(row.get("name"), str)
+                       or not row["name"].strip() for row in rows):
+                    raise StudyError("artifact_metadata")
                 matched = [row for row in rows if isinstance(row, dict) and row.get("name") == name]
                 found.extend(matched)
                 if len(rows) < 100:
