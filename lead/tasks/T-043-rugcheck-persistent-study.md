@@ -129,7 +129,11 @@ authorized beyond the named pin-policy amendment.
    remaining budget. Record actual scheduled/due/start/response times and unavailable
    cells. Missed slots remain not_observed; no burst catch-up or invented historical
    sample. A terminal acquisition started late may retain its actual endpoint with a
-   lateness flag; after the terminal deadline no further vendor calls occur. A late or
+   lateness flag. Its operational acquisition deadline is the scientific end plus one
+   nominal fifteen-minute interval; no call begins unless its timeout and gap fit before
+   that deadline. The scientific window still ends at forty-eight hours: later responses
+   are separately outside-window/censored and cannot establish an in-window flip or
+   a negative tail. After that deadline no further vendor calls occur. A late or
    absent boundary observation cannot be represented as exact forty-eight-hour coverage.
 
 5. **Observation integrity and durable partial results.** Reuse T040 HTTP/body/field
@@ -215,3 +219,11 @@ open; any later cohort needs an explicit new start and ID.
 W54 is entirely out of scope. Its missing original sixteen-mint set is not replaced by
 the eighteen MAJORS used here as W57 controls. Keep the original six-hour JSONL, all
 benchmarks/caches/reference bytes, T040 tests, thresholds and production source untouched.
+
+## Pre-test clarification
+
+2026-10-19 (a): define the previously unnamed terminal acquisition deadline as one
+nominal interval after the scientific end. This is a bounded scheduling grace only;
+the original elapsed scientific window, final-tenth bounds and inference bar do not
+move. Responses after the scientific end remain outside-window observations. Apply
+this clarification before freezing the first acceptance-test commit.
