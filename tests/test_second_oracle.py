@@ -1801,6 +1801,42 @@ def test_goplus_quota_partial_intents_and_persistence():
                 refused=False
             check("partial-tail recovery never skips a corrupt interior record",
                   refused and (corrupt/"receipts.jsonl").read_bytes()==invalid)
+
+            # Same-finding terminal-time correction authorized by T044 clarification (e2).
+            def pin_unobserved_elapsed_after_partial_append():
+                command=[sys.executable,"-B",str(Path(ROOT)/"bench/goplus_quota_probe.py"),"report","--output",str(path)]
+                standalone=subprocess.run(command,capture_output=True,text=True,encoding="utf-8",timeout=5)
+                recovered=json.loads(standalone.stdout)
+                observed=q.read_report(path)
+                expected=(2,1,1,1,314)
+                keys=("claimed","attempted","rate_limited","uncertain","not_asked")
+                check("partial append immediate and standalone readout keep unobserved elapsed null",
+                      result["ended_at"] is None and result["elapsed_seconds"] is None and result["elapsed_minutes"] is None
+                      and result["started_at"] is not None and tuple(result["counts"][key] for key in keys)==expected
+                      and standalone.returncode==1 and standalone.stderr==""
+                      and "elapsed_seconds" in recovered and "elapsed_minutes" in recovered
+                      and recovered["ended_at"] is None and recovered["elapsed_seconds"] is None and recovered["elapsed_minutes"] is None
+                      and recovered["started_at"]==result["started_at"]
+                      and tuple(recovered.get("counts",{}).get(key) for key in keys)==expected
+                      and observed["cells"][0]["http_status"]==429 and observed["cells"][0].get("request_at") is not None
+                      and observed["cells"][1].get("claimed_at") is not None and "request_at" not in observed["cells"][1]
+                      and ledger.read_bytes()==sink.torn and len(calls)==2)
+                positive_calls=[]
+                def positive_transport(chain,address,*,timeout):
+                    positive_calls.append(address)
+                    return {"http_status":429 if len(positive_calls)==1 else 403,"body":b'{}'}
+                positive_path=Path(directory)/"valid-terminal"
+                positive=q.run_plan(q.make_plan(context),context,sink=q.FileSink(positive_path),transport=positive_transport,clock=Clock())
+                positive_cli=subprocess.run(command[:-1]+[str(positive_path)],capture_output=True,text=True,encoding="utf-8",timeout=5)
+                positive_read=json.loads(positive_cli.stdout)
+                check("valid terminal immediate and standalone readout retain actual positive elapsed",
+                      len(positive_calls)==2 and positive["ended_at"] is not None and positive["elapsed_seconds"]>0
+                      and abs(positive["elapsed_seconds"]-q.GAP_SECONDS)<1e-9
+                      and positive["elapsed_minutes"]==positive["elapsed_seconds"]/60
+                      and positive_cli.returncode==1 and positive_cli.stderr==""
+                      and positive_read["elapsed_seconds"]==positive["elapsed_seconds"]
+                      and positive_read["elapsed_minutes"]==positive["elapsed_minutes"])
+            pin_unobserved_elapsed_after_partial_append()
     pin_round2_partial_receipt_error()
 
 
