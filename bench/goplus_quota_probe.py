@@ -507,10 +507,7 @@ def _report(plan, events, reason=None):
     coverage = {field: {state: sum(e["observation"]["field_states"][field] == state for e in observed)
                         for state in ("finite", "integer", "missing", "invalid", "unobserved")}
                 for field in ("buy_tax", "sell_tax", "holder_count")}
-    end_mono = stops[-1]["mono"] if stops else max(
-        (e.get("request_mono", intents[e["index"]]["mono"]) + e["duration_seconds"] for e in observed),
-        default=starts[0]["mono"] if starts else 0)
-    elapsed = max(0, end_mono - starts[0]["mono"]) if starts else 0
+    elapsed = max(0, stops[-1]["mono"] - starts[0]["mono"]) if starts and stops else None
     return {"schema_version": 1, "source_commit": plan["source_commit"], "dataset_sha256": plan["dataset_sha256"],
             "label_code_sha256": plan["label_code_sha256"], "queue_sha256": plan["queue_sha256"],
             "dataset_blob_sha256": plan["dataset_blob_sha256"], "label_blob_sha256": plan["label_blob_sha256"],
@@ -520,7 +517,7 @@ def _report(plan, events, reason=None):
             "started_at": starts[0]["at"] if starts else None, "ended_at": stops[-1]["at"] if stops else None,
             "first_observation_at": observed[0]["response_at"] if observed else None,
             "last_observation_at": observed[-1]["response_at"] if observed else None,
-            "elapsed_seconds": elapsed, "elapsed_minutes": elapsed / 60,
+            "elapsed_seconds": elapsed, "elapsed_minutes": elapsed / 60 if elapsed is not None else None,
             "limits": {"requests": REQUEST_CAP, "gap_seconds": GAP_SECONDS, "request_timeout_seconds": REQUEST_TIMEOUT,
                        "elapsed_seconds": RUN_SECONDS, "body_bytes": BODY_CAP, "safe_bundle_bytes": SAFE_CAP},
             "limitations": LIMITATIONS}
