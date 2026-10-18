@@ -442,7 +442,7 @@ class BackfillObservationTests(unittest.TestCase):
             self.assertEqual(oversize["node"]["max_response_bytes"], CAP + 1)
 
     def test_shared_attempt_and_deadline_budgets_and_read_timeouts(self):
-        attempts = exercise("fallback_budget")
+        attempts = exercise("fallback_budget", candidates=4)
         self.outcome(attempts, "partial", unobserved=True)
         self.assertEqual(attempts["node"]["attempts"], 64)
         self.assertEqual(attempts["node"]["providers"], ["primary", "fallback"] * 32)
