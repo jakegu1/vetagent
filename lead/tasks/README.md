@@ -39,5 +39,5 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-034 | Keep rendered templates and pasted instructions from answering a gate | 3 | S | none | changes_requested; round-one delimiter shadowing, named amendment (a) |
 | T-035 | Lock existing Node and Pyodide package resolutions before deployment | 3 | M | T-033 | draft; actual Linux target-lock provenance required |
 | T-036 | Pin supported Node 24 actions and the verified Ubuntu runner generation | 3 | M | T-033, T-035 | draft; actual locked Linux build prerequisites |
-| T-037 | Make release guards and reproduction instructions report unavailable evidence | 3 | M | T-032, T-034 | ready; prerequisite review and actual dispatch conflict refresh required |
+| T-037 | Make release guards and reproduction instructions report unavailable evidence | 3 | M | T-032, T-034 | in_progress; isolated under amendment (a), serial prerequisite integration retained |
 | T-038 | Separate unavailable backfill observations from decoder contradictions | 3 | M | T-032, T-036 | ready; prerequisite integration required |

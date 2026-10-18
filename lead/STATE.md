@@ -56,6 +56,7 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 | T-032 | 3 | Done; both fresh reviews approve, merged 106ad21, post-merge 37/37 | Lead | Publish with related technical batch |
 | T-034 | 3 | Round one changes required; unmatched prefixes shadow complete encoded markup | Executor after named amendment (a) | Add frozen regressions first, repair the recognizer, fresh combined final review |
 | T-033 | 3 | Isolated host-lock implementation | Executor | Tests first, actual public-index lock and credential-free Linux build preparation |
+| T-037 | 3 | Isolated eight-file safeguards and reproduction task under amendment (a) | Executor | Five tests-first findings; preserve newer inputs and wait for T-034 approval before integration |
 
 ## Autonomous technical continuation
 
