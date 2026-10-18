@@ -35,9 +35,9 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-030 | Disclose selected liquidity with unchecked reserve amounts | 3 | M | T-026, T-028 | done; deployed d44d79a, both live markers observed |
 | T-031 | Route discovery through existing configured on-chain providers | 3 | S | T-028, T-030 | done; deployed 6898b72 and tagged both-chain discovery observed |
 | T-032 | Preserve complete and terminating inclusive backfill ranges | 3 | S | T-027 | done; both reviews approve, merged 106ad21, post-merge 37/37 |
-| T-033 | Lock host Python build dependencies and verify credential-free Linux builds | 3 | M | T-032 | in_review; independent PASS, adversarial running, actual branch Linux build succeeds |
-| T-034 | Keep rendered templates and pasted instructions from answering a gate | 3 | S | none | changes_requested; combined review regression, named bounded amendment (b) |
-| T-035 | Lock existing Node and Pyodide package resolutions before deployment | 3 | M | T-033 | ready; actual Linux target-lock provenance verified, waits for T-033 approval |
+| T-033 | Lock host Python build dependencies and verify credential-free Linux builds | 3 | M | T-032 | done; both reviews approve, merged 6f91f7a, uninterrupted post-merge 38/38 |
+| T-034 | Keep rendered templates and pasted instructions from answering a gate | 3 | S | none | named regressions corrected at 37db9fd; final clean evidence and fresh bounded recheck |
+| T-035 | Lock existing Node and Pyodide package resolutions before deployment | 3 | M | T-033 | in_progress; checked prerequisite integrated, actual Linux target-lock provenance verified |
 | T-036 | Pin supported Node 24 actions and the verified Ubuntu runner generation | 3 | M | T-033, T-035 | draft; actual locked Linux build prerequisites |
-| T-037 | Make release guards and reproduction instructions report unavailable evidence | 3 | M | T-032, T-034 | in_review; five frozen fixes, T-034 prerequisite retained |
+| T-037 | Make release guards and reproduction instructions report unavailable evidence | 3 | M | T-032, T-034 | independent approves twelve of twelve; fresh red completing, T-034 prerequisite retained |
 | T-038 | Separate unavailable backfill observations from decoder contradictions | 3 | M | T-032, T-036 | ready; prerequisite integration required |

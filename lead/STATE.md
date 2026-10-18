@@ -54,9 +54,9 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 | Task | Level | Stage | Who | Next action |
 |---|---|---|---|---|
 | T-032 | 3 | Done; both fresh reviews approve, merged 106ad21, post-merge 37/37 | Lead | Publish with related technical batch |
-| T-034 | 3 | Blocking entity-name case regression after combined round two | Executor under named amendment (b) | Add frozen regressions first; constants-only correction and independent bounded regression recheck |
-| T-033 | 3 | Independent PASS 12/12; fresh adversarial review running | Reviewers | Keep exact source 2b03cbc; actual Linux package evidence exists; no integration before both approvals |
-| T-037 | 3 | Five fixes frozen at 35507df; independent review running | Reviewers | Preserve frozen cases and exact historical bytes; T-034 remains a hard later integration gate |
+| T-034 | 3 | Named regressions (b)/(c) corrected at frozen 37db9fd; final clean denied check pending | Executor | Preserve every earlier case; finish serialized evidence, then fresh bounded regression review |
+| T-035 | 3 | In progress from approved, integrated and checked T-033 | Executor | Lock existing Node and target-runtime resolutions; prove two clean Linux builds |
+| T-037 | 3 | Independent approves twelve of twelve; fresh red-team completing evidence | Reviewers | Preserve frozen cases and exact historical bytes; T-034 remains a hard later integration gate |
 
 ## Autonomous technical continuation
 
@@ -100,6 +100,13 @@ commits. Actual generation and the lead's post-merge gate pass all thirty-seven 
 in 109.7 seconds. T-034 round one
 finds delimiter shadowing in both rejection directions; named amendment (a) keeps
 all frozen assertions and adds only explicit regression tests before correction.
+
+T-033 is independently approved and merged as 6f91f7a. Actual post-merge generation
+and an uninterrupted serialized gate pass all thirty-eight steps in 108.8 seconds.
+An earlier concurrent run stalls in Windows standard-library socket-pair creation;
+its interrupted nested scorecard attempt is retained and is not the release proof,
+even though the outer generator exits zero. The clean retry changes no source or guard.
+Complete local inventories are now serialized. T-035 starts from the checked base.
 
 Repair (g) is independently approved twelve of twelve with RED-TEAM: none and merged
 as 76747d3. A different reviewer reproduces the actual old 3.12 failure, verifies
