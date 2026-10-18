@@ -149,16 +149,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- Preregister checksum baseline order correction without weakening old guard
-- Record fresh release-safeguard approvals and retained prerequisite
-- Name frozen build-validator adaptation before T-035 tests
-- Clarify frozen gate-origin and raw-tag regression bar
-- Record reviewed host lock and uninterrupted post-merge gate
-- T-034: protect complete raw markup before encoded candidates
-- T-035: clarify byte-level lock checks before build and upload
-- T-034: named change (c) raw-markup regression tests
+- Lead: approve T-036 source and retain pending production gate
+- T-036: acceptance test fix (keep fixture out of generator discovery)
+- Specify AST-identical fixture syntax correction before T036 READY
+- Specify AST-identical fixture syntax correction before T036 READY
+- T-036: named change (b) refresh only the approved observer-prefix digest
+- T-036: named change (a) account for every refused or outside step record
+- Clarify syntax coverage versus existing offline-reader restrictions
+- Clarify syntax coverage versus existing offline-reader restrictions
 
-_191 more not shown (199 commits in total)._
+_227 more not shown (235 commits in total)._
 
 ## What I got wrong
 
