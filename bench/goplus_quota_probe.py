@@ -373,6 +373,7 @@ def _report(plan, events, reason=None):
     return {"schema_version": 1, "source_commit": plan["source_commit"], "dataset_sha256": plan["dataset_sha256"],
             "label_code_sha256": plan["label_code_sha256"], "queue_sha256": plan["queue_sha256"],
             "dataset_blob_sha256": plan["dataset_blob_sha256"], "label_blob_sha256": plan["label_blob_sha256"],
+            "plan_sha256": _sha(_encode(plan)), "receipt_chain_sha256": _sha(b"".join(_encode(e) for e in events)),
             "available": counts["claimed"] == REQUEST_CAP and counts["unobserved_label"] == 0 and stop == "completed",
             "stop_reason": stop, "counts": counts, "field_coverage": coverage, "cells": cells,
             "started_at": starts[0]["at"] if starts else None, "ended_at": stops[-1]["at"] if stops else None,
@@ -508,7 +509,13 @@ def read_report(path):
         raise ValueError("oversized_bundle")
     plan = _public_plan(json.loads((directory / "plan.json").read_text(encoding="utf-8")))
     events, claimed, answered = [], set(), set()
-    lines = (directory / "receipts.jsonl").read_bytes().splitlines()
+    ledger = (directory / "receipts.jsonl").read_bytes()
+    tail_complete = not ledger or ledger.endswith(b"\n")
+    lines = ledger.splitlines(keepends=True)
+    # A killed append can leave a partial final record. Retain its bytes and all
+    # earlier observations; the already-persisted intent still consumes its slot.
+    if not tail_complete:
+        lines = lines[:-1]
     if len(lines) > REQUEST_CAP * 2 + 2:
         raise ValueError("oversized_ledger")
     for raw in lines:
@@ -548,7 +555,9 @@ def read_report(path):
                 _safe_observation(event["observation"])
                 answered.add(index)
         events.append(event)
-    return _report(plan, events)
+    report = _report(plan, events, "interrupted" if not tail_complete else None)
+    report.update(ledger_tail_state="complete" if tail_complete else "incomplete", receipt_bytes_sha256=_sha(ledger))
+    return report
 
 
 class _Parser(argparse.ArgumentParser):
