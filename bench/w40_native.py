@@ -600,6 +600,8 @@ def _child(path):
                 replace_private(directory / "progress.json", {"bytes": size, "sha256": digest.hexdigest()})
                 if size > BODY_CAP:
                     break
+        if size <= BODY_CAP and response.length not in (None, 0):
+            fail("transport_error")
         write_new(directory / "end.json", dumps({"state": "invalid_body" if size > BODY_CAP else "observed",
                                                 "bytes": size, "sha256": digest.hexdigest(),
                                                 "utc": iso(datetime.now(timezone.utc))}))
