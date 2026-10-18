@@ -62,6 +62,8 @@ integration are still required before dispatch from its integrated base.
   checkouts without duplicating the entire offline test job. Keep the matrix bounded
   at two, retain needs: test and its workflow_run exclusion, and verify both actual
   packaging jobs. Do not share their project/vendor environments.
+  Capture lock-byte hashes before installation/sync and compare them before upload
+  and after dry-run; a normalized git diff alone is not a byte-preservation check.
 - `tests/test_build_dependency_lock.py`: additive offline acceptance only, preserving
   every T-033 test/input/assertion. Reuse its existing registration; no new test file.
 - `docs/HANDOFF.md`: directly corresponding locked setup/sync/deploy and deliberate
@@ -86,6 +88,9 @@ fix commits separate Node resolution and target-runtime resolution findings.
    committed lock fails before upload, not afterward. The deploy command remains
    locked-host pywrangler deploy; the branch build remains pywrangler dry-run. No
    `--upgrade`, credential bypass, engine rewrite or direct bare-wrangler deployment.
+   Compare actual bytes, including a newline-only drift control. Take the checksum
+   baseline before installation/sync, so a preparatory rewrite cannot become the
+   accepted baseline. Retain the existing tracked-file diff as a separate guard.
 4. Actual target sync installs SDK 1.9.4 from the inspected public distribution.
    Existing pylock constrains resolution and remains byte-identical through two clean
    Linux checkouts' sync/dry-run sequences. Record tool and selected runtime-package
