@@ -108,3 +108,16 @@ NaN, infinite and negative scores entering bands, and strings/objects raising in
 AC2 explicitly includes field-level validity. Before the first acceptance commit, add
 synthetic valid-boundary and invalid-score controls, including a usable holder report
 whose score is unreadable. No existing test or production threshold change is allowed.
+
+2026-10-19, round-one bounce (b): the real producer appends to an existing file and
+restarts sweep numbering. A retry following an unavailable primary can therefore
+borrow a usable row from an earlier run. AC3 requires pairing against its own preceding
+primary envelope in request order, including an intervening failed primary, before
+validating observation usability. Do not search past that envelope for older evidence.
+Keep valid current-run pairs and the historical reference unchanged. Before changing
+the implementation, add only the named acceptance method
+test_unobserved_primary_does_not_borrow_an_older_restarted_sweep, with an actual
+two-session append/restart regression and a valid-pair control; preserve every existing
+acceptance method byte for byte. Commit the new red test alone, then the matching fix.
+No broader run-lifecycle redesign or new study is authorized here. Round two is one
+fresh combined independent and adversarial review of the complete final source.
