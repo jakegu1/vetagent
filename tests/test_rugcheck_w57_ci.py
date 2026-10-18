@@ -513,6 +513,75 @@ class StudyTests(unittest.TestCase):
         self.assertEqual(first["score_normalised"], 1)
         self.assertTrue(all(store.items[i][1] == data for i, data in old.items()))
 
+        # Amendment (b2): existing domain objects/keys remain measured powers.
+        domain_fixture = json.loads((ROOT / "tests/fixtures/rc_pyusd.json").read_text(encoding="utf-8"))
+        domain_extensions = domain_fixture["token_extensions"]
+        domain_key = domain_extensions["permanentDelegate"]["delegate"]
+        domain_none = "1" * 32
+        domain_powers = ("permanentDelegate", "pausableConfig", "mintCloseAuthority", "freeze_or_mint")
+        domain_cases = [
+            ({"permanentDelegate": domain_extensions["permanentDelegate"],
+              "mintCloseAuthority": domain_extensions["mintCloseAuthority"],
+              "pausableConfig": {"authority": domain_key, "paused": False}},
+             {"freezeAuthority": domain_key, "mintAuthority": None}, True),
+            ({key: None for key in domain_powers[:-1]},
+             {"freezeAuthority": None, "mintAuthority": None}, False),
+            ({"permanentDelegate": {"delegate": None}, "mintCloseAuthority": {"closeAuthority": domain_none},
+              "pausableConfig": None}, {"freezeAuthority": domain_none, "mintAuthority": None}, False),
+            ({}, {}, None),
+            ({"permanentDelegate": "false", "mintCloseAuthority": {"closeAuthority": "false"},
+              "pausableConfig": "false"}, {"freezeAuthority": "false", "mintAuthority": "false"}, None),
+            ({"permanentDelegate": domain_key, "mintCloseAuthority": domain_key,
+              "pausableConfig": {"authority": domain_key, "paused": True}},
+             {"freezeAuthority": None, "mintAuthority": domain_key}, True),
+        ]
+        domain_clock, domain_store, _, _, _, _ = self.active()
+        domain_prior = {i: data for i, (_, data) in domain_store.items.items()}
+        domain_service = type("ArtifactService", (), {})()
+        domain_service.list, domain_service.load = domain_store.list, domain_store.load
+        domain_service.reads = domain_service.downloads = 0
+        domain_fetch, domain_calls = self.vendor(domain_clock)
+        domain_inputs = {mint(i): value for i, value in enumerate(domain_cases)}
+        def domain_raw(url):
+            code, body = domain_fetch(url)
+            domain_mint = url.split("/tokens/", 1)[1].split("/", 1)[0]
+            if domain_mint in domain_inputs:
+                extensions, authorities, _ = domain_inputs[domain_mint]
+                body["token_extensions"] = copy.deepcopy(extensions)
+                body.pop("freezeAuthority", None)
+                body.pop("mintAuthority", None)
+                body.update(authorities)
+            return code, body
+        with tempfile.TemporaryDirectory() as domain_directory:
+            domain_folder = Path(domain_directory) / "tick"
+            domain_ctx = context(11)
+            with patch.object(driver, "_context_env", return_value=domain_ctx), \
+                    patch.object(driver, "GitHubArtifacts", return_value=domain_service), \
+                    patch.object(driver.time, "time", side_effect=domain_clock), \
+                    patch.object(driver.collect, "__defaults__", (domain_clock, domain_clock.sleep, None)), \
+                    patch.object(probe, "curl", side_effect=domain_raw), contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(driver.main(["prepare", "--phase", "tick", "--study", "study-one", "--out", str(domain_folder)]), 0)
+                domain_plan = json.loads((domain_folder / "plan.json").read_text(encoding="utf-8"))
+                domain_intent = domain_store.publish(domain_plan["state"], [], "intent", domain_ctx)
+                self.assertEqual(driver.main(["collect", "--out", str(domain_folder), "--intent", str(domain_intent)]), 0)
+                domain_state = json.loads((domain_folder / "result/state.json").read_text(encoding="utf-8"))
+                domain_rows = [json.loads(line) for line in (domain_folder / "result/observations.jsonl").read_bytes().splitlines()]
+                domain_result = domain_store.publish(domain_state, domain_rows, "result", domain_ctx)
+                domain_report = Path(domain_directory) / "report"
+                self.assertEqual(driver.main(["prepare", "--phase", "report", "--study", "study-one", "--out", str(domain_report)]), 0)
+                domain_answer = json.loads((domain_report / "result/report.json").read_text(encoding="utf-8"))
+        domain_restored = domain_store.load(domain_result)["rows"]
+        for domain_index, (_, _, domain_expected) in enumerate(domain_cases):
+            domain_row = next(row for row in domain_restored if row.get("mint") == mint(domain_index))
+            for domain_power in domain_powers:
+                self.assertIs(domain_row["gated"][domain_power], domain_expected)
+            self.assertEqual(domain_row["score_normalised"], 1)
+        for domain_power in domain_powers:
+            self.assertEqual(domain_answer["coverage"]["fresh"]["fields"][domain_power]["usable"], 4)
+            self.assertEqual(domain_answer["coverage"]["fresh"]["fields"][domain_power]["attempted_unavailable_or_invalid"], 41)
+        self.assertEqual(len(domain_calls), 63)
+        self.assertTrue(all(domain_store.items[i][1] == data for i, data in domain_prior.items()))
+
     def test_cli_interruption_preserves_a_restorable_partial_checkpoint(self):
         self.need()
         clock, store, _, _, _, _ = self.active()
