@@ -1080,6 +1080,52 @@ def test_the_page_agrees_with_the_guard():
                       "the page listed it: %s" % got)
 
 
+def test_template_gate_answers_stay_open_on_owner_surfaces():
+    """T-034 AC 4: the real Owner seam and all surfaces keep template gates open.
+
+    The parked entries are already closed, so they cannot hide an incorrect answer
+    classification by keeping Needs you populated for a different reason.
+    """
+    print("\n[T-034] rendered-template answers stay open on every Owner surface")
+    ref = _reference_guard()
+    guard = owner.gate_guard()
+    check("T-034 loading the shared guard runs no checks",
+          guard._PASSED == 0 and guard._FAILURES == [],
+          ascii((guard._PASSED, guard._FAILURES)))
+    cases = (ref._rendered_template_gate_cases() + list(ref._FIRST_SEGMENT_GATE_CASES)
+             + list(ref._COMMENT_GATE_CASES))
+    opps = _opportunities(parked=(("O1", "2026-12-04"),),
+                          closed=(("O2", "2026-10-16"), ("O8", "2026-10-16")))
+    for label, text, answered in cases:
+        strategy = _four_gates(text)
+        row = [ln for ln in strategy.splitlines() if ln.startswith("| 2026-10-16 ")][0]
+        check("T-034 Owner's loaded helper %s: %s" % (answered, label),
+              guard.gate_row_answered(row) is answered)
+        got = [g["answered"] for g in _with_sources(owner.gates, strategy, opps)
+               if g["date"] == "2026-10-16"]
+        check("T-034 actual owner.gates() %s: %s" % (answered, label),
+              got == [answered], ascii(got))
+        for day, when in ((datetime.date(2026, 10, 2), "**in 14 days**"),
+                          (_DAY, "**TODAY**"),
+                          (datetime.date(2026, 10, 17), "**1 days OVERDUE**")):
+            page = _page(day, strategy, opps, _NO_OWNER_ITEMS)
+            tag = "%s, %s" % (day, label)
+            cell, timeline = _gate_table_when(page, "2026-10-16"), _timeline_label(
+                page, "2026-10-16")
+            check("T-034 gate table %s: %s" % (answered, tag),
+                  _reads_answered(cell) if answered else cell == when, ascii(cell))
+            check("T-034 timeline %s: %s" % (answered, tag),
+                  _reads_answered(timeline) if answered
+                  else timeline == "%s - %s" % (_Q, when.strip("*")), ascii(timeline))
+            rows = [r for r in _needs_you_rows(page) if _Q in " | ".join(r)]
+            body = _gate_subsection(page, _Q)
+            check("T-034 Needs you with parked entries closed: %s" % tag,
+                  (not _listed(page, _Q)) if answered else
+                  (len(rows) == 1 and rows[0][:2] == [when, "2026-10-16"]
+                   and body is not None and "docs/STRATEGY.md" in body
+                   and not _ids(body)), ascii((rows, body)))
+
+
 def main():
     print("=" * 68)
     print("Owner page: the one document written for someone not reading code")

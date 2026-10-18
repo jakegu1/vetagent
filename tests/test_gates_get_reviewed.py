@@ -719,6 +719,149 @@ def test_guard_self_tests_leave_no_trace():
              bool(scratch) and os.path.exists(scratch)))
 
 
+# T-034: displayed templates and pasted instructions cannot answer a gate. These are
+# additive fixtures: the earlier T-007 cases remain the compatibility contract.
+def _rendered_template_gate_cases():
+    """The actual emitted template with single-encoded markup delimiters only.
+
+    Keep its ASCII decision arrow literal, so a refusal has to recognize the encoded
+    placeholders rather than merely reject an encoded arrow.
+    """
+    message = _emitted_message()
+    template = message.split("'")[1] if message.count("'") >= 2 else ""
+    sides = template.split(" -> ")
+    delimiters = (
+        ("named", "&lt;", "&gt;"),
+        ("uppercase named", "&LT;", "&GT;"),
+        ("decimal", "&#60;", "&#62;"),
+        ("hexadecimal", "&#x3c;", "&#x3e;"),
+        ("leading-zero case-varied", "&#X00003C;", "&#x000003e;"),
+        ("literal left and named right", "<", "&gt;"),
+        ("decimal left and literal right", "&#060;", ">"),
+        ("named left and hexadecimal right", "&lt;", "&#X03E;"),
+        ("hexadecimal left and decimal right", "&#x03c;", "&#00062;"),
+    )
+    cases = [("literal emitted template", template, False)]
+    for label, left, right in delimiters:
+        encoded = " -> ".join(s.replace("<", left).replace(">", right) for s in sides)
+        cases.append((label + " template", encoded, False))
+    cases += [
+        ("encoded template inside a code span", "`" + cases[1][1] + "`", False),
+        ("prefixed full failure instruction", "Resolved: " + message, False),
+        ("emphasized prefix before full instruction", "**Resolved:** " + message, False),
+    ]
+    return cases
+
+
+_FIRST_SEGMENT_GATE_CASES = (
+    ("bare first segment", "Resolved: Resolved: zero commitments -> change segment", False),
+    ("pending first segment", "Resolved: pending; Resolved: zero commitments -> change segment",
+     False),
+    ("first finding borrows a later arrow",
+     "Resolved: zero commitments measured; Resolved: decide -> change segment", False),
+    ("emphasized bare first segment",
+     "**Resolved:** **Resolved:** zero commitments -> change segment", False),
+    ("valid first segment and bare second",
+     "Resolved: zero commitments -> change segment; Resolved:", True),
+    ("valid first segment and valid second",
+     "Resolved: zero commitments -> change segment; Resolved: another reading -> undecided",
+     True),
+    ("quoted literal marker is a boundary",
+     "Resolved: the log printed 'Resolved:' twice -> inspect the log", False),
+    ("encoded colon in later prose stays raw",
+     "Resolved: the log printed 'Resolved&#58;' twice -> inspect the log", True),
+    ("encoded first marker", "Resolved&#58; zero commitments -> change segment", False),
+    ("hexadecimal encoded first marker",
+     "Resolved&#x3a; zero commitments -> change segment", False),
+    ("encoded greater-than in ASCII arrow",
+     "Resolved: zero commitments -&gt; change segment", False),
+    ("decimal encoded ASCII arrow",
+     "Resolved: zero commitments &#45;&#62; change segment", False),
+    ("hexadecimal encoded ASCII arrow",
+     "Resolved: zero commitments &#x2d;&#x3e; change segment", False),
+    ("literal right arrow",
+     "Resolved: zero commitments %s change segment" % _RIGHT_ARROW, False),
+    ("named right arrow", "Resolved: zero commitments &rarr; change segment", False),
+    ("decimal right arrow", "Resolved: zero commitments &#8594; change segment", False),
+    ("hexadecimal right arrow", "Resolved: zero commitments &#x2192; change segment", False),
+    ("literal markup cannot join an arrow",
+     "Resolved: zero commitments -<b></b>> change segment", False),
+    ("encoded markup cannot join an arrow",
+     "Resolved: zero commitments -&lt;b&gt;&lt;/b&gt;> change segment", False),
+    ("double-escaped brackets stay raw",
+     "Resolved: &amp;lt;what the measurement said&amp;gt; -> &amp;lt;decision&amp;gt;", True),
+    ("unflattering conclusion", "Resolved: zero commitments measured -> change segment", True),
+    ("undecided conclusion", "Resolved: one commitment measured -> undecided", True),
+)
+
+
+_COMMENT_GATE_CASES = (
+    ("literal comment arrow", "Resolved: pending <!-- finding -> decision -->", False),
+    ("encoded comment arrow", "Resolved: pending &lt;!-- finding -> decision --&gt;", False),
+    ("mixed comment arrow", "Resolved: pending <!-- finding -> decision --&gt;", False),
+    ("numeric encoded comment arrow",
+     "Resolved: pending &#X00003C;!-- finding -> decision --&#00062;", False),
+    ("literal hidden first marker", "<!-- Resolved: finding -> decision --> Resolved: pending",
+     False),
+    ("encoded hidden first marker",
+     "&lt;!-- Resolved: finding -> decision --&gt; Resolved: pending", False),
+    ("literal hidden boundary",
+     "Resolved: zero commitments <!-- Resolved: ignored --> -> change segment", True),
+    ("encoded hidden boundary",
+     "Resolved: zero commitments &lt;!-- Resolved: ignored --&gt; -> change segment", True),
+    ("mixed hidden boundary",
+     "Resolved: zero commitments &#60;!-- Resolved: ignored --> -> change segment", True),
+    ("literal tag hides a boundary",
+     "Resolved: zero commitments <span title='Resolved: ignored'> -> change segment", True),
+    ("encoded tag hides a boundary",
+     "Resolved: zero commitments &lt;span title='Resolved: ignored'&gt; -> change segment", True),
+    ("less-than digit stays text", "Resolved: <3 commitments -> change segment", True),
+    ("less-than target stays text", "Resolved: <target -> change segment", True),
+    ("encoded less-than digit stays text", "Resolved: &lt;3 commitments -> change segment", True),
+    ("encoded less-than target stays text",
+     "Resolved: &lt;target -> change segment", True),
+    ("old bold positive", "Resolved: 0 commitments -> <b>no</b>, pick a different segment", True),
+    ("encoded bold positive",
+     "Resolved: 0 commitments -> &lt;b&gt;no&lt;/b&gt;, pick a different segment", True),
+    ("entities between raw words",
+     "Resolved: zero&nbsp;commitments -> change&nbsp;segment", True),
+)
+
+
+def _check_t034_gate_cases(cases):
+    """Judge synthetic rows through both the shared helper and the actual due check."""
+    for label, text, answered in cases:
+        strategy, row = _with_1016_cells(_TEST_1016, _ACTION_1016 + " " + text)
+        verdicts, error, _ = _run_due_gate_check(strategy, _GATE_DAY)
+        verdict = _verdict(verdicts, "2026-10-16")
+        check("T-034 due check %s: %s" % (answered, label),
+              verdict == [answered] and error is None, _said(verdict, error))
+        got = gate_row_answered(row)
+        check("T-034 shared helper %s: %s" % (answered, label), got is answered,
+              "returned %r for %s" % (got, ascii(text)))
+
+
+def test_gate_rejects_encoded_templates_and_prefixed_instructions():
+    """T-034 AC 1: the emitted template and complete instructions remain unanswered."""
+    print("\n[T-034] encoded templates and prefixed instructions are not conclusions")
+    message = _emitted_message()
+    check("T-034 derives its template from the actual failure instruction",
+          message.count("'") >= 2 and " -> " in message.split("'")[1], ascii(message))
+    _check_t034_gate_cases(_rendered_template_gate_cases())
+
+
+def test_gate_first_segment_preserves_literal_marker_and_arrow_rules():
+    """T-034 AC 2/3: only the first visible segment and raw literal syntax qualify."""
+    print("\n[T-034] first-segment boundaries preserve literal syntax")
+    _check_t034_gate_cases(_FIRST_SEGMENT_GATE_CASES)
+
+
+def test_gate_encoded_markup_cannot_borrow_a_comment_arrow():
+    """T-034 AC 3: whole comments hide arrows and markers before generic fragments."""
+    print("\n[T-034] comments cannot supply arrows or hidden segment boundaries")
+    _check_t034_gate_cases(_COMMENT_GATE_CASES)
+
+
 def main():
     print("=" * 68)
     print("Parked opportunities: are any overdue for review?")
