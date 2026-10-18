@@ -770,6 +770,22 @@ def test_on_actions_the_bots_still_run(h):
           and r.after["origin"] == h.scratch.base["origin"], r.changed)
 
 
+def _repository_read_errors(before, after, with_status=False):
+    """Describe failed observations by field/status, never by their private output."""
+    labels = ("identity", "HEAD", "tracked status") if with_status else ("identity", "HEAD")
+    errors = []
+    for side, reading in (("before", before), ("after", after)):
+        if len(reading) != len(labels):
+            errors.append("%s repository observations could not be read (wrong size)" % side)
+            continue
+        for i, (code, text) in enumerate(reading):
+            # git config --get-regexp returns 1 for an observed absence of matching keys.
+            usable = code == 0 or i == 0 and code == 1 and not text
+            if not usable:
+                errors.append("%s %s could not be read (exit %s)" % (side, labels[i], code))
+    return errors
+
+
 def test_this_repository_was_not_reached(h):
     print("\n[bots] this repository is as it was before the calls")
     if not h.calls:
@@ -777,6 +793,11 @@ def test_this_repository_was_not_reached(h):
                 h.why or "the script was not run")
         return
     now = _this_repository()
+    unreadable = _repository_read_errors(h.this_repository, now)
+    check("its before and after repository observations completed", not unreadable,
+          "; ".join(unreadable))
+    if unreadable:
+        return
     check("its git identity and HEAD are what they were before the first call",
           now == h.this_repository, _what_moved(h.this_repository, now))
 
@@ -1394,6 +1415,11 @@ def test_snapshot_commit_did_not_reach_this_repository(s):
                 s.why or "the script was not run")
         return
     now = _this_repository_with_status()
+    unreadable = _repository_read_errors(s.this_repository, now, with_status=True)
+    check("its before and after repository observations completed", not unreadable,
+          "; ".join(unreadable))
+    if unreadable:
+        return
     check("its git identity, HEAD and status (tracked files) are what they were before the "
           "first call", now == s.this_repository, _what_moved_here(s.this_repository, now))
 
@@ -1444,6 +1470,123 @@ def test_snapshot_checks_say_when_they_could_not_run():
           "%d passed, failed %s, %d built, %d run" % (passed, failed, blind.built, blind.calls))
 
 
+def _capture_repository_canary(before, after, status=False, calls=1):
+    """T-037: exercise the existing canary without reading or writing a repository."""
+    import types
+    from contextlib import redirect_stdout
+    global _PASSED, _FAILS, _NOT_RUN
+    saved = (_PASSED, _FAILS, _NOT_RUN, _this_repository, _this_repository_with_status)
+    reader = "_this_repository_with_status" if status else "_this_repository"
+    printed = io.StringIO()
+    try:
+        _PASSED, _FAILS, _NOT_RUN = 0, [], []
+        globals()[reader] = lambda: after
+        subject = types.SimpleNamespace(calls=calls, why="", this_repository=before)
+        with redirect_stdout(printed):
+            if status:
+                test_snapshot_commit_did_not_reach_this_repository(subject)
+            else:
+                test_this_repository_was_not_reached(subject)
+        return _PASSED, list(_FAILS), list(_NOT_RUN), printed.getvalue()
+    finally:
+        _PASSED, _FAILS, _NOT_RUN, globals()["_this_repository"], \
+            globals()["_this_repository_with_status"] = saved
+
+
+def test_repository_canaries_refuse_failed_observations():
+    print("\n[T-037] a failed observation is not an unchanged repository")
+    secret = "PRIVATE_IDENTITY_SENTINEL"
+    good = [(0, "user.name " + secret), (0, "fixed-head")]
+    absent = [(1, ""), (0, "fixed-head")]
+    for status in (False, True):
+        valid = good + ([(0, "")] if status else [])
+        no_identity = absent + ([(0, "")] if status else [])
+        broken = [[(None, "OSError")] * len(valid),
+                  [(None, "TimeoutExpired")] * len(valid),
+                  [(128, secret)] + valid[1:],
+                  [valid[0], (128, secret)] + valid[2:],
+                  [(1, secret)] + valid[1:]]
+        if status:
+            broken += [valid[:2] + [(128, secret)], valid[:2] + [(None, "OSError")]]
+        for reading in broken:
+            for before, after in ((reading, reading), (valid, reading), (reading, valid)):
+                passed, failed, skipped, out = _capture_repository_canary(before, after, status)
+                check("unusable before/after readings fail before any equality PASS",
+                      passed == 0 and bool(failed) and not skipped
+                      and "could not be read" in out and secret not in out,
+                      "passed %s, failed %s, skipped %s" % (passed, len(failed), len(skipped)))
+        for reading in (valid, no_identity):
+            passed, failed, skipped, out = _capture_repository_canary(reading, reading, status)
+            check("valid unchanged and absent-config observations still pass",
+                  passed > 0 and not failed and not skipped and secret not in out)
+        moved = list(valid)
+        moved[1] = (0, "another-head")
+        passed, failed, skipped, out = _capture_repository_canary(valid, moved, status)
+        check("a genuinely moved HEAD still fails", bool(failed) and "HEAD moved" in out
+              and not skipped and secret not in out)
+        passed, failed, skipped, out = _capture_repository_canary(broken[0], broken[0], status, 0)
+        check("a canary whose script never ran retains NOT RUN without a pass or failure",
+              not passed and not failed and bool(skipped) and "NOT RUN HERE" in out)
+
+
+def test_failed_regeneration_preserves_generator_diagnostics():
+    print("\n[T-037] a failed generator keeps its stdout and stderr diagnostics")
+    bash, first, why = _find_bash()
+    if not bash:
+        not_run("failed-generator stdout/stderr in local regenerate mode", why)
+        return
+    generators = ("bench/scorecard.py", "bench/publish_numbers.py",
+                  "tools/owner.py", "tools/rounds.py")
+    tree = tempfile.mkdtemp(prefix="regeneration-diagnostics-")
+    try:
+        harness = os.path.join(tree, "harness.sh")
+        _write(harness, """#!/usr/bin/env bash
+git() { printf '%s\\n' "$*" >>"$PRIVATE_GIT_TRACE"; return 0; }
+python() {
+  printf '%s\\n' "$1" >>"$PRIVATE_GENERATOR_TRACE"
+  printf 'STDOUT_DIAGNOSTIC %s $(not-a-command)\\n' "$1"
+  printf 'STDERR_DIAGNOSTIC %s\\n' "$1" >&2
+  if [ "$1" = "$PRIVATE_FAIL_GENERATOR" ]; then return 7; fi
+  return 0
+}
+source "$1" regenerate
+""")
+        for index, fail in enumerate(generators + ("NONE",)):
+            folder = os.path.join(tree, str(index))
+            os.makedirs(folder)
+            env = _no_git_vars()
+            env.pop("GITHUB_ACTIONS", None)
+            env["PATH"] = os.pathsep.join(first + [env.get("PATH", "")])
+            env.update(PRIVATE_FAIL_GENERATOR=fail,
+                       PRIVATE_GENERATOR_TRACE=os.path.join(folder, "generators").replace("\\", "/"),
+                       PRIVATE_GIT_TRACE=os.path.join(folder, "git").replace("\\", "/"))
+            p = subprocess.run([bash, harness.replace("\\", "/"),
+                                os.path.join(ROOT, REGEN).replace("\\", "/")],
+                               cwd=folder, env=env, capture_output=True, encoding="utf-8",
+                               errors="replace", timeout=60)
+            called = _read_text(os.path.join(folder, "generators")).splitlines()
+            git = _read_text(os.path.join(folder, "git")).splitlines()
+            expected = list(generators[:index + 1]) if fail != "NONE" else list(generators)
+            check("only the expected generators run, in order, for %s" % fail, called == expected)
+            check("local regenerate only reads the diff", git == ["diff --binary"]
+                  if fail != "NONE" else git == ["diff --binary", "diff --binary"], str(git))
+            check("the existing caller status is preserved for %s" % fail,
+                  p.returncode == (1 if fail != "NONE" else 0), str(p.returncode))
+            for gen in expected:
+                check("stderr for %s remains visible once" % gen,
+                      p.stderr.count("STDERR_DIAGNOSTIC " + gen) == 1)
+            if fail != "NONE":
+                check("failed stdout is visible once and treated as data",
+                      p.stdout.count("STDOUT_DIAGNOSTIC " + fail + " $(not-a-command)") == 1
+                      and "not-a-command:" not in p.stderr, p.stdout)
+                check("successful generator stdout stays quiet",
+                      all("STDOUT_DIAGNOSTIC " + gen not in p.stdout for gen in expected[:-1]))
+            else:
+                check("a successful pass keeps stdout quiet", not p.stdout.strip(), p.stdout)
+    finally:
+        _remove(tree)
+
+
 def main():
     print("=" * 68)
     print("A bot's commit regenerates what it moves, and is tested")
@@ -1452,6 +1595,8 @@ def main():
     test_every_pushing_workflow_regenerates_after_its_data()
     test_the_shared_script_runs_every_generator_a_bot_can_stale()
     test_the_bots_scripts_are_checked_out_with_lf()
+    test_repository_canaries_refuse_failed_observations()
+    test_failed_regeneration_preserves_generator_diagnostics()
     started = time.time()
     h = _Harness()
     try:

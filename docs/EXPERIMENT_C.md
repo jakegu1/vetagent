@@ -157,6 +157,8 @@ first would be the flattering half of a pair.
 
 Free, no signup, MIT. `https://vetagent.dev/mcp` for MCP, or `GET /assess/<address>`.
 
+**Historical reproduction account (September 2026); use the current recipe below.**
+
 **On reproducing it.** Labels are frozen in the tracked `bench/dataset.json`, the harness
 is `bench/run_benchmark.py`, and it exits non-zero if the engine's endpoints and the
 labelling endpoints ever intersect. Until 2026-09-09 that command did not work on a fresh
@@ -188,6 +190,8 @@ are listed above because I would rather be the one who found them.
 ---
 
 ## r/ethdev
+
+Historical September 19 post, preserved as written; current recipe below.
 
 For the owner to post himself (the browser tool cannot reach Reddit). Checked twice against
 the repo on 2026-09-19. Read the subreddit's rules on AI-written and project posts first,
@@ -272,3 +276,26 @@ channel's rules on crypto and AI-written posts first.
   whose entire argument is that our numbers can be checked.
 - If anyone asks whether it is safe to depend on: it is a solo project, five upstream data sources,
   no SLA. Say so.
+
+## Current benchmark reproduction
+
+<!-- benchmark-reproduction:current:start -->
+The current harness uses the pinned logical clock 2026-09-21T02:00:00Z. Use an isolated
+working copy and a matching local cache:
+
+```bash
+python bench/run_benchmark.py --replay
+```
+
+Replay makes no network requests. A missing answer returns exit 4, lists missing URLs,
+and leaves existing result files unchanged. A complete replay can write
+bench/results.json and bench/results.md. The cache is not tracked or published with
+this repository; a fresh clone is not guaranteed to reproduce the published figures.
+
+Plain run mode can fetch missing answers and write dated cache entries. An intentional
+refresh uses `python bench/run_benchmark.py --fill missing-urls.txt` with a reviewed explicit
+HTTPS URL list; it deduplicates the list and skips usable recorded entries. Run a
+separate --replay afterwards. A pinned logical clock is not a historical measurement
+of upstream state. This current recipe supersedes the historical command instructions
+above; it does not revise the recorded posts or their measured results.
+<!-- benchmark-reproduction:current:end -->

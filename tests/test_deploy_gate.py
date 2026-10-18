@@ -116,6 +116,8 @@ _TOKENS = re.compile(r"""("(?:[^"\\]|\\.)*"|'(?:[^']|'')*'|["'\[\]{}])""")
 def _closed(value):
     """False when a value opens a quote, `[` or `{` that its own line does not close."""
     v = value.strip()
+    if v.startswith(("&", "!")):
+        return False                         # do not interpret YAML anchors or tags
     if v[:1] == '"':
         return re.match(r'"(?:[^"\\]|\\.)*"', v) is not None
     if v[:1] == "'":
@@ -961,6 +963,48 @@ def test_the_deploy_keeps_no_second_list():
     check("  and runs nothing from lead/, which is meant to be removable", not lead, str(lead))
 
 
+def test_node_properties_are_refused_at_their_origin():
+    """T-037: unsupported properties cannot hide an unclosed value or its origin."""
+    import runpy
+    parser = runpy.run_path(RUNNER, run_name="node_property_reader")
+    properties = ('&n "unfinished', '!!str "unfinished', '!local "unfinished',
+                  '&n [unfinished', '!!map {unfinished', '&n !!str "unfinished',
+                  '&n "closed"', '!!str "closed"')
+    with scratch(None) as tree:
+        for value in properties:
+            for tail in ('  hidden: # continued"', '  hidden: continued"'):
+                for nested in (False, True):
+                    origin = ("python-version: " if nested else "name: ") + value
+                    lines = ["jobs:", "  test:", "    steps:",
+                             "      - name: first", "        run: python mark.py one"]
+                    if nested:
+                        lines += ["      - uses: actions/setup-python@v5", "        with:",
+                                  "          " + origin]
+                    else:
+                        lines += ["      - " + origin]
+                    lines += [tail, "        run: python mark.py hidden"]
+                    workflow = "\n".join(lines) + "\n"
+                    code, out, done = run_workflow(tree, workflow)
+                    number = workflow.splitlines().index(
+                        ("          " if nested else "      - ") + origin) + 1
+                    check("node property %r at %s is refused at its origin" % (
+                          value, "with entry" if nested else "step key"),
+                          code != 0 and done == ["one"]
+                          and any("unrecognised" in line and "line %d " % number in line
+                                  and origin in line for line in out.splitlines()),
+                          "exit %s, ran %s: %s" % (code, done, _tail(out)))
+                    check("the independent reader also names that origin",
+                          origin in refusals(workflow), str(refusals(workflow)))
+    for value in ('"literal &anchor"', "'literal !tag'", "ordinary & text", "ordinary ! text"):
+        check("literal punctuation remains accepted: %s" % value,
+              parser["_closed"](value) and _closed(value))
+    workflow = read(TEST_YML)
+    actual, unknown = parser["steps_from_workflow"](workflow)
+    check("the real workflow keeps every independent-reader command and no refusal",
+          [c for _, c in actual] == commands(workflow, "test")
+          and not unknown and not refusals(workflow))
+
+
 def main():
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -974,6 +1018,7 @@ def main():
     test_the_runner_fails_closed()
     test_the_deploy_is_gated()
     test_the_deploy_keeps_no_second_list()
+    test_node_properties_are_refused_at_their_origin()
     print("\n" + "=" * 68)
     print("%d passed, %d failed" % (_PASSED, len(_FAILS)))
     if _FAILS:
