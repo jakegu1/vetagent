@@ -47,6 +47,7 @@ import argparse
 import collections
 import datetime
 import json
+import math
 import os
 import subprocess
 import sys
@@ -68,8 +69,18 @@ BANDS = ((50, "critical"), (20, "warn"), (0, "ok"))
 ESTABLISHED_AT = 5
 
 
+def _nonnegative_number(value):
+    """A measured numeric field, excluding booleans, malformed values and infinities."""
+    if type(value) is int:
+        return value if value >= 0 else None
+    if type(value) is float and math.isfinite(value) and value >= 0:
+        return value
+    return None
+
+
 def band(x):
-    """Which engine band a score falls in, or None if there was no score to read."""
+    """Which engine band a score falls in, or None if no usable score was read."""
+    x = _nonnegative_number(x)
     if x is None:
         return None
     for floor, name in BANDS:
@@ -105,10 +116,15 @@ MAJORS = [
 
 def curl(url):
     """(http_status, parsed_body_or_None). Status is kept apart from the body on purpose."""
-    r = subprocess.run(["curl", "-s", "-m", "30", "-A", UA, "-w", "\n%{http_code}", url],
-                       capture_output=True, encoding="utf-8", errors="replace")
+    try:
+        r = subprocess.run(["curl", "-s", "-m", "30", "-A", UA, "-w", "\n%{http_code}", url],
+                           capture_output=True, encoding="utf-8", errors="replace")
+    except (OSError, subprocess.SubprocessError):
+        return "0", None
     text = r.stdout or ""
     code = text.rpartition("\n")[2].strip() or "0"
+    if r.returncode:
+        return code, None
     try:
         return code, json.loads(text.rpartition("\n")[0] or "null")
     except json.JSONDecodeError:
@@ -141,13 +157,14 @@ def age_minutes(detected_at, now=None):
     not observe, and W52's sample rule is defined on the measured field, so an unreadable
     one keeps the mint out of the fresh cohort rather than into it.
     """
-    if not detected_at:
+    if not isinstance(detected_at, str) or "T" not in detected_at:
         return None
     try:
-        t = datetime.datetime.strptime(str(detected_at)[:19], "%Y-%m-%dT%H:%M:%S")
+        t = datetime.datetime.fromisoformat(detected_at.replace("Z", "+00:00"))
     except ValueError:
         return None
-    t = t.replace(tzinfo=datetime.timezone.utc)
+    if t.tzinfo is None:
+        t = t.replace(tzinfo=datetime.timezone.utc)
     now = now or datetime.datetime.now(datetime.timezone.utc)
     return (now - t).total_seconds() / 60.0
 
@@ -181,7 +198,7 @@ def recruit_fresh(want, max_age_min, pages=8, gap=2.0):
             name = ((row.get("attributes") or {}).get("name") or "")[:28]
             rec = observe(name or mint[:8], mint, "scores")
             age = age_minutes(rec.get("detectedAt"))
-            if rec.get("body") == "ok" and age is not None and age <= max_age_min:
+            if rec.get("body") == "ok" and age is not None and 0 <= age <= max_age_min:
                 kept.append((name or mint[:8], mint))
             time.sleep(gap)
             if len(kept) >= want:
@@ -195,6 +212,9 @@ def recruit_fresh(want, max_age_min, pages=8, gap=2.0):
 def observe(label, mint, mode):
     code, d = curl(REPORT_URL % mint)
     rec = {"mint": mint, "label": label, "http": code, "ts": time.time()}
+    if str(code) != "200":
+        rec["body"] = "unavailable"
+        return rec
     if not isinstance(d, dict) or not d:
         rec["body"] = "empty"
         return rec
@@ -202,14 +222,18 @@ def observe(label, mint, mode):
     rec.update({
         "body": "ok",
         "totalHolders": d.get("totalHolders"),
-        "topHolders_n": len(th) if isinstance(th, list) else -1,
+        "topHolders_n": len(th) if isinstance(th, list) else -1 if th is None else None,
         "score_normalised": d.get("score_normalised"),
         "verification": bool(d.get("verification")),
         "detectedAt": d.get("detectedAt"),
     })
+    if not _has_report_fields(rec):
+        rec["body"] = "invalid"
+        return rec
     if mode == "scores":
+        risks = d.get("risks")
         rec["risks"] = [{"name": x.get("name"), "level": x.get("level")}
-                        for x in (d.get("risks") or []) if isinstance(x, dict)]
+                        for x in (risks if isinstance(risks, list) else []) if isinstance(x, dict)]
         # The four powers `risk.established` gates, recorded because that flag's third
         # clause reads the same moving number this mode measures. Without them the probe
         # can report that a score moved and not whether the move reached anything: a mint
@@ -224,6 +248,36 @@ def observe(label, mint, mode):
             "freeze_or_mint": bool(d.get("freezeAuthority") or d.get("mintAuthority")),
         }
     return rec
+
+
+def _has_report_fields(rec):
+    """At least one measured field, rather than the defaults an error body would emit.
+
+    In particular, -1 alone cannot authenticate a report: the old emitter wrote it for
+    every nonempty error object too. A real score, count or index time can establish a
+    report even when the optional holder list is absent.
+    """
+    holders = rec.get("topHolders_n")
+    return (type(holders) is int and holders >= 0
+            or _nonnegative_number(rec.get("totalHolders")) is not None
+            or band(rec.get("score_normalised")) is not None
+            or age_minutes(rec.get("detectedAt")) is not None)
+
+
+def _usable_observation(rec):
+    """Revalidate historical envelopes; an old body=ok label cannot grant observation."""
+    return (isinstance(rec, dict) and str(rec.get("http")) == "200"
+            and rec.get("body") == "ok" and _has_report_fields(rec)
+            and isinstance(rec.get("mint"), str) and bool(rec["mint"])
+            and isinstance(rec.get("label"), str)
+            and type(rec.get("sweep")) is int and rec["sweep"] > 0
+            and _nonnegative_number(rec.get("ts")) is not None)
+
+
+def _holder_state(rec):
+    """Presence/absence for a readable holder field, or None for malformed evidence."""
+    count = rec.get("topHolders_n")
+    return count > 0 if type(count) is int and count >= -1 else None
 
 
 def run_probe(args):
@@ -302,15 +356,17 @@ def _score_verdict(by):
     in the light of what comes out below.
     """
     print("\n--- W52 pre-registered rule ------------------------------------------------")
-    fresh, old, ageless = [], [], []
+    fresh, old, ageless, future = [], [], [], []
     for m, g in by.items():
         g = sorted(g, key=lambda r: r["sweep"])
         age = age_minutes(g[0].get("detectedAt"),
                           datetime.datetime.fromtimestamp(g[0]["ts"], datetime.timezone.utc))
-        (fresh if (age is not None and age <= 10.0)
-         else ageless if age is None else old).append(m)
+        (ageless if age is None else future if age < 0
+         else fresh if age <= 10.0 else old).append(m)
     print("cohort: %d mints caught within 10 min of detectedAt, %d older, %d with no "
           "detectedAt to read" % (len(fresh), len(old), len(ageless)))
+    if future:
+        print("  excluded %d mints with future detectedAt" % len(future))
     if len(fresh) < 40:
         print("  NOTE: the rule is defined on >=40 such mints; this run has %d, so a "
               "non-firing result below is under-powered, not a negative." % len(fresh))
@@ -340,7 +396,7 @@ def _score_verdict(by):
     for m in fresh:
         g = sorted(by[m], key=lambda r: r["sweep"])
         under = [r for r in g
-                 if r.get("score_normalised") is not None
+                 if band(r.get("score_normalised")) is not None
                  and r["score_normalised"] <= ESTABLISHED_AT]
         if not under:
             continue
@@ -349,8 +405,8 @@ def _score_verdict(by):
                          if (r.get("gated") or {}).get(k)})
         if powers:
             under_and_gated.append((m, g, powers))
-        side = [None if r.get("score_normalised") is None
-                else r["score_normalised"] <= ESTABLISHED_AT for r in g]
+        values = [_nonnegative_number(r.get("score_normalised")) for r in g]
+        side = [None if value is None else value <= ESTABLISHED_AT for value in values]
         if len({s for s in side if s is not None}) > 1:
             flipped.append((m, g))
     print("fresh mints that read <=%d in at least one sweep: %d of %d"
@@ -370,39 +426,48 @@ def _score_verdict(by):
 
 def report(path):
     rows = []
-    for line in open(path, encoding="utf-8"):
-        if line.strip():
-            rows.append(json.loads(line))
-    ok = [r for r in rows if r.get("body") == "ok"]
+    with open(path, encoding="utf-8") as source:
+        for line in source:
+            if line.strip():
+                try:
+                    rows.append(json.loads(line))
+                except json.JSONDecodeError:
+                    rows.append({"body": "malformed"})
+    ok = [r for r in rows if _usable_observation(r)]
     first = [r for r in ok if not r.get("immediate_retry")]
+    bad = [r for r in rows if not isinstance(r, dict) or str(r.get("http")) != "200"]
+    unavailable = len(rows) - len(ok)
     if not first:
+        print("%d of %d requests non-200; %d of %d requests unavailable"
+              % (len(bad), len(rows), unavailable, len(rows)))
         print("no usable rows in %s" % path)
         return 1
     span = (max(r["ts"] for r in first) - min(r["ts"] for r in first)) / 60.0
     mints = {r["mint"] for r in first}
     sweeps = sorted({r["sweep"] for r in first})
-    bad = [r for r in rows if str(r.get("http")) != "200"]
-    print("%d mints x %d sweeps = %d observations over %.0f min; %d of %d requests non-200"
-          % (len(mints), len(sweeps), len(first), span, len(bad), len(rows)))
+    print("%d mints x %d sweeps = %d observations over %.0f min; %d of %d requests non-200; "
+          "%d of %d requests unavailable"
+          % (len(mints), len(sweeps), len(first), span, len(bad), len(rows), unavailable, len(rows)))
 
     for s in sweeps:
-        g = [r for r in first if r["sweep"] == s]
+        g = [r for r in first if r["sweep"] == s and _holder_state(r) is not None]
         print("  sweep %-3d %2d of %2d carry a holder list"
-              % (s, sum(1 for r in g if r.get("topHolders_n", 0) > 0), len(g)))
+              % (s, sum(1 for r in g if _holder_state(r)), len(g)))
 
     by = collections.defaultdict(list)
     for r in first:
         by[r["mint"]].append(r)
     flips = [m for m, g in by.items()
-             if len({r.get("topHolders_n", 0) > 0 for r in g}) > 1]
+             if len({_holder_state(r) for r in g if _holder_state(r) is not None}) > 1]
     print("mints whose holder coverage changed: %d" % len(flips))
     for m in flips:
         g = sorted(by[m], key=lambda r: r["sweep"])
         print("   %-44s %s" % (g[0]["label"][:44],
-                               [(r["sweep"], r.get("topHolders_n", 0) > 0) for r in g]))
+                               [(r["sweep"], _holder_state(r)) for r in g]))
 
     moved = [m for m, g in by.items()
-             if len({r.get("score_normalised") for r in g}) > 1]
+             if len({_nonnegative_number(r.get("score_normalised")) for r in g
+                     if band(r.get("score_normalised")) is not None}) > 1]
     print("mints whose score_normalised moved: %d" % len(moved))
     for m in moved:
         g = sorted(by[m], key=lambda r: r["sweep"])
@@ -411,12 +476,26 @@ def report(path):
 
     _score_verdict(by)
 
-    agree = sum(1 for r in ok if r.get("immediate_retry")
-                and any((x.get("topHolders_n", 0) > 0) == (r.get("topHolders_n", 0) > 0)
-                        for x in first
-                        if x["mint"] == r["mint"] and x["sweep"] == r["sweep"]))
-    total = sum(1 for r in ok if r.get("immediate_retry"))
+    # The writer appends, and each invocation starts again at sweep 1. Associate a retry
+    # with its preceding primary envelope before filtering failed observations: an old
+    # usable row with the same mint/sweep cannot stand in for this request's failed one.
+    pairs, primary = [], None
+    for r in rows:
+        if not isinstance(r, dict):
+            primary = None
+        elif not r.get("immediate_retry"):
+            primary = r
+        elif _usable_observation(r) and _holder_state(r) is not None:
+            matching = (_usable_observation(primary) and _holder_state(primary) is not None
+                        and primary["mint"] == r["mint"] and primary["sweep"] == r["sweep"])
+            pairs.append((r, primary if matching else None))
+    agree = sum(1 for r, primary in pairs if primary is not None
+                and _holder_state(primary) == _holder_state(r))
+    total = sum(1 for _, primary in pairs if primary is not None)
     print("immediate retries agreeing with their own sweep: %d of %d" % (agree, total))
+    unmatched = sum(1 for _, primary in pairs if primary is None)
+    if unmatched:
+        print("immediate retries without a usable matching primary: %d" % unmatched)
     return 0
 
 

@@ -581,6 +581,279 @@ def test_the_parameters_that_decide_the_answer_are_pinned():
           "%s vs %s" % (usage.ATTRIBUTION_FIXED, usage.GATE_FROZEN))
 
 
+def test_operational_evidence_refuses_unobserved_queries_and_private_output():
+    """Operational observations never turn a refused/private reply into successful zero."""
+    import importlib.util
+    import json
+    from pathlib import Path
+
+    path = Path(ROOT) / "bench" / "operational_evidence.py"
+    check("the bounded operational analyzer exists", path.is_file())
+    if not path.is_file():
+        return
+    spec = importlib.util.spec_from_file_location("operational_evidence_acceptance_a", path)
+    op = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(op)
+    start, end = "2026-10-18T10:00:00Z", "2026-10-18T11:00:00Z"
+
+    def row(**changes):
+        value = dict(tool="find_new_hot_pools", verdict="ok", cohort="self",
+                     minute="2026-10-18 10:01:00", weighted_count="6",
+                     sampled_rows="2", max_sample_interval="3")
+        value.update(changes)
+        return value
+
+    def parse(reply):
+        return op.aggregate_reply(reply, tool="find_new_hot_pools", cohort="self",
+                                  start=start, end=end)
+
+    def reply(rows):
+        return {"http_status": 200, "body": {"data": rows}}
+
+    valid = parse(reply([row()]))
+    check("sample weights and stored rows remain distinct",
+          valid["state"] == "observed" and valid["weighted_count"] == 6
+          and valid["sampled_rows"] == 2 and valid["sampled"] is True)
+    check("weighted counts are not exact users", "not exact users" in valid["count_label"])
+    empty = parse(reply([]))
+    check("a valid empty query is explicit", empty["state"] == "empty"
+          and empty["weighted_count"] == 0 and empty["rows"] == [])
+    for status, state in ((401, "http_error"), (403, "http_error"), (500, "http_error"),
+                          (302, "redirect"), (0, "transport_error")):
+        result = parse({"http_status": status, "body": {"data": [], "error": "PRIVATE-CALLER-SENTINEL"}})
+        check("HTTP %d cannot masquerade as empty" % status,
+              result["state"] == state and result["weighted_count"] is None)
+        check("raw API errors never enter a report", "PRIVATE-CALLER-SENTINEL" not in json.dumps(result))
+    for bad in (None, [], {"http_status": True}, {"http_status": 200, "body": {}},
+                {"http_status": 200, "body": {"data": None}},
+                {"http_status": 200, "body": {"success": False, "data": []}},
+                {"http_status": 200, "body": {"data": [], "rows": 1}}):
+        result = parse(bad)
+        check("malformed or failed payload is unobserved", result["state"] == "malformed"
+              and result["weighted_count"] is None)
+    changes = [dict(weighted_count=True), dict(weighted_count="NaN"), dict(weighted_count=-1),
+               dict(weighted_count=1.5), dict(sampled_rows=0), dict(sampled_rows=9),
+               dict(max_sample_interval=0), dict(max_sample_interval=float("inf")),
+               dict(weighted_count=7), dict(tool="get_token_liquidity"),
+               dict(cohort="customer-secret"), dict(verdict="PRIVATE-CALLER-SENTINEL"),
+               dict(client="PRIVATE-CALLER-SENTINEL"), dict(country="XX"),
+               dict(minute="2026-10-18 12:00:00"), dict(minute="2026-10-18 10:01:01")]
+    for change in changes:
+        result = parse(reply([row(**change)]))
+        check("untrusted aggregate fields are refused", result["state"] == "malformed"
+              and "PRIVATE-CALLER-SENTINEL" not in json.dumps(result))
+    duplicate = parse(reply([row(), row()]))
+    check("duplicate aggregate cells are refused", duplicate["state"] == "malformed")
+    check("there is a finite aggregate cap", 1 <= op.ROW_CAP <= 1000)
+    capped = parse(reply([row()] * (op.ROW_CAP + 1)))
+    check("truncated replies are distinct from empty and errors", capped["state"] == "truncated"
+          and capped["weighted_count"] is None and capped["rows"] == [])
+    check("credential redirects are never followed",
+          op.NoRedirect().redirect_request(None, None, 302, "redirect", {}, "https://example.invalid") is None)
+    called = []
+
+    class NeverOpen:
+        def open(self, *args, **kwargs):
+            called.append(True)
+            raise AssertionError("network boundary should refuse this URL")
+
+    result = op.request_json("http://api.cloudflare.com/unsafe", opener=NeverOpen())
+    check("unsafe endpoints are refused before opening", not called and result["http_status"] == 0)
+    result = op.request_json("https://example.invalid/unsafe", opener=NeverOpen())
+    check("an unrelated host cannot receive credentials", not called and result["http_status"] == 0)
+
+
+def test_operational_evidence_binds_tool_status_and_actual_deployment_windows():
+    """Discovery status belongs to that tool; windows belong to actual successful uploads."""
+    import importlib.util
+    import json
+    from pathlib import Path
+
+    path = Path(ROOT) / "bench" / "operational_evidence.py"
+    check("the deployment observation interface exists", path.is_file())
+    if not path.is_file():
+        return
+    spec = importlib.util.spec_from_file_location("operational_evidence_acceptance_b", path)
+    op = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(op)
+
+    def pack(body, status=200):
+        return {"http_status": status, "body": body}
+
+    def jobs(at, *, conclusion="success", step_conclusion="success", named=True):
+        return pack({"jobs": [{"conclusion": conclusion, "steps": [
+            {"name": "Deploy to Cloudflare" if named else "Smoke test production",
+             "conclusion": step_conclusion, "completed_at": at},
+            {"name": "Smoke test production", "conclusion": "success",
+             "completed_at": "2026-10-18T10:08:59Z"}]}]})
+
+    class Source:
+        def __init__(self):
+            self.requests = []
+            self.replies = {
+                39055170209: jobs("2026-10-18T09:50:00Z"),
+                101: jobs("2026-10-18T10:00:00Z"),
+                102: jobs("2026-10-18T10:03:00Z"),
+                103: jobs("2026-10-18T10:07:00Z", conclusion="failure"),
+            }
+
+        def inventory(self):
+            return pack({"total_count": 100, "workflow_runs": [
+                {"id": n, "head_sha": c * 40, "created_at": "2026-10-18T00:00:00Z",
+                 "updated_at": "2026-10-18T10:08:59Z"}
+                for n, c in ((103, "c"), (101, "a"), (102, "b"))]})
+
+        def jobs(self, run_id):
+            return self.replies[run_id]
+
+        def aggregate(self, tool, cohort, start, end):
+            self.requests.append((tool, cohort, start, end))
+            if cohort == "other":
+                return pack({"data": []})
+            return pack({"data": [{"tool": tool, "cohort": cohort,
+                "verdict": "partial" if tool == "find_new_hot_pools" else "unknown",
+                "minute": start[:16].replace("T", " ") + ":00",
+                "weighted_count": 2, "sampled_rows": 2, "max_sample_interval": 1}]})
+
+    source = Source()
+    report = op.observe(source, captured_at="2026-10-18T10:09:00Z")
+    check("the release anchor uses upload completion", report["discovery"]["anchor"] == "2026-10-18T09:50:00Z")
+    check("discovery status is directly attributed", report["discovery"]["status_observed"] is True
+          and report["discovery"]["cohorts"]["self"]["rows"][0]["verdict"] == "partial"
+          and report["discovery"]["cohorts"]["other"]["state"] == "empty")
+    check("known self and other queries are separate", {q[1] for q in source.requests} == {"self", "other"})
+    check("other is never asserted to be an external user", "attribution unknown" in report["cohort_labels"]["other"])
+    deployed = {d["run_id"]: d for d in report["deployments"]}
+    check("an upload before a later job failure still bounds time", set(deployed) == {101, 102, 103})
+    first = deployed[101]["windows"][0]
+    check("the next actual upload censors the first five minutes",
+          first["start"] == "2026-10-18T10:00:00Z" and first["end"] == "2026-10-18T10:03:00Z"
+          and first["censored"] is True and first["censor_reason"] == "next_upload")
+    check("a wholly censored steady window is not queried",
+          deployed[101]["windows"][1]["state"] == "unobserved"
+          and deployed[101]["windows"][1]["cohorts"] == {})
+    last = deployed[103]["windows"][0]
+    check("capture time censors an incomplete latest window",
+          last["end"] == "2026-10-18T10:09:00Z" and last["censor_reason"] == "capture_clock")
+    check("inventory truncation and unobserved transitions are disclosed", report["inventory"]["limited"] is True
+          and report["inventory"]["potential_unobserved_transitions"] is True)
+    check("empty/sparse observations never imply no cold-start effect",
+          report["interpretation"] == "descriptive; no causal or no-effect verdict"
+          and all(w["inference"] == "inconclusive" for d in deployed.values() for w in d["windows"]))
+    check("the output never calculates a caller gate", "gate_verdict" not in json.dumps(report)
+          and "external_users" not in json.dumps(report))
+    for tool, cohort, start, end in source.requests:
+        check("all requested intervals are positive and bounded", start < end <= "2026-10-18T10:09:00Z")
+        sql = op.query_sql(tool, cohort, start, end)
+        check("SQL binds the actual tool and supported minute bucket", "toStartOfInterval(timestamp, INTERVAL '1' MINUTE)" in sql
+              and "blob2 = '%s'" % tool in sql and "SUM(_sample_interval)" in sql)
+        check("self prefix filtering has the correct direction",
+              ("blob4 LIKE 'vetagent-%'" in sql) if cohort == "self" else ("blob4 NOT LIKE 'vetagent-%'" in sql))
+        check("SQL returns no caller/country dimension", " AS client" not in sql and "blob5" not in sql)
+    for failure in (jobs("2026-10-18T09:50:00Z", step_conclusion="failure"),
+                    jobs("2026-10-18T09:50:00Z", named=False), pack({}, 403)):
+        bad = Source()
+        bad.replies[39055170209] = failure
+        result = op.observe(bad, captured_at="2026-10-18T10:09:00Z")
+        check("failed/missing upload keeps discovery unobserved", result["discovery"]["status_observed"] is None
+              and result["available"] is False
+              and not any(q[0] == "find_new_hot_pools" for q in bad.requests))
+    mixed = Source()
+    mixed.aggregate = lambda *a: pack({"data": [{"tool": "get_token_liquidity", "cohort": "self",
+        "verdict": "ok", "minute": "2026-10-18 10:00:00", "weighted_count": 2,
+        "sampled_rows": 2, "max_sample_interval": 1}]})
+    result = op.observe(mixed, captured_at="2026-10-18T10:09:00Z")
+    check("another tool's ok can never prove discovery", result["discovery"]["status_observed"] is None
+          and result["available"] is False)
+    check("the cap and query budget remain finite", len(report["deployments"]) <= 10
+          and report["limits"]["queries"] <= 42 and report["limits"]["inventory"] <= 100)
+    for kwargs in (dict(days=91), dict(days=True), dict(deploy_limit=11), dict(deploy_limit=0),
+                   dict(captured_at="not-a-time")):
+        try:
+            op.observe(Source(), **({"captured_at": "2026-10-18T10:09:00Z"} | kwargs))
+        except ValueError:
+            refused = True
+        else:
+            refused = False
+        check("invalid observation limits refuse before collection", refused)
+
+
+def test_operational_evidence_cli_and_opt_in_workflow_contract():
+    """The real CLI is offline by default; the old scheduled gate job stays exact."""
+    import hashlib
+    import importlib.util
+    import json
+    import subprocess
+    import tempfile
+    from pathlib import Path
+
+    path = Path(ROOT) / "bench" / "operational_evidence.py"
+    check("the operational CLI exists", path.is_file())
+    if not path.is_file():
+        return
+    spec = importlib.util.spec_from_file_location("operational_evidence_acceptance_c", path)
+    op = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(op)
+    fixture = {"captured_at": "2026-10-18T10:09:00Z",
+        "inventory": {"http_status": 200, "body": {"workflow_runs": [], "total_count": 0}},
+        "jobs": {"39055170209": {"http_status": 200, "body": {"jobs": [{"steps": [
+            {"name": "Deploy to Cloudflare", "conclusion": "success", "completed_at": "2026-10-18T09:50:00Z"}]}]}}},
+        "aggregates": [{"tool": "find_new_hot_pools", "cohort": c,
+            "start": "2026-10-18T09:50:00Z", "end": "2026-10-18T10:09:00Z",
+            "reply": {"http_status": 200, "body": {"data": []}}} for c in ("self", "other")]}
+    with tempfile.TemporaryDirectory() as directory:
+        base = Path(directory)
+        src, out = base / "fixture.json", base / "report.json"
+        src.write_text(json.dumps(fixture), encoding="utf-8")
+        env = dict(os.environ, PYTHONIOENCODING="utf-8", CLOUDFLARE_API_TOKEN="TOKEN-SENTINEL",
+                   CLOUDFLARE_ACCOUNT_ID="ACCOUNT-SENTINEL", GITHUB_TOKEN="GH-SENTINEL",
+                   HTTP_PROXY="http://127.0.0.1:1", HTTPS_PROXY="http://127.0.0.1:1")
+        def run(args):
+            return subprocess.run([sys.executable, str(path), *args, "--output", str(out)],
+                                  capture_output=True, encoding="utf-8", env=env, timeout=20)
+        success = run(["--offline", str(src)])
+        check("the real offline CLI exits successfully", success.returncode == 0, success.stdout + success.stderr)
+        first = out.read_bytes()
+        again = run(["--offline", str(src)])
+        check("offline evaluation is byte deterministic", again.returncode == 0 and out.read_bytes() == first)
+        result = json.loads(first)
+        check("valid empty discovery stays explicit", result["discovery"]["status_observed"] is False
+              and result["discovery"]["cohorts"]["self"]["state"] == "empty")
+        default = run([])
+        check("default invocation refuses accidental live access", default.returncode != 0
+              and json.loads(out.read_text(encoding="utf-8"))["available"] is False)
+        src.write_text('{"private":"PRIVATE-CALLER-SENTINEL"}', encoding="utf-8")
+        failed = run(["--offline", str(src)])
+        check("failed observations preserve JSON and fail the process", failed.returncode != 0
+              and json.loads(out.read_text(encoding="utf-8"))["available"] is False)
+        check("CLI diagnostics expose no raw input or secrets", all(s not in out.read_text(encoding="utf-8")
+              + failed.stdout + failed.stderr + default.stdout + default.stderr
+              for s in ("PRIVATE-CALLER-SENTINEL", "TOKEN-SENTINEL", "ACCOUNT-SENTINEL", "GH-SENTINEL")))
+    wf = (Path(ROOT) / ".github" / "workflows" / "usage.yml").read_text(encoding="utf-8")
+    start = wf.index("\n  usage:")
+    end = wf.index("\n  operations-evidence:")
+    old = wf[start:end]
+    check("the complete original usage job is frozen", hashlib.sha256(old.encode()).hexdigest()
+          == "8c8723abc3d7f5f93de3fd8d9f8a583f5ba8db199e4c9bde52603681573056ab")
+    optional = wf[end:]
+    check("manual boolean opt-in defaults false", "operations_evidence:" in wf
+          and "type: boolean" in wf and "default: false" in wf)
+    check("optional job never runs on a schedule", "github.event_name == 'workflow_dispatch'" in optional
+          and "inputs.operations_evidence == true" in optional)
+    check("optional job uses a standard bounded read-only runner", "runs-on: ubuntu-24.04" in optional
+          and "timeout-minutes:" in optional and "contents: read" in optional and "actions: read" in optional
+          and ": write" not in optional)
+    check("the optional command requires explicit live intent", "python bench/operational_evidence.py --live" in optional
+          and "secrets.CLOUDFLARE_API_TOKEN" in optional and "secrets.CLOUDFLARE_ACCOUNT_ID" in optional
+          and "github.token" in optional)
+    check("failure still retains only bounded aggregate JSON", "if: always()" in optional
+          and "path: operational-evidence.json" in optional and "retention-days: 7" in optional)
+    check("workflow keeps pinned existing actions", all(pin in optional for pin in (
+          "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+          "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9")))
+
+
 def main():
     print("=" * 68)
     print("Usage gate: does the counting rule count the right thing?")
