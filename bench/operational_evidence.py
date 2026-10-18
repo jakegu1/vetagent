@@ -148,8 +148,7 @@ def query_sql(tool, cohort, start, end):
     verdicts = ", ".join("'%s'" % value for value in TOOLS[tool])
     return (
         "SELECT blob2 AS tool, blob3 AS verdict, '%s' AS cohort, "
-        "formatDateTime(toStartOfInterval(timestamp, INTERVAL '1' MINUTE), "
-        "'%%Y-%%m-%%d %%H:%%M:%%S') AS minute, "
+        "toStartOfInterval(timestamp, INTERVAL '1' MINUTE) AS minute, "
         "SUM(_sample_interval) AS weighted_count, COUNT() AS sampled_rows, "
         "MAX(_sample_interval) AS max_sample_interval FROM %s "
         "WHERE timestamp >= toDateTime('%s') AND timestamp < toDateTime('%s') "
