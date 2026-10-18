@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   observe:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       # Full history: tools/owner.py and tools/rounds.py read git log, and the pages they

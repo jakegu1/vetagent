@@ -18,7 +18,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       # fetch-depth: 0, because tools/rounds.py reads the whole history and
       # score_at() does `git show <commit>:docs/SCORECARD.md`. The default depth
@@ -258,7 +258,7 @@ jobs:
   build:
     if: github.event_name != 'workflow_run'
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: read
@@ -342,7 +342,7 @@ jobs:
     # Real upstream requests. Not on a bot's workflow_run: those come five times a day and
     # can move nothing this job checks.
     if: github.event_name != 'workflow_run'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -359,7 +359,7 @@ jobs:
   # apart; `docs/BACKLOG.md` carries the work.
   backfill-roundtrip:
     if: github.event_name != 'workflow_run'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     continue-on-error: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -382,7 +382,7 @@ jobs:
   # the work the job was not.
   benchmark:
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
