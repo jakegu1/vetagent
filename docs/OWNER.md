@@ -122,7 +122,7 @@ flowchart LR
     W10 -->|answers| GATE
 ```
 
-Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **14 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
+Rounded = parked by you. Hexagons are not work items -- they are what a row is waiting on from outside this backlog. **12 other open items have no chain and are not drawn**, which is the honest reason the picture is small: most of the backlog is not blocked, it is just not done.
 
 ## Where it stands today
 
@@ -149,16 +149,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- Lead: close autonomous engineering release after production verification
-- Lead: record verified T-039 source and partial backfill evidence
-- T-039: regenerate measured risk test count after stale-page red
-- T-039: name withheld provisional score coverage truthfully
-- T-039: acceptance tests
-- Lead: close verified T-038 source and dispatch T-039 wording
-- T-038: named change (a,b) retain observed disproof across gaps
-- T-038: named change (c) acceptance regressions
+- lead: close verified transport and smoke observations and record simulator approval
+- T-042: keep incomplete source envelopes unobserved and uncached
+- T-042: acceptance tests for unobserved source envelopes
+- lead: record approved first source batch and the held simulator round
+- lead: require unobserved source replies to stay out of simulator exclusions and caches
+- lead: require unobserved source replies to stay out of simulator exclusions and caches
+- T-040: bind retries to their own primary after append-restart red
+- T-040: named change (b) append restart acceptance test
 
-_190 more not shown (198 commits in total)._
+_218 more not shown (226 commits in total)._
 
 ## What I got wrong
 
