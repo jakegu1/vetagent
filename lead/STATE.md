@@ -50,20 +50,20 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 ## In flight
 
-T-040 round one has an independent pass but a material adversarial append/restart
-pairing finding. The lead reproduced the actual producer output and named one additive
-red-first regression in spec amendment (b). Publication is held. Next: executor fix,
-one fresh combined round-two review, serial integration and actual CI.
+T-040 round two is approved at 153a936: fresh combined PASS twelve of twelve and
+RED-TEAM: none. The own-primary append/restart regression and original tests are frozen.
+T-041 is approved at ab02f298 by fresh independent and adversarial reviews. Both sources
+and the latest bot archive are integrated by a3578b6. Next: derived generation, complete
+combined checks, actual Linux preflight and the explicit aggregate readout.
 
-T-041 implementation is frozen at ab02f298 with a complete clean local inventory.
-Its independent review is running; an adversarial review is still required. Next:
-serial integration, actual Linux checks and one opt-in readout. The existing unchanged
-usage run succeeds but cannot assign a mixed caller's verdict to a particular tool.
+The existing unchanged usage run succeeds but cannot assign a mixed caller's verdict
+to a particular tool. T-041 supplies the bounded observation, not an adoption verdict.
 
-T-042 implementation at efaacfd passes every component, but its first full inventory
-rejects percentage literals in the new lead spec. A representation-only correction
-retains the adopted ratios and the failed receipt; a clean full rerun is queued. Next:
-fresh reviews and actual Linux checks, then at most six current control
+T-042 first-round complete checks pass after the representation-only spec correction,
+but both fresh reviews find missing source classifications counted as exclusions and
+cached. The lead reproduces this and null-RPC caching, names one additive red-first
+test in amendment (c), and holds that source. Next: executor repair, one fresh combined
+round-two review, actual Linux checks, then at most six current control
 eligibility refreshes. No simulator/score integration or V3 work is authorized by it.
 
 The Owner renews authorization to prioritize the 21 remaining rows, batch related
@@ -71,8 +71,8 @@ autonomous repairs, delegate bounded isolated work, and merge/push/deploy after 
 checks. Owner decisions and genuinely unavailable/calendar evidence are reported
 together. No permission, source-rights, spending, scoring-band or product-gate waiver.
 
-Latest scheduled snapshot commits through 1b18025 are retained by normal merge
-268f852. The actual clean baseline passes all 41 configured steps in 170.7 seconds.
+Latest scheduled snapshot commits through 1c50bc1 are retained by normal source merge
+a3578b6. The original clean baseline passes all 41 configured steps in 170.7 seconds.
 The existing usage workflow completes at actual run 39147089385. Its client profiles
 cannot bind mixed-tool verdicts to discovery, so this does not close W28. The exact
 original next-ten W48 cohort is independently read back: every actual smoke executes
