@@ -624,3 +624,32 @@ failure. Freeze the corrected source and request its own exclusive complete gate
 only that final head can receive bounded privacy/retirement delta closure and a
 fresh complete independent gate. No old full log is relabeled, and no LIVE use
 or scientific study begins from these corrections.
+
+## Named uncertain-retirement owned-handle regression
+
+2026-10-19 (f2): a pre-freeze actual Windows child at held 2bda3e4 encounters
+an inaccessible matching-identity lookup. Retirement correctly stays uncertain,
+but the new cleanup unconditionally closes the Popen-owned process handle while
+Popen.returncode remains unset. Its later destructor polls that closed handle
+and emits an unraisable OSError. The child is separately verified dead. Preserve
+this concrete regression and the held source; no complete gate was granted.
+
+Permit one self-contained append-only block at the end of
+test_w40_native_caps_pacing_deadline_and_cancellation, after named f. Keep all
+old/f/d2 assertions and helpers exact. With an actual contained local child and
+injected inaccessible identity lookup, retain cleanup_uncertain and exercise
+normal object finalization. No closed-handle query, unraisable exception or new
+request may result. Keep a cached-exit positive control and an unresolved-exit
+case under the same original interval; platform-specific HANDLE assertions apply
+only where that actual platform owns such a handle. All original f controls
+remain meaningful and unchanged.
+
+Commit the appended regression alone with an actual held-head red, followed by
+one separate native source repair. An uncertain identity must remain uncertain.
+During the existing cleanup deadline only, finalize Job/stdin and observe Popen's
+exit state safely before releasing its owned handle. If that state is unresolved
+when the original interval is exhausted, retain the existing Popen ownership
+rather than forcibly closing a handle it can still poll. Do not add a new wait
+interval, treat exit code as identity death, suppress unraisable errors globally,
+change original fixtures or bypass containment. A frozen new full gate and
+bounded fresh retirement/privacy closure remain required before publication.
