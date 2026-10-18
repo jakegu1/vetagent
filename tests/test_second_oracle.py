@@ -1323,6 +1323,71 @@ def test_goplus_quota_run_caps_pacing_and_utc_bounds():
               propagated and interrupted==[True] and workers[-1].closed and not workers[-1].live)
     pin_native_total_deadline_supervisor()
 
+    # Bounded first-review correction authorized by T044 clarification (e).
+    def pin_round2_durable_timing_boundaries():
+        import datetime
+        from pathlib import Path
+        class Clock:
+            def __init__(self,wall,backward_sleep=False): self.wall=wall; self.mono=0.0; self.backward_sleep=backward_sleep
+            def time(self): return self.wall
+            def monotonic(self): return self.mono
+            def sleep(self,n):
+                self.wall+=n; self.mono+=n
+                if self.backward_sleep: self.wall-=86400
+        raw=json.dumps({"tokens":[{"chain":"base","address":"0x%040x"%(i+1)} for i in range(316)]}).encode()
+        context=q.context_from_bytes(raw,"a"*40,hashlib.sha256(raw).hexdigest(),"b"*64)
+        plan=q.make_plan(context)
+        window=q.REQUEST_TIMEOUT+2*q._CLEANUP_SECONDS
+        base=1792281600.0
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            def run_case(name,wall,latency_wall,latency_mono,statuses=(403,),backward_sleep=False):
+                clock=Clock(wall,backward_sleep); starts=[]; replies=iter(statuses)
+                class SlowIntent(q.FileSink):
+                    def append(self,event):
+                        super().append(event)
+                        if event["kind"]=="intent" and event["index"]==0:
+                            clock.wall+=latency_wall; clock.mono+=latency_mono
+                def transport(chain,address,*,timeout):
+                    starts.append((clock.monotonic(),clock.time()))
+                    return {"http_status":next(replies),"body":b'{}'}
+                path=root/name
+                report=q.run_plan(plan,context,sink=SlowIntent(path),transport=transport,clock=clock)
+                return report,q.read_report(path),starts,[json.loads(line) for line in (path/"receipts.jsonl").read_bytes().splitlines()]
+            report,restored,starts,events=run_case("spacing",base+100,3,3,(429,403))
+            actual=[datetime.datetime.fromtimestamp(wall,datetime.timezone.utc).isoformat(timespec="milliseconds").replace("+00:00","Z")
+                    for mono,wall in starts]
+            intents=[event for event in events if event["kind"]=="intent"]
+            receipts=[event for event in events if event["kind"]=="receipt"]
+            check("durable intent latency preserves actual transport spacing and truthful persisted starts",
+                  len(starts)==2 and starts[1][0]-starts[0][0]>=2.1-1e-9
+                  and [cell.get("request_at") for cell in restored["cells"][:2]]==actual
+                  and [event.get("request_at") for event in receipts]==actual
+                  and all("claimed_at" in event and "request_at" not in event for event in intents)
+                  and restored["cells"][0].get("claimed_at")==intents[0].get("claimed_at")
+                  and restored["cells"][0].get("claimed_at")!=actual[0]
+                  and all(cell["duration_seconds"]==0 for cell in restored["cells"][:2]))
+            cases=[("exact-day",base+86400-window,0,0,1,"permission_refused"),
+                   ("late-day",base+86400-window-0.1,0.2,0.2,0,"utc_day_end"),
+                   ("exact-run",base+100,q.RUN_SECONDS-window,q.RUN_SECONDS-window,1,"permission_refused"),
+                   ("late-run",base+100,q.RUN_SECONDS-window+0.2,q.RUN_SECONDS-window+0.2,0,"run_deadline"),
+                   ("backward-intent",base+0.1,-1,0.2,0,"utc_day_end")]
+            for name,wall,delay_wall,delay_mono,expected,reason in cases:
+                report,restored,starts,events=run_case(name,wall,delay_wall,delay_mono)
+                counts=restored["counts"]
+                check("post-intent admission retains exact day/run edges and consumed unopened claims: "+name,
+                      len(starts)==expected and report["stop_reason"]==reason
+                      and counts["claimed"]==1 and counts["attempted"]==expected
+                      and counts["uncertain"]==1-expected and counts["not_asked"]==315
+                      and (expected==1 or "request_at" not in restored["cells"][0]))
+            report,restored,starts,events=run_case("backward-pacing",base+100,0,0,(429,403),True)
+            counts=restored["counts"]
+            check("pacing wait rechecks the chosen UTC date after a backward wall step",
+                  len(starts)==1 and report["stop_reason"]=="utc_day_end"
+                  and counts["attempted"]==1 and counts["claimed"] in (1,2)
+                  and counts["uncertain"]==counts["claimed"]-1 and counts["not_asked"]==316-counts["claimed"])
+    pin_round2_durable_timing_boundaries()
+
 
 def test_goplus_quota_http_and_exact_result_stages():
     import goplus_quota_probe as q
@@ -1449,6 +1514,86 @@ def test_goplus_quota_http_and_exact_result_stages():
               opener.calls==1 and report["stop_reason"]=="interrupted" and report["counts"]["uncertain"]==1
               and report["counts"]["attempted"]==0 and report["counts"]["not_asked"]==315)
     pin_native_permission_body_exception()
+
+    # Bounded first-review correction authorized by T044 clarification (e).
+    def pin_round2_deep_json_cli():
+        import contextlib
+        from pathlib import Path
+        deep=b'['*20000+b'"PRIVATE-DEEP-BODY"'+b']'*20000
+        try:
+            json.loads(deep)
+        except RecursionError:
+            native_recursion=True
+        else:
+            native_recursion=False
+        check("within-cap nested JSON reaches the native decoder recursion boundary",native_recursion and len(deep)<q.BODY_CAP)
+        address="0x"+"1"*40; labels_called=[]
+        def labeler(*args,**kwargs): labels_called.append(True); return "safe",[],{}
+        try:
+            cell=q.classify({"http_status":403,"body":deep},address,labeler=labeler)
+        except RecursionError:
+            cell={}
+        check("bounded decoder recursion retains the known permission stage and malformed body",
+              cell.get("http_status")==403 and cell.get("http_state")=="permission_refused"
+              and cell.get("body_state")=="malformed" and cell.get("label_state")=="unobserved"
+              and cell.get("captured_body_sha256")==hashlib.sha256(deep).hexdigest() and not labels_called)
+        control=q.classify({"http_status":200,"body":b'PRIVATE-ORDINARY-MALFORMED'},address,labeler=labeler)
+        check("ordinary HTTP200 malformed JSON remains unavailable to API and labels",
+              control["http_state"]=="observed" and control["body_state"]=="malformed"
+              and control["api_state"]=="unobserved" and control["label_state"]=="unobserved" and not labels_called)
+        class Clock:
+            def time(self): return 1792281600.0
+            def monotonic(self): return 0.0
+            def sleep(self,n): raise AssertionError("permission recursion must stop before another request")
+        raw=json.dumps({"tokens":[{"chain":"base","address":"0x%040x"%(i+1)} for i in range(316)]}).encode()
+        context=q.context_from_bytes(raw,"a"*40,hashlib.sha256(raw).hexdigest(),"b"*64)
+        original=q.labels.goplus_label
+        q.labels.goplus_label=labeler
+        try:
+            with tempfile.TemporaryDirectory() as directory:
+                root=Path(directory); dataset=root/"dataset.json"; dataset.write_bytes(raw); plan=root/"plan.json"; output=root/"run"
+                def loader(path,source):
+                    if Path(path).read_bytes()!=raw or source!="a"*40: raise ValueError("PRIVATE-DEEP-SOURCE")
+                    return context
+                calls=[]
+                def transport(chain,requested,*,timeout): calls.append(requested); return {"http_status":403,"body":deep}
+                console=io.StringIO(); errors=io.StringIO(); escaped=False
+                with contextlib.redirect_stdout(console),contextlib.redirect_stderr(errors):
+                    planned=q.main(["plan","--dataset",str(dataset),"--source","a"*40,"--output",str(plan)],context_loader=loader)
+                    try:
+                        status=q.main(["run","--dataset",str(dataset),"--plan",str(plan),"--output",str(output)],
+                                      context_loader=loader,transport=transport,clock=Clock())
+                    except RecursionError:
+                        escaped=True; status=None
+                    read_status=q.main(["report","--output",str(output)])
+                restored=q.read_report(output); first=restored["cells"][0]
+                check("real CLI retains one deep-body refusal and315unasked without decoder escape",
+                      planned==0 and status==1 and read_status==1 and not escaped and len(calls)==1
+                      and restored["counts"]["claimed"]==1 and restored["counts"]["attempted"]==1
+                      and restored["counts"]["not_asked"]==315 and restored["counts"]["label_returned"]==0
+                      and first.get("http_status")==403 and first.get("body_state")=="malformed" and not labels_called)
+                deep_path=root/"deep.json"; deep_path.write_bytes(deep)
+                bad_report=root/"deep-report"; bad_report.mkdir()
+                (bad_report/"plan.json").write_bytes(deep); (bad_report/"receipts.jsonl").write_bytes(b'')
+                def deep_loader(path,source):
+                    return q.context_from_bytes(deep,"a"*40,hashlib.sha256(deep).hexdigest(),"b"*64)
+                inputs=[(["plan","--dataset",str(deep_path),"--source","a"*40,"--output",str(root/"deep-plan")],deep_loader),
+                        (["run","--dataset",str(dataset),"--plan",str(deep_path),"--output",str(root/"deep-run")],loader),
+                        (["report","--output",str(bad_report)],None)]
+                for argv,chosen_loader in inputs:
+                    with contextlib.redirect_stdout(console),contextlib.redirect_stderr(errors):
+                        try:
+                            rejected=q.main(argv,context_loader=chosen_loader,transport=transport,clock=Clock())
+                        except RecursionError:
+                            rejected=None
+                    check("CLI source/plan/report decoder recursion stays inside the safe failure boundary",rejected==1 and len(calls)==1)
+                emitted=console.getvalue()+errors.getvalue()
+                check("deep JSON console excludes tracebacks body text addresses and private paths",
+                      all(marker not in emitted for marker in ("Traceback","RecursionError","PRIVATE-DEEP",str(root),address,"https://"))
+                      and errors.getvalue()=="")
+        finally:
+            q.labels.goplus_label=original
+    pin_round2_deep_json_cli()
 
 
 def test_goplus_quota_safe_output_and_private_raw():
@@ -1594,6 +1739,69 @@ def test_goplus_quota_partial_intents_and_persistence():
                   preserved and len(calls)==2
                   and before=={p.name:p.read_bytes() for p in path.iterdir() if p.is_file()})
     pin_torn_final_receipt()
+
+    # Bounded first-review correction authorized by T044 clarification (e).
+    def pin_round2_partial_receipt_error():
+        import contextlib
+        import os
+        from pathlib import Path
+        class Clock:
+            def __init__(self): self.now=0.0
+            def time(self): return 1792281600.0+self.now
+            def monotonic(self): return self.now
+            def sleep(self,n): self.now+=n
+        raw=json.dumps({"tokens":[{"chain":"base","address":"0x%040x"%(i+1)} for i in range(316)]}).encode()
+        context=q.context_from_bytes(raw,"a"*40,hashlib.sha256(raw).hexdigest(),"b"*64)
+        calls=[]
+        def transport(chain,address,*,timeout): calls.append(address); return {"http_status":429,"body":b'{}'}
+        with tempfile.TemporaryDirectory() as directory:
+            path=Path(directory)/"partial"
+            class PartialReceipt(q.FileSink):
+                def append(self,event):
+                    if event["kind"]=="receipt" and event["index"]==1:
+                        encoded=q._encode(event)
+                        with (self.path/"receipts.jsonl").open("ab") as handle:
+                            handle.write(encoded[:47]); handle.flush(); os.fsync(handle.fileno())
+                        self.torn=(self.path/"receipts.jsonl").read_bytes()
+                        raise OSError("PRIVATE-PARTIAL-WRITE")
+                    return super().append(event)
+            sink=PartialReceipt(path)
+            result=q.run_plan(q.make_plan(context),context,sink=sink,transport=transport,clock=Clock())
+            ledger=path/"receipts.jsonl"
+            check("receipt append failure retains the original torn bytes without terminal concatenation",
+                  len(calls)==2 and result["stop_reason"]=="persistence_failed" and ledger.read_bytes()==sink.torn)
+            console=io.StringIO(); errors=io.StringIO()
+            with contextlib.redirect_stdout(console),contextlib.redirect_stderr(errors):
+                status=q.main(["report","--output",str(path)])
+            try:
+                restored=q.read_report(path)
+                readable=(restored["counts"]["claimed"]==2 and restored["counts"]["completed_http"]==1
+                          and restored["counts"]["rate_limited"]==1 and restored["counts"]["uncertain"]==1
+                          and restored["counts"]["not_asked"]==314 and restored["available"] is False
+                          and restored["ledger_tail_state"]=="incomplete"
+                          and restored["cells"][0]["http_status"]==429
+                          and restored["cells"][1]["reason"]=="missing_receipt"
+                          and restored["receipt_bytes_sha256"]==hashlib.sha256(sink.torn).hexdigest())
+            except (ValueError,KeyError):
+                readable=False
+            decoded=json.loads(console.getvalue())
+            check("real offline CLI recovers prior429 both claims uncertain slot and314unasked after partial error",
+                  status==1 and readable and decoded.get("counts")==restored["counts"]
+                  and ledger.read_bytes()==sink.torn and len(calls)==2 and errors.getvalue()=="")
+            corrupt=Path(directory)/"corrupt"; corrupt.mkdir()
+            (corrupt/"plan.json").write_bytes((path/"plan.json").read_bytes())
+            lines=ledger.read_bytes().splitlines(keepends=True)
+            invalid=lines[0]+b'{"kind":\n'+b''.join(lines[1:])
+            (corrupt/"receipts.jsonl").write_bytes(invalid)
+            try:
+                q.read_report(corrupt)
+            except ValueError:
+                refused=True
+            else:
+                refused=False
+            check("partial-tail recovery never skips a corrupt interior record",
+                  refused and (corrupt/"receipts.jsonl").read_bytes()==invalid)
+    pin_round2_partial_receipt_error()
 
 
 def test_goplus_quota_readout_denominators_and_limits():
