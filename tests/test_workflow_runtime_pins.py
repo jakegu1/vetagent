@@ -182,6 +182,77 @@ def test_unrelated_steps_and_soft_fail_changes_do_not_freeze_workflows():
           not workflow_errors("control.yml", changed), workflow_errors("control.yml", changed))
 
 
+def test_refused_and_outside_steps_cannot_hide_action_references():
+    source = valid_workflow()
+    action = "      - uses: actions/checkout@" + ACTION_PINS["actions/checkout"][0] + " # v7.0.1"
+    assert source.count(action) == 1
+    controls = (
+        ("single-quoted key", "      - 'uses': actions/checkout@v4"),
+        ("double-quoted key", '      - "uses": actions/checkout@v4'),
+        ("flow-map step", "      - {uses: actions/checkout@v4}"),
+        ("unclosed quoted key", "      - 'uses: actions/checkout@v4"),
+        ("indentless step list", "    - uses: actions/checkout@v4"),
+    )
+    for label, replacement in controls:
+        text = source.replace(action, replacement, 1)
+        outside = []
+        parsed = workflow.steps(workflow.jobs(text)["test"], outside)
+        refused = [line for step in parsed for line in step["refused"]]
+        check(label + " is observed in the existing reader's refusal ledger", bool(refused or outside))
+        errors = workflow_errors("control.yml", text)
+        check(label + " cannot be accepted as a run-only step", bool(errors), errors)
+
+
+def test_observer_prefix_refresh_preserves_the_actual_exact_guard():
+    import ast
+    import contextlib
+    import io
+    import os
+
+    path = ROOT / "tests/test_sellability_archive.py"
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    name = "test_snapshot_freshness_workflow_runs_last_always_and_cannot_swallow_failure"
+    actual = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == name)
+    approved = (ROOT / ".github/workflows/production.yml").read_text(encoding="utf-8")
+    prefix_label = "all pre-existing observer bytes retain their original commands and order"
+    with tempfile.TemporaryDirectory(prefix="observer-prefix-pins-") as directory:
+        folder = Path(directory)
+        workflow_path = folder / ".github/workflows/production.yml"
+        workflow_path.parent.mkdir(parents=True)
+
+        def invoke(text):
+            workflow_path.write_text(text, encoding="utf-8")
+            readings = []
+            namespace = {"io": io, "os": os, "ROOT": str(folder),
+                         "check": lambda label, condition, detail="": readings.append((label, condition))}
+            # Execute the actual unchanged function body, with only fixture IO and its
+            # check sink supplied. Importing or running the archive suite is unnecessary.
+            exec(compile(ast.Module(body=[actual], type_ignores=[]), str(path), "exec"), namespace)
+            with contextlib.redirect_stdout(io.StringIO()):
+                namespace[name]()
+            return readings
+
+        readings = invoke(approved)
+        check("the actual old function accepts the exact approved observer workflow",
+              bool(readings) and all(condition for _, condition in readings), readings)
+        command = "python bench/production_probe.py --write"
+        assert approved.count(command) == 1
+        changed = approved.replace(command, "python bench/production_probe.py", 1)
+        readings = invoke(changed)
+        check("the actual observer prefix guard still refuses unauthorized command bytes",
+              any(label == prefix_label and not condition for label, condition in readings), readings)
+        commit = approved.index("      - name: Commit\n")
+        regenerate = approved.index("      - name: Regenerate the pages that quote it\n")
+        health = approved.index("      - name: Check snapshot freshness and coverage\n")
+        assert commit < regenerate < health
+        reordered = approved[:commit] + approved[regenerate:health] + approved[commit:regenerate] + approved[health:]
+        readings = invoke(reordered)
+        check("the actual observer guard still refuses changed commit/generation order",
+              any(label == prefix_label and not condition for label, condition in readings)
+              and any(label == "health runs after both observation commit and fixed-point generation" and not condition
+                      for label, condition in readings), readings)
+
+
 def main():
     for name, function in sorted((name, value) for name, value in globals().items() if name.startswith("test_")):
         EXECUTED.append(name)
