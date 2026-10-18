@@ -416,7 +416,7 @@ def enroll(value, sources, *, boundary, ingested_at, output):
                         if born > seen or seen > boundary or (fetched and (fetched < seen or fetched > boundary)):
                             _error("invalid_clock")
                         target = born + timedelta(hours=24)
-                        if target < boundary:
+                        if target < ingested:
                             _error("missed_before_enrollment")
                         key = _sha((chain + ":" + token).encode("ascii"))
                         if key in identities:
@@ -436,7 +436,8 @@ def enroll(value, sources, *, boundary, ingested_at, output):
                         "ingested_at": _iso(ingested), "enrollment_boundary": _iso(boundary)}
                     _append(directory, index, {"kind": "enrollment", "record": record,
                                               "counts": dict(counts)})
-            _append(directory, index, {"kind": "enrollment_complete", "counts": dict(counts)})
+            _append(directory, index, {"kind": "enrollment_complete", "counts": dict(counts),
+                                      "enrollment_boundary": _iso(boundary), "ingested_at": _iso(ingested)})
     except EvidenceError:
         raise
     except (OSError, ValueError, OverflowError):
@@ -895,6 +896,7 @@ def report(output, *, now, live_start=None):
     instant = _time(now)
     records, receipts, intents = {}, {}, set()
     counts, complete = dict.fromkeys(REASONS, 0), False
+    enrollment_boundary, ingested_at = None, None
     for event in events:
         kind = event.get("kind")
         if kind == "enrollment":
@@ -904,8 +906,11 @@ def report(output, *, now, live_start=None):
                 _error("history_corrupt")
             records[ordinal] = record
             counts = event["counts"]
+            enrollment_boundary, ingested_at = record["enrollment_boundary"], record["ingested_at"]
         elif kind == "enrollment_complete":
             counts, complete = event["counts"], True
+            enrollment_boundary = event.get("enrollment_boundary", enrollment_boundary)
+            ingested_at = event.get("ingested_at", ingested_at)
         elif kind == "intent":
             if event.get("ordinal") not in records or event["ordinal"] in intents:
                 _error("history_corrupt")
@@ -958,6 +963,7 @@ def report(output, *, now, live_start=None):
               "clock_evidence": origin, "started_at": start, "ends_at": end,
               "rules": dict(RULES), "limits": value["limits"], "outcome": "not_evaluated",
               "enrollment_complete": complete, "enrollment_counts": counts,
+              "enrollment_boundary": enrollment_boundary, "ingested_at": ingested_at,
               "enrolled": len(records), "receipts": len(receipts),
               "unasked": len(records) - len(receipts) + oracle_unasked,
               "unimported": len(records) - len(intents),
