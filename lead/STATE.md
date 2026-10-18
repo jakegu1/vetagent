@@ -87,11 +87,15 @@ lead approves source integration followed by actual integrated/Linux/master gate
 and the sole finite single-date pilot. No daily allowance, reset, unsafe yield or
 thirty-day W40 clock has been observed by that source review.
 
-T-045's four original evidence corrections pass focused checks and the actual
-forty-two-step executor gate. A subsequent producer-seam check reproduces an
-additional original-AC5 defect: an existing RPC dependency erases known endpoint
-overlap. Named b2 repairs endpoint provenance before the still-fresh second review
-and its final complete gate. Hold 9b804c7; retain its evidence without rebinding.
+T-045 corrected source 2090c3d passes the fresh combined second review, twelve of
+twelve and RED-TEAM: none. Its actual current forty-two-step gate is green with
+all 954 tracked bytes exact. The reviewer independently executes 402 assertions,
+including the original four corrections and the named existing-RPC provenance
+closure. Known overlap survives other invalid endpoints; incomplete disjoint
+inventory cannot pass. The lead verifies all 780 final sealed members and all
+582 held members unchanged. Earlier 9b804c7 evidence remains bound to that head.
+T-044 and T-045 are now normally merged into the isolated integration branch;
+one combined forty-three-step gate and actual Linux precede master publication.
 The core remains offline. Native acquisition, at-label collection and actual
 cross-process scheduling remain engineering work, not a calendar or Owner wait.
 

@@ -15,8 +15,10 @@ its bounded source-eligibility screen is complete without a simulator BUILD clai
 T-043 is published at b1becd2: actual Linux/master gates and the real pilot pass.
 Fresh enrollment starts the fixed forty-eight-hour clock at 2026-10-18T20:48:40Z;
 the first actual scheduled resume remains to be observed. T-044 source passes fresh
-combined review before integration/Linux and its sole real pilot. T-045's existing-
-RPC endpoint seam is held for correction before publication. W54 and the thirty-day
+combined review before integration/Linux and its sole real pilot. T-045 passes
+fresh combined review after its existing-RPC endpoint repair. Both sources are
+integrated locally; the combined gate and Linux publication checks are next.
+W54 and the thirty-day
 W40 clock remain unstarted. Source rights, product gates, privacy and spending stay
 Owner decisions. Experiment D remains unrun and due 2026-10-20 UTC.
 
