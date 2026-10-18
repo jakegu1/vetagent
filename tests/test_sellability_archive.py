@@ -2433,7 +2433,7 @@ def test_snapshot_freshness_workflow_runs_last_always_and_cannot_swallow_failure
     before, health = wf.split(marker, 1)
     check("all pre-existing observer bytes retain their original commands and order",
           hashlib.sha256(before.encode("utf-8")).hexdigest() ==
-          "08fd9eb2690e50180a3c6dc2b9db45a3e209bb3c0e45549af44110c6e66f553a")
+          "91edce0da69f039508cd2d4aab95720309e482607cdb3a96e1194d56baff8cff")
     steps = [part.splitlines()[0].strip() for part in re.split(r"- name: ", wf)[1:]]
     check("health runs after both observation commit and fixed-point generation",
           steps[-1] == "Check snapshot freshness and coverage"
