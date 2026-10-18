@@ -146,6 +146,11 @@ technical release. Experiment D retains its existing rules and moves to 2026-10-
 
 ## Log (newest first)
 
+- 2026-10-18: T-031 reviewed source is merged as 32a94f9 after independent 12/12 and
+  adversarial none. All integrated checks pass 35/35 in 110.7 seconds. T-027 begins
+  next, preserving original contract controls with genuine block-provenance recordings
+  and separate live monitoring. Unified batch deployment and runtime readback remain.
+
 - **2026-10-16** - lead - Completed the authorized three-task release at 19ea3af.
   Full integrated checks pass 35/35 in 112.8 seconds. Linux preflight 38853528116
   and master CI 38853922502 pass required jobs, each with 219 observed upstream

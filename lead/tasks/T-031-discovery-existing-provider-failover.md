@@ -1,7 +1,7 @@
 ---
 id: T-031
 title: Route discovery through the existing configured on-chain providers
-status: in_review
+status: done
 level: 3
 size: S
 depends_on: [T-028, T-030]

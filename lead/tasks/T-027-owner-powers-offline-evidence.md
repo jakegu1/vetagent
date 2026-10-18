@@ -1,7 +1,7 @@
 ---
 id: T-027
 title: Separate recorded owner-power regression evidence from live RPC monitoring
-status: ready
+status: in_progress
 level: 3
 size: M
 depends_on: [T-015, T-024, T-025, T-031]
@@ -100,8 +100,10 @@ or proof of current availability. Do not add raw headers, machine paths/account 
    even with partial results. Acceptance covers main discovery, combined red/blind status
    and the existing durable observer using this source. No threshold/history/rule edits,
    quiet skips, or successful live observations supplied from the historical fixture.
-5. First commit adds only the new acceptance, exact fixture and its single workflow
-   registration. Reproduce meaningful red for old acquisition under denied transport and
+5. First commit adds only the new acceptance and exact fixture, matching the configured
+   acceptance-test globs. Add its single workflow registration with the later separation
+   implementation; no non-test file belongs in the first commit. Reproduce meaningful
+   red for old acquisition under denied transport and
    missing separate monitoring. Freeze new acceptance/inputs thereafter. Commit named
    acquisition/live separation as one finding, describing the red. Original control tail
    and unrelated tests remain frozen. Acceptance never recursively runs the full suite

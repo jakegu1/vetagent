@@ -53,8 +53,7 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 | Task | Level | Stage | Who | Next action |
 |---|---|---|---|---|
-| T-031 | 3 | Frozen head 358f210 in independent and adversarial review | reviewers | Reproduce each criterion and full checks; merge only after both verdicts pass |
-| T-027 | 3 | Ready, provenance and fresh full-suite red verified | lead | Implement from the reviewed green T-031 merge; retain exact original contract controls |
+| T-027 | 3 | Isolated implementation from reviewed green T-031 integration | RPC separation executor | Preserve original controls, add deterministic fixture and separate live monitor, then independent/adversarial review |
 
 ## Current batch baseline
 
@@ -81,8 +80,20 @@ T-031's tests-only 19d6632 yields 196 meaningful MCP failures and the preregiste
 endpoint-template mismatch. Source ab3632b fixes the one new_pools routing finding;
 generated receipt 358f210 is the clean frozen head. Its actual configured checks pass
 35/35 in 118.9 seconds. The lead verifies both detached integrity signatures and all
-thirty-five sealed artifact hashes before independent and adversarial review. No
-review verdict, merge, deployment or live availability improvement is claimed yet.
+thirty-five sealed artifact hashes before independent and adversarial review. These
+are executor-stage checks; review and runtime proof remain separate evidence stages.
+
+Subsequent T-031 review passes: independent twelve of twelve and adversarial none,
+both with their own complete 35-step runs (115.8 and 114.7 seconds). Their sealed
+manifests and original reports are verified before merge 32a94f9. The review record
+keeps test-first and unchanged numerical boundaries explicit. Post-merge checks and
+deployment are not implied by source approval and are the next actual stages.
+
+The real post-merge fixed-point generator succeeds; only proved calendar/recent-log
+display and newline drift is restored from exact external backups. Actual integrated
+checks pass all thirty-five steps in 110.7 seconds, including 1432 MCP assertions.
+T-031 is complete as reviewed source; actual batch deployment/runtime readback is still
+pending. T-027 now starts from this green integration with the finalized specification.
 
 T-027 preparation obtains genuine bytecode at finalized Ethereum block 26216600 with
 four bounded requests to an existing provider and a same-block hash recheck. The lead
