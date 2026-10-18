@@ -158,7 +158,7 @@ problem looked like before it was fixed.
 - T-038: named change (a,b) retain observed disproof across gaps
 - T-038: named change (c) acceptance regressions
 
-_236 more not shown (244 commits in total)._
+_190 more not shown (198 commits in total)._
 
 ## What I got wrong
 
