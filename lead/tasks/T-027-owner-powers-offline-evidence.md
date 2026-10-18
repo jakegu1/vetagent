@@ -1,7 +1,7 @@
 ---
 id: T-027
 title: Separate recorded owner-power regression evidence from live RPC monitoring
-status: done
+status: changes_requested
 level: 3
 size: M
 depends_on: [T-015, T-024, T-025, T-031]
@@ -218,3 +218,32 @@ network-denied inventories again at the clean frozen head, plus compileall and t
 tests-first contract. Reuse the already sealed bounded live receipt because no live
 code changes; do not manufacture another current observation. After this bounded second
 round, only invariants, security, privacy, data loss or regressions can bounce again.
+
+### 2026-10-18: required Linux preflight regression, AST serializer compatibility
+
+Preflight 39097068303 at d7e1cfe fails the new frozen-function test under CPython
+3.12.15; the ordinary test job skips its later steps. Production is not updated.
+The first check function hashes as dbd5242c7954bd950c52c863b61365e31f0b42537bb83d36d193f12c2727191f
+instead of the frozen 3.13 digest. Python 3.13's ast.dump omits empty list fields by
+default; 3.12 includes them. The same unchanged source therefore fails its structural
+guard on CI. This is a demonstrated compatibility regression, so it remains a blocking
+exception to the second-round cap rather than a new review front.
+
+Named acceptance test fix (g): tests/test_owner_power_evidence_split.py may add a narrow
+stdlib-only AST serialization helper and its necessary import, and replace only the
+ast.dump invocation in test_original_control_tail_cases_and_unrelated_functions_are_frozen
+with that helper. Keep every frozen digest, input, assertion and all fourteen tests
+unchanged. Reproduce existing red under actual Python 3.12 before the fix. Normalize
+only the empty-list-field omission already used by the frozen 3.13 representation;
+preserve all other AST fields and operate on a copy, without changing the parsed source.
+This widens supported test runtimes and must not weaken the source-integrity assertion.
+
+Required evidence: every original function hashes to its existing digest on 3.12 and
+3.13; changes to a frozen assertion, literal or statement remain rejected on both. All
+existing acceptance/owner tests pass on both, plus complete configured checks with a
+tested inherited network guard at the frozen head. No source, monitor, fixture, pin,
+workflow, benchmark or cache change. Reuse sealed live evidence; make no RPC request.
+Commit this exception alone as T-027: acceptance test fix (g), preserving earlier commits.
+A fresh combined regression review checks exactly this bar before a new exact-head
+Linux preflight and any production push. Keep the failed preflight and skipped steps
+as failed/unobserved evidence. Do not change CI's Python version to avoid the test.

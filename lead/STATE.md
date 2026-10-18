@@ -53,9 +53,18 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 | Task | Level | Stage | Who | Next action |
 |---|---|---|---|---|
-| T-027 / T-031 release | 3 | Both reviewed sources merged; T-027 merge a77d1e1 | Lead | Actual post-merge generation/checks, Linux preflight, deployment and tagged readback |
+| T-027 / T-031 release | 3 | Preflight-only Python AST compatibility regression; production unchanged | Compatibility executor / lead | Named test fix (g), exact cross-runtime verification, fresh regression review and Linux preflight |
 
 ## Current batch baseline
+
+Preflight 39097068303 fails T-027's structural acceptance under Python 3.12.15 because
+the frozen 3.13 AST serialization omits empty fields. Later ordinary CI steps are skipped,
+not passed. Production stays on its previous verified version. Named test fix (g) keeps
+all frozen digests/assertions and changes only canonical serialization compatibility.
+T-032 is paused before its first commit with an exact external draft backup; update its
+base after the repair. Q1's post-integration regression rule demotes autonomy to A0.
+The Owner's explicit autonomous technical repair/deployment authorization remains in
+force; no new approval is needed inside that scope, and no other sign-off is waived.
 
 T-027 final combined review passes twelve of twelve with RED-TEAM: none. Its fresh
 ordinary and inherited-denied runners both pass all thirty-six steps. The initial

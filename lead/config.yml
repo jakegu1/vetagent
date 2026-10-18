@@ -10,7 +10,8 @@ runtime: "codex-local"
 repo_mode: "local-branches"        # task branches merged locally, no pull requests: agent text in
                                    # PR comments would be published under the Owner's GitHub account
 main_branch: "master"
-autonomy: "A1"                     # The current lead's recorded level. The Owner has authorized
+autonomy: "A0"                     # Q1: post-integration preflight exposed the T-027 AST-runtime regression.
+                                   # The Owner has authorized
                                    # the technical repair merges and deployment pushes in STATE.md.
                                    # Other merges and pushes still need the Owner's yes.
                                    # Any escaped defect demotes one level (tripwire Q1).
