@@ -141,13 +141,14 @@ def age_minutes(detected_at, now=None):
     not observe, and W52's sample rule is defined on the measured field, so an unreadable
     one keeps the mint out of the fresh cohort rather than into it.
     """
-    if not detected_at:
+    if not isinstance(detected_at, str) or "T" not in detected_at:
         return None
     try:
-        t = datetime.datetime.strptime(str(detected_at)[:19], "%Y-%m-%dT%H:%M:%S")
+        t = datetime.datetime.fromisoformat(detected_at.replace("Z", "+00:00"))
     except ValueError:
         return None
-    t = t.replace(tzinfo=datetime.timezone.utc)
+    if t.tzinfo is None:
+        t = t.replace(tzinfo=datetime.timezone.utc)
     now = now or datetime.datetime.now(datetime.timezone.utc)
     return (now - t).total_seconds() / 60.0
 
@@ -181,7 +182,7 @@ def recruit_fresh(want, max_age_min, pages=8, gap=2.0):
             name = ((row.get("attributes") or {}).get("name") or "")[:28]
             rec = observe(name or mint[:8], mint, "scores")
             age = age_minutes(rec.get("detectedAt"))
-            if rec.get("body") == "ok" and age is not None and age <= max_age_min:
+            if rec.get("body") == "ok" and age is not None and 0 <= age <= max_age_min:
                 kept.append((name or mint[:8], mint))
             time.sleep(gap)
             if len(kept) >= want:
@@ -302,15 +303,17 @@ def _score_verdict(by):
     in the light of what comes out below.
     """
     print("\n--- W52 pre-registered rule ------------------------------------------------")
-    fresh, old, ageless = [], [], []
+    fresh, old, ageless, future = [], [], [], []
     for m, g in by.items():
         g = sorted(g, key=lambda r: r["sweep"])
         age = age_minutes(g[0].get("detectedAt"),
                           datetime.datetime.fromtimestamp(g[0]["ts"], datetime.timezone.utc))
-        (fresh if (age is not None and age <= 10.0)
-         else ageless if age is None else old).append(m)
+        (ageless if age is None else future if age < 0
+         else fresh if age <= 10.0 else old).append(m)
     print("cohort: %d mints caught within 10 min of detectedAt, %d older, %d with no "
           "detectedAt to read" % (len(fresh), len(old), len(ageless)))
+    if future:
+        print("  excluded %d mints with future detectedAt" % len(future))
     if len(fresh) < 40:
         print("  NOTE: the rule is defined on >=40 such mints; this run has %d, so a "
               "non-firing result below is under-powered, not a negative." % len(fresh))
