@@ -114,10 +114,13 @@ _MARKUP = re.compile(r"<!--.*?-->|<[A-Za-z/](?:[^<>]*[^<>-])?>|&#?\w+;")
 
 # Recognize complete literal/single-encoded fragments before stripping raw entities.
 # Whole comments come first: an inner arrow must not end a generic fragment early.
+# A generic candidate must stop before another opener, so unmatched less-than text
+# cannot consume a later complete comment or tag that still needs recognition.
 _LT = r"(?:<|&lt;|&#0*60;|&#x0*3c;)"
 _GT = r"(?:>|&gt;|&#0*62;|&#x0*3e;)"
 _ENCODED_MARKUP = re.compile(
-    _LT + r"!--.*?--" + _GT + "|" + _LT + r".*?" + _GT, re.I)
+    _LT + r"!--.*?--" + _GT + "|" + _LT
+    + r"(?:(?!" + _LT + r").)*?" + _GT, re.I)
 
 
 def gate_row_answered(row):
