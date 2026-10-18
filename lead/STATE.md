@@ -4,8 +4,8 @@
 > session starts by reading it. Durable rules live in `AGENTS.md`, `lead/QUALITY.md` and
 > `lead/decisions/`. Test for this file: could a stranger act on every row below?
 
-Last updated: 2026-10-18 by Codex, completing the reviewed linked data-integrity batch
-with actual deployment, public-interface readback and snapshot-monitor execution.
+Last updated: 2026-10-18 by Codex, starting the next dependency-ordered technical batch:
+existing-provider discovery failover first, deterministic/live RPC separation second.
 
 Current Owner decision: Experiment D moves to 2026-10-20 (ADR-0002). Its original
 thresholds and unresolved state remain. T-024 reconciles the active gate and dependent
@@ -53,7 +53,29 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 | Task | Level | Stage | Who | Next action |
 |---|---|---|---|---|
-| None | - | T-028, T-029 and T-030 deployed and runtime-verified | lead | Prepare the next bounded availability investigation and T-027; no active executor |
+| T-031 | 3 | Ready for isolated implementation after green baseline | discovery executor | Existing-provider discovery failover; independent and adversarial review before merge |
+| T-027 | 3 | Read-only preparation; implementation queued behind T-031 | lead | Finish provenance and monitoring specification, then implement after the first reviewed merge |
+
+## Current batch baseline
+
+The Owner asks to continue the same method, repair upstream access fluctuation first,
+then separate live RPC test dependencies, and deploy directly after quality checks.
+This is scoped technical merge, push and deployment authorization; other sign-off
+categories and A1 remain unchanged. Cap this batch at two implementation tasks with
+serial source changes and bounded independent/adversarial reviews.
+
+The integration branch retains scheduled data through b13aac2. The real fixed-point
+generator succeeds; exact external backups restore only proved calendar/recent-log
+display drift. Actual configured baseline passes all thirty-five steps in 132.7
+seconds. Latest scheduled snapshot 39074841808 and subsequent bot CI 39075499305
+succeed; all existing daily data is retained. The primary checkout is fingerprinted
+outside the repository and is not an implementation target.
+
+Fresh tagged discovery calls on both Base and Solana fail with the generic all-source
+error. A separate external-network-blocked reproduction through the real fetch path
+proves the configured keyed discovery route is never called when keyless replies 429.
+The production refusal status and current key configuration remain unconfirmed.
+T-031 repairs this measured bypass without adding a provider or changing risk logic.
 
 ## Latest verified linked release
 

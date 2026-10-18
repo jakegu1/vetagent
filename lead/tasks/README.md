@@ -33,3 +33,4 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-028 | Preserve discovery completeness across malformed listings and interfaces | 3 | M | T-025 | done; deployed d44d79a, actual partial handoff observed |
 | T-029 | Detect stale/incomplete snapshots after observation preservation | 3 | M | T-020, T-022 | done; deployed d44d79a, actual monitor 39055381257 |
 | T-030 | Disclose selected liquidity with unchecked reserve amounts | 3 | M | T-026, T-028 | done; deployed d44d79a, both live markers observed |
+| T-031 | Route discovery through existing configured on-chain providers | 3 | S | T-028, T-030 | in_progress; availability first, T-027 implementation follows review |
