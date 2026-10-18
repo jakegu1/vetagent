@@ -211,3 +211,31 @@ No further scope expansion is implied. The six workflow files remain byte-frozen
 at 93fc49a through these corrections. A fresh combined second-round reviewer must
 verify both named corrections and every unchanged old/new case before branch
 publication. Actual exact-head Linux and production evidence remain mandatory.
+
+### Non-assertion acceptance fix (c): fixture lexical ambiguity
+
+Corrected 1fd4053's ordinary gate actually exits one, 38/39: the old bot-commit
+runner reports 254 passes and two failures. Its direct affected run reproduces
+the cause. The new amendment-(b) fixture's single source literal containing the
+production-probe write command matches the old raw-source generator-remedy regex.
+The old guard then incorrectly requires that production probe in regeneration.
+No production probe or generator was executed. Changing the old scanner or adding
+the live command to regeneration is outside scope.
+
+Before the executor's first READY, permit one non-assertion syntax correction in
+the new acceptance file: split only that command assignment into adjacent string
+literals on separate source lines. The entire module AST and actual command UTF-8
+bytes must remain identical on each actual interpreter, and replacing the new
+layout with the old one must recover every original source byte. No input,
+assertion, function behavior, old test or generator list may change. Record the
+actual old regex match and its absence after the layout correction; the required
+generator set must match the original pre-regression set again.
+
+Use one commit titled `T-036: acceptance test fix (keep fixture out of generator discovery)`
+and include the observed 38/39 and 254/2 red in its body. This is the specified
+non-assertion acceptance-fix exception, not a new review round or relaxed bar.
+Preserve all failed results. Freeze the replacement head and run its complete
+ordinary/denied inventories sequentially. The fresh combined reviewer must verify
+the exact lexical/AST/input proof before carrying forward its unchanged pure
+controls, then run its own remaining gates. No actual Linux or production gate
+is satisfied by the prior pure checks or failed full runs.
