@@ -466,29 +466,40 @@ def _owner_power_figures():
     committed bytecode cache and runs offline in a second. Merging them would make the
     cheap one wait for the expensive one, which is how a figure goes nine days stale.
 
-    Returns an empty dict if the file is absent, and the caller then has no key to match --
+    Returns an empty dict if the file is absent or unusable, and the caller has no key to match --
     so an unguarded number is reported as unguarded rather than silently passing.
     """
     path = os.path.join(ROOT, "bench", "owner_powers.json")
     if not os.path.exists(path):
         return {}
-    with io.open(path, encoding="utf-8") as f:
-        d = json.load(f)
+    try:
+        with io.open(path, encoding="utf-8") as f:
+            d = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(d, dict):
+        return {}
+    powers, pooled, oos = (d.get(key) or {} for key in ("powers", "pooled", "out_of_sample"))
+    if not all(isinstance(part, dict) for part in (powers, pooled, oos)):
+        return {}
+    if not all(isinstance(row, dict) for row in powers.values()):
+        return {}
+    if not all(isinstance(oos.get(flag) or {}, dict) for flag in (
+            "slippage_modifiable", "is_blacklisted", "transfer_pausable", "is_mintable", "pooled")):
+        return {}
     out = {}
     short = {"transfer_pausable": "pause", "is_blacklisted": "blacklist",
              "slippage_modifiable": "tax", "is_mintable": "mint"}
-    for power, row in (d.get("powers") or {}).items():
+    for power, row in powers.items():
         key = short.get(row.get("oracle_flag"))
         if not key:
             continue                    # can halt trading: no oracle field, nothing to track
         out["power_%s_pct" % key] = row.get("mined_pct")
         out["power_%s_before_pct" % key] = row.get("shipped_pct")
-    pooled = d.get("pooled") or {}
     out["power_pooled_pct"] = pooled.get("mined_pct")
     out["power_pooled_before_pct"] = pooled.get("shipped_pct")
     # The out-of-sample set. Exposed under its own names so a surface can never quote an
     # in-sample figure through a key whose name does not say so.
-    oos = d.get("out_of_sample") or {}
     for flag, key in (("slippage_modifiable", "tax"), ("is_blacklisted", "blacklist"),
                       ("transfer_pausable", "pause"), ("is_mintable", "mint")):
         out["power_%s_oos_pct" % key] = (oos.get(flag) or {}).get("pct")
