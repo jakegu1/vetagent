@@ -826,6 +826,84 @@ class NativeAcceptance(unittest.TestCase):
                     self.assertEqual({p: p.read_bytes() for p in f.runtime.rglob("*") if p.is_file()}, protected_runtime)
                     self.assertEqual({p: p.read_bytes() for p in f.private.rglob("*") if p.is_file()}, protected_private)
 
+        # Named (d2): private evidence ancestry cannot redirect traversal into Git.
+        alias_cases = [("clean", None)]
+        alias_cases += [("symlink", name) for name in ("attempts", "dependencies", "core-import")]
+        if sys.platform == "win32":
+            alias_cases += [("junction", name) for name in ("attempts", "dependencies", "core-import")]
+        for alias_type, container in alias_cases:
+            with Fixture() as f:
+                f.collect()
+                alias_path = None
+                if container is not None:
+                    git_target = f.root / "isolated-git"
+                    initialized = subprocess.run(["git", "init", "-q", str(git_target)],
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10)
+                    self.assertEqual(initialized.returncode, 0)
+                    real_git = subprocess.check_output(["git", "rev-parse", "--is-inside-work-tree"], cwd=git_target)
+                    self.assertEqual(real_git.strip(), b"true")
+                    alias_path = f.private / container
+                    if not alias_path.exists():
+                        alias_path.mkdir()
+                    destination = git_target / container
+                    alias_path.rename(destination)
+                    if alias_type == "junction":
+                        import _winapi
+                        _winapi.CreateJunction(str(destination), str(alias_path))
+                        self.assertTrue(alias_path.is_junction())
+                    else:
+                        try:
+                            alias_path.symlink_to(destination, target_is_directory=True)
+                        except OSError as exc:
+                            if sys.platform != "win32" or exc.winerror != 1314:
+                                raise
+                            # This host cannot create symlinks; the actual junction cases still run.
+                            destination.rename(alias_path)
+                            (f.root / "alias-support.json").write_bytes(_json({
+                                "type": "symlink", "supported": False, "winerror": exc.winerror}))
+                            continue
+                        self.assertTrue(alias_path.is_symlink())
+                    self.assertEqual(alias_path.resolve(), destination.resolve())
+                    (f.root / "alias-support.json").write_bytes(_json({
+                        "type": alias_type, "supported": True, "real_git": real_git.strip().decode()}))
+                source_manifest = f.root / "sources.json"
+                source_manifest.write_bytes(_json(f.sources))
+                protected_core = {p: p.read_bytes() for p in f.store.rglob("*") if p.is_file()}
+                protected_runtime = {p: p.read_bytes() for p in f.runtime.rglob("*") if p.is_file()}
+                observed = f.root / "raw-access.json"
+                guarded_recovery = "\n".join([
+                    "import pathlib,socket,subprocess,sys",
+                    "from unittest.mock import patch",
+                    "sys.path[:0]=[sys.argv[1]+'/bench',sys.argv[1]+'/src']",
+                    "import w40_native as n",
+                    "alias=pathlib.Path(sys.argv[2]) if sys.argv[2]!='-' else None",
+                    "touched=[]; old_open=pathlib.Path.open; old_iter=pathlib.Path.iterdir",
+                    "def mark(path):",
+                    "    if alias is not None and pathlib.Path(path).absolute().is_relative_to(alias.absolute()): touched.append(1)",
+                    "def opened(path,*args,**kwargs):",
+                    "    mark(path); return old_open(path,*args,**kwargs)",
+                    "def traversed(path):",
+                    "    mark(path); return old_iter(path)",
+                    "with patch.object(pathlib.Path,'open',opened),patch.object(pathlib.Path,'iterdir',traversed),patch('socket.socket',side_effect=AssertionError('offline')),patch('subprocess.Popen',side_effect=AssertionError('offline')):",
+                    "    result=n.main(sys.argv[4:])",
+                    "pathlib.Path(sys.argv[3]).write_bytes(n.dumps({'aliased_accesses':len(touched)}))",
+                    "raise SystemExit(result)",
+                ])
+                result = subprocess.run([sys.executable, "-B", "-c", guarded_recovery, str(ROOT),
+                    str(alias_path) if alias_path is not None else "-", str(observed), "recover",
+                    "--store", str(f.store), "--sources", str(source_manifest), "--runtime", str(f.runtime),
+                    "--private-dir", str(f.private)], cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
+                self.assertEqual(result.stderr, b"")
+                self.assertEqual(len(f.seen), 5)
+                self.assertEqual(result.returncode, 0 if alias_path is None else 2)
+                self.assertEqual(json.loads(observed.read_bytes()), {"aliased_accesses": 0})
+                if alias_path is None:
+                    self.assertEqual(json.loads(result.stdout)["state"], "imported")
+                else:
+                    self.assertEqual(json.loads(result.stdout), {"error": "raw_directory_refused"})
+                    self.assertEqual({p: p.read_bytes() for p in f.store.rglob("*") if p.is_file()}, protected_core)
+                    self.assertEqual({p: p.read_bytes() for p in f.runtime.rglob("*") if p.is_file()}, protected_runtime)
+
     def test_w40_native_cli_and_existing_contract(self):
         native = importlib.import_module("w40_native")
         for arguments in ((), ("--help",), ("plan", "--help"), ("collect-one", "--help"), ("report", "--help"), ("recover", "--help")):
