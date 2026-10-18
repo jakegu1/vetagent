@@ -578,12 +578,34 @@ def _independence(packet):
             "eligibility_shared": bool(set(eligibility or []) & set(engine or []))}
 
 
+def _daily_query_context(parsed, field):
+    """A daily current-series declaration must agree with its acquisition clocks."""
+    from urllib.parse import parse_qs
+    try:
+        query = parse_qs(parsed.query, keep_blank_values=True, strict_parsing=True, max_num_fields=16)
+        if "aggregate" in query and query["aggregate"] != ["1"]:
+            return "invalid_daily_query"
+        if "before_timestamp" not in query:
+            return "current_series"
+        values = query["before_timestamp"]
+        if len(values) != 1 or not re.fullmatch(r"[0-9]{1,16}", values[0]):
+            return "invalid_daily_query"
+        before = int(values[0])
+        begin, end = _time(field.get("request_at")), _time(field.get("response_at"))
+        if not begin.timestamp() <= before <= end.timestamp():
+            return "historical_or_mismatched_query"
+        return "current_series"
+    except (ValueError, TypeError, AttributeError, EvidenceError):
+        return "query_context_unavailable"
+
+
 def _source_targets(packet, chain, token, pool):
     """Bind the declared request targets as well as the body key; no live claim."""
     result = {"oracle": False, "ohlcv": False, "reserve": False}
     endpoint = packet.get("endpoints")
     endpoint = endpoint if isinstance(endpoint, dict) else {}
     expected_pool = "/api/v2/networks/%s/pools/%s" % (labels.GT_NETWORK[chain], pool)
+    daily_queries = []
     for role in ("label", "eligibility"):
         values = endpoint.get(role)
         if not isinstance(values, list) or len(values) > 128:
@@ -599,7 +621,8 @@ def _source_targets(packet, chain, token, pool):
                 continue
             if parsed.hostname == "api.geckoterminal.com":
                 result["reserve"] |= role == "eligibility" and parsed.path.lower() == expected_pool
-                result["ohlcv"] |= role == "label" and parsed.path.lower() == expected_pool + "/ohlcv/day"
+                if role == "label" and parsed.path.lower() == expected_pool + "/ohlcv/day":
+                    daily_queries.append(_daily_query_context(parsed, packet.get("ohlcv")))
             if parsed.hostname == "api.gopluslabs.io" and role == "label":
                 from urllib.parse import parse_qs
                 try:
@@ -610,17 +633,27 @@ def _source_targets(packet, chain, token, pool):
                 result["oracle"] |= (parsed.path == "/api/v1/token_security/" + labels.GOPLUS_CHAIN_ID[chain]
                                       and isinstance(targets, list) and len(targets) == 1
                                       and _address(targets[0]) == token)
-    return result
+    query_state = ("query_context_unavailable" if not daily_queries else
+                   next((state for state in daily_queries if state != "current_series"), "current_series"))
+    result["ohlcv"] = bool(daily_queries) and all(state == "current_series" for state in daily_queries)
+    return result, query_state
 
 
-def _volume(stage, body):
-    stage.update(recent_volume_7d=None, outcome_label=None)
+def _volume(stage, body, born_at):
+    stage.update(recent_volume_7d=None, outcome_label=None, recent_days_observed=0,
+                 recent_window_complete=False, recent_window_state="unavailable")
     if stage["state"] != "observed":
         return None
     try:
         rows = body["data"]["attributes"]["ohlcv_list"]
         if not isinstance(rows, list) or not rows or len(rows) > 1000:
             raise ValueError()
+        acquired = _time(stage["response_at"])
+        born = _time(born_at)
+        # The unchanged helper sums seven daily buckets, including the current bucket.
+        # Seven old/sparse rows are not necessarily those seven calendar buckets.
+        recent_start = acquired.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=6)
+        stage.update(recent_window_start_at=_iso(recent_start), recent_window_end_at=_iso(acquired))
         normalized = []
         previous = None
         for row in rows:
@@ -629,15 +662,22 @@ def _volume(stage, body):
             numbers = [_number(x) for x in row]
             if any(x is None for x in numbers) or (previous is not None and numbers[0] >= previous):
                 raise ValueError()
-            if numbers[0] > _time(stage["response_at"]).timestamp():
+            if (not numbers[0].is_integer() or numbers[0] % 86400 != 0
+                    or numbers[0] > acquired.timestamp()
+                    or numbers[0] + 86400 <= born.timestamp()):
                 raise ValueError()
             previous = numbers[0]
             normalized.append(numbers)
+        if any(row[0] < recent_start.timestamp() for row in normalized[:7]):
+            raise ValueError()
         outcome, facts = labels.outcome_label(normalized)
         volume = _number(facts.get("recent_volume_7d"))
         if volume is None:
             raise ValueError()
-        stage.update(field_coverage=True, recent_volume_7d=volume, outcome_label=outcome)
+        stage.update(field_coverage=True, recent_volume_7d=volume, outcome_label=outcome,
+                     recent_days_observed=len(normalized[:7]), recent_window_state="observed_buckets")
+        # An array's length cannot establish complete temporal coverage. In particular,
+        # a newly born pool's sparse candles are not seven fully observed days.
         return facts
     except (TypeError, KeyError, ValueError, EvidenceError, OverflowError):
         stage["state"] = "invalid_body"
@@ -689,7 +729,8 @@ def _receipt(packet, record, identity, value, imported):
         stages[name], bodies[name] = _stage(packet.get(name), imported)
     valid_identity = (packet.get("chain") == chain and _address(packet.get("token")) == token
                       and _pool(packet.get("pool")) == pool)
-    targets = _source_targets(packet, chain, token, pool)
+    targets, query_state = _source_targets(packet, chain, token, pool)
+    stages["ohlcv"]["query_state"] = query_state
     for name, matched in targets.items():
         stages[name]["source_target_state"] = "declared_match" if matched else "unobserved_or_mismatched"
         if not matched and stages[name]["state"] == "observed":
@@ -720,7 +761,7 @@ def _receipt(packet, record, identity, value, imported):
             reserve["state"] = "invalid_evidence"
         except (KeyError, TypeError, ValueError):
             reserve["state"] = "invalid_body"
-    facts = _volume(stages["ohlcv"], bodies["ohlcv"])
+    facts = _volume(stages["ohlcv"], bodies["ohlcv"], record["born_at"])
     replay = _oracle(stages["oracle"], bodies["oracle"], token, stages["ohlcv"]["recent_volume_7d"])
     replay["outcome"] = facts
     engine, pool_mismatch = stages["engine"], False
