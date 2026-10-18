@@ -106,4 +106,15 @@ an unexplained changed runtime requires a separate finding/spec.
 If the deployed SDK versions cannot resolve or build on the actual supported Linux
 runner, preserve the failing evidence and report the exact constraint before
 substituting a new version. No silent upgrade and no changing the engine to satisfy
-packaging. No amendments yet.
+packaging.
+
+### Amendment (a): overlap implementation with frozen-prerequisite review
+
+Implementation may start in an isolated branch from T-032's frozen source after
+its executor's complete ordinary/denied gates and frozen-acceptance proof pass.
+T-032 no longer writes the shared workflow at that point. This permits useful host
+build work while its fresh reviews finish. T-032's approval remains a hard integration
+and release dependency; do not integrate or publish the dependent build changes if
+the prerequisite is bounced. Reconcile any later prerequisite correction by merge,
+never by rewriting the tests-first history. Record the exact dispatch base and this
+amendment before the first T-033 acceptance commit. No test or review bar changes.
