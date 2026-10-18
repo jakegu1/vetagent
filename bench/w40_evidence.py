@@ -52,6 +52,8 @@ FLAGS = ("is_honeypot", "cannot_sell_all", "cannot_buy", "selfdestruct",
          "is_mintable", "is_open_source", "trust_list")
 HOSTS = {"api.gopluslabs.io", "api.geckoterminal.com", "api.dexscreener.com",
          "api.honeypot.is", "api.coingecko.com", "api.rugcheck.xyz"}
+# Existing src/risk.py _CHAIN_RPC roots, accepted only as offline provenance.
+RPC_ROOT_HOSTS = {"mainnet.base.org", "rpc.mevblocker.io", "bsc-dataseed.bnbchain.org"}
 
 
 class EvidenceError(Exception):
@@ -560,33 +562,45 @@ def _stage(field, imported):
 
 def _endpoint_set(values):
     if not isinstance(values, list) or len(values) > 128:
-        return None
+        return [], False, None
     results = set()
+    invalid = 0
     for value in values:
         if not isinstance(value, str) or len(value) > 4096:
-            return None
+            invalid += 1
+            continue
         try:
             parsed = urlsplit(value if "://" in value else "https://" + value)
-            if parsed.scheme != "https" or parsed.hostname not in HOSTS or parsed.username or parsed.password or parsed.port not in (None, 443):
-                return None
+            rpc_root = (parsed.hostname in RPC_ROOT_HOSTS and parsed.path in ("", "/")
+                        and not parsed.query and not parsed.fragment)
+            if (parsed.scheme != "https" or not (parsed.hostname in HOSTS or rpc_root)
+                    or parsed.username or parsed.password or parsed.port not in (None, 443)):
+                invalid += 1
+                continue
         except ValueError:
-            return None
+            invalid += 1
+            continue
         parts = ["{id}" if x.startswith("0x") or len(x) > 25 or x.isdigit() else x
                  for x in parsed.path.strip("/").split("/") if x]
         results.add(_sha((parsed.hostname + "/" + "/".join(parts)).encode()))
-    return sorted(results)
+    return sorted(results), invalid == 0, invalid
 
 
 def _independence(packet):
     endpoint = packet.get("endpoints")
     endpoint = endpoint if isinstance(endpoint, dict) else {}
-    label, engine, eligibility = (_endpoint_set(endpoint.get(k)) for k in ("label", "engine", "eligibility"))
-    overlap = sorted(set(label or []) & set(engine or []))
-    state = ("independence_unobserved" if not label or not engine else
-             "independence_failed" if overlap else "independence_observed")
-    return {"state": state, "label": label or [], "engine": engine or [],
-            "eligibility": eligibility or [], "overlap": overlap,
-            "eligibility_shared": bool(set(eligibility or []) & set(engine or []))}
+    inventories = {k: _endpoint_set(endpoint.get(k)) for k in ("label", "engine", "eligibility")}
+    label, engine, eligibility = (inventories[k][0] for k in ("label", "engine", "eligibility"))
+    overlap = sorted(set(label) & set(engine))
+    complete = {k: inventory[1] for k, inventory in inventories.items()}
+    state = ("independence_failed" if overlap else
+             "independence_unobserved" if not label or not engine or not complete["label"] or not complete["engine"] else
+             "independence_observed")
+    return {"state": state, "label": label, "engine": engine,
+            "eligibility": eligibility, "overlap": overlap,
+            "inventory_complete": complete,
+            "invalid_endpoint_counts": {k: inventory[2] for k, inventory in inventories.items()},
+            "eligibility_shared": bool(set(eligibility) & set(engine))}
 
 
 def _daily_query_context(parsed, field):
