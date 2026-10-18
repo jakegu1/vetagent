@@ -48,3 +48,4 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-043 | Preserve the pre-registered RugCheck study across bounded CI jobs | 3 | M | T-040 | published b1becd2; actual pilot/start pass, forty-eight-hour clock active, first scheduled resume pending |
 | T-044 | Measure the existing held-out oracle quota without hidden retries or data publication | 3 | M | none | source approved 6d300a3 and locally integrated; combined/Linux/master gates and sole live pilot next |
 | T-045 | Preserve prospective enrollment and independently replayable paired evidence | 3 | M | none | source approved 2090c3d and locally integrated; actual independent complete gate passes; combined/Linux next, no thirty-day clock |
+| T-046 | Acquire one due paired packet through a bounded native engine adapter | 3 | M | T-044, T-045 | in progress from green combined source cdf6fac; tests first, isolated execution, no live study |

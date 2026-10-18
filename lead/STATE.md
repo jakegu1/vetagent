@@ -99,6 +99,14 @@ one combined forty-three-step gate and actual Linux precede master publication.
 The core remains offline. Native acquisition, at-label collection and actual
 cross-process scheduling remain engineering work, not a calendar or Owner wait.
 
+The combined T-044/T-045 gate now passes forty-three of forty-three at cdf6fac,
+native exit zero, with all 960 tracked files exact. Actual feature Linux is next.
+T-046 is dispatched from that green source with three disjoint files: one native
+collector, one new seven-method offline test runner, and its forty-fourth CI step.
+It must preserve the reviewed cores and active study source exactly. Shared durable
+admission/observation ports and hard-parent-death containment are fixed before tests.
+No live native acquisition precedes the published gates and actual T-044 readout.
+
 The Owner renews authorization to prioritize the 21 remaining rows, batch related
 autonomous repairs, delegate bounded isolated work, and merge/push/deploy after quality
 checks. Owner decisions and genuinely unavailable/calendar evidence are reported
