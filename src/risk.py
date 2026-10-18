@@ -4544,16 +4544,19 @@ async def new_pools(chain="solana", limit=10):
     # to disclose a truncation. A disclosure needs its own disclosure.
     sources_ok, sources_failed = [], []
     for kind, path in (("new", "new_pools"), ("trending", "trending_pools")):
-        data = await _fetch_json(
-            "https://api.geckoterminal.com/api/v2/networks/%s/%s" % (net, path))
-        # A transport success without an explicit data list is not an observed empty
-        # market. Parsing into temporary state also keeps a malformed later row from
-        # leaking half a failed listing or aborting the other usable source.
-        try:
-            listing = _parse_new_pool_listing(data, net, kind)
-        except (AttributeError, TypeError, ValueError, OverflowError):
+        for url, headers, _name in _onchain_sources("networks/%s/%s" % (net, path)):
+            data = await _fetch_json(url, headers=headers)
+            # Validate the whole response before accepting this provider. A malformed
+            # later row must not leak into its fallback, and a valid empty list is
+            # already an observation: provider redundancy adds no market coverage.
+            try:
+                listing = _parse_new_pool_listing(data, net, kind)
+            except (AttributeError, TypeError, ValueError, OverflowError):
+                continue
+            break
+        else:
             sources_failed.append(kind)
-            continue  # this endpoint failed
+            continue  # neither provider supplied a usable listing
         sources_ok.append(kind)
         reachable = True
         for pid, row in listing.items():
@@ -4562,7 +4565,17 @@ async def new_pools(chain="solana", limit=10):
     if not reachable:
         # Fail closed: a failed fetch is not the same as no new pools. Returning an
         # empty array would tell the caller "we scanned, there was nothing there".
-        raise RuntimeError("GeckoTerminal request failed; could not scan new pools on %s" % chain)
+        # Fetch diagnostics can contain an upstream error_code string. Only a known
+        # provider with a numeric status/code or exception class is safe to expose.
+        details = []
+        for name in ("coingecko", "geckoterminal"):
+            detail = _failure_detail(name)
+            if re.fullmatch(r"%s (?:[1-5][0-9]{2}(?: \([0-9]{1,6}\))?|"
+                            r"error body [0-9]{1,6}|[A-Z][A-Za-z]{0,47}Error)" % name, detail):
+                details.append(detail)
+        suffix = " (%s)" % ", ".join(details) if details else ""
+        raise RuntimeError("GeckoTerminal request failed; could not scan new pools on %s%s"
+                           % (chain, suffix))
     # `count` used to be len(merged) -- everything both endpoints returned, before the
     # cap -- while `pools` was truncated to `limit`. Live with limit=3 that answered
     # "count": 20 next to a three-element array, so a caller reading the field it was
