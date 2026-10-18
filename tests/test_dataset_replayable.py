@@ -563,6 +563,95 @@ def test_w40_timing_and_endpoint_overlap_never_become_passes():
                   and r2_receipt["timing"]["simultaneous_claim"] is False)
     # T045 round-two (b4) END regression block ends.
 
+    # T045 (b2) END regression block: existing RPC provenance and retained intersections.
+    import hashlib as b2_hashlib
+    import pathlib as b2_pathlib
+    import subprocess as b2_subprocess
+    import sys as b2_sys
+    import ast as b2_ast
+    core, B2Fixture, _b2_copy, _b2_patch, _b2_context = test_w40_plan_is_offline_source_bound_and_not_started(True)
+    b2_roots = ("https://mainnet.base.org", "https://rpc.mevblocker.io", "https://bsc-dataseed.bnbchain.org")
+    b2_tree = b2_ast.parse((b2_pathlib.Path(ROOT) / "src/risk.py").read_bytes())
+    b2_engine_roots = next(b2_ast.literal_eval(n.value) for n in b2_tree.body
+                           if isinstance(n, b2_ast.Assign) and any(isinstance(t, b2_ast.Name) and t.id == "_CHAIN_RPC" for t in n.targets))
+    check("B2 regression roots are exactly the frozen engine dependencies", set(b2_roots) == set(b2_engine_roots.values()) and len(b2_engine_roots) == 3)
+    b2_cases = [("rpc_%d_%s" % (i, variant), rpc, variant == "overlap", None, None)
+                for i, rpc in enumerate(b2_roots) for variant in ("overlap", "disjoint")]
+    b2_cases += [("unknown_engine_overlap", b2_roots[0], True, "engine", "https://unknown.invalid/private_endpoint_sentinel"),
+                 ("invalid_array_overlap", b2_roots[0], True, "engine", []),
+                 ("invalid_object_overlap", b2_roots[0], True, "engine", {"private_endpoint_sentinel": True}),
+                 ("unknown_label_overlap", b2_roots[0], True, "label", "https://unknown.invalid/private_endpoint_sentinel"),
+                 ("partial_engine_disjoint", b2_roots[0], False, "engine", "https://unknown.invalid/private_endpoint_sentinel"),
+                 ("partial_label_disjoint", b2_roots[0], False, "label", "https://unknown.invalid/private_endpoint_sentinel")]
+    for b2_name, b2_rpc, b2_overlap, b2_invalid_role, b2_invalid in b2_cases:
+        for b2_mode in ("api", "cli"):
+            with B2Fixture() as b2_f:
+                b2_f.setup([b2_f.row(), b2_f.row(base_token="base_0x" + "2" * 40,
+                                               pool_address="0x" + "b" * 40, pool_id="base_0x" + "b" * 40)])
+                b2_first = b2_f.ingest(b2_f.packet())
+                b2_prior = {p.name: p.read_bytes() for p in (b2_f.output / "events").glob("*.json")}
+                b2_packet = b2_f.packet(2)
+                b2_gt = b2_packet["endpoints"]["eligibility"][0]
+                if b2_overlap:
+                    b2_packet["endpoints"]["label"].append(b2_gt)
+                b2_packet["endpoints"]["engine"] = [b2_rpc] + ([b2_gt] if b2_overlap else [])
+                if b2_invalid_role:
+                    b2_packet["endpoints"][b2_invalid_role].append(b2_invalid)
+                b2_expected_state = "independence_failed" if b2_overlap else "independence_unobserved" if b2_invalid_role else "independence_observed"
+                b2_gt_hash = b2_hashlib.sha256(b"api.geckoterminal.com/api/v2/networks/base/pools/{id}").hexdigest()
+                b2_rpc_hash = b2_hashlib.sha256((b2_rpc.removeprefix("https://") + "/").encode()).hexdigest()
+                b2_complete = {role: role != b2_invalid_role for role in ("label", "engine", "eligibility")}
+                b2_invalid_counts = {role: int(role == b2_invalid_role) for role in ("label", "engine", "eligibility")}
+                def b2_accounted(answer):
+                    return (answer["state"] == b2_expected_state
+                            and answer["overlap"] == ([b2_gt_hash] if b2_overlap else [])
+                            and answer["engine"] == sorted([b2_rpc_hash] + ([b2_gt_hash] if b2_overlap else []))
+                            and len(answer["label"]) == (3 if b2_overlap else 2)
+                            and answer.get("inventory_complete") == b2_complete
+                            and answer.get("invalid_endpoint_counts") == b2_invalid_counts
+                            and all(re.fullmatch("[0-9a-f]{64}", item) for role in ("label", "engine", "eligibility", "overlap") for item in answer[role]))
+                if b2_mode == "api":
+                    check("B2 pure endpoint inventory keeps known observations: " + b2_name,
+                          b2_accounted(core._independence(b2_packet)))
+                    b2_receipt = b2_f.ingest(b2_packet)
+                    b2_report = core.report(b2_f.output, now="2026-10-03T00:00:00Z")
+                    b2_console = ""
+                    b2_native_ok = True
+                else:
+                    b2_sources = b2_f.root / "cli-sources.json"
+                    b2_packet_path = b2_f.root / "cli-packet.json"
+                    b2_sources.write_text(json.dumps(b2_f.sources), encoding="utf-8")
+                    b2_packet_path.write_text(json.dumps(b2_packet), encoding="utf-8")
+                    b2_import = b2_subprocess.run([b2_sys.executable, "-B", str(b2_pathlib.Path(ROOT) / "bench/w40_evidence.py"),
+                                                  "ingest", "--output", str(b2_f.output), "--sources", str(b2_sources),
+                                                  "--packet", str(b2_packet_path), "--private-dir", str(b2_f.private),
+                                                  "--imported-at", "2026-10-03T00:00:00Z"], cwd=ROOT, capture_output=True, encoding="utf-8")
+                    b2_read = b2_subprocess.run([b2_sys.executable, "-B", str(b2_pathlib.Path(ROOT) / "bench/w40_evidence.py"),
+                                                "report", "--output", str(b2_f.output), "--now", "2026-10-03T00:00:00Z"], cwd=ROOT, capture_output=True, encoding="utf-8")
+                    b2_native_ok = b2_import.returncode == b2_read.returncode == 0
+                    b2_receipt = json.loads(b2_import.stdout) if b2_import.returncode == 0 else {}
+                    b2_report = json.loads(b2_read.stdout) if b2_read.returncode == 0 else {}
+                    b2_console = b2_import.stdout + b2_import.stderr + b2_read.stdout + b2_read.stderr
+                check("B2 paired import and readout retain endpoint evidence: " + b2_mode + b2_name,
+                      b2_native_ok and b2_accounted(b2_receipt["independence"])
+                      and b2_report["rows"][1]["receipt"]["independence"] == b2_receipt["independence"]
+                      and (b2_expected_state == "independence_observed" or not b2_receipt["qualified_unsafe_observed"]))
+                check("B2 endpoint accounting preserves raw HTTP times and prior rows: " + b2_mode + b2_name,
+                      b2_report["receipts"] == 2 and b2_report["rows"][0]["receipt"] == b2_first
+                      and b2_report["state"] == "not_started"
+                      and all((b2_f.output / "events" / name).read_bytes() == data for name, data in b2_prior.items())
+                      and all(b2_receipt[stage]["state"] == "observed" and b2_receipt[stage]["http_status"] == 200
+                              and b2_receipt[stage]["raw_sha256"] == b2_packet[stage]["sha256"]
+                              and b2_receipt[stage]["request_at"] == b2_packet[stage]["request_at"]
+                              and b2_receipt[stage]["response_at"] == b2_packet[stage]["response_at"]
+                              for stage in ("reserve", "ohlcv", "oracle", "engine")))
+                b2_safe = b2_console.encode() + b"".join(p.read_bytes() for p in b2_f.output.rglob("*.json"))
+                check("B2 endpoint inventories expose only safe hashes and fixed categories: " + b2_mode + b2_name,
+                      b"https://" not in b2_safe and b"private_endpoint_sentinel" not in b2_safe
+                      and b2_packet["token"].encode() not in b2_safe and b2_packet["pool"].encode() not in b2_safe
+                      and b"Traceback" not in b2_safe)
+    # T045 (b2) END regression block ends.
+
 
 
 def test_w40_partial_history_is_append_only_private_and_recoverable():
