@@ -421,3 +421,48 @@ quota, study window, engine function or accepted fixture change is allowed.
 Both a and b require current focused/native proof, a new frozen exact-head full
 gate and fresh independent/adversarial review before publication. The old 44-step
 green at 9303ef9 is held-source evidence only.
+
+## Named successful-core and lost-producer completion regression
+
+2026-10-19 (c): an actual offline producer subprocess on held 78af99b exits
+immediately after core.ingest commits its receipt and before import_result or
+the producer done marker. A fresh normal recover invocation refuses with
+existing_receipt; the next ordinal refuses with existing_claim. Core bytes
+remain exact and there are zero vendor re-asks. This is an original AC6
+cross-process handoff failure, not a new study rule or permission.
+
+Permit one self-contained append-only regression block at the end of
+test_w40_native_partial_acquisition_recovers_without_reask. Preserve all old
+statements, assertions, shared helpers, other methods, main and seven-method
+discovery; named a and b remain exact. Using synthetic transport and actual
+subprocesses, prepare a packet, let the real core import succeed, and terminate
+before producer completion. A fresh ordinary offline recovery must verify the
+exact claim, frozen sources, prepared packet hash, matching core receipt and
+confirmed retirement of every child, and persist only the missing producer
+completion state. It returns imported without calling core.ingest again, opening
+transport, editing core journals/index/writer, or removing historical evidence.
+Repeated fully completed recovery still refuses with existing_receipt. Also
+cover a crash between import_result and its done marker. Incomplete core history,
+wrong packet/receipt/claim/source, uncertain child cleanup and malformed or
+conflicting producer completion remain stops; never repair the core to proceed.
+
+Before permitting a later ordinal in the same store, validate every preceding
+producer claim and done marker against its actual same-ordinal immutable core
+receipt. Mere file existence is insufficient. Missing completion blocks until
+the verified producer-only offline reconciliation succeeds; malformed, partial
+or conflicting completion stops history rather than being overwritten. A valid
+completion permits the next due ordinal through its normal remaining guards.
+Keep the existing same-process post-import append-failure positive control and
+its subsequent duplicate refusal exact; successful readback may persist a valid
+producer marker after independently verifying that committed core receipt.
+
+Commit this regression alone and preserve the actual red at held 78af99b, then
+one separate finding repair in bench/w40_native.py. Ordinary recover may perform
+the narrowly verified producer reconciliation, or expose a separately explicit
+offline reconcile_import API through the same existing module/CLI contract;
+do not add a new live flag, relax an ordinary completed duplicate or broaden
+scope. Re-run focused and actual fresh-process controls, prove core bytes and
+all old acceptance bytes/AST exact, freeze the corrected head and request its
+own exclusive full gate. Fresh independent/adversarial review and actual Linux
+checks remain required before publication. Neither a core receipt nor a producer
+claim alone proves the first confirmed native invocation or a study start.
