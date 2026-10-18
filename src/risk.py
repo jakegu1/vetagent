@@ -1121,6 +1121,10 @@ def _not_covered_clause(gaps):
     if "sell simulator" in reasons:
         chain = reasons.rsplit("does not cover ", 1)[-1].split()[0] if "does not cover " in reasons else ""
         return ("No sell simulator here covers %s" % chain) if chain else "No sell simulator covers this chain"
+    if any(str(g.get("reason", "")).startswith(
+            _NOT_COVERED + ": RugCheck's score is provisional on a mint it indexed ")
+           for g in gaps):
+        return "RugCheck's provisional score is withheld as evidence of safety"
     return "Part of this check does not cover this token's chain"
 
 
