@@ -190,6 +190,7 @@ def request_once(chain, address, *, timeout=REQUEST_TIMEOUT, opener=None):
            % (labels.GOPLUS_CHAIN_ID[chain], address))
     request = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "vetagent-benchmark/1.0"}, method="GET")
     client = opener or urllib.request.build_opener(NoRedirect())
+    status = 0
     try:
         try:
             response = client.open(request, timeout=timeout)
@@ -200,9 +201,9 @@ def request_once(chain, address, *, timeout=REQUEST_TIMEOUT, opener=None):
             return {"http_status": status, "body": response.read(BODY_CAP + 1)}
     except (TimeoutError, urllib.error.URLError) as exc:
         timed_out = isinstance(exc, TimeoutError) or isinstance(getattr(exc, "reason", None), TimeoutError)
-        return {"http_status": 0, "error": "timeout" if timed_out else "transport"}
+        return {"http_status": status, "error": "timeout" if timed_out else "transport"}
     except (OSError, ValueError):
-        return {"http_status": 0, "error": "transport"}
+        return {"http_status": status, "error": "transport"}
 
 
 def classify(reply, address, *, recent_volume=None, labeler=None):
@@ -223,6 +224,8 @@ def classify(reply, address, *, recent_volume=None, labeler=None):
         cell["http_state"] = "timeout"
     raw = reply.get("body")
     if not isinstance(raw, bytes):
+        if cell["http_status"] is not None and reply.get("error") in ("timeout", "transport"):
+            cell["body_state"] = reply["error"]
         return cell
     captured = raw[:BODY_CAP]
     cell.update(captured_body_sha256=_sha(captured), body_complete=len(raw) <= BODY_CAP)
@@ -359,7 +362,8 @@ def _report(plan, events, reason=None):
               "completed_http": sum(e["observation"]["http_status"] is not None for e in observed),
               "rate_limited": sum(e["observation"]["http_status"] == 429 for e in observed),
               "http_errors": sum(e["observation"]["http_status"] is not None and e["observation"]["http_status"] != 200 for e in observed),
-              "transport_errors": sum(e["observation"]["http_status"] is None for e in observed),
+              "transport_errors": sum(e["observation"]["http_status"] is None
+                                      or e["observation"]["body_state"] in ("timeout", "transport") for e in observed),
               "not_asked": len(plan["indices"]) - len(intents), "uncertain": len(intents) - len(receipts),
               "unobserved_label": sum(c["state"] == "unobserved" for c in cells),
               "matching_result": sum(e["observation"]["result_state"] == "matched" for e in observed),
@@ -479,7 +483,7 @@ def _safe_observation(value):
     if not isinstance(value, dict) or set(value) != set(template):
         raise ValueError("invalid_observation")
     enums = {"http_state": {"transport", "timeout", "observed", "rate_limited", "permission_refused", "redirect", "http_error"},
-             "body_state": {"unobserved", "truncated", "empty", "malformed", "json"},
+             "body_state": {"unobserved", "truncated", "empty", "malformed", "json", "timeout", "transport"},
              "api_state": {"unobserved", "malformed", "api_error", "missing_result", "invalid_result", "matching_result"},
              "result_state": {"unobserved", "missing", "malformed", "matched"},
              "label_state": {"unobserved", "returned", "null", "error"}}
