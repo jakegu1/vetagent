@@ -17,6 +17,7 @@ on:
     paths:
       - "src/**"
       - "pyproject.toml"
+      - "uv.lock"
       - "wrangler.jsonc"
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
@@ -79,11 +80,11 @@ jobs:
 
       - name: Install uv
         if: steps.creds.outputs.ready == 'true'
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+        run: python -m pip install --no-deps uv==0.13.1
 
       - name: Sync dependencies
         if: steps.creds.outputs.ready == 'true'
-        run: ~/.local/bin/uv sync
+        run: uv sync --locked
 
       # Must be pywrangler, not bare wrangler: bare wrangler does not vendor workers-py,
       # so the deployed Worker fails on startup with ModuleNotFoundError: No module named
@@ -93,7 +94,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: ~/.local/bin/uv run pywrangler deploy
+        run: uv run --locked pywrangler deploy
 
       # A green deploy is not the same as a working fix. Hit the critical paths with real
       # production calls and let a failure turn this deploy red — this is exactly the step
