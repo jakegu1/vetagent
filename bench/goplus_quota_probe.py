@@ -369,7 +369,7 @@ def classify(reply, address, *, recent_volume=None, labeler=None):
         return cell
     try:
         payload = json.loads(raw.decode("utf-8"))
-    except (ValueError, UnicodeError):
+    except (ValueError, UnicodeError, RecursionError):
         cell["body_state"] = "malformed"
         return cell
     cell["body_state"] = "json"
@@ -783,7 +783,7 @@ def main(argv=None, *, context_loader=None, transport=None, clock=None):
         print(json.dumps({k: report[k] for k in ("available", "stop_reason", "counts", "started_at", "ended_at",
                                                 "elapsed_seconds", "elapsed_minutes", "limitations")}, sort_keys=True))
         return 0 if report["available"] else 1
-    except (ValueError, TypeError, OSError, UnicodeError, OverflowError, subprocess.SubprocessError, KeyboardInterrupt):
+    except (ValueError, TypeError, OSError, UnicodeError, OverflowError, RecursionError, subprocess.SubprocessError, KeyboardInterrupt):
         print('{"available":false,"reason":"invalid_input_or_unavailable_evidence"}')
         return 1
 
