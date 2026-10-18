@@ -20,7 +20,11 @@ Run:  python tests/test_owner_powers.py
 """
 
 import asyncio
+import datetime
+import hashlib
+import json
 import os
+import re
 import sys
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
@@ -454,17 +458,116 @@ def test_disclosure_never_moves_the_verdict():
     check("and claims nothing about the contract", not signals4, str(signals4))
 
 
-def test_a_real_contract_reads_correctly():
-    """Contracts whose powers are public record, checked against their real bytecode.
+_OWNER_POWER_FIXTURE = os.path.join(ROOT, "tests", "fixtures", "owner_powers_eth_26216600.json")
+# Whole-file pin after CRLF -> LF only; acquisition's raw hash stays in its audit.
+_OWNER_POWER_FIXTURE_SHA256 = "f7d3e06858bc7b9dafd9d2967e903ec8fde2907d4a0e5d1887391adcabe2d62c"
 
-    Fetched through the benchmark's own RPC rather than the engine's, because the engine's
-    fetch needs the Worker runtime and would skip here -- and a check that skips is how a
-    honeypot detector that never ran survived for weeks. The matching half is pure, so it
-    can be handed real code from anywhere.
+
+def _owner_fixture_require(condition):
+    if not condition:
+        raise ValueError("invalid recorded owner-power fixture")
+
+
+def _owner_fixture_object(pairs):
+    result = {}
+    for key, value in pairs:
+        _owner_fixture_require(key not in result)
+        result[key] = value
+    return result
+
+
+def _load_owner_power_fixture(path=None):
+    """Read the audited historical recording; never acquire or refresh it implicitly."""
+    with open(path if path is not None else _OWNER_POWER_FIXTURE, "rb") as stream:
+        raw = stream.read()
+    lf = raw.replace(b"\r\n", b"\n")
+    _owner_fixture_require(raw == lf or raw == lf.replace(b"\n", b"\r\n"))
+    raw = lf
+    _owner_fixture_require(b"\r" not in raw and hashlib.sha256(raw).hexdigest()
+                           == _OWNER_POWER_FIXTURE_SHA256)
+    try:
+        data = json.loads(raw, object_pairs_hook=_owner_fixture_object)
+        _owner_fixture_require(isinstance(data, dict))
+        _owner_fixture_require(type(data["schema_version"]) is int and data["schema_version"] == 1)
+        _owner_fixture_require(data["chain"] == "ethereum" and type(data["chain_id"]) is int
+                               and data["chain_id"] == 1)
+        source = "https://rpc.mevblocker.io"
+        _owner_fixture_require(data["source_url"] == source and data["block_selection"] == "finalized"
+                               and data["block_hash_rechecked"] is True)
+        _owner_fixture_require(data["evidence_kind"] == "historical recording, not current availability proof")
+        _owner_fixture_require(data["captured_utc"] == "2026-10-18T03:10:08.825338Z")
+        _owner_fixture_require(data["block"] == {
+            "hash": "0xb917f8fa494a872068e4db321a5e05ef7b1a80125914b0eea3cd69379ac1bfda",
+            "number": 26216600, "number_hex": "0x1900898", "timestamp": 1792292183,
+            "timestamp_hex": "0x6ad43557", "timestamp_utc": "2026-10-18T02:56:23+00:00"})
+        _owner_fixture_require(type(data["block"]["number"]) is int
+                               and type(data["block"]["timestamp"]) is int)
+        captured = datetime.datetime.fromisoformat(data["captured_utc"].replace("Z", "+00:00"))
+        receipts = data["http_receipts"]
+        _owner_fixture_require(isinstance(receipts, list) and len(receipts) == 4)
+        previous = None
+        for number, receipt in enumerate(receipts, 1):
+            _owner_fixture_require(type(receipt["number"]) is int and receipt["number"] == number
+                                   and receipt["endpoint"] == source and receipt["http_status"] == "200"
+                                   and type(receipt["curl_exit"]) is int and receipt["curl_exit"] == 0
+                                   and receipt["timeout_seconds"] == 20
+                                   and receipt["transport_diagnostic"] == "")
+            _owner_fixture_require(type(receipt["response_bytes"]) is int and receipt["response_bytes"] > 0)
+            for key in ("request_sha256", "response_sha256", "response_headers_sha256"):
+                _owner_fixture_require(isinstance(receipt[key], str)
+                                       and re.fullmatch(r"[0-9a-f]{64}", receipt[key]) is not None)
+            for key, suffix in (("request_file", "request.json"), ("response_file", "response.body"),
+                                ("response_headers_file", "response.headers.txt")):
+                _owner_fixture_require(receipt[key] == "attempt-1\\%02d.%s" % (number, suffix))
+            start = datetime.datetime.fromisoformat(receipt["started_utc"].replace("Z", "+00:00"))
+            finish = datetime.datetime.fromisoformat(receipt["finished_utc"].replace("Z", "+00:00"))
+            _owner_fixture_require(start.utcoffset() == datetime.timedelta(0)
+                                   and finish.utcoffset() == datetime.timedelta(0)
+                                   and start <= finish <= captured
+                                   and (finish - start).total_seconds() <= 20
+                                   and (previous is None or previous <= start))
+            previous = finish
+        _owner_fixture_require(data["matcher_verification"] == {
+            "failures": [], "function": "test_a_real_contract_reads_correctly",
+            "method": "unchanged legacy function supplied recorded code through a strict RPC stub",
+            "passed": 6, "verification_network": "denied"})
+        _owner_fixture_require(re.fullmatch(r"[0-9a-f]{64}", data["original_test_sha256"]) is not None)
+        identities = (
+            ("USDT", "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+             ["can blacklist addresses", "can pause transfers"], False),
+            ("USDC", "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", [], True),
+            ("WETH", "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", [], False),
+        )
+        records = data["records"]
+        _owner_fixture_require(isinstance(records, list) and len(records) == len(identities))
+        codes = []
+        for index, (record, (name, address, powers, proxy)) in enumerate(zip(records, identities)):
+            _owner_fixture_require(record["name"] == name and record["address"] == address
+                                   and record["expected_powers"] == powers
+                                   and record["expected_is_proxy"] is proxy
+                                   and type(record["request_id"]) is int and record["request_id"] == 10 + index
+                                   and record["method"] == "eth_getCode"
+                                   and record["block_parameter"] == data["block"]["number_hex"])
+            code = record["code"]
+            _owner_fixture_require(isinstance(code, str) and re.fullmatch(r"0x(?:[0-9a-fA-F]{2})+", code) is not None)
+            decoded = bytes.fromhex(code[2:])
+            _owner_fixture_require(type(record["bytecode_bytes"]) is int
+                                   and len(decoded) == record["bytecode_bytes"]
+                                   and hashlib.sha256(decoded).hexdigest() == record["code_sha256"])
+            codes.append(code)
+        return codes
+    except (KeyError, TypeError, UnicodeError, ValueError, OverflowError) as error:
+        raise ValueError("invalid recorded owner-power fixture") from error
+
+
+def test_a_real_contract_reads_correctly():
+    """Contracts whose powers are public record, checked against recorded real bytecode.
+
+    The audited finalized-block recording guards the matcher without a network dependency.
+    A damaged or missing recording fails; current RPC availability is observed separately
+    by test_owner_power_rpc_contract in the live upstream monitor.
     """
-    print("\n[live] contracts whose powers are a matter of public record")
-    sys.path.insert(0, os.path.join(ROOT, "bench"))
-    import backfill as B  # noqa: E402
+    print("\n[historical] contracts whose powers are a matter of public record")
 
     CASES = [
         ("USDT", "0xdAC17F958D2ee523a2206206994597C13D831ec7",
@@ -473,11 +576,9 @@ def test_a_real_contract_reads_correctly():
         ("WETH", "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", [], False),
     ]
     try:
-        codes = B.rpc_batch(B.CHAINS["eth"]["rpc"],
-                            [("eth_getCode", [a, "latest"]) for _, a, _, _ in CASES],
-                            chunk=3)
-    except Exception as e:  # noqa: BLE001
-        check("ethereum RPC reachable", False, str(e)[:80])
+        codes = _load_owner_power_fixture()
+    except (OSError, ValueError):
+        check("historical owner-power recording is valid", False, "recording missing or invalid")
         return
 
     for (name, _addr, expect, is_proxy), code in zip(CASES, codes):

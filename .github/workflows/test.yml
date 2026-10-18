@@ -89,6 +89,9 @@ jobs:
       - name: Owner-power selectors are real, and disclosure never scores
         run: python tests/test_owner_powers.py
 
+      - name: Recorded owner-power evidence stays separate from live RPC observation
+        run: python tests/test_owner_power_evidence_split.py
+
       # The recall figures describing that scan's blindness were hand-copied, and three
       # copies of a superseded one sat in src/risk.py for nine days -- in the file doing the
       # scanning, including the comment on the field whose job is to say how blind it is.

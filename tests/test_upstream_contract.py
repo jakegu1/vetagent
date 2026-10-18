@@ -40,9 +40,12 @@ Re-freeze: python tests/test_upstream_contract.py --write
 
 import json
 import os
+import re
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -50,6 +53,7 @@ sys.path.insert(0, os.path.join(ROOT, "src"))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 
 import upstream_fields                                            # noqa: E402
+import risk                                                       # noqa: E402
 
 BASELINE = os.path.join(HERE, "upstream_baseline.json")
 TIMEOUT = "30"
@@ -573,6 +577,147 @@ def test_every_upstream_endpoint_is_probed():
 
 
 # ---------------------------------------------------------------- not derivable by shape
+
+_OWNER_RPC_SOURCE = "ethereum-rpc"
+# Existing public benchmark providers; this measures test coverage, not Worker uptime.
+_OWNER_RPC_PROVIDERS = (
+    ("mevblocker", "https://rpc.mevblocker.io"),
+    ("onfinality", "https://eth.api.onfinality.io/public"),
+)
+_OWNER_RPC_CASES = (
+    ("USDT", "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+     ("can blacklist addresses", "can pause transfers"), False),
+    ("USDC", "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", (), True),
+    ("WETH", "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", (), False),
+)
+_OWNER_RPC_TIMEOUT = 20
+
+
+def _owner_rpc_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate response member")
+        result[key] = value
+    return result
+
+
+class _owner_rpc_no_redirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, request, response, code, message, headers, new_url):
+        return None
+
+
+def _owner_rpc_open(request, timeout):
+    """A local opener: redirects cannot spend another request or change provider."""
+    return urllib.request.build_opener(_owner_rpc_no_redirect()).open(request, timeout=timeout)
+
+
+def _owner_rpc_post(url, calls):
+    """One bounded batch, retaining envelopes and returning only fixed safe diagnostics."""
+    request = urllib.request.Request(
+        url, data=json.dumps(calls).encode("utf-8"), method="POST",
+        headers={"Content-Type": "application/json", "User-Agent": UA})
+    try:
+        with _owner_rpc_open(request, timeout=_OWNER_RPC_TIMEOUT) as response:
+            if response.status != 200:
+                return None, "HTTP response unavailable"
+            raw = response.read()
+    except urllib.error.HTTPError:
+        return None, "HTTP response unavailable"
+    except Exception:  # noqa: BLE001 -- transport messages may contain private data
+        return None, "transport unavailable"
+    try:
+        body = json.loads(raw, object_pairs_hook=_owner_rpc_object)
+    except (ValueError, UnicodeError, TypeError):
+        return None, "unparseable response"
+    if not isinstance(body, list) or not body:
+        return None, "empty or malformed batch"
+    return body, None
+
+
+def _owner_rpc_results(body, expected):
+    """Only a unique matched JSON-RPC success can testify about its requested value."""
+    matched, results, reasons = {}, {}, set()
+    for envelope in body:
+        if (not isinstance(envelope, dict) or envelope.get("jsonrpc") != "2.0"
+                or type(envelope.get("id")) is not int or envelope["id"] not in expected):
+            reasons.add("invalid or unmatched envelope")
+            continue
+        matched.setdefault(envelope["id"], []).append(envelope)
+    for identifier in expected:
+        rows = matched.get(identifier, [])
+        if not rows:
+            reasons.add("missing response ID")
+        elif len(rows) != 1:
+            reasons.add("duplicate response ID")
+        elif "result" not in rows[0] or "error" in rows[0]:
+            reasons.add("RPC error" if "error" in rows[0] else "missing result")
+        else:
+            results[identifier] = rows[0]["result"]
+    return results, reasons
+
+
+def test_owner_power_rpc_contract():
+    """Observe current code separately from historical evidence, including partial blindness."""
+    print("\n[ethereum-rpc] latest public test-provider coverage; production-primary uptime unmeasured")
+    calls = [{"jsonrpc": "2.0", "id": 1, "method": "eth_chainId", "params": []}]
+    calls.extend({"jsonrpc": "2.0", "id": 10 + index, "method": "eth_getCode",
+                  "params": [address, "latest"]}
+                 for index, (_, address, _, _) in enumerate(_OWNER_RPC_CASES))
+    complete, blind = False, []
+    for provider, url in _OWNER_RPC_PROVIDERS:
+        failures_before = len(_FAILURES)
+        body, why = _owner_rpc_post(url, calls)
+        if why is not None:
+            blind.append(provider + ": " + why)
+            print("  NOTE  %s unobserved: %s" % (provider, why))
+            continue
+        results, reasons = _owner_rpc_results(body, {call["id"] for call in calls})
+        observed = 0
+        if 1 in results:
+            chain = results[1]
+            ethereum = (isinstance(chain, str) and re.fullmatch(r"0x[0-9a-fA-F]+", chain) is not None
+                        and int(chain, 16) == 1)
+            check("%s: chain ID is Ethereum" % provider, ethereum, "wrong or malformed chain ID")
+            if not ethereum:
+                reasons.add("chain not validated")
+            else:
+                for index, (name, _address, powers, proxy) in enumerate(_OWNER_RPC_CASES):
+                    if 10 + index not in results:
+                        continue
+                    observed += 1
+                    code = results[10 + index]
+                    valid = isinstance(code, str) and re.fullmatch(r"0x(?:[0-9a-fA-F]{2})+", code) is not None
+                    check("%s: %s bytecode is nonempty hex" % (provider, name), valid, "invalid bytecode result")
+                    if not valid:
+                        continue
+                    info = risk._powers_from_code(code)
+                    check("%s: %s bytecode can be read" % (provider, name), info is not None,
+                          "unreadable bytecode result")
+                    if info is None:
+                        continue
+                    for power in powers:
+                        check("%s: %s is seen to have: %s" % (provider, name, power),
+                              power in info["powers"], "required power not found")
+                    check("%s: %s proxy detection is %s" % (provider, name, proxy),
+                          info["is_proxy"] is proxy, "unexpected proxy detection")
+                    if name == "WETH":
+                        check("%s: WETH, which has no owner, shows no powers" % provider,
+                              not info["powers"], "unexpected owner power")
+        else:
+            reasons.add("chain not observed")
+        if not reasons and observed == len(_OWNER_RPC_CASES):
+            complete = True
+            print("  NOTE  latest coverage supplied by %s" % provider)
+            if len(_FAILURES) == failures_before:
+                break
+        else:
+            why = ", ".join(sorted(reasons))
+            blind.append(provider + ": " + why)
+            print("  NOTE  %s unobserved: %s" % (provider, why))
+    if not complete:
+        _UNOBSERVED.append((_OWNER_RPC_SOURCE, "; ".join(blind)))
+
 
 def test_honeypot_facts_a_shape_cannot_state():
     """The three assertions that are not "does this field exist".
