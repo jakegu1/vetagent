@@ -67,10 +67,6 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Record committed lock byte hashes
-        if: steps.creds.outputs.ready == 'true'
-        run: sha256sum uv.lock pylock.toml package-lock.json > "$RUNNER_TEMP/build-locks.sha256"
-
       # Tests first. Shipping a risk-screening tool without them puts silent failure
       # right back in.
       #
@@ -84,6 +80,10 @@ jobs:
       - name: Offline test suite (every step of test.yml's test job)
         if: steps.creds.outputs.ready == 'true'
         run: python .github/scripts/offline_suite.py
+
+      - name: Record committed lock byte hashes
+        if: steps.creds.outputs.ready == 'true'
+        run: sha256sum uv.lock pylock.toml package-lock.json > "$RUNNER_TEMP/build-locks.sha256"
 
       - name: Install uv
         if: steps.creds.outputs.ready == 'true'
