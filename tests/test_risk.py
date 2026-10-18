@@ -6513,6 +6513,182 @@ def test_unchecked_reserve_qualification_follows_liquidity_recommendation():
                   normalized == control, str(normalized))
 
 
+def test_a_withheld_rugcheck_score_never_claims_its_chain_is_uncovered():
+    """W55(a): an observed but withheld score is not an unsupported chain."""
+    print("\n[T-039] provisional-only coverage names the withheld score")
+    now = datetime.datetime(2026, 10, 18, 9, tzinfo=datetime.timezone.utc)
+    for label, stamp, expiry in (
+            ("known index", "2026-10-18T08:55:00Z", "settles about 355 minutes from now"),
+            ("missing index", None, ""), ("unreadable index", "unreadable", "")):
+        rc = {"mint": "synthetic-mint", "score": 1, "score_normalised": 1,
+              "detectedAt": stamp, "risks": [], "topHolders": [{"pct": 2}],
+              "mintAuthority": None, "freezeAuthority": None, "token_extensions": {}}
+        sigs, gaps = [], []
+        clock = risk._BENCH_NOW.set(now)
+        try:
+            risk._rugcheck_signals(rc, sigs, {}, gaps)
+        finally:
+            risk._BENCH_NOW.reset(clock)
+        provisional = [g for g in gaps if "RugCheck's score is provisional" in g["reason"]]
+        check(label + ": the actual signal path files exactly one provisional gap",
+              len(provisional) == 1, str(gaps))
+        if len(provisional) != 1:
+            continue
+        clause = risk._not_covered_clause(provisional)
+        check(label + ": the clause names provisional score evidence as withheld",
+              "provisional" in clause.lower() and "score" in clause.lower()
+              and ("withheld" in clause.lower() or "unavailable" in clause.lower()), clause)
+        check(label + ": the clause does not claim an unsupported chain or a sale",
+              "chain" not in clause.lower() and "sell" not in clause.lower(), clause)
+        guided = {"recommendation": "Not assessed."}
+        risk._unknown_guidance(guided, provisional)
+        check(label + ": actual composed guidance carries that same truthful clause",
+              clause in guided["recommendation"] and "provisional" in guided["recommendation"],
+              str(guided))
+        check(label + ": the existing action remains coverage and abstain",
+              (guided.get("unknown_kind"), guided.get("next_action"),
+               guided.get("retry_after_seconds")) == ("coverage", "abstain", None), str(guided))
+        check(label + ": the expiry is preserved exactly when it was observed",
+              expiry in guided["recommendation"] if expiry
+              else "settles about" not in guided["recommendation"], str(guided))
+
+
+def test_real_simulator_coverage_survives_provisional_gap_wording():
+    """A real simulator gap keeps precedence; unrelated coverage keeps its old fallback."""
+    print("\n[T-039] genuine simulator coverage keeps its original clause")
+    rc = {"mint": "synthetic-mint", "score": 1, "score_normalised": 1,
+          "detectedAt": "2026-10-18T08:55:00Z", "risks": [], "topHolders": [],
+          "mintAuthority": None, "freezeAuthority": None, "token_extensions": {}}
+    gaps = []
+    clock = risk._BENCH_NOW.set(datetime.datetime(2026, 10, 18, 9,
+                                               tzinfo=datetime.timezone.utc))
+    try:
+        risk._rugcheck_signals(rc, [], {}, gaps)
+    finally:
+        risk._BENCH_NOW.reset(clock)
+    simulator = next(g for g in gaps if "the sell simulator does not cover solana" in g["reason"])
+    provisional = next(g for g in gaps if "RugCheck's score is provisional" in g["reason"])
+    holder = next(g for g in gaps if "the report carried no holder distribution" in g["reason"])
+    for label, ordered in (("simulator alone", [simulator]),
+                           ("simulator first", [simulator, provisional]),
+                           ("provisional first", [provisional, simulator])):
+        check(label + ": the original Solana simulator clause is exact",
+              risk._not_covered_clause(ordered) == "No sell simulator here covers solana",
+              risk._not_covered_clause(ordered))
+    evm_gaps = []
+    risk._honeypot_signals(None, [], {}, evm_gaps, chain="polygon")
+    check("an actual unsupported EVM simulator keeps its exact original clause",
+          risk._not_covered_clause(evm_gaps) == "No sell simulator here covers polygon",
+          str(evm_gaps))
+    check("unrelated holder coverage keeps the original fallback",
+          risk._not_covered_clause([holder]) == "Part of this check does not cover this token's chain",
+          risk._not_covered_clause([holder]))
+    check("empty coverage keeps the original fallback",
+          risk._not_covered_clause([]) == "Part of this check does not cover this token's chain")
+    outage = {"dimension": "sellability", "source": "synthetic",
+              "reason": risk._gap(risk._UPSTREAM_FAILED, "synthetic source did not answer")}
+    token = {"dimension": "liquidity", "source": "synthetic",
+             "reason": risk._gap(risk._ABOUT_TOKEN, "no trading pair found")}
+    for ordered in ([simulator, provisional, outage, token],
+                    [token, outage, provisional, simulator]):
+        guided = {"recommendation": "Not assessed."}
+        risk._unknown_guidance(guided, ordered)
+        check("mixed actual guidance retains E33's kind, action and retry seconds",
+              (guided.get("unknown_kind"), guided.get("next_action"),
+               guided.get("retry_after_seconds")) == ("mixed", "retry", 60), str(guided))
+        check("mixed actual guidance retains the real chain, expiry and token clause",
+              "No sell simulator here covers solana" in guided["recommendation"]
+              and "settles about 355 minutes from now" in guided["recommendation"]
+              and "No source can see this token" in guided["recommendation"]
+              and "retry in about a minute" in guided["recommendation"], str(guided))
+
+
+def test_provisional_gap_wording_preserves_current_solana_contracts():
+    """Only the latent sentence changes: compare whole actual E24-containing results."""
+    print("\n[T-039] current Solana results and conditional W55(b,c) stay unchanged")
+
+    def original_clause(gaps):
+        # Frozen pre-T-039 helper, used only to compare unchanged whole engine outputs.
+        reasons = " ".join(str(g.get("reason", "")) for g in gaps)
+        if "sell simulator" in reasons:
+            chain = reasons.rsplit("does not cover ", 1)[-1].split()[0] if "does not cover " in reasons else ""
+            return ("No sell simulator here covers %s" % chain) if chain else "No sell simulator covers this chain"
+        return "Part of this check does not cover this token's chain"
+
+    def compose(rc, extra_sell=False):
+        sigs = [risk._sig("ok", "Synthetic costed liquidity", "control", "liquidity"),
+                risk._sig("ok", "Synthetic market activity", "control", "activity"),
+                risk._sig("ok", "Synthetic metadata", "control", "contract")]
+        evidence, gaps, seen = {}, [], {}
+        risk._rugcheck_signals(copy.deepcopy(rc), sigs, evidence, gaps)
+        if extra_sell:
+            sigs.append(risk._sig("ok", "Synthetic actual sell observation", "control", "sellability"))
+
+        def trace(frame, event, arg):
+            if frame.f_code is risk._finalize.__code__ and event == "return":
+                seen["has_sellability"] = frame.f_locals.get("has_sellability")
+            return trace
+
+        previous_trace = sys.gettrace()
+        sys.settrace(trace)
+        try:
+            result = risk._finalize("synthetic-control", sigs, evidence, gaps)
+        finally:
+            sys.settrace(previous_trace)
+        return result, seen.get("has_sellability")
+
+    now = datetime.datetime(2026, 10, 18, 9, tzinfo=datetime.timezone.utc)
+    shapes = (("provisional revoked authorities", 1, 1, False, True, True),
+              ("provisional retained mint", 1, 1, True, False, True),
+              ("settled retained mint", 1, 1440, True, True, False),
+              ("warn band twenty", 20, 1, True, True, False),
+              ("high band fifty", 50, 1, True, True, False),
+              ("unreadable index", 1, None, True, False, True))
+    check("the original settling and warn thresholds remain fixed",
+          risk._RUGCHECK_SETTLING_MINUTES == 360 and risk._RUGCHECK_WARN_BAND == 20)
+    check("the original critical dimensions remain fixed",
+          risk._CRITICAL_DIMENSIONS == ("liquidity", "sellability"))
+    clock = risk._BENCH_NOW.set(now)
+    try:
+        for label, score, age, retained, expected_sell, expected_provisional in shapes:
+            rc = {"mint": "synthetic-mint", "score": score, "score_normalised": score,
+                  "detectedAt": (now - datetime.timedelta(minutes=age)).isoformat()
+                  if age is not None else "unreadable",
+                  "risks": [{"name": "Synthetic source concern", "level": "warn"}],
+                  "topHolders": [{"pct": 2}], "totalHolders": 150000,
+                  "verification": {"jup_verified": True}, "token_extensions": {},
+                  "mintAuthority": "synthetic-authority" if retained else None,
+                  "freezeAuthority": None}
+            with patch.object(risk, "_not_covered_clause", original_clause):
+                before, before_sell = compose(rc)
+            after, after_sell = compose(rc)
+            check(label + ": the complete actual composed result is unchanged",
+                  before == after, str((before, after)))
+            check(label + ": the retained/revoked completeness distinction is unchanged",
+                  before_sell is expected_sell and after_sell is expected_sell,
+                  str((before_sell, after_sell)))
+            check(label + ": current fail-closed verdict and confidence are retained",
+                  after["risk_level"] == "unknown" and after["confidence"] == "low", str(after))
+            gaps = after["evidence"].get("data_gaps") or []
+            provisional = [g for g in gaps if "RugCheck's score is provisional" in g["reason"]]
+            check(label + ": provisional critical routing is retained",
+                  bool(provisional) == expected_provisional
+                  and all(g["dimension"] == "sellability" for g in provisional), str(gaps))
+            coverage = [s for s in after["signals"] if s["category"] == "coverage"]
+            check(label + ": every coverage signal is zero-weight info and never a driver",
+                  bool(coverage) and all(s["severity"] == "info" for s in coverage)
+                  and risk._score(coverage) == 0 and risk._driver(coverage) is None, str(coverage))
+            check(label + ": RugCheck's named concern is not dropped",
+                  "Synthetic source concern" in " ".join(s["message"] for s in after["signals"]))
+            sold, sold_complete = compose(rc, extra_sell=True)
+            check(label + ": real sellability-category evidence satisfies completeness without clearing a gap",
+                  sold_complete is True and sold["evidence"]["data_gaps"] == gaps
+                  and (sold["risk_level"], sold["risk_score"], sold["confidence"]) ==
+                  (after["risk_level"], after["risk_score"], after["confidence"]), str(sold))
+    finally:
+        risk._BENCH_NOW.reset(clock)
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
