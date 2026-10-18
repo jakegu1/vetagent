@@ -201,5 +201,15 @@ unexamined dimensions as observed absences.
 
 ## Amendments
 
-None. The lead owns generated pages and release metadata separately.
+### (a) Isolated preparation while the independent gate repair finishes
+
+T-032 is independently approved, integrated and passes the actual thirty-seven-step
+post-merge gate. T-034's correction is still isolated. None of this task's eight files
+overlaps T-034's two files or T-033's seven files. The lead permits isolated tests-first
+implementation from the current green integration base while those tasks finish.
+T-034 approval/integration remains a hard integration and release prerequisite; it is
+not waived by parallel preparation. Reconcile any newer generator/input changes at
+integration rather than discarding them. The actual dispatch has newer preserved
+Experiment C generated content than the preparation pin; its old prose and quoted
+post must remain exact. The lead owns generated pages and release metadata separately.
 
