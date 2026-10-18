@@ -307,3 +307,35 @@ request one exclusive actual full inventory on the new frozen head, and send tha
 head to one fresh combined second reviewer under the two-round cap. Root then performs
 the actual Linux/integrated gates before its sole live pilot. Known failure evidence
 is not a provider-capacity measurement and does not veto the project.
+
+## Named partial-readout correction
+
+2026-10-19 (e2): while sealing the corrected source's actual partial-append CLI
+evidence, the executor reproduced a numeric-integrity regression in the same
+failure-finalization class (e). Two durable claims include actual fake transport
+starts at 0 and 2.1 seconds, but both the immediate failure return and standalone
+CLI readout report elapsed_seconds=0, elapsed_minutes=0 and ended_at=null. A
+last completed receipt cannot establish a terminal time after an interrupted
+claim. Hold 49abae7a5d503f7775ad8bab1f4ffb0b18f70e25; keep its actual full result
+as held-source evidence, without rebinding it to a repair.
+
+Permit one additional self-contained regression block at the end of the existing
+(e) nested partial-persistence block in
+test_goplus_quota_pilot_preserves_partial_intents_and_persistence. Preserve all
+earlier statements, order, assertions, other functions and the seven-function
+runner contract. Exercise both immediate failure return and real standalone CLI
+report against the same torn ledger. With no valid terminal event, elapsed_seconds
+and elapsed_minutes are null/unobserved; started_at and independently known claim,
+HTTP and request clocks remain observed. Do not invent an end or add a new
+lower-bound metric. Prior 429, two claims, one uncertain attempt and remaining
+not_asked counts, original torn bytes and refusal to append through corruption
+must remain exact. Completed valid-terminal positive controls keep their actual
+numeric elapsed durations.
+
+Commit this regression alone with a meaningful red on the held source, then a
+separate same-finding fix. Preserve the earlier sealed proof sets and full log;
+record the authorized contract addition mechanically. Source changes require a
+new focused pass and one new exact-head globally exclusive full slot before
+READY. The fresh combined second review must close (e2) with (c), (d) and (e).
+This is evidence correction within the existing repair round, with no policy,
+provider, queue, request allowance, deadline or study-calendar change.
