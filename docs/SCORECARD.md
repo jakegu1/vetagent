@@ -4,13 +4,13 @@
 > It moves with every commit, so `git diff` tells you what the change was worth.
 
 
-## Total: **46 / 100**
+## Total: **47 / 100**
 
 | Dimension | Score | Max |
 |---|---|---|
 | Correctness | 19.0 ⚠️ | 30 |
 | Coverage | 10.8 | 20 |
-| Credibility | 12.5 | 20 |
+| Credibility | 12.6 | 20 |
 | Distribution | 4.2 ⚠️ | 15 |
 | Demand | 0.0 | 15 |
 
@@ -35,7 +35,7 @@
 | Correctness | production guards observed live | 5.0 | 5 | 429 after 61 calls; batch of 11 -> HTTP 400; service 6898b72 on 2026-10-18 |
 | Coverage | risk dimensions covered, per advertised chain | 10.8 | 20 | 39 / 72 chain-dimension cells |
 | Credibility | recall is measurable | 10.0 | 10 | dead samples: 30 (need ≥20) |
-| Credibility | days of snapshots | 2.5 | 10 | 45 of 180 days |
+| Credibility | days of snapshots | 2.6 | 10 | 46 of 180 days |
 | Distribution | channels listed on | 4.2 | 10 | 5 / 12 |
 | Distribution | external callers | — | 5 | not measured (needs CLOUDFLARE_API_TOKEN, see bench/usage.py) |
 | Demand | paying users | 0.0 | 10 | 0 |
@@ -103,7 +103,7 @@ with false positives and false blocks <2%, unknown <5% in the benchmark and in p
 outcome data, the benchmark methodology cited as a standard by peers, the default
 choice at every agent entry point, and paying users who would complain if it disappeared.
 
-**The current 46 is not a failure** — it says precisely that the
+**The current 47 is not a failure** — it says precisely that the
 engineering is decent, proof and demand are both still zero, and writing more code
 cannot solve those last two.
 
