@@ -485,6 +485,85 @@ class BackfillObservationTests(unittest.TestCase):
                 self.assertEqual(required.count("run: " + command), 1)
         self.assertEqual(body.count("run: python tests/test_backfill.py"), 1)
 
+    def test_observed_contract_disproof_survives_a_later_call_gap(self):
+        original_node = Node
+
+        class PartialNode(original_node):
+            def _result(self, method, params):
+                if method == "eth_call" and params[0]["to"] == _address(200):
+                    if params[0]["data"] == "0x0dfe1681" and first_answer is not None:
+                        return first_answer
+                    if params[0]["data"] == "0xd21220a7" and self.mode == "later_call_gap":
+                        raise urllib.error.HTTPError("", 500, SENTINEL, {}, None)
+                return super()._result(method, params)
+
+        bad_answers = (("empty", "0x"), ("short", "0x01"),
+                       ("outside", "0x" + "0" * 24 + _address(999)[2:]))
+        with patch.dict(globals(), {"Node": PartialNode}):
+            for label, first_answer in bad_answers:
+                for candidates in (3, 4):
+                    for gap in (False, True):
+                        with self.subTest(answer=label, candidates=candidates, gap=gap):
+                            receipt = exercise("later_call_gap" if gap else "later_call_served",
+                                               candidates=candidates)
+                            self.outcome(receipt, "red", failed=True, unobserved=gap)
+                            self.assertEqual(receipt["summary"]["live_failed_checks"], 1)
+                            if gap and candidates == 3:
+                                self.assertGreaterEqual(receipt["summary"]["live_unobserved_checks"], 2)
+            first_answer = None
+            for candidates, observed in ((3, 4), (4, 5)):
+                with self.subTest(good_partial=candidates):
+                    receipt = exercise("later_call_gap", candidates=candidates)
+                    self.outcome(receipt, "partial", unobserved=True)
+                    self.assertEqual(receipt["summary"]["live_failed_checks"], 0)
+                    self.assertEqual(receipt["summary"]["live_observed_checks"], observed,
+                                     "a partial good pair counted toward the complete-pair floor")
+
+    def test_observed_boundary_disproof_survives_a_later_timestamp_gap(self):
+        self.outcome(exercise(), "observed")
+        backfill = sys.modules["backfill"]
+        original_node, original_boundary = Node, backfill.block_at
+        nodes = []
+
+        class BoundaryNode(original_node):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.after_search = False
+                nodes.append(self)
+
+            def _result(self, method, params):
+                if self.after_search and method == "eth_getBlockByNumber":
+                    block = int(params[0], 16)
+                    biased = self.boundary + {"before": 1, "midnight": -40}.get(fault, 0)
+                    if ((missing in ("t0", "both") and block == biased)
+                            or (missing in ("next", "both") and block == biased + 1)):
+                        raise urllib.error.HTTPError("", 500, SENTINEL, {}, None)
+                return super()._result(method, params)
+
+        def searched_boundary(*args):
+            answer = original_boundary(*args)
+            nodes[-1].after_search = True
+            return answer
+
+        grid = (("before", "none"), ("before", "next"),
+                ("midnight", "none"), ("midnight", "next"),
+                (None, "next"), (None, "t0"), (None, "both"))
+        with patch.dict(globals(), {"Node": BoundaryNode}), \
+             patch.object(backfill, "block_at", searched_boundary):
+            for fault, missing in grid:
+                with self.subTest(bias=fault, missing=missing):
+                    receipt = exercise("partial_boundary", fault=fault)
+                    failed = fault is not None
+                    unobserved = {"none": 0, "next": 1, "t0": 2, "both": 3}[missing]
+                    self.outcome(receipt, "red" if failed else "partial", failed=failed,
+                                 unobserved=bool(unobserved))
+                    self.assertEqual(receipt["summary"]["live_failed_checks"],
+                                     int(failed) + int(fault == "midnight" and missing == "none"))
+                    self.assertEqual(receipt["summary"]["live_unobserved_checks"], unobserved,
+                                     "a later gap erased an independently decidable boundary fact")
+                    self.assertEqual(receipt["summary"]["live_observed_checks"], 5 - unobserved)
+                    self.assertGreater(receipt["node"]["boundary_calls"], 0)
+
 
 if __name__ == "__main__":
     result = unittest.main(verbosity=2, exit=False)
