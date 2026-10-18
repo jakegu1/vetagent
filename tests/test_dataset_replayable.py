@@ -271,6 +271,52 @@ def test_w40_enrollment_uses_birth_utc_and_never_selects_after_results():
         report = f.setup(raw=b"X" * (core.ROW_CAP + 1) + b"\n" + (json.dumps(f.row()) + "\n").encode())
         check("W40 bounds rows before parsing and preserves later valid rows", report["enrollment_counts"]["row_cap"] == 1 and report["enrolled"] == 1)
 
+    # T045 round-two (b1) END regression block: bounded identity and real enrollment time.
+    import pathlib
+    import subprocess
+    import sys
+    import json as r2_json
+    core, R2Fixture, _r2_copy, _r2_patch, _r2_context = test_w40_plan_is_offline_source_bound_and_not_started(True)
+    for r2_bad_chain in ([], {}):
+        with R2Fixture() as r2_f:
+            r2_rows = [r2_f.row(), r2_f.row(chain=r2_bad_chain),
+                       r2_f.row(base_token="base_0x" + "2" * 40,
+                                pool_address="0x" + "b" * 40, pool_id="base_0x" + "b" * 40)]
+            try:
+                r2_report = r2_f.setup(r2_rows)
+            except Exception as r2_exc:
+                check("R2 malformed chain API counts and continues: " + type(r2_bad_chain).__name__, False, type(r2_exc).__name__)
+            else:
+                check("R2 malformed chain API counts and continues: " + type(r2_bad_chain).__name__,
+                      r2_report["enrolled"] == 2 and r2_report["enrollment_counts"]["invalid_row"] == 1
+                      and r2_report["enrollment_complete"] and r2_report["unprocessed_source_rows"] == 0
+                      and [r["source_ref"]["line"] for r in r2_report["rows"]] == [1, 3])
+            r2_sources = r2_f.root / "cli-sources.json"
+            r2_plan = r2_f.root / "cli-plan.json"
+            r2_sources.write_text(r2_json.dumps(r2_f.sources), encoding="utf-8")
+            r2_plan.write_text(r2_json.dumps(r2_f.plan), encoding="utf-8")
+            r2_cli = r2_f.root / "cli-safe"
+            r2_run = subprocess.run([sys.executable, "-B", str(pathlib.Path(ROOT) / "bench/w40_evidence.py"),
+                                     "enroll", "--plan", str(r2_plan), "--sources", str(r2_sources),
+                                     "--boundary", "2026-10-01T02:00:00Z", "--ingested-at", "2026-10-01T02:00:00Z",
+                                     "--output", str(r2_cli)], cwd=ROOT, capture_output=True, encoding="utf-8")
+            r2_safe_text = r2_run.stdout + r2_run.stderr
+            r2_cli_report = core.report(r2_cli, now="2026-10-03T00:00:00Z")
+            check("R2 actual CLI survives malformed chain: " + type(r2_bad_chain).__name__,
+                  r2_run.returncode == 0 and r2_cli_report["enrolled"] == 2
+                  and r2_cli_report["enrollment_counts"]["invalid_row"] == 1
+                  and r2_cli_report["enrollment_complete"] and "Traceback" not in r2_safe_text
+                  and r2_f.token not in r2_safe_text)
+    with R2Fixture() as r2_f:
+        r2_report = r2_f.setup(boundary="2026-10-01T02:00:00Z", ingested_at="2026-10-03T00:00:00Z")
+        check("R2 first ingestion after target cannot backdate fresh enrollment",
+              r2_report["enrolled"] == 0 and r2_report["enrollment_counts"]["missed_before_enrollment"] == 1)
+        check("R2 delayed enrollment preserves the boundary and first ingestion independently",
+              r2_report.get("enrollment_boundary") == "2026-10-01T02:00:00Z"
+              and r2_report.get("ingested_at") == "2026-10-03T00:00:00Z")
+    # T045 round-two (b1) END regression block ends.
+
+
 
 def test_w40_paired_packet_preserves_raw_sources_times_and_identities():
     core, Fixture, copy, patch, _ = test_w40_plan_is_offline_source_bound_and_not_started(True)
@@ -306,6 +352,57 @@ def test_w40_paired_packet_preserves_raw_sources_times_and_identities():
         packet = f.packet()
         packet["ordinal"] = 999
         check("W40 packet must name an enrolled ordinal", f.reject(lambda: f.ingest(packet), "ordinal_not_enrolled"))
+
+    # T045 round-two (b2) END regression block: malformed bounded state containers.
+    import pathlib
+    import subprocess
+    import sys
+    import json as r2_json
+    core, R2Fixture, _r2_copy, _r2_patch, _r2_context = test_w40_plan_is_offline_source_bound_and_not_started(True)
+    for r2_bad_state in (["private_state_sentinel"], {"private_state_sentinel": True}):
+        for r2_mode in ("api", "cli"):
+            with R2Fixture() as r2_f:
+                r2_f.setup([r2_f.row(), r2_f.row(base_token="base_0x" + "2" * 40,
+                                               pool_address="0x" + "b" * 40, pool_id="base_0x" + "b" * 40)])
+                r2_f.ingest(r2_f.packet())
+                r2_prior = {p.name: p.read_bytes() for p in (r2_f.output / "events").glob("*.json")}
+                r2_packet = r2_f.packet(2)
+                r2_packet["oracle"]["state"] = r2_bad_state
+                r2_receipt = None
+                r2_native = 0
+                r2_console = ""
+                if r2_mode == "api":
+                    try:
+                        r2_receipt = r2_f.ingest(r2_packet)
+                    except Exception as r2_exc:
+                        check("R2 bounded state container API never raises: " + type(r2_bad_state).__name__, False, type(r2_exc).__name__)
+                else:
+                    r2_sources = r2_f.root / "cli-sources.json"
+                    r2_packet_path = r2_f.root / "cli-packet.json"
+                    r2_sources.write_text(r2_json.dumps(r2_f.sources), encoding="utf-8")
+                    r2_packet_path.write_text(r2_json.dumps(r2_packet), encoding="utf-8")
+                    r2_run = subprocess.run([sys.executable, "-B", str(pathlib.Path(ROOT) / "bench/w40_evidence.py"),
+                                             "ingest", "--output", str(r2_f.output), "--sources", str(r2_sources),
+                                             "--packet", str(r2_packet_path), "--private-dir", str(r2_f.private),
+                                             "--imported-at", "2026-10-03T00:00:00Z"], cwd=ROOT, capture_output=True, encoding="utf-8")
+                    r2_native = r2_run.returncode
+                    r2_console = r2_run.stdout + r2_run.stderr
+                    if r2_native == 0:
+                        r2_receipt = r2_json.loads(r2_run.stdout)
+                r2_report = core.report(r2_f.output, now="2026-10-03T00:00:00Z")
+                check("R2 malformed state is invalid evidence with its known observations: " + r2_mode + type(r2_bad_state).__name__,
+                      r2_native == 0 and r2_receipt is not None
+                      and r2_receipt["oracle"]["state"] == "invalid_evidence"
+                      and r2_receipt["oracle"]["http_status"] == 200
+                      and r2_receipt["oracle"]["request_at"] == "2026-10-02T00:00:00Z"
+                      and r2_receipt["oracle"]["response_at"] == "2026-10-02T00:00:02Z"
+                      and r2_report["receipts"] == 2 and not r2_receipt["qualified_unsafe_observed"])
+                check("R2 malformed state preserves earlier commits and safe diagnostics: " + r2_mode + type(r2_bad_state).__name__,
+                      all((r2_f.output / "events" / name).read_bytes() == raw for name, raw in r2_prior.items())
+                      and "Traceback" not in r2_console and "private_state_sentinel" not in r2_console
+                      and r2_f.token not in r2_console)
+    # T045 round-two (b2) END regression block ends.
+
 
 
 def test_w40_label_replay_preserves_existing_rules_and_observation_states():
@@ -353,6 +450,55 @@ def test_w40_label_replay_preserves_existing_rules_and_observation_states():
         receipt = f.ingest(packet)
         check("W40 below-floor reserve is measured, not missing or qualified", receipt["reserve"]["state"] == "observed" and receipt["reserve"]["reserve_usd"] == 4999.99 and not receipt["qualified_unsafe_observed"])
 
+    # T045 round-two (b3) END regression block: acquisition-bound recent daily volume.
+    from datetime import datetime as r2_datetime
+    import json as r2_json
+    core, R2Fixture, _r2_copy, r2_patch, _r2_context = test_w40_plan_is_offline_source_bound_and_not_started(True)
+    def r2_candle(stamp, volume=2000):
+        return [int(r2_datetime.fromisoformat(stamp.replace("Z", "+00:00")).timestamp()), 1, 1, 1, 1, volume]
+    for r2_kind in ("one_year_old", "pre_birth", "historical_query", "outside_recent_window", "positive"):
+        with R2Fixture() as r2_f:
+            r2_f.setup()
+            r2_packet = r2_f.packet()
+            r2_rows = [r2_candle("2026-10-02T00:00:00Z")]
+            r2_imported = "2026-10-03T00:00:00Z"
+            if r2_kind == "one_year_old":
+                r2_rows = [r2_candle("2025-10-02T00:00:00Z")]
+            elif r2_kind == "pre_birth":
+                r2_rows = [r2_candle("2026-09-30T00:00:00Z")]
+            elif r2_kind == "historical_query":
+                r2_packet["endpoints"]["label"][1] += "?before_timestamp=1759363200"
+            r2_packet["ohlcv"] = r2_f.stage({"data": {"attributes": {"ohlcv_list": r2_rows}}})
+            if r2_kind == "outside_recent_window":
+                r2_packet["ohlcv"]["request_at"] = "2026-10-10T00:00:00Z"
+                r2_packet["ohlcv"]["response_at"] = "2026-10-10T00:00:02Z"
+                r2_imported = "2026-10-11T00:00:00Z"
+            with r2_patch.object(core.labels, "goplus_label", wraps=core.labels.goplus_label) as r2_label:
+                r2_receipt = core.ingest(r2_f.output, r2_f.sources, r2_json.dumps(r2_packet).encode("utf-8"),
+                                         private_dir=r2_f.private, imported_at=r2_imported)
+                r2_report = core.report(r2_f.output, now=r2_imported)
+                r2_volume = r2_label.call_args.kwargs["recent_volume_7d"] if r2_label.call_count else "not_called"
+            if r2_kind == "positive":
+                check("R2 contemporaneous daily candle still uses unchanged helper and B11",
+                      r2_receipt["ohlcv"]["recent_volume_7d"] == r2_volume == 2000
+                      and r2_receipt["oracle"]["label"] == "unsafe"
+                      and r2_report["qualified_unsafe_observed"] == 1)
+                check("R2 sparse observed candles never claim full recent time coverage",
+                      r2_receipt["ohlcv"].get("recent_days_observed") == 1
+                      and r2_receipt["ohlcv"].get("recent_window_complete") is False)
+            else:
+                check("R2 historical volume cannot satisfy B11: " + r2_kind,
+                      r2_receipt["ohlcv"]["recent_volume_7d"] is None and r2_volume is None
+                      and r2_receipt["oracle"]["label"] is None
+                      and r2_report["qualified_unsafe_observed"] == 0)
+                check("R2 historical volume keeps raw and acquisition evidence: " + r2_kind,
+                      r2_receipt["ohlcv"]["raw_sha256"] == r2_packet["ohlcv"]["sha256"]
+                      and r2_receipt["ohlcv"]["request_at"] == r2_packet["ohlcv"]["request_at"]
+                      and r2_receipt["ohlcv"]["response_at"] == r2_packet["ohlcv"]["response_at"]
+                      and r2_report["state"] == "not_started")
+    # T045 round-two (b3) END regression block ends.
+
+
 
 def test_w40_timing_and_endpoint_overlap_never_become_passes():
     core, Fixture, copy, patch, _ = test_w40_plan_is_offline_source_bound_and_not_started(True)
@@ -381,6 +527,42 @@ def test_w40_timing_and_endpoint_overlap_never_become_passes():
             else:
                 check("W40 different selected engine pool stays visible", receipt["pool_mismatch"] is True and not receipt["qualified_unsafe_observed"])
             check("W40 shared eligibility evidence remains disclosed", receipt["independence"]["eligibility_shared"] in (True, False) and receipt["timing"]["simultaneous_claim"] is False)
+
+    # T045 round-two (b4) END regression block: independent availability and clocks.
+    core, R2Fixture, _r2_copy, _r2_patch, _r2_context = test_w40_plan_is_offline_source_bound_and_not_started(True)
+    for r2_kind in ("timeout", "transport_error", "429", "invalid_request", "reversed"):
+        with R2Fixture() as r2_f:
+            r2_f.setup()
+            r2_packet = r2_f.packet()
+            if r2_kind in ("timeout", "transport_error", "429"):
+                r2_packet["oracle"] = {"state": "observed" if r2_kind == "429" else r2_kind,
+                                       "request_at": "2026-10-02T00:00:00Z", "response_at": None,
+                                       "http_status": 429 if r2_kind == "429" else None}
+            elif r2_kind == "invalid_request":
+                r2_packet["oracle"]["request_at"] = "invalid_clock_sentinel"
+            else:
+                r2_packet["oracle"]["response_at"] = "2026-10-01T23:59:59Z"
+            r2_receipt = r2_f.ingest(r2_packet)
+            r2_stage = r2_receipt["oracle"]
+            if r2_kind in ("timeout", "transport_error", "429"):
+                r2_expected = "http_429" if r2_kind == "429" else r2_kind
+                check("R2 missing response preserves availability and known request: " + r2_kind,
+                      r2_stage["state"] == r2_expected
+                      and r2_stage["http_status"] == (429 if r2_kind == "429" else None)
+                      and r2_stage["request_at"] == "2026-10-02T00:00:00Z"
+                      and r2_stage["response_at"] is None and r2_stage.get("response_time_state") == "missing"
+                      and r2_stage.get("timing_state") == "missing_clock")
+            else:
+                check("R2 actual invalid or reversed clocks remain invalid: " + r2_kind,
+                      r2_stage.get("timing_state") == "invalid_clock")
+                if r2_kind == "invalid_request":
+                    check("R2 invalid request does not erase the valid response clock",
+                          r2_stage["request_at"] is None and r2_stage["response_at"] == "2026-10-02T00:00:02Z")
+            check("R2 incomplete or invalid clock never qualifies or invents simultaneity: " + r2_kind,
+                  not r2_receipt["qualified_unsafe_observed"]
+                  and r2_receipt["timing"]["simultaneous_claim"] is False)
+    # T045 round-two (b4) END regression block ends.
+
 
 
 def test_w40_partial_history_is_append_only_private_and_recoverable():
