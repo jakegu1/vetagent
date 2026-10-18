@@ -50,18 +50,20 @@ Uncommitted work in the primary checkout is preserved; this pass uses isolated w
 
 ## In flight
 
-T-040 is in isolated implementation: correct coverage-probe observation and age
-classification before long-run W54/W57 measurements. Next: tests-first implementation,
-fresh independent and adversarial reviews, then serial integration and actual CI.
+T-040 round one has an independent pass but a material adversarial append/restart
+pairing finding. The lead reproduced the actual producer output and named one additive
+red-first regression in spec amendment (b). Publication is held. Next: executor fix,
+one fresh combined round-two review, serial integration and actual CI.
 
-T-041 is in isolated implementation with disjoint files: add aggregate-only discovery
-status attribution and deployment-window observations. Next: fresh source reviews,
+T-041 implementation is frozen at ab02f298 with a complete clean local inventory.
+Its independent review is running; an adversarial review is still required. Next:
 serial integration, actual Linux checks and one opt-in readout. The existing unchanged
 usage run succeeds but cannot assign a mixed caller's verdict to a particular tool.
 
-T-042 is in isolated implementation with disjoint prototype/archive-test files: enforce
-the adopted same-day positive floor, classify simulation setup failures and preserve
-outputs. Next: fresh reviews and actual Linux checks, then at most six current control
+T-042 implementation at efaacfd passes every component, but its first full inventory
+rejects percentage literals in the new lead spec. A representation-only correction
+retains the adopted ratios and the failed receipt; a clean full rerun is queued. Next:
+fresh reviews and actual Linux checks, then at most six current control
 eligibility refreshes. No simulator/score integration or V3 work is authorized by it.
 
 The Owner renews authorization to prioritize the 21 remaining rows, batch related
@@ -71,8 +73,11 @@ together. No permission, source-rights, spending, scoring-band or product-gate w
 
 Latest scheduled snapshot commits through 1b18025 are retained by normal merge
 268f852. The actual clean baseline passes all 41 configured steps in 170.7 seconds.
-The existing usage workflow is dispatched unchanged for post-release telemetry
-observation; a queued workflow is not evidence of a measured usage result.
+The existing usage workflow completes at actual run 39147089385. Its client profiles
+cannot bind mixed-tool verdicts to discovery, so this does not close W28. The exact
+original next-ten W48 cohort is independently read back: every actual smoke executes
+and records a 429 with reconciled colo totals. The original unlogged cause remains
+unestablished; no new flood or limiter rewrite is warranted.
 
 ## Autonomous technical continuation
 
