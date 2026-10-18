@@ -213,3 +213,25 @@ completes generation and the post-observer integrated gate before committing dis
 Dispatch uses that subsequent clean bookkeeping head, with 39 required steps before
 the two registrations. No T-038 implementation has started at this preregistration.
 
+### Non-assertion acceptance fix (a): real stream closed state
+
+Before first READY, green-path validation finds that the new acceptance's Stream
+fixture omits the closed attribute required by the actual urllib response context.
+The executor preserves the earlier results: HTTP-400 and missing-offline-route reds
+remain meaningful, but healthy/bad-pair receipts affected by this protocol defect
+are not proof of the intended condition. No production request or old test is fixed
+by changing a test fixture.
+
+Permit only self.closed = False in the new Stream.__init__ and replacing the new
+Stream.close pass with self.closed = True. Preserve every other source byte/AST in
+the acceptance, especially payloads, timings, read behavior, inputs and assertions.
+This supplies the real context protocol without a skip or narrower platform condition.
+Use one commit titled T-038: acceptance test fix (supply stream closed state), before
+any implementation commit, and name the correction and excluded receipts in READY.
+Protect the dirty implementation with a byte-exact external backup before applying
+this preregistration. Reproduce canonical parent reds on both actual interpreters
+from immutable original source bytes with the corrected frozen fixture and inherited
+network denial. Then freeze both corrected fixture methods; no other acceptance
+change is implied. This is a specified non-assertion pre-READY correction, not a
+relaxed assertion, new review round, or a change to the eight acceptance criteria.
+
