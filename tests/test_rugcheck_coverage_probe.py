@@ -265,6 +265,59 @@ class CoverageProbeContract(unittest.TestCase):
                 self.assertEqual(rows[0], original[0])
                 self.assertEqual(rows[-1], original[-1])
 
+    def test_unobserved_primary_does_not_borrow_an_older_restarted_sweep(self):
+        class Clock:
+            def __init__(self, now):
+                self.now = now
+
+            def time(self):
+                return self.now
+
+            def sleep(self, seconds):
+                self.now += seconds
+
+        for current_http, expected in (("200", "2 of 2"), ("503", "1 of 1")):
+            with self.subTest(current_http=current_http), \
+                    tempfile.TemporaryDirectory(prefix="coverage-restart-") as directory:
+                path = Path(directory) / "appended.jsonl"
+                args = types.SimpleNamespace(mints=["synthetic-control-" + "b" * 32, MINT],
+                                             mode="holders", hours=1 / 3600, every=1.0,
+                                             gap=0, out=str(path))
+                first_bytes = None
+                for session, primary_http in enumerate(("200", current_http)):
+                    clock = Clock(NOW.timestamp() + session * 24 * 3600)
+                    responses = [("200", valid_body()), (primary_http, valid_body()),
+                                 ("200", valid_body())]
+                    with patch.object(probe.time, "time", side_effect=clock.time), \
+                            patch.object(probe.time, "sleep", side_effect=clock.sleep), \
+                            patch.object(probe, "curl", side_effect=responses) as transport, \
+                            contextlib.redirect_stdout(io.StringIO()):
+                        self.assertEqual(probe.run_probe(args), 0)
+                        self.assertEqual(transport.call_count, 3)
+                    if session == 0:
+                        first_bytes = path.read_bytes()
+                    else:
+                        self.assertTrue(path.read_bytes().startswith(first_bytes))
+                emitted = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+                self.assertEqual(len(emitted), 6)
+                self.assertTrue(all(r["sweep"] == 1 for r in emitted))
+                self.assertEqual((emitted[1]["mint"], emitted[4]["mint"], emitted[5]["mint"]),
+                                 (MINT, MINT, MINT))
+                self.assertEqual(emitted[4]["http"], current_http)
+                self.assertEqual(emitted[4]["body"] == "ok", current_http == "200")
+                self.assertTrue(emitted[5]["immediate_retry"])
+                self.assertGreater(emitted[4]["ts"] - emitted[1]["ts"], 23 * 3600)
+                output = io.StringIO()
+                with contextlib.redirect_stdout(output):
+                    self.assertEqual(probe.report(str(path)), 0)
+                self.assertIn("immediate retries agreeing with their own sweep: " + expected,
+                              output.getvalue())
+                if current_http == "503":
+                    self.assertIn("immediate retries without a usable matching primary: 1",
+                                  output.getvalue())
+                else:
+                    self.assertNotIn("without a usable matching primary", output.getvalue())
+
     def test_frozen_historical_reference_and_preregistered_constants_stay_intact(self):
         historical = ROOT / "bench/rugcheck_scores_rerun.jsonl"
         committed_bytes = historical.read_bytes().replace(b"\r\n", b"\n")
