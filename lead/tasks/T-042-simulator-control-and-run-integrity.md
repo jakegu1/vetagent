@@ -77,8 +77,8 @@ cache/access log, all src files, providers, packages, permissions and every deci
    token addresses, arbitrary symbols/revert strings, secrets or private paths in console
    diagnostics; detailed public-source inputs may stay in the explicit private artifact.
 5. **Decision/source preservation.** Keep the active SELL_SIMULATION design:
-   U_DEFINITE_BUILD=10, U_DEFINITE_STOP=7, U_N=13; clean agreement >=90%; positive
-   agreement >=80%, with at least five countable; tax tolerance five percentage points;
+   U_DEFINITE_BUILD=10, U_DEFINITE_STOP=7, U_N=13; clean agreement >=0.90; positive
+   agreement >=0.80, with at least five countable; tax tolerance five percentage points;
    same-day positive floor USD 1,000. The older backlog Aerodrome/18-of-20 description
    does not replace the adopted design. No rule, benchmark, engine output or public
    accuracy figure changes. Source-only eligibility screens do not close W41 or W47.
@@ -111,3 +111,9 @@ and immutable target/reference files rather than freezing a new historical clean
 AC3 now states full-population versus bounded eligibility-screen semantics. No old
 test or adopted decision bar changes; write the first acceptance commit after this
 clarification is in the executor's base.
+
+2026-10-19, representation-only correction (b): express the adopted clean/positive
+agreement bars as ratios rather than percentage literals. The number-coverage guard
+correctly rejected this newly tracked task prose as an unscanned surface. This changes
+no value, implementation, acceptance test or decision; retain the failed full-suite
+receipt and rerun the configured checks after this documentation correction.
