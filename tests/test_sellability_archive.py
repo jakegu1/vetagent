@@ -2539,6 +2539,466 @@ def test_snapshot_health_relevant_legacy_or_invalid_evidence_stays_unobserved():
                        or result["older_passes_not_checked"] > 0))
 
 
+def test_sim_probe_requires_same_day_qualified_positive_controls():
+    """Amendment 1 excludes a drained or unobserved positive without calling it a miss."""
+    import copy
+    import sim_probe as probe
+    day = "2026-10-19"
+    clean = {"simulationSuccess": True, "honeypotResult": {"isHoneypot": False},
+             "simulationResult": {"buyTax": 1, "sellTax": 2}}
+    positive = {"simulationSuccess": False, "honeypotResult": {"isHoneypot": True},
+                "pair": {"liquidity": 1000}}
+    check("the original clean shape and taxes remain intact",
+          probe.hp_shape(clean) == ("clean", 1, 2))
+    check("every adopted numerical rule is unchanged",
+          (probe.U_DEFINITE_BUILD, probe.U_DEFINITE_STOP, probe.U_N,
+           probe.CLEAN_AGREE_SHARE, probe.HONEYPOT_AGREE_SHARE,
+           probe.HONEYPOT_MIN_COUNTABLE, probe.TAX_TOLERANCE_POINTS) ==
+          (10, 7, 13, 0.90, 0.80, 5, 5.0))
+    eligible = getattr(probe, "control_eligibility", None)
+    check("the prototype has an explicit same-day eligibility decision", callable(eligible))
+    if not callable(eligible):
+        return
+    for amount in (1000, 1000.01, "1000"):
+        body = copy.deepcopy(positive)
+        body["pair"]["liquidity"] = amount
+        result = eligible(body, "C-honeypot", day, day)
+        check("the adopted inclusive floor accepts a measured amount",
+              result["eligibility"] == "eligible")
+    for amount in (0, 999.99, -1):
+        body = copy.deepcopy(positive)
+        body["pair"]["liquidity"] = amount
+        result = eligible(body, "C-honeypot", day, day)
+        check("a proven shape below the floor is excluded, not a disagreement",
+              result["eligibility"] == "excluded" and bool(result["reason"]))
+    for amount in (None, True, False, float("nan"), float("inf"), "NaN", {}, [], "bad"):
+        body = copy.deepcopy(positive)
+        body["pair"]["liquidity"] = amount
+        result = eligible(body, "C-honeypot", day, day)
+        check("unreadable liquidity is unobserved rather than a countable positive",
+              result["eligibility"] == "unobserved" and bool(result["reason"]))
+    for body in (None, [], {}, {"transport_error": "private-source-value"},
+                 {"error": "private-source-value"},
+                 {"simulationSuccess": False, "honeypotResult": {"isHoneypot": True},
+                  "pair": []}):
+        result = eligible(body, "C-honeypot", day, day)
+        check("unavailable and malformed controls have a bounded unobserved reason",
+              result["eligibility"] == "unobserved"
+              and "private-source-value" not in json.dumps(result))
+    check("an archived positive is never today's positive",
+          eligible(positive, "C-honeypot", "2026-10-18", day)["eligibility"] ==
+          "unobserved")
+    check("an invalid observation date cannot qualify",
+          eligible(positive, "C-honeypot", None, day)["eligibility"] == "unobserved")
+    check("clean controls retain their original shape without a positive floor",
+          eligible(clean, "C-clean", day, day)["eligibility"] == "eligible")
+    check("a clean response excludes a former positive",
+          eligible(clean, "C-honeypot", day, day)["eligibility"] == "excluded")
+
+
+def test_sim_probe_distinguishes_failed_setup_from_executed_sell():
+    """Only an observed sell after successful setup can make the positive experiment pass."""
+    import copy
+    from unittest.mock import patch
+    import sim_probe as probe
+    token = "0x" + "2" * 40
+
+    def word(n):
+        return "0x" + ("%064x" % n)
+
+    def quoted(n):
+        return "0x" + ("%064x" % 32) + ("%064x" % 2) + ("%064x" % 100) + ("%064x" % n)
+
+    def call(data="0x", status="0x1"):
+        return {"status": status, "returnData": data}
+
+    first = [call(quoted(100)), call(), call(word(100))]
+    second = copy.deepcopy(first) + [call(word(1)), call(quoted(100)), call(), call(word(100))]
+
+    def run(a=None, b=None, exception=None):
+        replies = [{"result": [{"calls": copy.deepcopy(first if a is None else a)}]},
+                   {"result": [{"calls": copy.deepcopy(second if b is None else b)}]}]
+        try:
+            with patch.object(probe, "rpc", side_effect=exception or replies):
+                return probe.simulate("bsc", token, probe.WNATIVE["bsc"], "0x123")
+        except Exception as error:
+            return {"result": "crashed", "detail": type(error).__name__}
+
+    result = run()
+    check("a real buy and sell still gives the original sold and tax observation",
+          result.get("result") == "sold" and result.get("buy_tax") == 0
+          and result.get("sell_tax") == 0)
+    reverted = copy.deepcopy(second)
+    reverted[5] = {"status": "0x0", "error": {"message": "private-source-value"}}
+    result = run(b=reverted)
+    check("an executed sell revert is still definite",
+          result.get("result") == "sell_reverted")
+    check("a source revert cannot put arbitrary text in public diagnostics",
+          "private-source-value" not in json.dumps(result))
+    cases = []
+    for label, index in (("buy", 1), ("balance", 2)):
+        changed = copy.deepcopy(first)
+        changed[index]["status"] = "0x0"
+        cases.append(("first " + label, changed, None))
+    for label, index in (("second buy", 1), ("second balance", 2), ("approval", 3),
+                         ("second quote", 4), ("proceeds", 6)):
+        changed = copy.deepcopy(second)
+        changed[index]["status"] = "0x0"
+        cases.append((label, None, changed))
+    for label, index, value in (("false approval", 3, word(0)),
+                                ("malformed approval", 3, "not-hex"),
+                                ("different second balance", 2, word(99)),
+                                ("malformed proceeds", 6, "not-hex")):
+        changed = copy.deepcopy(second)
+        changed[index]["returnData"] = value
+        cases.append((label, None, changed))
+    for label, value in (("missing sell status", {}), ("malformed sell", None)):
+        changed = copy.deepcopy(second)
+        changed[5] = value
+        cases.append((label, None, changed))
+    for label, a, b in cases:
+        result = run(a, b)
+        check(label + " is no answer, never an executed sell or a crash",
+              result.get("result") not in ("sold", "sell_reverted", "crashed"))
+    for reply in (None, [], {}, {"result": {}}, {"result": [None]},
+                  {"result": [{"calls": [None]}]}, {"error": {"message": "private-source-value"}}):
+        try:
+            with patch.object(probe, "rpc", return_value=reply):
+                result = probe.simulate("bsc", token, probe.WNATIVE["bsc"], "0x123")
+        except Exception:
+            result = {"result": "crashed"}
+        check("malformed RPC data is a bounded no-answer",
+              result.get("result") not in ("sold", "sell_reverted", "crashed")
+              and "private-source-value" not in json.dumps(result))
+    result = run(exception=RuntimeError("private-source-value"))
+    check("an RPC exception is bounded and unobserved",
+          result.get("result") not in ("sold", "sell_reverted", "crashed")
+          and "private-source-value" not in json.dumps(result))
+
+
+def test_sim_probe_plan_refresh_and_outputs_are_bounded_and_non_destructive():
+    """Offline planning, a six-source screen and a full experiment are distinct lifecycles."""
+    import contextlib
+    import copy
+    import hashlib
+    import inspect
+    import tempfile
+    from pathlib import Path
+    from unittest.mock import patch
+    import sim_probe as probe
+    plan_fn = getattr(probe, "make_plan", None)
+    check("the default driver accepts an explicit offline/live mode",
+          "argv" in inspect.signature(probe.main).parameters)
+    check("planning is independently inspectable", callable(plan_fn))
+    if not callable(plan_fn) or "argv" not in inspect.signature(probe.main).parameters:
+        return
+    protected = [Path(probe.OUT_DIR) / "targets-2026-09-15.json",
+                 Path(probe.OUT_DIR) / "v2-2026-09-15.json"]
+    before = {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in protected}
+    with patch.object(probe, "_post", side_effect=AssertionError("network forbidden")):
+        plain = io.StringIO()
+        with contextlib.redirect_stdout(plain), contextlib.redirect_stderr(plain):
+            code = probe.main([])
+        check("plain invocation is an offline plan", code == 0)
+        explicit = io.StringIO()
+        with contextlib.redirect_stdout(explicit), contextlib.redirect_stderr(explicit):
+            code = probe.main(["--plan"])
+        check("explicit plan also stays offline", code == 0)
+        plan = plan_fn()
+    check("U13 and the original clean-selection population are kept",
+          len(plan["sets"]["U"]) == 13 and len(plan["sets"]["C-clean"]) == 51)
+    check("the full positive population is recorded without a six-row experiment cap",
+          len(plan["sets"]["C-honeypot"]) >= len(plan["refresh_candidates"]))
+    check("console planning carries no token addresses or private path",
+          "0x" not in plain.getvalue() + explicit.getvalue()
+          and probe.ROOT not in plain.getvalue() + explicit.getvalue())
+    positives = [{"chain": "ethereum", "token": "0x" + ("%040x" % n),
+                  "quote": probe.WNATIVE["ethereum"], "archived_liquidity": 2000,
+                  "archive_seen_at": "2026-10-01T00:00:00Z"}
+                 for n in range(10, 0, -1)]
+    with patch.object(probe, "archive_controls", return_value=([], positives)):
+        selected = plan_fn()
+    check("the six refresh candidates are fixed by sorted provenance before answers",
+          [r["token"] for r in selected["refresh_candidates"]] ==
+          sorted(r["token"] for r in positives)[:6]
+          and len(selected["sets"]["C-honeypot"]) == 10)
+    selected["sets"]["C-clean"] = [{"chain": "bsc", "token": "0x" + "3" * 40,
+                                    "quote": probe.WNATIVE["bsc"]}]
+    good = {"simulationSuccess": False, "honeypotResult": {"isHoneypot": True},
+            "pair": {"liquidity": 1000}}
+
+    def invoke(arguments, response=good, simulate=None):
+        output = io.StringIO()
+        with patch.object(probe, "make_plan", return_value=copy.deepcopy(selected)), \
+             patch.object(probe, "honeypot_today", side_effect=response if callable(response)
+                          else lambda *args: copy.deepcopy(response)) as hp, \
+             patch.object(probe, "rpc", return_value={"result": "0x123"}) as rpc, \
+             patch.object(probe, "simulate", side_effect=simulate or
+                          (lambda *args: {"result": "sold", "buy_tax": 0, "sell_tax": 0})), \
+             contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
+            code = probe.main(arguments)
+        check("live diagnostics are aggregate-only",
+              "0x" not in output.getvalue() and "private-source-value" not in output.getvalue())
+        return code, hp.call_count, rpc.call_count, output.getvalue()
+
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp)
+        for mode in ("--refresh-controls", "--run"):
+            code, calls, rpcs, _ = invoke([mode])
+            check("live modes require explicit isolated paths", code != 0 and calls == rpcs == 0)
+        output, cache = base / "screen.jsonl", base / "fresh-cache"
+        output.write_text("original", encoding="utf-8")
+        code, calls, rpcs, _ = invoke(["--refresh-controls", "--out", str(output),
+                                     "--cache", str(cache)])
+        check("an existing output is refused before any request",
+              code != 0 and calls == rpcs == 0 and output.read_text(encoding="utf-8") == "original"
+              and not cache.exists())
+        existing_cache = base / "existing-cache"
+        existing_cache.mkdir()
+        untouched = base / "must-not-exist.jsonl"
+        code, calls, rpcs, _ = invoke(["--refresh-controls", "--out", str(untouched),
+                                     "--cache", str(existing_cache)])
+        check("an existing cache is refused before reservation or request",
+              code != 0 and calls == rpcs == 0 and not untouched.exists())
+        source_output = Path(probe.HERE) / "forbidden-probe-output.jsonl"
+        code, calls, rpcs, _ = invoke(["--refresh-controls", "--out", str(source_output),
+                                     "--cache", str(base / "source-cache")])
+        check("source trees cannot receive a live artifact",
+              code != 0 and calls == rpcs == 0 and not source_output.exists())
+        fresh = base / "screen-new.jsonl"
+        code, calls, rpcs, text = invoke(["--refresh-controls", "--out", str(fresh),
+                                        "--cache", str(base / "cache-new")])
+        records = [json.loads(line) for line in fresh.read_text(encoding="utf-8").splitlines()]
+        summary = records[-1]["summary"]
+        check("refresh performs at most six eligibility requests and no simulation RPC",
+              code == 0 and calls == 6 and rpcs == 0)
+        check("the manifest and observations precede the refresh summary",
+              records[0]["type"] == "manifest"
+              and len([r for r in records if r["type"] == "control"]) == 6)
+        check("a source screen has no agreement or BUILD result and discloses unasked",
+              summary["eligible"] == 6 and summary["excluded"] == 0
+              and summary["unobserved"] == 0 and summary["not_asked"] == 4
+              and "BUILD" not in json.dumps(summary) and "agrees" not in json.dumps(summary))
+        snapshot_bytes = fresh.read_bytes()
+        code, calls, rpcs, _ = invoke(["--refresh-controls", "--out", str(fresh),
+                                     "--cache", str(base / "another-cache")])
+        check("a repeated invocation cannot overwrite the completed screen",
+              code != 0 and calls == rpcs == 0 and fresh.read_bytes() == snapshot_bytes)
+        early = base / "early-stop.jsonl"
+        excluded = copy.deepcopy(good)
+        excluded["pair"]["liquidity"] = 999
+        code, calls, rpcs, _ = invoke(["--refresh-controls", "--out", str(early),
+                                     "--cache", str(base / "early-cache")], excluded)
+        summary = json.loads(early.read_text(encoding="utf-8").splitlines()[-1])["summary"]
+        check("the six-candidate screen stops when five positives become impossible",
+              calls == 2 and summary["eligible"] == 0 and summary["not_asked"] == 8)
+        partial = base / "partial.jsonl"
+        attempts = []
+
+        def interrupted(*args):
+            attempts.append(1)
+            if len(attempts) == 2:
+                raise KeyboardInterrupt()
+            return copy.deepcopy(good)
+
+        code, calls, rpcs, _ = invoke(["--refresh-controls", "--out", str(partial),
+                                     "--cache", str(base / "partial-cache")], interrupted)
+        rows = [json.loads(line) for line in partial.read_text(encoding="utf-8").splitlines()]
+        check("interruption preserves a readable manifest and completed observation",
+              code != 0 and rows[0]["type"] == "manifest"
+              and any(r["type"] == "control" for r in rows))
+        unobserved = base / "unobserved.jsonl"
+        code, calls, rpcs, _ = invoke(["--refresh-controls", "--out", str(unobserved),
+                                     "--cache", str(base / "unobserved-cache")],
+                                    {"transport_error": "private-source-value"})
+        summary = json.loads(unobserved.read_text(encoding="utf-8").splitlines()[-1])["summary"]
+        check("failed source requests stay unobserved rather than token exclusions",
+              summary["unobserved"] == 2 and summary["excluded"] == 0)
+        transport_output = base / "transport.jsonl"
+        transport_cache = base / "transport-cache"
+        with patch.object(probe, "make_plan", return_value=copy.deepcopy(selected)), \
+             patch.object(probe.urllib.request, "urlopen",
+                          side_effect=OSError("private-source-value")) as network, \
+             patch.object(probe.time, "sleep"), contextlib.redirect_stdout(io.StringIO()):
+            code = probe.main(["--refresh-controls", "--out", str(transport_output),
+                               "--cache", str(transport_cache)])
+        summary = json.loads(transport_output.read_text(encoding="utf-8").splitlines()[-1])["summary"]
+        check("a transport failure is recorded and never persisted as a cached answer",
+              summary["unobserved"] == 2 and network.call_count == 2
+              and not list(transport_cache.iterdir()))
+        full = base / "full.jsonl"
+
+        def full_reply(chain, token, day):
+            if chain == "bsc":
+                return {"simulationSuccess": True, "honeypotResult": {"isHoneypot": False},
+                        "simulationResult": {"buyTax": 0, "sellTax": 0}}
+            return copy.deepcopy(good)
+
+        def full_sim(chain, token, quote, block):
+            return {"result": "sold", "buy_tax": 0,
+                    "sell_tax": 100 if chain == "ethereum" else 0}
+
+        code, calls, rpcs, _ = invoke(["--run", "--out", str(full),
+                                     "--cache", str(base / "full-cache")],
+                                    full_reply, full_sim)
+        rows = [json.loads(line) for line in full.read_text(encoding="utf-8").splitlines()]
+        summary = rows[-1]["summary"]
+        check("a full run observes every declared positive, not only the refresh six",
+              code == 0 and calls == 11 and summary["not_asked"] == 0
+              and summary["decision"] == "BUILD V3 NEXT")
+        unqualified = base / "unqualified-full.jsonl"
+
+        def drained_reply(chain, token, day):
+            return full_reply(chain, token, day) if chain == "bsc" else copy.deepcopy(excluded)
+
+        code, calls, rpcs, _ = invoke(["--run", "--out", str(unqualified),
+                                     "--cache", str(base / "unqualified-cache")],
+                                    drained_reply, full_sim)
+        summary = json.loads(unqualified.read_text(encoding="utf-8").splitlines()[-1])["summary"]
+        check("successful simulations cannot rescue an ineligible positive set into BUILD",
+              summary["decision"] != "BUILD V3 NEXT" and summary["not_asked"] == 0)
+        check("private artifact locations are not printed",
+              str(base) not in text)
+    after = {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in protected}
+    check("raw targets and Run 1 are byte-identical", before == after)
+
+
+def test_sim_probe_unobserved_responses_never_become_exclusions_or_cache_hits():
+    """A missing source verdict and a cached malformed envelope remain unobserved."""
+    import contextlib
+    import copy
+    import hashlib
+    import tempfile
+    from pathlib import Path
+    from unittest.mock import patch
+    import sim_probe as probe
+    day = "2026-10-19"
+    positive = {"honeypotResult": {"isHoneypot": True}, "simulationSuccess": False,
+                "pair": {"liquidity": 1000}}
+    negative = {"honeypotResult": {"isHoneypot": False}, "simulationSuccess": True,
+                "simulationResult": {"buyTax": 0, "sellTax": 0}}
+    invalid_hp = [{}, {"honeypotResult": {}}, {"honeypotResult": None}]
+    for value in (None, "true", "false", 0, 1, [], {}):
+        invalid_hp.append({"honeypotResult": {"isHoneypot": value},
+                           "simulationSuccess": True, "pair": {"liquidity": 1000}})
+    for body in invalid_hp:
+        for group in ("C-clean", "C-honeypot"):
+            result = probe.control_eligibility(body, group, day, day)
+            check("a missing or non-Boolean source verdict is unobserved for either control",
+                  result["eligibility"] == "unobserved")
+    check("an explicit negative remains an observed positive-control exclusion",
+          probe.control_eligibility(negative, "C-honeypot", day, day)["eligibility"] ==
+          "excluded")
+    check("valid positive and clean classifications still qualify",
+          probe.control_eligibility(positive, "C-honeypot", day, day)["eligibility"] ==
+          "eligible"
+          and probe.control_eligibility(negative, "C-clean", day, day)["eligibility"] ==
+          "eligible")
+
+    class Reply:
+        def __init__(self, body):
+            self.body = body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return json.dumps(self.body).encode("utf-8")
+
+    hp_url = "https://api.honeypot.is/v2/IsHoneypot"
+    block_payload = {"jsonrpc": "2.0", "id": 1, "method": "eth_blockNumber", "params": []}
+    simulation_payload = {"jsonrpc": "2.0", "id": 1, "method": "eth_simulateV1", "params": []}
+    nested_revert = {"result": [{"calls": [
+        {"status": "0x1", "returnData": "0x"},
+        {"status": "0x0", "error": {"code": 3, "message": "private-source-value"}}]}]}
+    valid = [(positive, None), (negative, None), ({"result": "0x123"}, block_payload),
+             (nested_revert, simulation_payload)]
+    invalid = [(body, None) for body in invalid_hp]
+    invalid += [(body, block_payload) for body in
+                (None, [], {}, {"result": None}, {"result": False}, {"result": 0},
+                 {"result": ""}, {"result": "not-hex"}, {"result": {}},
+                 {"error": {"message": "private-source-value"}})]
+    invalid += [(body, simulation_payload) for body in
+                ({"result": None}, {"result": []}, {"result": {}}, {"result": [None]},
+                 {"result": [{}]}, {"result": [{"calls": []}]},
+                 {"result": [{"calls": [None]}]}, {"result": [{"calls": [{}]}]})]
+    for index, (body, payload) in enumerate(invalid + valid):
+        observed = index >= len(invalid)
+        with tempfile.TemporaryDirectory() as tmp:
+            key = "source-case-" + str(index)
+            with patch.object(probe, "_ACTIVE_CACHE", tmp), \
+                 patch.object(probe.urllib.request, "urlopen",
+                              side_effect=lambda *a, **k: Reply(copy.deepcopy(body))) as network, \
+                 patch.object(probe.time, "sleep"):
+                first = probe._post(hp_url if payload is None else probe.RPC["bsc"], payload, key)
+                second = probe._post(hp_url if payload is None else probe.RPC["bsc"], payload, key)
+            if observed:
+                check("a valid observed HP or RPC response retains ordinary cache reuse",
+                      first == second == body and network.call_count == 1
+                      and len(list(Path(tmp).iterdir())) == 1)
+            else:
+                check("repeated invalid source replies are unobserved and never cached",
+                      isinstance(first, dict) and isinstance(second, dict)
+                      and "transport_error" in first and "transport_error" in second
+                      and network.call_count == 2 and not list(Path(tmp).iterdir())
+                      and "private-source-value" not in json.dumps([first, second]))
+
+    prior = [(body, payload, False) for body, payload in invalid]
+    prior += [(body, payload, True) for body, payload in valid]
+    prior += [("invalid JSON", None, False)]
+    for index, (body, payload, observed) in enumerate(prior):
+        with tempfile.TemporaryDirectory() as tmp:
+            key = "prior-case-" + str(index)
+            cached = Path(tmp) / (hashlib.sha256(key.encode()).hexdigest()[:40] + ".json")
+            data = b"{broken-json" if body == "invalid JSON" else json.dumps(body).encode("utf-8")
+            cached.write_bytes(data)
+            with patch.object(probe, "_ACTIVE_CACHE", tmp), \
+                 patch.object(probe.urllib.request, "urlopen",
+                              side_effect=AssertionError("network forbidden")):
+                result = probe._post(hp_url if payload is None else probe.RPC["bsc"], payload, key)
+            check("prior cache bytes are preserved regardless of source-envelope validity",
+                  cached.read_bytes() == data and len(list(Path(tmp).iterdir())) == 1)
+            check("cache reads enforce the same minimum envelope as fresh observations",
+                  result == body if observed else
+                  isinstance(result, dict) and "transport_error" in result)
+
+    plan = probe.make_plan()
+    candidates = [{"chain": "ethereum", "token": "0x" + ("%040x" % n),
+                   "quote": probe.WNATIVE["ethereum"], "archived_liquidity": 1000}
+                  for n in range(1, 7)]
+    plan["sets"]["C-honeypot"] = candidates
+    plan["refresh_candidates"] = candidates
+    for name, body, expected in (
+            ("empty", {"honeypotResult": {}}, (0, 0, 2, 0)),
+            ("null", {"honeypotResult": {"isHoneypot": None}}, (0, 0, 2, 0)),
+            ("string", {"honeypotResult": {"isHoneypot": "true"}}, (0, 0, 2, 0)),
+            ("positive", positive, (6, 0, 0, 6)),
+            ("negative", negative, (0, 2, 0, 2))):
+        with tempfile.TemporaryDirectory() as tmp:
+            output, cache = Path(tmp) / (name + ".jsonl"), Path(tmp) / "new-cache"
+            console = io.StringIO()
+            with patch.object(probe, "make_plan", return_value=copy.deepcopy(plan)), \
+                 patch.object(probe, "_day", return_value=day), \
+                 patch.object(probe.urllib.request, "urlopen",
+                              side_effect=lambda *a, **k: Reply(copy.deepcopy(body))) as network, \
+                 patch.object(probe.time, "sleep"), contextlib.redirect_stdout(console):
+                code = probe.main(["--refresh-controls", "--out", str(output),
+                                   "--cache", str(cache)])
+            rows = [json.loads(line) for line in output.read_text(encoding="utf-8").splitlines()]
+            summary = rows[-1]["summary"]
+            check("the real transport-to-refresh seam preserves observed versus unobserved counts",
+                  code == 0 and (summary["eligible"], summary["excluded"],
+                                 summary["unobserved"], len(list(cache.iterdir()))) == expected
+                  and network.call_count == (6 if name == "positive" else 2)
+                  and summary["not_asked"] == (0 if name == "positive" else 4))
+            check("source-only seam diagnostics remain bounded with no agreement claim",
+                  "0x" not in console.getvalue() and "private-source-value" not in console.getvalue()
+                  and "BUILD" not in json.dumps(summary) and "agrees" not in json.dumps(summary))
+
+
 def main():
     print("=" * 68)
     print("Sellability archive: asking on the day, because later is too late")

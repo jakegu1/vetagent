@@ -1,7 +1,9 @@
 """sim_probe.py -- W41 prototype: our own buy/sell simulation on UniswapV2-style routers.
 
 Usage:
-    python bench/sim_probe.py              # run, print, write bench/sim_probe/v2-<date>.json
+    python bench/sim_probe.py              # offline plan, no requests or writes
+    python bench/sim_probe.py --refresh-controls --out <new-private-jsonl> --cache <new-dir>
+    python bench/sim_probe.py --run --out <new-private-jsonl> --cache <new-dir>
 
 Bench-only by design (docs/SELL_SIMULATION.md). It never imports the engine's fetch path, never
 touches bench/cache, and nothing here is read by src/. Every rule it judges itself by was
@@ -19,11 +21,13 @@ Controls are re-asked of honeypot.is on the day, and count only if today's answe
 shape they were chosen for.
 """
 
+import argparse
 import datetime
 import glob
 import hashlib
 import io
 import json
+import math
 import os
 import sys
 import time
@@ -39,6 +43,7 @@ from keccak import selector  # noqa: E402
 
 CACHE = os.path.join(HERE, "cache_sim")
 OUT_DIR = os.path.join(HERE, "sim_probe")
+_ACTIVE_CACHE = None
 
 RPC = {  # the engine's own hosts (src/risk.py _CHAIN_RPC)
     "ethereum": "https://rpc.mevblocker.io",
@@ -106,27 +111,67 @@ def _encode(sel, head_args, path=None, path_index=None):
 
 
 def _uint_array_last(ret):
-    data = (ret or "0x")[2:]
-    if len(data) < 128:
+    if not isinstance(ret, str) or not ret.startswith("0x"):
         return None
-    n = int(data[64:128], 16)
-    if n == 0:
+    data = ret[2:]
+    if any(c not in "0123456789abcdefABCDEF" for c in data):
         return None
-    return int(data[64 + 64 * n:128 + 64 * n], 16)
+    try:
+        n = int(data[64:128], 16)
+        if int(data[:64], 16) != 32 or n not in (2, 3) or len(data) != 128 + 64 * n:
+            return None
+        return int(data[-64:], 16)
+    except (ValueError, TypeError):
+        return None
 
 
 def _uint(ret):
-    data = (ret or "0x")[2:]
-    return int(data[:64], 16) if len(data) >= 64 else None
+    if not isinstance(ret, str) or not ret.startswith("0x") or len(ret) != 66:
+        return None
+    if any(c not in "0123456789abcdefABCDEF" for c in ret[2:]):
+        return None
+    try:
+        return int(ret[2:], 16)
+    except ValueError:
+        return None
 
 
 # ---------------------------------------------------------------- transport, cached
 
+def _source_envelope(out, payload):
+    """Minimum observed source contract, shared by fresh replies and cache reads."""
+    if not isinstance(out, dict) or not out or "error" in out or "transport_error" in out:
+        return False
+    if payload is None:
+        result = out.get("honeypotResult")
+        return isinstance(result, dict) and type(result.get("isHoneypot")) is bool
+    if not isinstance(payload, dict):
+        return False
+    result = out.get("result")
+    if payload.get("method") == "eth_blockNumber":
+        return (isinstance(result, str) and result.startswith("0x") and len(result) > 2
+                and all(c in "0123456789abcdefABCDEF" for c in result[2:]))
+    if payload.get("method") != "eth_simulateV1":
+        return False
+    if not isinstance(result, list) or len(result) != 1 or not isinstance(result[0], dict):
+        return False
+    calls = result[0].get("calls")
+    return (isinstance(calls, list) and bool(calls)
+            and all(isinstance(call, dict) and call.get("status") in ("0x0", "0x1")
+                    for call in calls))
+
+
 def _post(url, payload, key):
-    os.makedirs(CACHE, exist_ok=True)
-    path = os.path.join(CACHE, hashlib.sha256(key.encode()).hexdigest()[:40] + ".json")
+    if _ACTIVE_CACHE is None:
+        return {"transport_error": "run_not_reserved"}
+    path = os.path.join(_ACTIVE_CACHE, hashlib.sha256(key.encode()).hexdigest()[:40] + ".json")
     if os.path.exists(path):
-        return json.load(io.open(path, encoding="utf-8"))
+        try:
+            with io.open(path, encoding="utf-8") as cached:
+                out = json.load(cached)
+        except (OSError, ValueError):
+            return {"transport_error": "cache_unreadable"}
+        return out if _source_envelope(out, payload) else {"transport_error": "cache_malformed"}
     body = json.dumps(payload).encode() if payload is not None else None
     req = urllib.request.Request(url, data=body, headers={
         "content-type": "application/json", "user-agent": "vetagent-research/0.1"})
@@ -134,12 +179,15 @@ def _post(url, payload, key):
         with urllib.request.urlopen(req, timeout=30) as r:
             out = json.loads(r.read().decode())
     except urllib.error.HTTPError as e:
-        out = {"transport_error": "HTTP %d" % e.code}
-    except Exception as e:  # noqa: BLE001
-        out = {"transport_error": str(e)[:160]}
+        out = {"transport_error": "http_failed", "http_status": e.code}
+    except Exception:
+        out = {"transport_error": "request_failed"}
     time.sleep(0.6)
-    if "transport_error" not in out:       # an unanswered call is never cached as an answer
-        json.dump(out, io.open(path, "w", encoding="utf-8"))
+    if not _source_envelope(out, payload):
+        return {"transport_error": "response_malformed"}
+    if "transport_error" not in out:
+        with io.open(path, "x", encoding="utf-8") as cached:
+            json.dump(out, cached)
     return out
 
 
@@ -165,6 +213,44 @@ def hp_shape(hp):
     if is_hp is True and (not ok or (sell or 0) >= 50):
         return "proven", buy, sell
     return "other", buy, sell
+
+
+def _number(value):
+    if value is None or isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        return None
+    try:
+        number = float(value)
+    except (ValueError, TypeError, OverflowError):
+        return None
+    return number if math.isfinite(number) else None
+
+
+def control_eligibility(hp, group, observed_day, run_day):
+    """Separate a same-day source observation from the simulator's agreement."""
+    result = {"eligibility": "unobserved", "reason": "control_unavailable"}
+    try:
+        valid_day = (datetime.date.fromisoformat(run_day).isoformat() == run_day
+                     and observed_day == run_day)
+    except (ValueError, TypeError):
+        valid_day = False
+    if not valid_day:
+        return dict(result, reason="not_same_day")
+    if not _source_envelope(hp, None):
+        return result
+    try:
+        shape, _, _ = hp_shape(hp)
+    except (TypeError, ValueError, AttributeError):
+        return dict(result, reason="control_malformed")
+    if shape != ("clean" if group == "C-clean" else "proven"):
+        return {"eligibility": "excluded", "reason": "shape_changed"}
+    if group == "C-honeypot":
+        pair = hp.get("pair")
+        amount = _number(pair.get("liquidity")) if isinstance(pair, dict) else None
+        if amount is None:
+            return dict(result, reason="liquidity_unobserved")
+        if amount < 1000:
+            return {"eligibility": "excluded", "reason": "below_floor"}
+    return {"eligibility": "eligible", "reason": "same_day_control"}
 
 
 # ---------------------------------------------------------------- the simulation
@@ -199,48 +285,79 @@ def simulate(chain, token, quote, block):
         params = [{"blockStateCalls": [{"stateOverrides": {SENDER: {"balance": hex(10 ** 19)}},
                                         "calls": c}],
                    "validation": False}, block]
-        out = rpc(chain, "eth_simulateV1", params, "%s|%s|%s|%s" % (tag, token, quote, block))
-        if "transport_error" in out or "error" in out:
-            return None, (out.get("transport_error") or json.dumps(out.get("error"))[:160])
-        return (out.get("result") or [{}])[0].get("calls") or [], None
+        try:
+            out = rpc(chain, "eth_simulateV1", params, "%s|%s|%s|%s" % (tag, token, quote, block))
+        except Exception:
+            return None, "rpc_unobserved"
+        if not isinstance(out, dict) or "transport_error" in out or "error" in out:
+            return None, "rpc_unobserved"
+        result = out.get("result")
+        if not isinstance(result, list) or len(result) != 1 or not isinstance(result[0], dict):
+            return None, "rpc_malformed"
+        observed = result[0].get("calls")
+        if not isinstance(observed, list) or len(observed) != len(c):
+            return None, "rpc_malformed"
+        return observed, None
 
-    def failed(call):
-        return call.get("status") != "0x1"
+    def succeeded(call):
+        return isinstance(call, dict) and call.get("status") == "0x1"
 
-    def why(call):
-        err = call.get("error") or {}
-        return str(err.get("message") or err.get("data") or "reverted")[:120]
+    def setup(observed):
+        if not all(succeeded(x) for x in observed[:3]):
+            return None, None
+        expected = _uint_array_last(observed[0].get("returnData"))
+        balance = _uint(observed[2].get("returnData"))
+        return expected, balance
 
     rec = {"chain": chain, "token": token, "path": path, "block": block}
     first, err = run(calls(), "buy")
     if first is None:
         rec.update(result="rpc_error", detail=err)
         return rec
-    if len(first) < 3 or failed(first[0]):
-        rec.update(result="no_path", detail=why(first[0]) if first else "no calls")
-        return rec
-    expected_buy = _uint_array_last(first[0].get("returnData"))
-    if failed(first[1]):
-        rec.update(result="buy_reverted", detail=why(first[1]))
-        return rec
-    arrived = _uint(first[2].get("returnData"))
-    if not arrived:
-        rec.update(result="buy_no_tokens")
+    for index, result in ((0, "no_path"), (1, "buy_reverted"), (2, "setup_failed")):
+        if isinstance(first[index], dict) and first[index].get("status") == "0x0":
+            rec.update(result=result, detail="buy_setup_failed")
+            return rec
+    expected_buy, arrived = setup(first)
+    if not expected_buy or not arrived:
+        rec.update(result="setup_unobserved", detail="buy_or_balance_unobserved")
         return rec
     rec["buy_tax"] = round(100.0 * (1 - arrived / expected_buy), 2) if expected_buy else None
 
     second, err = run(calls(arrived), "sell")
-    if second is None or len(second) < 7:
-        rec.update(result="rpc_error", detail=err or "short response")
+    if second is None:
+        rec.update(result="rpc_error", detail=err)
         return rec
-    if failed(second[3]):
-        rec.update(result="sell_reverted", detail="approve: " + why(second[3]))
+    repeated_quote, repeated_balance = setup(second)
+    if repeated_quote != expected_buy or repeated_balance != arrived:
+        failed = any(isinstance(x, dict) and x.get("status") == "0x0" for x in second[:3])
+        rec.update(result="setup_failed" if failed else "setup_unobserved",
+                   detail="second_buy_or_balance_unobserved")
         return rec
-    expected_sell = _uint_array_last(second[4].get("returnData")) if not failed(second[4]) else None
-    if failed(second[5]):
-        rec.update(result="sell_reverted", detail=why(second[5]))
+    approval = second[3]
+    if (not succeeded(approval)
+            or (approval.get("returnData") != "0x" and _uint(approval.get("returnData")) != 1)):
+        failed = (isinstance(approval, dict) and (
+            approval.get("status") == "0x0" or _uint(approval.get("returnData")) == 0))
+        rec.update(result="setup_failed" if failed else "setup_unobserved",
+                   detail="approval_unobserved")
         return rec
-    proceeds = _uint(second[6].get("returnData")) or 0
+    expected_sell = (_uint_array_last(second[4].get("returnData"))
+                     if succeeded(second[4]) else None)
+    if not expected_sell:
+        rec.update(result="setup_unobserved", detail="sell_quote_unobserved")
+        return rec
+    sell = second[5]
+    if isinstance(sell, dict) and sell.get("status") == "0x0":
+        rec.update(result="sell_reverted", detail="executed_sell_reverted")
+        return rec
+    if not succeeded(sell) or not succeeded(second[6]):
+        rec.update(result="setup_unobserved", detail="sell_or_proceeds_unobserved")
+        return rec
+    proceeds = _uint(second[6].get("returnData"))
+    if proceeds is None:
+        rec.update(result="setup_unobserved", detail="proceeds_unobserved")
+        return rec
     rec["sell_tax"] = (round(100.0 * (1 - proceeds / expected_sell), 2)
                        if expected_sell else None)
     rec.update(result="sold" if proceeds > 0 else "sell_no_proceeds")
@@ -254,68 +371,179 @@ def archive_controls():
     honeypots on eth. Each token's latest answer supplies its pool's other side."""
     latest = {}
     for f in sorted(glob.glob(os.path.join(HERE, "snapshots", "sellability-*.ndjson"))):
-        for line in io.open(f, encoding="utf-8"):
+        for line_number, line in enumerate(io.open(f, encoding="utf-8"), 1):
             try:
                 x = json.loads(line)
             except ValueError:
-                continue
+                if not line.strip():
+                    continue
+                raise ValueError("archive_unreadable") from None
             if x.get("outcome") != "ok":
                 continue
             pair = (x.get("pair") or {}).get("pair") or {}
             if pair.get("type") != "UniswapV2":
                 continue
-            latest[(x["chain"], x["token"].lower())] = (x, pair)
+            latest[(x["chain"], x["token"].lower())] = (x, pair, f, line_number)
     clean = {"ethereum": [], "base": []}
     honeypots = []
-    for (chain, token), (x, pair) in sorted(latest.items(), key=lambda kv: kv[0][1]):
+    for (chain, token), (x, pair, source, line_number) in sorted(latest.items(), key=lambda kv: kv[0][1]):
         chain = {"eth": "ethereum"}.get(chain, chain)
         other = [a for a in (pair.get("token0"), pair.get("token1"))
                  if a and a.lower() != token]
         quote = other[0].lower() if other else None
+        item = {"chain": chain, "token": token, "quote": quote,
+                "archive_seen_at": x.get("seen_at"),
+                "archive_source": os.path.relpath(source, ROOT).replace(os.sep, "/"),
+                "archive_line": line_number,
+                "archived_liquidity": (x.get("pair") or {}).get("liquidity")}
         proven = x.get("isHoneypot") and (not x.get("simulationSuccess")
                                           or (x.get("sellTax") or 0) >= 50)
         if chain == "ethereum" and proven:
-            honeypots.append({"chain": chain, "token": token, "quote": quote})
+            honeypots.append(item)
         elif chain in clean and x.get("isHoneypot") is False and x.get("simulationSuccess"):
             if len(clean[chain]) < ARCHIVE_CONTROLS_PER_CHAIN:
-                clean[chain].append({"chain": chain, "token": token, "quote": quote})
+                clean[chain].append(item)
     return clean["ethereum"] + clean["base"], honeypots
 
 
-def main():
-    day = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
-    targets = json.load(io.open(os.path.join(OUT_DIR, "targets-2026-09-15.json"), encoding="utf-8"))
-    blocks = {}
-    for chain in RPC:
-        out = rpc(chain, "eth_blockNumber", [], "block|%s" % day)
-        blocks[chain] = out.get("result")
-        if not blocks[chain]:
-            print("no block number from %s: %s" % (chain, out))
-            return 1
-
+def make_plan():
+    """Keep the base cohort algorithm; bind every source byte before any request."""
+    target_path = os.path.join(OUT_DIR, "targets-2026-09-15.json")
+    with io.open(target_path, encoding="utf-8") as source:
+        targets = json.load(source)
     u = [{"chain": "bsc", "token": t["address"], "quote": t["quote"], "symbol": t["symbol"]}
          for t in targets["unknown"]]
     bsc_clean = [{"chain": "bsc", "token": t["address"], "quote": t["quote"], "symbol": t["symbol"]}
                  for t in targets["controls"]
                  if t["address"].lower() != WNATIVE["bsc"]]
     arch_clean, arch_hp = archive_controls()
-    records = {"U": [], "C-clean": [], "C-honeypot": []}
+    if len(u) != U_N:
+        raise ValueError("invalid_target_population")
+    inputs = []
+    paths = [target_path] + sorted(glob.glob(os.path.join(HERE, "snapshots", "sellability-*.ndjson")))
+    for path in paths:
+        with io.open(path, "rb") as source:
+            digest = hashlib.sha256(source.read()).hexdigest()
+        inputs.append({"source": os.path.relpath(path, ROOT).replace(os.sep, "/"), "sha256": digest})
+    candidates = sorted((t for t in arch_hp
+                         if (_number(t.get("archived_liquidity")) is not None
+                             and _number(t.get("archived_liquidity")) >= 1000)),
+                        key=lambda t: (t["chain"], t["token"]))
+    return {"sets": {"U": u, "C-clean": bsc_clean + arch_clean, "C-honeypot": arch_hp},
+            "refresh_candidates": candidates[:6], "inputs": inputs,
+            "input_digest": hashlib.sha256(json.dumps(inputs, sort_keys=True).encode()).hexdigest(),
+            "selection": "base latest-answer cohorts; historical-floor sorted first six for refresh only"}
 
-    for t in u:
-        rec = simulate("bsc", t["token"], t["quote"], blocks["bsc"])
-        rec["symbol"] = t["symbol"]
+
+def _day():
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+
+
+def _event(stream, record):
+    # Invalid source numbers remain visibly invalid, while the artifact stays valid JSONL.
+    def safe(value):
+        if isinstance(value, float) and not math.isfinite(value):
+            return str(value)
+        if isinstance(value, dict):
+            return {k: safe(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [safe(v) for v in value]
+        return value
+    stream.write(json.dumps(safe(record), allow_nan=False) + "\n")
+    stream.flush()
+
+
+def _refresh(plan, day, stream):
+    population = len(plan["sets"]["C-honeypot"])
+    chosen = plan["refresh_candidates"]
+    if len(chosen) > 6:
+        raise ValueError("refresh_population_invalid")
+    counts = {"eligible": 0, "excluded": 0, "unobserved": 0, "not_asked": population}
+    for index, token in enumerate(chosen):
+        if counts["eligible"] + len(chosen) - index < HONEYPOT_MIN_COUNTABLE:
+            break
+        try:
+            hp = honeypot_today(token["chain"], token["token"], day)
+        except Exception:
+            hp = {"transport_error": "request_failed"}
+        eligibility = control_eligibility(hp, "C-honeypot", _day(), day)
+        counts[eligibility["eligibility"]] += 1
+        counts["not_asked"] -= 1
+        _event(stream, {"type": "control", "candidate": token, "source_response": hp,
+                        "observed_day": _day(), **eligibility})
+    counts["screen_status"] = ("eligible" if counts["eligible"] >= HONEYPOT_MIN_COUNTABLE
+                               else "not_measurable")
+    return counts
+
+
+def _decision(records, plan):
+    definite = sum(r["result"] in ("sold", "sell_reverted") for r in records["U"])
+    cc = [r for r in records["C-clean"] if r["countable"]]
+    hc = [r for r in records["C-honeypot"] if r["countable"]]
+    clean_share = sum(r["agrees"] for r in cc) / len(cc) if cc else None
+    hp_share = sum(r["agrees"] for r in hc) / len(hc) if hc else None
+    not_asked = sum(len(plan["sets"][g]) - len(records[g]) for g in records)
+    if not_asked or len(records["U"]) != U_N:
+        decision = "INCONCLUSIVE"
+    elif definite < U_DEFINITE_STOP:
+        decision = "STOP"
+    elif (definite >= U_DEFINITE_BUILD and clean_share is not None
+          and clean_share >= CLEAN_AGREE_SHARE and len(hc) >= HONEYPOT_MIN_COUNTABLE
+          and hp_share >= HONEYPOT_AGREE_SHARE):
+        decision = "BUILD V3 NEXT"
+    elif (definite >= U_DEFINITE_BUILD and clean_share is not None
+          and clean_share >= CLEAN_AGREE_SHARE and len(hc) < HONEYPOT_MIN_COUNTABLE):
+        decision = "WAIT: positive control not measurable"
+    else:
+        decision = "INCONCLUSIVE"
+    return {"u_definite": definite, "u_population": len(plan["sets"]["U"]),
+            "clean_countable": len(cc), "clean_agree": sum(r["agrees"] for r in cc),
+            "positive_countable": len(hc), "positive_agree": sum(r["agrees"] for r in hc),
+            "excluded": sum(r.get("eligibility") == "excluded"
+                            for g in ("C-clean", "C-honeypot") for r in records[g]),
+            "unobserved": sum(r.get("eligibility") == "unobserved"
+                              for g in ("C-clean", "C-honeypot") for r in records[g]),
+            "not_asked": not_asked, "decision": decision}
+
+
+def _run(plan, day, stream):
+    records = {group: [] for group in plan["sets"]}
+    blocks = {}
+    for chain in RPC:
+        out = rpc(chain, "eth_blockNumber", [], "block|%s" % day)
+        block = out.get("result") if isinstance(out, dict) else None
+        if not isinstance(block, str) or not block.startswith("0x"):
+            _event(stream, {"type": "block", "chain": chain, "observation": "unobserved",
+                            "reason": "block_unavailable"})
+            return _decision(records, plan)
+        try:
+            int(block[2:], 16)
+        except ValueError:
+            _event(stream, {"type": "block", "chain": chain, "observation": "unobserved",
+                            "reason": "block_malformed"})
+            return _decision(records, plan)
+        blocks[chain] = block
+        _event(stream, {"type": "block", "chain": chain, "block": block})
+    for token in plan["sets"]["U"]:
+        rec = simulate(token["chain"], token["token"], token["quote"], blocks[token["chain"]])
         records["U"].append(rec)
-        print("U  %-12s %-16s %s" % (t["symbol"][:12], rec["result"], rec.get("detail", "")[:60]))
-
-    for group, items in (("C-clean", bsc_clean + arch_clean), ("C-honeypot", arch_hp)):
+        _event(stream, {"type": "simulation", "group": "U", "candidate": token, "observation": rec})
+    for group in ("C-clean", "C-honeypot"):
+        items = plan["sets"][group]
         for t in items:
             hp = honeypot_today(t["chain"], t["token"], day)
-            shape, hp_buy, hp_sell = hp_shape(hp)
+            eligibility = control_eligibility(hp, group, _day(), day)
+            try:
+                shape, hp_buy, hp_sell = hp_shape(hp)
+            except (AttributeError, TypeError, ValueError):
+                shape, hp_buy, hp_sell = "none", None, None
+            _event(stream, {"type": "control_source", "group": group, "candidate": t,
+                            "source_response": hp, "observed_day": _day(), **eligibility})
             rec = simulate(t["chain"], t["token"], t["quote"], blocks[t["chain"]])
             rec.update(symbol=t.get("symbol") or "", hp_today=shape, hp_buy_tax=hp_buy,
                        hp_sell_tax=hp_sell)
-            want = "clean" if group == "C-clean" else "proven"
-            rec["countable"] = shape == want
+            rec.update(eligibility)
+            rec["countable"] = rec["eligibility"] == "eligible"
             if group == "C-clean":
                 rec["agrees"] = bool(rec["countable"] and rec["result"] == "sold"
                                      and rec.get("buy_tax") is not None
@@ -327,42 +555,80 @@ def main():
                     rec["result"] == "sell_reverted"
                     or (rec["result"] == "sold" and (rec.get("sell_tax") or 0) >= 50)))
             records[group].append(rec)
-            print("%-10s %-8s %-44s hp=%-6s %-16s buy=%s sell=%s agrees=%s %s" % (
-                group, t["chain"][:8], t["token"], shape, rec["result"], rec.get("buy_tax"),
-                rec.get("sell_tax"), rec["agrees"], rec.get("detail", "")[:50]))
+            _event(stream, {"type": "control", "group": group, "candidate": t,
+                            "source_response": hp, "observed_day": _day(), "observation": rec})
+    return _decision(records, plan)
 
-    definite = sum(1 for r in records["U"] if r["result"] in ("sold", "sell_reverted"))
-    cc = [r for r in records["C-clean"] if r["countable"]]
-    hc = [r for r in records["C-honeypot"] if r["countable"]]
-    clean_share = (sum(r["agrees"] for r in cc) / len(cc)) if cc else None
-    hp_share = (sum(r["agrees"] for r in hc) / len(hc)) if hc else None
-    if definite < U_DEFINITE_STOP:
-        decision = "STOP"
-    elif (definite >= U_DEFINITE_BUILD and clean_share is not None
-          and clean_share >= CLEAN_AGREE_SHARE and len(hc) >= HONEYPOT_MIN_COUNTABLE
-          and hp_share >= HONEYPOT_AGREE_SHARE):
-        decision = "BUILD V3 NEXT"
-    elif (definite >= U_DEFINITE_BUILD and clean_share is not None
-          and clean_share >= CLEAN_AGREE_SHARE and len(hc) < HONEYPOT_MIN_COUNTABLE):
-        decision = "WAIT: positive control not measurable"
-    else:
-        decision = "INCONCLUSIVE"
-    summary = {
-        "run_day": day, "blocks": blocks, "rule": "docs/SELL_SIMULATION.md (c66aba1)",
-        "u_definite": "%d of %d" % (definite, len(records["U"])),
-        "clean_controls": "%d agree of %d countable (%d asked)" % (
-            sum(r["agrees"] for r in cc), len(cc), len(records["C-clean"])),
-        "honeypot_controls": "%d agree of %d countable (%d asked)" % (
-            sum(r["agrees"] for r in hc), len(hc), len(records["C-honeypot"])),
-        "decision": decision,
-    }
-    os.makedirs(OUT_DIR, exist_ok=True)
-    path = os.path.join(OUT_DIR, "v2-%s.json" % day)
-    json.dump({"summary": summary, "records": records}, io.open(path, "w", encoding="utf-8"),
-              indent=1)
-    print("\n" + json.dumps(summary, indent=1))
-    print("wrote %s" % path)
-    return 0
+
+def _private_new_paths(output, cache):
+    if not output or not cache or not os.path.isabs(output) or not os.path.isabs(cache):
+        return False
+    paths = [os.path.normcase(os.path.realpath(output)), os.path.normcase(os.path.realpath(cache))]
+    for path in paths:
+        if os.path.lexists(path) or not os.path.isdir(os.path.dirname(path)):
+            return False
+        parent = os.path.dirname(path)
+        while True:
+            if (parent == os.path.normcase(os.path.realpath(ROOT))
+                    or os.path.isfile(os.path.join(parent, "bench", "sim_probe.py"))):
+                return False
+            above = os.path.dirname(parent)
+            if above == parent:
+                break
+            parent = above
+    try:
+        return os.path.commonpath(paths) not in paths
+    except ValueError:
+        return True  # Distinct volumes cannot contain each other.
+
+
+def main(argv=None):
+    class Parser(argparse.ArgumentParser):
+        def error(self, message):
+            raise ValueError("invalid_arguments")
+    parser = Parser(prog="sim_probe.py")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--plan", action="store_true")
+    mode.add_argument("--refresh-controls", action="store_true")
+    mode.add_argument("--run", action="store_true")
+    parser.add_argument("--out")
+    parser.add_argument("--cache")
+    global _ACTIVE_CACHE
+    previous_cache = _ACTIVE_CACHE
+    try:
+        args = parser.parse_args(argv)
+        live = args.refresh_controls or args.run
+        if live and not _private_new_paths(args.out, args.cache):
+            print("Refused: live modes require new isolated output and cache paths.")
+            return 2
+        plan = make_plan()
+        if not live:
+            print(json.dumps({"mode": "plan", "populations": {
+                g: len(items) for g, items in plan["sets"].items()},
+                "refresh_max_requests": min(6, len(plan["refresh_candidates"])),
+                "input_digest": plan["input_digest"]}))
+            return 0
+        with io.open(args.out, "x", encoding="utf-8") as stream:
+            os.mkdir(args.cache, mode=0o700)
+            _ACTIVE_CACHE = os.path.realpath(args.cache)
+            day = _day()
+            _event(stream, {"type": "manifest", "run_day": day, "mode":
+                            "refresh-controls" if args.refresh_controls else "run", "plan": plan})
+            try:
+                summary = (_refresh(plan, day, stream) if args.refresh_controls
+                           else _run(plan, day, stream))
+            except (Exception, KeyboardInterrupt):
+                _event(stream, {"type": "interrupted", "reason": "run_incomplete"})
+                print("Incomplete: prior observations were preserved.")
+                return 1
+            _event(stream, {"type": "summary", "summary": summary})
+        print(json.dumps(summary))
+        return 0
+    except (Exception, KeyboardInterrupt):
+        print("Refused: invalid arguments, paths or unreadable plan inputs.")
+        return 2
+    finally:
+        _ACTIVE_CACHE = previous_cache
 
 
 if __name__ == "__main__":
