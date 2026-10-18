@@ -48,6 +48,16 @@ FROZEN_FUNCTIONS = {
 }
 
 
+def _frozen_ast_dump(node):
+    """Use the frozen empty-list omission on both Python 3.12 and 3.13."""
+    canonical = copy.deepcopy(node)
+    for item in ast.walk(canonical):
+        for field, value in ast.iter_fields(item):
+            if isinstance(value, list) and not value:
+                delattr(item, field)
+    return ast.dump(canonical, include_attributes=False)
+
+
 def load(name):
     spec = importlib.util.spec_from_file_location("split_" + name, ROOT / "tests" / (name + ".py"))
     module = importlib.util.module_from_spec(spec)
@@ -176,7 +186,7 @@ class EvidenceSplit(unittest.TestCase):
         tree = ast.parse(source)
         functions = {n.name: n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
         for name, digest in FROZEN_FUNCTIONS.items():
-            self.assertEqual(hashlib.sha256(ast.dump(functions[name], include_attributes=False).encode()).hexdigest(), digest, name)
+            self.assertEqual(hashlib.sha256(_frozen_ast_dump(functions[name]).encode()).hexdigest(), digest, name)
         target = functions["test_a_real_contract_reads_correctly"]
         cases = next(n for n in target.body if isinstance(n, ast.Assign)
                      and isinstance(n.targets[0], ast.Name) and n.targets[0].id == "CASES")
