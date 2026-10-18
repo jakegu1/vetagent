@@ -40,6 +40,8 @@ describe the whole build as reproducible until that following task is verified.
   Python 3.12 and Node 22, the same uv pin and locked sync/run, and
   `pywrangler deploy --dry-run`. It must not upload a version or call production.
   Preserve all existing jobs and their conditions. Build runs on branch pushes.
+  Retain the generated public-package `pylock.toml` as a build artifact for the
+  following runtime-lock task; do not upload installed packages, secrets or probes.
 - `tests/test_build_dependency_lock.py`: new offline acceptance guard and synthetic
   negative controls. It must not install packages or access network.
 - `docs/HANDOFF.md`: only the directly corresponding host setup/deploy commands and
