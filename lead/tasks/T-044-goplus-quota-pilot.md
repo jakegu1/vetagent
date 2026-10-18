@@ -222,3 +222,38 @@ rewrite the existing repair history or describe retrospective CI pins as earlier
 commits. No implementation changes are authorized by this amendment. The native
 permission/body-timeout case must show one attempted request, the retained permission
 status, distinct unobserved body, and all remaining indices unasked; no retry.
+
+2026-10-19 (d), named native transport-boundary correction before READY: the lead
+reproduces two further source defects on 7dd2e83. A response with an observed HTTP
+403 followed by native http.client.IncompleteRead loses its known header through
+the outer generic transport handler. A native urllib byte-trickle response exceeds
+the total timeout even though every socket read finishes within that timeout; a
+scaled 0.12-second private local-server probe finishes after 0.435 seconds. This is
+an instrument correctness finding, not a provider availability measurement.
+
+Permit one further additive nested check block in each of these two existing added
+acceptance functions: http_and_exact_result_stages, and run_caps_pacing_and_utc_bounds.
+Preserve every earlier statement/assertion in order, every other function exact,
+the seven-function set and all original module/main and offline/time contracts.
+Commit the additions alone before the narrow implementation repairs. The first
+must exercise a standard HTTPException during body reading after an observed
+permission header, retaining that header, one consumed attempt, an unavailable body
+and 315 unasked cells. Interruption must still propagate to the run's interruption
+handler rather than becoming an ordinary transport retry. The second must exercise
+the actual total-deadline supervisor seam with fake process/clock/transport controls,
+proving expiry stops the in-flight native request and does not create background
+requests, overlapping calls, retries, raw-output leakage or unbounded cleanup.
+Keep the thirty-second configured limit and all other request/day/run ceilings.
+
+The implementation may add small stdlib helpers inside the existing new module.
+Use an interruptible bounded native transport boundary, such as a supervised worker
+process with bounded private pipes, if needed to enforce an absolute deadline over
+connection, headers and body. Header evidence received before body failure/deadline
+must survive. No new source, dependency, CLI live bypass, public raw channel, daemon,
+permission or file is authorized. Do not describe a per-socket timeout as an enforced
+total deadline, or leave an in-flight background request running while starting
+another one. Default and all ordinary tests remain offline. Root will independently
+repeat the bounded native local transport seam after repair, before any real pilot.
+Retain the earlier green 42-step candidate's evidence as held, not READY. Freeze the
+repaired head, reproduce the added reds, run focused checks, then request a new
+exclusive full slot and fresh independent plus adversarial reviews.
