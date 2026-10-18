@@ -727,6 +727,7 @@ class NativeWorker:
     def __init__(self, request, *, directory, permit, permit_sha256, route=None, hooks=None, recheck=None, **_kwargs):
         self.directory, self.permit, self.hooks = Path(directory), permit, hooks
         self.identity, self.process, self.job = None, None, None
+        self.retirement_deadline, self.retirement_outcome = None, None
         self.recheck = recheck
         self.body_acknowledged = False
         self.configuration = {"request": request, "permit": permit, "permit_sha256": permit_sha256,
@@ -803,24 +804,50 @@ class NativeWorker:
         return raw
 
     async def retire(self):
+        if self.retirement_outcome is not None:
+            if self.retirement_outcome == "exited":
+                return "exited"
+            fail("cleanup_uncertain")
         if self.process is None:
+            self.retirement_outcome = "exited"
             return "exited"
+        if self.retirement_deadline is None:
+            self.retirement_deadline = time.monotonic() + .4
         try:
             if self.process.poll() is None:
                 self.process.kill()
-            deadline = time.monotonic() + .4
-            while self.process.poll() is None and time.monotonic() < deadline:
-                await asyncio.sleep(.005)
-            if self.process.poll() is None:
-                fail("cleanup_uncertain")
-            if self.identity is not None and identity_alive(self.identity):
-                fail("cleanup_uncertain")
-            return "exited"
+            while True:
+                exited = self.process.poll() is not None
+                retired = self.identity is None or not identity_alive(self.identity)
+                remaining = self.retirement_deadline - time.monotonic()
+                if exited and retired:
+                    if remaining < 0:
+                        fail("cleanup_uncertain")
+                    break
+                if remaining <= 0:
+                    fail("cleanup_uncertain")
+                await asyncio.sleep(min(.005, remaining))
+        except BaseException:
+            self.retirement_outcome = "cleanup_uncertain"
+            raise
         finally:
-            if self.job:
-                self.job.close()
-            if self.process.stdin:
-                self.process.stdin.close()
+            try:
+                try:
+                    if self.job:
+                        self.job.close()
+                finally:
+                    try:
+                        if self.process.stdin:
+                            self.process.stdin.close()
+                    finally:
+                        handle = getattr(self.process, "_handle", None)
+                        if handle is not None:
+                            handle.Close()
+            except BaseException:
+                self.retirement_outcome = "cleanup_uncertain"
+                fail("cleanup_uncertain")
+        self.retirement_outcome = "exited"
+        return "exited"
 
     def snapshot(self):
         """Read the last flushed bounded prefix only after mechanical retirement."""
