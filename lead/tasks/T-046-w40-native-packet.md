@@ -588,3 +588,39 @@ gate. A bounded fresh privacy-delta review must close this invariant; retain
 the second-round reviews rather than resetting their round count. Actual Linux
 and integrated/master gates remain mandatory before publication. A cleanup
 failure in any prior run remains a recorded failure, never relabeled green.
+
+## Named exited-code and unsignaled-identity retirement regression
+
+2026-10-19 (f): actual Windows native fixtures fail with cleanup_uncertain after
+process.poll() already returns zero. A bounded independent handle trace shows
+both the original process handle and a separately reopened matching-creation
+handle return WAIT_TIMEOUT while GetExitCodeProcess returns zero, with successful
+API calls and almost the entire original cleanup interval remaining. Exit code
+availability is earlier than the process object's signaled retirement. The
+current retire loop waits only for poll, then immediately rejects the identity.
+Preserve the actual failed focused run and both concrete handle traces.
+
+Permit one self-contained append-only block at the end of
+test_w40_native_caps_pacing_deadline_and_cancellation, after named e. Keep all
+old statements, helpers, methods, main and named a through e and d2 exact.
+Deterministically characterize an exit-code-complete worker whose matching
+identity remains live briefly and then retires within the original interval:
+retire must wait for both observations and return exited. A persistently live
+identity and an inaccessible/ambiguous identity must still fail closed; process
+identity must never be inferred dead merely from its exit code. Assert child
+handle/job/stdin cleanup and the unchanged cleanup bound. Preserve actual native
+Windows positive, timeout, cancellation and parent-death controls separately.
+
+Commit that regression alone with a meaningful red on the committed d2 source,
+then one separate same-finding native source repair. Use the existing original
+cleanup interval to observe both the process exit and matching-identity death,
+including re-entrant finalization. Do not grant a new interval on a second retire
+call, increase any request/packet/cleanup budget, manufacture a dead identity,
+replace the original process with a PID-only check or relax uncertain retirement.
+Retain Linux zombie/creation semantics and all hard-parent-death containment.
+
+Run focused, exact-contract and bounded actual-handle controls, preserving every
+failure. Freeze the corrected source and request its own exclusive complete gate;
+only that final head can receive bounded privacy/retirement delta closure and a
+fresh complete independent gate. No old full log is relabeled, and no LIVE use
+or scientific study begins from these corrections.
