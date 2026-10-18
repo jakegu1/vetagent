@@ -12,7 +12,7 @@ import tempfile
 import test_deploy_gate as workflow
 
 ROOT = Path(__file__).resolve().parents[1]
-WORKFLOWS = {"deploy.yml", "production.yml", "snapshot.yml", "test.yml", "usage.yml", "zone-check.yml"}
+WORKFLOWS = {"deploy.yml", "production.yml", "snapshot.yml", "test.yml", "usage.yml", "zone-check.yml", "rugcheck-w57.yml"}
 ACTION_PINS = {
     "actions/checkout": ("3d3c42e5aac5ba805825da76410c181273ba90b1", "v7.0.1"),
     "actions/setup-python": ("5fda3b95a4ea91299a34e894583c3862153e4b97", "v7.0.0"),
@@ -116,7 +116,7 @@ def workflow_errors(name, text):
 def policy_errors(documents):
     errors = []
     if set(documents) != WORKFLOWS:
-        errors.append("workflow set must be exactly the six covered YAML files")
+        errors.append("workflow set must be exactly the seven covered YAML files")
     for name, text in documents.items():
         errors.extend(workflow_errors(name, text))
     return errors
@@ -153,7 +153,7 @@ def test_actual_actions_and_every_job_are_pinned():
 
 
 def test_known_valid_action_and_runner_forms_pass():
-    check("the synthetic six-workflow control passes", not policy_errors(valid_documents()))
+    check("the synthetic seven-workflow control passes", not policy_errors(valid_documents()))
     spaced = valid_workflow().replace(" # v", "  #  v")
     check("release comment spacing does not change the pin", not workflow_errors("control.yml", spaced))
 
