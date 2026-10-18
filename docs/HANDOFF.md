@@ -163,6 +163,7 @@ Suggested approach (ordered by feasibility):
 cd ~/projects/vetagent-worker
 # Linux or WSL; CI is the normal deployment path (D2).
 python -m pip install --no-deps uv==0.13.1
+npm ci --ignore-scripts --no-audit --no-fund
 uv sync --locked
 uv run --locked pywrangler dev --port 8787     # local test
 # deploy (credentials via env vars, never written into git)
@@ -192,11 +193,13 @@ uv run --locked pywrangler deploy
 ### 🖥️ Developing on your own machine (Jake's box)
 1. `git clone https://github.com/jakegu1/vetagent.git && cd vetagent`
 2. Install the pinned host tool: `python -m pip install --no-deps uv==0.13.1`.
-3. `uv sync --locked` installs the SDKs and host dependencies from the committed `uv.lock`.
+3. `npm ci --ignore-scripts --no-audit --no-fund` installs the exact Wrangler 4.151.1 development tool and public transitive Node lock without install hooks. `uv sync --locked` installs the SDKs and host dependencies from the committed `uv.lock`.
 4. **Cloudflare credentials**: ask Jake for `CLOUDFLARE_API_TOKEN` (set it as a local env var only, **never write it into git**). Create one in the Cloudflare dashboard → My Profile → API Tokens (scope it to `Workers: Edit` + `Account: Read`, nothing more). Or just `npx wrangler login` (OAuth, safest).
 5. On Linux or WSL, use `uv run --locked pywrangler dev` to test locally and `uv run --locked pywrangler deploy` for the deployment path (D1). Production normally ships through CI (D2) and retains its production smoke checks (D3). Native Windows can sync host dependencies and run offline checks; do not run pywrangler or Pyodide setup there.
 
-For an intentional host lock update, review the two SDK pins in `pyproject.toml`, use uv 0.13.1, and run `uv lock --no-config --default-index https://pypi.org/simple`. Review the complete `uv.lock` diff, run `uv lock --check` and `uv sync --locked`, then run the offline suite. Commit the reviewed project and lock changes together. A missing or stale lock is an error during normal sync/deploy, never an invitation to regenerate it silently. This locks host Python resolution; Node and Pyodide runtime resolution remain separate work, so this is not a claim that the entire build is reproducible.
+For an intentional host lock update, review the two SDK pins in `pyproject.toml`, use uv 0.13.1, and run `uv lock --no-config --default-index https://pypi.org/simple`. Review the complete `uv.lock` diff, run `uv lock --check` and `uv sync --locked`, then run the offline suite. Commit the reviewed project and lock changes together. A missing or stale lock is an error during normal sync/deploy, never an invitation to regenerate it silently.
+
+The private Node manifest pins Wrangler 4.151.1 only as a development tool. pywrangler remains the packaging/deployment entry point and resolves that installed local package. CI checks the local Wrangler JavaScript entry directly, with no npm/npx installation fallback. For an intentional Node lock update, explicitly review the Wrangler version in `package.json`, generate the public transitive lock with `npm install --package-lock-only --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org/`, then review both manifests and verify a clean `npm ci --ignore-scripts --no-audit --no-fund`. This does not claim bit-for-bit bundle or platform-runtime identity.
 
 The separate Linux `build` job in `test.yml` follows the offline job on branch pushes, without deployment secrets. It runs `uv run --locked pywrangler deploy --dry-run`, rejects tracked-file changes and retains only the generated public `pylock.toml` as a build artifact for runtime-lock work. A successful dry-run is packaging evidence; actual deployment and runtime import/smoke checks remain required before claiming a working production release.
 

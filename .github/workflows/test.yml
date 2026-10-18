@@ -279,6 +279,12 @@ jobs:
       - name: Verify uv version
         run: uv --version
 
+      - name: Install locked Node tooling
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Verify local Wrangler
+        run: node -e "const {execFileSync}=require('node:child_process'); const version=execFileSync(process.execPath,['./node_modules/wrangler/bin/wrangler.js','--version'],{encoding:'utf8'}).trim(); console.log(version); if(version!=='4.151.1') process.exit(1)"
+
       - name: Sync dependencies
         run: uv sync --locked
 
