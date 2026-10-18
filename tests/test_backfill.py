@@ -24,9 +24,14 @@ would be.
 Run:  python tests/test_backfill.py
 """
 
+import contextlib
+import json
 import os
+import re
 import sys
+import time
 import urllib.error
+import urllib.request
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "bench"))
 
@@ -34,6 +39,181 @@ import backfill  # noqa: E402
 
 _FAILURES = []
 _PASSED = 0
+_UNOBSERVED = []
+_ADAPTER = None
+_LIVE_TESTS = {"test_decoded_pools_are_real_pools", "test_a_day_is_bracketed_by_its_own_boundaries"}
+_HEX_DATA = re.compile(r"0x(?:[0-9a-fA-F]{2})*")
+_HEX_QUANTITY = re.compile(r"0x[0-9a-fA-F]+")
+
+
+class _ObservationError(Exception):
+    """A wire observation could not be used. Never wrap an engine exception in this."""
+    def __init__(self, kind, method, provider="none", status="none"):
+        super().__init__(kind)
+        self.labels = (kind, method, provider, str(status))
+
+
+class _ObservationHTTPError(urllib.error.HTTPError):
+    """Keep range-refusal ancestry for frozen logs_in_range, with no private URL/body."""
+    def __init__(self, code, method, provider):
+        super().__init__("", code, "observation unavailable", {}, None)
+        self.labels = ("http", method, provider, str(code))
+
+
+_OBSERVATION_ERRORS = (_ObservationError, _ObservationHTTPError)
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.HTTPError("", code, "redirect refused", {}, None)
+
+
+class _ObservationRPC:
+    """Test-owned acquisition budget, shared by the two live tests in one invocation.
+
+    It replaces only their rpc_any seam. Collector code and its offline range controls
+    retain their own behavior. The deadline bounds attempts/read timeouts, not platform
+    DNS blocking; the live workflow also has a three-minute outer timeout.
+    """
+    def __init__(self):
+        self.attempts = 0
+        self.request_id = 0
+        self.deadline = time.monotonic() + 60
+        self.opener = urllib.request.build_opener(_NoRedirect())
+
+    def _remaining(self, method, provider):
+        remaining = self.deadline - time.monotonic()
+        if remaining <= 0:
+            raise _ObservationError("deadline", method, provider)
+        return remaining
+
+    def _read(self, response, method, provider, timeout):
+        raw = bytearray()
+        cap = 2 * 1024 * 1024
+        while True:
+            remaining = self._remaining(method, provider)
+            # HTTPResponse's underlying socket supports updating the timeout between
+            # bounded read1 calls. In-memory streams need no socket.
+            sock = getattr(getattr(getattr(response, "fp", None), "raw", None), "_sock", None)
+            if sock is not None:
+                sock.settimeout(min(15, timeout, remaining))
+            read = getattr(response, "read1", response.read)
+            chunk = read(min(65536, cap - len(raw) + 1))
+            self._remaining(method, provider)
+            raw.extend(chunk)
+            if len(raw) > cap:
+                raise _ObservationError("oversize", method, provider)
+            if not chunk:
+                return bytes(raw)
+
+    @staticmethod
+    def _usable(method, value):
+        def quantity(item):
+            return isinstance(item, str) and _HEX_QUANTITY.fullmatch(item) is not None
+        def data(item):
+            return isinstance(item, str) and _HEX_DATA.fullmatch(item) is not None
+        if method == "eth_blockNumber":
+            return quantity(value)
+        if method == "eth_getBlockByNumber":
+            return isinstance(value, dict) and quantity(value.get("timestamp"))
+        if method == "eth_call":
+            # Empty/short valid DATA is observed contract evidence, not an outage.
+            return data(value)
+        if method == "eth_getLogs":
+            if not isinstance(value, list):
+                return False
+            for log in value:
+                if not isinstance(log, dict):
+                    return False
+                topics = log.get("topics")
+                if not isinstance(topics, list) or len(topics) < 3:
+                    return False
+                if topics[0] not in (backfill.V2_TOPIC, backfill.V3_TOPIC):
+                    return False
+                if topics[0] == backfill.V3_TOPIC and len(topics) < 4:
+                    return False
+                if any(not data(t) or len(t) != 66 for t in topics):
+                    return False
+                body = log.get("data")
+                if not data(body) or len(body) < 130:
+                    return False
+            return True
+        raise ValueError("unexpected local RPC method")
+
+    def __call__(self, urls, method, params, timeout=30):
+        if tuple(urls) != tuple(backfill.CHAINS["base"]["rpc"]):
+            raise ValueError("unexpected local provider configuration")
+        self.request_id += 1
+        request_id = self.request_id
+        body = json.dumps({"jsonrpc": "2.0", "id": request_id,
+                           "method": method, "params": params}).encode()
+        last = None
+        for index, url in enumerate(urls):
+            provider = "primary" if index == 0 else "fallback"
+            remaining = self._remaining(method, provider)
+            if self.attempts >= 64:
+                raise _ObservationError("attempt-budget", method, provider)
+            self.attempts += 1
+            req = urllib.request.Request(url, method="POST", data=body, headers=backfill._UA)
+            try:
+                with self.opener.open(req, timeout=min(15, timeout, remaining)) as response:
+                    raw = self._read(response, method, provider, timeout)
+            except urllib.error.HTTPError as exc:
+                if method == "eth_getLogs" and exc.code in (413, 429):
+                    raise _ObservationHTTPError(exc.code, method, provider) from None
+                kind = "redirect" if 300 <= exc.code < 400 else "http"
+                last = _ObservationError(kind, method, provider, exc.code)
+                continue
+            except (urllib.error.URLError, OSError):
+                last = _ObservationError("transport", method, provider)
+                continue
+            except _ObservationError as exc:
+                last = exc
+                continue
+            try:
+                payload = json.loads(raw.decode("utf-8"))
+            except (UnicodeError, ValueError):
+                last = _ObservationError("malformed-json", method, provider)
+                continue
+            if (not isinstance(payload, dict) or payload.get("jsonrpc") != "2.0"
+                    or type(payload.get("id")) is not int or payload["id"] != request_id
+                    or (("result" in payload) == ("error" in payload))):
+                last = _ObservationError("malformed-envelope", method, provider)
+                continue
+            if "error" in payload:
+                error = payload["error"]
+                kind = "rpc-refusal" if (isinstance(error, dict)
+                                         and type(error.get("code")) is int) else "malformed-envelope"
+                last = _ObservationError(kind, method, provider)
+                continue
+            if not self._usable(method, payload["result"]):
+                last = _ObservationError("unusable-result", method, provider)
+                continue
+            return payload
+        raise last
+
+
+@contextlib.contextmanager
+def _live_rpc():
+    original = backfill.rpc_any
+    backfill.rpc_any = _ADAPTER if _ADAPTER is not None else _ObservationRPC()
+    try:
+        yield
+    finally:
+        backfill.rpc_any = original
+
+
+def _unobserved(name, error=None):
+    labels = error.labels if error is not None else ("coverage", "none", "none", "none")
+    _UNOBSERVED.append((name, labels))
+    print("  UNOBSERVED %s class=%s method=%s provider=%s status=%s" % ((name,) + labels))
+
+
+def _live_test(function):
+    def run():
+        with _live_rpc():
+            return function()
+    return run
 
 
 def check(name, condition, detail=""):
@@ -103,6 +283,7 @@ def test_pairs_of_quote_assets_are_not_launches():
           backfill._decode({"topics": [backfill.V2_TOPIC], "data": "0x"}, quotes) is None)
 
 
+@_live_test
 def test_decoded_pools_are_real_pools():
     """The round trip: ask each decoded contract what it holds, and check it matches.
 
@@ -126,11 +307,9 @@ def test_decoded_pools_are_real_pools():
             urls, head - 25000, head - 20000, [[backfill.V2_TOPIC, backfill.V3_TOPIC]],
             address=cfg["factories"], step=5000, floor=200, what="pool creations")
         r = {"result": logs}
-    except Exception as e:  # noqa: BLE001
-        check("base RPC reachable", False, str(e)[:90])
-        return
-    if "error" in r:
-        check("base RPC served the log range", False, str(r["error"])[:90])
+    except _OBSERVATION_ERRORS as error:
+        _unobserved("the sample range yielded launches to verify", error)
+        _unobserved("every decoded pool holds exactly the tokens its log named", error)
         return
 
     decoded = []
@@ -140,8 +319,12 @@ def test_decoded_pools_are_real_pools():
             d["sides"] = {("0x" + t[-40:]).lower() for t in log["topics"][1:3]}
             decoded.append(d)
 
-    check("the sample range yielded launches to verify", len(decoded) >= 3, str(len(decoded)))
+    if len(decoded) < 3:
+        _unobserved("the sample range yielded launches to verify")
+    else:
+        check("the sample range yielded launches to verify", len(decoded) >= 3, str(len(decoded)))
     if not decoded:
+        _unobserved("every decoded pool holds exactly the tokens its log named")
         return
 
     verified = 0
@@ -153,11 +336,9 @@ def test_decoded_pools_are_real_pools():
                 res = backfill.rpc_any(urls, "eth_call",
                                        [{"to": d["pool"], "data": selector}, "latest"],
                                        timeout=15)
-            except Exception:                               # noqa: BLE001
+            except _OBSERVATION_ERRORS as error:
+                _unobserved("token pair observation", error)
                 unreachable = True
-                break
-            if "result" not in res:
-                unreachable = True                          # including a rate-limit item
                 break
             answers.append(res["result"] or "")
         if unreachable:
@@ -168,20 +349,22 @@ def test_decoded_pools_are_real_pools():
         # ignoring exactly the failures it exists to catch.
         if any(len(a) < 66 for a in answers):
             checked += 1
-            print("      %s does not answer token0/token1 -- not a pool" % d["pool"])
             continue
         checked += 1
         held = {"0x" + a[-40:].lower() for a in answers}
         if held == d["sides"]:
             verified += 1
-        else:
-            print("      mismatch at %s: chain says %s, log said %s"
-                  % (d["pool"], sorted(held), sorted(d["sides"])))
+    if checked < 3:
+        _unobserved("three complete token-pair observations")
+    # A thin sample is a coverage gap, but cannot erase a contradiction already seen.
+    if (checked and verified != checked) or (len(decoded) >= 3 and checked >= 3):
+        check("every decoded pool holds exactly the tokens its log named",
+              checked > 0 and verified == checked, "%d/%d verified" % (verified, checked))
+    else:
+        _unobserved("every decoded pool holds exactly the tokens its log named")
 
-    check("every decoded pool holds exactly the tokens its log named",
-          checked > 0 and verified == checked, "%d/%d verified" % (verified, checked))
 
-
+@_live_test
 def test_a_day_is_bracketed_by_its_own_boundaries():
     """block_at must land inside the day it was asked for, not near it.
 
@@ -201,15 +384,17 @@ def test_a_day_is_bracketed_by_its_own_boundaries():
         b0 = backfill.block_at(urls, start, head, cfg["block_seconds"])
         t0 = backfill._timestamp_of(urls, b0)
         t_next = backfill._timestamp_of(urls, b0 + 1)
-    except Exception as e:  # noqa: BLE001
-        check("base RPC reachable for block_at", False, str(e)[:90])
+    except _OBSERVATION_ERRORS as error:
+        _unobserved("the block found is at or before the boundary", error)
+        _unobserved("and the very next block is after it -- so it is the last one, not merely one "
+                    "of many", error)
+        _unobserved("the boundary is within a minute of midnight UTC", error)
         return
 
-    check("the block found is at or before the boundary", t0 <= start, "%d vs %d" % (t0, start))
+    check("the block found is at or before the boundary", t0 <= start)
     check("and the very next block is after it -- so it is the last one, not merely one "
-          "of many", t_next > start, "%d vs %d" % (t_next, start))
-    check("the boundary is within a minute of midnight UTC", start - t0 < 60,
-          "%ds early" % (start - t0))
+          "of many", t_next > start)
+    check("the boundary is within a minute of midnight UTC", start - t0 < 60)
 
 
 def test_a_refused_range_narrows_the_window_and_skips_no_blocks():
@@ -303,6 +488,12 @@ def test_a_refused_range_narrows_the_window_and_skips_no_blocks():
 
 
 def main():
+    global _ADAPTER
+    arguments = sys.argv[1:]
+    if arguments not in ([], ["--offline"]):
+        print("  FAIL configuration class=configuration method=none provider=none status=none")
+        return 2
+    offline = bool(arguments)
     print("=" * 66)
     print("Backfill decoder tests")
     print("=" * 66)
@@ -312,12 +503,40 @@ def main():
     # incident this repo already records: four hand-maintained runners skipping tests,
     # including CI's own step list. `tests/test_decisions_enforcement.py` now fails when any
     # test file's runner cannot reach one of its own test functions.
-    for _, fn in sorted((k, v) for k, v in globals().items() if k.startswith("test_")):
-        fn()
+    live_observed = live_failed = live_unobserved = 0
+    previous_adapter = _ADAPTER
+    try:
+        _ADAPTER = None if offline else _ObservationRPC()
+        for name, fn in sorted((k, v) for k, v in globals().items() if k.startswith("test_")):
+            if offline and name in _LIVE_TESTS:
+                continue
+            before = (_PASSED, len(_FAILURES), len(_UNOBSERVED))
+            try:
+                fn()
+            except Exception:  # noqa: BLE001 -- unexpected local faults are hard failures, never outages
+                check("a test completed without a local failure", False,
+                      "class=local method=none provider=none status=none")
+            if name in _LIVE_TESTS:
+                live_failed += len(_FAILURES) - before[1]
+                live_observed += _PASSED - before[0] + len(_FAILURES) - before[1]
+                live_unobserved += len(_UNOBSERVED) - before[2]
+    except Exception:  # noqa: BLE001 -- setup/discovery faults are also sanitized hard failures
+        check("the local test harness initialized and discovered its checks", False,
+              "class=local method=none provider=none status=none")
+    finally:
+        _ADAPTER = previous_adapter
     print("\n" + "=" * 66)
     print("%d passed, %d failed" % (_PASSED, len(_FAILURES)))
     for name, detail in _FAILURES:
         print("  FAIL  %s  %s" % (name, detail))
+    state = "not-run" if offline else (
+        "red" if _FAILURES else "blind" if not live_observed else
+        "partial" if live_unobserved else "observed")
+    print("OBSERVATION_SUMMARY " + json.dumps({
+        "observed_checks": _PASSED + len(_FAILURES), "passed_checks": _PASSED,
+        "failed_checks": len(_FAILURES), "unobserved_checks": len(_UNOBSERVED),
+        "live_observed_checks": live_observed, "live_failed_checks": live_failed,
+        "live_unobserved_checks": live_unobserved, "live_state": state}, sort_keys=True))
     return 1 if _FAILURES else 0
 
 
