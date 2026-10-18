@@ -728,6 +728,7 @@ class NativeWorker:
         self.directory, self.permit, self.hooks = Path(directory), permit, hooks
         self.identity, self.process, self.job = None, None, None
         self.retirement_deadline, self.retirement_outcome = None, None
+        self.retirement_poll = None
         self.recheck = recheck
         self.body_acknowledged = False
         self.configuration = {"request": request, "permit": permit, "permit_sha256": permit_sha256,
@@ -814,10 +815,12 @@ class NativeWorker:
         if self.retirement_deadline is None:
             self.retirement_deadline = time.monotonic() + .4
         try:
-            if self.process.poll() is None:
+            self.retirement_poll = self.process.poll()
+            if self.retirement_poll is None:
                 self.process.kill()
             while True:
-                exited = self.process.poll() is not None
+                self.retirement_poll = self.process.poll()
+                exited = self.retirement_poll is not None
                 retired = self.identity is None or not identity_alive(self.identity)
                 remaining = self.retirement_deadline - time.monotonic()
                 if exited and retired:
@@ -842,7 +845,16 @@ class NativeWorker:
                     finally:
                         handle = getattr(self.process, "_handle", None)
                         if handle is not None:
-                            handle.Close()
+                            while self.retirement_poll is None:
+                                self.retirement_poll = self.process.poll()
+                                if self.retirement_poll is not None:
+                                    break
+                                remaining = self.retirement_deadline - time.monotonic()
+                                if remaining <= 0:
+                                    break
+                                await asyncio.sleep(min(.005, remaining))
+                            if self.retirement_poll is not None:
+                                handle.Close()
             except BaseException:
                 self.retirement_outcome = "cleanup_uncertain"
                 fail("cleanup_uncertain")
