@@ -197,3 +197,12 @@ contract. Implementation files are disjoint from T043; no workflow registration 
 changed. This is a test-placement choice made before the first acceptance commit,
 not a frozen-test edit. Also stop after the first HTTP 401/403 rather than spending
 the remaining workload on a known permission refusal; report every unasked index.
+
+2026-10-19 (b), named mechanical acceptance-helper correction: the added source-freeze
+helper splits on a main-declaration string which appears inside the helper itself.
+The lead independently reproduces its unterminated-string AST red and proves the
+two delimiter spellings with surrounding newline characters preserve the actual old
+prefix/main bytes and expose exactly the same seven added functions. After the first
+acceptance commit, permit only those two split-argument changes in a separate named
+test-only commit. No assertion, test input, coverage, timing rule or implementation
+workaround changes; every old statement and all other acceptance bytes remain frozen.
