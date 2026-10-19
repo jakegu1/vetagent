@@ -59,6 +59,17 @@ exact-source master CI. Source review alone is not publication or live evidence.
 After those gates, execute the separately root-bound sole non-cohort native
 GET/RPC/assessment control. Retain partial failure; no retry or fabricated success.
 
+## Archive source dispatch checkpoint
+
+The integrated T046/T048 source at1de0259 passes all44 local commands and actual
+Linux39178913343, including both locked builds and network classification jobs.
+That exact head is pushed to master; exact-master39179422065 has not yet been
+read back for this dispatch and remains a separately bound runtime prerequisite.
+T047 now starts in its isolated branch from the bound source under its adopted
+archive-only specification. T049/T050 stay drafts with frozen interface contracts.
+The root native one-shot and all later LIVE gates remain separate; no source or
+runtime success is inferred from a draft or a pending master run.
+
 ## Next engineering: three related M-sized loops
 
 The unadopted broad local-runtime proposal is split before tests under QUALITY's

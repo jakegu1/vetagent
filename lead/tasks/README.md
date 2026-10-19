@@ -49,4 +49,7 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-044 | Measure the existing held-out oracle quota without hidden retries or data publication | 3 | M | none | published 31cae13 after actual Linux/master gates; sole finite pilot complete, availability false, no quota/reset inference |
 | T-045 | Preserve prospective enrollment and independently replayable paired evidence | 3 | M | none | published 31cae13 after actual Linux/master gates; immutable core remains offline, no thirty-day clock |
 | T-046 | Acquire one due paired packet through a bounded native engine adapter | 3 | M | T-044, T-045 | reviewed 4dd8474 source integrated; own and independent44 pass, final bounded privacy/retirement verdicts pass; combined/Linux/master/native gates next |
+| T-047 | Verify the bounded W40 archive and seal immutable source views | 3 | M | T-046 | in progress; bound reviewed source1de0259 and actual local/Linux44, archive-only source loop |
 | T-048 | Select W57 checkpoints by verified chronology rather than opaque Artifact ID | 3 | M | T-043 | reviewed 512c7d5 source integrated; fresh independent12/12 and red-team none; release and original-study actual terminal next |
+| T-049 | Run the immutable W40 due queue with durable budgets and a truthful clock | 3 | M | T-047, T-046 | draft; fixed interfaces, future green45 binding required |
+| T-050 | Own one local scheduler action and verify actual unarmed firings | 3 | M | T-049, T-047 | draft; fixed interfaces, future green46 binding required |
