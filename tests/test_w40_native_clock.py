@@ -84,6 +84,9 @@ class OfflineFixture:
             self.runtime = self.root / "runtime"
             self.private = self.root / "private"
             self.store = self.root / "store"
+            # Windows constructs an internal socketpair when its event loop is created.
+            # All fixture coroutines run after physical-network guards are installed.
+            self.runner = self.stack.enter_context(asyncio.Runner())
             for target in ("socket.create_connection", "socket.socket.connect",
                            "socket.socket.connect_ex", "socket.getaddrinfo",
                            "http.client.HTTPConnection.connect",
@@ -249,7 +252,7 @@ class NativeClockAcceptance(unittest.TestCase):
                         self.assertIsNone(risk._minutes_since_rugcheck_indexed((pin + timedelta(minutes=6)).isoformat()))
                         self.assertEqual(adapter.deadline - adapter.start["monotonic"], native.PACKET_SECONDS)
                     assert_restored(self, before)
-                asyncio.run(exercise())
+                fixture.runner.run(exercise())
 
     def test_native_collect_one_datetime_real_assessment(self):
         with OfflineFixture(self) as fixture:
@@ -261,7 +264,7 @@ class NativeClockAcceptance(unittest.TestCase):
                     manifest=native.code_manifest(), clock=fixture.clock, transport=fixture.transport)
                 assert_restored(self, before)
                 return result
-            result = asyncio.run(exercise())
+            result = fixture.runner.run(exercise())
             packet = native.read_prepared(fixture.runtime, fixture.private)
             self.assertEqual(packet["engine"]["state"], "observed")
             raw = base64.b64decode(packet["engine"]["raw"])
@@ -333,13 +336,13 @@ class NativeClockAcceptance(unittest.TestCase):
                         for variable, token in zip(CONTEXTS, tokens):
                             variable.reset(token)
                 if mode == "normal":
-                    asyncio.run(exercise())
+                    fixture.runner.run(exercise())
                 elif mode == "failure":
                     with self.assertRaisesRegex(RuntimeError, "^fixture_failure$"):
-                        asyncio.run(exercise())
+                        fixture.runner.run(exercise())
                 else:
                     with self.assertRaises(asyncio.CancelledError):
-                        asyncio.run(exercise())
+                        fixture.runner.run(exercise())
                 assert_restored(self, original)
         now = risk._clock_now()
         self.assertIsNone(risk._BENCH_NOW.get())
