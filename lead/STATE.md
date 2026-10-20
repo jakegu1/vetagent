@@ -1,6 +1,6 @@
 # Lead state
 
-Last updated: 2026-10-19 by Codex. This is the current baton, not a release log.
+Last updated: 2026-10-20 by Codex. This is the current baton, not a release log.
 Earlier detailed source/review/release records remain in Git history at 53e3549
 and in lead/reviews/. Do not interpret their historical pending stages as current.
 
@@ -37,27 +37,35 @@ The sole finite real T-044 pilot is complete and incomplete coverage is retained
 It proves neither a daily allowance/reset nor a thirty-day W40 start. No repeat.
 The offline T-045 core remains frozen.
 
-Actual scheduled snapshot 39172268672 and following bot CI 39172930291 succeed.
-Bot data through 9be63f0 are preserved by normal merge ee0bfd5. Other jobs skipped
-on that workflow_run are not counted as builds or network checks. Never publish
-old archive totals as current without a new source-bound inventory.
+Actual scheduled snapshot 39343458776 and following bot CI 39344396692 succeed.
+Latest bot data a615a44 are retained by normal merge f43d6b2. Its exact test-job
+checkout and all forty-four named commands are verified; other skipped jobs are
+not counted as builds or network checks. Earlier bot data through 9be63f0 remain
+retained. Never publish old archive totals as current without a source-bound read.
 
 ## Current source batch
 
-T-048 source 512c7d5 passes fresh independent review twelve of twelve and
-RED-TEAM none; the independent reviewer runs all forty-three commands. The source
-is normally merged, with the complete chronology contract and old assertions exact.
-T-046 source 4dd8474 is normally merged only after the fresh bounded final privacy
-and retirement verdicts pass and the independent exact-source forty-four-step gate.
-The review decision retains both spent ordinary rounds, historical failed auxiliary
-premises, unresolved old file ownership and the separately disclosed helper drift.
-See lead/reviews/T-046.md and T-048.md for source-specific evidence and limits.
+T-046 source 4dd8474 and T-048 source 512c7d5 are published at 1de0259 after
+the combined exact-source forty-four-command local gate, actual feature Linux
+39178913343 and master 39179422065. Upstream/backfill jobs and both independent
+locked builds actually succeed. The source reviews and their qualifications remain
+in lead/reviews/T-046.md and T-048.md, including spent ordinary rounds and retained
+historical failures. Later bot data do not change those source files.
 
-Next: explicit fixed-point regeneration, one combined forty-four-step local gate,
-actual feature Linux with both locked builds, then normal origin reconciliation and
-exact-source master CI. Source review alone is not publication or live evidence.
-After those gates, execute the separately root-bound sole non-cohort native
-GET/RPC/assessment control. Retain partial failure; no retry or fabricated success.
+The sole original non-cohort native control fails before either physical request.
+Actual saved child identities expose a Windows venv redirector mismatch. Its
+failure is retained; it is not an upstream outage or successful native seam.
+Separate zero-Vendor direct-base identity and native-loopback witnesses succeed.
+A separately bound corrective configuration requires current clean source, actual
+master CI and the reviewed complete-runtime pin before one distinct control.
+It cannot retry or relabel the original attempt, acquire labels or start a study.
+
+T-051 candidate b9a7479 records the truthful undecided checkpoint through the
+unchanged guard. The tests-first contract holds and all forty-four local commands
+pass with all tracked bytes exact. An earlier default-Temp Git-ancestor refusal
+is separately retained; only child temporary-directory configuration changes.
+Actual feature Linux 39386659582 and fresh independent/red-team reviews are in
+flight. No integration, master publication or experiment result is inferred yet.
 
 ## Next engineering: three related M-sized loops
 
@@ -71,33 +79,40 @@ size rule. Preserve every original requirement and test the handoffs explicitly:
 3. T-050: exact owned scheduler action/XML/readback, two actual unarmed entries,
    unchanged action through activation and verified stop/uninstall.
 
-Each spec requires exact reviewed dependency/API and a green implementation base
-before tests. Registration changes integrate serially. Source implementation may
-proceed independently of pending live receipts; actual native, Linux, frozen
-runtime/seed and OS-entry evidence gate activation. No thirty-day W40 clock starts
-at registration, seed, arm, a claim, source refresh or a non-cohort control.
+The split specs are adopted on the T-047 branch. Archive implementation has actual
+Windows parent-death/restoration controls and is still completing focused boundary
+repairs before its complete gate and fresh reviews. T-049/T-050 remain drafts,
+requiring the exact reviewed dependency/API and green implementation base before
+tests. Registration changes integrate serially. Source implementation may proceed
+independently of pending live receipts; actual native, Linux, frozen runtime/seed
+and OS-entry evidence gate activation. No thirty-day W40 clock starts at
+registration, seed, arm, a claim, source refresh or a non-cohort control.
 
 ## W57 operational correction and scientific boundary
 
-Original actual start 39164798771 freezes 45 fresh members and 18 controls at
-2026-10-18T20:48:40.293557Z, ending 2026-10-20T20:48:40.293557Z with fifteen-minute
-grace. First actual cron 39172893956 returns idle and produces no Artifact.
-Saved actual metadata proves numeric Artifact IDs selected an older pilot;
-T-048 fixes verified publication chronology, not the study or its decision rule.
+Original study w57-study-20261018-a starts in actual run 39164798771. Its source,
+cohort and original forty-eight-hour window remain immutable. Corrected-source
+cron 39180898544 emits the existing source_changed terminal with zero new Vendor
+calls. Its complete existing chain is exported and the owned workflow disable is
+read back. This original study is inconclusive; enrollment is not follow-up.
 
-After publication, an actual cron must emit the existing source_changed terminal
-for that original study with zero new Vendor calls. Preserve its cohort, source,
-clocks, parent chain, observations and missing slots. Export the entire chain,
-then disable only the study workflow. A separate explicit pilot and newly named
-study may follow under the same protocol; never reset, continue or rebind the old
-study. Existing finite terminal follow-up remains runtime-unverified until it fires.
+A distinct authorized pilot 39383433196 succeeds. New study
+w57-study-20261020-b starts in actual run 39384753529 from that preceding pilot,
+with the same protocol and a newly frozen cohort. Its actual elapsed window is
+2026-10-20T07:12:33.877001Z through 2026-10-22T07:12:33.877001Z; endpoint grace ends
+at 07:27:33.877001Z. First actual scheduled resume remains unobserved. The existing
+finite terminal follow-up is updated to this new study/window and read back, but
+future triggering is unverified. Preserve missing slots and scheduling delays;
+neither a successful start nor an ACTIVE configuration proves continuous coverage.
 
 ## Owner decisions and unavailable evidence
 
-Experiment D remains unrun and due 2026-10-20 UTC under ADR-0002. The gate refuses
-from 00:00 UTC until an actual conclusion and the required opportunity decisions
-are adopted. First scheduled snapshot that day is 02:23 UTC. Do not invent a
-result, contact people or postpone the date. H-13 remains in lead/OWNER.md.
+Experiment D is due 2026-10-20 UTC under ADR-0002 and remains empirically open.
+T-051 uses the existing explicit finding/undecided rule when its measurement is
+unavailable, with four non-adoption opportunity reviews. The original date,
+three-trial rule, actions and payment gate remain unchanged. The truthful record
+does not authorize a new direction, outreach, payment or invented outcome. H-13
+continues to request the actual measurement when available; no replacement date.
 
 The original remaining-gap dispositions and policy/source-rights choices are
 reported privately. Routine engineering is not an Owner wait. Missing independent
