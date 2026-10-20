@@ -20,7 +20,8 @@ No W40 thirty-day clock has started. W57's original study is source_changed,
 exported and inconclusive. A distinct pilot/start succeeds; the new fixed window
 ends 2026-10-22T07:12:33.877001Z, with actual scheduled continuation still unobserved.
 T-051 records an unavailable D measurement as undecided using the unchanged guard;
-its candidate has the complete local gate and awaits Linux/fresh reviews/integration.
+its source is reviewed and integrated after complete local/actual Linux checks.
+Post-merge and exact master publication checks follow.
 Experiment D remains empirically open and due 2026-10-20 UTC. Sign-off categories,
 payment gate and pre-registered scientific rules are unchanged.
 

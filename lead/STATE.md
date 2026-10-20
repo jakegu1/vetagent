@@ -60,12 +60,14 @@ A separately bound corrective configuration requires current clean source, actua
 master CI and the reviewed complete-runtime pin before one distinct control.
 It cannot retry or relabel the original attempt, acquire labels or start a study.
 
-T-051 candidate b9a7479 records the truthful undecided checkpoint through the
-unchanged guard. The tests-first contract holds and all forty-four local commands
-pass with all tracked bytes exact. An earlier default-Temp Git-ancestor refusal
-is separately retained; only child temporary-directory configuration changes.
-Actual feature Linux 39386659582 and fresh independent/red-team reviews are in
-flight. No integration, master publication or experiment result is inferred yet.
+T-051 source b9a7479 records the truthful undecided checkpoint through the
+unchanged guard and is normally merged as fd1429a after fresh independent twelve
+of twelve and RED-TEAM none. Executor and independent complete44 both pass with
+all tracked bytes exact. Actual feature Linux39386659582 passes every required
+job and both locked builds; benchmark stays skipped. An earlier default-Temp
+Git-ancestor refusal is retained; only child temporary-directory configuration
+changes. Explicit generation, the post-merge full gate and exact master CI are
+the next publication checks. No empirical experiment result is inferred.
 
 ## Next engineering: three related M-sized loops
 
