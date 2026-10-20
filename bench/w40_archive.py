@@ -580,7 +580,7 @@ def reserve(binding, lease, *, reservation_id, owner, ceilings):
     for area, size in ceilings.items():
         if shutil.disk_usage(binding.roots[area]).free < size + TERMINAL_RESERVE:
             fail("storage_refused")
-    baseline = measured(binding)
+    baseline = measured(binding, hashes=True)
     baseline_raw = encoded(baseline)
     if len(baseline_raw) > MANIFEST_CAP:
         fail("storage_refused")
@@ -641,6 +641,8 @@ def settle(binding, lease, ticket, *, inventory):
     if sha(baseline_raw) != ticket["baseline_sha256"]:
         fail("invalid_inventory")
     baseline = parsed(baseline_raw, MANIFEST_CAP)
+    for entry in baseline:
+        _verify_inventory_entry(binding, entry)
     old_sizes = {area: sum(x["bytes"] for x in baseline if x["area"] == area) for area in AREAS}
     current = measured(binding)
     for area in AREAS:
