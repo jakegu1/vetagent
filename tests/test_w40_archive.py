@@ -195,7 +195,8 @@ class Fixture:
                              for path in sorted(CODE.rglob("*")) if path.is_file() and "__pycache__" not in path.parts],
                              interpreter=dict(path=str(executable), sha256=sha(executable.read_bytes()),
                              prefix=str(prefix.resolve()), base_prefix=str(base.resolve()), origins=origins,
-                             pyvenv_cfg=dict(path=str(cfg.resolve()), sha256=sha(cfg.read_bytes()))), powershell=None)
+                             pyvenv_cfg=None if prefix.resolve() == base.resolve() else
+                             dict(path=str(cfg.resolve()), sha256=sha(cfg.read_bytes()))), powershell=None)
         self.manifest_path = self.root / "manifest.json"
         self.manifest_path.write_bytes(encoded(self.manifest))
         self.config = dict(schema="w40-install-v1", study_id_sha256=sha(self.root.name.encode()),
@@ -605,7 +606,9 @@ def prepare_code(existing=None):
     (CODE / "tools").mkdir()
     (CODE / "tools/w40-local.ps1").write_bytes(b"# Technical future component fixture.\n")
     executable = Path(sys.executable).resolve()
-    if os.name == "nt" and not external(executable):
+    if os.name == "nt":
+        if Path(sys.prefix).resolve() != Path(sys.base_prefix).resolve():
+            raise RuntimeError("direct_base_required")
         relocated = CODE / "python-base"
         relocated.mkdir()
         base = Path(sys.base_prefix)
@@ -613,14 +616,21 @@ def prepare_code(existing=None):
             shutil.copytree(base / directory, relocated / directory,
                             ignore=shutil.ignore_patterns("site-packages", "__pycache__", "*.pyc"))
         for source in base.iterdir():
-            if source.is_file() and source.suffix.lower() in (".dll", ".exe"):
+            if source.is_file() and source.suffix.lower() in (".dll", ".exe", ".zip", ".pyd"):
                 shutil.copyfile(source, relocated / source.name)
         executable = relocated / executable.name
-    venv = CODE / "venv"
-    subprocess.run([str(executable), "-I", "-B", "-m", "venv", "--copies", "--without-pip", str(venv)],
-                   check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    interpreter = venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
-    result = subprocess.run([str(interpreter), "-B", str(Path(__file__)), "--fixture-code", str(CODE), *sys.argv[1:]])
+        interpreter = executable
+    else:
+        venv = CODE / "venv"
+        subprocess.run([str(executable), "-I", "-B", "-m", "venv", "--copies", "--without-pip", str(venv)],
+                       check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        interpreter = venv / "bin/python"
+    environment = dict(os.environ)
+    for name in ("PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP"):
+        environment.pop(name, None)
+    environment.update(PYTHONSAFEPATH="1", PYTHONNOUSERSITE="1", PYTHONDONTWRITEBYTECODE="1")
+    result = subprocess.run([str(interpreter), "-I", "-B", str(Path(__file__)), "--fixture-code", str(CODE), *sys.argv[1:]],
+                            env=environment)
     sys.exit(result.returncode)
 
 
