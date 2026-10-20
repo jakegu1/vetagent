@@ -1,7 +1,7 @@
 ---
 id: T-051
 title: Record an honest undecided D checkpoint without changing its rule
-status: in_progress
+status: done
 level: 3
 size: S
 backlog: Experiment D checkpoint

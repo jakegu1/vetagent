@@ -21,7 +21,8 @@ exported and inconclusive. A distinct pilot/start succeeds; the new fixed window
 ends 2026-10-22T07:12:33.877001Z, with actual scheduled continuation still unobserved.
 T-051 records an unavailable D measurement as undecided using the unchanged guard;
 its source is reviewed and integrated after complete local/actual Linux checks.
-Post-merge and exact master publication checks follow.
+Its post-merge complete44 gate also succeeds. Exact published-head master CI is
+separately required for runtime/publication verification.
 Experiment D remains empirically open and due 2026-10-20 UTC. Sign-off categories,
 payment gate and pre-registered scientific rules are unchanged.
 
