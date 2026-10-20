@@ -48,6 +48,12 @@ T-051 repairs this actual checkpoint through the existing undecided rule. Earlie
 a615a44 bot CI39344396692 has verified exact checkout/all44 and remains historical.
 Never publish old archive totals as current without a source-bound read.
 
+Latest bot observations through41e575a are retained by normal merge. Actual
+scheduled snapshot39431697819 succeeds and all prior archive blobs or byte
+prefixes remain exact. Actual following bot CI39433065955 checks out41e575a and
+passes all45 required commands; other jobs and both builds are skipped in that
+bot-only run. Their skipped observations are not a new packaging result.
+
 ## Current source batch
 
 T-046 source 4dd8474 and T-048 source 512c7d5 are published at 1de0259 after
@@ -104,14 +110,18 @@ the escaped real-engine seam is recorded under Q1 in PITFALLS.
 
 ## Independent snapshot reliability work
 
-T-053 is a small ordinary correction independent of the held archive/runtime/
-scheduler chain. A synthetic reversed-order manifest demonstrates that the
-coverage CLI can choose an older success after a newer failure; the separate
-freshness monitor already handles the example correctly. Real archive occurrence
-is unverified. The executor adds tests first in the already registered archive
-module, then changes only the existing read-only coverage selector. Existing
-complete45 inventory, source/data isolation and fresh ordinary review apply.
-No workflow, active study, scientific rule or T047 security gate changes.
+T-053 source8ad2fce corrects the existing read-only coverage selector. Tests-only
+3a6a0ff first reproduces13 failed assertions when an older success follows a newer
+failure; the frozen head passes34/34. The separate freshness monitor already
+handled that example correctly. Real archive occurrence remains unverified.
+Fresh ordinary review is PASS12/12, including25 independent subprocess cases and
+three caught mutants. Executor and independent complete45 both pass with all978
+tracked raw bytes exact. Actual source Linux39440532687 checks out8ad2fce and
+passes all45, upstream/backfill and both locked builds; benchmark stays skipped.
+The reviewed source and latest bot data are normally merged; explicit generation
+and the complete post-merge gate are next. No Worker, workflow, active study,
+scientific rule, archive/native source or T047 security gate changes. The three
+frozen W57 source hashes match its actual current checkpoint exactly.
 
 ## Next engineering: three related M-sized loops
 
@@ -139,8 +149,11 @@ Python's own Lib/test from new synthetic Windows runtime copies, retaining every
 kept byte, Lib/unittest, DLLs and all production data/assertions/time limits. Its
 unchanged public-method baseline fails; the candidate public method passes.
 Candidate3fd33ad also passes the complete46 gate, native exit zero in622.2
-seconds, with all983 tracked raw bytes exact. Actual candidate Linux/build
-evidence and genuinely completed reviews still gate archive publication.
+seconds, with all983 tracked raw bytes exact. Latest candidatee34461d passes the
+executor and independent complete46 gates with all983 tracked bytes exact, and
+actual Linux39414924915 checks out that head and passes all46 and both locked
+builds. Ordinary functional review is PASS12/12 for R6-R11 and regressions.
+This candidate remains unpublished pending genuinely completed security review.
 The mandatory adversarial review is incomplete and has
 no none/PASS verdict; an ordinary functional review cannot replace it.
 T-049/T-050 remain drafts requiring the exact reviewed dependency/API and green
@@ -161,10 +174,12 @@ A distinct authorized pilot 39383433196 succeeds. New study
 w57-study-20261020-b starts in actual run 39384753529 from that preceding pilot,
 with the same protocol and a newly frozen cohort. Its actual elapsed window is
 2026-10-20T07:12:33.877001Z through 2026-10-22T07:12:33.877001Z; endpoint grace ends
-at 07:27:33.877001Z. First actual scheduled resume remains unobserved. The existing
-finite terminal follow-up is updated to this new study/window and read back, but
-future triggering is unverified. Preserve missing slots and scheduling delays;
-neither a successful start nor an ACTIVE configuration proves continuous coverage.
+at 07:27:33.877001Z. Actual scheduled resume39424063370 checks out3d33ccc and
+continues the same frozen source, cohort and window in result artifact12264544247.
+All63 cohort entries return data; slot21 is observed and slots0-20 remain missing.
+This is actual continuation, not continuous coverage or a completed result. The
+existing finite terminal follow-up is updated to this study/window and read back;
+future triggering remains unverified. Preserve missing slots and scheduling delays.
 
 ## Owner decisions and unavailable evidence
 
