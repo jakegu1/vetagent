@@ -712,10 +712,10 @@ def verify_inventory(binding, receipt):
 
 def stop_state(binding):
     guard(binding)
-    path = under(binding.roots["control"], "stop-request.json", missing=True)
-    if not path.exists():
-        return {"state": "not_started", "reason": None}
     try:
+        path = under(binding.roots["control"], "stop-request.json", missing=True)
+        if not path.exists():
+            return {"state": "not_started", "reason": None}
         value = parsed(read(path, ROW_CAP), ROW_CAP)
         if set(value) != {"schema", "binding", "reason"} or value["schema"] != "w40-stop-v1" or value["binding"] != binding.identity or value["reason"] not in REASONS:
             fail("history_corrupt")
