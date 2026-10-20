@@ -379,7 +379,15 @@ def measured(binding, *, hashes=False):
             if path.is_file():
                 value = dict(area=area, path=path.relative_to(root).as_posix(), bytes=path.stat().st_size)
                 if hashes:
-                    value["sha256"] = file_hash(path)[1]
+                    # The installed empty lock is already held by this process.
+                    # Windows rejects even an EOF read across its locked byte.
+                    # Its fixed zero-length inventory is still fully charged.
+                    if area == "control" and value["path"] == "writer.lock":
+                        if value["bytes"] != 0:
+                            fail("history_corrupt")
+                        value["sha256"] = sha(b"")
+                    else:
+                        value["sha256"] = file_hash(path)[1]
                 result.append(value)
     for label, path in (("config", binding.config_path), ("manifest", Path(binding.config["manifest"]))):
         if not any(path.is_relative_to(root) for root in binding.roots.values()):
