@@ -571,6 +571,15 @@ def allocation_state(binding):
     return tickets, receipts, retained, pending
 
 
+def _allocation_control_bound(binding, baseline_raw=None):
+    if baseline_raw is None:
+        baseline_raw = encoded([dict(value, sha256="0" * 64) for value in measured(binding)])
+    if len(baseline_raw) > MANIFEST_CAP:
+        fail("storage_refused")
+    # Baseline plus the bounded whole-inventory file and both ledger records.
+    return len(baseline_raw) + MANIFEST_CAP + 2 * ROW_CAP
+
+
 def reserve(binding, lease, *, reservation_id, owner, ceilings):
     lease_guard(binding, lease)
     if (not hex_value(reservation_id) or owner not in OWNERS or not isinstance(ceilings, dict)
@@ -579,7 +588,15 @@ def reserve(binding, lease, *, reservation_id, owner, ceilings):
     tickets, receipts, retained, pending = allocation_state(binding)
     if reservation_id in tickets:
         fail("reservation_used")
+    baseline = measured(binding, hashes=True)
+    baseline_raw = encoded(baseline)
+    ceilings = dict(ceilings)
+    ceilings["control"] = max(ceilings.get("control", 0), _allocation_control_bound(binding, baseline_raw))
     amount = sum(ceilings.values())
+    if owner == "refresh" and amount > INCREMENT_CAP:
+        fail("storage_refused")
+    if owner == "seed" and amount + sum(x["bytes"] for x in baseline if x["area"] == "seed") + TERMINAL_RESERVE > SEED_CAP:
+        fail("seed_limit")
     if retained + pending + amount + TERMINAL_RESERVE > STUDY_CAP:
         fail("storage_refused")
     volumes = {}
@@ -596,10 +613,6 @@ def reserve(binding, lease, *, reservation_id, owner, ceilings):
     for size, root in volumes.values():
         if shutil.disk_usage(root).free < size:
             fail("storage_refused")
-    baseline = measured(binding, hashes=True)
-    baseline_raw = encoded(baseline)
-    if len(baseline_raw) > MANIFEST_CAP:
-        fail("storage_refused")
     baseline_ref = "allocation-baselines/" + reservation_id + ".json"
     ticket = dict(schema="w40-allocation-ticket-v1", study_id_sha256=binding.config["study_id_sha256"],
                   config_sha256=binding.config_pin, code_manifest_sha256=binding.manifest_pin,
@@ -688,11 +701,22 @@ def settle(binding, lease, ticket, *, inventory):
     raw = encoded(inventory)
     if len(raw) > MANIFEST_CAP:
         fail("storage_refused")
+    bookkeeping = len(raw) + ROW_CAP
+    control_growth = sum(x["bytes"] for x in current if x["area"] == "control") - old_sizes["control"]
+    if (control_growth + bookkeeping > ticket["ceilings"].get("control", 0)
+            or retained + pending + bookkeeping + TERMINAL_RESERVE > STUDY_CAP):
+        fail("storage_refused")
+    root = binding.roots["control"]
+    other_volume = sum(size for key, other in tickets.items() if key not in receipts and key != identity
+                       for area, size in other["ceilings"].items() if binding.roots[area].stat().st_dev == root.stat().st_dev)
+    if shutil.disk_usage(root).free < bookkeeping + other_volume + TERMINAL_RESERVE:
+        fail("storage_refused")
     reference = "allocation-inventories/" + identity + ".json"
     write_new(under(binding.roots["control"], reference, missing=True), raw)
     value = dict(schema="w40-allocation-receipt-v1", reservation_id=identity, ticket_sha256=sha(encoded(ticket)),
                  inventory=reference, inventory_sha256=sha(raw), retained_bytes=retained,
-                 released_bytes=max(0, sum(ticket["ceilings"].values()) - max(0, retained - sum(x["bytes"] for x in baseline))))
+                 released_bytes=max(0, sum(ticket["ceilings"].values()) - bookkeeping
+                                    - max(0, retained - sum(x["bytes"] for x in baseline))))
     digest = append(binding, lease, "allocation", "settlement", value)
     return dict(value, receipt_sha256=digest)
 
@@ -1151,12 +1175,14 @@ def _build_view(binding, claim, catalog, files, commit, tree_chain, *, check):
     return value, partial
 
 
-def _begin(binding, lease, kind, clock, *, date=None, slot=None):
+def _begin(binding, lease, kind, clock, *, date=None, slot=None, seed_bytes=0):
     transaction = uuid.uuid4().hex + uuid.uuid4().hex
+    control = _allocation_control_bound(binding)
     if kind == "seed":
-        ceilings = {"source": SEED_CAP - 4 * REPORT_CAP, "control": 4 * REPORT_CAP}
+        ceilings = {"source": 2 * seed_bytes + 2 * REPORT_CAP, "control": control + 2 * ROW_CAP}
     else:
-        ceilings = {"source": INCREMENT_CAP - 4 * REPORT_CAP, "control": 4 * REPORT_CAP}
+        control += (133 + 2) * 2048
+        ceilings = {"source": INCREMENT_CAP - control, "control": control}
     ticket = reserve(binding, lease, reservation_id=transaction, owner=kind, ceilings=ceilings)
     sample = _snapshot(clock)
     claim = dict(transaction_id=transaction, kind=kind, date=date, slot=slot,
@@ -1198,9 +1224,10 @@ def seed(binding, lease, *, clock=None):
         catalog = _seed_input(binding)
         source_total = sum(x["bytes"] for x in catalog["catalog"])
         staged_total = sum(x["bytes"] for x in measured(binding, areas=("seed",)))
-        if staged_total + source_total * 2 + TERMINAL_RESERVE + 4 * REPORT_CAP > SEED_CAP:
+        if (staged_total + source_total * 2 + 2 * REPORT_CAP + _allocation_control_bound(binding)
+                + 2 * ROW_CAP + TERMINAL_RESERVE > SEED_CAP):
             fail("seed_limit")
-        claim, ticket = _begin(binding, lease, "seed", clock)
+        claim, ticket = _begin(binding, lease, "seed", clock, seed_bytes=source_total)
         check()
         files = {x["path"]: under(binding.roots["seed"], x["object"]) for x in catalog["catalog"]}
         view, partial = _build_view(binding, claim, catalog["catalog"], files, catalog["archive_commit"], catalog["tree_chain"], check=check)
@@ -1420,7 +1447,7 @@ async def _refresh_acquire(session):
         fail("prefix_changed")
     changed = [x for x in catalog if x["path"] not in old or old[x["path"]]["blob_sha1"] != x["sha"]]
     used = sum(x["bytes"] for x in measured(binding, areas=("source",))) - session.base_source
-    if used + sum(x["bytes"] * 3 + 4 * ROW_CAP for x in changed) + REPORT_CAP > session.ticket["ceilings"]["source"]:
+    if used + sum(x["bytes"] * 3 + 4 * ROW_CAP for x in changed) + 2 * REPORT_CAP > session.ticket["ceilings"]["source"]:
         fail("candidate_limit")
     files = {}
     for entry in catalog:
