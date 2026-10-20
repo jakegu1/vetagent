@@ -433,6 +433,9 @@ class ArchiveAcceptance(unittest.TestCase):
         line = b'{"padding":"' + b"x" * (24 * 1024) + b'"}\n'
         rows = {"pools-2026-08-%02d.ndjson" % n: line * 64 for n in range(1, 32)}
         rows.update({"pools-2026-09-%02d.ndjson" % n: line * 64 for n in range(1, 16)})
+        rows = {name: raw.replace(b'"padding":"', b'"padding":"' + name.encode("ascii"))
+                for name, raw in rows.items()}
+        self.assertEqual(len({sha(raw) for raw in rows.values()}), 46)
         with Fixture(Repo(rows)) as f:
             self.assertGreater(sum(len(raw) for raw in rows.values()), 64 * 1024 * 1024)
             result = f.seed()
