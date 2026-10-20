@@ -262,6 +262,42 @@ class Fixture:
         return subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, timeout=30)
 
 
+def fixture_prior_gates(f):
+    """Build synthetic backward-only attestations; never grant real runtime credit."""
+    frozen = {"bench/goplus_quota_probe.py", "bench/w40_evidence.py", "src/risk.py",
+              "bench/labels.py", "docs/BACKLOG.md", "tests/test_dataset_replayable.py"}
+    paths = {"source_quality": frozen | {"bench/w40_native.py", "bench/w40_archive.py",
+             "bench/w40_local.py", "tools/w40-local.ps1"},
+             "native_control": frozen | {"bench/w40_native.py"},
+             "quota_pilot": {"bench/goplus_quota_probe.py"}}
+    results = dict(source_quality=dict(passed=True, offline_steps=47, linux_steps=47,
+                   master_steps=47, locked_builds=2, independent="pass", redteam="none"),
+                   quota_pilot=dict(completed=True, native_exit=1, availability=False),
+                   native_control=dict(seam_verified=True, native_exit=0, labels=0, scientific_start=False))
+    powershell = f.root / "synthetic-powershell.exe"
+    powershell.write_bytes(b"Synthetic identity fixture; never execute.\n")
+    f.manifest["powershell"] = dict(path=str(powershell), sha256=sha(powershell.read_bytes()))
+    f.config["quality_gates"] = []
+    for kind in sorted(paths):
+        evidence = "quality-gates/evidence/" + kind + ".json"
+        evidence_raw = encoded(dict(synthetic=True, runtime_credit=False, kind=kind))
+        target = f.roots["control"] / evidence
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(evidence_raw)
+        value = dict(schema="w40-prior-gate-v1", kind=kind,
+                     source_commit=f.config["executable_commit"] if kind == "source_quality" else "2" * 40,
+                     source_files=[dict(path=path, canonical_sha256=sha((CODE / path).read_bytes().replace(b"\r\n", b"\n")))
+                                   for path in sorted(paths[kind])],
+                     evidence=dict(path=evidence, sha256=sha(evidence_raw)), result=results[kind])
+        relative = "quality-gates/" + kind + ".json"
+        raw = encoded(value)
+        (f.roots["control"] / relative).write_bytes(raw)
+        f.config["quality_gates"].append(dict(kind=kind, path=relative, sha256=sha(raw)))
+    f.manifest_path.write_bytes(encoded(f.manifest))
+    f.config["code_manifest_sha256"] = sha(encoded(f.manifest))
+    f.rebind()
+
+
 def wait_for(path, timeout=12):
     end = time.monotonic() + timeout
     while not path.exists() and time.monotonic() < end:
@@ -351,6 +387,69 @@ class ArchiveAcceptance(unittest.TestCase):
             finally:
                 os.rmdir(source) if os.name == "nt" else source.unlink()
                 saved.rename(source)
+
+        for case in ("empty_default", "incomplete", "unknown", "duplicate", "wrong_path", "wrong_hash",
+                     "missing_evidence", "missing_component", "changed_source", "technical_positive"):
+            with self.subTest(prior_gate=case), Fixture() as f:
+                a = f.module
+                if case == "empty_default":
+                    before = {p.relative_to(f.root).as_posix(): sha(p.read_bytes())
+                              for p in f.root.rglob("*") if p.is_file()}
+                    transport, seen = Transport(f.repo.responses), []
+
+                    async def default_transport(request, **kwargs):
+                        seen.append(request)
+                        return await transport(request, **kwargs)
+
+                    observed = None
+                    with patch.object(a, "_native_transport", default_transport), a.study_writer(f.binding) as lease:
+                        try:
+                            a.refresh(f.binding, lease, live=True, deadline_mono=time.monotonic() + 60)
+                        except a.ArchiveError as error:
+                            observed = str(error)
+                    self.assertEqual(len(seen), 0)
+                    self.assertEqual({p.relative_to(f.root).as_posix(): sha(p.read_bytes())
+                                      for p in f.root.rglob("*") if p.is_file()}, before)
+                    self.assertEqual(observed, "source_drift")
+                    self.assertIsNone(a.accepted_view(f.binding))
+                    continue
+                fixture_prior_gates(f)
+                saved_source = None
+                if case == "incomplete": f.config["quality_gates"] = f.config["quality_gates"][:1]
+                if case == "unknown": f.config["quality_gates"][0]["kind"] = "future_arm"
+                if case == "duplicate": f.config["quality_gates"][1] = dict(f.config["quality_gates"][0])
+                if case == "wrong_path": f.config["quality_gates"][0]["path"] = "other.json"
+                if case == "wrong_hash": f.config["quality_gates"][0]["sha256"] = "0" * 64
+                if case == "missing_evidence":
+                    (f.roots["control"] / "quality-gates/evidence/native_control.json").unlink()
+                if case == "missing_component":
+                    f.manifest["files"] = [r for r in f.manifest["files"] if r["path"] != "bench/w40_local.py"]
+                    f.manifest_path.write_bytes(encoded(f.manifest))
+                    f.config["code_manifest_sha256"] = sha(encoded(f.manifest))
+                if case == "changed_source":
+                    changed = CODE / "bench/w40_local.py"
+                    saved_source = changed.read_bytes()
+                    changed.write_bytes(saved_source + b"# changed after gate binding\n")
+                f.rebind()
+                try:
+                    before = {p.relative_to(f.root).as_posix(): sha(p.read_bytes())
+                              for p in f.root.rglob("*") if p.is_file()}
+                    if case == "technical_positive":
+                        binding = a.verify_install(f.config_path, component="archive", **f.pins)
+                        self.assertIsNone(a.verify_live(binding))
+                        self.assertEqual(a.plan(binding)["state"], "not_started")
+                        self.assertFalse(json.loads((f.roots["control"] / "quality-gates/quota_pilot.json").read_bytes())
+                                         ["result"]["availability"])
+                    else:
+                        with self.assertRaises(a.ArchiveError) as refused:
+                            binding = a.verify_install(f.config_path, component="archive", **f.pins)
+                            a.verify_live(binding)
+                        self.assertEqual(str(refused.exception), "source_drift")
+                    self.assertEqual({p.relative_to(f.root).as_posix(): sha(p.read_bytes())
+                                      for p in f.root.rglob("*") if p.is_file()}, before)
+                finally:
+                    if saved_source is not None:
+                        changed.write_bytes(saved_source)
 
     def test_w40_archive_exact_rest_graph_and_blob_integrity(self):
         with Fixture() as f:
