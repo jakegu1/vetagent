@@ -729,3 +729,52 @@ feature Linux46, both locked builds and genuinely completed applicable independe
 reviews are required. The prior failed45 and narrower later passes remain
 historical and cannot be rebound. The platform-interrupted security review is
 still incomplete; ordinary functional review cannot replace RED-TEAM none.
+
+### R10 - Omit only Python's own test suite from new Windows test runtimes
+
+2026-10-20: retained valid public-entry parent-death acceptance reaches both real
+hooks and child-death assertions, then fails two fresh recovery subprocesses at
+the unchanged20-second caller bound and one ordinary refresh as source_unavailable.
+The latter has no retained specific native cause and is not called a deadline.
+The frozen fixture code manifest contains2364 files;2354 belong to its relocated
+Python runtime, and1558 of those are Python's own Lib/test suite. This establishes
+packaging scale, not the unique cause of the observed failures.
+
+The direct-base prefix must remain inside the code root: existing source guards
+require its complete actual file tree and loaded origins in the owner-pinned
+manifest. Moving it outside would lose required full-runtime coverage and is
+rejected; no such move or validation change is authorized.
+
+Only the synthetic Windows fixture copy in prepare_code may change. Preserve the
+existing ignore rules and omit exactly the top-level standard-library Lib/test
+subtree from NEW copied runtimes. This is Python's own implementation test suite,
+not Lib/unittest, product tests, archive data, risk signals or source fixtures.
+Keep all DLLs, interpreter bytes and every other previously copied file exact.
+Do not remove any existing retained runtime or alter the fixed4245-file runtime
+pin used by the separate actual native controls. Every file actually present in
+the new fixture still receives all existing manifest/import/private-path checks.
+
+Named test-helper change: add a local wrapper for prepare_code's existing
+shutil.ignore_patterns result which adds only name test when the visited source
+directory equals the exact base/Lib directory. Pass that wrapper to the unchanged
+copytree calls. No other directory may gain that exclusion. All seven methods,
+old assertions/inputs/timeouts, native10-second and refresh60-second limits,
+recovery20-second caller bound, R7/R8 handoffs, main/bootstrap environment and
+production sources remain exact. No new distinct mutant or source optimization.
+
+Before editing, freeze the joined R9 source and run the existing public-entry
+parent-death method once on that unchanged baseline, retaining all raw outcomes.
+Do not repeat it until it fails; a pass remains a pass and does not erase prior
+failures. Then commit this named helper-only packaging change alone and freeze
+it. Compare the new copied runtime with the prior saved runtime map: the only
+removed paths must be the exact Lib/test prefix; all kept bytes, including
+Lib/unittest and all DLLs, must match. Disclose excluded file/byte totals; do not
+claim the original full runtime tree is unchanged or that source performance is
+proven improved. If any required import or guard refuses the new fixture, stop
+without broadening this exclusion or weakening validation.
+
+Run the same real public method after the change, then the complete configured46
+on its exact clean head only after the lead's slot grant, with a true prior
+source/helper freeze. Actual Linux46/builds and the required completed reviews
+still gate publication. The interrupted security review remains incomplete;
+neither packaging nor ordinary functional PASS replaces RED-TEAM none.
