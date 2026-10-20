@@ -3,24 +3,26 @@
 > This page holds only what the lead needs from you. The project's own dashboard, with its
 > deadlines and gates, is `docs/OWNER.md` (generated). Messages to you are in Chinese; files
 > here are English because the repository is English-only. Maintained by the project lead (AI).
-> Last updated: 2026-10-19 (Codex)
+> Last updated: 2026-10-20 (Codex)
 
 ## Status in one line
 
-The deployed Worker remains d354179. Operator/evidence tasks through T-045 are
-published after actual complete/Linux/master gates; the sole quota pilot is
-complete without implying sustainable availability or a new study start.
-T-046 and T-048 reviewed source integration proceeds through the combined
-forty-four-command release gate. Runtime and scientific outcomes stay separate.
+The deployed Worker remains d354179. Operator/evidence source through T-048 is
+published at 1de0259 after actual complete/Linux/master gates; later bot data
+a615a44 are retained. The sole quota pilot does not prove sustainable availability.
+The original native control fails before physical requests; a separately reviewed
+direct-base configuration still requires a distinct source-bound control.
 
 The remaining local W40 engineering is split into verified archive input,
 durable queue/runtime and owned scheduling (T-047, T-049, T-050). Ordinary
 engineering continues under the Owner's existing technical authorization.
-No thirty-day clock has started. W57's original cron revealed a checkpoint
-selection defect; T-048 publication must be followed by the original study's
-actual source_changed terminal before a distinct explicit new study.
-Experiment D remains unrun and due 2026-10-20 UTC. Sign-off categories and
-pre-registered scientific rules are unchanged.
+No W40 thirty-day clock has started. W57's original study is source_changed,
+exported and inconclusive. A distinct pilot/start succeeds; the new fixed window
+ends 2026-10-22T07:12:33.877001Z, with actual scheduled continuation still unobserved.
+T-051 records an unavailable D measurement as undecided using the unchanged guard;
+its candidate has the complete local gate and awaits Linux/fresh reviews/integration.
+Experiment D remains empirically open and due 2026-10-20 UTC. Sign-off categories,
+payment gate and pre-registered scientific rules are unchanged.
 
 ### Earlier release records (historical)
 
@@ -154,7 +156,7 @@ technical release. Experiment D retains its existing rules and moves to 2026-10-
 
 | ID | What | Why it's yours | Recommendation | Needed by |
 |---|---|---|---|---|
-| H-13 | On 2026-10-20, write the gate's conclusion in `docs/STRATEGY.md` section 8 as `Resolved: <what Experiment D measured> -> <decision>`, and decide O2, O8, O9 and O11 in `docs/OPPORTUNITIES.md` | The gate's reading and the product decisions are yours | Give the lead the result in one line that morning; it drafts both edits for your yes. Otherwise the build is red, and every deploy blocked, from 00:00 UTC that day until both are done | 2026-10-20, before 02:23 UTC (the first bot run) |
+| H-13 | Supply the actual Experiment D measurement when available, then review the decision in `docs/STRATEGY.md` section 8 | Empirical results and product decisions remain yours | T-051 records the unavailable measurement as undecided and reviews O2, O8, O9 and O11 without adoption. Keep that honest checkpoint until actual results exist; retain the original three-trial rule, actions and payment gate | Checkpoint 2026-10-20; empirical evidence remains outstanding, with no replacement date |
 
 ## Done / answered
 
@@ -188,11 +190,11 @@ technical release. Experiment D retains its existing rules and moves to 2026-10-
 
 ## Current tasks
 
-See lead/STATE.md for the current source, release and runtime gates. T-046/T-048
-source integration is followed by three separate M-sized source/runtime/scheduler
-loops. Actual first-entry and elapsed observation evidence remain independent of
-code/registration success. H-13 is the Oct-20 Owner gate; routine technical work
-does not need another approval.
+See lead/STATE.md for the current source, release and runtime gates. T-047 archive
+implementation is followed by separate T-049 runtime and T-050 scheduler loops.
+Actual first-entry and elapsed observation remain independent of registration.
+T-051 is a truthful checkpoint, not empirical completion of H-13. Routine technical
+work continues under existing authorization without another approval.
 
 ### Earlier task rows (historical)
 
