@@ -112,8 +112,10 @@ class Transport:
         if isinstance(item, BaseException):
             raise item
         status, raw = item[:2]
-        return dict(status=status, raw=raw, content_length=len(raw), content_encoding="identity",
-                    retired="exited", identity=None, **(item[2] if len(item) > 2 else {}))
+        value = dict(status=status, raw=raw, content_length=len(raw), content_encoding="identity",
+                     retired="exited", identity=None)
+        value.update(item[2] if len(item) > 2 else {})
+        return value
 
 
 class LocalTransport:
