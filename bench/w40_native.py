@@ -1310,7 +1310,7 @@ async def adapter_scope(runtime, private_dir, *, token, chain, clock=None, trans
     old = (risk.cf_fetch, risk._cache_get, risk._cache_put)
     onchain, contents = risk._ONCHAIN, dict(risk._ONCHAIN)
     contexts = (risk._BENCH_NOW, risk._STALE_HITS, risk._FETCH_FAILURES)
-    tokens = [variable.set(value) for variable, value in zip(contexts, (adapter.clock.utc().timestamp(), [], []))]
+    tokens = [variable.set(value) for variable, value in zip(contexts, (adapter.clock.utc(), [], []))]
     risk.cf_fetch, risk._cache_get, risk._cache_put = adapter.fetch, adapter.cache_get, adapter.cache_put
     onchain.clear()
     onchain.update(key=None, unusable=False)
@@ -1656,7 +1656,7 @@ async def _collect_one(store, sources, ordinal, *, runtime, private_dir, live=Fa
                 import risk
                 started = iso(clock.utc())
                 packet["engine_context_at"] = started
-                risk._BENCH_NOW.set(clock.utc().timestamp())
+                risk._BENCH_NOW.set(clock.utc())
                 try:
                     answer = await asyncio.wait_for((engine or risk.assess)(token, chain_hint=chain, verbose=True),
                         timeout=max(.001, adapter.deadline - clock.mono()))
