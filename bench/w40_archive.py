@@ -48,6 +48,22 @@ class ArchiveError(Exception):
     """Only fixed categories cross the private boundary."""
 
 
+class FrozenDict(dict):
+    """JSON-compatible recursively immutable contract data."""
+    def _refuse(self, *_args, **_kwargs):
+        fail("invalid_binding")
+
+    __setitem__ = __delitem__ = clear = pop = popitem = setdefault = update = __ior__ = _refuse
+
+
+def _freeze(value):
+    if isinstance(value, dict):
+        return FrozenDict({key: _freeze(item) for key, item in value.items()})
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze(item) for item in value)
+    return value
+
+
 def fail(reason):
     raise ArchiveError(reason if reason in REASONS else "source_corrupt")
 
@@ -204,8 +220,8 @@ class FrozenBinding:
         object.__setattr__(self, "config_path", config_path)
         object.__setattr__(self, "config_pin", config_pin)
         object.__setattr__(self, "manifest_pin", manifest_pin)
-        object.__setattr__(self, "config", MappingProxyType(config))
-        object.__setattr__(self, "manifest", MappingProxyType(manifest))
+        object.__setattr__(self, "config", MappingProxyType(_freeze(config)))
+        object.__setattr__(self, "manifest", MappingProxyType(_freeze(manifest)))
         object.__setattr__(self, "roots", MappingProxyType({k: Path(v) for k, v in config["roots"].items()}))
         object.__setattr__(self, "identity", sha(encoded(dict(study=config["study_id_sha256"], config=config_pin, code=manifest_pin))))
 
@@ -483,7 +499,7 @@ def reserve(binding, lease, *, reservation_id, owner, ceilings):
                   prior_head=(journal(binding, "allocation")[-1]["digest"] if tickets or receipts else "0" * 64))
     write_new(under(binding.roots["control"], baseline_ref, missing=True), baseline_raw)
     append(binding, lease, "allocation", "reservation", ticket)
-    return MappingProxyType(ticket)
+    return MappingProxyType(_freeze(ticket))
 
 
 def inventory(binding):
@@ -705,7 +721,7 @@ def _visible_views(binding):
             for chunk in entry["chunks"]:
                 if file_hash(under(binding.roots["source"], chunk["object"])) != (chunk["bytes"], chunk["sha256"]):
                     fail("source_corrupt")
-        views.append(value)
+        views.append(_freeze(value))
         previous = digest
     return views
 
