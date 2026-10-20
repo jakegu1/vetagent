@@ -261,10 +261,35 @@ def verify_install(config_path, *, expected_config_sha256, expected_manifest_sha
             or private(interpreter["base_prefix"]) != Path(sys.base_prefix).resolve()):
         fail("source_drift")
     cfg = interpreter["pyvenv_cfg"]
-    cfg_raw = read(private(cfg["path"]), ROW_CAP)
-    if (sha(cfg_raw) != cfg["sha256"] or b"include-system-site-packages = false" not in cfg_raw.lower()
-            or private(cfg["path"]) != Path(sys.prefix).resolve() / "pyvenv.cfg"):
-        fail("source_drift")
+    if cfg is None:
+        prefix = private(interpreter["prefix"])
+        if (prefix != private(interpreter["base_prefix"]) or not sys.flags.no_user_site
+                or under(prefix, "pyvenv.cfg", missing=True).exists()
+                or Path(getattr(sys, "_base_executable", sys.executable)).resolve() != executable
+                or not prefix.is_relative_to(roots["code"])):
+            fail("source_drift")
+        # A direct base has no venv redirector/config to bind. Its complete
+        # installed interpreter/stdlib/DLL tree must instead be in the already
+        # verified code closure, including every actual loaded stdlib origin.
+        for path in prefix.rglob("*"):
+            info = path.lstat()
+            if (stat.S_ISLNK(info.st_mode) or getattr(info, "st_file_attributes", 0) & 1024
+                    or path.name == ".git" or not (stat.S_ISDIR(info.st_mode) or stat.S_ISREG(info.st_mode))):
+                fail("source_drift")
+            if stat.S_ISREG(info.st_mode) and path.relative_to(roots["code"]).as_posix() not in seen:
+                fail("source_drift")
+        for name, module in tuple(sys.modules.items()):
+            if name.split(".", 1)[0] in sys.stdlib_module_names and getattr(module, "__file__", None):
+                path = private(module.__file__)
+                if not path.is_relative_to(prefix) or path.relative_to(roots["code"]).as_posix() not in seen:
+                    fail("source_drift")
+    else:
+        if not isinstance(cfg, dict) or set(cfg) != {"path", "sha256"}:
+            fail("source_drift")
+        cfg_raw = read(private(cfg["path"]), ROW_CAP)
+        if (sha(cfg_raw) != cfg["sha256"] or b"include-system-site-packages = false" not in cfg_raw.lower()
+                or private(cfg["path"]) != Path(sys.prefix).resolve() / "pyvenv.cfg"):
+            fail("source_drift")
     sites = [Path(sys.prefix) / "Lib/site-packages", *Path(sys.prefix).glob("lib/python*/site-packages")]
     if any(any(private(site).iterdir()) for site in sites if site.exists()):
         fail("source_drift")
