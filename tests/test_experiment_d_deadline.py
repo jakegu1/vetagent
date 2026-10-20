@@ -299,7 +299,11 @@ class ExperimentDDeadlineTests(unittest.TestCase):
                 status, due, parked, failed = _guard_run(copy, opportunities, day)
                 self.assertEqual(due, [False])
                 self.assertEqual(parked, {entry: [] for entry in IDS})
-                self.assertEqual(len(failed), 1, failed)
+                self.assertEqual(len(failed), 1 if conclusion is None else 2, failed)
+                self.assertTrue(any(name.startswith("gate %s " % DUE) and "is due" in name
+                                    for name in failed), failed)
+                self.assertEqual("the real %s row is accepted" % DUE in failed,
+                                 conclusion is not None)
                 self.assertEqual(status, 1)
         # Undo each recorded review: restore its retained original body above the
         # closed marker, rather than deleting the evidence or changing the guard.
