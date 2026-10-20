@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- lead: close T053 source after reviewed integration and real archive check
+- lead: record independent T053 review and current observation stages
+- T-053: select coverage by observed UTC chronology
+- T-053: acceptance tests
+- T-053: define chronological snapshot coverage acceptance
 - docs: record verified native runtime and archive candidate gates
 - T-052: record reviewed source closure and retained runtime boundaries
 - T-052: preserve datetime pins in native engine scopes
-- T-052: named change (count only consumed response bodies per A3)
-- T-052: name header-only accounting fixture correction
-- T-052: acceptance test fix (preserve worker class identity per A2)
-- T-052: name fixture loop and worker-identity corrections before source repair
-- T-052: acceptance test fix (initialize Windows loop before network guards)
 
-_338 more not shown (346 commits in total)._
+_343 more not shown (351 commits in total)._
 
 ## What I got wrong
 
