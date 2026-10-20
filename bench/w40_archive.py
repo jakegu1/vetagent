@@ -845,14 +845,18 @@ def _public_result(result, receipt=None):
     return value
 
 
-def _visible_views(binding):
-    claims, results, _attempts = _archive_state(binding)
+def _visible_views(binding, *, pending=None):
+    claims, results, attempts = _archive_state(binding)
     _tickets, receipts, _retained, _pending = allocation_state(binding)
     views, previous = [], None
     for identity, result in results.items():
-        if result["state"] != "accepted" or identity not in receipts:
+        if result["state"] != "accepted" or identity not in receipts and identity != pending:
             continue
-        verify_inventory(binding, receipts[identity])
+        if identity in receipts:
+            verify_inventory(binding, receipts[identity])
+        else:
+            for attempt in (value for value in attempts if value["transaction_id"] == identity):
+                _verify_retired(binding, under(binding.roots["source"], attempt["directory"]))
         digest = result["view_sha256"]
         raw = read(under(binding.roots["source"], "views/" + digest + ".json"), MANIFEST_CAP)
         value = parsed(raw, MANIFEST_CAP)
@@ -863,6 +867,8 @@ def _visible_views(binding):
                 or value["previous_view_sha256"] != previous or value["config_sha256"] != binding.config_pin
                 or value["code_manifest_sha256"] != binding.manifest_pin
                 or value["study_id_sha256"] != binding.config["study_id_sha256"]
+                or value["origin_sha256"] != sha(encoded(binding.config["archive_origin"]))
+                or value["allocation_ticket_sha256"] != claims[identity]["allocation_ticket_sha256"]
                 or value["claim_sha256"] != claims[identity]["claim_sha256"]):
             fail("history_corrupt")
         for entry in value["catalog"]:
@@ -1460,6 +1466,8 @@ def recover_archive(binding, lease):
         ticket = tickets.get(identity)
         if ticket is None or sha(encoded(ticket)) != claim["allocation_ticket_sha256"]:
             fail("history_corrupt")
+        if identity in results and results[identity]["state"] == "accepted":
+            _visible_views(binding, pending=identity)
         reason = "source_unavailable"
         for attempt in (x for x in attempts if x["transaction_id"] == identity):
             directory = under(binding.roots["source"], attempt["directory"])
