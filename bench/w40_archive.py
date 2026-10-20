@@ -505,7 +505,26 @@ def reserve(binding, lease, *, reservation_id, owner, ceilings):
 
 
 def inventory(binding):
-    return measured(binding, hashes=True, areas=("source", "raw", "safe"))
+    return measured(binding, hashes=True)
+
+
+def _inventory_reference(binding, value):
+    if (not isinstance(value, dict) or set(value) != {"area", "path", "bytes", "sha256"}
+            or value["area"] not in AREAS or not isinstance(value["path"], str)
+            or type(value["bytes"]) is not int or value["bytes"] < 0 or not hex_value(value["sha256"])):
+        fail("invalid_inventory")
+    if value["area"] == "code" and value["path"] in ("@config", "@manifest"):
+        return private(binding.config_path if value["path"] == "@config" else binding.config["manifest"])
+    return under(binding.roots[value["area"]], value["path"])
+
+
+def _verify_inventory_entry(binding, value):
+    path = _inventory_reference(binding, value)
+    if value["area"] == "control" and value["path"] == "writer.lock":
+        if path.stat().st_size != 0 or (value["bytes"], value["sha256"]) != (0, sha(b"")):
+            fail("invalid_inventory")
+    elif _hash_regular(path) != (value["bytes"], value["sha256"]):
+        fail("invalid_inventory")
 
 
 def settle(binding, lease, ticket, *, inventory):
@@ -519,12 +538,14 @@ def settle(binding, lease, ticket, *, inventory):
         fail("invalid_inventory")
     seen = set()
     for entry in inventory:
-        if (not isinstance(entry, dict) or set(entry) != {"area", "path", "bytes", "sha256"}
-                or entry["area"] not in AREAS or (entry["area"], entry["path"]) in seen):
+        _verify_inventory_entry(binding, entry)
+        if (entry["area"], entry["path"]) in seen:
             fail("invalid_inventory")
         seen.add((entry["area"], entry["path"]))
-        if file_hash(under(binding.roots[entry["area"]], entry["path"])) != (entry["bytes"], entry["sha256"]):
-            fail("invalid_inventory")
+    actual = measured(binding)
+    if {(entry["area"], entry["path"], entry["bytes"]) for entry in actual} != {
+            (entry["area"], entry["path"], entry["bytes"]) for entry in inventory}:
+        fail("invalid_inventory")
     baseline_raw = read(under(binding.roots["control"], ticket["baseline"]), MANIFEST_CAP)
     if sha(baseline_raw) != ticket["baseline_sha256"]:
         fail("invalid_inventory")
@@ -556,9 +577,13 @@ def verify_inventory(binding, receipt):
     raw = read(under(binding.roots["control"], receipt["inventory"]), MANIFEST_CAP)
     if sha(raw) != receipt["inventory_sha256"]:
         fail("invalid_inventory")
+    seen = set()
     for value in parsed(raw, MANIFEST_CAP):
-        if file_hash(under(binding.roots[value["area"]], value["path"])) != (value["bytes"], value["sha256"]):
+        _verify_inventory_entry(binding, value)
+        key = value["area"], value["path"]
+        if key in seen:
             fail("invalid_inventory")
+        seen.add(key)
 
 
 def stop_state(binding):
