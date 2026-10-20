@@ -494,6 +494,102 @@ class ArchiveAcceptance(unittest.TestCase):
                 result = f.refresh(Transport(responses))
                 self.assertEqual(result["state"], "terminal")
                 self.assertIsNone(f.module.accepted_view(f.binding))
+        with self.subTest(case="ordinary_large_refresh_blob"):
+            line = encoded(dict(n=1, padding="x" * 61434)) + b"\n"
+            raw = line * 150
+            self.assertEqual(len(line), 61455)
+            self.assertLess(len(line), 64 * 1024)
+            self.assertGreater(len(raw), 8 * 1024 * 1024)
+            self.assertLess(len(raw), 10 * 1024 * 1024)
+            with Fixture(Repo({"pools-2026-10-01.ndjson": raw})) as f:
+                before_bytes = sum(path.stat().st_size for root in f.roots.values()
+                                   for path in root.rglob("*") if path.is_file())
+                before_bytes += f.config_path.stat().st_size + f.manifest_path.stat().st_size
+                transport = Transport(f.repo.responses)
+                result = f.refresh(transport)
+                self.assertEqual(result["state"], "accepted")
+                self.assertEqual((result["examined"], result["unexamined"], result["partial"]), (150, 0, 0))
+                self.assertEqual(len(transport.requests), 6)
+                self.assertEqual(transport.responses, [])
+                self.assertEqual(transport.requests[-1]["cap"], len(raw))
+                self.assertTrue(all(request["method"] == "GET" for request in transport.requests))
+                view = f.module.accepted_view(f.binding)
+                self.assertEqual(result["view_sha256"], view["view_sha256"])
+                self.assertIsNone(view["previous_view_sha256"])
+                self.assertEqual(len(view["catalog"]), 1)
+                entry = view["catalog"][0]
+                self.assertEqual((entry["bytes"], entry["complete_bytes"], entry["complete_lines"],
+                                  entry["trailing_bytes"]), (len(raw), len(raw), 150, 0))
+                self.assertEqual((entry["sha256"], entry["prefix_sha256"], entry["blob_sha1"]),
+                                 (sha(raw), sha(raw), git_object("blob", raw)[0]))
+                self.assertTrue((f.roots["source"] / entry["object"]).read_bytes() == raw,
+                                "ordinary_large_blob_bytes_changed")
+                self.assertEqual(view["row_findings"], dict(invalid_row=0, row_cap=0))
+                rows = list(f.module.iter_complete_rows(f.binding, view))
+                self.assertEqual([(row["line"], row["offset"], row["bytes"], row["sha256"], row["finding"])
+                                  for row in rows],
+                                 [(number + 1, number * len(line), len(line), sha(line), None)
+                                  for number in range(150)])
+                self.assertTrue(all(row["raw"] == line for row in rows), "ordinary_row_bytes_changed")
+                history = f.module.journal(f.binding, "archive")
+                self.assertEqual([record["kind"] for record in history], ["claim"] + ["attempt"] * 6 + ["result"])
+                claim = history[0]["value"]
+                self.assertTrue(all(record["value"]["transaction_id"] == claim["transaction_id"] for record in history))
+                attempts = [record["value"] for record in history if record["kind"] == "attempt"]
+                body_bytes = 0
+                for attempt, request, (_status, response) in zip(attempts, transport.requests, f.repo.responses):
+                    directory = f.roots["source"] / attempt["directory"]
+                    self.assertEqual(json.loads((directory / "request-metadata.json").read_bytes()), request)
+                    body = (directory / "body.bin").read_bytes()
+                    body_bytes += len(body)
+                    self.assertEqual((len(body), sha(body)), (len(response), sha(response)))
+                    self.assertEqual(json.loads((directory / "retired.json").read_bytes())["state"], "exited")
+                self.assertEqual(body_bytes, sum(len(response) for _status, response in f.repo.responses))
+                source_result = history[-1]["value"]
+                self.assertEqual(source_result["view_sha256"], view["view_sha256"])
+                self.assertEqual(sha((f.roots["source"] / source_result["receipt"]).read_bytes()),
+                                 source_result["receipt_sha256"])
+                allocation = f.module.journal(f.binding, "allocation")
+                self.assertEqual([record["kind"] for record in allocation], ["reservation", "settlement"])
+                self.assertEqual(sum(allocation[0]["value"]["ceilings"].values()), 64 * 1024 * 1024)
+                self.assertEqual(allocation[-1]["value"]["reservation_id"], claim["transaction_id"])
+                report = f.module.report(f.binding)
+                self.assertEqual((report["refresh_reserved"], report["attempts_reserved"], report["unfinished"],
+                                  report["source_files"], report["source_rows"]), (1, 6, 0, 1, 150))
+                actual_bytes = sum(path.stat().st_size for root in f.roots.values()
+                                   for path in root.rglob("*") if path.is_file())
+                actual_bytes += f.config_path.stat().st_size + f.manifest_path.stat().st_size
+                self.assertEqual(report["allocation"]["retained_bytes"], actual_bytes)
+                self.assertLessEqual(actual_bytes - before_bytes, 64 * 1024 * 1024)
+                self.assertEqual(report["allocation"]["reserved_bytes"], 8 * 1024 * 1024)
+                self.assertEqual(report["allocation"]["committed_and_reserved_bytes"], actual_bytes + 8 * 1024 * 1024)
+                self.assertLessEqual(report["allocation"]["committed_and_reserved_bytes"], 16 * 1024 ** 3)
+                self.assertIsNone(report["started_at"])
+                before_readback = {path.relative_to(f.root).as_posix(): sha(path.read_bytes())
+                                   for path in f.root.rglob("*") if path.is_file()}
+                offline_report = "\n".join([
+                    "import runpy, socket, sys",
+                    "from unittest.mock import patch",
+                    "module = sys.argv.pop(1)",
+                    "sys.argv[0] = module",
+                    "with patch.object(socket.socket, 'connect', side_effect=AssertionError('network_forbidden')) as connect, "
+                    "patch.object(socket, 'getaddrinfo', side_effect=AssertionError('network_forbidden')) as resolve:",
+                    "    try:",
+                    "        runpy.run_path(module, run_name='__main__')",
+                    "    except SystemExit:",
+                    "        assert connect.call_count == resolve.call_count == 0",
+                    "        raise",
+                ])
+                fresh = subprocess.run([sys.executable, "-I", "-B", "-c", offline_report,
+                                        str(CODE / "bench/w40_archive.py"), "report", "--config", str(f.config_path),
+                                        "--config-sha256", f.pins["expected_config_sha256"],
+                                        "--manifest-sha256", f.pins["expected_manifest_sha256"]],
+                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+                self.assertEqual(fresh.returncode, 0)
+                self.assertEqual(json.loads(fresh.stdout), report)
+                self.assertEqual({path.relative_to(f.root).as_posix(): sha(path.read_bytes())
+                                  for path in f.root.rglob("*") if path.is_file()}, before_readback)
+                self.assertEqual(len(transport.requests), 6)
 
     def test_w40_archive_prefix_chunks_and_row_findings(self):
         raw = b'{"n":1}\n' + b"invalid\n" + b'{"long":"' + b"x" * 65536 + b'"}\n' + b'{"n":'
