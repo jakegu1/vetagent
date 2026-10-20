@@ -592,3 +592,39 @@ audit is authorized. The known-bad6eb complete45 is historical evidence only;
 final fixed clean source requires its own true prior freeze, complete45, actual
 Linux/builds and genuinely completed applicable independent reviews. Neither the
 platform-interrupted review nor a later functional PASS supplies RED-TEAM none.
+
+### R7 - Protect the existing fixture parent during hook wait failure
+
+2026-10-20: the failed original complete45 left an owned fixture parent alive.
+Its exact process identity and private command were preserved; cleanup later
+verified a held OS handle against the original identity twice, terminated only
+that owned parent, and observed completion. This is cleanup evidence, not a
+successful native control. The first two original failure tracebacks were not
+retained by the runner and are not reconstructed from this observation.
+
+The existing parent-death acceptance method starts its parent, then calls
+wait_for(parent-hook.json) before entering the try/finally that kills and waits
+for that parent. A hook-wait exception therefore leaves the parent outside that
+cleanup scope. This independently visible fixture control-flow defect must be
+closed without changing a production deadline or treating an unobserved hook as
+success. The separate unchanged-method isolated run retains full raw output;
+record its actual result without inferring the earlier truncated failures.
+
+Named frozen-test change: in
+test_w40_archive_parent_death_and_fresh_process_restore, move only the existing
+evidence = wait_for(f.root / "parent-hook.json") statement from immediately before
+the existing try to its first statement. Keep process creation outside that try,
+the existing finally process.kill()/process.wait(10), every assertion, all mode
+inputs, existing loop/control flow and all wait/deadline literals unchanged.
+No new source guard, swallowed exception, fallback, helper or wider test rewrite
+is authorized. Every other R1-R6 acceptance byte stays exact.
+
+Commit this one-statement test-harness correction alone after the lead's named
+spec adoption and after any active source-frozen capture ends. Audit all assertion
+and input ASTs before/after and retain both versions. Reproduce the unchanged
+method's normal cases using its existing inputs and full raw output. A hook
+failure must still fail the test; this correction supplies guaranteed cleanup,
+not native eligibility or a relaxed assertion. Preserve the original failed
+complete45 and all known source defects as historical evidence. Final source
+still requires its own complete configured gate, actual Linux/builds and all
+applicable genuinely completed reviews before publication.
