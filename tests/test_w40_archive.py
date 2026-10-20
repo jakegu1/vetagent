@@ -119,10 +119,13 @@ class Transport:
 
 
 class LocalTransport:
-    def __init__(self, module, route):
+    def __init__(self, module, route, checkpoint: Path | None = None):
         self.module, self.route = module, route
+        self.checkpoint = checkpoint
 
     async def __call__(self, request, **kwargs):
+        if self.checkpoint is not None:
+            self.checkpoint.write_bytes(encoded(dict(stage="transport_entry")))
         worker = self.module.NativeSourceWorker(request, route=self.route, **kwargs)
         return await worker.fetch()
 
@@ -330,7 +333,8 @@ def child_main(arguments):
                     await asyncio.Event().wait()
 
             module.refresh(binding, lease, live=True, deadline_mono=time.monotonic() + 60,
-                           transport=LocalTransport(module, (host, int(port))), hooks=hooks)
+                           transport=LocalTransport(module, (host, int(port)),
+                                                    checkpoint=Path(config_path).parent / "parent-transport-entry.json"), hooks=hooks)
 
 
 class ArchiveAcceptance(unittest.TestCase):
@@ -724,6 +728,7 @@ class ArchiveAcceptance(unittest.TestCase):
                            server.route[0], str(server.route[1])]
                 process = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 try:
+                    wait_for(f.root / "parent-transport-entry.json")
                     evidence = wait_for(f.root / "parent-hook.json")
                     if mode == "native_entry":
                         self.assertTrue(server.entered.wait(8))
