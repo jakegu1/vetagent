@@ -868,7 +868,7 @@ def _attempt_witness(binding, attempt):
         if path.name not in _ATTEMPT_FILES or not private(path).is_file():
             fail("source_corrupt")
         size, digest = _hash_regular(path)
-        if size > (FILE_CAP + 1 if path.name == "body.bin" else ROW_CAP):
+        if size > (INCREMENT_CAP + 1 if path.name == "body.bin" else ROW_CAP):
             fail("source_corrupt")
         files.append(dict(name=path.name, bytes=size, sha256=digest))
     hashes = {value["name"]: value["sha256"] for value in files}
@@ -919,7 +919,7 @@ def _verify_transaction(binding, claim, result, previous, attempts, *, verify_fi
         names = []
         for entry in witness["files"]:
             if (not isinstance(entry, dict) or set(entry) != {"name", "bytes", "sha256"} or entry["name"] not in _ATTEMPT_FILES
-                    or type(entry["bytes"]) is not int or not 0 <= entry["bytes"] <= (FILE_CAP + 1 if entry["name"] == "body.bin" else ROW_CAP)
+                    or type(entry["bytes"]) is not int or not 0 <= entry["bytes"] <= (INCREMENT_CAP + 1 if entry["name"] == "body.bin" else ROW_CAP)
                     or not hex_value(entry["sha256"])):
                 fail("history_corrupt")
             names.append(entry["name"])
