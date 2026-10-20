@@ -102,6 +102,17 @@ Only two native datetime assignments and additive offline acceptance change;
 Worker sources and six frozen engine/core pins remain exact. Autonomy stays A0;
 the escaped real-engine seam is recorded under Q1 in PITFALLS.
 
+## Independent snapshot reliability work
+
+T-053 is a small ordinary correction independent of the held archive/runtime/
+scheduler chain. A synthetic reversed-order manifest demonstrates that the
+coverage CLI can choose an older success after a newer failure; the separate
+freshness monitor already handles the example correctly. Real archive occurrence
+is unverified. The executor adds tests first in the already registered archive
+module, then changes only the existing read-only coverage selector. Existing
+complete45 inventory, source/data isolation and fresh ordinary review apply.
+No workflow, active study, scientific rule or T047 security gate changes.
+
 ## Next engineering: three related M-sized loops
 
 The unadopted broad local-runtime proposal is split before tests under QUALITY's
