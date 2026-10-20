@@ -19,7 +19,9 @@ Read docs/agent-context.md, docs/AUDIT_BRIEF.md, lead/QUALITY.md and config.yml.
 Repository files are English. Owner communications and private business evidence
 stay outside the public tree. Preserve the primary checkout and private caches.
 All production probes carry x-mcp-client: vetagent-manual-probe; no risk MCP calls.
-Keep source/cache/benchmark work isolated and configured full gates serialized.
+Keep source/cache/benchmark work isolated. Serialize heavy Windows gates on this
+host; isolated Linux CI may overlap on its separate host, tree and cache. Preserve
+all source freezes, ordered full commands and unchanged scientific/source limits.
 Never rebase, amend pushed commits, clear real CI flags to run a production action,
 silently change coverage, reset a scientific clock or lower a decision bar.
 
@@ -59,9 +61,12 @@ The sole original non-cohort native control fails before either physical request
 Actual saved child identities expose a Windows venv redirector mismatch. Its
 failure is retained; it is not an upstream outage or successful native seam.
 Separate zero-Vendor direct-base identity and native-loopback witnesses succeed.
-A separately bound corrective configuration requires current clean source, actual
-master CI and the reviewed complete-runtime pin before one distinct control.
-It cannot retry or relabel the original attempt, acquire labels or start a study.
+A distinct direct-base control then completes three data-bearing HTTP200 replies
+and fails at real assessment because native supplies a float where the engine
+requires a datetime. Its failure remains separate and is not an upstream outage.
+T-052 repairs that actual seam; a later separately bound corrective control needs
+current clean source, actual master CI and the reviewed fixed complete-runtime pin.
+It cannot retry or relabel either old attempt, acquire labels or start a study.
 
 T-051 source b9a7479 records the truthful undecided checkpoint through the
 unchanged guard and is normally merged as fd1429a after fresh independent twelve
@@ -70,9 +75,26 @@ all tracked bytes exact. Actual feature Linux39386659582 passes every required
 job and both locked builds; benchmark stays skipped. An earlier default-Temp
 Git-ancestor refusal is retained; only child temporary-directory configuration
 changes. Explicit generation succeeds and post-merge3757a34 passes all44 commands,
-native exit zero and all971 tracked bytes exact. The source task is done. Bind
-actual exact-published-head master CI separately before a live runtime control;
-a source task's status does not infer that result or empirical experiment success.
+native exit zero and all971 tracked bytes exact. Its missing per-run prefreeze
+index is preserved as a separate proof failure, not backdated. The later bot data
+are normally reconciled and exact9dc8686 passes a correctly prefrozen complete44
+with all974 tracked bytes exact. Actual master39392487756 checks out9dc8686 and
+passes all44, upstream/backfill and both locked builds; benchmark stays skipped.
+The source task is done. No empirical experiment success follows from that result.
+
+T-052 source1f90aca passes fresh independent twelve of twelve and separate
+RED-TEAM none. Both executor and independent complete45 runs pass with all976
+tracked raw bytes exact. Actual feature Linux39399891382 checks out the exact
+source and passes all45, upstream-contract, backfill-roundtrip and both clean
+locked builds. Backfill's observation remains partial after two HTTP429 responses;
+successful CI does not fill those gaps. The normal merge9034ccf preserves the
+reviewed source and passes post-merge complete45, native exit zero, all976 tracked
+bytes exact. Explicit generation succeeds; only proved date/recent-display and
+line-ending output is restored from external exact copies. See lead/reviews/T-052.md.
+Bind exact-published-head master CI and actual native observations separately.
+Only two native datetime assignments and additive offline acceptance change;
+Worker sources and six frozen engine/core pins remain exact. Autonomy stays A0;
+the escaped real-engine seam is recorded under Q1 in PITFALLS.
 
 ## Archive source dispatch checkpoint
 
@@ -97,14 +119,22 @@ size rule. Preserve every original requirement and test the handoffs explicitly:
 3. T-050: exact owned scheduler action/XML/readback, two actual unarmed entries,
    unchanged action through activation and verified stop/uninstall.
 
-The split specs are adopted on the T-047 branch. Archive implementation has actual
-Windows parent-death/restoration controls and is still completing focused boundary
-repairs before its complete gate and fresh reviews. T-049/T-050 remain drafts,
-requiring the exact reviewed dependency/API and green implementation base before
-tests. Registration changes integrate serially. Source implementation may proceed
-independently of pending live receipts; actual native, Linux, frozen runtime/seed
-and OS-entry evidence gate activation. No thirty-day W40 clock starts at
-registration, seed, arm, a claim, source refresh or a non-cohort control.
+The split specs are adopted on codex/t047-w40-verified-archive. Its original
+complete45 fails one archive command with three failures; the other44 pass.
+That failed source is unpublished. Fresh functional review reproduces a normal
+refresh blob incorrectly restricted by the smaller seed-only file bound. Named
+R6 acceptance precedes the two bounded witness corrections and the focused
+positive/fresh offline report passes. Named R7 protects the fixture parent during
+a hook-wait exception without changing any assertion or time limit. A diagnostic
+helper's missing bootstrap environment is retained as a helper failure, not a
+source diagnosis. Final complete/Linux/build evidence and genuinely completed
+reviews remain required. The mandatory adversarial review is incomplete and has
+no none/PASS verdict; an ordinary functional review cannot replace it.
+T-049/T-050 remain drafts requiring the exact reviewed dependency/API and green
+implementation base before tests. Registration changes integrate serially.
+Actual native, Linux, frozen runtime/seed and OS-entry evidence gate activation.
+No thirty-day W40 clock starts at registration, seed, arm, a claim, source refresh
+or a non-cohort control. No required coverage or scientific rule is dropped.
 
 ## W57 operational correction and scientific boundary
 

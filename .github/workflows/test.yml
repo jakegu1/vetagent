@@ -223,6 +223,9 @@ jobs:
       - name: Native paired acquisition is bounded private and recoverable offline
         run: python tests/test_w40_native.py
 
+      - name: Native acquisition preserves the real engine datetime contract
+        run: python tests/test_w40_native_clock.py
+
       - name: Archive source views preserve verified bytes and bounded recovery
         run: python tests/test_w40_archive.py
 
