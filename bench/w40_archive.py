@@ -1189,7 +1189,8 @@ def seed(binding, lease, *, clock=None):
     try:
         check()
         prior_claims, results, _attempts = _archive_state(binding)
-        if any(key not in results for key in prior_claims):
+        _tickets, receipts, _retained, _pending = allocation_state(binding)
+        if any(key not in results or key not in receipts for key in prior_claims):
             fail("source_incomplete")
         catalog = _seed_input(binding)
         source_total = sum(x["bytes"] for x in catalog["catalog"])
@@ -1422,7 +1423,8 @@ def refresh(binding, lease, *, live=False, deadline_mono, clock=None, transport=
     terminal = next((x for x in results.values() if x["state"] == "terminal"), None)
     if terminal:
         return _blocked_result(binding, terminal["reason"], state="terminal")
-    if any(identity not in results for identity in claims):
+    _tickets, receipts, _retained, _pending = allocation_state(binding)
+    if any(identity not in results or identity not in receipts for identity in claims):
         return _blocked_result(binding, "source_incomplete", state="terminal")
     wall = datetime.fromisoformat(start["utc"].replace("Z", "+00:00"))
     date = start["utc"][:10]
