@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- lead: close T-051 source after the actual post-merge gate
-- lead: record the independently verified T-051 source decision
-- lead: correct current Owner action and task publication records
-- lead: reconcile source runtime and recovery stages from actual evidence
-- T-051: regenerate Owner page for the actual undecided checkpoint
-- lead: record the contract-compliant T051 release branch
-- T-051: record the missing undecided D checkpoint
-- T-051: named change for independent real-row rejection
+- docs: record verified native runtime and archive candidate gates
+- T-052: record reviewed source closure and retained runtime boundaries
+- T-052: preserve datetime pins in native engine scopes
+- T-052: named change (count only consumed response bodies per A3)
+- T-052: name header-only accounting fixture correction
+- T-052: acceptance test fix (preserve worker class identity per A2)
+- T-052: name fixture loop and worker-identity corrections before source repair
+- T-052: acceptance test fix (initialize Windows loop before network guards)
 
-_325 more not shown (333 commits in total)._
+_338 more not shown (346 commits in total)._
 
 ## What I got wrong
 
