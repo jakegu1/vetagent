@@ -577,8 +577,19 @@ def reserve(binding, lease, *, reservation_id, owner, ceilings):
     amount = sum(ceilings.values())
     if retained + pending + amount + TERMINAL_RESERVE > STUDY_CAP:
         fail("storage_refused")
-    for area, size in ceilings.items():
-        if shutil.disk_usage(binding.roots[area]).free < size + TERMINAL_RESERVE:
+    volumes = {}
+    for outstanding in [ceilings, *(value["ceilings"] for key, value in tickets.items() if key not in receipts)]:
+        for area, size in outstanding.items():
+            root = binding.roots[area]
+            volume = root.stat().st_dev
+            total, _root = volumes.get(volume, (0, root))
+            volumes[volume] = (total + size, root)
+    root = binding.roots["control"]
+    volume = root.stat().st_dev
+    total, _root = volumes.get(volume, (0, root))
+    volumes[volume] = (total + TERMINAL_RESERVE, root)
+    for size, root in volumes.values():
+        if shutil.disk_usage(root).free < size:
             fail("storage_refused")
     baseline = measured(binding, hashes=True)
     baseline_raw = encoded(baseline)
