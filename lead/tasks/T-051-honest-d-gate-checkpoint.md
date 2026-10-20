@@ -153,3 +153,16 @@ give the executor ownership of unrelated generated files. The lead preserves and
 inspects source bytes, runs the explicit regenerate mode, retains the substantive
 Owner change in its own commit, and accounts separately for date/recent-only or
 line-ending output. No forced CI/date flags, guard edits or skipped checks.
+
+### A3 - Use the installed contract checker's named-change subject
+
+The subject specified in A1 did not match the installed contract checker's
+`named change`/`acceptance test fix` patterns. The original unpushed task branch
+and evidence are retained. A separate release branch keeps the original
+acceptance-only commit and lead amendment, carries the exact same correction as
+`722dbbb25c219433a17b6890470d5b1e40200ac4` with subject
+`T-051: named change for independent real-row rejection`, then carries the exact
+same document change. No pushed history, generic checker, assertion or source
+fact was rewritten. The source/test bytes were compared exactly before any new
+gate; old receipts keep their original head and do not become new-head evidence.
+The current release candidate must pass the actual unchanged contract checker.
