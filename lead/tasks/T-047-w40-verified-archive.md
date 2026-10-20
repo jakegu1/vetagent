@@ -434,3 +434,84 @@ All other acceptance helpers/assertions and old44 tests remain frozen. Root owns
 the separate truthful D-checkpoint task and any subsequently named baseline bind;
 it is not a reason to bypass the live date guard here. These amendments repair
 observed fixture premises before first READY; no scientific gate changes.
+
+### R4 - Close the backward-only prior-gate and production-admission port
+
+The initial interface requires prior quality/runtime gate references but does not
+define their records. The frozen source fixture contains `quality_gates=[]`.
+That is a technical fixture, not production eligibility. Complete the interface
+before the T049/T050 acceptance commits; do not add future receipt references to
+the final config or permanently refuse every real transport as a substitute.
+
+`quality_gates` is a list of at most three unique records with exactly kind/path/
+sha256. Closed kinds are source_quality, quota_pilot and native_control. Each
+path is exactly `quality-gates/<kind>.json` below the bound control root; SHA256
+is an external pin over its exact bytes. Reject unknown fields/kinds, duplicate
+kinds and other paths even for offline validation. Empty or incomplete references
+may support offline/source fixtures only. References and their evidence are
+initial retained allocation, never an uncharged external tree.
+
+Each referenced canonical JSON payload is at most64 KiB, with exactly schema,
+kind, source_commit, source_files, evidence and result. Schema is
+`w40-prior-gate-v1`; kind matches its reference; source_commit is forty lowercase
+hex characters. evidence has exactly path/sha256; path is exactly
+`quality-gates/evidence/<kind>.json` below control, a bounded existing root-
+verified evidence receipt of at most one MiB. Its exact pinned bytes must exist.
+Every read obeys the existing regular-file, alias, ancestor and bounded-read
+rules. No digest is learned, no arbitrary path/URL is selected and no network
+verification is introduced. The root supplies these externally pinned attestations
+only after verifying the underlying existing evidence; fixture JSON never earns
+actual quality, native, OS, quota, capacity or study credit.
+
+source_files is a sorted unique list of records with exactly path and
+canonical_sha256. Match the mandatory set for that kind exactly. Every record
+must match an already verified code-manifest file and SHA256 of its actual code
+bytes after CRLF-to-LF normalization. The manifest still pins exact actual bytes.
+The source_quality set is the six already frozen T046 FROZEN paths plus
+bench/w40_native.py, bench/w40_archive.py, bench/w40_local.py and
+tools/w40-local.ps1. The native_control set is the same six FROZEN paths plus
+bench/w40_native.py. The quota_pilot set is bench/goplus_quota_probe.py only.
+Earlier quota/native receipts may have earlier source commits, while their
+required unchanged file hashes must match the final installation. source_quality
+source_commit equals config.executable_commit. No prior gate payload may name
+the final config/code-manifest/action digest or a future OS/entry/arm receipt.
+
+Closed result shapes:
+- source_quality: passed=true, offline_steps, linux_steps and master_steps are
+  equal integers at least47, locked_builds=2, independent="pass", redteam="none".
+  These are root-verified complete configured executions at that source, not
+  a workflow summary or skipped job. The minimum covers the three split loops;
+  it is an engineering gate, not a scientific threshold.
+- quota_pilot: completed=true, native_exit is integer0 or1, availability is a
+  boolean copied truthfully from the sole finite real pilot. Completion does not
+  require availability=true and supplies no daily allowance/reset/capacity claim.
+  Retain the actual unsuccessful availability reading and all unknowns.
+- native_control: seam_verified=true, native_exit=0, labels=0,
+  scientific_start=false. Only the separately verified non-cohort native control
+  may supply this; the original failed control stays failed.
+
+Add the fixed read-only Python port `verify_live(binding) -> None`: verify the
+current binding and all three complete pinned gates, required component/code
+coverage and a non-null verified PowerShell identity; otherwise raise the fixed
+source_drift error. It mutates nothing and has no CLI/env/config bypass. Call it
+before default real refresh makes any claim/allocation/raw write, and before a
+real-source child opens HTTPS; include its elapsed work in the original admission
+deadline. Existing explicit Python transport/local-loopback injections remain
+technical fixtures. Real default transport cannot gain eligibility from a hook.
+T049 must call this same port before production arm and each production work
+admission; T050 uses it before production activation. Their future scheduled/arm
+evidence remains separately backward-bound in the already fixed DAG. This port
+does not waive those gates or begin a scientific clock.
+
+Named acceptance addition: preserve all seven method names, old assertions,
+inputs, helpers and main. Only append finitely bounded new subtests to
+test_w40_archive_frozen_bootstrap_and_private_boundary and add a dedicated
+fixture-only prior-gate builder helper. Cover empty/incomplete production gates,
+unknown/duplicate kind, wrong path/hash, missing evidence/component, changed
+source bytes and a structurally valid technical positive, at most ten cases.
+The actual default path with empty fixture gates must fail before any mocked
+transport invocation or new claim/write; offline reads/seed and existing explicit
+local transport controls retain their original behavior. Synthetic gate positives
+never contact a host or assert real review/runtime credit. Commit this named test
+addition first and alone, record its red on the old source, then freeze it before
+the separate source fix. Original R1-R3 and all other test ASTs remain exact.
