@@ -639,15 +639,26 @@ def _check_coverage():
                        if fn.startswith("runs-") and fn.endswith(".ndjson"))
         if not files:
             raise FileNotFoundError
-        with io.open(os.path.join(OUT_DIR, files[-1]), encoding="utf-8") as fh:
-            entries = [json.loads(line) for line in fh if line.strip()]
-        if not entries or not isinstance(entries[-1], dict):
-            raise ValueError("invalid manifest")
-        latest = entries[-1]["seen_at"]
-        if not isinstance(latest, str) or any(not isinstance(m, dict) for m in entries):
-            raise ValueError("invalid manifest")
-        return _print_coverage([m for m in entries if m.get("seen_at") == latest])
-    except (OSError, ValueError, KeyError, TypeError):
+        passes = {}
+        for name in files:
+            observed = False
+            with io.open(os.path.join(OUT_DIR, name), encoding="utf-8") as fh:
+                for line in fh:
+                    if not line.strip():
+                        continue
+                    entry = json.loads(line)
+                    if not isinstance(entry, dict) or not isinstance(entry.get("seen_at"), str):
+                        raise ValueError("invalid manifest")
+                    instant = datetime.fromisoformat(entry["seen_at"])
+                    if instant.tzinfo is None or instant.utcoffset() is None:
+                        raise ValueError("invalid timestamp")
+                    instant = instant.astimezone(timezone.utc)
+                    passes.setdefault(instant, []).append(entry)
+                    observed = True
+            if not observed:
+                raise ValueError("invalid manifest")
+        return _print_coverage(passes[max(passes)])
+    except (OSError, ValueError, KeyError, TypeError, OverflowError):
         print("coverage: incomplete: 0 rows, 0 pages, 1 gaps; causes: manifest_missing_or_invalid=1")
         return 1
 
