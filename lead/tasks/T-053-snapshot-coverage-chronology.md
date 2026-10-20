@@ -1,7 +1,7 @@
 ---
 id: T-053
 title: Select snapshot coverage by observed UTC chronology rather than append order
-status: in_progress
+status: done
 level: 1
 size: S
 depends_on: [T-029]
@@ -81,3 +81,18 @@ changed files, preserved original test ASTs, contract and configured45 inventory
 complete-gate native exit and before/after byte maps. Keep failures immutable and
 qualify any live-data occurrence as unverified unless separately measured. Do not
 infer whole-engine replay, elapsed study completion or security approval.
+
+## Source completion
+
+Tests-only3a6a0ff precedes source8ad2fce and reproduces13 ordering/validation
+failures. The frozen head passes34/34. Fresh ordinary review passes12/12 with
+twenty-five independent subprocess cases and three caught scratch mutants.
+Executor and independent complete45 pass with all978 tracked raw bytes exact.
+Actual same-head Linux39440532687 passes all45, upstream/backfill and both locked
+builds; benchmark is skipped. Normal integration859bed8 passes complete45 with
+all979 tracked bytes exact, including its independent review record. A separate
+read-only CLI succeeds against every retained real run manifest with unchanged
+bytes. Explicit fixed-point generation passes; only proved ephemeral display and
+line-ending output is restored from external exact copies. Publication receipts
+are separate from this source completion. No real historical occurrence, study
+result or T047 security verdict is inferred. See lead/reviews/T-053.md.

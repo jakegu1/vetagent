@@ -118,10 +118,15 @@ Fresh ordinary review is PASS12/12, including25 independent subprocess cases and
 three caught mutants. Executor and independent complete45 both pass with all978
 tracked raw bytes exact. Actual source Linux39440532687 checks out8ad2fce and
 passes all45, upstream/backfill and both locked builds; benchmark stays skipped.
-The reviewed source and latest bot data are normally merged; explicit generation
-and the complete post-merge gate are next. No Worker, workflow, active study,
-scientific rule, archive/native source or T047 security gate changes. The three
-frozen W57 source hashes match its actual current checkpoint exactly.
+The reviewed source and latest bot data are normally merged. Explicit generation
+passes; only proved date/recent-display and line-ending output is restored from
+exact external bytes. Post-merge859bed8 passes complete45, native exit0 in273.5
+seconds, all979 tracked raw bytes exact and equal to its earlier external copies.
+A separate read-only real-archive CLI check returns complete, reads all44 retained
+run manifests and leaves every manifest byte exact. Source implementation is done;
+final publication evidence is recorded separately. No Worker, workflow, active
+study, scientific rule, archive/native source or T047 security gate changes. The
+three frozen W57 source hashes match its actual current checkpoint exactly.
 
 ## Next engineering: three related M-sized loops
 

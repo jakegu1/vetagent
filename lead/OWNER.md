@@ -7,35 +7,36 @@
 
 ## Status in one line
 
-The deployed Worker remains d354179. Operator/evidence source through T-052 is
-published at7625779, retaining bot dataa482332. The narrow native datetime repair
-passes independent/adversarial review, post-merge and final complete45 gates,
-actual exact-head master39403586342 and both locked builds. A distinct actual
-corrective control then returns data for all six requests and completes GET,
-RPC and assessment with its original caps and complete cleanup checks.
-The sole quota pilot does not prove sustainable availability. The original native
-control fails before physical requests; the distinct direct-base control exposes
-the now-repaired datetime seam after successful data-bearing HTTP replies. Both
-failed controls remain unchanged. The separately bound corrective PASS proves
-the runtime seam; it provides zero independent labels and starts no study.
+The deployed Worker remains d354179; later operator-source repairs do not require
+an upload. T-053 source8ad2fce fixes read-only coverage selection by observed UTC
+chronology. Fresh ordinary review is PASS12/12, with independently reproduced
+CLI cases and caught mutants. Executor and independent complete45 pass; actual
+source Linux39440532687 and both locked builds pass. Normal integration859bed8
+passes complete45 with all979 tracked bytes exact. Its real-archive read-only CLI
+also passes. Latest bot data41e575a are retained. Source closure and publication
+receipts remain distinct; see lead/reviews/T-053.md.
 
-The remaining local W40 engineering is split into verified archive input,
-durable queue/runtime and owned scheduling (T-047, T-049, T-050). Archive source
-has a retained original failed complete gate and a repaired ordinary large-blob
-defect. Candidate3fd33ad passes the complete46 gate with all983 tracked bytes
-exact. Candidate Linux/build evidence and genuinely completed applicable reviews
-still gate publication; the mandatory security review remains incomplete.
-Dependent runtime/scheduler specs remain drafts. Ordinary engineering continues
-under the Owner's existing technical authorization.
-No W40 thirty-day clock has started. W57's original study is source_changed,
-exported and inconclusive. A distinct pilot/start succeeds; the new fixed window
-ends 2026-10-22T07:12:33.877001Z, with actual scheduled continuation still unobserved.
-T-051 records an unavailable D measurement as undecided using the unchanged guard;
-its source is reviewed and published after complete local/actual Linux checks.
-Exact9dc8686 master39392487756 and both locked builds are verified. This repairs
-the checkpoint instrument without inventing an empirical experiment result.
-Experiment D remains empirically open and due 2026-10-20 UTC. Sign-off categories,
-payment gate and pre-registered scientific rules are unchanged.
+The narrow T-052 native datetime repair is published and its distinct real
+corrective control completes GET, RPC and assessment with data, original caps and
+complete cleanup. The earlier failed controls remain failed. This proves the
+runtime seam, not independent labels or a scientific start.
+
+Remaining local W40 work stays ordered: verified archive, durable queue/runtime,
+owned scheduler (T-047, T-049, T-050). Candidatee34461d passes executor and
+independent Windows46, actual source Linux39414924915 and both locked builds.
+Ordinary functional review is PASS12/12; mandatory security review is incomplete.
+The archive remains unpublished and dependent specs remain drafts. No W40
+thirty-day clock has started. Unrelated authorized engineering continues.
+
+W57's original source_changed study is exported and inconclusive. Its distinct
+new fixed window ends2026-10-22T07:12:33.877001Z. Actual scheduled39424063370
+continues the same frozen source/cohort/window, retaining missing slots. This
+proves continuation, not complete sampling or a final result. Finite terminal
+follow-up is configured/read back; future triggering remains unverified.
+
+T-051 records the unavailable Experiment D measurement as undecided through the
+unchanged guard. Experiment D remains empirically open and due2026-10-20 UTC.
+Sign-off categories, payment gate and pre-registered scientific rules are unchanged.
 
 ### Earlier release records (historical)
 
