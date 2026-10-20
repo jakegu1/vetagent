@@ -167,3 +167,29 @@ source. Only a meaningful actual clock-contract red counts before the separate
 source repair. Both original fixture failures remain distinct records. A2 names
 these two bounded helper corrections only; no general test-change exception or
 claim that earlier failed runs passed is introduced.
+
+### A3 - Count the retained header-only missing response honestly
+
+2026-10-20: corrected acceptance6044a2a reaches the meaningful old-source clock
+red with unchanged tracked bytes. The two-line datetime repair then returns the
+real engine unknown answer and preserves all intended clock/restoration checks.
+Its sole remaining failure is a wrong new fixture accounting expectation: the
+unchanged engine _fetch_json(mark_missing=True) returns NO_DATA immediately on
+the fixture's HP404 headers and never reads that body. Six requests are invoked
+and retired, while five bodies complete. This is a tested distinction between a
+physical attempt, a returned header and an observed complete body.
+
+Name exactly one assertion-literal correction in
+test_native_collect_one_datetime_real_assessment: the expected accounting tuple
+changes from (6,6,6,1,1,0,6) to (6,6,5,1,1,0,6). Preserve the six exact routes,
+unknown verdict, sellability gap, endpoint provenance, all other59 assertions,
+all fixture inputs and production code. Never force a body read or alter a
+production counter to satisfy the erroneous test expectation.
+
+Retain the first meaningful red and the actual intermediate one-failure run.
+Commit this named one-literal test change alone before the source implementation
+commit, freeze it, and prove it still rejects the old two-site timestamp
+conversion in the same already allowed controlled regression mutant. Source
+had been narrowly edited but uncommitted when this mismatch was found; retain
+its external exact byte backup and do not rewrite that chronology. A3 changes
+neither scientific acceptance nor any existing acceptance test or source guard.
