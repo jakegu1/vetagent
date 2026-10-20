@@ -367,3 +367,70 @@ readout remains incomplete. Exact master CI, the sole root native control,
 final frozen installation/seed, actual child-import origins and two real
 unarmed scheduled entries remain separately bound runtime gates. No LIVE,
 schedule, new scientific clock or ownership proof is supplied by adoption.
+
+## Named recovery amendments
+
+### R1 - Bind a direct Windows interpreter instead of a redirector
+
+The acceptance-only commit remains `aa01264dc55b1afd2bdcfbfdad7de57d7c36ac02`.
+Its frozen `prepare_code()` always bootstraps into a venv, and `Fixture.__init__`
+always records that executable/config. Actual Windows positive and parent-death
+controls reached ready with matching nonces but different Popen/child PID and
+creation identities; neither request reached HTTP. The identity invariant must
+remain strict. A launcher configuration is the defect, not an unavailable source.
+
+Named test-helper changes only: on Windows, `prepare_code()` shall run the direct
+verified base executable, relocated outside Git with its actual stdlib/DLL closure
+as needed. Do not create/use a venv redirector for the worker. The existing fixture
+interpreter record keeps the same fields; its `pyvenv_cfg` is None only for an
+actual direct base (prefix equals base_prefix). Existing venv configuration remains
+explicitly recorded where used on Linux. Child-only Python startup isolation may
+remove PYTHONPATH/PYTHONHOME/PYTHONSTARTUP and set safe-path/user-site/bytecode
+controls, while preserving actual CI flags. Verify actual origins and interpreter
+bytes; never follow an unpinned base, relax identity equality, synthesize a ready
+identity, add a production override or edit T046. All seven method names and their
+existing behavior/identity/retirement/CI assertions remain exact.
+
+Within `w40_archive.py`, the matching explicitly pinned direct-base configuration
+may use `pyvenv_cfg=None` only with actual equal prefix/base_prefix, the direct
+executable's path/hash and complete trusted import closure, no active venv config,
+and the same empty-site/user-site/origin checks. A non-null venv config retains
+its existing strict path/hash/include-system-site-packages=false checks. The
+manifest/config hash DAG and all other interface fields stay unchanged. Do not
+learn pins or create a production selector. Commit the named fixture correction
+separately from the source compatibility correction, retain the actual original
+red, and prove actual contained local requests/parent death afterwards.
+
+### R2 - Deliver malformed response fields instead of raising in the fixture
+
+`Transport.__call__` builds a dict with explicit content_length/content_encoding
+and duplicate `**overrides`; its length/encoding controls raise TypeError before
+the source sees those fields. Correct only that helper to construct defaults then
+merge the supplied override dict. Preserve every existing response input and
+assertion. Do not classify this unobserved TypeError as observed malformed HTTP
+to turn the suite green. Retain the red and show the bad fields are delivered to
+the real validator, which refuses them; the unchanged positive still accepts.
+Commit as a separate named test-helper change.
+
+### R3 - Make the above64-MiB seed fixture physically distinct
+
+The large seed method gives all46 paths identical bytes. Content-addressed input,
+whole blobs and chunks can therefore share one physical object. Its measured
+retained-byte result is not comparable to the sum counting the same bytes46times.
+Keep source deduplication and actual accounting; do not invent stored bytes or
+create unnecessary per-path copies merely to satisfy that premise.
+
+In `test_w40_archive_seed_whole_catalog_and_allocation` only, retain its46 exact
+paths,64 lines per file, padding-only row shape and every existing assertion.
+Before Fixture construction, salt only the otherwise unused padding value with
+that file's deterministic ASCII filename. Add an assertion that the46 complete
+file hashes are distinct. This strengthens the original intended above64-MiB
+technical seed premise and changes no selection, outcome or production data.
+Retain the original deduplicated red and verify the actual physical seed/source/
+chunk bytes stay within the unchanged budgets. No additional synthetic coverage
+or real inventory is implied. Commit this named fixture-input correction alone.
+
+All other acceptance helpers/assertions and old44 tests remain frozen. Root owns
+the separate truthful D-checkpoint task and any subsequently named baseline bind;
+it is not a reason to bypass the live date guard here. These amendments repair
+observed fixture premises before first READY; no scientific gate changes.
