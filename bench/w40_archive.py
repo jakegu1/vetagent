@@ -154,11 +154,16 @@ def under(root, relative, *, missing=False):
 
 def read(path, cap):
     try:
+        blocks, size = [], 0
         with private(path).open("rb") as handle:
-            raw = handle.read(cap + 1)
-        if len(raw) > cap:
-            fail("source_corrupt")
-        return raw
+            while True:
+                block = handle.read(min(ROW_CAP, cap + 1 - size))
+                if not block:
+                    return b"".join(blocks)
+                size += len(block)
+                if size > cap:
+                    fail("source_corrupt")
+                blocks.append(block)
     except OSError:
         fail("source_unavailable")
 
@@ -891,7 +896,7 @@ def _scan(path, *, check=None):
             if check:
                 check()
             start = offset
-            raw = handle.readline(ROW_CAP + 1)
+            raw = handle.readline(ROW_CAP)
             if not raw:
                 return
             size, digest = len(raw), hashlib.sha256(raw)
@@ -899,7 +904,7 @@ def _scan(path, *, check=None):
             oversized = len(raw) > ROW_CAP
             stored = raw if not oversized else None
             while raw[-1:] != b"\n":
-                block = handle.readline(ROW_CAP + 1)
+                block = handle.readline(ROW_CAP)
                 if not block:
                     yield dict(line=number + 1, offset=start, bytes=size, sha256=digest.hexdigest(),
                                raw=None, finding="partial", complete=False)
