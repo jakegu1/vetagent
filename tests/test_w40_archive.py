@@ -723,8 +723,8 @@ class ArchiveAcceptance(unittest.TestCase):
                 command = [sys.executable, "-B", str(Path(__file__)), "--fixture-parent", str(f.config_path), mode,
                            server.route[0], str(server.route[1])]
                 process = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                evidence = wait_for(f.root / "parent-hook.json")
                 try:
+                    evidence = wait_for(f.root / "parent-hook.json")
                     if mode == "native_entry":
                         self.assertTrue(server.entered.wait(8))
                         end = time.monotonic() + 5
