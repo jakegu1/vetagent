@@ -1189,6 +1189,9 @@ def seed(binding, lease, *, clock=None):
     try:
         check()
         prior_claims, results, _attempts = _archive_state(binding)
+        terminal = next((value for value in results.values() if value["state"] == "terminal"), None)
+        if terminal:
+            fail(terminal["reason"])
         _tickets, receipts, _retained, _pending = allocation_state(binding)
         if any(key not in results or key not in receipts for key in prior_claims):
             fail("source_incomplete")
