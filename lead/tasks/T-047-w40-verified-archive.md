@@ -515,3 +515,32 @@ local transport controls retain their original behavior. Synthetic gate positive
 never contact a host or assert real review/runtime credit. Commit this named test
 addition first and alone, record its red on the old source, then freeze it before
 the separate source fix. Original R1-R3 and all other test ASTs remain exact.
+
+### R5 - Bind the separately reviewed due-checkpoint dependency
+
+2026-10-20: the separately reviewed T051 source is published at
+`9dc8686a445c43fd568555b140bf715d9dbfdbac`, retaining scheduled archive inputs by
+normal merge. Its final source-bound local gate actually passes44 of44, native
+exit zero, with all974 tracked files exact; log SHA256 is
+`6531b11f730212e158c4c1f3806601639d67931515db4cc56f24576b62ca7ddd`.
+Actual master push run39392487756 checks out that exact SHA and passes every
+ordered44 command, upstream/backfill jobs and both independent locked builds.
+Benchmark remains skipped. Independent T051 review is12/12 and red-team none.
+
+Normally merge this exact accepted dependency before the final T047 gate. The
+sole named prior-test baseline update is `tests/test_experiment_d_deadline.py`
+from the accepted T051 task; its canonical Git-file SHA256 is
+`b0df37b193768d82cf34213724ce928ea0d5b78a5be05994068667abafaae525`.
+It preserves the approved date and existing undecided rule, and adds separation
+of actual source and private pending fixtures. Do not edit that accepted file or
+use the amendment to bypass its guard. All other old test files, the configured
+original44 commands, offline runner, native/core/engine sources and frozen pins
+remain exact to the original1de dependency. New scheduled data and their normal
+generated documents are preserved separately from executable-source equality.
+
+The T047 acceptance file remains frozen at
+`841c063deca8e39edba71b9bd64769cac3497f8f17d52a490b90f082bffb9b2b`.
+No source/API, acceptance assertion, fixture, allocation or scientific rule change
+is authorized by R5. This is dependency reconciliation, not a new native runtime
+or LIVE proof; failed native controls and all unavailable gates remain failed or
+unavailable until a separately bound verified correction supplies actual evidence.
