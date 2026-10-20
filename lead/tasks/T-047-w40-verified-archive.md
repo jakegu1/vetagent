@@ -676,3 +676,56 @@ fixture-envelope red. Freeze the new test/helper before the real unchanged norma
 cases and full configured gate. Final source still needs actual Linux/builds and
 all genuinely completed applicable reviews. No new distinct mutant, live request,
 cohort, study or retry is authorized.
+
+### R9 - Integrate the reviewed datetime dependency before the final full gate
+
+2026-10-20: adopt only after the lead verifies the actual complete45 and exact
+master39403586342/all required jobs/two locked builds for dependency
+7625779f0fa18d0927dd78543a8a2ea510db8534. This source normally preserves T-052
+reviewed1f90aca and its post-merge9034ccf. The two native datetime assignments are
+already independently approved at twelve of twelve and separate adversarial
+none. Do not use a candidate with the prior known float seam as the final base.
+
+The newly accepted canonical native source is
+3e6dfb55fd1ff03972828d472f49f3252e29bd3a74e76a12a43c831d7f5ee747.
+The additive baseline acceptance tests/test_w40_native_clock.py is unchanged at
+canonical SHA256
+afeee3e81850ff31097d8a2267e50ce0c691d42b026a2361ac4cab259423834d.
+This dependency does not change engine/core or the six frozen pins. It is a
+named base/install dependency correction, not a new upstream or scientific rule.
+All original failed native controls remain failed and ineligible; any distinct
+new corrective control requires its own actual publication/review/runtime proof.
+
+After preserving all tracked bytes externally, normally merge the accepted
+dependency into the archive branch. Keep every R1-R8 acceptance change and exact
+archive source. Resolve only declared metadata/additive workflow conflicts,
+retaining both the new clock step and archive step plus all other inherited
+commands/jobs/pins/conditions. Preserve the current T-046/T-051/T-052 task rows
+and the branch's T-047/T-049/T-050 rows. Keep current source-status metadata;
+never resolve by dropping another task, an acceptance file or a data snapshot.
+No rebase, old acceptance edit, native source rewrite or cache/clock sharing.
+
+R5's named T-051 acceptance exception remains exact at canonicalb0df37b193768d82cf34213724ce928ea0d5b78a5be05994068667abafaae525.
+Every other old baseline test/fixture, including the newly inherited clock file,
+stays byte-exact in canonical form. R8 archive acceptance canonical98ea598f3097d537b7591230f746d1b7b9b666cd53e2fb3a0b96a5553e9c6609
+and sourceca35276cc3ca5e6fffca5114425f746ca47b1e46bc96db133d129f199ed1c35e
+stay exact. Independently compare all inherited files and source pins after the
+merge; a source/API contradiction stops the loop rather than changing a test.
+
+The resulting archive workflow requires46 actual commands: the dependency's
+unchanged45 plus one unconditional archive command. Future T-049/T-050 integration
+would require48 actual commands; their specs remain drafts until this dependency
+is reviewed and green. R4's source-quality schema/original minimum and all required
+component ports stay exact; use the actual whole inventory and mandatory commands,
+never a lower count that omits the inherited clock test. Update only the draft
+installation appendices to this native pin and projected actual count if needed;
+this is not implementation, a live gate or study activation.
+
+Explicitly regenerate derived pages in fixed-point order, retaining generated
+output and restoring only proven date/recent-display/line-ending-only bytes from
+the external exact backup. Freeze the final exact clean source, test, helpers and
+actual46 inventory before the lead-granted complete configured gate. Then actual
+feature Linux46, both locked builds and genuinely completed applicable independent
+reviews are required. The prior failed45 and narrower later passes remain
+historical and cannot be rebound. The platform-interrupted security review is
+still incomplete; ordinary functional review cannot replace RED-TEAM none.
