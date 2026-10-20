@@ -1240,6 +1240,28 @@ def _headers_status(directory):
     return status
 
 
+def _host_start(binding, attempt):
+    directory = under(binding.roots["source"], attempt["directory"])
+    raw = read(directory / "permit.json", ROW_CAP)
+    if sha(raw) != attempt["permit_sha256"]:
+        fail("history_corrupt")
+    permit = parsed(raw, ROW_CAP)
+    invocation = directory / "invocation.json"
+    if invocation.exists():
+        value = parsed(read(invocation, ROW_CAP), ROW_CAP)
+        if (set(value) != {"utc", "monotonic", "permit_sha256"} or value["permit_sha256"] != sha(raw)
+                or type(value["monotonic"]) not in (int, float) or not math.isfinite(value["monotonic"])
+                or not attempt["monotonic"] <= value["monotonic"] <= permit["expires_mono"]
+                or not isinstance(value["utc"], str) or value["utc"][:10] != permit["reserved_date"]):
+            fail("history_corrupt")
+        return value["monotonic"]
+    # An armed/lost-acknowledgement attempt may have started anywhere within
+    # its original permit. Waiting from that fixed upper bound is conservative.
+    if (directory / "request.json").exists() or (directory / "arming.json").exists():
+        return permit["request_deadline"]
+    return attempt["monotonic"]
+
+
 class FetchSession:
     def __init__(self, binding, lease, claim, ticket, clock, start, deadline, transport, hooks):
         self.binding, self.lease, self.claim, self.ticket = binding, lease, claim, ticket
@@ -1250,7 +1272,7 @@ class FetchSession:
         self.base_source = sum(x["bytes"] for x in measured(binding, areas=("source",)))
         _claims, _results, attempts = _archive_state(binding)
         if attempts:
-            self.last = attempts[-1]["monotonic"]
+            self.last = _host_start(binding, attempts[-1])
             if self.last > start["mono"]:
                 fail("invalid_clock")
 
@@ -1280,9 +1302,10 @@ class FetchSession:
                       request_deadline=sample["mono"] + REQUEST_SECONDS, outer_deadline=self.deadline,
                       allowance_seconds=REQUEST_SECONDS, binding=self.binding.identity)
         write_new(directory / "permit.json", encoded(permit))
-        append(self.binding, self.lease, "archive", "attempt", dict(transaction_id=self.claim["transaction_id"],
+        attempt = dict(transaction_id=self.claim["transaction_id"],
                number=self.number, directory=relative, request_sha256=sha(raw_request), permit_sha256=sha(encoded(permit)),
-               utc=sample["utc"], monotonic=sample["mono"]))
+               utc=sample["utc"], monotonic=sample["mono"])
+        append(self.binding, self.lease, "archive", "attempt", attempt)
         self.last = sample["mono"]
         value, error = None, None
         try:
@@ -1292,6 +1315,7 @@ class FetchSession:
                                     clock=self.clock, hooks=self.hooks, recheck=self.check)
         except BaseException as exc:
             error = str(exc) if isinstance(exc, ArchiveError) else "source_unavailable"
+        self.last = _host_start(self.binding, attempt)
         if value is not None:
             if not isinstance(value, dict) or value.get("retired") != "exited":
                 fail("cleanup_uncertain")
