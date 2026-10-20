@@ -2999,6 +2999,93 @@ def test_sim_probe_unobserved_responses_never_become_exclusions_or_cache_hits():
                   and "BUILD" not in json.dumps(summary) and "agrees" not in json.dumps(summary))
 
 
+def test_snapshot_coverage_cli_utc_chronology_and_read_only_contract():
+    print("\n[snapshot] coverage selects UTC chronology without changing its read-only contract")
+    import tempfile
+    from contextlib import redirect_stdout, redirect_stderr
+    from pathlib import Path
+    from unittest.mock import patch
+
+    complete = "coverage: complete: 1 rows, 2 pages, 0 gaps; causes: none\n"
+    failed = ("coverage: incomplete: 0 rows, 2 pages, 2 gaps; causes: "
+              "fetch_failed=2, zero_rows=1\n")
+    invalid = ("coverage: incomplete: 0 rows, 0 pages, 1 gaps; causes: "
+               "manifest_missing_or_invalid=1\n")
+    old_stamp, new_stamp = "2026-10-20T08:00:00+00:00", "2026-10-20T14:00:00+00:00"
+    cases = []
+    for latest_failed in (False, True):
+        newest = _snapshot_manifest(new_stamp, "fetch_failed" if latest_failed else "ok",
+                                    rows=0 if latest_failed else 1)
+        older = _snapshot_manifest(old_stamp, "ok" if latest_failed else "fetch_failed",
+                                   rows=1 if latest_failed else 0)
+        expected_code, expected_output = (1, failed) if latest_failed else (0, complete)
+        for newest_first in (False, True):
+            ordered = newest + older if newest_first else older + newest
+            cases.append(("latest %s, newest first %s" % ("failed" if latest_failed else "ok",
+                                                         newest_first),
+                          {"runs-2026-10-20.ndjson": ordered}, expected_code, expected_output))
+        cases.append(("latest %s across misleading filenames" % ("failed" if latest_failed else "ok"),
+                      {"runs-0001-01-01.ndjson": newest, "runs-9999-12-31.ndjson": older},
+                      expected_code, expected_output))
+
+    equivalent = _snapshot_manifest(new_stamp)
+    equivalent[0]["seen_at"], equivalent[1]["seen_at"] = (
+        "2026-10-20T16:00:00+02:00", "2026-10-20T09:00:00-05:00")
+    cases.append(("equivalent UTC instants split across files",
+                  {"runs-a.ndjson": equivalent[:1], "runs-z.ndjson": equivalent[1:]}, 0, complete))
+    legacy = [{"seen_at": old_stamp, "legacy": "private-source-value"}]
+    cases.append(("older legacy coverage is irrelevant",
+                  {"runs-0001-01-01.ndjson": _snapshot_manifest(new_stamp),
+                   "runs-9999-12-31.ndjson": legacy}, 0, complete))
+    cases.append(("coverage adds no freshness clock",
+                  {"runs-2099-01-01.ndjson": _snapshot_manifest("2099-01-01T00:00:00+00:00")},
+                  0, complete))
+    for label, stamp in (("missing", None), ("non-string", 7),
+                         ("malformed", "private-source-value"),
+                         ("naive", "2026-10-20T08:00:00"), ("date-only", "2026-10-20")):
+        bad = dict(_snapshot_manifest(old_stamp)[0])
+        if stamp is None:
+            bad.pop("seen_at")
+        else:
+            bad["seen_at"] = stamp
+        cases.append((label + " older timestamp cannot fall back to current success",
+                      {"runs-2026-10-20.ndjson": [bad] + _snapshot_manifest(new_stamp)},
+                      1, invalid))
+    for label, bad in (("invalid JSON", "private-source-value"),
+                       ("invalid shape", [None]), ("empty manifest", "\n")):
+        fixtures = {"runs-0001-01-01.ndjson": bad}
+        if label != "empty manifest":
+            fixtures["runs-9999-12-31.ndjson"] = _snapshot_manifest(new_stamp)
+        cases.append((label, fixtures, 1, invalid))
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("coverage must not collect, probe, or write sellability")
+
+    for label, fixtures, expected_code, expected_output in cases:
+        with tempfile.TemporaryDirectory() as tmp:
+            for name, data in fixtures.items():
+                _freshness_write(tmp, data, name)
+            _freshness_write(tmp, "private-source-value", "pools-do-not-read.ndjson")
+            before = {name: (Path(tmp) / name).read_bytes() for name in os.listdir(tmp)}
+            stream = io.StringIO()
+            stack, reads = _freshness_guard(tmp)
+            with stack, patch.object(snapshot, "OUT_DIR", tmp), \
+                 patch.object(snapshot.sys, "argv", ["snapshot.py", "--check-coverage"]), \
+                 patch.object(snapshot, "collect", side_effect=forbidden) as collect, \
+                 patch.object(snapshot, "probe_sellability", side_effect=forbidden) as probe, \
+                 patch.object(snapshot, "_write_sellability", side_effect=forbidden) as write, \
+                 redirect_stdout(stream), redirect_stderr(stream):
+                code = snapshot.main()
+            output = stream.getvalue()
+            after = {name: (Path(tmp) / name).read_bytes() for name in os.listdir(tmp)}
+            check(label + " keeps the expected coverage exit and exact safe output",
+                  (code, output) == (expected_code, expected_output),
+                  "exit=%r output=%r" % (code, output))
+            check(label + " reads only manifests and preserves all fixture bytes",
+                  before == after and reads and set(reads).issubset(fixtures)
+                  and collect.call_count == probe.call_count == write.call_count == 0)
+
+
 def main():
     print("=" * 68)
     print("Sellability archive: asking on the day, because later is too late")
