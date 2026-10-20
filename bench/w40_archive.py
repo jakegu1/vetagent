@@ -33,6 +33,12 @@ REQUEST_SECONDS = 10.0
 SEED_SECONDS = 1200.0
 OWNERS = {"bootstrap", "seed", "refresh", "chunks", "runtime", "native", "terminal", "scheduler"}
 AREAS = {"control", "source", "raw", "safe", "code", "seed"}
+_FROZEN_SOURCES = {"bench/goplus_quota_probe.py", "bench/w40_evidence.py", "src/risk.py",
+                   "bench/labels.py", "docs/BACKLOG.md", "tests/test_dataset_replayable.py"}
+_GATE_SOURCES = {"source_quality": _FROZEN_SOURCES | {"bench/w40_native.py", "bench/w40_archive.py",
+                 "bench/w40_local.py", "tools/w40-local.ps1"},
+                 "native_control": _FROZEN_SOURCES | {"bench/w40_native.py"},
+                 "quota_pilot": {"bench/goplus_quota_probe.py"}}
 STATES = {"not_started", "configuration_required", "accepted", "gap", "terminal", "stopped", "stop_unknown"}
 REASONS = {"configuration_required", "ci_refused", "source_drift", "private_path_refused", "invalid_arguments",
            "invalid_binding", "writer_busy", "invalid_lease", "history_corrupt", "storage_refused", "disk_failure",
@@ -330,7 +336,92 @@ def verify_install(config_path, *, expected_config_sha256, expected_manifest_sha
         powershell = manifest["powershell"]
         if not isinstance(powershell, dict) or set(powershell) != {"path", "sha256"} or sha(read(private(powershell["path"]), INCREMENT_CAP)) != powershell["sha256"]:
             fail("source_drift")
-    return FrozenBinding(config_path, expected_config_sha256, expected_manifest_sha256, config, manifest)
+    binding = FrozenBinding(config_path, expected_config_sha256, expected_manifest_sha256, config, manifest)
+    _prior_gates(binding)
+    return binding
+
+
+def _prior_gates(binding, *, complete=False):
+    """Verify only backward-bound attestations, never infer runtime credit."""
+    try:
+        refs = binding.config["quality_gates"]
+        if len(refs) > 3 or complete and len(refs) != 3:
+            fail("source_drift")
+        seen = set()
+        manifest = {record["path"]: record for record in binding.manifest["files"]}
+        for ref in refs:
+            if (not isinstance(ref, dict) or set(ref) != {"kind", "path", "sha256"}
+                    or ref["kind"] not in _GATE_SOURCES or ref["kind"] in seen
+                    or ref["path"] != "quality-gates/" + ref["kind"] + ".json" or not hex_value(ref["sha256"])):
+                fail("source_drift")
+            kind = ref["kind"]
+            seen.add(kind)
+            raw = read(under(binding.roots["control"], ref["path"]), ROW_CAP)
+            value = parsed(raw, ROW_CAP)
+            if (sha(raw) != ref["sha256"] or encoded(value) != raw or not isinstance(value, dict)
+                    or set(value) != {"schema", "kind", "source_commit", "source_files", "evidence", "result"}
+                    or value["schema"] != "w40-prior-gate-v1" or value["kind"] != kind
+                    or not hex_value(value["source_commit"], 40)
+                    or kind == "source_quality" and value["source_commit"] != binding.config["executable_commit"]):
+                fail("source_drift")
+            files = value["source_files"]
+            if not isinstance(files, list) or len(files) != len(_GATE_SOURCES[kind]):
+                fail("source_drift")
+            paths = []
+            for record in files:
+                if (not isinstance(record, dict) or set(record) != {"path", "canonical_sha256"}
+                        or record["path"] not in _GATE_SOURCES[kind] or not hex_value(record["canonical_sha256"])
+                        or record["path"] not in manifest):
+                    fail("source_drift")
+                path = under(binding.roots["code"], record["path"])
+                actual = read(path, MANIFEST_CAP)
+                bound = manifest[record["path"]]
+                if ((len(actual), sha(actual)) != (bound["bytes"], bound["sha256"])
+                        or sha(actual.replace(b"\r\n", b"\n")) != record["canonical_sha256"]):
+                    fail("source_drift")
+                paths.append(record["path"])
+            if paths != sorted(_GATE_SOURCES[kind]):
+                fail("source_drift")
+            evidence = value["evidence"]
+            if (not isinstance(evidence, dict) or set(evidence) != {"path", "sha256"}
+                    or evidence["path"] != "quality-gates/evidence/" + kind + ".json"
+                    or not hex_value(evidence["sha256"])
+                    or sha(read(under(binding.roots["control"], evidence["path"]), REPORT_CAP)) != evidence["sha256"]):
+                fail("source_drift")
+            result = value["result"]
+            if not isinstance(result, dict):
+                fail("source_drift")
+            if kind == "source_quality":
+                if (set(result) != {"passed", "offline_steps", "linux_steps", "master_steps", "locked_builds", "independent", "redteam"}
+                        or result["passed"] is not True or type(result["locked_builds"]) is not int or result["locked_builds"] != 2
+                        or result["independent"] != "pass" or result["redteam"] != "none"
+                        or any(type(result[key]) is not int or result[key] < 47 for key in ("offline_steps", "linux_steps", "master_steps"))
+                        or not result["offline_steps"] == result["linux_steps"] == result["master_steps"]):
+                    fail("source_drift")
+            elif kind == "quota_pilot":
+                if (set(result) != {"completed", "native_exit", "availability"} or result["completed"] is not True
+                        or type(result["native_exit"]) is not int or result["native_exit"] not in (0, 1)
+                        or type(result["availability"]) is not bool):
+                    fail("source_drift")
+            elif (set(result) != {"seam_verified", "native_exit", "labels", "scientific_start"}
+                    or result["seam_verified"] is not True or type(result["native_exit"]) is not int or result["native_exit"] != 0
+                    or type(result["labels"]) is not int or result["labels"] != 0 or result["scientific_start"] is not False):
+                fail("source_drift")
+        if complete and (seen != set(_GATE_SOURCES) or binding.manifest["powershell"] is None):
+            fail("source_drift")
+    except (ArchiveError, KeyError, TypeError, ValueError, AttributeError, OSError):
+        fail("source_drift")
+
+
+def verify_live(binding) -> None:
+    """Read-only production admission; synthetic fixtures convey no host authority."""
+    try:
+        guard(binding)
+        current = verify_install(binding.config_path, expected_config_sha256=binding.config_pin,
+                                 expected_manifest_sha256=binding.manifest_pin, component="archive")
+        _prior_gates(current, complete=True)
+    except (ArchiveError, KeyError, TypeError, ValueError, AttributeError, OSError):
+        fail("source_drift")
 
 
 def guard(binding, *, mutate=False):
@@ -1277,6 +1368,8 @@ def refresh(binding, lease, *, live=False, deadline_mono, clock=None, transport=
     if type(deadline_mono) not in (int, float) or not math.isfinite(deadline_mono):
         fail("invalid_clock")
     deadline = min(start["mono"] + REFRESH_SECONDS, deadline_mono)
+    if transport is None:
+        verify_live(binding)
     claims, results, _attempts = _archive_state(binding)
     terminal = next((x for x in results.values() if x["state"] == "terminal"), None)
     if terminal:
@@ -1497,6 +1590,8 @@ def _source_child(path):
     watchdog.start()
     binding = verify_install(configuration["config"], expected_config_sha256=configuration["expected_config_sha256"],
                              expected_manifest_sha256=configuration["expected_manifest_sha256"], component="archive")
+    if configuration["route"] is None:
+        verify_live(binding)
     directory = private(Path(path).parent)
     if not directory.is_relative_to(binding.roots["source"]) or permit.get("binding") != binding.identity:
         fail("source_corrupt")
