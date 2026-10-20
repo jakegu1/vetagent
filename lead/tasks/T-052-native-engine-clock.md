@@ -141,3 +141,29 @@ This named addition applies to the initial new test helpers and three unchanged
 method names before they are committed/frozen. Existing acceptance files and all
 source guards remain exact. No later test weakening or widened source scope is
 authorized by A1.
+
+### A2 - Preserve network guards and real worker class identity in fixtures
+
+2026-10-20, before any source repair: initial acceptance c86d549 stops while
+Windows asyncio constructs its internal event-loop socketpair. It is retained as
+a fixture/platform failure, not the meaningful engine-clock red. Executor's
+single platform-helper commit e4ac59e initializes stdlib asyncio.Runner before
+installing network mocks, runs the same coroutines on that runner with all mocks
+active, and closes it after mock restoration. It was committed before this named
+lead reconciliation; preserve that chronology. Its60 assertion-call ASTs are
+independently compared with the initial test and remain exact.
+
+The resulting old-source run reaches the real float.timestamp defect but also
+exposes a second helper error: replacing the NativeWorker class with MagicMock
+invalidates the real cleanup isinstance check. This dated amendment permits
+exactly replacing that constructor guard with a mock of NativeWorker.__init__
+that raises AssertionError("native_worker_forbidden"). Keep the real class and
+isinstance identity, every physical socket guard and assert_not_called assertion.
+Do not change inputs, assertions, method names, expected answers or source guards.
+
+Commit this constructor-only test fix separately, recheck all60 assertion ASTs
+against c86d549, freeze the exact corrected acceptance and rerun on unchanged old
+source. Only a meaningful actual clock-contract red counts before the separate
+source repair. Both original fixture failures remain distinct records. A2 names
+these two bounded helper corrections only; no general test-change exception or
+claim that earlier failed runs passed is introduced.
