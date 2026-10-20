@@ -712,6 +712,12 @@ def request_stop(binding, *, reason):
 
 def _native(binding):
     global _NATIVE
+    guard(binding)
+    # Recheck the pinned import bytes before executing an acquisition module.
+    # The binding's earlier verification is not evidence of unchanged disk bytes.
+    for record in binding.manifest["files"]:
+        if _hash_regular(under(binding.roots["code"], record["path"])) != (record["bytes"], record["sha256"]):
+            fail("source_drift")
     path = under(binding.roots["code"], "bench/w40_native.py")
     if _NATIVE is None:
         bench = str(path.parent)
