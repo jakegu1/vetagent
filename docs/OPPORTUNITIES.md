@@ -58,18 +58,6 @@ Evidence, collected 2026-09-04: no head-to-head test exists (verified by search)
 AV-Comparatives sustains a business on exactly this premise; published academic labelling
 methodology exists (arXiv 2201.07220, verified).
 
-### O2 · Sell measurement to people with capital at risk, not to bot operators
-
-**Blocked until: gate 2026-10-20** (does anyone want to pay)
-
-GoPlus prices the same class of data at $199 / $399 / $799 / $1,899 / $3,499 per month,
-roughly 35x above the $99 ceiling STRATEGY.md assumes. That suggests the buyer with real
-budget is a listing desk, custodian or compliance function rather than a bot operator.
-
-Parked because Experiment D has not run. The current plan says to ask twenty bot
-operators for money. Changing the target segment before asking anyone is exactly the
-substitution this file exists to prevent.
-
 ### O3 · Integration pull requests into open-source trading agents
 
 **Not blocked — this is a distribution tactic for the current product, not a new one.**
@@ -160,6 +148,37 @@ Fewer than 10 and this closes. **Constraint that binds either way:** read only t
 archive, never query logs -- there are none, by design, and this idea must not be the reason
 that changes.
 
+### O10 · A policy enum (ALLOW / WARN / BLOCK / REVIEW)
+
+**Blocked until: gate 2026-12-04** (is further investment worth it). Date accepted by the
+owner 2026-09-14.
+
+Source: ChatGPT evaluation §6.1. **Not adopted as a rename.** `low / medium / high / unknown`
+with `recommendation`, and the fields that name what fired and what kind of unknown it was,
+carry the same information. Revisit only if a real integrator asks for an enum to branch on
+without parsing prose -- and then as a derived field, never a replacement, because renaming
+the verdict would break every caller that exists.
+
+---
+
+## Reviewed and closed
+
+### O2 · Sell measurement to people with capital at risk, not to bot operators
+
+**Blocked until: gate 2026-10-20** (does anyone want to pay)
+
+GoPlus prices the same class of data at $199 / $399 / $799 / $1,899 / $3,499 per month,
+roughly 35x above the $99 ceiling STRATEGY.md assumes. That suggests the buyer with real
+budget is a listing desk, custodian or compliance function rather than a bot operator.
+
+Parked because Experiment D has not run. The current plan says to ask twenty bot
+operators for money. Changing the target segment before asking anyone is exactly the
+substitution this file exists to prevent.
+
+**Reviewed 2026-10-20:** No new direction is adopted. Reconsideration
+still depends on actual Experiment D evidence. This records the due review,
+without closing this idea or its original experiment.
+
 ### O8 · Peer-relative risk
 
 **Blocked until: gate 2026-10-20** (does anyone want to pay). Date accepted by the owner
@@ -174,6 +193,10 @@ Source: ChatGPT evaluation §14.3. Absolute thresholds mislead on multi-pool tok
 within 30 days, reserve within 3x), recompute the 22 false alarms and the 30 dead tokens,
 and adopt only if it removes false alarms without adding a single dead-token miss.
 
+**Reviewed 2026-10-20:** No new direction is adopted. Reconsideration
+still depends on actual Experiment D evidence. This records the due review,
+without closing this idea or its original experiment.
+
 ### O9 · Evidence-freshness budget as a caller parameter
 
 **Blocked until: gate 2026-10-20** (does anyone want to pay). Date accepted by the owner
@@ -185,16 +208,9 @@ cheap and ships on its own; a parameter nobody has asked for is a feature with z
 **The experiment that settles it.** None to run: it unblocks when one external caller asks
 for it, in the gate evidence or an issue. If nobody has by the date, it closes.
 
-### O10 · A policy enum (ALLOW / WARN / BLOCK / REVIEW)
-
-**Blocked until: gate 2026-12-04** (is further investment worth it). Date accepted by the
-owner 2026-09-14.
-
-Source: ChatGPT evaluation §6.1. **Not adopted as a rename.** `low / medium / high / unknown`
-with `recommendation`, and the fields that name what fired and what kind of unknown it was,
-carry the same information. Revisit only if a real integrator asks for an enum to branch on
-without parsing prose -- and then as a derived field, never a replacement, because renaming
-the verdict would break every caller that exists.
+**Reviewed 2026-10-20:** No new direction is adopted. Reconsideration
+still depends on actual Experiment D evidence. This records the due review,
+without closing this idea or its original experiment.
 
 ### O11 · Monetization tiers
 
@@ -208,9 +224,9 @@ market that barely exists, not evidence that nobody wants risk checks: the free 
 the same data is used at very large volume (GoPlus's own published call counts, cited by the
 2026-09-13 audit and not re-checked here).
 
----
-
-## Reviewed and closed
+**Reviewed 2026-10-20:** No new direction is adopted. Reconsideration
+still depends on actual Experiment D evidence. This records the due review,
+without closing this idea or its original experiment.
 
 ### O6 · Holders who actually failed to sell, as a label the engine cannot see · **CLOSED 2026-09-18: run the measurement, change no label before 10-16**
 
