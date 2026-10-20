@@ -223,6 +223,9 @@ jobs:
       - name: Native paired acquisition is bounded private and recoverable offline
         run: python tests/test_w40_native.py
 
+      - name: Archive source views preserve verified bytes and bounded recovery
+        run: python tests/test_w40_archive.py
+
       # DECISIONS E30. The upstream contract test goes quiet rather than red when a third
       # party does not answer -- correct, and it means a week of silence prints the same
       # "all passed" as a week of checking. This reads the daily record and fails when a
