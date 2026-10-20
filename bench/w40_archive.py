@@ -1352,6 +1352,7 @@ def report(binding):
 class NativeSourceWorker:
     """An independent GET child; T046 provides only verified OS containment."""
     def __init__(self, request, *, directory, permit, binding, clock=None, hooks=None, recheck=None, route=None):
+        ci_guard()
         self.request, self.directory, self.permit, self.binding = request, Path(directory), permit, binding
         self.clock, self.hooks, self.recheck, self.route = clock or Clock(), hooks, recheck, route
         native = _native(binding)
@@ -1379,7 +1380,7 @@ class NativeSourceWorker:
         native = _native(self.binding)
         error, complete = None, False
         try:
-            guard(self.binding)
+            guard(self.binding, mutate=True)
             verify_install(self.binding.config_path, expected_config_sha256=self.binding.config_pin,
                            expected_manifest_sha256=self.binding.manifest_pin, component="archive")
             _request(self.binding, self.request["path"], cap=self.request["cap"], blob="/blobs/" in self.request["path"])
@@ -1454,6 +1455,7 @@ def _child_parent_death(parent):
 
 
 def _source_child(path):
+    ci_guard()
     configuration = parsed(read(private(path), ROW_CAP), ROW_CAP)
     required = {"schema", "config", "expected_config_sha256", "expected_manifest_sha256", "request", "permit", "parent", "nonce", "route"}
     if set(configuration) != required or configuration["schema"] != "w40-source-worker-v1":
