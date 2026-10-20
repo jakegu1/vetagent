@@ -93,7 +93,7 @@ class OfflineFixture:
                            "http.client.HTTPSConnection.connect", "subprocess.Popen"):
                 self.stack.enter_context(patch(target, side_effect=AssertionError("physical_io_forbidden")))
             self.worker = self.stack.enter_context(patch.object(
-                native, "NativeWorker", side_effect=AssertionError("native_worker_forbidden")))
+                native.NativeWorker, "__init__", side_effect=AssertionError("native_worker_forbidden")))
             # Exercise the real guards before source, enrollment, raw or journal writes.
             # Setting refusal flags never clears a real CI flag; patch.dict restores all bytes.
             with patch.dict(os.environ, {"CI": "true", "GITHUB_ACTIONS": "true"}):
