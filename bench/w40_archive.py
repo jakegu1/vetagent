@@ -1200,6 +1200,8 @@ def seed(binding, lease, *, clock=None):
     except ArchiveError as exc:
         reason = str(exc)
         if claim:
+            if claim["transaction_id"] in _archive_state(binding)[1]:
+                raise
             return _finish_transaction(binding, lease, claim, ticket, state="terminal", reason=reason)
         return _blocked_result(binding, reason, state="terminal")
 
@@ -1437,6 +1439,8 @@ def refresh(binding, lease, *, live=False, deadline_mono, clock=None, transport=
         reason = str(exc)
         state = "gap" if reason in ("source_unavailable", "deadline", "candidate_limit", "request_cap") else "terminal"
         if claim:
+            if claim["transaction_id"] in _archive_state(binding)[1]:
+                raise
             prior = accepted_view(binding)
             return _finish_transaction(binding, lease, claim, ticket, state=state, reason=reason,
                                        view=prior["view_sha256"] if prior else None, unexamined=1)
