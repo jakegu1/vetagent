@@ -7,20 +7,24 @@
 
 ## Status in one line
 
-The deployed Worker remains d354179. Operator/evidence source through T-051 is
-published at9dc8686 after actual complete/Linux/master gates, retaining bot data
-a482332. T-052's narrow native datetime repair is independently approved and
-normally integrated at9034ccf; its actual post-merge complete45 gate passes.
-Exact-published-head CI and actual native observations are bound separately.
+The deployed Worker remains d354179. Operator/evidence source through T-052 is
+published at7625779, retaining bot dataa482332. The narrow native datetime repair
+passes independent/adversarial review, post-merge and final complete45 gates,
+actual exact-head master39403586342 and both locked builds. A distinct actual
+corrective control then returns data for all six requests and completes GET,
+RPC and assessment with its original caps and complete cleanup checks.
 The sole quota pilot does not prove sustainable availability. The original native
 control fails before physical requests; the distinct direct-base control exposes
 the now-repaired datetime seam after successful data-bearing HTTP replies. Both
-failed controls remain unchanged. A new corrective control needs its own binding.
+failed controls remain unchanged. The separately bound corrective PASS proves
+the runtime seam; it provides zero independent labels and starts no study.
 
 The remaining local W40 engineering is split into verified archive input,
 durable queue/runtime and owned scheduling (T-047, T-049, T-050). Archive source
-has a retained failed complete gate and a repaired ordinary large-blob defect;
-final gates and the genuinely completed mandatory review still block publication.
+has a retained original failed complete gate and a repaired ordinary large-blob
+defect. Candidate3fd33ad passes the complete46 gate with all983 tracked bytes
+exact. Candidate Linux/build evidence and genuinely completed applicable reviews
+still gate publication; the mandatory security review remains incomplete.
 Dependent runtime/scheduler specs remain drafts. Ordinary engineering continues
 under the Owner's existing technical authorization.
 No W40 thirty-day clock has started. W57's original study is source_changed,

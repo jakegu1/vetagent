@@ -64,9 +64,12 @@ Separate zero-Vendor direct-base identity and native-loopback witnesses succeed.
 A distinct direct-base control then completes three data-bearing HTTP200 replies
 and fails at real assessment because native supplies a float where the engine
 requires a datetime. Its failure remains separate and is not an upstream outage.
-T-052 repairs that actual seam; a later separately bound corrective control needs
-current clean source, actual master CI and the reviewed fixed complete-runtime pin.
-It cannot retry or relabel either old attempt, acquire labels or start a study.
+T-052 repairs that actual seam. Exact published7625779 passes actual master CI
+39403586342, all45 required commands and both locked builds. A separately bound
+corrective control then passes at2026-10-20T10:34Z: six data-bearing HTTP200
+responses, GET/RPC/complete assessment returned, original caps preserved, all
+children retired, ports restored, environment/source/fixed runtime bytes exact.
+Both old failed attempts remain failed. Zero labels, no study or automatic retry.
 
 T-051 source b9a7479 records the truthful undecided checkpoint through the
 unchanged guard and is normally merged as fd1429a after fresh independent twelve
@@ -91,7 +94,10 @@ successful CI does not fill those gaps. The normal merge9034ccf preserves the
 reviewed source and passes post-merge complete45, native exit zero, all976 tracked
 bytes exact. Explicit generation succeeds; only proved date/recent-display and
 line-ending output is restored from external exact copies. See lead/reviews/T-052.md.
-Bind exact-published-head master CI and actual native observations separately.
+Final closure7625779 also passes a separately prefrozen complete45 in291.1
+seconds with all977 tracked raw bytes exact; actual master39403586342 and both
+locked builds pass on that exact checkout. The distinct runtime result above is
+separate from these source gates and does not establish a scientific outcome.
 Only two native datetime assignments and additive offline acceptance change;
 Worker sources and six frozen engine/core pins remain exact. Autonomy stays A0;
 the escaped real-engine seam is recorded under Q1 in PITFALLS.
@@ -116,8 +122,15 @@ R6 acceptance precedes the two bounded witness corrections and the focused
 positive/fresh offline report passes. Named R7 protects the fixture parent during
 a hook-wait exception without changing any assertion or time limit. A diagnostic
 helper's missing bootstrap environment is retained as a helper failure, not a
-source diagnosis. Final complete/Linux/build evidence and genuinely completed
-reviews remain required. The mandatory adversarial review is incomplete and has
+source diagnosis. Named R8 separates two finite fixture startup waits; neither
+checkpoint is native readiness. R9 normally joins reviewed7625779. R10 omits only
+Python's own Lib/test from new synthetic Windows runtime copies, retaining every
+kept byte, Lib/unittest, DLLs and all production data/assertions/time limits. Its
+unchanged public-method baseline fails; the candidate public method passes.
+Candidate3fd33ad also passes the complete46 gate, native exit zero in622.2
+seconds, with all983 tracked raw bytes exact. Actual candidate Linux/build
+evidence and genuinely completed reviews still gate archive publication.
+The mandatory adversarial review is incomplete and has
 no none/PASS verdict; an ordinary functional review cannot replace it.
 T-049/T-050 remain drafts requiring the exact reviewed dependency/API and green
 implementation base before tests. Registration changes integrate serially.
