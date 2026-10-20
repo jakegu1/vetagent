@@ -7,22 +7,29 @@
 
 ## Status in one line
 
-The deployed Worker remains d354179. Operator/evidence source through T-048 is
-published at 1de0259 after actual complete/Linux/master gates; later bot data
-a482332 are retained. The sole quota pilot does not prove sustainable availability.
-The original native control fails before physical requests; a separately reviewed
-direct-base configuration still requires a distinct source-bound control.
+The deployed Worker remains d354179. Operator/evidence source through T-051 is
+published at9dc8686 after actual complete/Linux/master gates, retaining bot data
+a482332. T-052's narrow native datetime repair is independently approved and
+normally integrated at9034ccf; its actual post-merge complete45 gate passes.
+Exact-published-head CI and actual native observations are bound separately.
+The sole quota pilot does not prove sustainable availability. The original native
+control fails before physical requests; the distinct direct-base control exposes
+the now-repaired datetime seam after successful data-bearing HTTP replies. Both
+failed controls remain unchanged. A new corrective control needs its own binding.
 
 The remaining local W40 engineering is split into verified archive input,
-durable queue/runtime and owned scheduling (T-047, T-049, T-050). Ordinary
-engineering continues under the Owner's existing technical authorization.
+durable queue/runtime and owned scheduling (T-047, T-049, T-050). Archive source
+has a retained failed complete gate and a repaired ordinary large-blob defect;
+final gates and the genuinely completed mandatory review still block publication.
+Dependent runtime/scheduler specs remain drafts. Ordinary engineering continues
+under the Owner's existing technical authorization.
 No W40 thirty-day clock has started. W57's original study is source_changed,
 exported and inconclusive. A distinct pilot/start succeeds; the new fixed window
 ends 2026-10-22T07:12:33.877001Z, with actual scheduled continuation still unobserved.
 T-051 records an unavailable D measurement as undecided using the unchanged guard;
-its source is reviewed and integrated after complete local/actual Linux checks.
-Its post-merge complete44 gate also succeeds. Exact published-head master CI is
-separately required for runtime/publication verification.
+its source is reviewed and published after complete local/actual Linux checks.
+Exact9dc8686 master39392487756 and both locked builds are verified. This repairs
+the checkpoint instrument without inventing an empirical experiment result.
 Experiment D remains empirically open and due 2026-10-20 UTC. Sign-off categories,
 payment gate and pre-registered scientific rules are unchanged.
 

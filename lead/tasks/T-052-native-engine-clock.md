@@ -1,7 +1,7 @@
 ---
 id: T-052
 title: Preserve the engine datetime contract across native acquisition contexts
-status: ready
+status: done
 level: 3
 size: S
 backlog: W40 prerequisite and escaped runtime regression
