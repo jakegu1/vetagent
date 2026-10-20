@@ -835,6 +835,30 @@ def prepare_code(existing=None):
         venv = CODE / "venv"
         subprocess.run([str(executable), "-I", "-B", "-m", "venv", "--copies", "--without-pip", str(venv)],
                        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if os.name == "posix" and sys.maxsize > 2 ** 32 and sys.platform != "darwin":
+            link = venv / "lib64"
+            if not link.is_symlink() or os.readlink(link) != "lib":
+                raise RuntimeError("fixture_compatibility_link_mismatch")
+            archive.private(venv / "lib")
+            retained = {path.relative_to(venv).as_posix(): (path.stat().st_size, sha(path.read_bytes()))
+                        for path in venv.rglob("*") if path.is_file()}
+            try:
+                archive.private(link)
+            except archive.ArchiveError as error:
+                if str(error) != "private_path_refused":
+                    raise
+            else:
+                raise RuntimeError("fixture_compatibility_link_not_refused")
+            print("fixture_posix_lib64_pre_unlink=private_path_refused", flush=True)
+            link.unlink()
+            archive.private(venv / "lib")
+            current = {path.relative_to(venv).as_posix(): (path.stat().st_size, sha(path.read_bytes()))
+                       for path in venv.rglob("*") if path.is_file()}
+            if current != retained:
+                raise RuntimeError("fixture_regular_files_changed")
+            print(encoded(dict(fixture_posix_lib64_retired=True, lib_retained=True, regular_files=len(retained),
+                               regular_bytes=sum(value[0] for value in retained.values()),
+                               retained_map_sha256=sha(encoded(retained)))).decode(), flush=True)
         interpreter = venv / "bin/python"
     environment = dict(os.environ)
     for name in ("PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP"):
