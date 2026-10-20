@@ -80,12 +80,12 @@ gantt
 ### Is the archive still collecting?
 
 ```text
-█████████████████████   2026-09-29 -> 2026-10-19
+█████████████████████   2026-09-30 -> 2026-10-20
 ```
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**47 days, no gaps.** Newest is 2026-10-19, yesterday.
+**48 days, no gaps.** Newest is 2026-10-20, today.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- lead: close T-051 source after the actual post-merge gate
+- lead: record the independently verified T-051 source decision
+- lead: correct current Owner action and task publication records
+- lead: reconcile source runtime and recovery stages from actual evidence
+- T-051: regenerate Owner page for the actual undecided checkpoint
 - lead: record the contract-compliant T051 release branch
 - T-051: record the missing undecided D checkpoint
 - T-051: named change for independent real-row rejection
-- lead: name T051 rejection-count correction and candidate generation seam
-- T-051: acceptance tests
-- lead: specify truthful D checkpoint with unchanged rules
-- lead: reconcile current source gates and preserve final native review
-- lead: record independent checkpoint chronology review
 
-_320 more not shown (328 commits in total)._
+_325 more not shown (333 commits in total)._
 
 ## What I got wrong
 
