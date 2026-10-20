@@ -100,15 +100,17 @@ def private(path, *, missing=False):
     try:
         path = Path(os.path.abspath(os.fspath(path)))
         for ancestor in reversed((path, *path.parents)):
-            if ancestor.exists() or ancestor.is_symlink():
+            try:
                 info = ancestor.lstat()
-                if stat.S_ISLNK(info.st_mode) or getattr(info, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 1024):
+            except FileNotFoundError:
+                if not missing:
                     fail("private_path_refused")
-                if not stat.S_ISDIR(info.st_mode) and ancestor != path:
-                    fail("private_path_refused")
-                if stat.S_ISDIR(info.st_mode) and (ancestor / ".git").exists():
-                    fail("private_path_refused")
-            elif not missing:
+                continue
+            if stat.S_ISLNK(info.st_mode) or getattr(info, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 1024):
+                fail("private_path_refused")
+            if not stat.S_ISDIR(info.st_mode) and ancestor != path:
+                fail("private_path_refused")
+            if stat.S_ISDIR(info.st_mode) and (ancestor / ".git").exists():
                 fail("private_path_refused")
         return path
     except (OSError, TypeError, ValueError):
@@ -120,7 +122,8 @@ def under(root, relative, *, missing=False):
             or relative.startswith("/") or any(x in ("", ".", "..") for x in relative.split("/"))):
         fail("private_path_refused")
     path = private(Path(root) / relative, missing=missing)
-    if not path.is_relative_to(private(root)):
+    # private(path) just validated the root and every ancestor as well.
+    if not path.is_relative_to(Path(os.path.abspath(os.fspath(root)))):
         fail("private_path_refused")
     return path
 
@@ -137,9 +140,14 @@ def read(path, cap):
 
 
 def file_hash(path, *, check=None):
+    return _hash_regular(private(path), check=check)
+
+
+def _hash_regular(path, *, check=None):
+    """Hash immediately after the caller validated this exact private path."""
     digest, size = hashlib.sha256(), 0
     try:
-        with private(path).open("rb") as handle:
+        with path.open("rb") as handle:
             while True:
                 if check:
                     check()
@@ -248,7 +256,7 @@ def verify_install(config_path, *, expected_config_sha256, expected_manifest_sha
         if not isinstance(record, dict) or set(record) != {"path", "bytes", "sha256"} or record["path"] in seen:
             fail("source_drift")
         seen.add(record["path"])
-        if file_hash(under(roots["code"], record["path"])) != (record["bytes"], record["sha256"]):
+        if _hash_regular(under(roots["code"], record["path"])) != (record["bytes"], record["sha256"]):
             fail("source_drift")
     if "bench/w40_archive.py" not in seen or Path(__file__).resolve() != (roots["code"] / "bench/w40_archive.py").resolve():
         fail("source_drift")
@@ -396,9 +404,14 @@ def append(binding, lease, name, kind, value):
     return sha(raw)
 
 
-def measured(binding, *, hashes=False):
+def measured(binding, *, hashes=False, areas=None):
     result = []
+    areas = AREAS if areas is None else set(areas)
+    if areas - AREAS:
+        fail("invalid_inventory")
     for area, root in sorted(binding.roots.items()):
+        if area not in areas:
+            continue
         for path in sorted(root.rglob("*")):
             private(path)
             if path.is_file():
@@ -412,10 +425,10 @@ def measured(binding, *, hashes=False):
                             fail("history_corrupt")
                         value["sha256"] = sha(b"")
                     else:
-                        value["sha256"] = file_hash(path)[1]
+                        value["sha256"] = _hash_regular(path)[1]
                 result.append(value)
     for label, path in (("config", binding.config_path), ("manifest", Path(binding.config["manifest"]))):
-        if not any(path.is_relative_to(root) for root in binding.roots.values()):
+        if "code" in areas and not any(path.is_relative_to(root) for root in binding.roots.values()):
             value = dict(area="code", path="@" + label, bytes=path.stat().st_size)
             if hashes:
                 value["sha256"] = file_hash(path)[1]
@@ -474,7 +487,7 @@ def reserve(binding, lease, *, reservation_id, owner, ceilings):
 
 
 def inventory(binding):
-    return [x for x in measured(binding, hashes=True) if x["area"] in ("source", "raw", "safe")]
+    return measured(binding, hashes=True, areas=("source", "raw", "safe"))
 
 
 def settle(binding, lease, ticket, *, inventory):
@@ -1000,7 +1013,7 @@ def seed(binding, lease, *, clock=None):
             fail("source_incomplete")
         catalog = _seed_input(binding)
         source_total = sum(x["bytes"] for x in catalog["catalog"])
-        staged_total = sum(x["bytes"] for x in measured(binding) if x["area"] == "seed")
+        staged_total = sum(x["bytes"] for x in measured(binding, areas=("seed",)))
         if staged_total + source_total * 2 + TERMINAL_RESERVE + 4 * REPORT_CAP > SEED_CAP:
             fail("seed_limit")
         claim, ticket = _begin(binding, lease, "seed", clock)
@@ -1048,7 +1061,7 @@ class FetchSession:
         self.transport, self.hooks, self.number = transport, hooks, 0
         self.date = start["utc"][:10]
         self.last = None
-        self.base_source = sum(x["bytes"] for x in measured(binding) if x["area"] == "source")
+        self.base_source = sum(x["bytes"] for x in measured(binding, areas=("source",)))
         _claims, _results, attempts = _archive_state(binding)
         if attempts:
             self.last = attempts[-1]["monotonic"]
@@ -1068,7 +1081,7 @@ class FetchSession:
             if delay > 0:
                 await self.clock.sleep(delay)
         sample = self.check(REQUEST_SECONDS)
-        used = sum(x["bytes"] for x in measured(self.binding) if x["area"] == "source") - self.base_source
+        used = sum(x["bytes"] for x in measured(self.binding, areas=("source",))) - self.base_source
         if used + request["cap"] + 4 * ROW_CAP > self.ticket["ceilings"]["source"]:
             fail("candidate_limit")
         self.number += 1
@@ -1196,7 +1209,7 @@ async def _refresh_acquire(session):
     if set(old) - {x["path"] for x in catalog}:
         fail("prefix_changed")
     changed = [x for x in catalog if x["path"] not in old or old[x["path"]]["blob_sha1"] != x["sha"]]
-    used = sum(x["bytes"] for x in measured(binding) if x["area"] == "source") - session.base_source
+    used = sum(x["bytes"] for x in measured(binding, areas=("source",))) - session.base_source
     if used + sum(x["bytes"] * 3 + 4 * ROW_CAP for x in changed) + REPORT_CAP > session.ticket["ceilings"]["source"]:
         fail("candidate_limit")
     files = {}
