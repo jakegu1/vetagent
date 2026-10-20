@@ -817,9 +817,15 @@ def prepare_code(existing=None):
         relocated = CODE / "python-base"
         relocated.mkdir()
         base = Path(sys.base_prefix)
+        original_ignore = shutil.ignore_patterns("site-packages", "__pycache__", "*.pyc")
+        def fixture_ignore(directory, names):
+            ignored = set(original_ignore(directory, names))
+            if Path(directory) == base / "Lib":
+                ignored.add("test")
+            return ignored
         for directory in ("Lib", "DLLs"):
             shutil.copytree(base / directory, relocated / directory,
-                            ignore=shutil.ignore_patterns("site-packages", "__pycache__", "*.pyc"))
+                            ignore=fixture_ignore)
         for source in base.iterdir():
             if source.is_file() and source.suffix.lower() in (".dll", ".exe", ".zip", ".pyd"):
                 shutil.copyfile(source, relocated / source.name)
