@@ -778,3 +778,57 @@ on its exact clean head only after the lead's slot grant, with a true prior
 source/helper freeze. Actual Linux46/builds and the required completed reviews
 still gate publication. The interrupted security review remains incomplete;
 neither packaging nor ordinary functional PASS replaces RED-TEAM none.
+
+### R11 - Prepare the new POSIX fixture without its compatibility alias
+
+2026-10-20: actual candidate push CI39412851306 checks out3fd33ad8 and fails
+the archive step: seven tests in2.608s, one failure and twelve errors. The
+retained trace reaches measured -> private and fixed private_path_refused;
+it does not name the offending relative path. Of46 required commands,38 pass,
+one fails and seven are skipped. Both locked builds are skipped, not passed.
+The same exact source has a retained Windows complete46 PASS. No rerun occurred.
+
+Actual setup logs bind CPython3.12.15/x64. CPython's official3.12 venv source
+creates lib64 -> lib on64-bit non-macOS POSIX even when executable copies are
+requested: https://github.com/python/cpython/blob/3.12/Lib/venv/__init__.py .
+This identifies a concrete fixture hypothesis, not a measured path or sole
+cause from the old job. The production alias refusal is correct and stays exact.
+
+Named change: only the existing non-Windows prepare_code branch, immediately
+after its unchanged venv --copies --without-pip command. On the same64-bit
+non-macOS POSIX condition, require exactly the newly created venv/lib64 symbolic
+link with literal readlink value lib. No alternate link, absolute target,
+generic filter or file/directory deletion is allowed. Call the real existing
+archive.private on venv/lib first; it must pass. Call it on venv/lib64 and
+require the original ArchiveError private_path_refused. Only then unlink that
+one owned compatibility link, retaining the complete target lib subtree and
+all regular files unchanged. A fixed bounded marker may report this named
+fixture characterization without absolute/private paths. Missing, different
+or unexpectedly accepted links stop rather than broadening preparation.
+
+Do not change production sources, their private/alias/import/runtime guards,
+any seven acceptance method AST, old assertions/inputs, native10/refresh60/
+recover20 limits, R7/R8 handoffs, Windows R10 copy rules, original real CI flags,
+interpreter/venv options, manifests, actual retained runtimes or scientific
+rules. A reverse audit must restore the complete prior acceptance file28dcd782
+byte-exact by removing only this named helper addition. The old actual Linux
+failure remains the meaningful pre-fix red; no original trace is rewritten.
+
+Commit the named helper fix alone after this amendment, then freeze it. The
+next actual Linux archive run must show the real pre-unlink refusal and retained
+lib characterization plus all seven original acceptance methods passing before
+claiming this hypothesis resolved the observed failure. If another alias or
+failure remains, preserve it and return for a named decision; no broadened filter.
+
+After static reverse/contract/source/Windows-branch equality checks, the lead
+authorizes ONE next feature push for actual Linux46/build evidence in parallel
+with ONE serialized Windows complete46 on its exact clean head. The two hosts,
+trees and caches are independent; every actual configured command and all source
+bytes still require separate proof before release. Do not repeat a failing full
+or CI until a newly justified correction is adopted. A metadata-only master
+update is not a required source dependency merge for this fixture-only change.
+
+Fresh ordinary functional round2 can then bind the corrected exact head and
+perform its own current-head checks. The interrupted mandatory security review
+is still incomplete; this ordinary fixture repair neither retries that review
+nor replaces RED-TEAM none, installation or study activation requirements.
