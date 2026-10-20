@@ -114,3 +114,30 @@ source scope, both real handoffs, restoration/mutant, official configured gate,
 actual Linux source/builds and source-bound sealed review artifacts. State all
 unchecked scientific/runtime dimensions. No Worker upload is required for this
 bench-only source change.
+
+## Amendments
+
+### A1 - Isolate only the offline fixture directory boundary
+
+2026-10-20, before the first acceptance commit: conflict search finds that real
+core._private_directory deliberately rejects actual CI/GITHUB_ACTIONS. Existing
+native fixtures clear these flags, so reusing them would contradict this task's
+requirement to retain real flags. The implementation contract is unchanged; name
+the exact test isolation here instead of silently bypassing a real CLI refusal.
+
+Only inside the new offline unittest fixture, after characterizing the unmodified
+core/native/public CLI refusal under actual CI/GITHUB_ACTIONS before any fixture
+write, a finally-restored mock of core._private_directory may validate the exact
+fixture runtime/private directories. It must restrict inputs to those fixed
+external fixture roots and retain real native.external/private_path checks,
+ancestor and alias rejection, and disjointness. Do not substitute general
+arbitrary path validation, clear real flags, patch a production guard/source or
+run a live action. Physical network/default NativeWorker entry is forbidden and
+must fail immediately. Test helper state and module/environment bytes are restored
+on every exit. The mock supplies only a clock/engine seam fixture; it is not real
+native transport, containment, private-runtime or LIVE eligibility evidence.
+
+This named addition applies to the initial new test helpers and three unchanged
+method names before they are committed/frozen. Existing acceptance files and all
+source guards remain exact. No later test weakening or widened source scope is
+authorized by A1.
