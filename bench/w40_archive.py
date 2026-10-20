@@ -124,6 +124,8 @@ def private(path, *, missing=False):
                 continue
             if stat.S_ISLNK(info.st_mode) or getattr(info, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 1024):
                 fail("private_path_refused")
+            if stat.S_ISREG(info.st_mode) and info.st_nlink != 1:
+                fail("private_path_refused")
             if not stat.S_ISDIR(info.st_mode) and ancestor != path:
                 fail("private_path_refused")
             if stat.S_ISDIR(info.st_mode) and (ancestor / ".git").exists():
