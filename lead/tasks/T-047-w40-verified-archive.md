@@ -628,3 +628,51 @@ not native eligibility or a relaxed assertion. Preserve the original failed
 complete45 and all known source defects as historical evidence. Final source
 still requires its own complete configured gate, actual Linux/builds and all
 applicable genuinely completed reviews before publication.
+
+### R8 - Observe fixture bootstrap separately from native readiness
+
+2026-10-20: one separately frozen exact-bootstrap diagnostic observes the actual
+before_ack hook12.744 seconds after parent creation, outside the generic fixture
+wait's12 seconds. Retained stage timestamps place the refresh claim near6.36
+seconds, permit near6.40, native request/process creation near9.81 and actual
+native readiness/hook near12.74. Permit-to-ready is about6.34 seconds and remains
+inside the unchanged native10-second limit. These are one actual diagnostic's
+observations, not CPU profiling, a complete acceptance pass or proof about the
+earlier truncated failures. The prior missing-environment helper run remains a
+separate unqualified failure. Its original evidence is not relabeled.
+
+Keep every production validation, source/runtime pin, permit/native10-second and
+refresh60-second budget exact. No performance/security-source rewrite or larger
+test timeout is authorized. The acceptance's purpose is actual parent-death and
+restoration across the native handoff. Give configuration/source bootstrap and
+supervised native readiness distinct observed origins using a fixture-only
+transport-entry checkpoint. This checkpoint is not native readiness or LIVE
+eligibility; only the existing actual hook and later assertions supply that proof.
+
+Named frozen-test/helper changes, committed alone before execution:
+
+- LocalTransport accepts one optional fixture checkpoint Path defaulting to
+  None. At the start of __call__, immediately before the unchanged actual
+  NativeSourceWorker construction, a configured checkpoint writes only the
+  fixed JSON stage transport_entry. All old callers/defaults, constructor
+  arguments to the real worker, await and transport/source behavior stay exact.
+- child_main supplies only its exact fixture-root
+  parent-transport-entry.json path when constructing that LocalTransport. The
+  recover return, source/CI/private verification, actual hooks and all source
+  clock/deadline expressions remain exact.
+- Inside R7's existing protected try, the parent-death method first waits for
+  this checkpoint through the unchanged wait_for helper/default12-second wait,
+  then performs its original wait_for(parent-hook.json) through that same
+  unchanged helper/default. All original assertions, modes, inputs, finally
+  cleanup and other timeout literals stay exact. A checkpoint/hook failure still
+  fails and retires the owned parent through the existing finally.
+
+This explicitly separates two finite setup/readiness waits; it does not claim
+the original total12-second envelope is retained. No single wait, production
+permit or scientific clock is enlarged, and no unobserved hook becomes success.
+Audit the exact named helper/call/wait changes, all old assertion/input/timeout
+ASTs and the other six methods. Retain the actual late-hook diagnostic as the
+fixture-envelope red. Freeze the new test/helper before the real unchanged normal
+cases and full configured gate. Final source still needs actual Linux/builds and
+all genuinely completed applicable reviews. No new distinct mutant, live request,
+cohort, study or retry is authorized.
