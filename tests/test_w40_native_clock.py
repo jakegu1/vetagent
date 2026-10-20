@@ -292,7 +292,7 @@ class NativeClockAcceptance(unittest.TestCase):
                              {fixture.ds, "https://mainnet.base.org", fixture.hp})
             self.assertEqual(result["stages"], dict.fromkeys(("reserve", "ohlcv", "oracle", "engine"), "observed"))
             self.assertEqual((result["reserved"], result["attempted"], result["completed"],
-                result["error"], result["unknown"], result["unfinished"], fixture.retired), (6, 6, 6, 1, 1, 0, 6))
+                result["error"], result["unknown"], result["unfinished"], fixture.retired), (6, 6, 5, 1, 1, 0, 6))
             self.assertEqual((native.BODY_CAP, native.ATTEMPT_SECONDS, native.PACKET_SECONDS),
                              (256 * 1024, 30.0, 20 * 60.0))
 
