@@ -121,3 +121,35 @@ test. Two ordinary review rounds maximum; later bounces only for invariants,
 security/privacy/data loss or regressions. Original experimental acceptance
 remains open. One finding per fix commit and meaningful red-before-fix evidence.
 No own merge or push; return exact clean HEAD and evidence for every criterion.
+
+## Named lead amendments
+
+### A1 - Preserve both failures for a marked invalid real conclusion
+
+The acceptance-only commit is `643e36c48c117d59a1ca96e04dfb19e109c927d3`.
+Its new `test_actual_checkpoint_and_each_review_are_required_by_the_unchanged_guard`
+assumes one failure for every invalid conclusion. The unchanged real guard also
+checks that every real row carrying literal `Resolved:` is accepted, independently
+of its due-date check. The retained missing-marker control produces one failure;
+pending, template and hidden marked controls correctly produce two. The observed
+red is three subtest failures asserting `2 != 1`, not a production acceptance.
+
+Only in that new conclusion loop, replace the expected failure count with one
+when the conclusion is None and two otherwise. Also assert that the due-conclusion
+failure exists for every control and that the real-row rejection exists exactly
+when a literal marker is present. Keep all inputs, old test assertions, source
+facts, guard and future dates unchanged. Commit this named correction separately
+as `T-051: named acceptance correction for independent real-row rejection`.
+No other assertion/helper change is authorized by this amendment.
+
+### A2 - Generate the required Owner seam before candidate quality gates
+
+Changing the real strategy/opportunity inputs makes the existing generated Owner
+page stale. Root-managed generation is permitted in the task worktree after its
+behavioral commit and before the exact-head complete44 and independent reviews,
+then again after integration. This supersedes only the earlier timing phrase
+"after the reviewed source merge". It does not weaken the currentness guard or
+give the executor ownership of unrelated generated files. The lead preserves and
+inspects source bytes, runs the explicit regenerate mode, retains the substantive
+Owner change in its own commit, and accounts separately for date/recent-only or
+line-ending output. No forced CI/date flags, guard edits or skipped checks.
