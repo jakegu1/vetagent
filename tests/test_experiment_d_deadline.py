@@ -1,12 +1,14 @@
 """The approved D deadline moves; its conclusion and review requirements do not.
 
 Run the real guard and Owner-page generator on private copies of the current sources.
+Historical pending fixtures keep every calendar boundary after a live checkpoint.
 The old guard's synthetic Oct-16 scenarios remain its own independent contract.
 Run: python tests/test_experiment_d_deadline.py
 """
 
 from contextlib import contextmanager, redirect_stdout
 import datetime
+import hashlib
 import io
 from pathlib import Path
 import re
@@ -32,6 +34,22 @@ D_ROW = ("| %s | %s | \u22653 trial commitments in Experiment D | Yes \u2192 bui
          "no \u2192 pick a different customer segment and run D again |" % (DUE, QUESTION))
 REAL_CONCLUSION = "Resolved: zero commitments measured -> run D with a different segment"
 TEMPLATE = "Resolved: <what the measurement said> -> <decision>"
+CHECKPOINT_FINDING = "Experiment D measurement is not yet available"
+CHECKPOINT_DECISION = ("undecided; retain the current validation direction and the existing "
+                       "payment gate; Experiment D remains open")
+CHECKPOINT = "Resolved: %s -> %s" % (CHECKPOINT_FINDING, CHECKPOINT_DECISION)
+REVIEW_LABEL = "**Reviewed 2026-10-20:**"
+REVIEW_NOTE = (REVIEW_LABEL + " No new direction is adopted. Reconsideration\n"
+               "still depends on actual Experiment D evidence. This records the due review,\n"
+               "without closing this idea or its original experiment.\n\n")
+# Hash the complete original heading/evidence/rationale, including its final blank line.
+# A review may append to these bodies, never replace the evidence with a fixture's result.
+ORIGINAL_BODY_SHA256 = {
+    "O2": "3fd4e7b553daedbe3da6df5dbff97397f140def63b81a372005a8448db560a3e",
+    "O8": "a4f43d6992d8fb238b69b2a9787ebb395e49874924b7bafcb7942685a289d651",
+    "O9": "cf256866f56f9204e70b0c64e659fe9a3a1af739bf19fae66e0d1e369e04b497",
+    "O11": "a669227cb6bcec5983e2f574f5a2e7fa233885e1d25db967b0d48ac12c2cd376",
+}
 
 
 def _load(relative):
@@ -43,9 +61,54 @@ def _load(relative):
     return module
 
 
-def _sources():
+def _actual_sources():
     return tuple((ROOT / "docs" / name).read_text(encoding="utf-8")
                  for name in ("STRATEGY.md", "OPPORTUNITIES.md"))
+
+
+def _d_blocks(opportunities):
+    """Find exactly one original body per D ID, across both opportunity sections."""
+    blocks = [match for match in re.finditer(
+        r"^### (O\d+)\b.*?(?=^### |^## |^---$|\Z)", opportunities, re.M | re.S)
+        if match.group(1) in IDS]
+    if sorted(match.group(1) for match in blocks) != sorted(IDS):
+        raise AssertionError("expected exactly one body for each D opportunity")
+    return blocks
+
+
+def _original_d_body(match):
+    body = match.group().partition(REVIEW_LABEL)[0]
+    if hashlib.sha256(body.encode("utf-8")).hexdigest() != ORIGINAL_BODY_SHA256[match.group(1)]:
+        raise AssertionError("the original %s body changed" % match.group(1))
+    return body
+
+
+def _without_d_blocks(opportunities):
+    for match in reversed(_d_blocks(opportunities)):
+        opportunities = opportunities[:match.start()] + opportunities[match.end():]
+    return opportunities
+
+
+def _pending_sources(strategy, opportunities):
+    """Reconstruct only the original pending state, entirely in private strings."""
+    row = _d_row(strategy)
+    if row != D_ROW and not (row.startswith(D_ROW[:-1] + "Resolved: ")
+                             and row.endswith(" |")):
+        raise AssertionError("the original D question, rule or action changed")
+    pending_strategy = strategy.replace(row, D_ROW, 1)
+    bodies = {match.group(1): _original_d_body(match) for match in _d_blocks(opportunities)}
+    unchanged = _without_d_blocks(opportunities)
+    if unchanged.count("## Reviewed and closed") != 1:
+        raise AssertionError("expected one reviewed section")
+    parked, marker, closed = unchanged.partition("## Reviewed and closed")
+    pending_opportunities = parked + "".join(bodies[entry] for entry in IDS) + marker + closed
+    if _without_d_blocks(pending_opportunities) != unchanged:
+        raise AssertionError("a pending fixture changed a non-D opportunity")
+    return pending_strategy, pending_opportunities
+
+
+def _sources():
+    return _pending_sources(*_actual_sources())
 
 
 def _d_row(strategy):
@@ -161,13 +224,120 @@ class ExperimentDDeadlineTests(unittest.TestCase):
         self.addCleanup(self.connect.stop)
 
     def test_strategy_and_pin_keep_the_original_question_threshold_and_action(self):
-        strategy, _ = _sources()
-        self.assertEqual(_d_row(strategy), D_ROW)
-        self.assertNotIn("Resolved:", _d_row(strategy))
+        strategy, _ = _actual_sources()
+        row = _d_row(strategy)
+        self.assertTrue(row.startswith(D_ROW[:-1]), row)
+        self.assertEqual(row[len(D_ROW[:-1]):], CHECKPOINT + " |")
         guard = _load("tests/test_gates_get_reviewed.py")
         self.assertEqual(guard.PINNED_GATES, SCHEDULE)
         section = _section(strategy, "8. Decision gates")
         self.assertEqual(guard._GATE_ROW.findall(section), SCHEDULE)
+        self.assertTrue(guard.gate_row_answered(row))
+
+    def test_actual_checkpoint_is_unavailable_and_undecided_without_a_fabricated_result(self):
+        strategy, _ = _actual_sources()
+        _, marker, conclusion = _d_row(strategy).partition("Resolved: ")
+        self.assertEqual(marker, "Resolved: ")
+        finding, arrow, decision = conclusion.removesuffix(" |").partition(" -> ")
+        self.assertEqual(finding, CHECKPOINT_FINDING)
+        self.assertEqual(arrow, " -> ")
+        self.assertEqual(decision, CHECKPOINT_DECISION)
+        self.assertNotRegex(conclusion.lower(),
+                            r"\b(?:0|zero) (?:trial )?commitments\b|outreach (?:sent|completed)"
+                            r"|trials? (?:succeeded|successful)|payments? (?:built|successful)"
+                            r"|experiment d (?:completed|failed)|demand (?:validated|proven)")
+
+    def test_actual_four_reviews_append_to_original_bodies_without_adopting_a_direction(self):
+        _, opportunities = _actual_sources()
+        closed = opportunities.index("## Reviewed and closed")
+        blocks = _d_blocks(opportunities)
+        for match in blocks:
+            with self.subTest(entry=match.group(1)):
+                self.assertGreater(match.start(), closed)
+                original = _original_d_body(match)
+                self.assertEqual(match.group(), original + REVIEW_NOTE)
+        guard = _load("tests/test_gates_get_reviewed.py")
+        self.assertFalse(any(re.match(r"%s\b" % entry, heading)
+                             for heading, _, _ in guard.parse_entries(opportunities)
+                             for entry in IDS))
+
+    def test_pending_fixture_preserves_non_d_sources_and_refuses_lost_or_changed_evidence(self):
+        strategy, opportunities = _actual_sources()
+        pending_strategy, pending_opportunities = _pending_sources(strategy, opportunities)
+        self.assertEqual(pending_strategy.replace(D_ROW, "", 1),
+                         strategy.replace(_d_row(strategy), "", 1))
+        self.assertEqual(_without_d_blocks(pending_opportunities),
+                         _without_d_blocks(opportunities))
+        first = _d_blocks(opportunities)[0]
+        missing = opportunities[:first.start()] + opportunities[first.end():]
+        duplicate = opportunities + first.group()
+        changed = opportunities.replace("Changing the target segment", "Changing a target segment", 1)
+        self.assertNotEqual(changed, opportunities)
+        changed_rule = strategy.replace("\u22653 trial commitments in Experiment D",
+                                        "\u22652 trial commitments in Experiment D", 1)
+        self.assertNotEqual(changed_rule, strategy)
+        for label, contents in (("missing body", (strategy, missing)),
+                                ("duplicate body", (strategy, duplicate)),
+                                ("changed evidence", (strategy, changed)),
+                                ("changed rule", (changed_rule, opportunities))):
+            with self.subTest(control=label):
+                with self.assertRaises(AssertionError):
+                    _pending_sources(*contents)
+
+    def test_actual_checkpoint_and_each_review_are_required_by_the_unchanged_guard(self):
+        strategy, opportunities = _actual_sources()
+        day = datetime.date(2026, 10, 20)
+        status, due, parked, failed = _guard_run(strategy, opportunities, day)
+        self.assertEqual((status, due, parked, failed),
+                         (0, [True], {entry: [] for entry in IDS}, []))
+        pending_strategy, _ = _sources()
+        for conclusion in (None, "Resolved: pending", TEMPLATE,
+                           "<!-- " + CHECKPOINT + " -->"):
+            with self.subTest(conclusion=conclusion):
+                copy = (pending_strategy if conclusion is None
+                        else _answered(pending_strategy, conclusion))
+                status, due, parked, failed = _guard_run(copy, opportunities, day)
+                self.assertEqual(due, [False])
+                self.assertEqual(parked, {entry: [] for entry in IDS})
+                self.assertEqual(len(failed), 1, failed)
+                self.assertEqual(status, 1)
+        # Undo each recorded review: restore its retained original body above the
+        # closed marker, rather than deleting the evidence or changing the guard.
+        for match in _d_blocks(opportunities):
+            with self.subTest(unreviewed=match.group(1)):
+                copy = opportunities[:match.start()] + opportunities[match.end():]
+                parked_text, marker, closed_text = copy.partition("## Reviewed and closed")
+                copy = parked_text + _original_d_body(match) + marker + closed_text
+                status, due, parked, failed = _guard_run(strategy, copy, day)
+                self.assertEqual(due, [True])
+                self.assertEqual(parked, {entry: [False] if entry == match.group(1) else []
+                                          for entry in IDS})
+                self.assertEqual(len(failed), 1, failed)
+                self.assertEqual(status, 1)
+
+    def test_pending_controls_still_reject_a_moved_or_deleted_d_gate(self):
+        strategy, opportunities = _sources()
+        reviewed = _reviewed(opportunities)
+        answered = _answered(strategy, REAL_CONCLUSION)
+        row = _d_row(answered)
+        for label, copy in (("deleted gate", answered.replace(row, "", 1)),
+                            ("moved gate", answered.replace(row, row.replace(DUE, "2027-10-20"), 1))):
+            with self.subTest(control=label):
+                status, due, parked, failed = _guard_run(
+                    copy, reviewed, datetime.date(2026, 10, 20))
+                self.assertEqual(due, [])
+                self.assertEqual(parked, {entry: [] for entry in IDS})
+                self.assertEqual(len(failed), 1, failed)
+                self.assertEqual(status, 1)
+
+    def test_actual_undecided_checkpoint_uses_the_existing_owner_page_conclusion_rule(self):
+        strategy, opportunities = _actual_sources()
+        page = _render(strategy, opportunities, datetime.date(2026, 10, 20))
+        table = _section(page, "The dates that decide things")
+        self.assertIn("| %s | answered | %s |" % (DUE, QUESTION), table)
+        self.assertIn(CHECKPOINT, table)
+        self.assertIn("%s - answered :milestone, %s, 0d" % (QUESTION, DUE), page)
+        self.assertNotIn(QUESTION, _section(page, "Needs you"))
 
     def test_all_four_entries_remain_parked_until_oct20(self):
         _, opportunities = _sources()
