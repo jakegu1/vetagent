@@ -544,3 +544,51 @@ No source/API, acceptance assertion, fixture, allocation or scientific rule chan
 is authorized by R5. This is dependency reconciliation, not a new native runtime
 or LIVE proof; failed native controls and all unavailable gates remain failed or
 unavailable until a separately bound verified correction supplies actual evidence.
+
+### R6 - Verify complete ordinary refresh bodies within the original allowance
+
+2026-10-20: the independent functional review of6eb0f98 reproduces a normal
+six-GET refresh with a9,218,250-byte complete Git blob containing150 valid JSON
+rows of61,455 bytes each. These are an ordinary archive/NDJSON positive, not a
+claim of150 valid admitted pool identities. The blob is below the unchanged
+64-MiB refresh increment allowance and above the8-MiB seed-only per-file bound.
+It is retained but _attempt_witness and _verify_transaction mistakenly apply
+FILE_CAP+1 to body.bin, raise source_corrupt, and leave one claim/six attempts/
+zero results with no accepted view. This blocks later valid source work. Preserve
+that exact independent red and the original complete45 outcome separately.
+
+The8-MiB per-file cap continues to apply to offline seed input. Refresh request,
+wire reading, retained attempt verification and transaction re-verification must
+instead agree with their original admitted body allowance. Verify before parse or
+publication and preserve the unchanged64-MiB cumulative increment,60-second
+refresh, bounded reads, source hashes, per-date/GET limits and16-GiB allocation.
+Use the verified immutable request/permit body bound or the already fixed maximum
+where appropriate; do not invent an unlimited read, enlarge a budget, drop source
+bytes or change a row finding into a token/risk verdict. Existing over-limit and
+seed-cap refusal assertions stay exact.
+
+Named acceptance change, committed first and alone before the source correction:
+append one bounded ordinary large-blob subtest to
+test_w40_archive_exact_rest_graph_and_blob_integrity. It supplies one complete
+blob strictly above8MiB and below10MiB, valid JSON rows each below64KiB, and an
+otherwise exact small six-GET fixture graph. Assert one accepted committed view,
+exact retained bytes/blob hashes, all complete row spans/findings preserved,
+one result for the claim, and all actual request/storage accounting. Semantic
+pool eligibility is not inferred from NDJSON syntax. Keep all original seven
+method names, every existing assertion/input/helper/main and R1-R5 unchanged;
+only a dedicated bounded fixture builder may be added if required.
+
+Also read the committed state in a fresh actual offline OS process through the
+existing bound report/verification port. It must verify the same view/attempt/
+transaction/allocation chain with zero network, new claim, request or history
+repair. Keep its runtime/import/CI/private-boundary checks real as allowed by the
+existing fixture contract; no new production override or path bypass is added.
+
+Record the new test's meaningful old-source red, then freeze its exact bytes and
+apply only the bounded body-verification source correction in a separate commit.
+Reproduce the normal positive and fresh readback, old seed-cap/over-limit tests
+and existing single-mutant contract as needed. No new distinct mutant or broader
+audit is authorized. The known-bad6eb complete45 is historical evidence only;
+final fixed clean source requires its own true prior freeze, complete45, actual
+Linux/builds and genuinely completed applicable independent reviews. Neither the
+platform-interrupted review nor a later functional PASS supplies RED-TEAM none.
