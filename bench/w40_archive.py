@@ -1529,10 +1529,11 @@ def main(argv=None):
 
 if __name__ == "__main__":
     try:
-        sys.exit(main())
+        exit_code = main()
     except ArchiveError as exc:
         print(encoded(dict(state="terminal", reason=str(exc))).decode())
-        sys.exit(2)
+        exit_code = 2
     except BaseException:
         print(encoded(dict(state="terminal", reason="source_unavailable")).decode())
-        sys.exit(2)
+        exit_code = 2
+    sys.exit(exit_code)
