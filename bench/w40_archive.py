@@ -649,6 +649,21 @@ def settle(binding, lease, ticket, *, inventory):
         growth = sum(x["bytes"] for x in current if x["area"] == area) - old_sizes[area]
         if growth > ticket["ceilings"].get(area, 0):
             fail("storage_refused")
+    for entry in inventory:
+        if entry["area"] in {"control", "source", "raw", "safe"} and entry["path"].split("/")[-1] == "creation.json":
+            identity_value = parsed(read(_inventory_reference(binding, entry), ROW_CAP), ROW_CAP)
+            if (not isinstance(identity_value, dict) or set(identity_value) != {"pid", "creation", "token", "parent"}
+                    or type(identity_value["pid"]) is not int or identity_value["pid"] <= 0
+                    or type(identity_value["parent"]) is not int or identity_value["parent"] <= 0
+                    or not isinstance(identity_value["creation"], str) or not identity_value["creation"].isdigit()
+                    or not hex_value(identity_value["token"], 32)):
+                fail("cleanup_uncertain")
+            try:
+                alive = _native(binding).identity_alive(identity_value)
+            except Exception:
+                fail("cleanup_uncertain")
+            if alive:
+                fail("cleanup_uncertain")
     for record in journal(binding, "archive"):
         value = record["value"]
         if record["kind"] == "attempt" and value["transaction_id"] == identity:
