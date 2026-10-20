@@ -9,7 +9,7 @@
 
 The deployed Worker remains d354179. Operator/evidence source through T-048 is
 published at 1de0259 after actual complete/Linux/master gates; later bot data
-a615a44 are retained. The sole quota pilot does not prove sustainable availability.
+a482332 are retained. The sole quota pilot does not prove sustainable availability.
 The original native control fails before physical requests; a separately reviewed
 direct-base configuration still requires a distinct source-bound control.
 

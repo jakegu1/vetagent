@@ -37,11 +37,14 @@ The sole finite real T-044 pilot is complete and incomplete coverage is retained
 It proves neither a daily allowance/reset nor a thirty-day W40 start. No repeat.
 The offline T-045 core remains frozen.
 
-Actual scheduled snapshot 39343458776 and following bot CI 39344396692 succeed.
-Latest bot data a615a44 are retained by normal merge f43d6b2. Its exact test-job
-checkout and all forty-four named commands are verified; other skipped jobs are
-not counted as builds or network checks. Earlier bot data through 9be63f0 remain
-retained. Never publish old archive totals as current without a source-bound read.
+Actual scheduled snapshot39387917731 succeeds and its a482332 data are retained
+by normal merge ff9542c. Canonical new data blobs are exact; Windows checkout
+line endings and pre-generation bytes are verified separately. The following
+original bot CI39388976670 fails the due checkpoint guard with five failures;
+thirty later test steps and other skipped jobs are unobserved, not successful.
+T-051 repairs this actual checkpoint through the existing undecided rule. Earlier
+a615a44 bot CI39344396692 has verified exact checkout/all44 and remains historical.
+Never publish old archive totals as current without a source-bound read.
 
 ## Current source batch
 
