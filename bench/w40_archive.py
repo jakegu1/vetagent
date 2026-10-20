@@ -831,6 +831,7 @@ def _archive_state(binding):
         elif kind == "result":
             if identity not in claims or identity in results or value["state"] not in ("accepted", "gap", "terminal"):
                 fail("history_corrupt")
+            _verify_transaction(binding, claims[identity], value, record["previous"], attempts)
             results[identity] = dict(value, transaction_receipt_sha256=record["digest"])
         else:
             fail("history_corrupt")
@@ -855,9 +856,109 @@ def _verify_retired(binding, directory):
     return retired
 
 
+_ATTEMPT_FILES = {"request-metadata.json", "permit.json", "request.json", "creation.json", "identity.json",
+                  "origins.json", "ready.json", "arming.json", "invocation.json", "sent.json", "headers.json",
+                  "end.json", "body.bin", "progress.json", "progress.json.pending", "retired.json", "commit.json"}
+
+
+def _attempt_witness(binding, attempt):
+    directory = under(binding.roots["source"], attempt["directory"])
+    files = []
+    for path in sorted(directory.iterdir()):
+        if path.name not in _ATTEMPT_FILES or not private(path).is_file():
+            fail("source_corrupt")
+        size, digest = _hash_regular(path)
+        if size > (FILE_CAP + 1 if path.name == "body.bin" else ROW_CAP):
+            fail("source_corrupt")
+        files.append(dict(name=path.name, bytes=size, sha256=digest))
+    hashes = {value["name"]: value["sha256"] for value in files}
+    if (hashes.get("request-metadata.json") != attempt["request_sha256"]
+            or hashes.get("permit.json") != attempt["permit_sha256"]):
+        fail("source_corrupt")
+    return dict(metadata=attempt, files=files,
+                invocation=parsed(read(directory / "invocation.json", ROW_CAP), ROW_CAP) if "invocation.json" in hashes else None,
+                status=_headers_status(directory),
+                retirement=parsed(read(directory / "retired.json", ROW_CAP), ROW_CAP) if "retired.json" in hashes else None)
+
+
+def _transaction_fields(binding, claim, result, previous):
+    return dict(schema="w40-source-transaction-v1", transaction_id=claim["transaction_id"], kind=claim["kind"],
+                date=claim["date"], slot=claim["slot"], study_id_sha256=binding.config["study_id_sha256"],
+                config_sha256=binding.config_pin, code_manifest_sha256=binding.manifest_pin,
+                claim_sha256=claim["claim_sha256"], allocation_ticket_sha256=claim["allocation_ticket_sha256"],
+                previous_source_head=previous,
+                **{key: result[key] for key in ("state", "reason", "view_sha256", "examined", "unexamined", "partial")})
+
+
+def _verify_transaction(binding, claim, result, previous, attempts, *, verify_files=False):
+    required = {"schema", "transaction_id", "state", "reason", "view_sha256", "examined", "unexamined", "partial",
+                "receipt", "receipt_sha256"}
+    value = {key: item for key, item in result.items() if key != "transaction_receipt_sha256"}
+    relative = "transactions/" + claim["transaction_id"] + "/receipt.json"
+    if (set(value) != required or value["schema"] != "w40-source-result-v1" or value["receipt"] != relative
+            or not hex_value(value["receipt_sha256"]) or value["reason"] is not None and value["reason"] not in REASONS
+            or value["view_sha256"] is not None and not hex_value(value["view_sha256"])
+            or any(type(value[key]) is not int or value[key] < 0 for key in ("examined", "unexamined", "partial"))):
+        fail("history_corrupt")
+    raw = read(under(binding.roots["source"], relative), REPORT_CAP)
+    payload = parsed(raw)
+    expected = _transaction_fields(binding, claim, value, previous)
+    if (sha(raw) != value["receipt_sha256"] or encoded(payload) != raw or not isinstance(payload, dict)
+            or set(payload) != set(expected) | {"attempts"}
+            or {key: item for key, item in payload.items() if key != "attempts"} != expected):
+        fail("history_corrupt")
+    owned = [attempt for attempt in attempts if attempt["transaction_id"] == claim["transaction_id"]]
+    witnesses = payload["attempts"]
+    if not isinstance(witnesses, list) or len(witnesses) != len(owned) or len(owned) > 133:
+        fail("history_corrupt")
+    for witness, attempt in zip(witnesses, owned):
+        if (not isinstance(witness, dict) or set(witness) != {"metadata", "files", "invocation", "status", "retirement"}
+                or witness["metadata"] != attempt or not isinstance(witness["files"], list)
+                or witness["status"] is not None and (type(witness["status"]) is not int or not 100 <= witness["status"] <= 599)):
+            fail("history_corrupt")
+        names = []
+        for entry in witness["files"]:
+            if (not isinstance(entry, dict) or set(entry) != {"name", "bytes", "sha256"} or entry["name"] not in _ATTEMPT_FILES
+                    or type(entry["bytes"]) is not int or not 0 <= entry["bytes"] <= (FILE_CAP + 1 if entry["name"] == "body.bin" else ROW_CAP)
+                    or not hex_value(entry["sha256"])):
+                fail("history_corrupt")
+            names.append(entry["name"])
+        if names != sorted(set(names)) or not {"request-metadata.json", "permit.json"} <= set(names):
+            fail("history_corrupt")
+        invocation, retirement = witness["invocation"], witness["retirement"]
+        if (("headers.json" in names) != (witness["status"] is not None)
+                or ("invocation.json" in names) != (invocation is not None)
+                or ("retired.json" in names) != (retirement is not None)):
+            fail("history_corrupt")
+        if invocation is not None and (not isinstance(invocation, dict) or set(invocation) != {"utc", "monotonic", "permit_sha256"}
+                or invocation["permit_sha256"] != attempt["permit_sha256"] or not isinstance(invocation["utc"], str)
+                or invocation["utc"][:10] != attempt["utc"][:10] or type(invocation["monotonic"]) not in (int, float)
+                or not math.isfinite(invocation["monotonic"]) or invocation["monotonic"] < attempt["monotonic"]):
+            fail("history_corrupt")
+        if retirement is not None and (not isinstance(retirement, dict) or set(retirement) != {"state", "identity_sha256"}
+                or retirement["state"] != "exited" or retirement["identity_sha256"] is not None and not hex_value(retirement["identity_sha256"])):
+            fail("history_corrupt")
+        if verify_files and witness != _attempt_witness(binding, attempt):
+            fail("source_corrupt")
+
+
 def _source_result(binding, lease, transaction, state, reason, *, view=None, examined=0, unexamined=0, partial=0):
     value = dict(schema="w40-source-result-v1", transaction_id=transaction, state=state, reason=reason,
                  view_sha256=view, examined=examined, unexamined=unexamined, partial=partial)
+    claims, _results, attempts = _archive_state(binding)
+    records = journal(binding, "archive")
+    payload = _transaction_fields(binding, claims[transaction], value, records[-1]["digest"])
+    payload["attempts"] = [_attempt_witness(binding, attempt) for attempt in attempts if attempt["transaction_id"] == transaction]
+    raw = encoded(payload)
+    if len(raw) > REPORT_CAP:
+        fail("storage_refused")
+    ticket = allocation_state(binding)[0][transaction]
+    baseline = parsed(read(under(binding.roots["control"], ticket["baseline"]), MANIFEST_CAP), MANIFEST_CAP)
+    growth = sum(item["bytes"] for item in measured(binding, areas=("source",))) - sum(item["bytes"] for item in baseline if item["area"] == "source")
+    if growth + len(raw) > ticket["ceilings"].get("source", 0):
+        fail("storage_refused")
+    value.update(receipt="transactions/" + transaction + "/receipt.json", receipt_sha256=sha(raw))
+    write_new(under(binding.roots["source"], value["receipt"], missing=True), raw)
     digest = append(binding, lease, "archive", "result", value)
     return dict(value, transaction_receipt_sha256=digest, allocation_receipt_sha256=None)
 
@@ -1171,7 +1272,10 @@ def _build_view(binding, claim, catalog, files, commit, tree_chain, *, check):
                  tree_chain=tree_chain, catalog=result, claim_sha256=claim["claim_sha256"],
                  allocation_ticket_sha256=claim["allocation_ticket_sha256"], row_findings=findings)
     value["view_sha256"] = sha(encoded(value))
-    write_new(under(binding.roots["source"], "views/" + value["view_sha256"] + ".json", missing=True), encoded(value))
+    raw = encoded(value)
+    if len(raw) > REPORT_CAP:
+        fail("storage_refused")
+    write_new(under(binding.roots["source"], "views/" + value["view_sha256"] + ".json", missing=True), raw)
     return value, partial
 
 
@@ -1522,6 +1626,12 @@ def recover_archive(binding, lease):
         ticket = tickets.get(identity)
         if ticket is None or sha(encoded(ticket)) != claim["allocation_ticket_sha256"]:
             fail("history_corrupt")
+        if identity in results:
+            record = next(value for value in journal(binding, "archive")
+                          if value["kind"] == "result" and value["value"]["transaction_id"] == identity)
+            _verify_transaction(binding, claim, results[identity], record["previous"], attempts, verify_files=True)
+            for attempt in (value for value in attempts if value["transaction_id"] == identity):
+                _verify_retired(binding, under(binding.roots["source"], attempt["directory"]))
         if identity in results and results[identity]["state"] == "accepted":
             _visible_views(binding, pending=identity)
         reason = "source_unavailable"
