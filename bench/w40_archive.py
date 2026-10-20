@@ -998,10 +998,11 @@ def _git_tree(body):
             mode, name = header.decode("utf-8").split(" ", 1)
         except (UnicodeError, ValueError):
             fail("source_corrupt")
-        if not name or "/" in name or "\\" in name or name in (".", "..") or any(x["path"] == name for x in result):
+        if (not name or "/" in name or "\\" in name or name in (".", "..")
+                or mode not in ("40000", "100644", "100755") or any(x["path"] == name for x in result)):
             fail("source_corrupt")
         result.append(dict(path=name, mode="040000" if mode == "40000" else mode,
-                           type="tree" if mode == "40000" else "blob" if mode == "100644" else "other", sha=tail[:20].hex()))
+                           type="tree" if mode == "40000" else "blob", sha=tail[:20].hex()))
         body = tail[20:]
     return result
 
@@ -1335,8 +1336,8 @@ def _tree(value, expected):
     for item in value["tree"]:
         if (not isinstance(item, dict) or not isinstance(item.get("path"), str) or item["path"] in seen
                 or item["path"] in ("", ".", "..") or "/" in item["path"] or "\\" in item["path"]
-                or not hex_value(item.get("sha"), 40) or item.get("mode") not in ("040000", "100644", "100755", "120000", "160000")
-                or item.get("type") not in ("tree", "blob", "commit")):
+                or not hex_value(item.get("sha"), 40)
+                or (item.get("mode"), item.get("type")) not in (("040000", "tree"), ("100644", "blob"), ("100755", "blob"))):
             fail("source_corrupt")
         seen.add(item["path"])
         entries.append(item)
