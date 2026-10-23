@@ -1453,6 +1453,180 @@ class RunningSessionTests(unittest.TestCase):
         with self.assertRaises(driver.StudyError):
             self.session.prepare_admission("pilot", legacy_only, self.ctx, clock.utc(), "another")
 
+    def test_final_phase_clock_drift_cannot_pass_readiness(self):
+        for namespace in ("canary", "live"):
+            for jump in (0, 120, -120):
+                with self.subTest(namespace=namespace, jump=jump), tempfile.TemporaryDirectory() as directory:
+                    if namespace == "canary":
+                        clock, memory = SessionClock(), SessionMemory(self.session, self.ctx)
+                        lease = self.session.Lease(clock)
+                        self.run_slot(clock, memory, 0, namespace, lease)
+                        self.run_slot(clock, memory, 1, namespace, lease)
+                        slot = 2
+                    else:
+                        clock, memory, first, state = self.active()
+                        state["slots"] = [{"slot": i, "status": "not_observed"} for i in range(192)]
+                        data = self.session.bundle_bytes(state, [], "result", self.ctx, namespace)
+                        memory.items[first] = (dict(memory.items[first][0], size_in_bytes=len(data),
+                                                   digest="sha256:" + driver.sha(data)), data)
+                        clock.sleep(192 * 900)
+                        slot = 192
+                    lease = self.session.Lease(clock)
+                    plan = self.session.prepare_slot(memory, self.ctx, clock, lease, slot, namespace)
+                    plan["lease"] = copy.deepcopy(lease.record)
+                    folder = Path(directory)
+                    self.session._atomic(folder / "plan.json", driver.encoded(plan))
+                    self.session.write_bundle(folder / "intent", plan["state"], [], "intent", self.ctx, namespace)
+                    intent = memory.publish(plan["state"], [], "intent", self.ctx, namespace)
+                    fallback = copy.deepcopy(plan["state"])
+                    fallback["status"] = "lost_checkpoint"
+                    self.session.write_bundle(folder / "result", fallback, [], "result", self.ctx, namespace)
+                    self.session._atomic(folder / "collection.json", driver.encoded({"id": intent}))
+                    original_sleep, pacing = clock.sleep, [0]
+                    def sleep(seconds):
+                        original_sleep(seconds)
+                        if seconds == 2:
+                            pacing[0] += 1
+                            if pacing[0] == 63:
+                                clock.value += jump
+                    clock.sleep = sleep
+                    collected = None
+                    with patch.object(probe, "curl", return_value=("503", {})), \
+                            (folder / "result/observations.jsonl").open("wb") as stream:
+                        def append(row):
+                            stream.write(driver.encoded(row) + b"\n")
+                            stream.flush()
+                        try:
+                            collected = self.session.collect(plan, intent, memory, self.ctx, clock, lease, append)
+                        except driver.StudyError:
+                            pass
+                    if collected is not None:
+                        self.session.write_bundle(folder / "result", *collected, "result", self.ctx, namespace)
+                    self.session.finalize(folder, self.ctx, clock)
+                    sealed = self.session._local(folder / "result", self.ctx)
+                    self.assertEqual(pacing[0], 63)
+                    self.assertEqual(len(sealed["rows"]), 63, "finalization must retain every flushed row")
+                    memory.publish(sealed["state"], sealed["rows"], "result", self.ctx, namespace)
+                    memory.reads = memory.downloads = memory.seconds_spent = 0
+                    memory.runs = {}
+                    # A new closure job may have a healthy lease; it cannot erase the old jump.
+                    self.session.Lease(clock).check(clock)
+                    with patch.object(self.session, "_store", return_value=memory):
+                        answer = self.session.closure(folder / "closure", self.ctx, clock,
+                                                      "canary" if namespace == "canary" else "start")
+                    self.assertEqual(sealed["state"]["status"], "failed" if jump else "completed")
+                    if namespace == "canary":
+                        self.assertEqual(answer["readiness"], "failed" if jump else "passed")
+                        self.assertEqual(answer["vendor_requests"], 0)
+                    else:
+                        self.assertEqual(answer.get("session_clock_stable", True), not bool(jump))
+
+    def test_canary_readiness_requires_every_matching_intent(self):
+        clock, memory = SessionClock(), SessionMemory(self.session, self.ctx)
+        lease = self.session.Lease(clock)
+        self.run_slot(clock, memory, 0, "canary", lease)
+        self.run_slot(clock, memory, 1, "canary", lease)
+        self.run_slot(clock, memory, 2, "canary", self.session.Lease(clock))
+        study = "canary-%d" % self.ctx["run_id"]
+        self.assertEqual(self.session.reconstruct(memory, self.ctx, study, "canary")["readiness"], "passed")
+        intents = [ident for ident, (meta, _) in memory.items.items() if "-intent-" in meta["name"]]
+        self.assertEqual(len(intents), 3)
+        for ident in intents:
+            changed = copy.deepcopy(memory)
+            del changed.items[ident]
+            with self.subTest(missing=ident), self.assertRaises(driver.StudyError):
+                self.session.reconstruct(changed, self.ctx, study, "canary")
+        for field in ("receipt", "source"):
+            changed = copy.deepcopy(memory)
+            ident = intents[-1]
+            meta, _ = changed.items[ident]
+            part = changed.load(ident)
+            state, ctx = copy.deepcopy(part["state"]), copy.deepcopy(self.ctx)
+            if field == "source":
+                ctx["control_sources"]["driver"] = "f" * 64
+                ctx["source"] = self.session.composite(ctx["control_sources"])
+                state["source"], state["session"]["freeze"] = ctx["source"], ctx["control_sources"]
+            else:
+                state["session"]["different_intent"] = True
+            data = self.session.bundle_bytes(state, [], "intent", ctx, "canary")
+            changed.items[ident] = (dict(meta, digest="sha256:" + driver.sha(data), size_in_bytes=len(data)), data)
+            with self.subTest(mismatch=field), self.assertRaises(driver.StudyError):
+                self.session.reconstruct(changed, self.ctx, study, "canary")
+
+    def test_canary_rows_cover_exact_frozen_cells(self):
+        clock, memory = SessionClock(), SessionMemory(self.session, self.ctx)
+        lease = self.session.Lease(clock)
+        self.run_slot(clock, memory, 0, "canary", lease)
+        self.run_slot(clock, memory, 1, "canary", lease)
+        result, _ = self.run_slot(clock, memory, 2, "canary", self.session.Lease(clock))
+        study = "canary-%d" % self.ctx["run_id"]
+        self.assertEqual(self.session.reconstruct(memory, self.ctx, study, "canary")["observed_cells"], 189)
+        changes = (lambda row: row.update(member="not-an-enrolled-synthetic-member"),
+                   lambda row: row.update(slot=3), lambda row: row.update(slot=True),
+                   lambda row: row.update(kind="report"), lambda row: row.update(vendor_request=True),
+                   lambda row: row.update(scientific_evidence=True), lambda row: row.pop("member"))
+        for change in changes:
+            changed = copy.deepcopy(memory)
+            part = changed.load(result)
+            rows = copy.deepcopy(part["rows"])
+            change(rows[0])
+            with self.subTest(change=change), self.assertRaises(driver.StudyError):
+                data = self.session.bundle_bytes(part["state"], rows, "result", self.ctx, "canary")
+                changed.items[result] = (dict(changed.items[result][0], digest="sha256:" + driver.sha(data),
+                                             size_in_bytes=len(data)), data)
+                self.session.reconstruct(changed, self.ctx, study, "canary")
+        part = memory.load(result)
+        with self.assertRaises(driver.StudyError):
+            data = self.session.bundle_bytes(part["state"], part["rows"] + [part["rows"][0]], "result", self.ctx, "canary")
+            self.session.decode_bundle(data, self.ctx, self.ctx)
+
+    def test_completed_run_requires_successful_conclusion(self):
+        _, memory, ident, _ = self.active()
+        for status, conclusion, accepted in (("in_progress", None, True), ("completed", "success", True),
+                                              ("completed", None, False), ("completed", "unknown", False),
+                                              ("completed", "failure", False), ("completed", "cancelled", False),
+                                              ("in_progress", "success", False)):
+            service, requests, transport = self.service(memory)
+            with transport:
+                original = service.request
+                def response(path, binary=False):
+                    value = original(path, binary)
+                    if "/runs/" in path and "artifacts?" not in path:
+                        value.update(status=status, conclusion=conclusion)
+                    return value
+                with patch.object(service, "request", side_effect=response), self.subTest(status=status, conclusion=conclusion):
+                    if accepted:
+                        self.assertEqual(service.load(ident)["state"]["status"], "active")
+                    else:
+                        with self.assertRaises(driver.StudyError):
+                            service.load(ident)
+                        self.assertFalse(any(binary for _, binary in requests), "bad run outcome must stop before ZIP")
+
+    def test_run_attempt_boolean_is_not_integer_one(self):
+        _, memory, ident, _ = self.active()
+        for attempt in (1, True, False, 1.0, 0, 2, "1", None):
+            service, requests, transport = self.service(memory)
+            with transport:
+                original = service.request
+                def response(path, binary=False):
+                    value = original(path, binary)
+                    if "/runs/" in path and "artifacts?" not in path:
+                        value["run_attempt"] = attempt
+                    return value
+                with patch.object(service, "request", side_effect=response), self.subTest(attempt=attempt, kind=type(attempt).__name__):
+                    if type(attempt) is int and attempt == 1:
+                        service.load(ident)
+                    else:
+                        with self.assertRaises(driver.StudyError):
+                            service.load(ident)
+                        self.assertFalse(any(binary for _, binary in requests), "bad attempt must stop before ZIP")
+        part = memory.load(ident)
+        for attempt in (True, 1.0):
+            malformed = dict(self.ctx, attempt=attempt)
+            with self.subTest(transport_attempt=attempt), self.assertRaises(driver.StudyError):
+                data = self.session.bundle_bytes(part["state"], [], "result", malformed, "live")
+                self.session.decode_bundle(data, malformed, self.ctx)
+
     def test_generated_explicit_workflow_is_manual_finite_default_canary_and_drift_guarded(self):
         generator = ROOT / ".github/scripts/render_w57_session_workflow.py"
         self.assertTrue(generator.is_file())
