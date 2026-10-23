@@ -2557,6 +2557,33 @@ class New192SessionTests(unittest.TestCase):
         self.assertLess(text.index("id: intent"), text.index("id: collect"))
         self.assertIn("always() &&", text)
 
+    def test_a5_helper_context_mismatch_rejects_before_any_remote_constructor_or_use(self):
+        old, new = self.ctx(303, "start"), self.ctx(304, "start192")
+        class NoTransport:
+            def list(self, **kwargs):
+                raise AssertionError("remote listing")
+            def load(self, ident):
+                raise AssertionError("remote restore")
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory)
+            (out / "plan.json").write_bytes(driver.encoded({"namespace": "live192"}))
+            cases = {"reconstruct": lambda: self.session.reconstruct(NoTransport(), old, "new-study", "live192"),
+                     "closure": lambda: self.session.closure(out, old, SessionClock(), "start192"),
+                     "finalize": lambda: self.session.finalize(out, old, SessionClock()),
+                     "local-new-with-old-context": lambda: self.session._local(out, old, protocol=self.protocol),
+                     "local-default-with-new-context": lambda: self.session._local(out, new)}
+            with patch.object(self.session, "_store", side_effect=AssertionError("remote store")) as store, \
+                    patch.object(self.session.Artifacts, "request", side_effect=AssertionError("GitHub")) as github, \
+                    patch.object(self.session, "Artifacts", side_effect=AssertionError("remote constructor")) as constructor, \
+                    patch.object(driver.GitHubArtifacts, "request", side_effect=AssertionError("core GitHub")) as core_github, \
+                    patch.object(driver.subprocess, "run", side_effect=AssertionError("native transport")) as native, \
+                    patch.object(probe, "curl", side_effect=AssertionError("Vendor")) as vendor:
+                for name, invoke in cases.items():
+                    with self.subTest(name=name), self.assertRaisesRegex(driver.StudyError, "protocol_context_mismatch"):
+                        invoke()
+                for trap in (store, github, constructor, core_github, native, vendor):
+                    trap.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
