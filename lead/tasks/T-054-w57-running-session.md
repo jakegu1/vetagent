@@ -72,8 +72,9 @@ explicit: the current step scanners do not inspect anchored step arrays reliably
    than recording absence. Preserve original per-ZIP/uncompressed/state/row size
    limits and bounded history. Ordinary slot discovery/collection stays within the
    existing twelve-read/two-download transport budget; report stays within the
-   existing 600-read/195-download/720-second envelope. If a new admission seam
-   requires a different finite read envelope, report BLOCKED before changing it.
+   existing 600-read/195-download/720-second envelope. Version-two admission alone
+   may use at most sixteen counted reads and three ZIP downloads across prepare
+   and collect, retaining the 110-second deadline, as specified in amendment A1.
    Preserve global used-study and active-study admission semantics across both
    formats; a per-run listing must not silently forget prior/active studies.
 
@@ -163,4 +164,22 @@ blocked security-review retry is authorized.
 
 ## Amendments
 
-None.
+### A1 - 2026-10-23: bounded admission proof objects
+
+The new same-run transport must retain global admission history. Independent
+proof of the latest immutable history index, a qualified older pilot, and the
+new uploaded intent can require three distinct ZIPs. Silently skipping any of
+those proofs is unacceptable. Before acceptance tests, adopt a version-two
+admission-only bound of sixteen counted GitHub reads and three downloads across
+prepare/collect, with the existing 110-second acquisition deadline. Keep ordinary
+slots at twelve reads/two downloads and reports at600/195/720. Physical Vendor
+calls, pacing, cohort, clocks, scientific rules and ZIP/state/row bounds do not
+change. Add a pure-fixture witness for all three distinct proof objects and
+failure before a fourth download or seventeenth counted read.
+
+A fixed, immutable version-two admission intent and terminal-result index is an
+allowed implementation: at most one of each per workflow run, no overwrite or
+mutable pointer. A pending/dangling index fails closed; a terminal index binds the
+actual final durable generation ID and digest. Complete bounded cross-format
+discovery must retain the old active/used-study rule and reject partial or
+ambiguous metadata. This clarifies criteria2/3 without changing older assertions.
