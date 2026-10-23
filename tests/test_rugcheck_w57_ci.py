@@ -2296,11 +2296,15 @@ class New192SessionTests(unittest.TestCase):
 
     def test_global_six_stream_admission_blocks_older_unresolved_and_foreign_pilots(self):
         clock, memory, ctx, ident, state, _, _ = self.active()
-        terminal = copy.deepcopy(state)
-        terminal["status"] = "failed"
         clock.sleep(1)
-        result = memory.publish(terminal, [], "result", dict(ctx, run_id=301))
-        self.index(memory, result, dict(ctx, run_id=301))
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory)
+            service, requests, transport = self.service(memory, ctx, report=True)
+            with transport, patch.object(self.session, "_store", return_value=service):
+                self.session.closure(out, ctx, clock, "start192")
+            terminal = self.session._local(out / "result", ctx, protocol=self.protocol)["state"]
+        result = memory.publish(terminal, [], "result", ctx)
+        self.index(memory, result, ctx)
         clock.sleep(1)
         next_ctx = self.ctx(302, "pilot192")
         service, requests, transport = self.service(memory, next_ctx, admission=True)
