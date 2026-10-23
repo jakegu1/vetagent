@@ -10,21 +10,19 @@ immutable. Do not launch before all pre-registered conditions are met.
 
 ## New independent study preparation
 
-T-058 sourcefa7de79 has fresh combined round-two approval12/12/RED-TEAM:none,
-independent complete45/native0/all999 raw bytes exact and actual source Linux
-39963755437 with all45/upstream/backfill/two locked builds verified. The lead
-is integrating it and owns the remaining integration/master publication gates.
+T-058 sourcefa7de79 and T-059 sourceacf1ff3 are published in normal integration
+043bb97 after fresh second-round12/12/RED-TEAM:none approvals, source complete45
+and exact Linux/build checks. Post-integration complete45/native0 preserves
+all1004 raw files. Actual master39970401776 checks out043bb97 and passes all45,
+upstream/backfill and two independent locked builds; downloaded proof is verified.
 Source-only historical HTTP400 counts cannot prove which old requests failed
 or why. Keep all existing probes and scientific bars. See reviews/T-058.md.
-T-059 sourceacf1ff3 has fresh combined round-two approval12/12/RED-TEAM:none,
-52 focused tests and sole exact-source complete45/native0/all1002 raw bytes
-exact. Actual source Linux39967067929 succeeds; release provenance checks follow.
-Approved T058/T059 and the latest scheduled snapshot data are normally merged
-at043bb97. Its post-integration complete45/native0 preserves all1004 raw files.
-The lead publishes that exact head; actual master checks remain pending.
-T-060 finite session implementation starts in isolation against this green
-composition, under its pre-acceptance A1/A2 clarifications. Its real pilot and
-launch still require all reviewed source publication gates.
+Current master access records16 of17 RugCheck purposes usable, with one purpose
+still HTTP400 through all attempts and a separate recovered400/200 attempt.
+Instrument/source approval does not claim that Vendor rejection is eliminated.
+T-060 finite sessions are in isolated tests-first implementation at base173f4ab,
+under pre-acceptance A1/A2. Acceptancefb0309f is tests-only and parent-red10/10.
+Its real pilot and launch still require all reviewed source publication gates.
 No new scientific clock has started. T047 and its held
 dependencies remain outside this authorization.
 Earlier detailed source/review/release records remain in Git history at 53e3549

@@ -1,7 +1,7 @@
 ---
 id: T-058
 title: Preserve bounded per-probe upstream refusal diagnostics
-status: in_progress
+status: done
 level: 3
 size: M
 depends_on: [T-023, T-037]
