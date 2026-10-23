@@ -83,3 +83,17 @@ functions and assert the new named acceptance is discovered. Add a normal
 `test_` acceptance function; do not hide it behind a separately maintained runner.
 No other original assertion is relaxed. Baseline comparison bands and schema
 guards retain their original semantics; diagnostic status fields are additive.
+
+2026-10-23 A2, round-one red-team finding M1: an HTTP200 GeckoTerminal body with
+`status.error_code` set is a known Vendor error envelope (already recognized by
+`risk._is_error_body`), but the new monitor accepts it as usable. A synthetic
+monitor-to-status replay counts eight such refusals as eight usable bodies and
+raises a false field-removal alarm. This breaks AC2/4, not a new inference bar.
+Add named acceptance for this nested envelope under the existing new diagnostic
+test, red against8c469b7, then fix the general error-envelope classifier. Cover
+zero and string error-code values and absent/null nested error code according
+to the existing engine predicate; retain genuine healthy envelopes. Keep error
+prose out of output and nested refusals unobserved. All original probe, timeout,
+pacing and coverage expressions stay exact. Freeze the new cases before the
+fix. Round two is a combined independent and adversarial re-review of this
+class plus regressions; do not broaden into unrelated source work.
