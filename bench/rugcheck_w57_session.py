@@ -140,6 +140,51 @@ def wait_due(clock, due, lease, request_seconds=32, check=None):
         clock.sleep(min(delay, MAX_WAIT))
 
 
+def _valid_clock_proof(proof, source):
+    """Validate the recorded sampling lease, never a new reporting-job lease."""
+    try:
+        lease = proof["lease"]
+        if (proof.get("stable") is not True or set(lease) != {"utc", "monotonic", "seconds"}
+                or any(not core.number(value) for value in lease.values())
+                or not RESERVE < lease["seconds"] <= JOB_SECONDS
+                or not core.number(proof["utc"]) or not core.number(proof["monotonic"])
+                or composite(proof["control_sources"]) != source):
+            return False
+        elapsed = proof["monotonic"] - lease["monotonic"]
+        wall = proof["utc"] - lease["utc"]
+        return elapsed >= 0 and abs(wall - elapsed) <= DRIFT and elapsed + RESERVE < lease["seconds"]
+    except (KeyError, TypeError, ValueError, StudyError):
+        return False
+
+
+def _state_clock_stable(state):
+    controls = state["session"]
+    return (_valid_clock_proof(controls.get("end_clock"), state["source"])
+            and ("seal_clock" not in controls or _valid_clock_proof(controls["seal_clock"], state["source"])))
+
+
+def _seal_clock(state, ctx, clock, lease, key="end_clock"):
+    """A tail jump remains failed even if finalization later sees a healthy clock."""
+    proof = {"lease": copy.deepcopy(lease.record), "utc": clock.utc(), "monotonic": clock.monotonic(),
+             "control_sources": source_freeze(), "stable": False}
+    failure = None
+    try:
+        lease.check(clock)
+        if composite(proof["control_sources"]) != state["source"] or ctx["control_sources"] != proof["control_sources"]:
+            raise StudyError("source_changed")
+        proof["stable"] = True
+    except StudyError as exc:
+        failure = str(exc)
+    controls = state["session"]
+    earlier_failure = any(name in controls and not _valid_clock_proof(controls[name], state["source"])
+                          for name in ("end_clock", "seal_clock"))
+    if key not in controls or _valid_clock_proof(controls[key], state["source"]):
+        controls[key] = proof
+    if failure or earlier_failure:
+        controls["failure"] = failure or controls.get("failure", "clock_changed")
+        state["status"] = "source_changed" if controls["failure"] == "source_changed" else "failed"
+
+
 def bind_state(state, ctx, namespace):
     state = copy.deepcopy(state)
     state["source"] = copy.deepcopy(ctx["source"])
@@ -540,6 +585,8 @@ def prepare_slot(store, ctx, clock, lease, slot, namespace="live"):
         state["parent"] = reference
         state["chunks"].append(reference)
         state["session"]["previous_result_receipt"] = dict(reference, zip_digest=previous.get("zip_digest"))
+        state["session"].pop("end_clock", None)
+        state["session"].pop("seal_clock", None)
         if source_hashes() != state["source"]:
             state["status"] = "source_changed"
             state["session"]["failure"] = "source_changed"
@@ -623,6 +670,7 @@ def collect(plan, intent_id, store, ctx, clock, lease, on_row=None):
                                                     late=began > state["session"].get("timing", {}).get("due_at", began) + 60)
     state["session"]["intent_receipt"] = {"id": intent_id, "digest": intent["digest"],
                                            "zip_digest": intent.get("zip_digest")}
+    _seal_clock(state, ctx, clock, lease)
     _validate(state, namespace)
     return state, rows
 
@@ -676,11 +724,15 @@ def reconstruct(store, ctx, study, namespace="live"):
         answer = core.readout(state, rows)
         answer["session_timings"] = timings
         answer["sampling_completion_inferred_from_job"] = False
+        answer["session_clock_stable"] = _state_clock_stable(state)
+        answer["session_clock_proof_coverage"] = {"generations": len(chain),
+                                                 "valid": sum(_state_clock_stable(part["state"]) for _, part in chain)}
         return answer
     cells = {(row["slot"], row["member"]) for row in rows}
     passed = (state["status"] == "completed" and len(chain) == 3 and len(cells) == len(rows) == 189
               and [item["slot"] for item in timings] == [0, 1, 2]
               and timings[0]["job_started_at"] == timings[1]["job_started_at"] < timings[2]["job_started_at"]
+              and all(_state_clock_stable(part["state"]) for _, part in chain)
               and all(core.number(item.get("operation_started_at"))
                       and 0 <= item["operation_started_at"] - item["due_at"] <= 60 for item in timings))
     return {"study": study, "namespace": "canary", "readiness": "passed" if passed else "failed",
@@ -778,7 +830,8 @@ def finalize(out, ctx, clock):
             value = _local(folder, ctx)
             if value["state"]["status"] == "lost_checkpoint" and (out / "collection.json").exists():
                 raise StudyError("collection_interrupted")
-            return
+            state, rows = value["state"], value["rows"]
+            unverified = (folder / "unverified.jsonl").read_bytes() if (folder / "unverified.jsonl").exists() else None
         except StudyError:
             state = copy.deepcopy(plan["state"])
             journal = (folder / "observations.jsonl").read_bytes()
@@ -797,6 +850,7 @@ def finalize(out, ctx, clock):
             unverified = journal[offset:] or None
             state["status"] = "failed"
             state["session"]["failure"] = "collection_interrupted"
+    _seal_clock(state, ctx, clock, Lease(clock, record=plan["lease"]), key="seal_clock")
     timing = state["session"].setdefault("timing", {})
     if state["status"] in ("lost_checkpoint", "failed", "overflow"):
         timing.setdefault("operation_completed_at", clock.utc())
