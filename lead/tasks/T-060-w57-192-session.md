@@ -123,4 +123,18 @@ assertion, every old helper/method, and the original parent-red receipt. Record
 this as a separate `T-060: acceptance test fix (A3)` commit before proceeding.
 No source behavior, scientific bar or permission is changed by this amendment.
 
+2026-10-23 A4: replace only the initial healthy-terminal fixture block in
+`New192SessionTests.test_global_six_stream_admission_blocks_older_unresolved_and_foreign_pilots`.
+The fixture currently leaves an admission intent in run300 and fabricates a
+terminal result/index in run301 without closure proof; A1 correctly refuses it.
+Changing only the context would collide with the existing run300/g000 result.
+Instead invoke the actual `closure` operation under the existing fake Artifact
+service in the original run300, restore its rescue through `_local` with the
+explicit new protocol, and publish/index that rescue under the original context.
+The real closure supplies the next generation and verified parent/chunks and
+terminal loss evidence. Keep every assertion, all later inputs and the old
+run200 dangling-intent rejection unchanged. Preserve the earlier fixture failure
+and record a separate `T-060: acceptance test fix (A4)` commit. Do not weaken
+source admission, add a retry, or accept a newer unrelated index as closure.
+
 
