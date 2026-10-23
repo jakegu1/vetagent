@@ -654,41 +654,111 @@ class _View:
         return value
 
 
+def _history_identity(meta):
+    return core.sha(core.encoded({key: meta[key] for key in
+                                 ("id", "name", "digest", "size_in_bytes", "created_at", "workflow_run")}))
+
+
+def _history_roots(store, metadata, cached):
+    """Prove each version root, reserving one ZIP for this phase's intent.
+
+    A source-bound new index may carry exact previously verified root seals.
+    A used ID alone never closes another root; unmatched or unprovable streams
+    fail before enrollment rather than spending a fourth phase ZIP.
+    """
+    if not metadata:
+        return [], [], []
+    latest_meta = metadata[-1]
+    latest = store.load(latest_meta["id"])
+    cached[latest_meta["id"]] = latest
+    if latest["manifest"]["kind"] != "result" or latest["state"]["status"] not in core.TERMINAL:
+        raise StudyError("study_active")
+    roots = {}
+    for row in metadata:
+        if "result" in row["name"]:
+            roots[row["name"].rsplit("-v", 1)[1]] = row
+    old_proofs = latest["state"].get("session", {}).get("admission_roots", []) if latest_meta["name"].endswith("-v3") else []
+    if not isinstance(old_proofs, list) or len(old_proofs) > 3:
+        raise StudyError("admission_history_unavailable")
+    proofs, used, covered, zip_ids = {}, [], [], set()
+    for proof in old_proofs:
+        if (not isinstance(proof, dict) or set(proof) != {"id", "version", "seal", "study", "status", "used_studies"}
+                or proof["version"] not in ("1", "2", "3") or proof["version"] in proofs
+                or type(proof["id"]) is not int or proof["id"] <= 0
+                or not isinstance(proof["seal"], str) or not core.SHA.fullmatch(proof["seal"])
+                or proof["status"] not in core.TERMINAL or proof["version"] not in roots
+                or not isinstance(proof["used_studies"], list) or not 1 <= len(proof["used_studies"]) <= 128
+                or proof["study"] not in proof["used_studies"]
+                or any(not isinstance(value, str) or not core.STUDY_ID.fullmatch(value) for value in proof["used_studies"])
+                or len(set(proof["used_studies"])) != len(proof["used_studies"])):
+            raise StudyError("admission_history_unavailable")
+        proofs[proof["version"]] = proof
+        used.extend(value for value in proof["used_studies"] if value not in used)
+    def remember(meta, part):
+        zip_ids.add(meta["id"])
+        dependency = part.get("transport", {}).get("last_durable")
+        if dependency:
+            zip_ids.add(dependency["id"])
+        state = part["state"]
+        if part["manifest"]["kind"] != "result" or state["status"] not in core.TERMINAL:
+            raise StudyError("study_active")
+        return {"id": meta["id"], "version": meta["name"].rsplit("-v", 1)[1], "seal": _history_identity(meta),
+                "study": state["study"], "status": state["status"], "used_studies": list(state["used_studies"])}
+    latest_proof = remember(latest_meta, latest)
+    if len(zip_ids) + 1 > 3:
+        raise StudyError("admission_history_unavailable")
+    for version, meta in roots.items():
+        if meta["id"] == latest_meta["id"]:
+            proof = latest_proof
+        else:
+            proof = proofs.get(version)
+            if proof is None or proof["id"] != meta["id"] or proof["seal"] != _history_identity(meta):
+                cost = 1 if meta["name"].endswith("-v1") else 2
+                if len(zip_ids) + cost + 1 > 3:
+                    raise StudyError("admission_history_unavailable")
+                part = store.load(meta["id"])
+                cached[meta["id"]] = part
+                proof = remember(meta, part)
+        proofs[version] = proof
+        used.extend(value for value in proof["used_studies"] if value not in used)
+    if len(used) >= 128:
+        raise StudyError("admission_history_unavailable")
+    covered = latest["state"].get("session", {}).get("history_coverage", [])
+    if (not isinstance(covered, list) or len(covered) > 128
+            or any(type(value) is not int or value <= 0 for value in covered) or len(set(covered)) != len(covered)):
+        raise StudyError("admission_history_unavailable")
+    covered = list(covered)
+    lost = latest["state"].get("lost_intent")
+    if lost and lost["id"] not in covered:
+        if len(zip_ids) + 2 > 3 or lost["id"] not in {row["id"] for row in metadata}:
+            raise StudyError("admission_history_unavailable")
+        part = store.load(lost["id"])
+        cached[lost["id"]] = part
+        if (part["manifest"]["kind"] != "intent" or part["digest"] != lost["digest"]
+                or part["state"]["study"] != latest["state"]["study"]
+                or part["state"]["source"] != latest["state"]["source"]):
+            raise StudyError("admission_history_unavailable")
+        covered.append(lost["id"])
+    results = {(row["workflow_run"]["id"], row["name"].rsplit("-v", 1)[1]): position
+               for position, row in enumerate(metadata) if "result" in row["name"]}
+    if any("intent" in row["name"] and row["id"] not in covered
+           and results.get((row["workflow_run"]["id"], row["name"].rsplit("-v", 1)[1]), -1) <= position
+           for position, row in enumerate(metadata)):
+        raise StudyError("unresolved_admission_intent")
+    return used, [proofs[version] for version in sorted(proofs)], covered
+
+
 def prepare_admission(phase, store, ctx, now, study, pilot_id=None):
     scientific, namespace = _mode(phase)
     protocol = _selection(namespace)
     if scientific not in ("pilot", "start") or _context_protocol(ctx) is not protocol:
         raise StudyError("invalid_phase")
     metadata = store.list(scope="admission")
-    cached, covered = {}, []
+    cached, covered, history, known = {}, [], [], []
     if protocol is core.START192_V1:
-        # The terminal index is a cumulative ledger, never permission to forget
-        # an unmatched intent in an older exact-selector stream.
-        if metadata:
-            latest = store.load(metadata[-1]["id"])
-            cached[metadata[-1]["id"]] = latest
-            if latest["manifest"]["kind"] != "result" or latest["state"]["status"] not in core.TERMINAL:
-                raise StudyError("study_active")
-            covered = latest["state"].get("session", {}).get("history_coverage", [])
-            if (not isinstance(covered, list) or len(covered) > 128
-                    or any(type(value) is not int or value <= 0 for value in covered) or len(set(covered)) != len(covered)):
-                raise StudyError("admission_history_unavailable")
-            covered = list(covered)
-            lost = latest["state"].get("lost_intent")
-            if lost and lost["id"] not in covered:
-                part = store.load(lost["id"])
-                cached[lost["id"]] = part
-                if (part["manifest"]["kind"] != "intent" or part["digest"] != lost["digest"]
-                        or part["state"]["study"] != latest["state"]["study"]
-                        or part["state"]["source"] != latest["state"]["source"]):
-                    raise StudyError("admission_history_unavailable")
-                covered.append(lost["id"])
-        results = {(row["workflow_run"]["id"], row["name"].rsplit("-v", 1)[1]): position
-                   for position, row in enumerate(metadata) if "result" in row["name"]}
-        if any("intent" in row["name"] and row["id"] not in covered
-               and results.get((row["workflow_run"]["id"], row["name"].rsplit("-v", 1)[1]), -1) <= position
-               for position, row in enumerate(metadata)):
-            raise StudyError("unresolved_admission_intent")
+        known, history, covered = _history_roots(store, metadata, cached)
+        if not study or study in known:
+            raise StudyError("study_exists_or_missing_id")
         if scientific == "start":
             pilot = cached.get(pilot_id)
             if pilot is None:
@@ -702,6 +772,9 @@ def prepare_admission(phase, store, ctx, now, study, pilot_id=None):
     plan["state"] = bind_state(plan["state"], ctx, namespace)
     if protocol is core.START192_V1:
         plan["state"]["session"]["history_coverage"] = covered
+        plan["state"]["session"]["admission_roots"] = history
+        plan["state"]["used_studies"] = known + [study]
+        _validate(plan["state"], namespace)
     plan["namespace"], plan["admission"] = namespace, True
     return plan
 
