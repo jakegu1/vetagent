@@ -6,6 +6,7 @@ import contextlib
 import hashlib
 import io
 import json
+import math
 import os
 from pathlib import Path
 import sys
@@ -250,7 +251,9 @@ class NativeClockAcceptance(unittest.TestCase):
                         self.assertEqual(risk._minutes_since_rugcheck_indexed((pin - timedelta(minutes=90)).isoformat()), 90)
                         self.assertEqual(risk._minutes_since_rugcheck_indexed((pin + timedelta(minutes=1)).isoformat()), 0)
                         self.assertIsNone(risk._minutes_since_rugcheck_indexed((pin + timedelta(minutes=6)).isoformat()))
-                        self.assertEqual(adapter.deadline - adapter.start["monotonic"], native.PACKET_SECONDS)
+                        self.assertLessEqual(
+                            abs((adapter.deadline - adapter.start["monotonic"]) - native.PACKET_SECONDS),
+                            math.ulp(adapter.deadline) + math.ulp(adapter.start["monotonic"]))
                     assert_restored(self, before)
                 fixture.runner.run(exercise())
 
