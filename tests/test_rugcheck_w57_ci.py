@@ -1909,6 +1909,54 @@ class New192CoreTests(unittest.TestCase):
         self.assertEqual(state["status"], "failed")
         self.assertEqual(state["requests"], {"rugcheck": 12351, "gecko": 0})
 
+    def test_a2_legacy_markers_are_rejected_before_decode_or_collection(self):
+        fixture = json.loads((ROOT / "tests/fixtures/w57_legacy193_characterization.json").read_bytes())
+        genuine = copy.deepcopy(fixture["base_state"])
+        genuine["slot"] = 0
+        driver._validate_state(genuine)
+        packed = driver.bundle_bytes(genuine, [], "intent", context())
+        with zipfile.ZipFile(io.BytesIO(packed)) as archive:
+            original = {name: archive.read(name) for name in archive.namelist()}
+        descriptor = driver.protocol_descriptor(self.protocol())
+        markers = ({"protocol": descriptor, "protocol_digest": "f" * 64},
+                   {"protocol": dict(descriptor, id="unknown-protocol"), "protocol_digest": "f" * 64},
+                   {"protocol_digest": "f" * 64})
+        for marker in markers:
+            with self.subTest(marker=marker):
+                marked = dict(genuine, **marker)
+                with self.assertRaises(driver.StudyError):
+                    driver._validate_state(marked)
+                with self.assertRaises(driver.StudyError):
+                    driver.bundle_bytes(marked, [], "intent", context())
+                files = dict(original, **{"state.json": driver.encoded(marked)})
+                manifest = json.loads(files["manifest.json"])
+                manifest["files"]["state.json"] = driver.sha(files["state.json"])
+                files["manifest.json"] = driver.encoded(manifest)
+                target = io.BytesIO()
+                with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
+                    for name, data in files.items():
+                        archive.writestr(name, data)
+                with self.assertRaises(driver.StudyError):
+                    driver.decode_bundle(target.getvalue(), context(), context())
+                class RawStore:
+                    def load(self, ident):
+                        return {"state": marked, "manifest": {"kind": "intent", "context": context()}, "digest": "e" * 64}
+                plan = {"action": "collect", "state": marked, "phase": "tick", "prepared_at": EPOCH}
+                with patch.object(probe, "curl", side_effect=AssertionError("Vendor")) as vendor:
+                    with self.assertRaises(driver.StudyError):
+                        driver.collect(plan, 1, RawStore(), context(), Clock(), lambda seconds: None)
+                    self.assertEqual(vendor.call_count, 0)
+        # A marker on the manifest alone is also a conflicting legacy envelope.
+        manifest = json.loads(original["manifest.json"])
+        manifest.update(protocol=descriptor, protocol_digest="f" * 64)
+        target = io.BytesIO()
+        with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
+            for name, data in dict(original, **{"manifest.json": driver.encoded(manifest)}).items():
+                archive.writestr(name, data)
+        with self.assertRaises(driver.StudyError):
+            driver.decode_bundle(target.getvalue(), context(), context())
+        self.assertEqual(driver.decode_bundle(packed, context(), context())["state"], genuine)
+
     def test_new_lost_intent_and_partial_finalize_preserve_chain_without_replay(self):
         protocol = self.protocol()
         clock, store, _, _, initial, _ = self.active()
