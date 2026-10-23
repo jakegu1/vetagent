@@ -665,6 +665,22 @@ class NativeAcceptance(unittest.TestCase):
                         asyncio.run(worker.retire())
                     self.assertEqual(f.clock.mono(), ended)
 
+    def test_native_refusal_cancellation_after_slow_startup(self):
+        native = importlib.import_module("w40_native")
+        original_start = native.NativeWorker.start
+        delayed = []
+
+        async def slow_first_start(worker):
+            if (getattr(worker.hooks, "__name__", None) == "hold_after_headers"
+                    and worker.directory.name == "01"):
+                delayed.append(worker.directory)
+                await asyncio.sleep(1)
+            return await original_start(worker)
+
+        with patch.object(native.NativeWorker, "start", slow_first_start):
+            self.test_w40_native_caps_pacing_deadline_and_cancellation()
+        self.assertEqual(len(delayed), 4)
+
     def test_w40_native_private_boundary_and_safe_failures(self):
         native = importlib.import_module("w40_native")
         with Fixture() as f:
