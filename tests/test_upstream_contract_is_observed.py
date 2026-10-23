@@ -691,6 +691,73 @@ def _refusal_diagnostic_scenario():
                 "protected": all(open(path, "rb").read() == raw for path, raw in zip(protected, before))}
 
 
+def _nested_refusal_scenario(gecko_bodies):
+    """A real field monitor and status handoff for every fixed Gecko probe."""
+    import copy
+    import importlib.util
+    import socket
+    import tempfile
+    import types
+    from unittest import mock
+
+    spec = importlib.util.spec_from_file_location(
+        "upstream_nested_refusal_scenario", os.path.join(HERE, "test_upstream_contract.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    output, requests, sleeps, measures, network = io.StringIO(), [], [], [], []
+    protected = (module.BASELINE, STATUS)
+    before = [open(path, "rb").read() for path in protected]
+    original_measure = module.measure
+
+    def fake_run(command, **kwargs):
+        assert command[:2] == ["curl", "-s"] and command[-3:-1] == ["-w", "\n%{http_code}"]
+        assert kwargs == {"capture_output": True, "encoding": "utf-8", "errors": "replace"}
+        requests.append(list(command))
+        prefix = "https://api.geckoterminal.com/api/v2/"
+        body = gecko_bodies[module.GECKO_PATHS.index(command[-1][len(prefix):])] if (
+            command[-1].startswith(prefix)) else {"field": [1]}
+        return types.SimpleNamespace(stdout=json.dumps(body) + "\n200", stderr="", returncode=0)
+
+    def measure():
+        result = original_measure()
+        measures.append(copy.deepcopy(result))
+        return result
+
+    def fatal(*args, **kwargs):
+        network.append(True)
+        raise AssertionError("nested refusal acceptance attempted network")
+
+    with tempfile.TemporaryDirectory(prefix="upstream-nested-refusal-") as directory:
+        baseline, status = [os.path.join(directory, name + ".json") for name in ("baseline", "status")]
+        sources = {name: _coverage_source(8, 8) for name in module.PROBED_TEMPLATES}
+        with open(baseline, "w", encoding="utf-8") as f:
+            json.dump({"sources": sources}, f)
+        baseline_before = open(baseline, "rb").read()
+        fields = mock.Mock(incomplete=False, rounds=1)
+        fields.table.return_value = {name: {"field"} for name in sources}
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(mock.patch.object(module, "BASELINE", baseline))
+            stack.enter_context(mock.patch.object(module.subprocess, "run", fake_run))
+            stack.enter_context(mock.patch.object(module.time, "sleep", sleeps.append))
+            stack.enter_context(mock.patch.object(module, "measure", measure))
+            stack.enter_context(mock.patch.object(module.upstream_fields, "build", return_value=fields))
+            stack.enter_context(mock.patch.object(module, "_owner_rpc_open", fatal))
+            stack.enter_context(mock.patch.object(socket.socket, "connect", fatal))
+            stack.enter_context(mock.patch.object(socket, "create_connection", fatal))
+            stack.enter_context(mock.patch.object(sys, "argv", ["contract", "--status-json", status]))
+            for name in vars(module):
+                if name.startswith("test_") and name != "test_generated_field_contract":
+                    stack.enter_context(mock.patch.object(module, name, lambda: None))
+            stack.enter_context(contextlib.redirect_stdout(output))
+            result = module.main()
+        with open(status, encoding="utf-8") as f:
+            payload = json.load(f)
+        return {"module": module, "result": result, "status": payload, "stdout": output.getvalue(),
+                "requests": requests, "sleeps": sleeps, "measures": measures, "network": network,
+                "baseline_exact": open(baseline, "rb").read() == baseline_before,
+                "protected": all(open(path, "rb").read() == raw for path, raw in zip(protected, before))}
+
+
 def test_upstream_refusal_diagnostics_survive_the_real_monitor_and_status_handoff():
     """Fixed safe probe purposes retain bounded attempts without voting failed bodies in."""
     receipt = _refusal_diagnostic_scenario()
@@ -776,6 +843,53 @@ def test_upstream_refusal_diagnostics_survive_the_real_monitor_and_status_handof
                   for command in receipt["requests"]))
     check("acceptance uses only fake transport and protects committed artifacts",
           not receipt["network"] and receipt["protected"])
+
+    private = "NESTED_PRIVATE_ERROR https://private.invalid/request-input secret"
+    error_body = lambda code: {"status": {"error_code": code, "error_message": private * 2048}}
+    cases = (
+        ("documented nested rate limit", [error_body(429) for _ in range(8)], True),
+        ("all set nested code values", [error_body(code) for code in (0, "429", "0", "", False, {}, [], 1)], True),
+        ("absent and null nested code", [
+            {"field": [1]}, {"field": [1], "status": None}, {"field": [1], "status": {}},
+            {"field": [1], "status": {"error_code": None, "error_message": private}},
+            {"field": [1], "status": "ok"}, {"field": [1], "status": False},
+            {"field": [1], "status": []}, {"field": [1], "status": {"message": "ok"}}], False),
+    )
+    for label, bodies, rejected in cases:
+        nested = _nested_refusal_scenario(bodies)
+        module, status = nested["module"], nested["status"]
+        diagnostic = status["probe_diagnostics"]
+        gecko = [row for row in diagnostic["probes"] if row["source"] == "geckoterminal"]
+        check(label + ": engine predicate matches explicit rejection expectation",
+              all(module.risk._is_error_body(body) is rejected for body in bodies))
+        check(label + ": failed documents never become field observations",
+              len(nested["measures"]) == 1
+              and nested["measures"][0][0]["geckoterminal"]["probes"] == (0 if rejected else 8)
+              and len(nested["measures"][0][1]["geckoterminal"]) == (0 if rejected else 8)
+              and nested["result"] == 0 and not module._FAILURES)
+        check(label + ": all fixed probes keep every safe HTTP200 attempt",
+              len(gecko) == 8 and all(row["probe"] == "fields-%02d" % (index + 1)
+                  and row["counts_for_blindness"] is True
+                  and row["attempts"] == [{"http_status": "200", "transport_exit": 0,
+                      "usable_body": not rejected, "reason": "vendor_rejected" if rejected else "ok"}]
+                      * (3 if rejected else 1) for index, row in enumerate(gecko)))
+        check(label + ": source aggregates and status preserve blindness",
+              diagnostic["source_counts"]["geckoterminal"] == {
+                  "probes": 8, "usable": 0 if rejected else 8, "blind": 8 if rejected else 0,
+                  "blindness_excluded": 0}
+              and status["unobserved_sources"] == (["geckoterminal"] if rejected else [])
+              and status["unobserved_probes"] == (8 if rejected else 0)
+              and status["status"] == ("blind" if rejected else "green"))
+        public = json.dumps(status) + nested["stdout"] + repr(module._UNOBSERVED)
+        check(label + ": nested Vendor prose stays private",
+              not any(value in public for value in (private, "NESTED_PRIVATE_ERROR", "https://", "secret")))
+        check(label + ": original requests and HTTP-based pacing remain unchanged",
+              len(nested["requests"]) == (56 if rejected else 40)
+              and nested["sleeps"].count(3.0) == (16 if rejected else 0)
+              and nested["sleeps"].count(20.0) == 0 and nested["sleeps"].count(5.0) == 8
+              and nested["sleeps"].count(1.5) == 32)
+        check(label + ": fake transport protects baseline and committed artifacts",
+              not nested["network"] and nested["baseline_exact"] and nested["protected"])
 
 
 def test_freeze_acceptance_uses_the_existing_offline_registration():
