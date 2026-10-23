@@ -1,6 +1,6 @@
 # Lead state
 
-Last updated: 2026-10-20 by Codex. This is the current baton, not a release log.
+Last updated: 2026-10-23 by Codex. This is the current baton, not a release log.
 Earlier detailed source/review/release records remain in Git history at 53e3549
 and in lead/reviews/. Do not interpret their historical pending stages as current.
 
@@ -55,6 +55,17 @@ passes all45 required commands; other jobs and both builds are skipped in that
 bot-only run. Their skipped observations are not a new packaging result.
 
 ## Current source batch
+
+T-054 is the current bounded reliability task: replace repeated timer admission
+with explicit finite running sessions and an unarmed real-clock canary. Its ready
+spec preserves both legacy scientific modules and the original study rules.
+The lead owns integration and actual deployment/canary; an isolated executor owns
+tests-first implementation, followed by fresh ordinary and adversarial review.
+Current stage: spec ready, executor dispatch next. The normal merge b0fea0e retains
+all latest bot observations and passes the complete45 gate, native exit zero,
+with all985 tracked bytes exact. Actual origin106fb87 CI39872827237 is green.
+This source task does not authorize a new scientific enrollment, new provider,
+paid resource, changed scientific bar, or resuming the dependency-held T047 work.
 
 T-046 source 4dd8474 and T-048 source 512c7d5 are published at 1de0259 after
 the combined exact-source forty-four-command local gate, actual feature Linux
@@ -175,16 +186,17 @@ cron 39180898544 emits the existing source_changed terminal with zero new Vendor
 calls. Its complete existing chain is exported and the owned workflow disable is
 read back. This original study is inconclusive; enrollment is not follow-up.
 
-A distinct authorized pilot 39383433196 succeeds. New study
-w57-study-20261020-b starts in actual run 39384753529 from that preceding pilot,
-with the same protocol and a newly frozen cohort. Its actual elapsed window is
-2026-10-20T07:12:33.877001Z through 2026-10-22T07:12:33.877001Z; endpoint grace ends
-at 07:27:33.877001Z. Actual scheduled resume39424063370 checks out3d33ccc and
-continues the same frozen source, cohort and window in result artifact12264544247.
-All63 cohort entries return data; slot21 is observed and slots0-20 remain missing.
-This is actual continuation, not continuous coverage or a completed result. The
-existing finite terminal follow-up is updated to this study/window and read back;
-future triggering remains unverified. Preserve missing slots and scheduling delays.
+A distinct authorized pilot39383433196 and start39384753529 create the later
+fixed study. Its original window remains2026-10-20T07:12:33.877001Z through
+2026-10-22T07:12:33.877001Z, with endpoint grace ending07:27:33.877001Z.
+Terminal39762004271 closes it without new observations. Actual read-only
+report39906220321 matches the full independently reconstructed chain. Complete
+existing evidence is exported and hashes verified before retention expiry.
+Only its owned workflow is disabled and read back; its finite followup is deleted.
+The scientific readout remains inconclusive and censored. Missing slots and
+actual scheduler delays remain missing; process completion is not full sampling.
+T-054 investigates the measured timer-admission seam. Any new scientific run
+needs a distinct protocol/operational decision; no old window may be restarted.
 
 ## Owner decisions and unavailable evidence
 

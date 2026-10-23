@@ -3,7 +3,7 @@
 > This page holds only what the lead needs from you. The project's own dashboard, with its
 > deadlines and gates, is `docs/OWNER.md` (generated). Messages to you are in Chinese; files
 > here are English because the repository is English-only. Maintained by the project lead (AI).
-> Last updated: 2026-10-20 (Codex)
+> Last updated: 2026-10-23 (Codex)
 
 ## Status in one line
 
@@ -28,11 +28,12 @@ Ordinary functional review is PASS12/12; mandatory security review is incomplete
 The archive remains unpublished and dependent specs remain drafts. No W40
 thirty-day clock has started. Unrelated authorized engineering continues.
 
-W57's original source_changed study is exported and inconclusive. Its distinct
-new fixed window ends2026-10-22T07:12:33.877001Z. Actual scheduled39424063370
-continues the same frozen source/cohort/window, retaining missing slots. This
-proves continuation, not complete sampling or a final result. Finite terminal
-follow-up is configured/read back; future triggering remains unverified.
+Both W57 study windows are closed and independently preserved. The later fixed
+study is terminal and its actual read-only report agrees with full reconstruction;
+its scientific result remains inconclusive/censored. Export and owned-workflow
+stop are verified, and its finite followup is deleted. T-054 now repairs timer
+admission through finite running sessions and an unarmed real-clock canary.
+The source task does not start a new scientific study or change its decision bar.
 
 T-051 records the unavailable Experiment D measurement as undecided through the
 unchanged guard. Experiment D remains empirically open and due2026-10-20 UTC.
