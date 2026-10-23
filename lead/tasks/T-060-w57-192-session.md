@@ -112,4 +112,15 @@ semantics; a legacy reader must not interpret schema3. This continuation
 authorizes no real legacy pilot/start. Preserve the shared workflow concurrency
 group. No existing assertion, scientific rule or transport ceiling changes.
 
+2026-10-23 A3: correct only the new acceptance helper
+`New192SessionTests.memory().Store.publish`. Its inherited legacy fixture
+rejects the same fixed admission name across different runs, whereas the
+production adapter validates duplicate publications by `(run_id, name)`.
+Implement the new helper's publication with that exact uniqueness pair,
+retaining opaque IDs, exact ZIP/metadata/source binding and timestamp behavior.
+Same-run duplicate names must still fail. Preserve every acceptance input and
+assertion, every old helper/method, and the original parent-red receipt. Record
+this as a separate `T-060: acceptance test fix (A3)` commit before proceeding.
+No source behavior, scientific bar or permission is changed by this amendment.
+
 
