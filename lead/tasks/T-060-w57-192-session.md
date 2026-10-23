@@ -1,7 +1,7 @@
 ---
 id: T-060
 title: Bind finite W57 sessions and the real pilot to the new192-start protocol
-status: ready
+status: in_progress
 level: 3
 size: M
 depends_on: [T-059]
@@ -103,5 +103,13 @@ existing three ZIPs, return unavailable without another download or launch.
 Freeze this seam in additive acceptance, including mixed old/new history,
 older unresolved history behind a later index and explicit budget refusal.
 No existing assertion change or new scientific gate is authorized by A1.
+
+2026-10-23 A2, before acceptance is authored: the six-selector global admission
+contract applies to the explicit new pilot192/start192 entries. Those entries
+must examine v1/v2/v3 history together under A1. Legacy defaults retain their
+original four-selector/five-page behavior, historical readers and source
+semantics; a legacy reader must not interpret schema3. This continuation
+authorizes no real legacy pilot/start. Preserve the shared workflow concurrency
+group. No existing assertion, scientific rule or transport ceiling changes.
 
 

@@ -19,9 +19,12 @@ or why. Keep all existing probes and scientific bars. See reviews/T-058.md.
 T-059 sourceacf1ff3 has fresh combined round-two approval12/12/RED-TEAM:none,
 52 focused tests and sole exact-source complete45/native0/all1002 raw bytes
 exact. Actual source Linux39967067929 succeeds; release provenance checks follow.
-The lead is integrating approved source and the latest scheduled snapshot data.
-T-060 finite session implementation may start against the approved T059 base;
-its real pilot and launch still require all reviewed source publication gates.
+Approved T058/T059 and the latest scheduled snapshot data are normally merged
+at043bb97. Its post-integration complete45/native0 preserves all1004 raw files.
+The lead publishes that exact head; actual master checks remain pending.
+T-060 finite session implementation starts in isolation against this green
+composition, under its pre-acceptance A1/A2 clarifications. Its real pilot and
+launch still require all reviewed source publication gates.
 No new scientific clock has started. T047 and its held
 dependencies remain outside this authorization.
 Earlier detailed source/review/release records remain in Git history at 53e3549
