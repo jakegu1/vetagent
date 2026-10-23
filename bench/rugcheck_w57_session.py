@@ -250,6 +250,27 @@ def _zip(files):
     return stream.getvalue()
 
 
+def _canary_rows(state, rows):
+    fields = {"kind", "slot", "member", "due_at", "request_started_at", "ts", "body",
+              "vendor_request", "scientific_evidence"}
+    cells = set()
+    for row in rows:
+        if (not isinstance(row, dict) or set(row) != fields or row["kind"] != "synthetic"
+                or type(row["slot"]) is not int or not 0 <= row["slot"] <= 2
+                or type(state.get("slot")) is not int or row["slot"] != state["slot"]
+                or not isinstance(row["member"], str) or row["member"] not in state["members"]
+                or row["body"] != "synthetic" or row["vendor_request"] is not False
+                or row["scientific_evidence"] is not False
+                or any(not core.number(row[key]) for key in ("due_at", "request_started_at", "ts"))
+                or row["due_at"] != state["started_at"] + row["slot"] * core.INTERVAL):
+            raise StudyError("invalid_canary_row")
+        cell = (row["slot"], row["member"])
+        if cell in cells:
+            raise StudyError("duplicate_canary_cell")
+        cells.add(cell)
+    return cells
+
+
 def _files(state, rows, kind, ctx, namespace, unverified=None):
     state = copy.deepcopy(state)
     dependency = state.get("session", {}).pop("last_durable", None) if kind == "admission-result" else None
@@ -262,6 +283,7 @@ def _files(state, rows, kind, ctx, namespace, unverified=None):
     if namespace == "live":
         files = core._bundle_files(state, rows, actual_kind, ctx, unverified)
     else:
+        _canary_rows(state, rows)
         data, body = core.encoded(state), b"".join(core.encoded(row) + b"\n" for row in rows)
         files = {"state.json": data, "observations.jsonl": body}
         if unverified is not None:
@@ -343,6 +365,7 @@ def decode_bundle(data, provenance, expected):
         if namespace == "live":
             decoded = core.decode_bundle(_zip(files), provenance, expected)
         else:
+            _canary_rows(state, rows)
             if (manifest.get("files") != {name: core.sha(value) for name, value in files.items() if name != "manifest.json"}
                     or manifest.get("rows") != len(rows) or manifest.get("study") != state["study"]
                     or manifest.get("generation") != state["generation"] or manifest.get("parent") != state["parent"]
@@ -761,7 +784,10 @@ def reconstruct(store, ctx, study, namespace="live"):
         return answer
     _canary_intents(store, metadata, chain)
     cells = {(row["slot"], row["member"]) for row in rows}
-    passed = (state["status"] == "completed" and len(chain) == 3 and len(cells) == len(rows) == 189
+    expected_cells = {(slot, member) for slot in range(3) for member in state["members"]}
+    if len(cells) != len(rows):
+        raise StudyError("duplicate_canary_cell")
+    passed = (state["status"] == "completed" and len(chain) == 3 and cells == expected_cells
               and [item["slot"] for item in timings] == [0, 1, 2]
               and timings[0]["job_started_at"] == timings[1]["job_started_at"] < timings[2]["job_started_at"]
               and all(_state_clock_stable(part["state"]) for _, part in chain)
