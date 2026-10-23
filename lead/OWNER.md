@@ -7,6 +7,12 @@
 
 ## Status in one line
 
+Engineering is paused at the Owner's explicit request. The clean T057 A1
+tests-only checkpointd48a6d1 preserves its measured slow-retry red; the fixture
+implementation, combined release gates and single real canary remain pending.
+Resume only after the Owner explicitly notifies the lead. Existing production and
+snapshot tasks are preserved. See the pause block in lead/STATE.md.
+
 The deployed Worker remains d354179; later operator-source repairs do not require
 an upload. T-053 source8ad2fce fixes read-only coverage selection by observed UTC
 chronology. Fresh ordinary review is PASS12/12, with independently reproduced

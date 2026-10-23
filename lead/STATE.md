@@ -4,6 +4,30 @@ Last updated: 2026-10-23 by Codex. This is the current baton, not a release log.
 Earlier detailed source/review/release records remain in Git history at 53e3549
 and in lead/reviews/. Do not interpret their historical pending stages as current.
 
+## Owner-requested pause
+
+Paused on2026-10-23 at the Owner's explicit request. Do not resume engineering,
+review dispatch, new tests, pushes, deployment or the real canary until the Owner
+explicitly notifies the lead to resume. Preserve existing production/snapshot
+tasks; this pause does not authorize disabling them.
+
+The safe executor checkpoint is clean tests-onlyd48a6d1 on
+codex/native-refusal-test-20261023, after the normal A1 governance mergee722949.
+The new slow-second regression reproduces the original None-versus-observed-body
+assertion, native1; all995 tracked raw files remain exact. No A1 implementation
+fix has been applied and no command/native test remains running. Resume from that
+red rather than repeating or discarding completed work. The authoritative named
+A1 specification was committed atacdfd0d before these tests.
+
+After explicit resume, finish only that bounded fixture correction, obtain its
+fresh second-round review and changed-head full45, then reconcile latest bot data,
+generate/check, normally integrate and prove actual Linux/master/locked builds.
+Only then publish/read back the manual-only sampling workflow and perform its
+single finite real-clock synthetic canary. No canary was dispatched and the owned
+research workflow remains disabled at the pause read-back. No new study or source
+publication is inferred from the tests-only checkpoint. Earlier failed and green
+receipts retain their actual source and qualification.
+
 ## Authorization and invariants
 
 The Owner explicitly authorizes prioritizing the remaining technical gaps,
