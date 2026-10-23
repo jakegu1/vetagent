@@ -303,11 +303,14 @@ class GitHubArtifacts:
     def list(self):
         """Return checkpoints oldest first; Artifact IDs are opaque identifiers."""
         found, pages = [], 0
+        new_protocol = self.protocol is not LEGACY193
+        max_pages, stream_pages = (8, 2) if new_protocol else (5, 5)
         kinds = [(kind, version) for version in ((1,) if self.protocol is LEGACY193 else (1, 3))
                  for kind in ("result", "intent")]
         for kind, version in kinds:
-            for page in range(1, 6):
-                if pages >= 5:
+            stream_count = None
+            for page in range(1, stream_pages + 1):
+                if pages >= max_pages:
                     raise StudyError("artifact_scan_limit")
                 pages += 1
                 name = "w57-%s-v%d" % (kind, version)
@@ -319,6 +322,14 @@ class GitHubArtifacts:
                 if any(not isinstance(row, dict) or not isinstance(row.get("name"), str)
                        or not row["name"].strip() for row in rows):
                     raise StudyError("artifact_metadata")
+                if new_protocol:
+                    count = body.get("total_count")
+                    if (type(count) is not int or not 0 <= count <= 195
+                            or stream_count is not None and count != stream_count
+                            or len(rows) != min(100, max(0, count - (page - 1) * 100))
+                            or any(row["name"] != name for row in rows)):
+                        raise StudyError("artifact_metadata_incomplete")
+                    stream_count = count
                 matched = [row for row in rows if isinstance(row, dict) and row.get("name") == name]
                 found.extend(matched)
                 if len(rows) < 100:
