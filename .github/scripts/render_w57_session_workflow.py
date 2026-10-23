@@ -73,6 +73,7 @@ def cycle(slot=None, canary=False, canary_slot=None):
         condition += " && steps.admission.outcome == 'success'"
     lines += ["      - id: " + c, "        if: " + expression(condition), "        continue-on-error: true", "        env:",
               "          W57_INTENT_ID: " + expression("steps." + i + ".outputs.artifact-id"),
+              "          W57_INTENT_DIGEST: " + expression("steps." + i + ".outputs.artifact-digest"),
               '        run: ' + COMMAND + 'collect --out "' + out + '"',
               "      - if: " + expression("always() && " + ready),
               '        run: ' + COMMAND + 'finalize --out "' + out + '"']

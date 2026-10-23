@@ -87,6 +87,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.intent.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.intent.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-admission"
       - if: ${{ always() && steps.prepare.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-admission"
@@ -130,6 +131,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i000.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i000.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-000"
       - if: ${{ always() && steps.p000.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-000"
@@ -164,6 +166,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i001.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i001.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-001"
       - if: ${{ always() && steps.p001.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-001"
@@ -198,6 +201,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i002.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i002.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-002"
       - if: ${{ always() && steps.p002.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-002"
@@ -232,6 +236,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i003.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i003.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-003"
       - if: ${{ always() && steps.p003.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-003"
@@ -266,6 +271,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i004.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i004.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-004"
       - if: ${{ always() && steps.p004.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-004"
@@ -300,6 +306,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i005.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i005.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-005"
       - if: ${{ always() && steps.p005.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-005"
@@ -334,6 +341,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i006.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i006.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-006"
       - if: ${{ always() && steps.p006.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-006"
@@ -368,6 +376,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i007.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i007.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-007"
       - if: ${{ always() && steps.p007.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-007"
@@ -402,6 +411,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i008.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i008.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-008"
       - if: ${{ always() && steps.p008.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-008"
@@ -436,6 +446,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i009.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i009.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-009"
       - if: ${{ always() && steps.p009.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-009"
@@ -470,6 +481,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i010.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i010.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-010"
       - if: ${{ always() && steps.p010.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-010"
@@ -504,6 +516,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i011.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i011.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-011"
       - if: ${{ always() && steps.p011.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-011"
@@ -538,6 +551,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i012.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i012.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-012"
       - if: ${{ always() && steps.p012.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-012"
@@ -572,6 +586,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i013.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i013.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-013"
       - if: ${{ always() && steps.p013.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-013"
@@ -606,6 +621,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i014.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i014.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-014"
       - if: ${{ always() && steps.p014.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-014"
@@ -640,6 +656,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i015.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i015.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-015"
       - if: ${{ always() && steps.p015.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-015"
@@ -674,6 +691,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i016.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i016.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-016"
       - if: ${{ always() && steps.p016.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-016"
@@ -708,6 +726,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i017.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i017.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-017"
       - if: ${{ always() && steps.p017.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-017"
@@ -742,6 +761,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i018.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i018.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-018"
       - if: ${{ always() && steps.p018.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-018"
@@ -776,6 +796,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i019.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i019.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-019"
       - if: ${{ always() && steps.p019.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-019"
@@ -830,6 +851,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i020.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i020.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-020"
       - if: ${{ always() && steps.p020.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-020"
@@ -864,6 +886,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i021.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i021.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-021"
       - if: ${{ always() && steps.p021.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-021"
@@ -898,6 +921,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i022.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i022.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-022"
       - if: ${{ always() && steps.p022.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-022"
@@ -932,6 +956,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i023.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i023.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-023"
       - if: ${{ always() && steps.p023.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-023"
@@ -966,6 +991,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i024.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i024.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-024"
       - if: ${{ always() && steps.p024.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-024"
@@ -1000,6 +1026,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i025.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i025.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-025"
       - if: ${{ always() && steps.p025.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-025"
@@ -1034,6 +1061,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i026.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i026.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-026"
       - if: ${{ always() && steps.p026.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-026"
@@ -1068,6 +1096,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i027.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i027.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-027"
       - if: ${{ always() && steps.p027.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-027"
@@ -1102,6 +1131,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i028.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i028.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-028"
       - if: ${{ always() && steps.p028.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-028"
@@ -1136,6 +1166,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i029.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i029.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-029"
       - if: ${{ always() && steps.p029.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-029"
@@ -1170,6 +1201,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i030.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i030.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-030"
       - if: ${{ always() && steps.p030.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-030"
@@ -1204,6 +1236,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i031.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i031.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-031"
       - if: ${{ always() && steps.p031.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-031"
@@ -1238,6 +1271,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i032.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i032.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-032"
       - if: ${{ always() && steps.p032.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-032"
@@ -1272,6 +1306,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i033.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i033.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-033"
       - if: ${{ always() && steps.p033.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-033"
@@ -1306,6 +1341,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i034.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i034.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-034"
       - if: ${{ always() && steps.p034.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-034"
@@ -1340,6 +1376,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i035.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i035.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-035"
       - if: ${{ always() && steps.p035.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-035"
@@ -1374,6 +1411,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i036.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i036.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-036"
       - if: ${{ always() && steps.p036.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-036"
@@ -1408,6 +1446,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i037.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i037.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-037"
       - if: ${{ always() && steps.p037.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-037"
@@ -1442,6 +1481,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i038.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i038.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-038"
       - if: ${{ always() && steps.p038.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-038"
@@ -1476,6 +1516,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i039.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i039.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-039"
       - if: ${{ always() && steps.p039.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-039"
@@ -1528,6 +1569,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i040.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i040.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-040"
       - if: ${{ always() && steps.p040.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-040"
@@ -1562,6 +1604,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i041.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i041.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-041"
       - if: ${{ always() && steps.p041.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-041"
@@ -1596,6 +1639,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i042.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i042.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-042"
       - if: ${{ always() && steps.p042.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-042"
@@ -1630,6 +1674,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i043.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i043.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-043"
       - if: ${{ always() && steps.p043.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-043"
@@ -1664,6 +1709,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i044.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i044.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-044"
       - if: ${{ always() && steps.p044.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-044"
@@ -1698,6 +1744,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i045.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i045.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-045"
       - if: ${{ always() && steps.p045.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-045"
@@ -1732,6 +1779,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i046.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i046.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-046"
       - if: ${{ always() && steps.p046.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-046"
@@ -1766,6 +1814,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i047.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i047.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-047"
       - if: ${{ always() && steps.p047.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-047"
@@ -1800,6 +1849,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i048.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i048.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-048"
       - if: ${{ always() && steps.p048.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-048"
@@ -1834,6 +1884,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i049.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i049.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-049"
       - if: ${{ always() && steps.p049.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-049"
@@ -1868,6 +1919,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i050.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i050.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-050"
       - if: ${{ always() && steps.p050.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-050"
@@ -1902,6 +1954,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i051.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i051.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-051"
       - if: ${{ always() && steps.p051.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-051"
@@ -1936,6 +1989,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i052.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i052.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-052"
       - if: ${{ always() && steps.p052.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-052"
@@ -1970,6 +2024,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i053.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i053.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-053"
       - if: ${{ always() && steps.p053.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-053"
@@ -2004,6 +2059,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i054.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i054.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-054"
       - if: ${{ always() && steps.p054.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-054"
@@ -2038,6 +2094,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i055.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i055.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-055"
       - if: ${{ always() && steps.p055.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-055"
@@ -2072,6 +2129,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i056.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i056.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-056"
       - if: ${{ always() && steps.p056.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-056"
@@ -2106,6 +2164,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i057.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i057.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-057"
       - if: ${{ always() && steps.p057.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-057"
@@ -2140,6 +2199,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i058.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i058.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-058"
       - if: ${{ always() && steps.p058.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-058"
@@ -2174,6 +2234,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i059.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i059.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-059"
       - if: ${{ always() && steps.p059.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-059"
@@ -2226,6 +2287,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i060.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i060.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-060"
       - if: ${{ always() && steps.p060.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-060"
@@ -2260,6 +2322,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i061.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i061.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-061"
       - if: ${{ always() && steps.p061.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-061"
@@ -2294,6 +2357,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i062.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i062.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-062"
       - if: ${{ always() && steps.p062.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-062"
@@ -2328,6 +2392,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i063.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i063.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-063"
       - if: ${{ always() && steps.p063.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-063"
@@ -2362,6 +2427,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i064.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i064.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-064"
       - if: ${{ always() && steps.p064.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-064"
@@ -2396,6 +2462,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i065.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i065.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-065"
       - if: ${{ always() && steps.p065.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-065"
@@ -2430,6 +2497,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i066.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i066.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-066"
       - if: ${{ always() && steps.p066.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-066"
@@ -2464,6 +2532,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i067.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i067.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-067"
       - if: ${{ always() && steps.p067.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-067"
@@ -2498,6 +2567,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i068.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i068.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-068"
       - if: ${{ always() && steps.p068.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-068"
@@ -2532,6 +2602,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i069.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i069.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-069"
       - if: ${{ always() && steps.p069.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-069"
@@ -2566,6 +2637,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i070.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i070.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-070"
       - if: ${{ always() && steps.p070.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-070"
@@ -2600,6 +2672,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i071.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i071.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-071"
       - if: ${{ always() && steps.p071.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-071"
@@ -2634,6 +2707,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i072.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i072.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-072"
       - if: ${{ always() && steps.p072.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-072"
@@ -2668,6 +2742,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i073.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i073.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-073"
       - if: ${{ always() && steps.p073.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-073"
@@ -2702,6 +2777,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i074.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i074.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-074"
       - if: ${{ always() && steps.p074.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-074"
@@ -2736,6 +2812,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i075.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i075.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-075"
       - if: ${{ always() && steps.p075.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-075"
@@ -2770,6 +2847,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i076.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i076.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-076"
       - if: ${{ always() && steps.p076.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-076"
@@ -2804,6 +2882,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i077.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i077.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-077"
       - if: ${{ always() && steps.p077.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-077"
@@ -2838,6 +2917,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i078.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i078.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-078"
       - if: ${{ always() && steps.p078.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-078"
@@ -2872,6 +2952,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i079.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i079.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-079"
       - if: ${{ always() && steps.p079.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-079"
@@ -2924,6 +3005,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i080.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i080.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-080"
       - if: ${{ always() && steps.p080.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-080"
@@ -2958,6 +3040,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i081.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i081.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-081"
       - if: ${{ always() && steps.p081.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-081"
@@ -2992,6 +3075,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i082.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i082.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-082"
       - if: ${{ always() && steps.p082.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-082"
@@ -3026,6 +3110,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i083.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i083.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-083"
       - if: ${{ always() && steps.p083.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-083"
@@ -3060,6 +3145,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i084.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i084.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-084"
       - if: ${{ always() && steps.p084.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-084"
@@ -3094,6 +3180,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i085.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i085.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-085"
       - if: ${{ always() && steps.p085.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-085"
@@ -3128,6 +3215,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i086.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i086.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-086"
       - if: ${{ always() && steps.p086.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-086"
@@ -3162,6 +3250,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i087.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i087.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-087"
       - if: ${{ always() && steps.p087.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-087"
@@ -3196,6 +3285,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i088.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i088.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-088"
       - if: ${{ always() && steps.p088.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-088"
@@ -3230,6 +3320,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i089.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i089.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-089"
       - if: ${{ always() && steps.p089.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-089"
@@ -3264,6 +3355,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i090.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i090.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-090"
       - if: ${{ always() && steps.p090.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-090"
@@ -3298,6 +3390,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i091.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i091.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-091"
       - if: ${{ always() && steps.p091.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-091"
@@ -3332,6 +3425,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i092.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i092.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-092"
       - if: ${{ always() && steps.p092.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-092"
@@ -3366,6 +3460,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i093.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i093.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-093"
       - if: ${{ always() && steps.p093.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-093"
@@ -3400,6 +3495,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i094.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i094.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-094"
       - if: ${{ always() && steps.p094.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-094"
@@ -3434,6 +3530,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i095.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i095.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-095"
       - if: ${{ always() && steps.p095.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-095"
@@ -3468,6 +3565,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i096.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i096.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-096"
       - if: ${{ always() && steps.p096.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-096"
@@ -3502,6 +3600,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i097.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i097.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-097"
       - if: ${{ always() && steps.p097.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-097"
@@ -3536,6 +3635,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i098.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i098.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-098"
       - if: ${{ always() && steps.p098.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-098"
@@ -3570,6 +3670,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i099.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i099.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-099"
       - if: ${{ always() && steps.p099.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-099"
@@ -3622,6 +3723,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i100.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i100.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-100"
       - if: ${{ always() && steps.p100.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-100"
@@ -3656,6 +3758,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i101.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i101.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-101"
       - if: ${{ always() && steps.p101.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-101"
@@ -3690,6 +3793,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i102.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i102.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-102"
       - if: ${{ always() && steps.p102.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-102"
@@ -3724,6 +3828,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i103.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i103.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-103"
       - if: ${{ always() && steps.p103.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-103"
@@ -3758,6 +3863,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i104.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i104.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-104"
       - if: ${{ always() && steps.p104.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-104"
@@ -3792,6 +3898,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i105.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i105.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-105"
       - if: ${{ always() && steps.p105.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-105"
@@ -3826,6 +3933,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i106.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i106.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-106"
       - if: ${{ always() && steps.p106.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-106"
@@ -3860,6 +3968,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i107.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i107.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-107"
       - if: ${{ always() && steps.p107.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-107"
@@ -3894,6 +4003,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i108.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i108.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-108"
       - if: ${{ always() && steps.p108.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-108"
@@ -3928,6 +4038,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i109.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i109.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-109"
       - if: ${{ always() && steps.p109.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-109"
@@ -3962,6 +4073,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i110.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i110.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-110"
       - if: ${{ always() && steps.p110.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-110"
@@ -3996,6 +4108,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i111.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i111.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-111"
       - if: ${{ always() && steps.p111.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-111"
@@ -4030,6 +4143,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i112.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i112.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-112"
       - if: ${{ always() && steps.p112.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-112"
@@ -4064,6 +4178,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i113.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i113.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-113"
       - if: ${{ always() && steps.p113.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-113"
@@ -4098,6 +4213,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i114.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i114.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-114"
       - if: ${{ always() && steps.p114.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-114"
@@ -4132,6 +4248,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i115.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i115.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-115"
       - if: ${{ always() && steps.p115.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-115"
@@ -4166,6 +4283,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i116.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i116.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-116"
       - if: ${{ always() && steps.p116.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-116"
@@ -4200,6 +4318,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i117.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i117.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-117"
       - if: ${{ always() && steps.p117.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-117"
@@ -4234,6 +4353,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i118.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i118.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-118"
       - if: ${{ always() && steps.p118.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-118"
@@ -4268,6 +4388,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i119.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i119.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-119"
       - if: ${{ always() && steps.p119.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-119"
@@ -4320,6 +4441,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i120.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i120.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-120"
       - if: ${{ always() && steps.p120.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-120"
@@ -4354,6 +4476,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i121.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i121.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-121"
       - if: ${{ always() && steps.p121.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-121"
@@ -4388,6 +4511,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i122.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i122.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-122"
       - if: ${{ always() && steps.p122.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-122"
@@ -4422,6 +4546,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i123.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i123.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-123"
       - if: ${{ always() && steps.p123.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-123"
@@ -4456,6 +4581,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i124.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i124.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-124"
       - if: ${{ always() && steps.p124.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-124"
@@ -4490,6 +4616,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i125.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i125.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-125"
       - if: ${{ always() && steps.p125.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-125"
@@ -4524,6 +4651,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i126.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i126.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-126"
       - if: ${{ always() && steps.p126.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-126"
@@ -4558,6 +4686,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i127.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i127.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-127"
       - if: ${{ always() && steps.p127.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-127"
@@ -4592,6 +4721,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i128.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i128.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-128"
       - if: ${{ always() && steps.p128.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-128"
@@ -4626,6 +4756,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i129.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i129.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-129"
       - if: ${{ always() && steps.p129.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-129"
@@ -4660,6 +4791,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i130.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i130.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-130"
       - if: ${{ always() && steps.p130.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-130"
@@ -4694,6 +4826,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i131.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i131.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-131"
       - if: ${{ always() && steps.p131.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-131"
@@ -4728,6 +4861,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i132.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i132.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-132"
       - if: ${{ always() && steps.p132.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-132"
@@ -4762,6 +4896,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i133.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i133.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-133"
       - if: ${{ always() && steps.p133.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-133"
@@ -4796,6 +4931,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i134.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i134.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-134"
       - if: ${{ always() && steps.p134.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-134"
@@ -4830,6 +4966,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i135.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i135.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-135"
       - if: ${{ always() && steps.p135.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-135"
@@ -4864,6 +5001,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i136.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i136.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-136"
       - if: ${{ always() && steps.p136.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-136"
@@ -4898,6 +5036,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i137.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i137.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-137"
       - if: ${{ always() && steps.p137.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-137"
@@ -4932,6 +5071,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i138.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i138.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-138"
       - if: ${{ always() && steps.p138.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-138"
@@ -4966,6 +5106,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i139.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i139.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-139"
       - if: ${{ always() && steps.p139.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-139"
@@ -5018,6 +5159,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i140.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i140.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-140"
       - if: ${{ always() && steps.p140.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-140"
@@ -5052,6 +5194,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i141.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i141.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-141"
       - if: ${{ always() && steps.p141.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-141"
@@ -5086,6 +5229,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i142.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i142.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-142"
       - if: ${{ always() && steps.p142.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-142"
@@ -5120,6 +5264,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i143.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i143.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-143"
       - if: ${{ always() && steps.p143.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-143"
@@ -5154,6 +5299,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i144.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i144.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-144"
       - if: ${{ always() && steps.p144.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-144"
@@ -5188,6 +5334,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i145.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i145.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-145"
       - if: ${{ always() && steps.p145.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-145"
@@ -5222,6 +5369,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i146.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i146.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-146"
       - if: ${{ always() && steps.p146.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-146"
@@ -5256,6 +5404,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i147.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i147.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-147"
       - if: ${{ always() && steps.p147.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-147"
@@ -5290,6 +5439,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i148.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i148.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-148"
       - if: ${{ always() && steps.p148.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-148"
@@ -5324,6 +5474,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i149.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i149.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-149"
       - if: ${{ always() && steps.p149.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-149"
@@ -5358,6 +5509,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i150.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i150.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-150"
       - if: ${{ always() && steps.p150.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-150"
@@ -5392,6 +5544,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i151.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i151.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-151"
       - if: ${{ always() && steps.p151.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-151"
@@ -5426,6 +5579,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i152.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i152.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-152"
       - if: ${{ always() && steps.p152.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-152"
@@ -5460,6 +5614,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i153.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i153.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-153"
       - if: ${{ always() && steps.p153.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-153"
@@ -5494,6 +5649,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i154.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i154.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-154"
       - if: ${{ always() && steps.p154.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-154"
@@ -5528,6 +5684,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i155.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i155.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-155"
       - if: ${{ always() && steps.p155.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-155"
@@ -5562,6 +5719,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i156.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i156.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-156"
       - if: ${{ always() && steps.p156.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-156"
@@ -5596,6 +5754,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i157.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i157.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-157"
       - if: ${{ always() && steps.p157.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-157"
@@ -5630,6 +5789,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i158.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i158.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-158"
       - if: ${{ always() && steps.p158.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-158"
@@ -5664,6 +5824,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i159.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i159.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-159"
       - if: ${{ always() && steps.p159.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-159"
@@ -5716,6 +5877,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i160.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i160.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-160"
       - if: ${{ always() && steps.p160.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-160"
@@ -5750,6 +5912,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i161.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i161.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-161"
       - if: ${{ always() && steps.p161.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-161"
@@ -5784,6 +5947,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i162.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i162.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-162"
       - if: ${{ always() && steps.p162.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-162"
@@ -5818,6 +5982,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i163.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i163.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-163"
       - if: ${{ always() && steps.p163.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-163"
@@ -5852,6 +6017,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i164.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i164.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-164"
       - if: ${{ always() && steps.p164.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-164"
@@ -5886,6 +6052,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i165.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i165.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-165"
       - if: ${{ always() && steps.p165.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-165"
@@ -5920,6 +6087,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i166.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i166.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-166"
       - if: ${{ always() && steps.p166.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-166"
@@ -5954,6 +6122,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i167.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i167.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-167"
       - if: ${{ always() && steps.p167.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-167"
@@ -5988,6 +6157,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i168.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i168.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-168"
       - if: ${{ always() && steps.p168.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-168"
@@ -6022,6 +6192,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i169.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i169.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-169"
       - if: ${{ always() && steps.p169.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-169"
@@ -6056,6 +6227,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i170.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i170.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-170"
       - if: ${{ always() && steps.p170.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-170"
@@ -6090,6 +6262,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i171.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i171.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-171"
       - if: ${{ always() && steps.p171.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-171"
@@ -6124,6 +6297,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i172.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i172.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-172"
       - if: ${{ always() && steps.p172.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-172"
@@ -6158,6 +6332,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i173.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i173.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-173"
       - if: ${{ always() && steps.p173.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-173"
@@ -6192,6 +6367,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i174.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i174.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-174"
       - if: ${{ always() && steps.p174.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-174"
@@ -6226,6 +6402,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i175.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i175.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-175"
       - if: ${{ always() && steps.p175.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-175"
@@ -6260,6 +6437,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i176.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i176.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-176"
       - if: ${{ always() && steps.p176.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-176"
@@ -6294,6 +6472,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i177.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i177.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-177"
       - if: ${{ always() && steps.p177.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-177"
@@ -6328,6 +6507,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i178.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i178.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-178"
       - if: ${{ always() && steps.p178.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-178"
@@ -6362,6 +6542,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i179.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i179.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-179"
       - if: ${{ always() && steps.p179.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-179"
@@ -6414,6 +6595,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i180.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i180.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-180"
       - if: ${{ always() && steps.p180.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-180"
@@ -6448,6 +6630,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i181.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i181.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-181"
       - if: ${{ always() && steps.p181.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-181"
@@ -6482,6 +6665,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i182.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i182.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-182"
       - if: ${{ always() && steps.p182.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-182"
@@ -6516,6 +6700,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i183.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i183.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-183"
       - if: ${{ always() && steps.p183.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-183"
@@ -6550,6 +6735,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i184.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i184.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-184"
       - if: ${{ always() && steps.p184.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-184"
@@ -6584,6 +6770,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i185.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i185.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-185"
       - if: ${{ always() && steps.p185.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-185"
@@ -6618,6 +6805,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i186.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i186.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-186"
       - if: ${{ always() && steps.p186.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-186"
@@ -6652,6 +6840,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i187.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i187.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-187"
       - if: ${{ always() && steps.p187.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-187"
@@ -6686,6 +6875,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i188.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i188.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-188"
       - if: ${{ always() && steps.p188.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-188"
@@ -6720,6 +6910,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i189.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i189.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-189"
       - if: ${{ always() && steps.p189.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-189"
@@ -6754,6 +6945,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i190.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i190.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-190"
       - if: ${{ always() && steps.p190.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-190"
@@ -6788,6 +6980,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i191.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i191.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-191"
       - if: ${{ always() && steps.p191.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-191"
@@ -6822,6 +7015,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i192.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i192.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-192"
       - if: ${{ always() && steps.p192.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-192"

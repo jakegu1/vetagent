@@ -635,6 +635,51 @@ class Artifacts(core.GitHubArtifacts):
         except (KeyError, TypeError, ValueError, AttributeError):
             raise StudyError("artifact_metadata") from None
 
+    def uploaded_intent(self, ident, digest, state, namespace):
+        """Verify this run's pinned upload receipt without a redundant GET.
+
+        The generated upload step supplies the exact ZIP digest and opaque ID;
+        its name/path are frozen by the same generated source. Verify the actual
+        remote ZIP and fresh run provenance, then its complete prepared state.
+        Historical/foreign artifacts still use load() and raw metadata checks.
+        Result persistence always retains its separate fresh metadata receipt.
+        """
+        if (self.protocol is not core.START192_V1 or namespace != "live192"
+                or type(ident) is not int or ident <= 0 or not isinstance(digest, str) or not core.SHA.fullmatch(digest)
+                or self.downloads >= self.max_downloads):
+            raise StudyError("intent_upload_receipt")
+        _validate(state, namespace)
+        base = "/repos/%s/actions/" % self.ctx["repository"]
+        run_id = self.ctx["run_id"]
+        try:
+            if run_id not in self.runs:
+                self.runs[run_id] = self.request(base + "runs/%d" % run_id)
+            run = self.runs[run_id]
+            if (run["id"] != run_id or run["head_sha"] != self.ctx["head"]
+                    or run["repository"]["full_name"] != self.ctx["repository"]
+                    or run["head_repository"]["full_name"] != self.ctx["repository"]
+                    or run["path"] != core.WORKFLOW or run["head_branch"] != self.ctx["default_branch"]
+                    or run["event"] != "workflow_dispatch" or type(run.get("run_attempt")) is not int or run["run_attempt"] != 1
+                    or (run.get("status"), run.get("conclusion")) not in (("in_progress", None), ("completed", "success"))):
+                raise StudyError("artifact_provenance")
+            self.downloads += 1
+            data = self.request(base + "artifacts/%d/zip" % ident, binary=True)
+            if not isinstance(data, bytes) or len(data) > core.INTENT_BYTES or core.sha(data) != digest:
+                raise StudyError("intent_upload_receipt")
+            decoded = decode_bundle(data, self.ctx, self.ctx, protocol=self.protocol)
+            if (decoded["state"] != state or decoded["manifest"]["context"] != self.ctx
+                    or decoded["manifest"]["kind"] != "intent" or decoded["transport"]["kind"] != "intent"
+                    or decoded["transport"]["namespace"] != namespace or decoded["rows"]):
+                raise StudyError("intent_mismatch")
+            decoded["upload_receipt"] = {"id": ident, "zip_digest": digest,
+                                          "name": artifact_name(state, "intent", self.ctx, namespace), "run_id": run_id}
+            self.decoded[ident] = copy.deepcopy(decoded)
+            return decoded
+        except StudyError:
+            raise
+        except (KeyError, TypeError, ValueError, AttributeError):
+            raise StudyError("intent_upload_receipt") from None
+
 
 class _View:
     """Only already validated, ordered metadata is normalized for legacy science."""
@@ -918,6 +963,8 @@ def collect(plan, intent_id, store, ctx, clock, lease, on_row=None):
                                                     late=began > state["session"].get("timing", {}).get("due_at", began) + 60)
     state["session"]["intent_receipt"] = {"id": intent_id, "digest": intent["digest"],
                                            "zip_digest": intent.get("zip_digest")}
+    if namespace == "live192" and "upload_receipt" in intent:
+        state["session"]["intent_upload_provenance"] = intent["upload_receipt"]
     _seal_clock(state, ctx, clock, lease)
     _validate(state, namespace)
     return state, rows
@@ -1300,6 +1347,8 @@ def main(argv=None):
                 ident = int(os.environ["W57_INTENT_ID"])
                 _atomic(out / "collection.json", core.encoded({"id": ident, "verified_operation_started_at": None}))
                 try:
+                    if protocol is core.START192_V1 and os.environ.get("W57_INTENT_DIGEST"):
+                        store.uploaded_intent(ident, os.environ["W57_INTENT_DIGEST"], plan["state"], plan["namespace"])
                     with (out / "result/observations.jsonl").open("wb") as stream:
                         def append(row):
                             stream.write(core.encoded(row) + b"\n")
