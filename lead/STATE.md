@@ -1,6 +1,22 @@
 # Lead state
 
 Last updated: 2026-10-23 by Codex. This is the current baton, not a release log.
+The Owner has now approved a NEW independent 192-start-point study after bounded
+HTTP400 diagnosis/repair, a new frozen protocol, implementation, independent and
+adversarial review, exact-source deployment and a qualified real pilot. This
+supersedes the earlier no-new-study authorization statements below only for that
+new protocol. Both old studies, their windows, bars and inconclusive results stay
+immutable. Do not launch before all pre-registered conditions are met.
+
+## New independent study preparation
+
+T-058 is in progress: isolated executor preserves per-probe refusal evidence and
+transport outcomes without identifying inputs. Lead owns capped real diagnosis,
+CI readback and integration. Source-only historical HTTP400 counts cannot prove
+which old requests failed or why. Keep all existing probes and scientific bars.
+T-059/T-060 new protocol/science and finite session integration are being scoped
+before implementation. No new scientific clock has started. T047 and its held
+dependencies remain outside this authorization.
 Earlier detailed source/review/release records remain in Git history at 53e3549
 and in lead/reviews/. Do not interpret their historical pending stages as current.
 
