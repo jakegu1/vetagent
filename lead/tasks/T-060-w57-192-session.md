@@ -82,4 +82,26 @@ Accidental old-study restart, same-run/old-source pilot reuse, protocol digest o
 
 The author of this spec must not be its fresh independent reviewer.
 
+## Amendments
+
+2026-10-23 A1, before acceptance is authored: fix the global admission proof
+contract explicitly. New-protocol admission scans all six exact selectors
+(v1 intent/result, v2 admission intent/result, v3 admission intent/result),
+with at most eight total metadata pages and at most two pages per selector;
+legacy admission retains its five-page cap. All total16-read/three-ZIP and
+110-second admission bounds, ordinary12-read/two-ZIP bounds and report limits
+remain unchanged. Partial, changed, excessive or ambiguous pages fail closed;
+do not silently skip an old namespace to fit a budget.
+
+A provenance-verified terminal admission index may carry the cumulative
+used-study ledger instead of independently downloading every version's latest
+root. Verify its immutable binding, parent/history coverage and terminal state.
+Examine every metadata stream for unresolved intents, active or conflicting
+history. An older unresolved stream is not cleared merely because another
+terminal index is newer. If closure/coverage cannot be proved within the
+existing three ZIPs, return unavailable without another download or launch.
+Freeze this seam in additive acceptance, including mixed old/new history,
+older unresolved history behind a later index and explicit budget refusal.
+No existing assertion change or new scientific gate is authorized by A1.
+
 
