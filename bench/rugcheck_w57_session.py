@@ -895,6 +895,8 @@ def _canary_intents(store, metadata, chain):
 
 def reconstruct(store, ctx, study, namespace="live"):
     protocol = _selection(namespace)
+    if _context_protocol(ctx) is not protocol:
+        raise StudyError("protocol_context_mismatch")
     metadata = _run_rows(store, ctx, namespace)
     if not metadata:
         raise StudyError("no_study_results")
@@ -972,6 +974,9 @@ def write_bundle(folder, state, rows, kind, ctx, namespace, unverified=None):
 
 
 def _local(folder, ctx, *, protocol=core.LEGACY193):
+    core._protocol(protocol)
+    if _context_protocol(ctx) is not protocol:
+        raise StudyError("protocol_context_mismatch")
     names = {"state.json", "observations.jsonl", "manifest.json", "transport.json", "unverified.jsonl"}
     files = {path.name: path.read_bytes() for path in folder.iterdir() if path.name in names}
     return decode_bundle(_zip(files), ctx, ctx, protocol=protocol)
@@ -1030,6 +1035,8 @@ def finalize(out, ctx, clock):
     plan = _parse((out / "plan.json").read_bytes())
     namespace = plan["namespace"]
     protocol = _selection(namespace)
+    if _context_protocol(ctx) is not protocol:
+        raise StudyError("protocol_context_mismatch")
     folder = out / "result"
     if namespace in ("live", "live192"):
         # The legacy finalizer reads only its original core files. Its interrupted
@@ -1104,6 +1111,8 @@ def _summary(value):
 
 def closure(out, ctx, clock, phase):
     _, namespace = _mode(phase)
+    if _context_protocol(ctx) is not _selection(namespace):
+        raise StudyError("protocol_context_mismatch")
     store = _store(ctx, report=True)
     metadata = _run_rows(store, ctx, namespace)
     report = {"namespace": namespace, "scientific_evidence": False,
