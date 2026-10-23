@@ -1188,8 +1188,8 @@ class RunningSessionTests(unittest.TestCase):
                     "session": "bench/rugcheck_w57_session.py", "workflow": driver.WORKFLOW,
                     "generator": ".github/scripts/render_w57_session_workflow.py"}
         self.assertEqual(freeze, {key: driver.sha((ROOT / path).read_bytes()) for key, path in expected.items()})
-        self.assertEqual(driver.sha(DRIVER.read_bytes().replace(b"\r\n", b"\n")),
-                         "7649040cb53bee691ea678d0c7876bda772d48ffc12fa5c04510715e31a3fe29")
+        legacy = json.loads((ROOT / "tests/fixtures/w57_legacy193_characterization.json").read_bytes())
+        self.assertEqual(driver.protocol_descriptor(driver.LEGACY193), legacy["legacy_protocol"])
         self.assertEqual(driver.sha((ROOT / expected["probe"]).read_bytes().replace(b"\r\n", b"\n")),
                          "3734d9c3b51114a90c7512ee77c6d90754e205a14085bbf22eee012acb4fbc21")
         self.assertEqual(set(self.ctx["source"]), {"driver", "probe", "workflow"})
@@ -1656,6 +1656,462 @@ class RunningSessionTests(unittest.TestCase):
                 if line.strip().startswith("timeout-minutes:"):
                     self.assertLessEqual(int(line.split(":", 1)[1]), 330)
         self.assertEqual(render.main(["--check"]), 0)
+
+
+class New192CoreTests(unittest.TestCase):
+    """T-059: explicit new science; all omitted arguments retain LEGACY193."""
+
+    def protocol(self):
+        self.assertTrue(hasattr(driver, "START192_V1"), "T-059 explicit 192-start protocol is missing")
+        return driver.START192_V1
+
+    def memory(self, protocol=None):
+        selected = self.protocol() if protocol is None else protocol
+
+        class Store(MemoryArtifacts):
+            def load(store, ident):
+                store.reads.append(ident)
+                meta, data = store.items[ident]
+                if meta.get("expired"):
+                    raise driver.StudyError("artifact_unavailable")
+                return driver.decode_bundle(data, meta["provenance"], store.expected,
+                                            protocol=meta.get("protocol", driver.LEGACY193))
+
+            def publish(store, state, rows, kind, ctx):
+                ident = max(store.items, default=0) + 1
+                data = driver.bundle_bytes(state, rows, kind, ctx, protocol=selected)
+                store.items[ident] = ({"id": ident, "name": driver.artifact_name(state, kind, ctx, protocol=selected),
+                                       "expired": False, "provenance": copy.deepcopy(ctx), "protocol": selected}, data)
+                return ident
+
+        return Store()
+
+    def job(self, phase, store, clock, ctx, study, pilot=None):
+        protocol = self.protocol()
+        plan = driver.prepare(phase, store, ctx, clock(), study=study, pilot_id=pilot, protocol=protocol)
+        if plan["action"] == "idle":
+            return None, [], plan
+        if plan["action"] == "checkpoint":
+            state, rows = plan["state"], []
+        else:
+            ident = store.publish(plan["state"], [], "intent", ctx)
+            state, rows = driver.collect(plan, ident, store, ctx, clock, clock.sleep, protocol=protocol)
+        ident = store.publish(state, rows, "result", ctx)
+        return ident, rows, dict(plan, result_state=state)
+
+    def active(self, count=60, failures=None):
+        clock, store = Clock(), self.memory()
+        fetch, calls = StudyTests().vendor(clock, count=count, failures=failures)
+        with patch.object(probe, "curl", side_effect=fetch):
+            pilot, pilot_rows, pilot_plan = self.job("pilot", store, clock, context(1), "new-pilot")
+            if pilot_plan["result_state"]["status"] != "pilot_passed":
+                return clock, store, pilot, pilot_rows, pilot_plan, calls
+            result, rows, plan = self.job("start", store, clock, context(2), "new-study", pilot)
+        return clock, store, result, rows, plan, calls
+
+    def row(self, state, slot, elapsed, score=1, http="200", member=0):
+        member = state["cohort"][member]
+        row = driver._row({"http": http, "body": "ok" if http == "200" else "unavailable",
+                           "score_normalised": score, "detectedAt": member["enrollment"]["detectedAt"],
+                           "totalHolders": 0, "topHolders_n": 0, "gated": {}},
+                          dict(state, phase="tick"), member["label"], member["mint"], state["started_at"] + elapsed, slot)
+        row["request_started_at"] = state["started_at"] + elapsed
+        return row
+
+    def test_parent_legacy_characterization_and_immutable_explicit_capsules(self):
+        protocol = self.protocol()
+        fixture = json.loads((ROOT / "tests/fixtures/w57_legacy193_characterization.json").read_bytes())
+        self.assertEqual(fixture["provenance"]["driver_lf_sha256"],
+                         "7649040cb53bee691ea678d0c7876bda772d48ffc12fa5c04510715e31a3fe29")
+        self.assertEqual(driver.protocol_descriptor(driver.LEGACY193), fixture["legacy_protocol"])
+        self.assertEqual(driver.protocol_descriptor(protocol),
+                         {"id": "w57-start192-v1", "schema": 3, "duration_seconds": 172800,
+                          "interval_seconds": 900, "last_slot": 191, "planned_starts": 192,
+                          "acquisition_grace_seconds": 0, "max_vendor_calls": 12351})
+        self.assertEqual(driver.protocol_digest(protocol), driver.sha(driver.encoded(driver.protocol_descriptor(protocol))))
+        with self.assertRaises(AttributeError):
+            protocol.last_slot = 192
+        for case in fixture["cases"]:
+            state = copy.deepcopy(fixture["base_state"])
+            state["slots"] = case["slots"]
+            self.assertEqual(driver.readout(state, case["rows"]), case["expected"], case["name"])
+            packed = driver.bundle_bytes(state, case["rows"], "result", context())
+            self.assertEqual(driver.decode_bundle(packed, context(), context())["rows"], case["rows"])
+        self.assertEqual((driver.SCHEMA, driver.DURATION, driver.INTERVAL, driver.LAST_SLOT, driver.MAX_VENDOR_CALLS),
+                         (1, 172800, 900, 192, 12414))
+
+    def test_new_state_and_bundle_refuse_unknown_mismatched_or_implicit_protocol(self):
+        protocol = self.protocol()
+        state = driver._new_state("new-state", "pilot", context(), EPOCH, protocol=protocol)
+        self.assertEqual(state["schema"], 3)
+        self.assertEqual(state["protocol"], driver.protocol_descriptor(protocol))
+        self.assertEqual(state["protocol_digest"], driver.protocol_digest(protocol))
+        for selection in (object(), protocol._replace(last_slot=192)):
+            with self.assertRaises(driver.StudyError):
+                driver._new_state("new-state", "pilot", context(), EPOCH, protocol=selection)
+        for change in (lambda s: s.update(schema=1), lambda s: s.update(protocol_digest="e" * 64),
+                       lambda s: s["protocol"].update(last_slot=192)):
+            broken = copy.deepcopy(state)
+            change(broken)
+            with self.assertRaises(driver.StudyError):
+                driver._validate_state(broken, protocol=protocol)
+        data = driver.bundle_bytes(state, [], "intent", context(), protocol=protocol)
+        self.assertEqual(driver.decode_bundle(data, context(), context(), protocol=protocol)["state"], state)
+        with self.assertRaises(driver.StudyError):
+            driver.decode_bundle(data, context(), context())
+        self.assertEqual(driver.artifact_name(state, "intent", context(), protocol=protocol), "w57-intent-v3")
+
+    def test_new_pilot_cohort_and_underpower_keep_original_qualification(self):
+        clock, store, _, rows, plan, calls = self.active(count=40)
+        state = plan["result_state"]
+        self.assertEqual(state["status"], "active")
+        self.assertEqual(len([m for m in state["cohort"] if m["group"] == "fresh"]), 40)
+        self.assertEqual([m["mint"] for m in state["cohort"] if m["group"] == "control"], [m for _, m in probe.MAJORS])
+        self.assertTrue(all(0 <= m["enrollment"]["age_minutes"] <= 10 for m in state["cohort"] if m["group"] == "fresh"))
+        self.assertEqual(len(calls), 7 + 43)
+        pilot = store.load(state["pilot"]["id"])
+        self.assertEqual([r["mint"] for r in pilot["rows"] if r["kind"] == "report"], [m for _, m in probe.MAJORS[:6]])
+        _, _, _, _, under, _ = self.active(count=39)
+        self.assertEqual(under["result_state"]["status"], "insufficient_cohort")
+        self.assertIsNone(under["result_state"]["started_at"])
+        _, _, _, failed_rows, failed, failed_calls = self.active(failures={probe.MAJORS[2][1]: ("400", {})})
+        self.assertEqual(failed["result_state"]["status"], "pilot_failed")
+        self.assertEqual(len(failed_calls), 7)
+        self.assertEqual(next(r for r in failed_rows if r.get("mint") == probe.MAJORS[2][1])["http"], "400")
+        old_clock, old_store = Clock(), MemoryArtifacts()
+        old_fetch, _ = StudyTests().vendor(old_clock)
+        with patch.object(probe, "curl", side_effect=old_fetch):
+            old_pilot, _, _ = StudyTests().job("pilot", old_store, old_clock, context(1), "old-pilot")
+        new_store = self.memory()
+        new_store.items = old_store.items
+        with self.assertRaises(driver.StudyError), patch.object(probe, "curl", side_effect=AssertionError("Vendor")):
+            driver.prepare("start", new_store, context(8), old_clock(), study="different-study", pilot_id=old_pilot,
+                           protocol=self.protocol())
+
+    def test_all_192_real_core_sweeps_complete_schedule_but_leave_endpoint_censored(self):
+        protocol = self.protocol()
+        clock, store, _, _, initial, _ = self.active()
+        start = initial["result_state"]["started_at"]
+        calls = []
+        def vendor(url):
+            calls.append(clock())
+            return "200", {"score_normalised": 1, "detectedAt": stamp(start - 60), "topHolders": [], "totalHolders": 0}
+        with patch.object(probe, "curl", side_effect=vendor):
+            for slot in range(192):
+                clock.value = start + slot * 900
+                _, rows, current = self.job("tick", store, clock, context(slot + 3), "new-study")
+                self.assertEqual(current["state"]["slot"], slot)
+                self.assertEqual(rows[0]["request_started_at"], start + slot * 900)
+                self.assertTrue(all(row["ts"] <= start + 172800 for row in rows))
+        state = current["result_state"]
+        self.assertEqual(state["status"], "completed")
+        self.assertEqual([s["slot"] for s in state["slots"]], list(range(192)))
+        self.assertEqual(len(calls), 192 * 63)
+        answer = driver.reconstruct(store, context(), "new-study", protocol=protocol)
+        self.assertEqual(answer["coverage"]["fresh"]["scheduled_slots"], 192)
+        self.assertEqual(answer["expected_score_cells"], 45 * 192)
+        self.assertTrue(answer["planned_schedule_complete"])
+        self.assertTrue(answer["all_score_cells_usable"])
+        self.assertTrue(answer["endpoint_right_censored"])
+        self.assertTrue(answer["censored"])
+        self.assertFalse(answer["negative_tail_established"])
+        self.assertEqual(answer["proposal"], "no_flip_observed")
+        self.assertLess(answer["data_horizon_at"], state["ends_at"])
+        self.assertEqual(set(answer["last_usable_at"]), {m["mint"] for m in state["cohort"]})
+        invalid = copy.deepcopy(state)
+        invalid["slots"].append({"slot": 192, "status": "observed"})
+        with self.assertRaises(driver.StudyError):
+            driver._validate_state(invalid, protocol=protocol)
+        invalid["slots"] = [{"slot": True, "status": "observed"}]
+        with self.assertRaises(driver.StudyError):
+            driver._validate_state(invalid, protocol=protocol)
+
+    def test_strict_completion_deadline_retains_boundary_overrun_and_unattempted_cells(self):
+        protocol = self.protocol()
+        for remaining, duration, expected_calls, usable in ((31, 0, 0, 0), (32, 32, 1, 1), (32, 33, 1, 0)):
+            with self.subTest(remaining=remaining, duration=duration):
+                clock, store, _, _, initial, _ = self.active()
+                end = initial["result_state"]["ends_at"]
+                clock.value = end - remaining
+                calls = []
+                def vendor(url):
+                    calls.append(clock())
+                    clock.sleep(duration)
+                    return "200", {"score_normalised": 1, "detectedAt": stamp(end - 172860)}
+                with patch.object(probe, "curl", side_effect=vendor):
+                    _, rows, final = self.job("tick", store, clock, context(9), "new-study")
+                self.assertEqual(len(calls), expected_calls)
+                answer = driver.readout(final["result_state"], rows, protocol=protocol)
+                self.assertEqual(answer["observed_score_cells"], usable)
+                self.assertEqual(answer["coverage"]["fresh"]["attempted_cells"], expected_calls)
+                if expected_calls:
+                    self.assertEqual(rows[0]["outside_window"], duration > remaining)
+                    self.assertEqual(rows[1]["body"], "not_observed")
+                self.assertTrue(answer["endpoint_right_censored"])
+
+    def test_fields_missing_requests_and_censoring_keep_separate_fixed_denominators(self):
+        _, _, _, _, initial, _ = self.active()
+        state = dict(initial["result_state"], phase="tick", slots=[{"slot": 0, "status": "partial"}])
+        rows = [self.row(state, 0, 1), self.row(state, 0, 2, 80, "400", 1), self.row(state, 0, 3, None, "200", 2)]
+        answer = driver.readout(state, rows, protocol=self.protocol())
+        fields = answer["coverage"]["fresh"]["fields"]
+        self.assertEqual(fields["score_normalised"], {"usable": 1, "attempted_unavailable_or_invalid": 2,
+                                                     "outside_window": 0, "never_attempted": 45 * 192 - 3})
+        self.assertEqual(fields["permanentDelegate"]["usable"], 0)
+        self.assertEqual(answer["coverage"]["fresh"]["attempted_failed_requests"], 1)
+        self.assertEqual(answer["coverage"]["control"]["expected_cells"], 18 * 192)
+        self.assertFalse(answer["planned_schedule_complete"])
+        self.assertFalse(answer["all_score_cells_usable"])
+        self.assertEqual(answer["proposal"], "inconclusive")
+
+    def test_crossing_intervals_keep_wall_tenth_latest_flip_and_left_lower_bound(self):
+        _, _, _, _, initial, _ = self.active()
+        state = dict(initial["result_state"], phase="tick")
+        rows = [self.row(state, 170, 154000), self.row(state, 176, 158400, 80)]
+        answer = driver.readout(state, rows, protocol=self.protocol())
+        self.assertEqual(answer["final_tenth_start"], state["started_at"] + 155520)
+        self.assertEqual(answer["latest_flip"]["tail_location"], "ambiguous")
+        self.assertEqual(answer["proposal"], "inconclusive")
+        rows = [self.row(state, 176, 158400), self.row(state, 177, 159300, 20)]
+        answer = driver.readout(state, rows, protocol=self.protocol())
+        self.assertEqual(answer["proposal"], "different_rule_e14_review")
+        origin_lag = (state["started_at"] - state["cohort"][0]["enrollment"]["ts"] + 60) / 60
+        self.assertEqual(answer["latest_flip"]["lower_bound_minutes"], 2640 + origin_lag)
+        self.assertEqual(answer["latest_flip"]["index_age_interval_minutes"], [2640 + origin_lag, 2655 + origin_lag])
+        mismatched = copy.deepcopy(rows)
+        mismatched[-1]["detectedAt"] = stamp(state["started_at"] - 60)
+        self.assertIsNone(driver.readout(state, mismatched, protocol=self.protocol())["latest_flip"]["lower_bound_minutes"])
+        rows = [self.row(state, 2, 1800), self.row(state, 3, 2700, 50)]
+        answer = driver.readout(state, rows, protocol=self.protocol())
+        self.assertEqual(answer["proposal"], "larger_window_lower_bound_with_censoring")
+        self.assertEqual(answer["proposed_lower_bound_minutes"], 30 + origin_lag)
+
+    def test_new_protocol_source_clock_and_call_ceiling_fail_before_vendor(self):
+        protocol = self.protocol()
+        clock, store, _, _, initial, _ = self.active()
+        plan = driver.prepare("tick", store, context(3), clock(), study="new-study", protocol=protocol)
+        ident = store.publish(plan["state"], [], "intent", context(3))
+        for change in (lambda p: p["state"].update(protocol_digest="f" * 64),
+                       lambda p: p["state"].update(ends_at=p["state"]["ends_at"] + 1)):
+            broken = copy.deepcopy(plan)
+            change(broken)
+            with self.assertRaises(driver.StudyError), patch.object(probe, "curl", side_effect=AssertionError("Vendor")):
+                driver.collect(broken, ident, store, context(3), clock, clock.sleep, protocol=protocol)
+        with self.assertRaises(driver.StudyError), patch.object(probe, "curl", side_effect=AssertionError("Vendor")):
+            driver.collect(plan, ident, store, dict(context(3), source=dict(context()["source"], driver="e" * 64)),
+                           clock, clock.sleep, protocol=protocol)
+        exhausted = copy.deepcopy(plan)
+        exhausted["state"]["requests"] = {"rugcheck": 12351, "gecko": 0}
+        capped = self.memory()
+        capped_id = capped.publish(exhausted["state"], [], "intent", context(3))
+        with patch.object(probe, "curl", side_effect=AssertionError("Vendor")):
+            state, rows = driver.collect(exhausted, capped_id, capped, context(3), clock, clock.sleep, protocol=protocol)
+        self.assertEqual(state["status"], "failed")
+        self.assertEqual(state["requests"], {"rugcheck": 12351, "gecko": 0})
+
+    def test_a2_legacy_markers_are_rejected_before_decode_or_collection(self):
+        fixture = json.loads((ROOT / "tests/fixtures/w57_legacy193_characterization.json").read_bytes())
+        genuine = copy.deepcopy(fixture["base_state"])
+        genuine["slot"] = 0
+        driver._validate_state(genuine)
+        packed = driver.bundle_bytes(genuine, [], "intent", context())
+        with zipfile.ZipFile(io.BytesIO(packed)) as archive:
+            original = {name: archive.read(name) for name in archive.namelist()}
+        descriptor = driver.protocol_descriptor(self.protocol())
+        markers = ({"protocol": descriptor, "protocol_digest": "f" * 64},
+                   {"protocol": dict(descriptor, id="unknown-protocol"), "protocol_digest": "f" * 64},
+                   {"protocol_digest": "f" * 64})
+        for marker in markers:
+            with self.subTest(marker=marker):
+                marked = dict(genuine, **marker)
+                with self.assertRaises(driver.StudyError):
+                    driver._validate_state(marked)
+                with self.assertRaises(driver.StudyError):
+                    driver.bundle_bytes(marked, [], "intent", context())
+                files = dict(original, **{"state.json": driver.encoded(marked)})
+                manifest = json.loads(files["manifest.json"])
+                manifest["files"]["state.json"] = driver.sha(files["state.json"])
+                files["manifest.json"] = driver.encoded(manifest)
+                target = io.BytesIO()
+                with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
+                    for name, data in files.items():
+                        archive.writestr(name, data)
+                with self.assertRaises(driver.StudyError):
+                    driver.decode_bundle(target.getvalue(), context(), context())
+                class RawStore:
+                    def load(self, ident):
+                        return {"state": marked, "manifest": {"kind": "intent", "context": context()}, "digest": "e" * 64}
+                plan = {"action": "collect", "state": marked, "phase": "tick", "prepared_at": EPOCH}
+                with patch.object(probe, "curl", side_effect=AssertionError("Vendor")) as vendor:
+                    with self.assertRaises(driver.StudyError):
+                        driver.collect(plan, 1, RawStore(), context(), Clock(), lambda seconds: None)
+                    self.assertEqual(vendor.call_count, 0)
+        # A marker on the manifest alone is also a conflicting legacy envelope.
+        manifest = json.loads(original["manifest.json"])
+        manifest.update(protocol=descriptor, protocol_digest="f" * 64)
+        target = io.BytesIO()
+        with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
+            for name, data in dict(original, **{"manifest.json": driver.encoded(manifest)}).items():
+                archive.writestr(name, data)
+        with self.assertRaises(driver.StudyError):
+            driver.decode_bundle(target.getvalue(), context(), context())
+        self.assertEqual(driver.decode_bundle(packed, context(), context())["state"], genuine)
+
+    def test_a2_clock_backwards_or_nonfinite_stops_and_retains_attempt_evidence(self):
+        protocol = self.protocol()
+        for bad_at in (1, 2):
+            for fault in ("backward", "nan", "infinity"):
+                with self.subTest(fault=fault, bad_at=bad_at):
+                    clock, store, _, _, initial, _ = self.active()
+                    start = initial["result_state"]["started_at"]
+                    ctx = context(3)
+                    plan = driver.prepare("tick", store, ctx, clock(), study="new-study", protocol=protocol)
+                    ident = store.publish(plan["state"], [], "intent", ctx)
+                    earlier = {key: value[1] for key, value in store.items.items()}
+                    calls = []
+                    def vendor(url):
+                        calls.append(clock())
+                        if len(calls) == bad_at:
+                            clock.value = start - 100 if fault == "backward" else float("nan" if fault == "nan" else "inf")
+                        return "200", {"score_normalised": 1, "detectedAt": plan["state"]["cohort"][0]["enrollment"]["detectedAt"]}
+                    with patch.object(probe, "curl", side_effect=vendor):
+                        state, rows = driver.collect(plan, ident, store, ctx, clock, clock.sleep, protocol=protocol)
+                    self.assertEqual(len(calls), bad_at)
+                    self.assertEqual(state["status"], "failed")
+                    self.assertEqual(state["failure"], "clock_changed")
+                    self.assertEqual(len(rows), bad_at)
+                    uncertain = rows[-1]
+                    self.assertEqual(uncertain["timing_state"], "uncertain")
+                    self.assertEqual(uncertain["http"], "200")
+                    self.assertIsNone(uncertain["score_normalised"])
+                    self.assertTrue(driver.number(uncertain["request_started_at"]))
+                    self.assertEqual(uncertain["ts"], start - 100 if fault == "backward" else None)
+                    answer = driver.readout(state, rows, protocol=protocol)
+                    self.assertEqual(answer["observed_score_cells"], bad_at - 1)
+                    self.assertEqual(answer["coverage"]["fresh"]["attempted_cells"], bad_at)
+                    self.assertEqual(answer["coverage"]["fresh"]["attempted_failed_requests"], 0)
+                    self.assertEqual(answer["coverage"]["fresh"]["timing_uncertain_cells"], 1)
+                    packed = driver.bundle_bytes(state, rows, "result", ctx, protocol=protocol)
+                    self.assertEqual(driver.decode_bundle(packed, ctx, context(), protocol=protocol)["rows"], rows)
+                    self.assertEqual({key: value[1] for key, value in store.items.items()}, earlier)
+        # A backwards step in pacing is detected before another physical call.
+        clock, store, _, _, _, _ = self.active()
+        ctx, calls = context(3), []
+        plan = driver.prepare("tick", store, ctx, clock(), study="new-study", protocol=protocol)
+        ident = store.publish(plan["state"], [], "intent", ctx)
+        def pacing(seconds):
+            clock.sleep(seconds)
+            clock.value -= 100
+        def valid(url):
+            calls.append(clock())
+            return "200", {"score_normalised": 1, "detectedAt": plan["state"]["cohort"][0]["enrollment"]["detectedAt"]}
+        with patch.object(probe, "curl", side_effect=valid):
+            state, rows = driver.collect(plan, ident, store, ctx, clock, pacing, protocol=protocol)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(state["failure"], "clock_changed")
+        self.assertEqual(driver.readout(state, rows, protocol=protocol)["observed_score_cells"], 1)
+
+    def test_a2_new_artifact_scan_retains_mature_mixed_history_and_bounded_failures(self):
+        def service(old_count, new_count, fault=None, selected=None, max_reads=12):
+            selected = self.protocol() if selected is None else selected
+            adapter = driver.GitHubArtifacts(context(), "not-a-token", protocol=selected, max_reads=max_reads)
+            requests = []
+            def request(path, binary=False):
+                adapter._count()
+                parts = dict(part.split("=", 1) for part in path.split("?", 1)[1].split("&"))
+                name, page = parts["name"], int(parts["page"])
+                requests.append((name, page))
+                version = int(name.rsplit("v", 1)[1])
+                count = old_count if version == 1 else new_count
+                kind = name.split("-")[1]
+                rows = [{"id": version * 1000000 + index * 2 + (kind == "result"), "name": name,
+                         "created_at": stamp(EPOCH + version * 100000 + index),
+                         "workflow_run": {"id": version * 10000 + index + 1, "head_sha": "a" * 40,
+                                          "head_branch": "master"}} for index in reversed(range(count))]
+                body = {"total_count": count, "artifacts": rows[(page - 1) * 100:page * 100]}
+                if version == 3 and kind == "result":
+                    if fault == "partial" and page == 1:
+                        body["artifacts"] = body["artifacts"][:99]
+                    elif fault == "changed_count" and page == 2:
+                        body["total_count"] -= 1
+                    elif fault == "extra" and page == 2:
+                        body["artifacts"] += [dict(body["artifacts"][-1], id=9999999)]
+                    elif fault == "foreign" and page == 1:
+                        body["artifacts"][0] = dict(body["artifacts"][0], name="foreign")
+                    elif fault == "missing_count":
+                        body.pop("total_count")
+                    elif fault == "boolean_count":
+                        body["total_count"] = True
+                return body
+            return adapter, requests, patch.object(adapter, "request", side_effect=request)
+        for old_count, new_count in ((0, 100), (0, 192), (192, 192), (195, 195)):
+            with self.subTest(old=old_count, new=new_count):
+                adapter, requests, transport = service(old_count, new_count)
+                with transport:
+                    rows = adapter.list()
+                self.assertEqual(len(rows), 2 * (old_count + new_count))
+                expected = 2 * ((2 if old_count >= 100 else 1) + (2 if new_count >= 100 else 1))
+                self.assertEqual(adapter.reads, expected)
+                self.assertEqual(len(requests), expected)
+                self.assertLessEqual(adapter.reads, 8)
+                self.assertTrue(all(page <= 2 for _, page in requests))
+                self.assertEqual(adapter.max_reads, 12)
+                self.assertEqual(adapter.max_downloads, 2)
+                self.assertEqual(len({row["id"] for row in rows}), len(rows))
+        legacy, requests, transport = service(192, 192, selected=driver.LEGACY193)
+        with transport:
+            self.assertEqual(len(legacy.list()), 384)
+        self.assertEqual(legacy.reads, 4)
+        self.assertTrue(all(name.endswith("v1") for name, _ in requests))
+        for fault in ("partial", "changed_count", "extra", "foreign", "missing_count", "boolean_count"):
+            with self.subTest(fault=fault):
+                adapter, requests, transport = service(0, 192, fault=fault)
+                with transport, self.assertRaises(driver.StudyError):
+                    adapter.list()
+                self.assertLessEqual(len(requests), 8)
+                self.assertTrue(all(page <= 2 for _, page in requests))
+        for old_count, new_count in ((0, 196), (196, 192), (0, 200)):
+            adapter, requests, transport = service(old_count, new_count)
+            with transport, self.assertRaises(driver.StudyError):
+                adapter.list()
+            self.assertLessEqual(len(requests), 8)
+        limited, requests, transport = service(195, 195, max_reads=7)
+        with transport, self.assertRaises(driver.StudyError):
+            limited.list()
+        self.assertEqual(len(requests), 7)
+        self.assertEqual(limited.max_reads, 7)
+
+    def test_new_lost_intent_and_partial_finalize_preserve_chain_without_replay(self):
+        protocol = self.protocol()
+        clock, store, _, _, initial, _ = self.active()
+        ctx = context(3)
+        plan = driver.prepare("tick", store, ctx, clock(), study="new-study", protocol=protocol)
+        ident = store.publish(plan["state"], [], "intent", ctx)
+        with tempfile.TemporaryDirectory() as temporary:
+            out = Path(temporary)
+            driver.write_bundle(out / "intent", plan["state"], [], "intent", ctx, protocol=protocol)
+            driver.write_bundle(out / "result", dict(plan["state"], status="lost_checkpoint"), [], "result", ctx, protocol=protocol)
+            row = self.row(plan["state"], 0, 1)
+            (out / "result/observations.jsonl").write_bytes(driver.encoded(row) + b"\n")
+            (out / "plan.json").write_bytes(driver.encoded(plan))
+            (out / "collection.json").write_bytes(driver.encoded({"id": ident}))
+            with patch.object(probe, "curl", side_effect=AssertionError("Vendor")):
+                driver.finalize(out, ctx, protocol=protocol)
+            state = json.loads((out / "result/state.json").read_bytes())
+            rows = [json.loads(line) for line in (out / "result/observations.jsonl").read_bytes().splitlines()]
+            self.assertEqual(state["status"], "failed")
+            self.assertEqual(rows, [row])
+            self.assertEqual(state["protocol_digest"], driver.protocol_digest(protocol))
+            self.assertEqual(driver.decode_bundle(driver.bundle_bytes(state, rows, "result", ctx, protocol=protocol),
+                                                 ctx, context(), protocol=protocol)["rows"], rows)
+        clock.sleep(900)
+        with patch.object(probe, "curl", side_effect=AssertionError("replay")):
+            _, _, result = self.job("tick", store, clock, context(4), "new-study")
+        self.assertEqual(result["result_state"]["status"], "lost_checkpoint")
+        answer = driver.reconstruct(store, context(), "new-study", protocol=protocol)
+        self.assertEqual(answer["proposal"], "inconclusive")
+        self.assertTrue(answer["endpoint_right_censored"])
 
 
 if __name__ == "__main__":
