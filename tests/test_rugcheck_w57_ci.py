@@ -1712,7 +1712,7 @@ class New192CoreTests(unittest.TestCase):
     def row(self, state, slot, elapsed, score=1, http="200", member=0):
         member = state["cohort"][member]
         row = driver._row({"http": http, "body": "ok" if http == "200" else "unavailable",
-                           "score_normalised": score, "detectedAt": stamp(state["started_at"] - 60),
+                           "score_normalised": score, "detectedAt": member["enrollment"]["detectedAt"],
                            "totalHolders": 0, "topHolders_n": 0, "gated": {}},
                           dict(state, phase="tick"), member["label"], member["mint"], state["started_at"] + elapsed, slot)
         row["request_started_at"] = state["started_at"] + elapsed
@@ -1768,7 +1768,7 @@ class New192CoreTests(unittest.TestCase):
         self.assertEqual(len([m for m in state["cohort"] if m["group"] == "fresh"]), 40)
         self.assertEqual([m["mint"] for m in state["cohort"] if m["group"] == "control"], [m for _, m in probe.MAJORS])
         self.assertTrue(all(0 <= m["enrollment"]["age_minutes"] <= 10 for m in state["cohort"] if m["group"] == "fresh"))
-        self.assertEqual(len(calls), 7 + 42)
+        self.assertEqual(len(calls), 7 + 43)
         pilot = store.load(state["pilot"]["id"])
         self.assertEqual([r["mint"] for r in pilot["rows"] if r["kind"] == "report"], [m for _, m in probe.MAJORS[:6]])
         _, _, _, _, under, _ = self.active(count=39)
@@ -1875,12 +1875,16 @@ class New192CoreTests(unittest.TestCase):
         rows = [self.row(state, 176, 158400), self.row(state, 177, 159300, 20)]
         answer = driver.readout(state, rows, protocol=self.protocol())
         self.assertEqual(answer["proposal"], "different_rule_e14_review")
-        self.assertEqual(answer["latest_flip"]["lower_bound_minutes"], 2641)
-        self.assertEqual(answer["latest_flip"]["index_age_interval_minutes"], [2641, 2656])
+        origin_lag = (state["started_at"] - state["cohort"][0]["enrollment"]["ts"] + 60) / 60
+        self.assertEqual(answer["latest_flip"]["lower_bound_minutes"], 2640 + origin_lag)
+        self.assertEqual(answer["latest_flip"]["index_age_interval_minutes"], [2640 + origin_lag, 2655 + origin_lag])
+        mismatched = copy.deepcopy(rows)
+        mismatched[-1]["detectedAt"] = stamp(state["started_at"] - 60)
+        self.assertIsNone(driver.readout(state, mismatched, protocol=self.protocol())["latest_flip"]["lower_bound_minutes"])
         rows = [self.row(state, 2, 1800), self.row(state, 3, 2700, 50)]
         answer = driver.readout(state, rows, protocol=self.protocol())
         self.assertEqual(answer["proposal"], "larger_window_lower_bound_with_censoring")
-        self.assertEqual(answer["proposed_lower_bound_minutes"], 31)
+        self.assertEqual(answer["proposed_lower_bound_minutes"], 30 + origin_lag)
 
     def test_new_protocol_source_clock_and_call_ceiling_fail_before_vendor(self):
         protocol = self.protocol()
