@@ -4,29 +4,26 @@ Last updated: 2026-10-23 by Codex. This is the current baton, not a release log.
 Earlier detailed source/review/release records remain in Git history at 53e3549
 and in lead/reviews/. Do not interpret their historical pending stages as current.
 
-## Owner-requested pause
+## Resumed from the verified pause checkpoint
 
-Paused on2026-10-23 at the Owner's explicit request. Do not resume engineering,
-review dispatch, new tests, pushes, deployment or the real canary until the Owner
-explicitly notifies the lead to resume. Preserve existing production/snapshot
-tasks; this pause does not authorize disabling them.
+The Owner explicitly resumed on2026-10-23 and authorized the remaining sampling
+and scheduling repairs, independent review, complete verification, deployment
+after quality gates and the single finite unarmed real-clock canary. The previous
+pause condition is satisfied; existing production/snapshot tasks remain intact.
 
-The safe executor checkpoint is clean tests-onlyd48a6d1 on
-codex/native-refusal-test-20261023, after the normal A1 governance mergee722949.
-The new slow-second regression reproduces the original None-versus-observed-body
-assertion, native1; all995 tracked raw files remain exact. No A1 implementation
-fix has been applied and no command/native test remains running. Resume from that
-red rather than repeating or discarding completed work. The authoritative named
-A1 specification was committed atacdfd0d before these tests.
+Resume read-back verifies the clean integration pause commit17bb6e8, clean
+tests-only executord48a6d1, and all thirteen protected primary changes byte exact.
+Origin/master remainsccbdcb6 and the owned research workflow is still disabled.
+The prior slow-second parent red and all failed full-gate receipts are retained.
+The authoritative A1 amendment atacdfd0d preceded the tests-only commit.
 
-After explicit resume, finish only that bounded fixture correction, obtain its
-fresh second-round review and changed-head full45, then reconcile latest bot data,
-generate/check, normally integrate and prove actual Linux/master/locked builds.
-Only then publish/read back the manual-only sampling workflow and perform its
-single finite real-clock synthetic canary. No canary was dispatched and the owned
-research workflow remains disabled at the pause read-back. No new study or source
-publication is inferred from the tests-only checkpoint. Earlier failed and green
-receipts retain their actual source and qualification.
+Next: the isolated executor implements only the bounded T057 A1 fixture
+correction, followed by fresh second-round review and changed-head complete45.
+Then normally reconcile bot data, generate/check, integrate, and prove actual
+Linux/master/two locked builds before publishing the manual-only workflow and
+performing its one authorized canary. No new scientific study is authorized;
+the lead recommends a separately registered study only after operational proof.
+No implementation fix, final deployment or canary is inferred from resumption.
 
 ## Authorization and invariants
 
