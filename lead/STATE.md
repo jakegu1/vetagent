@@ -86,8 +86,14 @@ same frozenf9cd525, preserving all T054 controls and acceptance exactly. Actual
 Linux39925732179 checks out that head and passes all45, upstream/backfill and
 both locked builds with source/Artifact provenance verified. The same T054
 second-round reviewer now owns the sole local complete45 at this changed head.
-Current stage is that final combined gate; normal integration, master gates and
-the actual unarmed canary remain unobserved. No unchanged failed gate is retried.
+That final combined gate retains a new44of45 failure in the200 positive retry
+control. Its exact original sidecars are unobserved. A bounded second-worker
+delay reproduces the old body assertion while retaining real cancellation and
+cleanup. T057 amendmentA1 now separates the intentional cancellation from the
+normal retry's fixture watchdog before new tests. T054 sources remain exact and
+approved; no implementation is merged or published. Normal integration, master
+gates and the actual unarmed canary remain unobserved. No unchanged failed gate
+is retried, and the first T057 review/source-Linux success stays historical.
 No new source publication, actual real-clock canary or scientific enrollment is
 yet observed. The earlier failed source/Linux/full-gate receipts remain failed.
 The normal merge b0fea0e retains

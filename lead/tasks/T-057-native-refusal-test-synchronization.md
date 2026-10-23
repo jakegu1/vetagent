@@ -67,3 +67,67 @@ fetch handoff; never patch production timeout/policy semantics to force success.
 This one small companion protects the final release gate. Stop at its verified
 test repair; no local archive/queue/scheduler dependency, new study or new service
 is authorized. Keep every failed attempt and report timing evidence precisely.
+
+## Amendments
+
+### A1 - 2026-10-23: isolate cancellation injection from normal retry startup
+
+First-round sourcef9cd525 passes independent native12/12 and source review12/12,
+and actual Linux39925732179 passes all45 and both locked builds. Its later exact
+Windows combined gate still fails44of45: the200 positive control returns None
+instead of the original observed body. The failed gate remains failed; its exact
+fast/slow invocation and temporary sidecars are unobserved.
+
+A separate bounded extracted-fixture diagnostic confirms the timing class. In
+the unchanged control, first durable200 headers precede a real first-task
+cancellation. The second worker is cancelled during start before durable headers
+are observed; two physical loopback requests are recorded, so absence of header
+evidence is not absence of a request. Observer overhead may affect this control.
+In the separately retained one-second delay before only the second worker start,
+the original assertion deterministically sees None. The first request has durable
+200 headers; the second has no arming, invocation or headers, and only one
+physical request occurs. Both children retire. This does not prove the earlier
+full gate's exact internal timeline.
+
+The original engine timeout parameter also bounds the ordinary successful retry,
+which was not the intended injected failure. Separate that test-only watchdog
+from the fault: keep a genuine0.7second asyncio.wait_for cancellation around the
+first native task after durable headers and the unchanged one-second hold. The
+unchanged engine function may receive a separate five-second fixture watchdog so
+normal second-child startup is not itself the injected failure. This is the exact
+named input change superseding the original engine timeout0.7 requirement only
+inside named(e); it does not alter any production timeout, source guard, policy,
+scientific deadline or decision bar. Retain the separate five-second first-header
+startup bound, retries1, all four cases, every original assertion and real task
+cancellation/callback behavior. Do not replace cancellation with an ordinary
+raised exception, mock a successful answer, suppress an assertion, pre-issue the
+second physical request before the engine asks, or patch engine bindings.
+
+Before implementation, a tests-only named-change commit may extract exactly the
+old named(e) statements into NativeAcceptance._run_native_refusal_cases. Its
+statement/input/assertion AST must remain exact. Replace only that old block with
+the helper call, and replace only the fixture call in the already-added
+test_native_refusal_cancellation_after_slow_startup with this helper call. This
+removes duplicate unrelated cap/deadline subcases from that new slow-start test;
+the original registered method continues to cover every such case unchanged.
+All original slow-first delay inputs and assertions stay exact.
+
+In that same tests-only commit, add
+test_native_retry_preserves_slow_second_startup. Delay only the second native
+worker in the named(e) fixture by one second, retain all original cases and
+assertions, and assert exactly one matching second-worker delay. The new test
+must fail at the original None-versus-observed-body assertion before the fix,
+not an import/name failure. Freeze both new slow methods thereafter. Implement
+only the described fault/watchdog separation in a subsequent correctly titled
+named-change fix commit whose body states the observed red.
+
+The second-round reviewer independently reproduces the parent red, healthy fast,
+slow-first and slow-second paths, genuine first cancellation timing, explicit
+unavailable-header failure, meaningful reconciliation/refusal-stop mutants and
+the unchanged non-target cases/source. A new exact-head complete45 with raw
+inventories/native exit is required, alongside actual new source Linux/master
+and locked builds. That independent complete gate may serve the combined frozen
+T054 source because its five controls and acceptance remain exact; do not run
+another duplicate unchanged full gate solely to relabel prior failures. Root's
+post-integration complete gate remains required. This is T057's bounded second
+round; only actual regressions or broken invariants justify another bounce.
