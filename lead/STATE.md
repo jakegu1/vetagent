@@ -17,13 +17,13 @@ Origin/master remainsccbdcb6 and the owned research workflow is still disabled.
 The prior slow-second parent red and all failed full-gate receipts are retained.
 The authoritative A1 amendment atacdfd0d preceded the tests-only commit.
 
-Next: the isolated executor implements only the bounded T057 A1 fixture
-correction, followed by fresh second-round review and changed-head complete45.
-Then normally reconcile bot data, generate/check, integrate, and prove actual
-Linux/master/two locked builds before publishing the manual-only workflow and
-performing its one authorized canary. No new scientific study is authorized;
-the lead recommends a separately registered study only after operational proof.
-No implementation fix, final deployment or canary is inferred from resumption.
+T057 A1 is now independently approved12/12 at4b4dbb3. Its new independent
+complete45 passes with raw995 exact, and actual feature Linux39941061884 passes
+all45 and both locked builds. Normal mergefb1b1ec integrates the reviewed source;
+ae6c764 normally retains current bot dataccbdcb6. Generation, post-integration
+checks, actual master gates, publication read-back and the one real canary remain
+pending. No new scientific study is authorized; a separately registered study
+remains a recommendation only after operational proof.
 
 ## Authorization and invariants
 
@@ -77,51 +77,39 @@ bot-only run. Their skipped observations are not a new packaging result.
 
 ## Current source batch
 
-T-054 is the current bounded reliability task: replace repeated timer admission
-with explicit finite running sessions and an unarmed real-clock canary. Its ready
-spec preserves both legacy scientific modules and the original study rules.
-The lead owns integration and actual deployment/canary; an isolated executor owns
-tests-first implementation, followed by fresh ordinary and adversarial review.
-Current stage: round1 source8ac7434 is Changes required. Fresh ordinary review
-reproduces four proof gaps and adversarial review one final-phase clock gap.
-The lead freezes amendmentA2 before new tests. Tests-only4bbd7ba preserves all
-old methods and reproduces the five new methods' failures; original35 stay green.
-The isolated executor repairs that bounded bar for one combined round2 review.
-T055/T056 separately repair the actual legacy Linux disappearance race and exact
-float-assertion failure. Fresh source review is PASS12/12; executor/independent
-complete45 and actual source Linux39917097945 with both locked builds pass.
-Their reviewed companion may be normally integrated before final combined gates.
-Combined sourcecd1c534 passes the lead complete45 and actual Linux39919510546,
-including both locked builds. Fresh round2 complete45 retains a separate44of45
-failure in the old refusal fixture. Its original sidecars are unavailable. A
-bounded delayed-start witness reproduces the premise on both candidate and old
-base; T057 names a separate test-only synchronization repair before any edit.
-The fresh T054 A2 review continues; final source publication remains gated.
-The fresh combined round2 source review is now PASS12/12 and RED-TEAM none;
-overall READY remains held for the separately named T057 test repair and new
-exact-head complete gate. Its3718-file evidence seal and every raw source byte
-are verified by the lead. See lead/reviews/T-054.md for the retained qualifications.
-T057 sourcef9cd525 now passes its fresh independent review12/12 and native12/12;
-the lead verifies every2055-file seal member. The final combined source is that
-same frozenf9cd525, preserving all T054 controls and acceptance exactly. Actual
-Linux39925732179 checks out that head and passes all45, upstream/backfill and
-both locked builds with source/Artifact provenance verified. The same T054
-second-round reviewer now owns the sole local complete45 at this changed head.
-That final combined gate retains a new44of45 failure in the200 positive retry
-control. Its exact original sidecars are unobserved. A bounded second-worker
-delay reproduces the old body assertion while retaining real cancellation and
-cleanup. T057 amendmentA1 now separates the intentional cancellation from the
-normal retry's fixture watchdog before new tests. T054 sources remain exact and
-approved; no implementation is merged or published. Normal integration, master
-gates and the actual unarmed canary remain unobserved. No unchanged failed gate
-is retried, and the first T057 review/source-Linux success stays historical.
-No new source publication, actual real-clock canary or scientific enrollment is
-yet observed. The earlier failed source/Linux/full-gate receipts remain failed.
-The normal merge b0fea0e retains
-all latest bot observations and passes the complete45 gate, native exit zero,
-with all985 tracked bytes exact. Actual origin106fb87 CI39872827237 is green.
-This source task does not authorize a new scientific enrollment, new provider,
-paid resource, changed scientific bar, or resuming the dependency-held T047 work.
+T054 finite absolute-time sampling sessions have source approval12/12 and
+RED-TEAM none after the bounded second round. Five control sources and acceptance
+remain exact at the final companion4b4dbb3. Legacy scientific modules, original
+193-slot endpoint, pacing, missingness and decision bars remain unchanged.
+
+T055/T056 independently approved companions repair the measured Linux process
+disappearance race and float assertion. Their complete/source Linux39917097945
+and both locked builds pass. T057 separately repairs the measured refusal-fixture
+timing premise. A1 was registered before tests-onlyd48a6d1; the two-line named
+fix4b4dbb3 retains genuine first-task0.7-second cancellation, original assertions
+and the one-second hold while separating the normal retry's fixture watchdog.
+
+Fresh T057 round2 independently posts READY_TO_MERGE12/12. Both parent reds,
+three healthy paths, six material fault combinations and physical absence of
+headers are reproduced. Its sole new-head complete45 passes in273.945seconds,
+native0, all995 raw source bytes exact. The lead verifies every1094-file seal
+member. Actual feature Linux39941061884 checks out that same head and passes
+all45, upstream/backfill and two locked builds; exact checkout, command order,
+source and downloaded lock Artifact provenance are verified.
+
+Normal mergefb1b1ec integrates the reviewed source and ae6c764 retains all latest
+scheduled dataccbdcb6. Next: explicit generation, a frozen post-integration
+complete45, actual master/locked gates, manual-only workflow read-back and one
+real-clock synthetic canary. Deployment and readiness remain pending.
+
+Both historical cd1c534 and f9cd525 combined44/45 failures remain failed. Their
+precise original temporary timelines are unobserved; controlled timing witnesses
+do not reconstruct them. Earlier reviews and green Linux/full receipts remain
+bound to their original heads. No unchanged failed full gate is retried for green.
+See lead/reviews/T-054.md through T-057.md for the source decisions.
+
+No new study, provider, spending, changed scientific bar or dependency-held T047
+work is authorized. Existing production and daily snapshots are preserved.
 
 T-046 source 4dd8474 and T-048 source 512c7d5 are published at 1de0259 after
 the combined exact-source forty-four-command local gate, actual feature Linux

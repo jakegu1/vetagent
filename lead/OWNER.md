@@ -7,12 +7,13 @@
 
 ## Status in one line
 
-The Owner has explicitly resumed engineering from the verified pause checkpoint.
-T057 A1 continues from clean tests-onlyd48a6d1 and its preserved slow-retry red.
-The bounded fixture repair, fresh independent review, complete release gates,
-deployment and one finite unarmed real-clock canary remain pending. Existing
-production and snapshot tasks are preserved. A new scientific study remains a
-separate decision after operational proof. See lead/STATE.md.
+The sampling batch is independently source-approved. T057 A1 at4b4dbb3 passes
+fresh review12/12, independent complete45, and actual Linux39941061884 with two
+locked builds. Normal mergesfb1b1ec/ae6c764 retain reviewed source and current
+scheduled dataccbdcb6. Generation, integrated/master gates, actual publication
+read-back and the single unarmed real-clock canary remain pending. Existing
+production and snapshots are preserved; a new scientific study is a separate
+decision after operational proof. See lead/STATE.md.
 
 The deployed Worker remains d354179; later operator-source repairs do not require
 an upload. T-053 source8ad2fce fixes read-only coverage selection by observed UTC
