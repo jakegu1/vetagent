@@ -251,9 +251,9 @@ def _attempt_reason(source, code, body, parsed, native_exit):
              ("rugcheck", "400", "Token not found"): "token_not_found"}
     if isinstance(error, str) and (source, code, error) in known:
         return known[source, code, error]
-    rejected = isinstance(body, dict) and (
+    rejected = risk._is_error_body(body) or (isinstance(body, dict) and (
         bool(body.get("error")) or bool(body.get("errors"))
-        or (type(body.get("code")) is int and body["code"] >= 400))
+        or (type(body.get("code")) is int and body["code"] >= 400)))
     if code != "200" or rejected:
         return "unclassified" if code in ("no response", "000") else "vendor_rejected"
     if not parsed:
