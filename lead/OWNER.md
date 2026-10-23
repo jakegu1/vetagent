@@ -7,13 +7,16 @@
 
 ## Status in one line
 
-The sampling batch is independently source-approved. T057 A1 at4b4dbb3 passes
-fresh review12/12, independent complete45, and actual Linux39941061884 with two
-locked builds. Normal mergesfb1b1ec/ae6c764 retain reviewed source and current
-scheduled dataccbdcb6. Explicit generation passes. Integrated/master gates, actual publication
-read-back and the single unarmed real-clock canary remain pending. Existing
-production and snapshots are preserved; a new scientific study is a separate
-decision after operational proof. See lead/STATE.md.
+The sampling batch is delivered at source049e78c after fresh independent reviews,
+complete local/integrated45, actual feature/master checks and two locked builds.
+The sole real-clock canary39944892451 passes: three preserved pairs,189 synthetic
+cells, two sampling jobs plus closure, and zero Vendor requests. Full evidence and
+local reconstruction match. Current scheduled dataccbdcb6 and other eight
+workflow states are preserved. The deployed sampling workflow is manual-only.
+A new scientific study remains a separate protocol/pilot/enrollment decision;
+the old studies stay inconclusive. See lead/STATE.md and lead/reviews/T-054.md.
+
+### Earlier source and deployment history
 
 The deployed Worker remains d354179; later operator-source repairs do not require
 an upload. T-053 source8ad2fce fixes read-only coverage selection by observed UTC
@@ -21,7 +24,7 @@ chronology. Fresh ordinary review is PASS12/12, with independently reproduced
 CLI cases and caught mutants. Executor and independent complete45 pass; actual
 source Linux39440532687 and both locked builds pass. Normal integration859bed8
 passes complete45 with all979 tracked bytes exact. Its real-archive read-only CLI
-also passes. Latest bot data41e575a are retained. Source closure and publication
+also passes. That earlier closure retained bot data41e575a. Source closure and publication
 receipts remain distinct; see lead/reviews/T-053.md.
 
 The narrow T-052 native datetime repair is published and its distinct real

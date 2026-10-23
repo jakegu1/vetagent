@@ -4,27 +4,25 @@ Last updated: 2026-10-23 by Codex. This is the current baton, not a release log.
 Earlier detailed source/review/release records remain in Git history at 53e3549
 and in lead/reviews/. Do not interpret their historical pending stages as current.
 
-## Resumed from the verified pause checkpoint
+## Current delivery
 
-The Owner explicitly resumed on2026-10-23 and authorized the remaining sampling
-and scheduling repairs, independent review, complete verification, deployment
-after quality gates and the single finite unarmed real-clock canary. The previous
-pause condition is satisfied; existing production/snapshot tasks remain intact.
+The resumed T054-T057 sampling batch is delivered at source049e78c. Fresh source
+reviews, independent complete45, integrated complete45, actual feature and master
+Linux checks and two locked builds pass. Actual master39944146152 checks out
+that exact source and its command/source/Artifact provenance is verified.
 
-Resume read-back verifies the clean integration pause commit17bb6e8, clean
-tests-only executord48a6d1, and all thirteen protected primary changes byte exact.
-Origin/master remainsccbdcb6 and the owned research workflow is still disabled.
-The prior slow-second parent red and all failed full-gate receipts are retained.
-The authoritative A1 amendment atacdfd0d preceded the tests-only commit.
+The sole authorized real-clock canary39944892451 succeeds at source049e78c:
+three intent/result pairs,189 synthetic cells, two sampling jobs plus closure,
+zero Vendor requests and scientific_evidence=false. Actual start lags are2.810,
+2.434 and1.496seconds, within the unchanged sixty-second readiness bar. All73
+exported evidence files, source/ZIP/manifest/parent chains and the locally
+reconstructed summary are verified. Only the owned workflow is active/manual-only;
+the other eight workflow states and existing production/snapshots are preserved.
 
-T057 A1 is now independently approved12/12 at4b4dbb3. Its new independent
-complete45 passes with raw995 exact, and actual feature Linux39941061884 passes
-all45 and both locked builds. Normal mergefb1b1ec integrates the reviewed source;
-ae6c764 normally retains current bot dataccbdcb6. Explicit generation passes;
-only proved recent-display and line-ending output is restored from exact external
-copies. Post-integration checks, actual master gates, publication read-back and the one real canary remain
-pending. No new scientific study is authorized; a separately registered study
-remains a recommendation only after operational proof.
+This metadata-only closure preserves all five executed control sources. It does
+not authorize a new study or turn the canary into forty-eight-hour reliability.
+Both original studies remain inconclusive. New protocol, pilot and enrollment
+are separate decisions; never restart, extend or backfill an old window.
 
 ## Authorization and invariants
 
@@ -70,11 +68,12 @@ T-051 repairs this actual checkpoint through the existing undecided rule. Earlie
 a615a44 bot CI39344396692 has verified exact checkout/all44 and remains historical.
 Never publish old archive totals as current without a source-bound read.
 
-Latest bot observations through41e575a are retained by normal merge. Actual
+Earlier bot observations through41e575a are retained by normal merge. Actual
 scheduled snapshot39431697819 succeeds and all prior archive blobs or byte
 prefixes remain exact. Actual following bot CI39433065955 checks out41e575a and
 passes all45 required commands; other jobs and both builds are skipped in that
 bot-only run. Their skipped observations are not a new packaging result.
+The current sampling release also normally retains scheduled dataccbdcb6.
 
 ## Current source batch
 
@@ -100,9 +99,13 @@ source and downloaded lock Artifact provenance are verified.
 
 Normal mergefb1b1ec integrates the reviewed source and ae6c764 retains all latest
 scheduled dataccbdcb6. Explicit generation succeeds; only proved recent-display
-and line-ending output is restored from exact external raw copies. Next: a frozen
-post-integration complete45, actual master/locked gates, manual-only workflow read-back and one
-real-clock synthetic canary. Deployment and readiness remain pending.
+and line-ending output is restored from exact external raw copies. The frozen
+post-integration049e78c passes complete45, native0 in273.075seconds, all998
+tracked raw files exact. Actual master39944146152 passes all45, upstream/backfill
+and both independent locked builds. Five published controls and the manual-only
+default are read back before enabling only the owned workflow and issuing one
+canary dispatch. Actual39944892451 passes the full readiness bar; complete
+evidence is exported and reconstructed. No unchanged failed gate is retried.
 
 Both historical cd1c534 and f9cd525 combined44/45 failures remain failed. Their
 precise original temporary timelines are unobserved; controlled timing witnesses

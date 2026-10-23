@@ -1,7 +1,7 @@
 ---
 id: T-055
 title: Distinguish a disappeared Linux process from inaccessible identity
-status: in_progress
+status: done
 level: 2
 size: S
 depends_on: [T-046, T-052]

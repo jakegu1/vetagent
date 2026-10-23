@@ -1,7 +1,7 @@
 ---
 id: T-056
 title: Compare an elapsed float budget at its representable precision
-status: in_progress
+status: done
 level: 1
 size: S
 depends_on: [T-052]

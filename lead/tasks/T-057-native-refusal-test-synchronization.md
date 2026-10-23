@@ -1,7 +1,7 @@
 ---
 id: T-057
 title: Start a refusal cancellation test after durable child headers
-status: in_progress
+status: done
 level: 1
 size: S
 depends_on: [T-046, T-052, T-055, T-056]
