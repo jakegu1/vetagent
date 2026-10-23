@@ -1120,7 +1120,8 @@ class RunningSessionTests(unittest.TestCase):
         self.assertTrue(path.is_file(), "T-054 running-session adapter is missing")
         spec = importlib.util.spec_from_file_location("w57_session_acceptance", path)
         self.session = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(self.session)
+        with patch.dict(sys.modules, {"rugcheck_w57_ci": driver}):
+            spec.loader.exec_module(self.session)
         self.ctx = dict(context(300), attempt=1, source=self.session.source_hashes(),
                         control_sources=self.session.source_freeze())
 
