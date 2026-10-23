@@ -61,8 +61,17 @@ with explicit finite running sessions and an unarmed real-clock canary. Its read
 spec preserves both legacy scientific modules and the original study rules.
 The lead owns integration and actual deployment/canary; an isolated executor owns
 tests-first implementation, followed by fresh ordinary and adversarial review.
-Current stage: isolated executor w57_session_executor, acceptance tests first;
-next action is source READY, then fresh ordinary and adversarial review.
+Current stage: round1 source8ac7434 is Changes required. Fresh ordinary review
+reproduces four proof gaps and adversarial review one final-phase clock gap.
+The lead freezes amendmentA2 before new tests. Tests-only4bbd7ba preserves all
+old methods and reproduces the five new methods' failures; original35 stay green.
+The isolated executor repairs that bounded bar for one combined round2 review.
+T055/T056 separately repair the actual legacy Linux disappearance race and exact
+float-assertion failure. Fresh source review is PASS12/12; executor/independent
+complete45 and actual source Linux39917097945 with both locked builds pass.
+Their reviewed companion may be normally integrated before final combined gates.
+No new source publication, actual real-clock canary or scientific enrollment is
+yet observed. The earlier failed source/Linux/full-gate receipts remain failed.
 The normal merge b0fea0e retains
 all latest bot observations and passes the complete45 gate, native exit zero,
 with all985 tracked bytes exact. Actual origin106fb87 CI39872827237 is green.
