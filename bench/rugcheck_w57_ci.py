@@ -612,12 +612,31 @@ def collect(plan, intent_id, store, ctx, clock=time.time, sleep=time.sleep, on_r
     deadline = plan["prepared_at"] + {"pilot": 180, "start": 1080, "tick": 360}[phase]
     if phase == "tick":
         deadline = min(deadline, state["ends_at"] + protocol.acquisition_grace)
+    last_wall = plan["prepared_at"]
+    def read_clock(stage):
+        nonlocal last_wall
+        if protocol is LEGACY193:
+            return clock()
+        try:
+            value = clock()
+        except StudyError as exc:
+            if str(exc) != "clock_changed":
+                raise
+            value = None
+        minimum = state["started_at"] + state["slot"] * protocol.interval if phase == "tick" else plan["prepared_at"]
+        if not number(value) or not number(last_wall) or value < last_wall or value < minimum:
+            finite = type(value) in (int, float) and math.isfinite(value)
+            state["clock_failure"] = {"stage": stage, "last_valid_at": last_wall if number(last_wall) else None,
+                                      "observed_utc": value if finite else None, "observed_type": type(value).__name__}
+            raise StudyError("clock_changed")
+        last_wall = value
+        return value
     def emit(rec):
         rows.append(rec)
         if on_row:
             on_row(rec)
     def room():
-        return clock() + 30 + 2 <= deadline
+        return read_clock("before_request") + 30 + 2 <= deadline
     def vendor_room():
         if protocol is not LEGACY193 and sum(state["requests"].values()) >= protocol.max_vendor_calls:
             raise StudyError("vendor_call_ceiling")
@@ -627,17 +646,34 @@ def collect(plan, intent_id, store, ctx, clock=time.time, sleep=time.sleep, on_r
             raw = {"http": "0", "body": "not_observed"}
         else:
             vendor_room()
-            requested_at = clock()
+            requested_at = read_clock("request_started")
             state["requests"]["rugcheck"] += 1
             raw = _observe_fields(label, mint)
         try:
-            rec = _row(raw, state, label, mint, clock(), slot)
+            observed_at = read_clock("response" if requested_at is not None else "unattempted")
+        except StudyError as exc:
+            if str(exc) == "clock_changed" and requested_at is not None:
+                actual = state["clock_failure"]["observed_utc"]
+                rec = {"kind": "report", "study": state["study"], "phase": phase, "slot": slot,
+                       "sweep": slot + 1 if slot is not None else 0, "attempt": 0, "mint": mint, "label": label,
+                       "ts": actual if number(actual) else None, "request_started_at": requested_at,
+                       "http": str(raw.get("http", "0"))[:3], "body": "unavailable", "score_normalised": None,
+                       "score_state": "timing_uncertain", "detectedAt": None, "age_minutes": None,
+                       "totalHolders": None, "topHolders_n": None, "gated": {}, "timing_state": "uncertain",
+                       "reported_body": raw.get("body") if raw.get("body") in ("ok", "unavailable", "empty", "invalid") else "unavailable"}
+                if slot is not None:
+                    rec.update(due_at=state["started_at"] + slot * protocol.interval,
+                               job_started_at=plan["prepared_at"], outside_window=None)
+                emit(rec)
+            raise
+        try:
+            rec = _row(raw, state, label, mint, observed_at, slot)
         except StudyError as exc:
             if str(exc) != "row_overflow":
                 raise
             receipt = {"kind": "overflow_receipt", "reason": "row_overflow", "study": state["study"],
                        "phase": phase, "slot": slot, "sweep": slot + 1 if slot is not None else 0,
-                       "mint": mint, "label": label, "attempt": 0, "ts": clock(),
+                       "mint": mint, "label": label, "attempt": 0, "ts": read_clock("overflow"),
                        "http": str(raw.get("http", "0"))[:3], "body": "invalid",
                        "score_normalised": None, "score_state": "overflow", "request_started_at": requested_at,
                        "raw_score_type": type(raw.get("score_normalised")).__name__,
@@ -656,14 +692,24 @@ def collect(plan, intent_id, store, ctx, clock=time.time, sleep=time.sleep, on_r
         return rec
     def listing(page):
         if not room():
-            emit({"kind": "listing", "phase": phase, "page": page, "ts": clock(), "http": "0", "body": "not_observed"})
+            emit({"kind": "listing", "phase": phase, "page": page, "ts": read_clock("unattempted"), "http": "0", "body": "not_observed"})
             return None
         vendor_room()
         state["requests"]["gecko"] += 1
+        requested_at = read_clock("request_started") if protocol is not LEGACY193 else None
         code, body = probe.curl(probe.GECKO_NEW % page)
+        try:
+            observed_at = read_clock("response")
+        except StudyError as exc:
+            if str(exc) == "clock_changed":
+                actual = state["clock_failure"]["observed_utc"]
+                emit({"kind": "listing", "phase": phase, "page": page, "ts": actual if number(actual) else None,
+                      "request_started_at": requested_at, "http": str(code)[:3], "body": "unavailable",
+                      "rows_returned": None, "timing_state": "uncertain"})
+            raise
         data = body.get("data") if isinstance(body, dict) else None
         usable = str(code) == "200" and isinstance(data, list)
-        emit({"kind": "listing", "phase": phase, "page": page, "ts": clock(), "http": str(code)[:3],
+        emit({"kind": "listing", "phase": phase, "page": page, "ts": observed_at, "http": str(code)[:3],
               "body": "ok" if usable else "unavailable", "rows_returned": len(data) if usable else None})
         sleep(2)
         return data if usable else None
@@ -724,7 +770,7 @@ def collect(plan, intent_id, store, ctx, clock=time.time, sleep=time.sleep, on_r
                 state["cohort"] = fresh
             else:
                 state["cohort"] = fresh + [{"mint": m, "label": label, "group": "control"} for label, m in probe.MAJORS]
-                state["started_at"] = clock()
+                state["started_at"] = read_clock("start_clock")
                 state["ends_at"] = state["started_at"] + protocol.duration
                 state["status"] = "active"
         else:
@@ -733,9 +779,12 @@ def collect(plan, intent_id, store, ctx, clock=time.time, sleep=time.sleep, on_r
                 report(member["label"], member["mint"], slot)
             state["slots"].append({"slot": slot, "status": "partial" if any(r["body"] == "not_observed" for r in rows) else "observed"})
             state["status"] = "completed" if slot == protocol.last_slot else "active"
+        if protocol is not LEGACY193:
+            read_clock("collection_completed")
     except StudyError as exc:
         state["status"] = "overflow" if str(exc) == "row_overflow" else "failed"
-        state["failure"] = "row_overflow" if str(exc) == "row_overflow" else "collection_unavailable"
+        state["failure"] = (str(exc) if str(exc) == "row_overflow" or protocol is not LEGACY193 and str(exc) == "clock_changed"
+                            else "collection_unavailable")
         if phase == "tick" and not any(s["slot"] == state["slot"] for s in state["slots"]):
             state["slots"].append({"slot": state["slot"], "status": "partial"})
     except Exception:
@@ -782,12 +831,15 @@ def _coverage(state, rows, *, protocol=LEGACY193):
                                   "outside_window": 0, "never_attempted": expected} for key in fields},
                 "slots": {str(s["slot"]): {"attempted_cells": 0, "never_attempted_cells": len(members)} for s in state["slots"]},
                 "observation_intervals": []}
+        if protocol is not LEGACY193:
+            item["timing_uncertain_cells"] = 0
         seen, intervals = set(), {}
         for row in rows:
             if row.get("phase") != "tick" or row.get("mint") not in members:
                 continue
             slot = row.get("slot")
-            if type(slot) is not int or not 0 <= slot <= protocol.last_slot or not number(row.get("ts")):
+            uncertain = protocol is not LEGACY193 and row.get("timing_state") == "uncertain" and _attempted(row)
+            if type(slot) is not int or not 0 <= slot <= protocol.last_slot or not (number(row.get("ts")) or uncertain):
                 raise StudyError("invalid_observation")
             key = (slot, row["mint"], row.get("attempt"))
             if key in seen:
@@ -800,16 +852,21 @@ def _coverage(state, rows, *, protocol=LEGACY193):
             item["never_attempted_cells"] -= 1
             counts["attempted_cells"] += 1
             counts["never_attempted_cells"] -= 1
-            intervals.setdefault(slot, []).append(row["ts"])
+            if uncertain:
+                item["timing_uncertain_cells"] += 1
+            else:
+                intervals.setdefault(slot, []).append(row["ts"])
             envelope = str(row.get("http")) == "200" and row.get("body") == "ok"
-            if not envelope:
+            if not envelope and not uncertain:
                 item["attempted_failed_requests"] += 1
-            outside = state["started_at"] is None or not state["started_at"] <= row["ts"] <= state["ends_at"]
+            outside = not uncertain and (state["started_at"] is None or not state["started_at"] <= row["ts"] <= state["ends_at"])
             for field in fields:
                 field_counts = item["fields"][field]
                 field_counts["never_attempted"] -= 1
                 value = (row.get("gated") or {}).get(field) if field in powers else row.get(field)
-                if field in powers:
+                if uncertain:
+                    valid = False
+                elif field in powers:
                     valid = type(value) is bool
                 elif field in ("totalHolders", "topHolders_n"):
                     valid = type(value) is int and value >= 0
@@ -818,7 +875,7 @@ def _coverage(state, rows, *, protocol=LEGACY193):
                     valid = age is not None and age >= 0
                 else:
                     valid = probe.band(value) is not None
-                field_counts["outside_window" if outside else "usable" if envelope and valid else "attempted_unavailable_or_invalid"] += 1
+                field_counts["outside_window" if outside else "usable" if envelope and valid and not uncertain else "attempted_unavailable_or_invalid"] += 1
         item["observation_intervals"] = [{"slot": slot, "first_response_at": min(values), "last_response_at": max(values),
                                            "responses": len(values)} for slot, values in sorted(intervals.items())]
         result[group] = item
@@ -861,7 +918,7 @@ def readout(state, rows, *, protocol=LEGACY193):
                 previous = last[row["mint"]]
                 last[row["mint"]] = row["ts"] if previous is None else max(previous, row["ts"])
         horizon = [value for value in last.values() if value is not None]
-        acquisitions = [row["ts"] for row in rows if row.get("phase") == "tick" and _attempted(row)
+        acquisitions = [row["ts"] for row in rows if row.get("phase") == "tick" and _attempted(row) and row.get("timing_state") != "uncertain"
                         and row.get("mint") in last and number(row.get("ts"))]
         scheduled = [item["slot"] for item in state["slots"]] == list(range(protocol.last_slot + 1))
         completed = (scheduled and all(item["status"] == "observed" for item in state["slots"])
@@ -890,6 +947,8 @@ def readout(state, rows, *, protocol=LEGACY193):
         if key in keys:
             raise StudyError("duplicate_observation")
         keys.add(key)
+        if protocol is not LEGACY193 and row.get("timing_state") == "uncertain" and _attempted(row):
+            continue
         if not number(row.get("ts")) or type(row.get("slot")) is not int or not 0 <= row["slot"] <= protocol.last_slot:
             raise StudyError("invalid_observation")
         if not _attempted(row):
