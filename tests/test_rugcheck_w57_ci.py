@@ -415,7 +415,7 @@ class StudyTests(unittest.TestCase):
     def test_workflow_is_independent_read_only_pinned_and_preserves_before_failure(self):
         text = (ROOT / ".github/workflows/rugcheck-w57.yml").read_text(encoding="utf-8") if (ROOT / ".github/workflows/rugcheck-w57.yml").exists() else ""
         self.assertIn("workflow_dispatch:", text)
-        self.assertIn("*/15 * * * *", text)
+        self.assertNotIn("  schedule:", text)
         self.assertIn("contents: read", text)
         self.assertIn("actions: read", text)
         self.assertNotIn(": write", text)
@@ -1056,6 +1056,431 @@ class CheckpointChronologyTests(unittest.TestCase):
                 else:
                     self.assertTrue(self.downloads(requests) and self.downloads(requests)[0] == latest,
                                     "a damaged latest checkpoint must not downgrade to an older report")
+
+
+class SessionClock:
+    """UTC and monotonic clocks advance independently under explicit fault injection."""
+    def __init__(self, value=EPOCH):
+        self.value, self.elapsed, self.sleeps = value, 0, []
+
+    def utc(self):
+        return self.value
+
+    def monotonic(self):
+        return self.elapsed
+
+    def sleep(self, seconds):
+        self.sleeps.append(seconds)
+        self.value += seconds
+        self.elapsed += seconds
+
+
+class SessionMemory:
+    def __init__(self, module, ctx):
+        self.module, self.ctx, self.items = module, ctx, {}
+        self.fail_upload = False
+
+    def __deepcopy__(self, memo):
+        result = SessionMemory(self.module, copy.deepcopy(self.ctx, memo))
+        result.items = copy.deepcopy(self.items, memo)
+        result.fail_upload = self.fail_upload
+        return result
+
+    def list(self, scope="run", namespace="live"):
+        rows = [copy.deepcopy(meta) for meta, _ in self.items.values()]
+        if scope == "admission":
+            return [row for row in rows if row["name"] in self.module.ADMISSION_NAMES]
+        return [row for row in rows if row["workflow_run"]["id"] == self.ctx["run_id"]]
+
+    def load(self, ident):
+        meta, data = self.items[ident]
+        return self.module.decode_bundle(data, meta["provenance"], self.ctx)
+
+    def publish(self, state, rows, kind, ctx, namespace="live"):
+        if self.fail_upload:
+            raise driver.StudyError("upload_failed")
+        ident = 9000000 - len(self.items) * 7919
+        name = self.module.artifact_name(state, kind, ctx, namespace)
+        if any(meta["name"] == name for meta, _ in self.items.values()):
+            raise driver.StudyError("duplicate_publication")
+        data = self.module.bundle_bytes(state, rows, kind, ctx, namespace)
+        self.items[ident] = ({"id": ident, "name": name, "expired": False,
+                              "size_in_bytes": len(data), "digest": "sha256:" + driver.sha(data),
+                              "created_at": stamp(EPOCH).replace("+00:00", "Z"),
+                              "workflow_run": {"id": ctx["run_id"], "head_sha": ctx["head"],
+                                               "head_branch": ctx["branch"]},
+                              "provenance": copy.deepcopy(ctx)}, data)
+        return ident
+
+
+class RunningSessionTests(unittest.TestCase):
+    """T-054: full finite clocks and transport handoffs, with zero real network calls."""
+    def setUp(self):
+        path = ROOT / "bench/rugcheck_w57_session.py"
+        self.assertTrue(path.is_file(), "T-054 running-session adapter is missing")
+        spec = importlib.util.spec_from_file_location("w57_session_acceptance", path)
+        self.session = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.session)
+        self.ctx = dict(context(300), attempt=1, source=self.session.source_hashes(),
+                        control_sources=self.session.source_freeze())
+
+    def active(self):
+        harness = StudyTests("test_slots_use_wall_time_skip_gaps_and_do_not_recruit_again")
+        clock, _, _, _, plan, _ = harness.active()
+        state = self.session.bind_state(plan["result_state"], self.ctx, "live")
+        fake = SessionClock(state["started_at"])
+        store = SessionMemory(self.session, self.ctx)
+        ident = store.publish(state, [], "result", self.ctx)
+        return fake, store, ident, state
+
+    def run_slot(self, clock, store, slot, namespace="live", lease=None):
+        lease = lease or self.session.Lease(clock)
+        plan = self.session.prepare_slot(store, self.ctx, clock, lease, slot, namespace=namespace)
+        if plan["action"] == "idle":
+            return None, plan
+        rows = []
+        if plan["action"] == "collect":
+            intent = store.publish(plan["state"], [], "intent", self.ctx, namespace)
+            state, rows = self.session.collect(plan, intent, store, self.ctx, clock, lease)
+        else:
+            state = plan["state"]
+        result = store.publish(state, rows, "result", self.ctx, namespace)
+        self.session.verify_result(store, result, state, self.ctx, namespace)
+        return result, dict(plan, final_state=state, rows=rows)
+
+    def service(self, memory, *, report=False, admission=False, body_change=None):
+        module, ctx = self.session, self.ctx
+        service = module.Artifacts(ctx, "synthetic-token", report=report, admission=admission)
+        requests = []
+        def request(path, binary=False):
+            service._count(2 if binary else 1)
+            requests.append((path, binary))
+            tail = path.split("/actions/", 1)[1]
+            if "artifacts?" in tail:
+                rows = [copy.deepcopy(meta) for meta, _ in memory.items.values()]
+                if tail.startswith("artifacts?name="):
+                    name = tail.split("name=", 1)[1].split("&", 1)[0]
+                    rows = [row for row in rows if row["name"] == name]
+                elif tail.startswith("runs/"):
+                    run = int(tail.split("/")[1])
+                    rows = [row for row in rows if row["workflow_run"]["id"] == run]
+                page = int(tail.rsplit("page=", 1)[1])
+                body = {"total_count": len(rows), "artifacts": list(reversed(rows))[(page - 1) * 100:page * 100]}
+                if body_change:
+                    body_change(body)
+                return body
+            if tail.startswith("runs/"):
+                run = int(tail.split("/")[1])
+                provenance = next(meta["provenance"] for meta, _ in memory.items.values()
+                                  if meta["workflow_run"]["id"] == run)
+                return {"id": run, "run_attempt": 1, "event": "workflow_dispatch", "status": "in_progress",
+                        "conclusion": None, "path": driver.WORKFLOW, "head_sha": provenance["head"],
+                        "head_branch": provenance["branch"], "repository": {"full_name": provenance["repository"]},
+                        "head_repository": {"full_name": provenance["repository"]}}
+            ident = int(tail.split("/")[1])
+            return memory.items[ident][1] if binary else copy.deepcopy(memory.items[ident][0])
+        return service, requests, patch.object(service, "request", side_effect=request)
+
+    def test_source_freeze_covers_every_executed_control_and_legacy_bytes(self):
+        freeze = self.session.source_freeze()
+        expected = {"driver": "bench/rugcheck_w57_ci.py", "probe": "bench/rugcheck_coverage_probe.py",
+                    "session": "bench/rugcheck_w57_session.py", "workflow": driver.WORKFLOW,
+                    "generator": ".github/scripts/render_w57_session_workflow.py"}
+        self.assertEqual(freeze, {key: driver.sha((ROOT / path).read_bytes()) for key, path in expected.items()})
+        self.assertEqual(driver.sha(DRIVER.read_bytes().replace(b"\r\n", b"\n")),
+                         "7649040cb53bee691ea678d0c7876bda772d48ffc12fa5c04510715e31a3fe29")
+        self.assertEqual(driver.sha((ROOT / expected["probe"]).read_bytes().replace(b"\r\n", b"\n")),
+                         "3734d9c3b51114a90c7512ee77c6d90754e205a14085bbf22eee012acb4fbc21")
+        self.assertEqual(set(self.ctx["source"]), {"driver", "probe", "workflow"})
+        self.assertNotEqual(self.ctx["source"]["workflow"], freeze["workflow"])
+        self.assertIn("composite", self.session.__doc__.lower())
+
+    def test_reruns_and_untrusted_context_stop_before_transport(self):
+        env = {"GITHUB_REPOSITORY": "synthetic/study", "GITHUB_REF_NAME": "master", "W57_DEFAULT_BRANCH": "master",
+               "GITHUB_SHA": "a" * 40, "GITHUB_RUN_ID": "300", "GITHUB_RUN_ATTEMPT": "1",
+               "GITHUB_EVENT_NAME": "workflow_dispatch"}
+        self.assertEqual(self.session.context(env)["attempt"], 1)
+        for key, value in (("GITHUB_RUN_ATTEMPT", "2"), ("GITHUB_RUN_ATTEMPT", "0"),
+                           ("GITHUB_REF_NAME", "foreign"), ("GITHUB_EVENT_NAME", "schedule")):
+            with self.subTest(key=key, value=value), self.assertRaises(driver.StudyError):
+                self.session.context(dict(env, **{key: value}))
+        with patch.object(probe, "curl", side_effect=AssertionError("Vendor request")), \
+                patch.object(self.session, "Artifacts", side_effect=AssertionError("transport")), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(self.session.main([]), 0)
+
+    def test_full_193_slot_schedule_uses_absolute_time_and_ten_finite_handoffs(self):
+        clock, memory, _, initial = self.active()
+        source = copy.deepcopy(initial["source"])
+        calls, handoffs, pairs = [], [], []
+        def vendor(url):
+            calls.append(clock.utc())
+            return "200", {"score_normalised": 1, "detectedAt": stamp(initial["started_at"] - 60),
+                           "topHolders": [], "totalHolders": 0, "token_extensions": {}}
+        with patch.object(probe, "curl", side_effect=vendor):
+            for segment in range(10):
+                lease = self.session.Lease(clock)
+                handoffs.append(clock.utc())
+                for slot in range(segment * 20, min(193, (segment + 1) * 20)):
+                    ident, result = self.run_slot(clock, memory, slot, lease=lease)
+                    state = result["final_state"]
+                    self.assertEqual(state["source"], source)
+                    self.assertEqual(state["started_at"], initial["started_at"])
+                    rows = result["rows"]
+                    self.assertEqual(len(rows), 63)
+                    self.assertEqual({row["slot"] for row in rows}, {slot})
+                    self.assertEqual(rows[0]["request_started_at"], initial["started_at"] + slot * 900)
+                    self.assertTrue(all(row["due_at"] == initial["started_at"] + slot * 900 for row in rows))
+                    pairs.append((state["generation"], state["intent"]["id"], ident))
+        self.assertEqual(len(calls), 193 * 63)
+        self.assertEqual(len(set(g for g, _, _ in pairs)), 193)
+        self.assertEqual(len(handoffs), 10)
+        self.assertLessEqual(max(clock.sleeps), 30)
+        self.assertEqual(state["status"], "completed")
+        self.assertTrue(all(row["outside_window"] for row in rows[1:]))
+        before = len(calls)
+        self.assertEqual(self.session.prepare_slot(memory, self.ctx, clock, self.session.Lease(clock), 192)["action"], "idle")
+        self.assertEqual(len(calls), before)
+        service, requests, transport = self.service(memory, report=True)
+        with transport:
+            answer = self.session.reconstruct(service, self.ctx, initial["study"])
+        self.assertEqual(answer["proposal"], "inconclusive")
+        self.assertTrue(answer["censored"])
+        self.assertEqual(answer["coverage"]["fresh"]["scheduled_slots"], 193)
+        self.assertLessEqual(service.reads, 600)
+        self.assertLessEqual(service.downloads, 195)
+
+    def test_missed_due_is_explicit_and_never_replayed_or_backfilled(self):
+        clock, memory, _, initial = self.active()
+        clock.sleep(2 * 900 + 5)
+        with patch.object(probe, "curl", side_effect=AssertionError("late backfill")):
+            _, outcome = self.run_slot(clock, memory, 0)
+        self.assertEqual(outcome["action"], "checkpoint")
+        self.assertEqual(outcome["final_state"]["slots"], [{"slot": 0, "status": "not_observed"}])
+        self.assertEqual(outcome["final_state"]["session"]["timing"]["due_at"], initial["started_at"])
+        self.assertEqual(self.session.prepare_slot(memory, self.ctx, clock, self.session.Lease(clock), 0)["action"], "idle")
+
+    def test_clock_jumps_source_changes_and_job_reserve_stop_without_vendor(self):
+        for jump in (-120, 120):
+            clock = SessionClock()
+            lease = self.session.Lease(clock)
+            sleep = clock.sleep
+            def shifted(seconds):
+                sleep(seconds)
+                clock.value += jump
+            clock.sleep = shifted
+            with self.subTest(jump=jump), self.assertRaisesRegex(driver.StudyError, "clock_changed"):
+                self.session.wait_due(clock, EPOCH + 900, lease)
+            self.assertLessEqual(sum(clock.sleeps), 30)
+        clock, memory, _, _ = self.active()
+        lease = self.session.Lease(clock, seconds=330 * 60)
+        clock.sleep(325 * 60 - 31)
+        with patch.object(probe, "curl", side_effect=AssertionError("reserve consumed")):
+            with self.assertRaises(driver.StudyError):
+                self.session.wait_due(clock, clock.utc() + 1, lease, request_seconds=32)
+        clock, memory, _, _ = self.active()
+        changed = dict(self.ctx["source"], workflow="f" * 64)
+        with patch.object(self.session, "source_hashes", return_value=changed), \
+                patch.object(probe, "curl", side_effect=AssertionError("source drift")):
+            plan = self.session.prepare_slot(memory, self.ctx, clock, self.session.Lease(clock), 1)
+        self.assertEqual((plan["action"], plan["state"]["status"]), ("checkpoint", "source_changed"))
+
+    def test_versioned_metadata_is_validated_before_normalizing_or_downloading(self):
+        clock, memory, _, _ = self.active()
+        with patch.object(probe, "curl", return_value=("503", {})):
+            self.run_slot(clock, memory, 0)
+            self.run_slot(clock, memory, 1)
+        service, requests, transport = self.service(memory)
+        with transport:
+            listed = service.list()
+            decoded = service.load(listed[-1]["id"])
+        self.assertEqual(decoded["state"]["slots"][-1]["slot"], 1)
+        self.assertLess(listed[-1]["id"], listed[0]["id"])
+        self.assertEqual(len(set(row["name"] for row in listed)), len(listed))
+        self.assertLessEqual(service.reads, 12)
+        mutations = (lambda row: row.update(id=True), lambda row: row.update(name="w57-foreign-v2"),
+                     lambda row: row.update(digest="sha256:" + "0" * 64), lambda row: row.update(expired=True),
+                     lambda row: row.update(created_at="naive"), lambda row: row.update(size_in_bytes=1048577),
+                     lambda row: row["workflow_run"].update(head_branch="foreign"))
+        for mutate in mutations:
+            changed = copy.deepcopy(memory)
+            mutate(list(changed.items.values())[-1][0])
+            service, requests, transport = self.service(changed)
+            with transport, self.subTest(mutate=mutate), self.assertRaises(driver.StudyError):
+                listed = service.list()
+                service.load(listed[-1]["id"])
+        changed = copy.deepcopy(memory)
+        meta, data = list(changed.items.values())[-1]
+        meta["digest"] = "sha256:" + "0" * 64
+        service, _, transport = self.service(changed)
+        with transport, self.assertRaises(driver.StudyError):
+            service.list()
+            service.load(meta["id"])
+        service, requests, transport = self.service(memory, body_change=lambda body: body.update(total_count=100))
+        with transport, self.assertRaises(driver.StudyError):
+            service.list()
+        self.assertFalse(any(binary for _, binary in requests))
+        duplicate = copy.deepcopy(memory)
+        duplicate.items[17] = copy.deepcopy(list(duplicate.items.values())[-1])
+        duplicate.items[17][0]["id"] = 17
+        service, _, transport = self.service(duplicate)
+        with transport, self.assertRaises(driver.StudyError):
+            service.list()
+
+    def test_dangling_intent_and_failed_persistence_close_without_another_acquisition(self):
+        clock, memory, _, _ = self.active()
+        plan = self.session.prepare_slot(memory, self.ctx, clock, self.session.Lease(clock), 0)
+        lost = memory.publish(plan["state"], [], "intent", self.ctx)
+        with patch.object(probe, "curl", side_effect=AssertionError("replayed intent")):
+            result = self.session.prepare_slot(memory, self.ctx, clock, self.session.Lease(clock), 0)
+        self.assertEqual((result["action"], result["state"]["status"]), ("checkpoint", "lost_checkpoint"))
+        self.assertEqual(result["state"]["lost_intent"]["id"], lost)
+        with self.assertRaises(driver.StudyError):
+            self.session.verify_result(memory, 999, result["state"], self.ctx, "live")
+        memory.fail_upload = True
+        with self.assertRaises(driver.StudyError):
+            memory.publish(result["state"], [], "result", self.ctx)
+
+    def test_v2_manifest_source_and_parent_chain_reject_corruption(self):
+        clock, memory, ident, initial = self.active()
+        meta, data = memory.items[ident]
+        foreign = dict(meta["provenance"], head="f" * 40)
+        with self.assertRaises(driver.StudyError):
+            self.session.decode_bundle(data, foreign, self.ctx)
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            files = {name: archive.read(name) for name in archive.namelist()}
+        files["state.json"] = files["state.json"].replace(b'"status":"active"', b'"status":"failed"')
+        broken = io.BytesIO()
+        with zipfile.ZipFile(broken, "w", zipfile.ZIP_DEFLATED) as archive:
+            for name, payload in files.items():
+                archive.writestr(name, payload)
+        with self.assertRaises(driver.StudyError):
+            self.session.decode_bundle(broken.getvalue(), self.ctx, self.ctx)
+        with patch.object(probe, "curl", return_value=("503", {})):
+            result, _ = self.run_slot(clock, memory, 0)
+        part = memory.load(result)
+        changed = copy.deepcopy(part["state"])
+        changed["parent"] = {"id": ident, "digest": "0" * 64}
+        data = self.session.bundle_bytes(changed, part["rows"], "result", self.ctx, "live")
+        memory.items[result] = (dict(memory.items[result][0], digest="sha256:" + driver.sha(data),
+                                    size_in_bytes=len(data)), data)
+        with self.assertRaises(driver.StudyError):
+            self.session.reconstruct(memory, self.ctx, initial["study"])
+
+    def test_slow_live_phase_keeps_unavailable_and_unattempted_cells_distinct(self):
+        clock, memory, _, _ = self.active()
+        calls = []
+        def slow(url):
+            calls.append(clock.utc())
+            clock.sleep(30)
+            return "503", {}
+        with patch.object(probe, "curl", side_effect=slow):
+            _, outcome = self.run_slot(clock, memory, 0)
+        self.assertGreater(len(calls), 0)
+        self.assertLess(len(calls), 63)
+        rows = outcome["rows"]
+        self.assertEqual(sum(row["body"] == "unavailable" for row in rows), len(calls))
+        self.assertEqual(sum(row["body"] == "not_observed" for row in rows), 63 - len(calls))
+        self.assertEqual(outcome["final_state"]["slots"][-1]["status"], "partial")
+
+    def test_unarmed_canary_three_real_intervals_cross_two_jobs_and_never_enters_live_readout(self):
+        clock, memory = SessionClock(), SessionMemory(self.session, self.ctx)
+        pairs = []
+        with patch.object(probe, "curl", side_effect=AssertionError("canary Vendor call")):
+            lease = self.session.Lease(clock)
+            for slot in (0, 1):
+                ident, result = self.run_slot(clock, memory, slot, "canary", lease)
+                pairs.append((result["final_state"]["intent"]["id"], ident))
+            lease = self.session.Lease(clock)
+            ident, result = self.run_slot(clock, memory, 2, "canary", lease)
+            pairs.append((result["final_state"]["intent"]["id"], ident))
+            answer = self.session.reconstruct(memory, self.ctx, result["final_state"]["study"], namespace="canary")
+        self.assertEqual(len(set(pairs)), 3)
+        self.assertEqual(answer["readiness"], "passed")
+        self.assertEqual(answer["vendor_requests"], 0)
+        self.assertEqual([row["due_at"] for row in answer["timings"]], [EPOCH, EPOCH + 900, EPOCH + 1800])
+        self.assertTrue(all(row["operation_started_at"] - row["due_at"] <= 60 for row in answer["timings"]))
+        self.assertEqual(answer["observed_cells"], 3 * 63)
+        self.assertEqual(answer["scientific_evidence"], False)
+        self.assertIn("48", answer["disclosure"])
+        self.assertEqual(memory.list("admission"), [])
+        with self.assertRaises(driver.StudyError):
+            self.session.reconstruct(memory, self.ctx, result["final_state"]["study"], namespace="live")
+
+    def test_admission_combines_v1_v2_history_and_three_distinct_bounded_proofs(self):
+        clock, memory, result_id, state = self.active()
+        initial_state = copy.deepcopy(state)
+        state["status"], state["phase"], state["cohort"] = "pilot_passed", "pilot", []
+        state["started_at"] = state["ends_at"] = None
+        state["study"], state["used_studies"] = "old-pilot", ["old-pilot"]
+        pilot_ctx = dict(self.ctx, run_id=298)
+        pilot = memory.publish(state, [], "result", pilot_ctx)
+        terminal = copy.deepcopy(state)
+        terminal["study"], terminal["used_studies"] = "later-pilot", ["old-pilot", "later-pilot"]
+        last = memory.publish(terminal, [], "result", dict(self.ctx, run_id=299))
+        terminal["session"]["last_durable"] = {"id": last, "digest": memory.load(last)["digest"]}
+        history = memory.publish(terminal, [], "admission-result", dict(self.ctx, run_id=299))
+        service, requests, transport = self.service(memory, admission=True)
+        with transport:
+            plan = self.session.prepare_admission("start", service, self.ctx, clock.utc(), "new-study", pilot)
+            intent = memory.publish(plan["state"], [], "intent", self.ctx)
+            service.load(intent)
+        self.assertEqual(set(plan["state"]["used_studies"]), {"old-pilot", "later-pilot", "new-study"})
+        self.assertEqual({int(path.split("/artifacts/")[1].split("/")[0]) for path, binary in requests if binary},
+                         {history, pilot, intent})
+        self.assertLessEqual(service.reads, 16)
+        self.assertEqual(service.downloads, 3)
+        with self.assertRaises(driver.StudyError):
+            service.load(result_id)
+        service.reads = 16
+        with self.assertRaises(driver.StudyError):
+            service._count()
+        for status in ("active", "lost_checkpoint"):
+            blocked = copy.deepcopy(memory)
+            pending = self.session.bind_state(copy.deepcopy(initial_state), self.ctx, "live")
+            pending["status"] = status
+            blocked.publish(pending, [], "admission-intent", self.ctx)
+            with self.subTest(status=status), self.assertRaises(driver.StudyError):
+                self.session.prepare_admission("pilot", blocked, dict(self.ctx, run_id=301), clock.utc(), "another")
+        old = CheckpointChronologyTests().fixture()
+        for ident, part in old["decoded"].items():
+            memory.items[ident] = (dict(next(row for row in old["metadata"] if row["id"] == ident),
+                                       provenance=part["manifest"]["context"]), old["payloads"][ident])
+        # Legacy active history remains authoritative even after introducing the new decoder.
+        legacy_only = SessionMemory(self.session, self.ctx)
+        legacy_only.items = {ident: value for ident, value in memory.items.items() if ident in old["decoded"]}
+        with self.assertRaises(driver.StudyError):
+            self.session.prepare_admission("pilot", legacy_only, self.ctx, clock.utc(), "another")
+
+    def test_generated_explicit_workflow_is_manual_finite_default_canary_and_drift_guarded(self):
+        generator = ROOT / ".github/scripts/render_w57_session_workflow.py"
+        self.assertTrue(generator.is_file())
+        spec = importlib.util.spec_from_file_location("session_workflow_generator", generator)
+        render = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(render)
+        data = render.render()
+        self.assertEqual(data, render.render())
+        self.assertEqual(data, (ROOT / driver.WORKFLOW).read_bytes())
+        self.assertLess(len(data), 500000)
+        text = data.decode("utf-8")
+        self.assertNotIn("schedule:", text)
+        self.assertNotIn("steps: &", text)
+        self.assertNotIn("steps: *", text)
+        self.assertNotIn("overwrite: true", text)
+        self.assertIn("default: canary", text)
+        self.assertIn("legacy-report", text)
+        self.assertNotIn("--phase ${{", text)
+        sys.path.insert(0, str(ROOT / "tests"))
+        import test_workflow_runtime_pins as pins
+        import test_deploy_gate as workflow
+        self.assertEqual(pins.workflow_errors("rugcheck-w57.yml", text), [])
+        jobs = workflow.jobs(text)
+        self.assertLessEqual(len(jobs), 11)
+        for lines in jobs.values():
+            for line in lines:
+                if line.strip().startswith("timeout-minutes:"):
+                    self.assertLessEqual(int(line.split(":", 1)[1]), 330)
+        self.assertEqual(render.main(["--check"]), 0)
 
 
 if __name__ == "__main__":
