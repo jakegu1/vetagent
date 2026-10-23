@@ -2012,6 +2012,76 @@ class New192CoreTests(unittest.TestCase):
         self.assertEqual(state["failure"], "clock_changed")
         self.assertEqual(driver.readout(state, rows, protocol=protocol)["observed_score_cells"], 1)
 
+    def test_a2_new_artifact_scan_retains_mature_mixed_history_and_bounded_failures(self):
+        def service(old_count, new_count, fault=None, selected=None, max_reads=12):
+            selected = self.protocol() if selected is None else selected
+            adapter = driver.GitHubArtifacts(context(), "not-a-token", protocol=selected, max_reads=max_reads)
+            requests = []
+            def request(path, binary=False):
+                adapter._count()
+                parts = dict(part.split("=", 1) for part in path.split("?", 1)[1].split("&"))
+                name, page = parts["name"], int(parts["page"])
+                requests.append((name, page))
+                version = int(name.rsplit("v", 1)[1])
+                count = old_count if version == 1 else new_count
+                kind = name.split("-")[1]
+                rows = [{"id": version * 1000000 + index * 2 + (kind == "result"), "name": name,
+                         "created_at": stamp(EPOCH + version * 100000 + index),
+                         "workflow_run": {"id": version * 10000 + index + 1, "head_sha": "a" * 40,
+                                          "head_branch": "master"}} for index in reversed(range(count))]
+                body = {"total_count": count, "artifacts": rows[(page - 1) * 100:page * 100]}
+                if version == 3 and kind == "result":
+                    if fault == "partial" and page == 1:
+                        body["artifacts"] = body["artifacts"][:99]
+                    elif fault == "changed_count" and page == 2:
+                        body["total_count"] -= 1
+                    elif fault == "extra" and page == 2:
+                        body["artifacts"] += [dict(body["artifacts"][-1], id=9999999)]
+                    elif fault == "foreign" and page == 1:
+                        body["artifacts"][0] = dict(body["artifacts"][0], name="foreign")
+                    elif fault == "missing_count":
+                        body.pop("total_count")
+                    elif fault == "boolean_count":
+                        body["total_count"] = True
+                return body
+            return adapter, requests, patch.object(adapter, "request", side_effect=request)
+        for old_count, new_count in ((0, 100), (0, 192), (192, 192), (195, 195)):
+            with self.subTest(old=old_count, new=new_count):
+                adapter, requests, transport = service(old_count, new_count)
+                with transport:
+                    rows = adapter.list()
+                self.assertEqual(len(rows), 2 * (old_count + new_count))
+                expected = 2 * ((2 if old_count >= 100 else 1) + (2 if new_count >= 100 else 1))
+                self.assertEqual(adapter.reads, expected)
+                self.assertEqual(len(requests), expected)
+                self.assertLessEqual(adapter.reads, 8)
+                self.assertTrue(all(page <= 2 for _, page in requests))
+                self.assertEqual(adapter.max_reads, 12)
+                self.assertEqual(adapter.max_downloads, 2)
+                self.assertEqual(len({row["id"] for row in rows}), len(rows))
+        legacy, requests, transport = service(192, 192, selected=driver.LEGACY193)
+        with transport:
+            self.assertEqual(len(legacy.list()), 384)
+        self.assertEqual(legacy.reads, 4)
+        self.assertTrue(all(name.endswith("v1") for name, _ in requests))
+        for fault in ("partial", "changed_count", "extra", "foreign", "missing_count", "boolean_count"):
+            with self.subTest(fault=fault):
+                adapter, requests, transport = service(0, 192, fault=fault)
+                with transport, self.assertRaises(driver.StudyError):
+                    adapter.list()
+                self.assertLessEqual(len(requests), 8)
+                self.assertTrue(all(page <= 2 for _, page in requests))
+        for old_count, new_count in ((0, 196), (196, 192), (0, 200)):
+            adapter, requests, transport = service(old_count, new_count)
+            with transport, self.assertRaises(driver.StudyError):
+                adapter.list()
+            self.assertLessEqual(len(requests), 8)
+        limited, requests, transport = service(195, 195, max_reads=7)
+        with transport, self.assertRaises(driver.StudyError):
+            limited.list()
+        self.assertEqual(len(requests), 7)
+        self.assertEqual(limited.max_reads, 7)
+
     def test_new_lost_intent_and_partial_finalize_preserve_chain_without_replay(self):
         protocol = self.protocol()
         clock, store, _, _, initial, _ = self.active()
