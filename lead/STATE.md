@@ -70,6 +70,12 @@ T055/T056 separately repair the actual legacy Linux disappearance race and exact
 float-assertion failure. Fresh source review is PASS12/12; executor/independent
 complete45 and actual source Linux39917097945 with both locked builds pass.
 Their reviewed companion may be normally integrated before final combined gates.
+Combined sourcecd1c534 passes the lead complete45 and actual Linux39919510546,
+including both locked builds. Fresh round2 complete45 retains a separate44of45
+failure in the old refusal fixture. Its original sidecars are unavailable. A
+bounded delayed-start witness reproduces the premise on both candidate and old
+base; T057 names a separate test-only synchronization repair before any edit.
+The fresh T054 A2 review continues; final source publication remains gated.
 No new source publication, actual real-clock canary or scientific enrollment is
 yet observed. The earlier failed source/Linux/full-gate receipts remain failed.
 The normal merge b0fea0e retains
