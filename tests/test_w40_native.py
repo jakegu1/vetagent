@@ -329,6 +329,72 @@ class NativeAcceptance(unittest.TestCase):
             row = f.core.report(f.store, now=native.iso(f.clock.utc()))["rows"][0]
             self.assertEqual(row["receipt"]["independence"]["state"], "independence_failed")
 
+    def _run_native_refusal_cases(self):
+        native = importlib.import_module("w40_native")
+        risk = importlib.import_module("risk")
+        for captured_status, callback_failure in ((401, False), (403, False), (403, True), (200, False)):
+            with Fixture() as f, server(_json({"observed": True}), status=captured_status) as (port, calls, _):
+                held_entries = 0
+                headers_ready, cancellation_started = asyncio.Event(), asyncio.Event()
+                async def hold_after_headers(name, worker):
+                    nonlocal held_entries
+                    if name != "native_entry":
+                        return
+                    held_entries += 1
+                    if held_entries != 1:
+                        return
+                    await worker.wait_file("headers.json")
+                    self.assertEqual(json.loads((worker.directory / "headers.json").read_bytes())["status"], captured_status)
+                    headers_ready.set()
+                    if callback_failure:
+                        raise ValueError()
+                    await asyncio.wait_for(cancellation_started.wait(), timeout=5)
+                    await asyncio.sleep(1)
+                async def refusal_control():
+                    async with native.adapter_scope(f.runtime, f.private, token=f.token, chain="base",
+                            route=("127.0.0.1", port), hooks=hold_after_headers) as adapter:
+                        native_fetch = risk.cf_fetch
+                        first_task = asyncio.create_task(native_fetch(f.ds, headers={"Accept": "application/json"}))
+                        handed_off = False
+                        async def fetch_after_headers(url, **kwargs):
+                            nonlocal handed_off
+                            if not handed_off:
+                                handed_off = True
+                                cancellation_started.set()
+                                return await first_task
+                            return await native_fetch(url, **kwargs)
+                        startup_started = time.monotonic()
+                        try:
+                            try:
+                                await asyncio.wait_for(headers_ready.wait(), timeout=5)
+                            except asyncio.TimeoutError:
+                                self.fail("native_refusal_headers_unavailable")
+                            self.assertLess(time.monotonic() - startup_started, 5)
+                            with patch.object(risk, "cf_fetch", fetch_after_headers):
+                                answer = await risk._fetch_json(f.ds, retries=1, timeout=.7)
+                        finally:
+                            if not first_task.done():
+                                first_task.cancel()
+                            with contextlib.suppress(asyncio.CancelledError, native.NativeError):
+                                await first_task
+                        if captured_status in (401, 403):
+                            self.assertIsNone(answer)
+                            self.assertEqual(len(adapter.attempts), 1)
+                            self.assertTrue(adapter.stopped)
+                        else:
+                            self.assertEqual(answer, {"observed": True})
+                            self.assertEqual(len(adapter.attempts), 2)
+                        first = adapter.attempts[0]
+                        self.assertEqual(first["status"], captured_status)
+                        self.assertEqual(first["retirement"], "exited")
+                        self.assertFalse(native.identity_alive(first["identity"]))
+                        headers = [event for event in adapter.journal.events if event["kind"] == "headers" and event["attempt"] == 1]
+                        self.assertEqual(len(headers), 1)
+                        self.assertEqual(headers[0]["status"], captured_status)
+                        self.assertEqual(json.loads((first["directory"] / "commit.json").read_bytes())["status"], captured_status)
+                asyncio.run(refusal_control())
+                self.assertEqual(len(calls), 1 if captured_status in (401, 403) else 2)
+
     def test_w40_native_caps_pacing_deadline_and_cancellation(self):
         native = importlib.import_module("w40_native")
         risk = importlib.import_module("risk")
@@ -493,68 +559,7 @@ class NativeAcceptance(unittest.TestCase):
                 self.assertEqual(native.report(f.runtime)["attempted"], 0 if changed_request_deadline else 1)
 
         # Named (e): a child-observed refusal survives parent cancellation or callback failure.
-        for captured_status, callback_failure in ((401, False), (403, False), (403, True), (200, False)):
-            with Fixture() as f, server(_json({"observed": True}), status=captured_status) as (port, calls, _):
-                held_entries = 0
-                headers_ready, cancellation_started = asyncio.Event(), asyncio.Event()
-                async def hold_after_headers(name, worker):
-                    nonlocal held_entries
-                    if name != "native_entry":
-                        return
-                    held_entries += 1
-                    if held_entries != 1:
-                        return
-                    await worker.wait_file("headers.json")
-                    self.assertEqual(json.loads((worker.directory / "headers.json").read_bytes())["status"], captured_status)
-                    headers_ready.set()
-                    if callback_failure:
-                        raise ValueError()
-                    await asyncio.wait_for(cancellation_started.wait(), timeout=5)
-                    await asyncio.sleep(1)
-                async def refusal_control():
-                    async with native.adapter_scope(f.runtime, f.private, token=f.token, chain="base",
-                            route=("127.0.0.1", port), hooks=hold_after_headers) as adapter:
-                        native_fetch = risk.cf_fetch
-                        first_task = asyncio.create_task(native_fetch(f.ds, headers={"Accept": "application/json"}))
-                        handed_off = False
-                        async def fetch_after_headers(url, **kwargs):
-                            nonlocal handed_off
-                            if not handed_off:
-                                handed_off = True
-                                cancellation_started.set()
-                                return await first_task
-                            return await native_fetch(url, **kwargs)
-                        startup_started = time.monotonic()
-                        try:
-                            try:
-                                await asyncio.wait_for(headers_ready.wait(), timeout=5)
-                            except asyncio.TimeoutError:
-                                self.fail("native_refusal_headers_unavailable")
-                            self.assertLess(time.monotonic() - startup_started, 5)
-                            with patch.object(risk, "cf_fetch", fetch_after_headers):
-                                answer = await risk._fetch_json(f.ds, retries=1, timeout=.7)
-                        finally:
-                            if not first_task.done():
-                                first_task.cancel()
-                            with contextlib.suppress(asyncio.CancelledError, native.NativeError):
-                                await first_task
-                        if captured_status in (401, 403):
-                            self.assertIsNone(answer)
-                            self.assertEqual(len(adapter.attempts), 1)
-                            self.assertTrue(adapter.stopped)
-                        else:
-                            self.assertEqual(answer, {"observed": True})
-                            self.assertEqual(len(adapter.attempts), 2)
-                        first = adapter.attempts[0]
-                        self.assertEqual(first["status"], captured_status)
-                        self.assertEqual(first["retirement"], "exited")
-                        self.assertFalse(native.identity_alive(first["identity"]))
-                        headers = [event for event in adapter.journal.events if event["kind"] == "headers" and event["attempt"] == 1]
-                        self.assertEqual(len(headers), 1)
-                        self.assertEqual(headers[0]["status"], captured_status)
-                        self.assertEqual(json.loads((first["directory"] / "commit.json").read_bytes())["status"], captured_status)
-                asyncio.run(refusal_control())
-                self.assertEqual(len(calls), 1 if captured_status in (401, 403) else 2)
+        self._run_native_refusal_cases()
 
         # Named (f): an available exit code does not prove matching-identity retirement.
         for retirement_case in ("eventually_retired", "persistent", "inaccessible"):
@@ -701,8 +706,24 @@ class NativeAcceptance(unittest.TestCase):
             return await original_start(worker)
 
         with patch.object(native.NativeWorker, "start", slow_first_start):
-            self.test_w40_native_caps_pacing_deadline_and_cancellation()
+            self._run_native_refusal_cases()
         self.assertEqual(len(delayed), 4)
+
+    def test_native_retry_preserves_slow_second_startup(self):
+        native = importlib.import_module("w40_native")
+        original_start = native.NativeWorker.start
+        delayed = []
+
+        async def slow_second_start(worker):
+            if (getattr(worker.hooks, "__name__", None) == "hold_after_headers"
+                    and worker.directory.name == "02"):
+                delayed.append(worker.directory)
+                await asyncio.sleep(1)
+            return await original_start(worker)
+
+        with patch.object(native.NativeWorker, "start", slow_second_start):
+            self._run_native_refusal_cases()
+        self.assertEqual(len(delayed), 1)
 
     def test_w40_native_private_boundary_and_safe_failures(self):
         native = importlib.import_module("w40_native")
