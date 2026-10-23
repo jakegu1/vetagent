@@ -54,3 +54,5 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-052 | Preserve the engine datetime contract in native acquisition | 3 | S | T-046, T-051 | done source; independent12/12/red-team none, actual feature39399891382/45/two locked builds and post-merge9034ccf complete45 pass; live/runtime and scientific proof separate |
 | T-053 | Select snapshot coverage by observed UTC chronology rather than append order | 1 | S | T-029 | done source; fresh ordinary12/12, executor/independent45, actual source Linux39440532687/two locked builds and post-merge859bed8 complete45 pass; real archive read-only CLI passes |
 | T-054 | Preserve finite research slots inside bounded running CI sessions | 3 | M | T-043, T-048, T-053 | in progress; isolated tests-first implementation, no scientific enrollment |
+| T-055 | Distinguish a disappeared Linux process from inaccessible identity | 2 | S | T-046, T-052 | ready; actual Linux ESRCH race, independent narrow repair |
+| T-056 | Compare an elapsed float budget at its representable precision | 1 | S | T-052 | ready; named test-only correction for measured rounding error |

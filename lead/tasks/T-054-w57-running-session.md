@@ -183,3 +183,63 @@ mutable pointer. A pending/dangling index fails closed; a terminal index binds t
 actual final durable generation ID and digest. Complete bounded cross-format
 discovery must retain the old active/used-study rule and reject partial or
 ambiguous metadata. This clarifies criteria2/3 without changing older assertions.
+
+### A2 - 2026-10-23: frozen round-two proof repair bar
+
+Fresh ordinary review of8ac7434 is Changes required (6/12), with F1-F4 below.
+Fresh adversarial review independently reproduces M1. The lead accepts these
+measured findings. One bounded second round repairs this bar and regressions;
+there is no new scientific rule, provider, source permission or real-study run.
+
+Only additive tests in the existing RunningSessionTests class are newly allowed,
+with these named methods committed alone before implementation:
+
+- test_final_phase_clock_drift_cannot_pass_readiness
+- test_canary_readiness_requires_every_matching_intent
+- test_canary_rows_cover_exact_frozen_cells
+- test_completed_run_requires_successful_conclusion
+- test_run_attempt_boolean_is_not_integer_one
+
+M1: a UTC step of plus or minus120seconds during the final two-second acquisition
+pacing sleep, with monotonic time continuous, currently produces passed canary
+readiness. Validate the same frozen lease and source controls after the final
+operation, for live and canary paths, before successful sealing. Preserve partial
+evidence through finalize/upload/closure and fail readiness on changed clocks.
+Persist/validate end clock proof if reconstruction uses it; a fresh closure lease
+cannot erase an earlier drift. Keep existing drift tolerance and scientific time
+rules. Reproduce both directions and the unchanged healthy generated CLI graph.
+
+F1: removing any matching intent from an otherwise complete, truthful three-pair
+canary listing currently leaves passed readiness. Canary reconstruction must
+prove all three corresponding intents, their exact generation/receipt/source
+bindings and preserved ZIP/manifest evidence. Missing, foreign or mismatched
+intent proof must fail. Keep ordinary12read/twoZIP and report600/195/720 bounds;
+do not solve this by doubling a full live report's ZIP allowance. Every live
+Artifact consumed still requires its existing validation.
+
+F2: replacing one synthetic member with a non-enrolled name while rebuilding
+valid manifests/ZIP digests currently leaves189 distinct cells and passed
+readiness. Validate the actual frozen slot/member universe and one occurrence of
+each required cell, not cardinality alone. Reject foreign member/slot, duplicate
+or malformed synthetic rows; the unchanged valid proof still passes and remains
+explicitly excluded from scientific interpretation.
+
+F3: reject completed workflow-run metadata with null/unknown/non-success
+conclusion before ZIP consumption. Retain legitimate integer-attempt-one current
+in_progress/null reads and completed/success historical reads. Do not collapse
+an unresolved completed outcome into a successful Artifact.
+
+F4: run_attempt=true is a boolean, not integer1. Reject it before ZIP consumption
+and retain legitimate integer1. Preserve rerun/context/provenance refusal; the
+corresponding transport context must not accept boolean attempt identity either.
+
+Implement each finding in its own fix commit whose message states its observed
+red, following the new tests-only commit. Original acceptance inputs/assertions
+remain frozen apart from the already permitted import-identity harness fix.
+The two independently observed legacy native-gate defects belong to separately
+specified T055/T056, not to this source patch. Their reviewed companion may be
+normally integrated before final exact-head complete/Linux/master gates. A
+combined second-round ordinary/adversarial reviewer verifies this entire bar,
+meaningful mutants, original regressions and preserved bounds. No third round
+for new minor fronts; broken invariants, security/privacy/data loss or regressions
+remain mandatory blockers under the project rule.
