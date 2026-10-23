@@ -1,7 +1,7 @@
 ---
 id: T-057
 title: Start a refusal cancellation test after durable child headers
-status: ready
+status: in_progress
 level: 1
 size: S
 depends_on: [T-046, T-052, T-055, T-056]
@@ -26,8 +26,8 @@ startup wait. This is a test-harness repair; native/engine behavior stays exact.
 ## Scope and named changes
 
 Only tests/test_w40_native.py and governance records are in scope. In
-NativeTests.test_w40_native_caps_pacing_deadline_and_cancellation (use the actual
-class name if different), change only the named(e) refusal fixture and its local
+NativeAcceptance.test_w40_native_caps_pacing_deadline_and_cancellation,
+change only the named(e) refusal fixture and its local
 helpers. Preserve every original response, status, attempts, journal, commit,
 retirement, identity and loopback-call assertion, all four401/403/callback/200
 cases, retries1, the0.7second cancellation and one-second post-header hold.
