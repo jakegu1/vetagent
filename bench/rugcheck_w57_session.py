@@ -1,10 +1,11 @@
-"""Finite W57 sessions, with the unchanged v1 module as the scientific boundary.
+"""Finite W57 sessions with explicit science and immutable historical defaults.
 
 The legacy three-key source schema is retained explicitly: driver and probe are
 raw-file SHA256 values; workflow is a COMPOSITE digest of the raw workflow,
 session adapter and generator hashes, domain-separated by CONTROL_DOMAIN.
-Every v2 envelope carries all five raw hashes. A raw workflow digest is never
-presented as the composite. Historical v1 decoding/reporting remains available.
+Every v2/v3 envelope carries all five raw hashes. The v3 composite additionally
+binds the canonical protocol descriptor and digest. A raw workflow digest is
+never presented as the composite. Historical v1 decoding/reporting is retained.
 
 The immutable admission index is a copy of the terminal generation's core
 files, with its exact ID/manifest digest in the transport envelope. It is not a
@@ -30,10 +31,12 @@ CONTROL_DOMAIN = "w57-session-control-composite-v2"
 SOURCES = {"driver": "bench/rugcheck_w57_ci.py", "probe": "bench/rugcheck_coverage_probe.py",
            "session": "bench/rugcheck_w57_session.py", "workflow": core.WORKFLOW,
            "generator": ".github/scripts/render_w57_session_workflow.py"}
-ADMISSION_NAMES = ("w57-intent-v1", "w57-result-v1",
-                   "w57-admission-intent-v2", "w57-admission-result-v2")
-NAME = re.compile(r"w57-(live|canary)-([a-z0-9][a-z0-9-]{0,47})-r([1-9][0-9]*)-g([0-9]{3})-(intent|result)-v2\Z")
-CLOSURE_NAME = re.compile(r"w57-(live|canary)-closure-r([1-9][0-9]*)-v2\Z")
+LEGACY_ADMISSION_NAMES = ("w57-intent-v1", "w57-result-v1",
+                          "w57-admission-intent-v2", "w57-admission-result-v2")
+ADMISSION_NAMES = LEGACY_ADMISSION_NAMES + ("w57-admission-intent-v3", "w57-admission-result-v3")
+NEW_ADMISSION_NAMES = ADMISSION_NAMES
+NAME = re.compile(r"w57-(live|canary|live192)-([a-z0-9][a-z0-9-]{0,47})-r([1-9][0-9]*)-g([0-9]{3})-(intent|result)-v(2|3)\Z")
+CLOSURE_NAME = re.compile(r"w57-(live|canary|live192)-closure-r([1-9][0-9]*)-v(2|3)\Z")
 RESERVE = 300
 JOB_SECONDS = 330 * 60
 MAX_WAIT = 30
@@ -44,30 +47,71 @@ def source_freeze():
     return {key: core.sha((ROOT / path).read_bytes()) for key, path in SOURCES.items()}
 
 
-def composite(freeze):
+def _selection(namespace):
+    if namespace not in ("live", "canary", "live192"):
+        raise StudyError("namespace_mismatch")
+    return core.START192_V1 if namespace == "live192" else core.LEGACY193
+
+
+def _mode(phase):
+    if phase not in ("canary", "pilot", "start", "report", "legacy-report", "pilot192", "start192", "report192"):
+        raise StudyError("invalid_phase")
+    return (phase[:-3], "live192") if phase.endswith("192") else (phase, "canary" if phase == "canary" else "live")
+
+
+def _marker(value, protocol):
+    if protocol is core.LEGACY193:
+        return "protocol" not in value and "protocol_digest" not in value
+    try:
+        return (core.encoded(value.get("protocol")) == core.encoded(core.protocol_descriptor(protocol))
+                and value.get("protocol_digest") == core.protocol_digest(protocol))
+    except (TypeError, ValueError):
+        return False
+
+
+def _context_protocol(ctx):
+    protocol = core.START192_V1 if "protocol" in ctx or "protocol_digest" in ctx else core.LEGACY193
+    if not _marker(ctx, protocol):
+        raise StudyError("invalid_protocol_context")
+    return protocol
+
+
+def _add_marker(value, protocol):
+    if protocol is not core.LEGACY193:
+        value.update(protocol=core.protocol_descriptor(protocol), protocol_digest=core.protocol_digest(protocol))
+    return value
+
+
+def _clock_value(value):
+    return value if core.number(value) else None
+
+
+def composite(freeze, *, protocol=core.LEGACY193):
+    core._protocol(protocol)
     if (not isinstance(freeze, dict) or set(freeze) != set(SOURCES)
             or any(not isinstance(x, str) or not core.SHA.fullmatch(x) for x in freeze.values())):
         raise StudyError("invalid_control_sources")
-    return {"driver": freeze["driver"], "probe": freeze["probe"],
-            "workflow": core.sha(core.encoded({"domain": CONTROL_DOMAIN,
-                                              **{key: freeze[key] for key in ("workflow", "session", "generator")}}))}
+    payload = {"domain": CONTROL_DOMAIN if protocol is core.LEGACY193 else "w57-session-control-composite-v3",
+               **{key: freeze[key] for key in ("workflow", "session", "generator")}}
+    _add_marker(payload, protocol)
+    return {"driver": freeze["driver"], "probe": freeze["probe"], "workflow": core.sha(core.encoded(payload))}
 
 
-def source_hashes():
-    return composite(source_freeze())
+def source_hashes(*, protocol=core.LEGACY193):
+    return composite(source_freeze(), protocol=protocol)
 
 
-def _source_guard(expected):
+def _source_guard(expected, *, protocol=core.LEGACY193):
     """Rehash changed files; module code already loaded for this bounded phase."""
     stamps = {key: ((ROOT / path).stat().st_mtime_ns, (ROOT / path).stat().st_size)
               for key, path in SOURCES.items()}
-    if source_hashes() != expected:
+    if source_hashes(protocol=protocol) != expected:
         raise StudyError("source_changed")
     def check():
         current = {key: ((ROOT / path).stat().st_mtime_ns, (ROOT / path).stat().st_size)
                    for key, path in SOURCES.items()}
         if current != stamps:
-            if source_hashes() != expected:
+            if source_hashes(protocol=protocol) != expected:
                 raise StudyError("source_changed")
             stamps.update(current)
     return check
@@ -79,11 +123,14 @@ def context(env=None):
         # This check precedes construction of any transport, including the canary.
         if env.get("GITHUB_RUN_ATTEMPT") != "1":
             raise StudyError("rerun_refused")
+        _, namespace = _mode(env.get("W57_PHASE", "canary"))
+        protocol = _selection(namespace)
         freeze = source_freeze()
         ctx = {"repository": env["GITHUB_REPOSITORY"], "workflow": core.WORKFLOW,
                "branch": env["GITHUB_REF_NAME"], "default_branch": env["W57_DEFAULT_BRANCH"],
                "head": env["GITHUB_SHA"], "run_id": int(env["GITHUB_RUN_ID"]), "attempt": 1,
-               "source": composite(freeze), "control_sources": freeze}
+               "source": composite(freeze, protocol=protocol), "control_sources": freeze}
+        _add_marker(ctx, protocol)
         if (ctx["branch"] != ctx["default_branch"] or env.get("GITHUB_EVENT_NAME") != "workflow_dispatch"
                 or not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", ctx["repository"])
                 or not re.fullmatch(r"[0-9a-f]{40}", ctx["head"]) or ctx["run_id"] <= 0):
@@ -116,9 +163,12 @@ class Lease:
             raise StudyError("invalid_job_clock")
 
     def check(self, clock, request_seconds=0):
-        elapsed = clock.monotonic() - self.record["monotonic"]
-        wall = clock.utc() - self.record["utc"]
-        if elapsed < 0 or abs(wall - elapsed) > DRIFT:
+        utc, monotonic = clock.utc(), clock.monotonic()
+        if not core.number(utc) or not core.number(monotonic):
+            raise StudyError("clock_changed")
+        elapsed = monotonic - self.record["monotonic"]
+        wall = utc - self.record["utc"]
+        if not core.number(elapsed) or not core.number(wall) or abs(wall - elapsed) > DRIFT:
             raise StudyError("clock_changed")
         if elapsed + request_seconds + RESERVE >= self.record["seconds"]:
             raise StudyError("job_preservation_reserve")
@@ -140,7 +190,7 @@ def wait_due(clock, due, lease, request_seconds=32, check=None):
         clock.sleep(min(delay, MAX_WAIT))
 
 
-def _valid_clock_proof(proof, source):
+def _valid_clock_proof(proof, source, *, protocol=core.LEGACY193):
     """Validate the recorded sampling lease, never a new reporting-job lease."""
     try:
         lease = proof["lease"]
@@ -148,7 +198,8 @@ def _valid_clock_proof(proof, source):
                 or any(not core.number(value) for value in lease.values())
                 or not RESERVE < lease["seconds"] <= JOB_SECONDS
                 or not core.number(proof["utc"]) or not core.number(proof["monotonic"])
-                or composite(proof["control_sources"]) != source):
+                or not _marker(proof, protocol)
+                or composite(proof["control_sources"], protocol=protocol) != source):
             return False
         elapsed = proof["monotonic"] - lease["monotonic"]
         wall = proof["utc"] - lease["utc"]
@@ -159,26 +210,30 @@ def _valid_clock_proof(proof, source):
 
 def _state_clock_stable(state):
     controls = state["session"]
-    return (_valid_clock_proof(controls.get("end_clock"), state["source"])
-            and ("seal_clock" not in controls or _valid_clock_proof(controls["seal_clock"], state["source"])))
+    protocol = _selection(controls["namespace"])
+    return (_valid_clock_proof(controls.get("end_clock"), state["source"], protocol=protocol)
+            and ("seal_clock" not in controls or _valid_clock_proof(controls["seal_clock"], state["source"], protocol=protocol)))
 
 
 def _seal_clock(state, ctx, clock, lease, key="end_clock"):
     """A tail jump remains failed even if finalization later sees a healthy clock."""
-    proof = {"lease": copy.deepcopy(lease.record), "utc": clock.utc(), "monotonic": clock.monotonic(),
+    proof = {"lease": copy.deepcopy(lease.record), "utc": _clock_value(clock.utc()), "monotonic": _clock_value(clock.monotonic()),
              "control_sources": source_freeze(), "stable": False}
+    protocol = _selection(state["session"]["namespace"])
+    _add_marker(proof, protocol)
     failure = None
     try:
         lease.check(clock)
-        if composite(proof["control_sources"]) != state["source"] or ctx["control_sources"] != proof["control_sources"]:
+        if (composite(proof["control_sources"], protocol=protocol) != state["source"]
+                or ctx["control_sources"] != proof["control_sources"] or _context_protocol(ctx) is not protocol):
             raise StudyError("source_changed")
         proof["stable"] = True
     except StudyError as exc:
         failure = str(exc)
     controls = state["session"]
-    earlier_failure = any(name in controls and not _valid_clock_proof(controls[name], state["source"])
+    earlier_failure = any(name in controls and not _valid_clock_proof(controls[name], state["source"], protocol=protocol)
                           for name in ("end_clock", "seal_clock"))
-    if key not in controls or _valid_clock_proof(controls[key], state["source"]):
+    if key not in controls or _valid_clock_proof(controls[key], state["source"], protocol=protocol):
         controls[key] = proof
     if failure or earlier_failure:
         controls["failure"] = failure or controls.get("failure", "clock_changed")
@@ -186,20 +241,25 @@ def _seal_clock(state, ctx, clock, lease, key="end_clock"):
 
 
 def bind_state(state, ctx, namespace):
+    protocol = _selection(namespace)
+    if _context_protocol(ctx) is not protocol:
+        raise StudyError("protocol_context_mismatch")
     state = copy.deepcopy(state)
     state["source"] = copy.deepcopy(ctx["source"])
-    state["session"] = {"schema": 2, "namespace": namespace,
-                        "freeze": copy.deepcopy(ctx["control_sources"])}
+    state["session"] = _add_marker({"schema": 3 if namespace == "live192" else 2, "namespace": namespace,
+                                    "freeze": copy.deepcopy(ctx["control_sources"])}, protocol)
     return state
 
 
 def _validate(state, namespace):
+    protocol = _selection(namespace)
     session = state.get("session", {}) if isinstance(state, dict) else {}
-    if (namespace not in ("live", "canary") or session.get("schema") != 2
-            or session.get("namespace") != namespace or composite(session.get("freeze")) != state.get("source")):
+    if (session.get("schema") != (3 if namespace == "live192" else 2) or not _marker(session, protocol)
+            or session.get("namespace") != namespace
+            or composite(session.get("freeze"), protocol=protocol) != state.get("source")):
         raise StudyError("invalid_session_state")
-    if namespace == "live":
-        core._validate_state(state)
+    if namespace in ("live", "live192"):
+        core._validate_state(state, protocol=protocol)
     elif (state.get("schema") != 2 or state.get("status") not in core.TERMINAL | {"active"}
           or not core.STUDY_ID.fullmatch(str(state.get("study", "")))
           or type(state.get("generation")) is not int or not 0 <= state["generation"] <= 3
@@ -220,13 +280,14 @@ def canary_state(ctx, now):
 
 
 def artifact_name(state, kind, ctx, namespace="live"):
+    version = 3 if _selection(namespace) is core.START192_V1 else 2
     if kind in ("admission-intent", "admission-result"):
-        if namespace != "live":
+        if namespace not in ("live", "live192"):
             raise StudyError("canary_admission_forbidden")
-        return "w57-%s-v2" % kind
-    if kind not in ("intent", "result") or namespace not in ("live", "canary"):
+        return "w57-%s-v%d" % (kind, version)
+    if kind not in ("intent", "result"):
         raise StudyError("artifact_identity")
-    return "w57-%s-%s-r%d-g%03d-%s-v2" % (namespace, state["study"], ctx["run_id"], state["generation"], kind)
+    return "w57-%s-%s-r%d-g%03d-%s-v%d" % (namespace, state["study"], ctx["run_id"], state["generation"], kind, version)
 
 
 def _parse(data):
@@ -272,6 +333,9 @@ def _canary_rows(state, rows):
 
 
 def _files(state, rows, kind, ctx, namespace, unverified=None):
+    protocol = _selection(namespace)
+    if _context_protocol(ctx) is not protocol:
+        raise StudyError("protocol_context_mismatch")
     state = copy.deepcopy(state)
     dependency = state.get("session", {}).pop("last_durable", None) if kind == "admission-result" else None
     _validate(state, namespace)
@@ -280,8 +344,8 @@ def _files(state, rows, kind, ctx, namespace, unverified=None):
             or any(not isinstance(row, dict) or len(core.encoded(row)) > 2048 for row in rows)
             or (actual_kind == "intent" and rows)):
         raise StudyError("bundle_bounds")
-    if namespace == "live":
-        files = core._bundle_files(state, rows, actual_kind, ctx, unverified)
+    if namespace in ("live", "live192"):
+        files = core._bundle_files(state, rows, actual_kind, ctx, unverified, protocol=protocol)
     else:
         _canary_rows(state, rows)
         data, body = core.encoded(state), b"".join(core.encoded(row) + b"\n" for row in rows)
@@ -302,6 +366,9 @@ def _files(state, rows, kind, ctx, namespace, unverified=None):
                  "generation": state["generation"], "parent": state["parent"], "context": ctx,
                  "control_sources": state["session"]["freeze"], "core_digest": digest,
                  "last_durable": dependency}
+    if protocol is core.START192_V1:
+        transport["schema"] = 3
+    _add_marker(transport, protocol)
     files["transport.json"] = core.encoded(transport)
     limit = core.INTENT_BYTES if actual_kind == "intent" else core.BUNDLE_BYTES
     if sum(map(len, files.values())) > limit:
@@ -317,7 +384,8 @@ def bundle_bytes(state, rows, kind, ctx, namespace="live"):
     return data
 
 
-def decode_bundle(data, provenance, expected):
+def decode_bundle(data, provenance, expected, *, protocol=core.LEGACY193):
+    core._protocol(protocol)
     try:
         if not isinstance(data, bytes) or len(data) > core.BUNDLE_BYTES:
             raise StudyError("bundle_overflow")
@@ -329,7 +397,9 @@ def decode_bundle(data, provenance, expected):
             if any(item.flag_bits & 1 for item in entries):
                 raise StudyError("bundle_files")
             if "transport.json" not in names:
-                return core.decode_bundle(data, provenance, expected)
+                if protocol is not core.LEGACY193:
+                    raise StudyError("session_transport_required")
+                return core.decode_bundle(data, provenance, expected, protocol=protocol)
             required = {"state.json", "observations.jsonl", "manifest.json", "transport.json"}
             if set(names) not in (required, required | {"unverified.jsonl"}):
                 raise StudyError("bundle_files")
@@ -338,11 +408,14 @@ def decode_bundle(data, provenance, expected):
         manifest, state = _parse(files["manifest.json"]), _parse(files["state.json"])
         rows = [_parse(line) for line in files["observations.jsonl"].splitlines()]
         namespace, kind, ctx = transport["namespace"], transport["kind"], transport["context"]
+        if _selection(namespace) is not protocol or _context_protocol(ctx) is not protocol:
+            raise StudyError("protocol_context_mismatch")
         _validate(state, namespace)
-        if (transport.get("schema") != 2 or transport.get("control_sources") != state["session"]["freeze"]
+        if (transport.get("schema") != (3 if namespace == "live192" else 2) or not _marker(transport, protocol)
+                or transport.get("control_sources") != state["session"]["freeze"]
                 or transport.get("core_digest") != core.sha(files["manifest.json"])
                 or ctx != manifest.get("context") or type(ctx.get("attempt")) is not int or ctx["attempt"] != 1
-                or composite(ctx.get("control_sources")) != ctx.get("source")
+                or composite(ctx.get("control_sources"), protocol=protocol) != ctx.get("source")
                 or (state.get("status") != "source_changed" and
                     (ctx.get("source") != state["source"] or ctx.get("control_sources") != transport["control_sources"]))
                 or kind not in ("intent", "result", "admission-intent", "admission-result")
@@ -362,8 +435,8 @@ def decode_bundle(data, provenance, expected):
                 or type(ctx.get("run_id")) is not int or ctx["run_id"] <= 0
                 or not re.fullmatch(r"[0-9a-f]{40}", str(ctx.get("head", "")))):
             raise StudyError("artifact_provenance")
-        if namespace == "live":
-            decoded = core.decode_bundle(_zip(files), provenance, expected)
+        if namespace in ("live", "live192"):
+            decoded = core.decode_bundle(_zip(files), provenance, expected, protocol=protocol)
         else:
             _canary_rows(state, rows)
             if (manifest.get("files") != {name: core.sha(value) for name, value in files.items() if name != "manifest.json"}
@@ -397,8 +470,9 @@ class Artifacts(core.GitHubArtifacts):
     def __init__(self, ctx, token, report=False, admission=False):
         super().__init__(ctx, token, max_reads=600 if report else 16 if admission else 12,
                          max_downloads=195 if report else 3 if admission else 2,
-                         seconds=720 if report else 110)
+                         seconds=720 if report else 110, protocol=_context_protocol(ctx))
         self.runs, self.seconds_spent = {}, 0
+        self.decoded = {}
 
     def request(self, path, binary=False):
         started = time.monotonic()
@@ -411,7 +485,8 @@ class Artifacts(core.GitHubArtifacts):
         try:
             ident, name, run, created = row["id"], row["name"], row["workflow_run"], row["created_at"]
             match = NAME.fullmatch(name)
-            fixed = name in ADMISSION_NAMES or bool(CLOSURE_NAME.fullmatch(name))
+            closed = CLOSURE_NAME.fullmatch(name)
+            fixed = name in NEW_ADMISSION_NAMES or bool(closed)
             if (type(ident) is not int or ident <= 0 or not isinstance(name, str) or not (match or fixed)
                     or type(row.get("size_in_bytes")) is not int or not 0 < row["size_in_bytes"] <= core.BUNDLE_BYTES
                     or row.get("expired") is not False
@@ -424,6 +499,9 @@ class Artifacts(core.GitHubArtifacts):
             moment = datetime.datetime.fromisoformat(created.replace("Z", "+00:00")).timestamp()
             if match and (int(match[3]) != run["id"] or not 0 <= int(match[4]) <= 196):
                 raise StudyError("artifact_identity")
+            if (match and (match[1] == "live192") != (match[6] == "3")
+                    or closed and ((closed[1] == "live192") != (closed[3] == "3") or int(closed[2]) != run["id"])):
+                raise StudyError("artifact_identity")
             return moment, match
         except StudyError:
             raise
@@ -432,11 +510,13 @@ class Artifacts(core.GitHubArtifacts):
 
     def list(self, scope="run", namespace="live"):
         found, scans = [], 0
-        names = ADMISSION_NAMES if scope == "admission" else (None,)
+        new_admission = scope == "admission" and self.protocol is core.START192_V1
+        names = (NEW_ADMISSION_NAMES if new_admission else LEGACY_ADMISSION_NAMES) if scope == "admission" else (None,)
+        scan_limit, stream_limit = (8, 2) if new_admission else (5, 5)
         for name in names:
             total, received = None, 0
-            for page in range(1, 6):
-                if scans >= 5:
+            for page in range(1, stream_limit + 1):
+                if scans >= scan_limit:
                     raise StudyError("artifact_scan_limit")
                 scans += 1
                 prefix = "/repos/%s/actions/" % self.ctx["repository"]
@@ -448,7 +528,7 @@ class Artifacts(core.GitHubArtifacts):
                     raise StudyError("artifact_partial_page")
                 if total is None:
                     total = body["total_count"]
-                if body["total_count"] != total:
+                if body["total_count"] != total or new_admission and total > 200:
                     raise StudyError("artifact_partial_page")
                 rows = body["artifacts"]
                 for row in rows:
@@ -493,6 +573,8 @@ class Artifacts(core.GitHubArtifacts):
         return result
 
     def load(self, ident):
+        if self.protocol is core.START192_V1 and ident in self.decoded:
+            return copy.deepcopy(self.decoded[ident])
         if self.downloads >= self.max_downloads or type(ident) is not int or ident <= 0:
             raise StudyError("artifact_download_budget")
         base = "/repos/%s/actions/" % self.ctx["repository"]
@@ -513,7 +595,8 @@ class Artifacts(core.GitHubArtifacts):
                     or run["head_repository"]["full_name"] != self.ctx["repository"]
                     or run["path"] != core.WORKFLOW or run["head_branch"] != self.ctx["default_branch"]
                     or run["event"] not in (("schedule", "workflow_dispatch") if legacy else ("workflow_dispatch",))
-                    or (not legacy and (type(run.get("run_attempt")) is not int or run["run_attempt"] != 1
+                    or ((not legacy or self.protocol is core.START192_V1) and
+                        (type(run.get("run_attempt")) is not int or run["run_attempt"] != 1
                                         or (run.get("status"), run.get("conclusion")) not in
                                         (("in_progress", None), ("completed", "success"))))):
                 raise StudyError("artifact_provenance")
@@ -523,7 +606,8 @@ class Artifacts(core.GitHubArtifacts):
             data = self.request(base + "artifacts/%d/zip" % ident, binary=True)
             if len(data) != meta["size_in_bytes"] or "sha256:" + core.sha(data) != meta["digest"]:
                 raise StudyError("artifact_zip_digest")
-            decoded = decode_bundle(data, provenance, self.ctx)
+            selected = core.START192_V1 if meta["name"].endswith("-v3") else core.LEGACY193
+            decoded = decode_bundle(data, provenance, self.ctx, protocol=selected)
             if legacy:
                 if decoded["manifest"]["kind"] != core.ARTIFACT.fullmatch(meta["name"])[1]:
                     raise StudyError("artifact_identity")
@@ -532,20 +616,79 @@ class Artifacts(core.GitHubArtifacts):
                 expected = artifact_name(decoded["state"], transport["kind"], transport["context"], transport["namespace"])
                 if expected != meta["name"]:
                     raise StudyError("artifact_identity")
+            if self.protocol is core.START192_V1 and decoded.get("transport", {}).get("kind") == "admission-result":
+                reference = decoded["transport"]["last_durable"]
+                if reference["id"] == ident:
+                    raise StudyError("admission_dependency")
+                durable = self.load(reference["id"])
+                indexed_state = copy.deepcopy(decoded["state"])
+                indexed_state["session"].pop("last_durable", None)
+                if (durable.get("transport", {}).get("kind") != "result"
+                        or durable["digest"] != reference["digest"] or durable["state"] != indexed_state
+                        or durable["rows"] != decoded["rows"] or durable["manifest"] != decoded["manifest"]):
+                    raise StudyError("admission_dependency")
+            if self.protocol is core.START192_V1:
+                self.decoded[ident] = copy.deepcopy(decoded)
             return decoded
         except StudyError:
             raise
         except (KeyError, TypeError, ValueError, AttributeError):
             raise StudyError("artifact_metadata") from None
 
+    def uploaded_intent(self, ident, digest, state, namespace):
+        """Verify this run's pinned upload receipt without a redundant GET.
+
+        The generated upload step supplies the exact ZIP digest and opaque ID;
+        its name/path are frozen by the same generated source. Verify the actual
+        remote ZIP and fresh run provenance, then its complete prepared state.
+        Historical/foreign artifacts still use load() and raw metadata checks.
+        Result persistence always retains its separate fresh metadata receipt.
+        """
+        if (self.protocol is not core.START192_V1 or namespace != "live192"
+                or type(ident) is not int or ident <= 0 or not isinstance(digest, str) or not core.SHA.fullmatch(digest)
+                or self.downloads >= self.max_downloads):
+            raise StudyError("intent_upload_receipt")
+        _validate(state, namespace)
+        base = "/repos/%s/actions/" % self.ctx["repository"]
+        run_id = self.ctx["run_id"]
+        try:
+            if run_id not in self.runs:
+                self.runs[run_id] = self.request(base + "runs/%d" % run_id)
+            run = self.runs[run_id]
+            if (run["id"] != run_id or run["head_sha"] != self.ctx["head"]
+                    or run["repository"]["full_name"] != self.ctx["repository"]
+                    or run["head_repository"]["full_name"] != self.ctx["repository"]
+                    or run["path"] != core.WORKFLOW or run["head_branch"] != self.ctx["default_branch"]
+                    or run["event"] != "workflow_dispatch" or type(run.get("run_attempt")) is not int or run["run_attempt"] != 1
+                    or (run.get("status"), run.get("conclusion")) not in (("in_progress", None), ("completed", "success"))):
+                raise StudyError("artifact_provenance")
+            self.downloads += 1
+            data = self.request(base + "artifacts/%d/zip" % ident, binary=True)
+            if not isinstance(data, bytes) or len(data) > core.INTENT_BYTES or core.sha(data) != digest:
+                raise StudyError("intent_upload_receipt")
+            decoded = decode_bundle(data, self.ctx, self.ctx, protocol=self.protocol)
+            if (decoded["state"] != state or decoded["manifest"]["context"] != self.ctx
+                    or decoded["manifest"]["kind"] != "intent" or decoded["transport"]["kind"] != "intent"
+                    or decoded["transport"]["namespace"] != namespace or decoded["rows"]):
+                raise StudyError("intent_mismatch")
+            decoded["upload_receipt"] = {"id": ident, "zip_digest": digest,
+                                          "name": artifact_name(state, "intent", self.ctx, namespace), "run_id": run_id}
+            self.decoded[ident] = copy.deepcopy(decoded)
+            return decoded
+        except StudyError:
+            raise
+        except (KeyError, TypeError, ValueError, AttributeError):
+            raise StudyError("intent_upload_receipt") from None
+
 
 class _View:
     """Only already validated, ordered metadata is normalized for legacy science."""
-    def __init__(self, store, metadata, cached=None):
+    def __init__(self, store, metadata, cached=None, *, protocol=core.LEGACY193):
         self.store, self.metadata, self.cached = store, metadata, cached or {}
+        self.protocol = protocol
 
     def list(self):
-        return [{"id": row["id"], "name": "w57-%s-v1" % ("result" if "result" in row["name"] else "intent")}
+        return [{"id": row["id"], "name": "w57-%s-v%d" % ("result" if "result" in row["name"] else "intent", self.protocol.schema)}
                 for row in self.metadata]
 
     def load(self, ident):
@@ -556,11 +699,128 @@ class _View:
         return value
 
 
+def _history_identity(meta):
+    return core.sha(core.encoded({key: meta[key] for key in
+                                 ("id", "name", "digest", "size_in_bytes", "created_at", "workflow_run")}))
+
+
+def _history_roots(store, metadata, cached):
+    """Prove each version root, reserving one ZIP for this phase's intent.
+
+    A source-bound new index may carry exact previously verified root seals.
+    A used ID alone never closes another root; unmatched or unprovable streams
+    fail before enrollment rather than spending a fourth phase ZIP.
+    """
+    if not metadata:
+        return [], [], []
+    latest_meta = metadata[-1]
+    latest = store.load(latest_meta["id"])
+    cached[latest_meta["id"]] = latest
+    if latest["manifest"]["kind"] != "result" or latest["state"]["status"] not in core.TERMINAL:
+        raise StudyError("study_active")
+    roots = {}
+    for row in metadata:
+        if "result" in row["name"]:
+            roots[row["name"].rsplit("-v", 1)[1]] = row
+    old_proofs = latest["state"].get("session", {}).get("admission_roots", []) if latest_meta["name"].endswith("-v3") else []
+    if not isinstance(old_proofs, list) or len(old_proofs) > 3:
+        raise StudyError("admission_history_unavailable")
+    proofs, used, covered, zip_ids = {}, [], [], set()
+    for proof in old_proofs:
+        if (not isinstance(proof, dict) or set(proof) != {"id", "version", "seal", "study", "status", "used_studies"}
+                or proof["version"] not in ("1", "2", "3") or proof["version"] in proofs
+                or type(proof["id"]) is not int or proof["id"] <= 0
+                or not isinstance(proof["seal"], str) or not core.SHA.fullmatch(proof["seal"])
+                or proof["status"] not in core.TERMINAL or proof["version"] not in roots
+                or not isinstance(proof["used_studies"], list) or not 1 <= len(proof["used_studies"]) <= 128
+                or proof["study"] not in proof["used_studies"]
+                or any(not isinstance(value, str) or not core.STUDY_ID.fullmatch(value) for value in proof["used_studies"])
+                or len(set(proof["used_studies"])) != len(proof["used_studies"])):
+            raise StudyError("admission_history_unavailable")
+        proofs[proof["version"]] = proof
+        used.extend(value for value in proof["used_studies"] if value not in used)
+    def remember(meta, part):
+        zip_ids.add(meta["id"])
+        dependency = part.get("transport", {}).get("last_durable")
+        if dependency:
+            zip_ids.add(dependency["id"])
+        state = part["state"]
+        if part["manifest"]["kind"] != "result" or state["status"] not in core.TERMINAL:
+            raise StudyError("study_active")
+        return {"id": meta["id"], "version": meta["name"].rsplit("-v", 1)[1], "seal": _history_identity(meta),
+                "study": state["study"], "status": state["status"], "used_studies": list(state["used_studies"])}
+    latest_proof = remember(latest_meta, latest)
+    if len(zip_ids) + 1 > 3:
+        raise StudyError("admission_history_unavailable")
+    for version, meta in roots.items():
+        if meta["id"] == latest_meta["id"]:
+            proof = latest_proof
+        else:
+            proof = proofs.get(version)
+            if proof is None or proof["id"] != meta["id"] or proof["seal"] != _history_identity(meta):
+                cost = 1 if meta["name"].endswith("-v1") else 2
+                if len(zip_ids) + cost + 1 > 3:
+                    raise StudyError("admission_history_unavailable")
+                part = store.load(meta["id"])
+                cached[meta["id"]] = part
+                proof = remember(meta, part)
+        proofs[version] = proof
+        used.extend(value for value in proof["used_studies"] if value not in used)
+    if len(used) >= 128:
+        raise StudyError("admission_history_unavailable")
+    covered = latest["state"].get("session", {}).get("history_coverage", [])
+    if (not isinstance(covered, list) or len(covered) > 128
+            or any(type(value) is not int or value <= 0 for value in covered) or len(set(covered)) != len(covered)):
+        raise StudyError("admission_history_unavailable")
+    covered = list(covered)
+    lost = latest["state"].get("lost_intent")
+    if lost and lost["id"] not in covered:
+        if len(zip_ids) + 2 > 3 or lost["id"] not in {row["id"] for row in metadata}:
+            raise StudyError("admission_history_unavailable")
+        part = store.load(lost["id"])
+        cached[lost["id"]] = part
+        if (part["manifest"]["kind"] != "intent" or part["digest"] != lost["digest"]
+                or part["state"]["study"] != latest["state"]["study"]
+                or part["state"]["source"] != latest["state"]["source"]):
+            raise StudyError("admission_history_unavailable")
+        covered.append(lost["id"])
+    results = {(row["workflow_run"]["id"], row["name"].rsplit("-v", 1)[1]): position
+               for position, row in enumerate(metadata) if "result" in row["name"]}
+    if any("intent" in row["name"] and row["id"] not in covered
+           and results.get((row["workflow_run"]["id"], row["name"].rsplit("-v", 1)[1]), -1) <= position
+           for position, row in enumerate(metadata)):
+        raise StudyError("unresolved_admission_intent")
+    return used, [proofs[version] for version in sorted(proofs)], covered
+
+
 def prepare_admission(phase, store, ctx, now, study, pilot_id=None):
+    scientific, namespace = _mode(phase)
+    protocol = _selection(namespace)
+    if scientific not in ("pilot", "start") or _context_protocol(ctx) is not protocol:
+        raise StudyError("invalid_phase")
     metadata = store.list(scope="admission")
-    plan = core.prepare(phase, _View(store, metadata), ctx, now, study=study, pilot_id=pilot_id)
-    plan["state"] = bind_state(plan["state"], ctx, "live")
-    plan["namespace"], plan["admission"] = "live", True
+    cached, covered, history, known = {}, [], [], []
+    if protocol is core.START192_V1:
+        known, history, covered = _history_roots(store, metadata, cached)
+        if not study or study in known:
+            raise StudyError("study_exists_or_missing_id")
+        if scientific == "start":
+            pilot = cached.get(pilot_id)
+            if pilot is None:
+                pilot = store.load(pilot_id)
+                cached[pilot_id] = pilot
+            if (pilot.get("transport", {}).get("namespace") != "live192"
+                    or pilot["manifest"]["context"]["run_id"] >= ctx["run_id"]):
+                raise StudyError("pilot_not_qualified")
+    plan = core.prepare(scientific, _View(store, metadata, cached, protocol=protocol), ctx, now,
+                        study=study, pilot_id=pilot_id, protocol=protocol)
+    plan["state"] = bind_state(plan["state"], ctx, namespace)
+    if protocol is core.START192_V1:
+        plan["state"]["session"]["history_coverage"] = covered
+        plan["state"]["session"]["admission_roots"] = history
+        plan["state"]["used_studies"] = known + [study]
+        _validate(plan["state"], namespace)
+    plan["namespace"], plan["admission"] = namespace, True
     return plan
 
 
@@ -573,6 +833,8 @@ def _run_rows(store, ctx, namespace):
             if int(match[3]) != ctx["run_id"]:
                 raise StudyError("artifact_provenance")
             result.append(row)
+        elif match and namespace == "live192":
+            raise StudyError("namespace_mismatch")
         elif row["name"] not in ADMISSION_NAMES and not CLOSURE_NAME.fullmatch(row["name"]) and not match:
             raise StudyError("artifact_identity")
     # Memory fixtures use the same metadata ordering rule as the real adapter.
@@ -583,7 +845,10 @@ def _run_rows(store, ctx, namespace):
 
 
 def prepare_slot(store, ctx, clock, lease, slot, namespace="live"):
-    maximum = 2 if namespace == "canary" else core.LAST_SLOT
+    protocol = _selection(namespace)
+    if _context_protocol(ctx) is not protocol:
+        raise StudyError("protocol_context_mismatch")
+    maximum = 2 if namespace == "canary" else protocol.last_slot
     if type(slot) is not int or not 0 <= slot <= maximum:
         raise StudyError("invalid_slot")
     metadata = _run_rows(store, ctx, namespace)
@@ -593,6 +858,7 @@ def prepare_slot(store, ctx, clock, lease, slot, namespace="live"):
         if previous.get("transport", {}).get("namespace") != namespace:
             raise StudyError("namespace_mismatch")
         state = copy.deepcopy(previous["state"])
+        _validate(state, namespace)
         reference = {"id": metadata[-1]["id"], "digest": previous["digest"]}
         if state["status"] in core.TERMINAL:
             return {"action": "idle", "reason": "terminal"}
@@ -610,7 +876,7 @@ def prepare_slot(store, ctx, clock, lease, slot, namespace="live"):
         state["session"]["previous_result_receipt"] = dict(reference, zip_digest=previous.get("zip_digest"))
         state["session"].pop("end_clock", None)
         state["session"].pop("seal_clock", None)
-        if source_hashes() != state["source"]:
+        if source_hashes(protocol=protocol) != state["source"]:
             state["status"] = "source_changed"
             state["session"]["failure"] = "source_changed"
             return {"action": "checkpoint", "state": state, "namespace": namespace}
@@ -622,34 +888,38 @@ def prepare_slot(store, ctx, clock, lease, slot, namespace="live"):
         raise StudyError("missing_running_session")
     if state.get("started_at") is None:
         raise StudyError("missing_study_clock")
-    due = state["started_at"] + slot * core.INTERVAL
-    state["slot"], state["phase"] = slot, "tick" if namespace == "live" else "canary"
+    due = state["started_at"] + slot * protocol.interval
+    state["slot"], state["phase"] = slot, "canary" if namespace == "canary" else "tick"
     timing = {"due_at": due, "prepared_at": clock.utc(), "job_started_at": lease.record["utc"],
               "job_monotonic": lease.record["monotonic"], "slot": slot}
     state["session"]["timing"] = timing
     try:
-        frozen = _source_guard(state["source"])
+        frozen = _source_guard(state["source"], protocol=protocol)
         if state["session"]["freeze"] != ctx["control_sources"]:
             raise StudyError("source_changed")
         wait_due(clock, due, lease, check=frozen)
     except StudyError as exc:
         state["status"] = "source_changed" if str(exc) == "source_changed" else "failed"
         state["session"]["failure"] = str(exc)
-        timing["operation_completed_at"] = clock.utc()
+        timing["operation_completed_at"] = _clock_value(clock.utc())
         return {"action": "checkpoint", "state": state, "namespace": namespace}
-    if clock.utc() >= due + core.INTERVAL:
+    if clock.utc() >= due + protocol.interval:
         state["slots"].append({"slot": slot, "status": "not_observed"})
         if slot == maximum:
             state["status"] = "completed"
         timing.update(operation_started_at=None, operation_completed_at=clock.utc(), coverage="no_attempt_missed_due")
         return {"action": "checkpoint", "state": state, "namespace": namespace}
     _validate(state, namespace)
-    return {"action": "collect", "state": state, "phase": "tick" if namespace == "live" else "canary",
+    return {"action": "collect", "state": state, "phase": "canary" if namespace == "canary" else "tick",
             "prepared_at": clock.utc(), "namespace": namespace}
 
 
 def collect(plan, intent_id, store, ctx, clock, lease, on_row=None):
     namespace, state = plan["namespace"], copy.deepcopy(plan["state"])
+    protocol = _selection(namespace)
+    _validate(state, namespace)
+    if _context_protocol(ctx) is not protocol:
+        raise StudyError("protocol_context_mismatch")
     intent = store.load(intent_id)
     if (plan.get("action") != "collect" or intent["state"] != state
             or intent["manifest"]["kind"] != "intent" or intent["manifest"]["context"] != ctx
@@ -657,22 +927,22 @@ def collect(plan, intent_id, store, ctx, clock, lease, on_row=None):
         raise StudyError("intent_mismatch")
     duration = {"pilot": 180, "start": 1080, "tick": 360, "canary": 360}[plan["phase"]]
     lease.check(clock, duration)
-    if source_hashes() != state["source"]:
+    if source_hashes(protocol=protocol) != state["source"]:
         raise StudyError("source_changed")
-    frozen = _source_guard(state["source"])
+    frozen = _source_guard(state["source"], protocol=protocol)
     state["session"].setdefault("timing", {})["operation_started_at"] = clock.utc()
     # Preserve the exact prepared state for the unchanged collect() intent check.
     began = clock.utc()
-    if namespace == "live":
+    if namespace in ("live", "live192"):
         ceiling = {"pilot": 7, "start": 248, "tick": len(state["cohort"])}[plan["phase"]]
-        if sum(state["requests"].values()) + ceiling > core.MAX_VENDOR_CALLS:
+        if sum(state["requests"].values()) + ceiling > protocol.max_vendor_calls:
             raise StudyError("vendor_call_ceiling")
-        cached = _View(store, [], {intent_id: intent})
+        cached = _View(store, [], {intent_id: intent}, protocol=protocol)
         def guarded():
             lease.check(clock)
             frozen()
             return clock.utc()
-        state, rows = core.collect(plan, intent_id, cached, ctx, guarded, clock.sleep, on_row)
+        state, rows = core.collect(plan, intent_id, cached, ctx, guarded, clock.sleep, on_row, protocol=protocol)
     else:
         state["intent"] = {"id": intent_id, "digest": intent["digest"]}
         rows, slot = [], state["slot"]
@@ -689,10 +959,12 @@ def collect(plan, intent_id, store, ctx, clock, lease, on_row=None):
         state["slots"].append({"slot": slot, "status": "observed"})
         state["status"] = "completed" if slot == 2 else "active"
     state["session"].setdefault("timing", {}).update(operation_started_at=began,
-                                                    operation_completed_at=clock.utc(),
+                                                    operation_completed_at=_clock_value(clock.utc()),
                                                     late=began > state["session"].get("timing", {}).get("due_at", began) + 60)
     state["session"]["intent_receipt"] = {"id": intent_id, "digest": intent["digest"],
                                            "zip_digest": intent.get("zip_digest")}
+    if namespace == "live192" and "upload_receipt" in intent:
+        state["session"]["intent_upload_provenance"] = intent["upload_receipt"]
     _seal_clock(state, ctx, clock, lease)
     _validate(state, namespace)
     return state, rows
@@ -742,6 +1014,9 @@ def _canary_intents(store, metadata, chain):
 
 
 def reconstruct(store, ctx, study, namespace="live"):
+    protocol = _selection(namespace)
+    if _context_protocol(ctx) is not protocol:
+        raise StudyError("protocol_context_mismatch")
     metadata = _run_rows(store, ctx, namespace)
     if not metadata:
         raise StudyError("no_study_results")
@@ -761,6 +1036,7 @@ def reconstruct(store, ctx, study, namespace="live"):
     seen, generations = set(), set()
     for reference, part in chain:
         current = part["state"]
+        _validate(current, namespace)
         if (reference["id"] in seen or current["generation"] in generations or part["digest"] != reference["digest"]
                 or part["manifest"]["kind"] != "result" or current["study"] != study
                 or current["parent"] != previous or current["source"] != state["source"]
@@ -774,13 +1050,15 @@ def reconstruct(store, ctx, study, namespace="live"):
         if "timing" in current["session"] and "slot" in current["session"]["timing"]:
             timings.append(current["session"]["timing"])
         previous = reference
-    if namespace == "live":
-        answer = core.readout(state, rows)
+    if namespace in ("live", "live192"):
+        answer = core.readout(state, rows, protocol=protocol)
         answer["session_timings"] = timings
         answer["sampling_completion_inferred_from_job"] = False
         answer["session_clock_stable"] = _state_clock_stable(state)
         answer["session_clock_proof_coverage"] = {"generations": len(chain),
                                                  "valid": sum(_state_clock_stable(part["state"]) for _, part in chain)}
+        if namespace == "live192":
+            answer.update(namespace=namespace, last_durable=previous)
         return answer
     _canary_intents(store, metadata, chain)
     cells = {(row["slot"], row["member"]) for row in rows}
@@ -815,10 +1093,13 @@ def write_bundle(folder, state, rows, kind, ctx, namespace, unverified=None):
         _atomic(folder / name, data)
 
 
-def _local(folder, ctx):
+def _local(folder, ctx, *, protocol=core.LEGACY193):
+    core._protocol(protocol)
+    if _context_protocol(ctx) is not protocol:
+        raise StudyError("protocol_context_mismatch")
     names = {"state.json", "observations.jsonl", "manifest.json", "transport.json", "unverified.jsonl"}
     files = {path.name: path.read_bytes() for path in folder.iterdir() if path.name in names}
-    return decode_bundle(_zip(files), ctx, ctx)
+    return decode_bundle(_zip(files), ctx, ctx, protocol=protocol)
 
 
 def _output(key, value):
@@ -873,14 +1154,17 @@ def _save_plan(out, plan, store, ctx):
 def finalize(out, ctx, clock):
     plan = _parse((out / "plan.json").read_bytes())
     namespace = plan["namespace"]
+    protocol = _selection(namespace)
+    if _context_protocol(ctx) is not protocol:
+        raise StudyError("protocol_context_mismatch")
     folder = out / "result"
-    if namespace == "live":
+    if namespace in ("live", "live192"):
         # The legacy finalizer reads only its original core files. Its interrupted
         # journal salvage is reused unchanged, then wrapped with the v2 envelope.
-        core.finalize(out, ctx)
+        core.finalize(out, ctx, protocol=protocol)
         files = {name: (folder / name).read_bytes() for name in
                  ("state.json", "observations.jsonl", "manifest.json", "unverified.jsonl") if (folder / name).exists()}
-        value = core.decode_bundle(_zip(files), ctx, ctx)
+        value = core.decode_bundle(_zip(files), ctx, ctx, protocol=protocol)
         state, rows = value["state"], value["rows"]
         unverified = files.get("unverified.jsonl")
     else:
@@ -911,7 +1195,7 @@ def finalize(out, ctx, clock):
     _seal_clock(state, ctx, clock, Lease(clock, record=plan["lease"]), key="seal_clock")
     timing = state["session"].setdefault("timing", {})
     if state["status"] in ("lost_checkpoint", "failed", "overflow"):
-        timing.setdefault("operation_completed_at", clock.utc())
+        timing.setdefault("operation_completed_at", _clock_value(clock.utc()))
         timing["coverage"] = "failed_or_unknown_persistence"
     write_bundle(folder, state, rows, "result", ctx, namespace, unverified)
     for path in folder.glob("*.tmp"):
@@ -946,7 +1230,9 @@ def _summary(value):
 
 
 def closure(out, ctx, clock, phase):
-    namespace = "canary" if phase == "canary" else "live"
+    _, namespace = _mode(phase)
+    if _context_protocol(ctx) is not _selection(namespace):
+        raise StudyError("protocol_context_mismatch")
     store = _store(ctx, report=True)
     metadata = _run_rows(store, ctx, namespace)
     report = {"namespace": namespace, "scientific_evidence": False,
@@ -972,7 +1258,7 @@ def closure(out, ctx, clock, phase):
             rows = []
         state["status"] = "lost_checkpoint"
         state["session"]["failure"] = "interrupted_handoff_or_persistence"
-        state["session"].setdefault("timing", {})["operation_completed_at"] = clock.utc()
+        state["session"].setdefault("timing", {})["operation_completed_at"] = _clock_value(clock.utc())
         report.update(coverage="failed_or_unknown_persistence", last_durable=reference)
     else:
         # Full reconstruction is the proof, not a successful infrastructure job.
@@ -992,7 +1278,7 @@ def closure(out, ctx, clock, phase):
     _atomic(out / "summary.json", core.encoded(report))
     _output("rescue", str(rescue).lower())
     _output("result-name", artifact_name(state, "result", ctx, namespace))
-    _output("index-ready", str(namespace == "live").lower())
+    _output("index-ready", str(namespace in ("live", "live192")).lower())
     _output("ready", "true")
     return report
 
@@ -1012,15 +1298,15 @@ def main(argv=None):
         print("W57 protected output refused")
         return 1
     try:
-        ctx, clock = context(), Clock()
         phase = os.environ.get("W57_PHASE", "canary")
-        if phase not in ("canary", "pilot", "start", "report", "legacy-report"):
-            raise StudyError("invalid_phase")
+        scientific, namespace = _mode(phase)
+        protocol = _selection(namespace)
+        ctx, clock = context(), Clock()
         if args.command == "admit":
             if phase == "canary":
                 _output("action", "idle")
                 return 0
-            if phase in ("report", "legacy-report"):
+            if scientific in ("report", "legacy-report"):
                 if phase == "legacy-report":
                     legacy_store = core.GitHubArtifacts(ctx, os.environ.get("GITHUB_TOKEN", ""), 600, 195, 720)
                     answer = core.reconstruct(legacy_store, ctx, os.environ.get("W57_STUDY", ""))
@@ -1028,20 +1314,19 @@ def main(argv=None):
                     target = int(os.environ["W57_SOURCE_RUN"])
                     report_ctx = dict(ctx, run_id=target)
                     answer = reconstruct(_store(report_ctx, report=True), report_ctx, os.environ.get("W57_STUDY", ""),
-                                         namespace=os.environ.get("W57_REPORT_NAMESPACE", "canary"))
+                                         namespace="live192" if phase == "report192" else os.environ.get("W57_REPORT_NAMESPACE", "canary"))
                 _atomic(out / "report.json", core.encoded(answer))
                 _summary(answer)
                 _output("report-ready", "true")
                 return 0
             lease, store = _lease(clock), _store(ctx, admission=True)
-            lease.check(clock, 1080 if phase == "start" else 180)
+            lease.check(clock, 1080 if scientific == "start" else 180)
             pilot = int(os.environ["W57_PILOT"]) if os.environ.get("W57_PILOT") else None
             plan = prepare_admission(phase, store, ctx, clock.utc(), os.environ.get("W57_STUDY", ""), pilot)
             plan["lease"] = lease.record
             _save_plan(out, plan, store, ctx)
         elif args.command == "prepare":
-            namespace = "canary" if phase == "canary" else "live"
-            if phase not in ("canary", "start"):
+            if scientific not in ("canary", "start"):
                 raise StudyError("sampling_mode_refused")
             lease, store = _lease(clock), _store(ctx)
             plan = prepare_slot(store, ctx, clock, lease, args.slot, namespace)
@@ -1052,7 +1337,7 @@ def main(argv=None):
             _save_plan(out, plan, store, ctx)
         elif args.command in ("collect", "finalize", "finish"):
             plan = _parse((out / "plan.json").read_bytes())
-            if (plan["namespace"] == "canary") != (phase == "canary"):
+            if plan["namespace"] != namespace:
                 raise StudyError("namespace_mismatch")
             if args.command == "finalize":
                 finalize(out, ctx, clock)
@@ -1062,6 +1347,8 @@ def main(argv=None):
                 ident = int(os.environ["W57_INTENT_ID"])
                 _atomic(out / "collection.json", core.encoded({"id": ident, "verified_operation_started_at": None}))
                 try:
+                    if protocol is core.START192_V1 and os.environ.get("W57_INTENT_DIGEST"):
+                        store.uploaded_intent(ident, os.environ["W57_INTENT_DIGEST"], plan["state"], plan["namespace"])
                     with (out / "result/observations.jsonl").open("wb") as stream:
                         def append(row):
                             stream.write(core.encoded(row) + b"\n")
@@ -1074,7 +1361,7 @@ def main(argv=None):
                     plan["artifact_budget"] = _stats(store)
                     _atomic(out / "plan.json", core.encoded(plan))
             else:
-                result = _local(out / "result", ctx)
+                result = _local(out / "result", ctx, protocol=protocol)
                 state = result["state"]
                 if os.environ.get("W57_UPLOADED") != "success":
                     raise StudyError("failed_persistence")
@@ -1087,22 +1374,24 @@ def main(argv=None):
                 if state["status"] not in ("active", "completed", "pilot_passed"):
                     return 2
         elif args.command == "closure":
-            if phase in ("report", "legacy-report"):
+            if scientific in ("report", "legacy-report"):
                 return 0
             closure(out, ctx, clock, phase)
         elif args.command == "close-index":
             value = _parse((out / "closure.json").read_bytes())
-            if value["namespace"] != "live":
+            if value["namespace"] != namespace:
+                raise StudyError("namespace_mismatch")
+            if namespace == "canary":
                 return 0
             state, reference = value["state"], value["last"]
             if value["rescue"]:
                 store = _store(ctx, value, report=True)
                 if os.environ.get("W57_UPLOADED") != "success":
                     raise StudyError("failed_persistence")
-                _receipt(store, int(os.environ["W57_RESULT_ID"]), os.environ["W57_RESULT_DIGEST"], state, ctx, "live")
-                reference = {"id": int(os.environ["W57_RESULT_ID"]), "digest": _local(out / "result", ctx)["digest"]}
+                _receipt(store, int(os.environ["W57_RESULT_ID"]), os.environ["W57_RESULT_DIGEST"], state, ctx, namespace)
+                reference = {"id": int(os.environ["W57_RESULT_ID"]), "digest": _local(out / "result", ctx, protocol=protocol)["digest"]}
             state["session"]["last_durable"] = reference
-            write_bundle(out / "admission-result", state, value["rows"], "admission-result", ctx, "live")
+            write_bundle(out / "admission-result", state, value["rows"], "admission-result", ctx, namespace)
             _output("ready", "true")
         else:
             report = _parse((out / "summary.json").read_bytes())
@@ -1119,6 +1408,15 @@ def main(argv=None):
         # Only bounded diagnostics; never print raw URLs, input IDs, or exceptions.
         diagnostic = {"reason": reason, "coverage": "failed_or_unknown", "command": args.command,
                       "recorded_at": time.time(), "no_further_acquisition": True}
+        try:
+            receipt = out / "receipt.json"
+            if receipt.exists() and receipt.stat().st_size <= core.STATE_BYTES:
+                diagnostic["last_durable"] = _parse(receipt.read_bytes()).get("last_durable")
+            elif (out / "plan.json").exists() and (out / "plan.json").stat().st_size <= core.BUNDLE_BYTES:
+                previous = _parse((out / "plan.json").read_bytes()).get("state", {})
+                diagnostic["last_durable"] = previous.get("session", {}).get("previous_result_receipt", previous.get("parent"))
+        except (OSError, ValueError, TypeError, AttributeError, StudyError):
+            pass
         try:
             _atomic(out / "failure.json", core.encoded(diagnostic))
             _summary(diagnostic)

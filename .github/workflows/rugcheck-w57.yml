@@ -7,7 +7,7 @@ on:
       phase:
         description: Explicit finite mode; canary never contacts a Vendor
         type: choice
-        options: [canary, pilot, start, report, legacy-report]
+        options: [canary, pilot, start, report, legacy-report, pilot192, start192, report192]
         default: canary
         required: true
       study:
@@ -25,7 +25,7 @@ on:
       report-namespace:
         description: Keep synthetic reports separate from live research
         type: choice
-        options: [canary, live]
+        options: [canary, live, live192]
         default: canary
 
 permissions:
@@ -64,13 +64,13 @@ jobs:
         run: python .github/scripts/render_w57_session_workflow.py --check
       - name: Prepare explicit mode
         id: prepare
-        if: ${{ inputs.phase == 'pilot' || inputs.phase == 'start' || inputs.phase == 'report' || inputs.phase == 'legacy-report' }}
+        if: ${{ inputs.phase == 'pilot' || inputs.phase == 'start' || inputs.phase == 'report' || inputs.phase == 'legacy-report' || inputs.phase == 'pilot192' || inputs.phase == 'start192' || inputs.phase == 'report192' }}
         run: python bench/rugcheck_w57_session.py admit --out "$RUNNER_TEMP/w57-admission"
       - id: admission
         if: ${{ steps.prepare.outputs.action == 'collect' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: w57-admission-intent-v2
+          name: ${{ (inputs.phase == 'pilot192' || inputs.phase == 'start192') && 'w57-admission-intent-v3' || 'w57-admission-intent-v2' }}
           path: ${{ runner.temp }}/w57-admission/admission-intent
           if-no-files-found: error
           retention-days: 7
@@ -87,6 +87,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.intent.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.intent.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-admission"
       - if: ${{ always() && steps.prepare.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-admission"
@@ -109,13 +110,13 @@ jobs:
         if: ${{ always() && steps.prepare.outputs.report-ready == 'true' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: ${{ format('w57-{0}-closure-r{1}-v2', inputs.report-namespace, github.run_id) }}
+          name: ${{ format('w57-{0}-closure-r{1}-v{2}', inputs.phase == 'report192' && 'live192' || inputs.report-namespace, github.run_id, inputs.phase == 'report192' && '3' || '2') }}
           path: ${{ runner.temp }}/w57-admission/report.json
           if-no-files-found: error
           retention-days: 7
       - name: Wait for absolute slot 000
         id: p000
-        if: ${{ inputs.phase == 'start' || inputs.phase == 'canary' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' || inputs.phase == 'canary' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 0 --out "$RUNNER_TEMP/w57-000"
       - id: i000
         if: ${{ steps.p000.outputs.action == 'collect' }}
@@ -130,6 +131,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i000.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i000.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-000"
       - if: ${{ always() && steps.p000.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-000"
@@ -149,7 +151,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-000"
       - name: Wait for absolute slot 001
         id: p001
-        if: ${{ inputs.phase == 'start' || inputs.phase == 'canary' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' || inputs.phase == 'canary' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 1 --out "$RUNNER_TEMP/w57-001"
       - id: i001
         if: ${{ steps.p001.outputs.action == 'collect' }}
@@ -164,6 +166,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i001.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i001.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-001"
       - if: ${{ always() && steps.p001.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-001"
@@ -183,7 +186,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-001"
       - name: Wait for absolute slot 002
         id: p002
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 2 --out "$RUNNER_TEMP/w57-002"
       - id: i002
         if: ${{ steps.p002.outputs.action == 'collect' }}
@@ -198,6 +201,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i002.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i002.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-002"
       - if: ${{ always() && steps.p002.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-002"
@@ -217,7 +221,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-002"
       - name: Wait for absolute slot 003
         id: p003
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 3 --out "$RUNNER_TEMP/w57-003"
       - id: i003
         if: ${{ steps.p003.outputs.action == 'collect' }}
@@ -232,6 +236,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i003.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i003.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-003"
       - if: ${{ always() && steps.p003.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-003"
@@ -251,7 +256,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-003"
       - name: Wait for absolute slot 004
         id: p004
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 4 --out "$RUNNER_TEMP/w57-004"
       - id: i004
         if: ${{ steps.p004.outputs.action == 'collect' }}
@@ -266,6 +271,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i004.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i004.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-004"
       - if: ${{ always() && steps.p004.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-004"
@@ -285,7 +291,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-004"
       - name: Wait for absolute slot 005
         id: p005
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 5 --out "$RUNNER_TEMP/w57-005"
       - id: i005
         if: ${{ steps.p005.outputs.action == 'collect' }}
@@ -300,6 +306,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i005.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i005.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-005"
       - if: ${{ always() && steps.p005.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-005"
@@ -319,7 +326,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-005"
       - name: Wait for absolute slot 006
         id: p006
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 6 --out "$RUNNER_TEMP/w57-006"
       - id: i006
         if: ${{ steps.p006.outputs.action == 'collect' }}
@@ -334,6 +341,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i006.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i006.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-006"
       - if: ${{ always() && steps.p006.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-006"
@@ -353,7 +361,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-006"
       - name: Wait for absolute slot 007
         id: p007
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 7 --out "$RUNNER_TEMP/w57-007"
       - id: i007
         if: ${{ steps.p007.outputs.action == 'collect' }}
@@ -368,6 +376,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i007.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i007.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-007"
       - if: ${{ always() && steps.p007.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-007"
@@ -387,7 +396,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-007"
       - name: Wait for absolute slot 008
         id: p008
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 8 --out "$RUNNER_TEMP/w57-008"
       - id: i008
         if: ${{ steps.p008.outputs.action == 'collect' }}
@@ -402,6 +411,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i008.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i008.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-008"
       - if: ${{ always() && steps.p008.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-008"
@@ -421,7 +431,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-008"
       - name: Wait for absolute slot 009
         id: p009
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 9 --out "$RUNNER_TEMP/w57-009"
       - id: i009
         if: ${{ steps.p009.outputs.action == 'collect' }}
@@ -436,6 +446,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i009.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i009.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-009"
       - if: ${{ always() && steps.p009.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-009"
@@ -455,7 +466,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-009"
       - name: Wait for absolute slot 010
         id: p010
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 10 --out "$RUNNER_TEMP/w57-010"
       - id: i010
         if: ${{ steps.p010.outputs.action == 'collect' }}
@@ -470,6 +481,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i010.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i010.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-010"
       - if: ${{ always() && steps.p010.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-010"
@@ -489,7 +501,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-010"
       - name: Wait for absolute slot 011
         id: p011
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 11 --out "$RUNNER_TEMP/w57-011"
       - id: i011
         if: ${{ steps.p011.outputs.action == 'collect' }}
@@ -504,6 +516,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i011.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i011.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-011"
       - if: ${{ always() && steps.p011.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-011"
@@ -523,7 +536,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-011"
       - name: Wait for absolute slot 012
         id: p012
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 12 --out "$RUNNER_TEMP/w57-012"
       - id: i012
         if: ${{ steps.p012.outputs.action == 'collect' }}
@@ -538,6 +551,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i012.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i012.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-012"
       - if: ${{ always() && steps.p012.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-012"
@@ -557,7 +571,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-012"
       - name: Wait for absolute slot 013
         id: p013
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 13 --out "$RUNNER_TEMP/w57-013"
       - id: i013
         if: ${{ steps.p013.outputs.action == 'collect' }}
@@ -572,6 +586,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i013.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i013.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-013"
       - if: ${{ always() && steps.p013.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-013"
@@ -591,7 +606,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-013"
       - name: Wait for absolute slot 014
         id: p014
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 14 --out "$RUNNER_TEMP/w57-014"
       - id: i014
         if: ${{ steps.p014.outputs.action == 'collect' }}
@@ -606,6 +621,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i014.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i014.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-014"
       - if: ${{ always() && steps.p014.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-014"
@@ -625,7 +641,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-014"
       - name: Wait for absolute slot 015
         id: p015
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 15 --out "$RUNNER_TEMP/w57-015"
       - id: i015
         if: ${{ steps.p015.outputs.action == 'collect' }}
@@ -640,6 +656,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i015.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i015.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-015"
       - if: ${{ always() && steps.p015.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-015"
@@ -659,7 +676,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-015"
       - name: Wait for absolute slot 016
         id: p016
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 16 --out "$RUNNER_TEMP/w57-016"
       - id: i016
         if: ${{ steps.p016.outputs.action == 'collect' }}
@@ -674,6 +691,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i016.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i016.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-016"
       - if: ${{ always() && steps.p016.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-016"
@@ -693,7 +711,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-016"
       - name: Wait for absolute slot 017
         id: p017
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 17 --out "$RUNNER_TEMP/w57-017"
       - id: i017
         if: ${{ steps.p017.outputs.action == 'collect' }}
@@ -708,6 +726,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i017.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i017.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-017"
       - if: ${{ always() && steps.p017.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-017"
@@ -727,7 +746,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-017"
       - name: Wait for absolute slot 018
         id: p018
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 18 --out "$RUNNER_TEMP/w57-018"
       - id: i018
         if: ${{ steps.p018.outputs.action == 'collect' }}
@@ -742,6 +761,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i018.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i018.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-018"
       - if: ${{ always() && steps.p018.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-018"
@@ -761,7 +781,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-018"
       - name: Wait for absolute slot 019
         id: p019
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 19 --out "$RUNNER_TEMP/w57-019"
       - id: i019
         if: ${{ steps.p019.outputs.action == 'collect' }}
@@ -776,6 +796,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i019.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i019.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-019"
       - if: ${{ always() && steps.p019.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-019"
@@ -796,7 +817,7 @@ jobs:
 
   segment_01:
     needs: segment_00
-    if: ${{ success() && (inputs.phase == 'start' || inputs.phase == 'canary') }}
+    if: ${{ success() && (inputs.phase == 'start' || inputs.phase == 'start192' || inputs.phase == 'canary') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 330
     steps:
@@ -813,7 +834,7 @@ jobs:
         run: python .github/scripts/render_w57_session_workflow.py --check
       - name: Wait for absolute slot 020
         id: p020
-        if: ${{ inputs.phase == 'start' || inputs.phase == 'canary' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' || inputs.phase == 'canary' }}
         env:
           W57_SLOT: ${{ inputs.phase == 'canary' && '2' || '20' }}
         run: python bench/rugcheck_w57_session.py prepare --slot "$W57_SLOT" --out "$RUNNER_TEMP/w57-020"
@@ -830,6 +851,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i020.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i020.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-020"
       - if: ${{ always() && steps.p020.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-020"
@@ -849,7 +871,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-020"
       - name: Wait for absolute slot 021
         id: p021
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 21 --out "$RUNNER_TEMP/w57-021"
       - id: i021
         if: ${{ steps.p021.outputs.action == 'collect' }}
@@ -864,6 +886,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i021.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i021.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-021"
       - if: ${{ always() && steps.p021.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-021"
@@ -883,7 +906,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-021"
       - name: Wait for absolute slot 022
         id: p022
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 22 --out "$RUNNER_TEMP/w57-022"
       - id: i022
         if: ${{ steps.p022.outputs.action == 'collect' }}
@@ -898,6 +921,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i022.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i022.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-022"
       - if: ${{ always() && steps.p022.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-022"
@@ -917,7 +941,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-022"
       - name: Wait for absolute slot 023
         id: p023
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 23 --out "$RUNNER_TEMP/w57-023"
       - id: i023
         if: ${{ steps.p023.outputs.action == 'collect' }}
@@ -932,6 +956,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i023.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i023.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-023"
       - if: ${{ always() && steps.p023.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-023"
@@ -951,7 +976,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-023"
       - name: Wait for absolute slot 024
         id: p024
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 24 --out "$RUNNER_TEMP/w57-024"
       - id: i024
         if: ${{ steps.p024.outputs.action == 'collect' }}
@@ -966,6 +991,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i024.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i024.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-024"
       - if: ${{ always() && steps.p024.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-024"
@@ -985,7 +1011,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-024"
       - name: Wait for absolute slot 025
         id: p025
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 25 --out "$RUNNER_TEMP/w57-025"
       - id: i025
         if: ${{ steps.p025.outputs.action == 'collect' }}
@@ -1000,6 +1026,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i025.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i025.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-025"
       - if: ${{ always() && steps.p025.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-025"
@@ -1019,7 +1046,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-025"
       - name: Wait for absolute slot 026
         id: p026
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 26 --out "$RUNNER_TEMP/w57-026"
       - id: i026
         if: ${{ steps.p026.outputs.action == 'collect' }}
@@ -1034,6 +1061,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i026.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i026.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-026"
       - if: ${{ always() && steps.p026.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-026"
@@ -1053,7 +1081,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-026"
       - name: Wait for absolute slot 027
         id: p027
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 27 --out "$RUNNER_TEMP/w57-027"
       - id: i027
         if: ${{ steps.p027.outputs.action == 'collect' }}
@@ -1068,6 +1096,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i027.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i027.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-027"
       - if: ${{ always() && steps.p027.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-027"
@@ -1087,7 +1116,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-027"
       - name: Wait for absolute slot 028
         id: p028
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 28 --out "$RUNNER_TEMP/w57-028"
       - id: i028
         if: ${{ steps.p028.outputs.action == 'collect' }}
@@ -1102,6 +1131,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i028.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i028.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-028"
       - if: ${{ always() && steps.p028.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-028"
@@ -1121,7 +1151,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-028"
       - name: Wait for absolute slot 029
         id: p029
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 29 --out "$RUNNER_TEMP/w57-029"
       - id: i029
         if: ${{ steps.p029.outputs.action == 'collect' }}
@@ -1136,6 +1166,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i029.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i029.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-029"
       - if: ${{ always() && steps.p029.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-029"
@@ -1155,7 +1186,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-029"
       - name: Wait for absolute slot 030
         id: p030
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 30 --out "$RUNNER_TEMP/w57-030"
       - id: i030
         if: ${{ steps.p030.outputs.action == 'collect' }}
@@ -1170,6 +1201,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i030.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i030.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-030"
       - if: ${{ always() && steps.p030.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-030"
@@ -1189,7 +1221,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-030"
       - name: Wait for absolute slot 031
         id: p031
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 31 --out "$RUNNER_TEMP/w57-031"
       - id: i031
         if: ${{ steps.p031.outputs.action == 'collect' }}
@@ -1204,6 +1236,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i031.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i031.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-031"
       - if: ${{ always() && steps.p031.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-031"
@@ -1223,7 +1256,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-031"
       - name: Wait for absolute slot 032
         id: p032
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 32 --out "$RUNNER_TEMP/w57-032"
       - id: i032
         if: ${{ steps.p032.outputs.action == 'collect' }}
@@ -1238,6 +1271,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i032.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i032.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-032"
       - if: ${{ always() && steps.p032.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-032"
@@ -1257,7 +1291,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-032"
       - name: Wait for absolute slot 033
         id: p033
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 33 --out "$RUNNER_TEMP/w57-033"
       - id: i033
         if: ${{ steps.p033.outputs.action == 'collect' }}
@@ -1272,6 +1306,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i033.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i033.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-033"
       - if: ${{ always() && steps.p033.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-033"
@@ -1291,7 +1326,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-033"
       - name: Wait for absolute slot 034
         id: p034
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 34 --out "$RUNNER_TEMP/w57-034"
       - id: i034
         if: ${{ steps.p034.outputs.action == 'collect' }}
@@ -1306,6 +1341,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i034.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i034.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-034"
       - if: ${{ always() && steps.p034.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-034"
@@ -1325,7 +1361,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-034"
       - name: Wait for absolute slot 035
         id: p035
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 35 --out "$RUNNER_TEMP/w57-035"
       - id: i035
         if: ${{ steps.p035.outputs.action == 'collect' }}
@@ -1340,6 +1376,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i035.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i035.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-035"
       - if: ${{ always() && steps.p035.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-035"
@@ -1359,7 +1396,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-035"
       - name: Wait for absolute slot 036
         id: p036
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 36 --out "$RUNNER_TEMP/w57-036"
       - id: i036
         if: ${{ steps.p036.outputs.action == 'collect' }}
@@ -1374,6 +1411,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i036.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i036.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-036"
       - if: ${{ always() && steps.p036.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-036"
@@ -1393,7 +1431,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-036"
       - name: Wait for absolute slot 037
         id: p037
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 37 --out "$RUNNER_TEMP/w57-037"
       - id: i037
         if: ${{ steps.p037.outputs.action == 'collect' }}
@@ -1408,6 +1446,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i037.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i037.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-037"
       - if: ${{ always() && steps.p037.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-037"
@@ -1427,7 +1466,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-037"
       - name: Wait for absolute slot 038
         id: p038
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 38 --out "$RUNNER_TEMP/w57-038"
       - id: i038
         if: ${{ steps.p038.outputs.action == 'collect' }}
@@ -1442,6 +1481,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i038.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i038.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-038"
       - if: ${{ always() && steps.p038.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-038"
@@ -1461,7 +1501,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-038"
       - name: Wait for absolute slot 039
         id: p039
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 39 --out "$RUNNER_TEMP/w57-039"
       - id: i039
         if: ${{ steps.p039.outputs.action == 'collect' }}
@@ -1476,6 +1516,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i039.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i039.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-039"
       - if: ${{ always() && steps.p039.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-039"
@@ -1496,7 +1537,7 @@ jobs:
 
   segment_02:
     needs: segment_01
-    if: ${{ success() && (inputs.phase == 'start') }}
+    if: ${{ success() && (inputs.phase == 'start' || inputs.phase == 'start192') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 330
     steps:
@@ -1513,7 +1554,7 @@ jobs:
         run: python .github/scripts/render_w57_session_workflow.py --check
       - name: Wait for absolute slot 040
         id: p040
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 40 --out "$RUNNER_TEMP/w57-040"
       - id: i040
         if: ${{ steps.p040.outputs.action == 'collect' }}
@@ -1528,6 +1569,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i040.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i040.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-040"
       - if: ${{ always() && steps.p040.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-040"
@@ -1547,7 +1589,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-040"
       - name: Wait for absolute slot 041
         id: p041
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 41 --out "$RUNNER_TEMP/w57-041"
       - id: i041
         if: ${{ steps.p041.outputs.action == 'collect' }}
@@ -1562,6 +1604,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i041.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i041.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-041"
       - if: ${{ always() && steps.p041.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-041"
@@ -1581,7 +1624,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-041"
       - name: Wait for absolute slot 042
         id: p042
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 42 --out "$RUNNER_TEMP/w57-042"
       - id: i042
         if: ${{ steps.p042.outputs.action == 'collect' }}
@@ -1596,6 +1639,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i042.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i042.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-042"
       - if: ${{ always() && steps.p042.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-042"
@@ -1615,7 +1659,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-042"
       - name: Wait for absolute slot 043
         id: p043
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 43 --out "$RUNNER_TEMP/w57-043"
       - id: i043
         if: ${{ steps.p043.outputs.action == 'collect' }}
@@ -1630,6 +1674,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i043.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i043.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-043"
       - if: ${{ always() && steps.p043.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-043"
@@ -1649,7 +1694,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-043"
       - name: Wait for absolute slot 044
         id: p044
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 44 --out "$RUNNER_TEMP/w57-044"
       - id: i044
         if: ${{ steps.p044.outputs.action == 'collect' }}
@@ -1664,6 +1709,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i044.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i044.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-044"
       - if: ${{ always() && steps.p044.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-044"
@@ -1683,7 +1729,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-044"
       - name: Wait for absolute slot 045
         id: p045
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 45 --out "$RUNNER_TEMP/w57-045"
       - id: i045
         if: ${{ steps.p045.outputs.action == 'collect' }}
@@ -1698,6 +1744,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i045.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i045.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-045"
       - if: ${{ always() && steps.p045.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-045"
@@ -1717,7 +1764,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-045"
       - name: Wait for absolute slot 046
         id: p046
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 46 --out "$RUNNER_TEMP/w57-046"
       - id: i046
         if: ${{ steps.p046.outputs.action == 'collect' }}
@@ -1732,6 +1779,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i046.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i046.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-046"
       - if: ${{ always() && steps.p046.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-046"
@@ -1751,7 +1799,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-046"
       - name: Wait for absolute slot 047
         id: p047
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 47 --out "$RUNNER_TEMP/w57-047"
       - id: i047
         if: ${{ steps.p047.outputs.action == 'collect' }}
@@ -1766,6 +1814,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i047.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i047.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-047"
       - if: ${{ always() && steps.p047.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-047"
@@ -1785,7 +1834,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-047"
       - name: Wait for absolute slot 048
         id: p048
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 48 --out "$RUNNER_TEMP/w57-048"
       - id: i048
         if: ${{ steps.p048.outputs.action == 'collect' }}
@@ -1800,6 +1849,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i048.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i048.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-048"
       - if: ${{ always() && steps.p048.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-048"
@@ -1819,7 +1869,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-048"
       - name: Wait for absolute slot 049
         id: p049
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 49 --out "$RUNNER_TEMP/w57-049"
       - id: i049
         if: ${{ steps.p049.outputs.action == 'collect' }}
@@ -1834,6 +1884,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i049.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i049.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-049"
       - if: ${{ always() && steps.p049.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-049"
@@ -1853,7 +1904,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-049"
       - name: Wait for absolute slot 050
         id: p050
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 50 --out "$RUNNER_TEMP/w57-050"
       - id: i050
         if: ${{ steps.p050.outputs.action == 'collect' }}
@@ -1868,6 +1919,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i050.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i050.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-050"
       - if: ${{ always() && steps.p050.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-050"
@@ -1887,7 +1939,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-050"
       - name: Wait for absolute slot 051
         id: p051
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 51 --out "$RUNNER_TEMP/w57-051"
       - id: i051
         if: ${{ steps.p051.outputs.action == 'collect' }}
@@ -1902,6 +1954,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i051.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i051.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-051"
       - if: ${{ always() && steps.p051.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-051"
@@ -1921,7 +1974,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-051"
       - name: Wait for absolute slot 052
         id: p052
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 52 --out "$RUNNER_TEMP/w57-052"
       - id: i052
         if: ${{ steps.p052.outputs.action == 'collect' }}
@@ -1936,6 +1989,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i052.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i052.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-052"
       - if: ${{ always() && steps.p052.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-052"
@@ -1955,7 +2009,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-052"
       - name: Wait for absolute slot 053
         id: p053
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 53 --out "$RUNNER_TEMP/w57-053"
       - id: i053
         if: ${{ steps.p053.outputs.action == 'collect' }}
@@ -1970,6 +2024,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i053.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i053.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-053"
       - if: ${{ always() && steps.p053.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-053"
@@ -1989,7 +2044,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-053"
       - name: Wait for absolute slot 054
         id: p054
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 54 --out "$RUNNER_TEMP/w57-054"
       - id: i054
         if: ${{ steps.p054.outputs.action == 'collect' }}
@@ -2004,6 +2059,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i054.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i054.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-054"
       - if: ${{ always() && steps.p054.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-054"
@@ -2023,7 +2079,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-054"
       - name: Wait for absolute slot 055
         id: p055
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 55 --out "$RUNNER_TEMP/w57-055"
       - id: i055
         if: ${{ steps.p055.outputs.action == 'collect' }}
@@ -2038,6 +2094,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i055.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i055.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-055"
       - if: ${{ always() && steps.p055.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-055"
@@ -2057,7 +2114,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-055"
       - name: Wait for absolute slot 056
         id: p056
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 56 --out "$RUNNER_TEMP/w57-056"
       - id: i056
         if: ${{ steps.p056.outputs.action == 'collect' }}
@@ -2072,6 +2129,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i056.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i056.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-056"
       - if: ${{ always() && steps.p056.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-056"
@@ -2091,7 +2149,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-056"
       - name: Wait for absolute slot 057
         id: p057
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 57 --out "$RUNNER_TEMP/w57-057"
       - id: i057
         if: ${{ steps.p057.outputs.action == 'collect' }}
@@ -2106,6 +2164,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i057.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i057.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-057"
       - if: ${{ always() && steps.p057.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-057"
@@ -2125,7 +2184,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-057"
       - name: Wait for absolute slot 058
         id: p058
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 58 --out "$RUNNER_TEMP/w57-058"
       - id: i058
         if: ${{ steps.p058.outputs.action == 'collect' }}
@@ -2140,6 +2199,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i058.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i058.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-058"
       - if: ${{ always() && steps.p058.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-058"
@@ -2159,7 +2219,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-058"
       - name: Wait for absolute slot 059
         id: p059
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 59 --out "$RUNNER_TEMP/w57-059"
       - id: i059
         if: ${{ steps.p059.outputs.action == 'collect' }}
@@ -2174,6 +2234,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i059.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i059.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-059"
       - if: ${{ always() && steps.p059.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-059"
@@ -2194,7 +2255,7 @@ jobs:
 
   segment_03:
     needs: segment_02
-    if: ${{ success() && (inputs.phase == 'start') }}
+    if: ${{ success() && (inputs.phase == 'start' || inputs.phase == 'start192') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 330
     steps:
@@ -2211,7 +2272,7 @@ jobs:
         run: python .github/scripts/render_w57_session_workflow.py --check
       - name: Wait for absolute slot 060
         id: p060
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 60 --out "$RUNNER_TEMP/w57-060"
       - id: i060
         if: ${{ steps.p060.outputs.action == 'collect' }}
@@ -2226,6 +2287,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i060.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i060.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-060"
       - if: ${{ always() && steps.p060.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-060"
@@ -2245,7 +2307,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-060"
       - name: Wait for absolute slot 061
         id: p061
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 61 --out "$RUNNER_TEMP/w57-061"
       - id: i061
         if: ${{ steps.p061.outputs.action == 'collect' }}
@@ -2260,6 +2322,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i061.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i061.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-061"
       - if: ${{ always() && steps.p061.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-061"
@@ -2279,7 +2342,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-061"
       - name: Wait for absolute slot 062
         id: p062
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 62 --out "$RUNNER_TEMP/w57-062"
       - id: i062
         if: ${{ steps.p062.outputs.action == 'collect' }}
@@ -2294,6 +2357,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i062.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i062.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-062"
       - if: ${{ always() && steps.p062.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-062"
@@ -2313,7 +2377,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-062"
       - name: Wait for absolute slot 063
         id: p063
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 63 --out "$RUNNER_TEMP/w57-063"
       - id: i063
         if: ${{ steps.p063.outputs.action == 'collect' }}
@@ -2328,6 +2392,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i063.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i063.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-063"
       - if: ${{ always() && steps.p063.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-063"
@@ -2347,7 +2412,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-063"
       - name: Wait for absolute slot 064
         id: p064
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 64 --out "$RUNNER_TEMP/w57-064"
       - id: i064
         if: ${{ steps.p064.outputs.action == 'collect' }}
@@ -2362,6 +2427,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i064.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i064.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-064"
       - if: ${{ always() && steps.p064.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-064"
@@ -2381,7 +2447,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-064"
       - name: Wait for absolute slot 065
         id: p065
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 65 --out "$RUNNER_TEMP/w57-065"
       - id: i065
         if: ${{ steps.p065.outputs.action == 'collect' }}
@@ -2396,6 +2462,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i065.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i065.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-065"
       - if: ${{ always() && steps.p065.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-065"
@@ -2415,7 +2482,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-065"
       - name: Wait for absolute slot 066
         id: p066
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 66 --out "$RUNNER_TEMP/w57-066"
       - id: i066
         if: ${{ steps.p066.outputs.action == 'collect' }}
@@ -2430,6 +2497,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i066.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i066.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-066"
       - if: ${{ always() && steps.p066.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-066"
@@ -2449,7 +2517,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-066"
       - name: Wait for absolute slot 067
         id: p067
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 67 --out "$RUNNER_TEMP/w57-067"
       - id: i067
         if: ${{ steps.p067.outputs.action == 'collect' }}
@@ -2464,6 +2532,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i067.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i067.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-067"
       - if: ${{ always() && steps.p067.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-067"
@@ -2483,7 +2552,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-067"
       - name: Wait for absolute slot 068
         id: p068
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 68 --out "$RUNNER_TEMP/w57-068"
       - id: i068
         if: ${{ steps.p068.outputs.action == 'collect' }}
@@ -2498,6 +2567,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i068.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i068.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-068"
       - if: ${{ always() && steps.p068.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-068"
@@ -2517,7 +2587,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-068"
       - name: Wait for absolute slot 069
         id: p069
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 69 --out "$RUNNER_TEMP/w57-069"
       - id: i069
         if: ${{ steps.p069.outputs.action == 'collect' }}
@@ -2532,6 +2602,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i069.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i069.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-069"
       - if: ${{ always() && steps.p069.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-069"
@@ -2551,7 +2622,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-069"
       - name: Wait for absolute slot 070
         id: p070
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 70 --out "$RUNNER_TEMP/w57-070"
       - id: i070
         if: ${{ steps.p070.outputs.action == 'collect' }}
@@ -2566,6 +2637,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i070.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i070.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-070"
       - if: ${{ always() && steps.p070.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-070"
@@ -2585,7 +2657,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-070"
       - name: Wait for absolute slot 071
         id: p071
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 71 --out "$RUNNER_TEMP/w57-071"
       - id: i071
         if: ${{ steps.p071.outputs.action == 'collect' }}
@@ -2600,6 +2672,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i071.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i071.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-071"
       - if: ${{ always() && steps.p071.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-071"
@@ -2619,7 +2692,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-071"
       - name: Wait for absolute slot 072
         id: p072
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 72 --out "$RUNNER_TEMP/w57-072"
       - id: i072
         if: ${{ steps.p072.outputs.action == 'collect' }}
@@ -2634,6 +2707,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i072.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i072.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-072"
       - if: ${{ always() && steps.p072.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-072"
@@ -2653,7 +2727,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-072"
       - name: Wait for absolute slot 073
         id: p073
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 73 --out "$RUNNER_TEMP/w57-073"
       - id: i073
         if: ${{ steps.p073.outputs.action == 'collect' }}
@@ -2668,6 +2742,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i073.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i073.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-073"
       - if: ${{ always() && steps.p073.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-073"
@@ -2687,7 +2762,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-073"
       - name: Wait for absolute slot 074
         id: p074
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 74 --out "$RUNNER_TEMP/w57-074"
       - id: i074
         if: ${{ steps.p074.outputs.action == 'collect' }}
@@ -2702,6 +2777,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i074.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i074.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-074"
       - if: ${{ always() && steps.p074.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-074"
@@ -2721,7 +2797,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-074"
       - name: Wait for absolute slot 075
         id: p075
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 75 --out "$RUNNER_TEMP/w57-075"
       - id: i075
         if: ${{ steps.p075.outputs.action == 'collect' }}
@@ -2736,6 +2812,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i075.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i075.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-075"
       - if: ${{ always() && steps.p075.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-075"
@@ -2755,7 +2832,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-075"
       - name: Wait for absolute slot 076
         id: p076
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 76 --out "$RUNNER_TEMP/w57-076"
       - id: i076
         if: ${{ steps.p076.outputs.action == 'collect' }}
@@ -2770,6 +2847,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i076.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i076.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-076"
       - if: ${{ always() && steps.p076.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-076"
@@ -2789,7 +2867,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-076"
       - name: Wait for absolute slot 077
         id: p077
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 77 --out "$RUNNER_TEMP/w57-077"
       - id: i077
         if: ${{ steps.p077.outputs.action == 'collect' }}
@@ -2804,6 +2882,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i077.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i077.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-077"
       - if: ${{ always() && steps.p077.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-077"
@@ -2823,7 +2902,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-077"
       - name: Wait for absolute slot 078
         id: p078
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 78 --out "$RUNNER_TEMP/w57-078"
       - id: i078
         if: ${{ steps.p078.outputs.action == 'collect' }}
@@ -2838,6 +2917,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i078.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i078.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-078"
       - if: ${{ always() && steps.p078.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-078"
@@ -2857,7 +2937,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-078"
       - name: Wait for absolute slot 079
         id: p079
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 79 --out "$RUNNER_TEMP/w57-079"
       - id: i079
         if: ${{ steps.p079.outputs.action == 'collect' }}
@@ -2872,6 +2952,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i079.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i079.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-079"
       - if: ${{ always() && steps.p079.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-079"
@@ -2892,7 +2973,7 @@ jobs:
 
   segment_04:
     needs: segment_03
-    if: ${{ success() && (inputs.phase == 'start') }}
+    if: ${{ success() && (inputs.phase == 'start' || inputs.phase == 'start192') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 330
     steps:
@@ -2909,7 +2990,7 @@ jobs:
         run: python .github/scripts/render_w57_session_workflow.py --check
       - name: Wait for absolute slot 080
         id: p080
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 80 --out "$RUNNER_TEMP/w57-080"
       - id: i080
         if: ${{ steps.p080.outputs.action == 'collect' }}
@@ -2924,6 +3005,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i080.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i080.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-080"
       - if: ${{ always() && steps.p080.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-080"
@@ -2943,7 +3025,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-080"
       - name: Wait for absolute slot 081
         id: p081
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 81 --out "$RUNNER_TEMP/w57-081"
       - id: i081
         if: ${{ steps.p081.outputs.action == 'collect' }}
@@ -2958,6 +3040,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i081.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i081.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-081"
       - if: ${{ always() && steps.p081.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-081"
@@ -2977,7 +3060,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-081"
       - name: Wait for absolute slot 082
         id: p082
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 82 --out "$RUNNER_TEMP/w57-082"
       - id: i082
         if: ${{ steps.p082.outputs.action == 'collect' }}
@@ -2992,6 +3075,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i082.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i082.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-082"
       - if: ${{ always() && steps.p082.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-082"
@@ -3011,7 +3095,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-082"
       - name: Wait for absolute slot 083
         id: p083
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 83 --out "$RUNNER_TEMP/w57-083"
       - id: i083
         if: ${{ steps.p083.outputs.action == 'collect' }}
@@ -3026,6 +3110,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i083.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i083.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-083"
       - if: ${{ always() && steps.p083.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-083"
@@ -3045,7 +3130,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-083"
       - name: Wait for absolute slot 084
         id: p084
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 84 --out "$RUNNER_TEMP/w57-084"
       - id: i084
         if: ${{ steps.p084.outputs.action == 'collect' }}
@@ -3060,6 +3145,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i084.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i084.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-084"
       - if: ${{ always() && steps.p084.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-084"
@@ -3079,7 +3165,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-084"
       - name: Wait for absolute slot 085
         id: p085
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 85 --out "$RUNNER_TEMP/w57-085"
       - id: i085
         if: ${{ steps.p085.outputs.action == 'collect' }}
@@ -3094,6 +3180,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i085.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i085.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-085"
       - if: ${{ always() && steps.p085.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-085"
@@ -3113,7 +3200,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-085"
       - name: Wait for absolute slot 086
         id: p086
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 86 --out "$RUNNER_TEMP/w57-086"
       - id: i086
         if: ${{ steps.p086.outputs.action == 'collect' }}
@@ -3128,6 +3215,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i086.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i086.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-086"
       - if: ${{ always() && steps.p086.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-086"
@@ -3147,7 +3235,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-086"
       - name: Wait for absolute slot 087
         id: p087
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 87 --out "$RUNNER_TEMP/w57-087"
       - id: i087
         if: ${{ steps.p087.outputs.action == 'collect' }}
@@ -3162,6 +3250,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i087.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i087.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-087"
       - if: ${{ always() && steps.p087.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-087"
@@ -3181,7 +3270,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-087"
       - name: Wait for absolute slot 088
         id: p088
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 88 --out "$RUNNER_TEMP/w57-088"
       - id: i088
         if: ${{ steps.p088.outputs.action == 'collect' }}
@@ -3196,6 +3285,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i088.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i088.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-088"
       - if: ${{ always() && steps.p088.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-088"
@@ -3215,7 +3305,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-088"
       - name: Wait for absolute slot 089
         id: p089
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 89 --out "$RUNNER_TEMP/w57-089"
       - id: i089
         if: ${{ steps.p089.outputs.action == 'collect' }}
@@ -3230,6 +3320,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i089.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i089.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-089"
       - if: ${{ always() && steps.p089.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-089"
@@ -3249,7 +3340,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-089"
       - name: Wait for absolute slot 090
         id: p090
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 90 --out "$RUNNER_TEMP/w57-090"
       - id: i090
         if: ${{ steps.p090.outputs.action == 'collect' }}
@@ -3264,6 +3355,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i090.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i090.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-090"
       - if: ${{ always() && steps.p090.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-090"
@@ -3283,7 +3375,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-090"
       - name: Wait for absolute slot 091
         id: p091
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 91 --out "$RUNNER_TEMP/w57-091"
       - id: i091
         if: ${{ steps.p091.outputs.action == 'collect' }}
@@ -3298,6 +3390,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i091.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i091.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-091"
       - if: ${{ always() && steps.p091.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-091"
@@ -3317,7 +3410,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-091"
       - name: Wait for absolute slot 092
         id: p092
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 92 --out "$RUNNER_TEMP/w57-092"
       - id: i092
         if: ${{ steps.p092.outputs.action == 'collect' }}
@@ -3332,6 +3425,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i092.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i092.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-092"
       - if: ${{ always() && steps.p092.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-092"
@@ -3351,7 +3445,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-092"
       - name: Wait for absolute slot 093
         id: p093
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 93 --out "$RUNNER_TEMP/w57-093"
       - id: i093
         if: ${{ steps.p093.outputs.action == 'collect' }}
@@ -3366,6 +3460,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i093.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i093.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-093"
       - if: ${{ always() && steps.p093.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-093"
@@ -3385,7 +3480,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-093"
       - name: Wait for absolute slot 094
         id: p094
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 94 --out "$RUNNER_TEMP/w57-094"
       - id: i094
         if: ${{ steps.p094.outputs.action == 'collect' }}
@@ -3400,6 +3495,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i094.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i094.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-094"
       - if: ${{ always() && steps.p094.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-094"
@@ -3419,7 +3515,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-094"
       - name: Wait for absolute slot 095
         id: p095
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 95 --out "$RUNNER_TEMP/w57-095"
       - id: i095
         if: ${{ steps.p095.outputs.action == 'collect' }}
@@ -3434,6 +3530,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i095.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i095.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-095"
       - if: ${{ always() && steps.p095.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-095"
@@ -3453,7 +3550,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-095"
       - name: Wait for absolute slot 096
         id: p096
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 96 --out "$RUNNER_TEMP/w57-096"
       - id: i096
         if: ${{ steps.p096.outputs.action == 'collect' }}
@@ -3468,6 +3565,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i096.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i096.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-096"
       - if: ${{ always() && steps.p096.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-096"
@@ -3487,7 +3585,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-096"
       - name: Wait for absolute slot 097
         id: p097
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 97 --out "$RUNNER_TEMP/w57-097"
       - id: i097
         if: ${{ steps.p097.outputs.action == 'collect' }}
@@ -3502,6 +3600,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i097.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i097.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-097"
       - if: ${{ always() && steps.p097.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-097"
@@ -3521,7 +3620,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-097"
       - name: Wait for absolute slot 098
         id: p098
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 98 --out "$RUNNER_TEMP/w57-098"
       - id: i098
         if: ${{ steps.p098.outputs.action == 'collect' }}
@@ -3536,6 +3635,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i098.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i098.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-098"
       - if: ${{ always() && steps.p098.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-098"
@@ -3555,7 +3655,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-098"
       - name: Wait for absolute slot 099
         id: p099
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 99 --out "$RUNNER_TEMP/w57-099"
       - id: i099
         if: ${{ steps.p099.outputs.action == 'collect' }}
@@ -3570,6 +3670,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i099.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i099.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-099"
       - if: ${{ always() && steps.p099.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-099"
@@ -3590,7 +3691,7 @@ jobs:
 
   segment_05:
     needs: segment_04
-    if: ${{ success() && (inputs.phase == 'start') }}
+    if: ${{ success() && (inputs.phase == 'start' || inputs.phase == 'start192') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 330
     steps:
@@ -3607,7 +3708,7 @@ jobs:
         run: python .github/scripts/render_w57_session_workflow.py --check
       - name: Wait for absolute slot 100
         id: p100
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 100 --out "$RUNNER_TEMP/w57-100"
       - id: i100
         if: ${{ steps.p100.outputs.action == 'collect' }}
@@ -3622,6 +3723,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i100.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i100.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-100"
       - if: ${{ always() && steps.p100.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-100"
@@ -3641,7 +3743,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-100"
       - name: Wait for absolute slot 101
         id: p101
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 101 --out "$RUNNER_TEMP/w57-101"
       - id: i101
         if: ${{ steps.p101.outputs.action == 'collect' }}
@@ -3656,6 +3758,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i101.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i101.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-101"
       - if: ${{ always() && steps.p101.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-101"
@@ -3675,7 +3778,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-101"
       - name: Wait for absolute slot 102
         id: p102
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 102 --out "$RUNNER_TEMP/w57-102"
       - id: i102
         if: ${{ steps.p102.outputs.action == 'collect' }}
@@ -3690,6 +3793,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i102.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i102.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-102"
       - if: ${{ always() && steps.p102.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-102"
@@ -3709,7 +3813,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-102"
       - name: Wait for absolute slot 103
         id: p103
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 103 --out "$RUNNER_TEMP/w57-103"
       - id: i103
         if: ${{ steps.p103.outputs.action == 'collect' }}
@@ -3724,6 +3828,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i103.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i103.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-103"
       - if: ${{ always() && steps.p103.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-103"
@@ -3743,7 +3848,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-103"
       - name: Wait for absolute slot 104
         id: p104
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 104 --out "$RUNNER_TEMP/w57-104"
       - id: i104
         if: ${{ steps.p104.outputs.action == 'collect' }}
@@ -3758,6 +3863,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i104.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i104.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-104"
       - if: ${{ always() && steps.p104.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-104"
@@ -3777,7 +3883,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-104"
       - name: Wait for absolute slot 105
         id: p105
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 105 --out "$RUNNER_TEMP/w57-105"
       - id: i105
         if: ${{ steps.p105.outputs.action == 'collect' }}
@@ -3792,6 +3898,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i105.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i105.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-105"
       - if: ${{ always() && steps.p105.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-105"
@@ -3811,7 +3918,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-105"
       - name: Wait for absolute slot 106
         id: p106
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 106 --out "$RUNNER_TEMP/w57-106"
       - id: i106
         if: ${{ steps.p106.outputs.action == 'collect' }}
@@ -3826,6 +3933,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i106.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i106.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-106"
       - if: ${{ always() && steps.p106.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-106"
@@ -3845,7 +3953,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-106"
       - name: Wait for absolute slot 107
         id: p107
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 107 --out "$RUNNER_TEMP/w57-107"
       - id: i107
         if: ${{ steps.p107.outputs.action == 'collect' }}
@@ -3860,6 +3968,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i107.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i107.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-107"
       - if: ${{ always() && steps.p107.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-107"
@@ -3879,7 +3988,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-107"
       - name: Wait for absolute slot 108
         id: p108
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 108 --out "$RUNNER_TEMP/w57-108"
       - id: i108
         if: ${{ steps.p108.outputs.action == 'collect' }}
@@ -3894,6 +4003,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i108.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i108.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-108"
       - if: ${{ always() && steps.p108.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-108"
@@ -3913,7 +4023,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-108"
       - name: Wait for absolute slot 109
         id: p109
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 109 --out "$RUNNER_TEMP/w57-109"
       - id: i109
         if: ${{ steps.p109.outputs.action == 'collect' }}
@@ -3928,6 +4038,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i109.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i109.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-109"
       - if: ${{ always() && steps.p109.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-109"
@@ -3947,7 +4058,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-109"
       - name: Wait for absolute slot 110
         id: p110
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 110 --out "$RUNNER_TEMP/w57-110"
       - id: i110
         if: ${{ steps.p110.outputs.action == 'collect' }}
@@ -3962,6 +4073,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i110.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i110.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-110"
       - if: ${{ always() && steps.p110.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-110"
@@ -3981,7 +4093,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-110"
       - name: Wait for absolute slot 111
         id: p111
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 111 --out "$RUNNER_TEMP/w57-111"
       - id: i111
         if: ${{ steps.p111.outputs.action == 'collect' }}
@@ -3996,6 +4108,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i111.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i111.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-111"
       - if: ${{ always() && steps.p111.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-111"
@@ -4015,7 +4128,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-111"
       - name: Wait for absolute slot 112
         id: p112
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 112 --out "$RUNNER_TEMP/w57-112"
       - id: i112
         if: ${{ steps.p112.outputs.action == 'collect' }}
@@ -4030,6 +4143,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i112.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i112.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-112"
       - if: ${{ always() && steps.p112.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-112"
@@ -4049,7 +4163,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-112"
       - name: Wait for absolute slot 113
         id: p113
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 113 --out "$RUNNER_TEMP/w57-113"
       - id: i113
         if: ${{ steps.p113.outputs.action == 'collect' }}
@@ -4064,6 +4178,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i113.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i113.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-113"
       - if: ${{ always() && steps.p113.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-113"
@@ -4083,7 +4198,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-113"
       - name: Wait for absolute slot 114
         id: p114
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 114 --out "$RUNNER_TEMP/w57-114"
       - id: i114
         if: ${{ steps.p114.outputs.action == 'collect' }}
@@ -4098,6 +4213,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i114.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i114.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-114"
       - if: ${{ always() && steps.p114.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-114"
@@ -4117,7 +4233,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-114"
       - name: Wait for absolute slot 115
         id: p115
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 115 --out "$RUNNER_TEMP/w57-115"
       - id: i115
         if: ${{ steps.p115.outputs.action == 'collect' }}
@@ -4132,6 +4248,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i115.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i115.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-115"
       - if: ${{ always() && steps.p115.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-115"
@@ -4151,7 +4268,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-115"
       - name: Wait for absolute slot 116
         id: p116
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 116 --out "$RUNNER_TEMP/w57-116"
       - id: i116
         if: ${{ steps.p116.outputs.action == 'collect' }}
@@ -4166,6 +4283,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i116.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i116.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-116"
       - if: ${{ always() && steps.p116.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-116"
@@ -4185,7 +4303,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-116"
       - name: Wait for absolute slot 117
         id: p117
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 117 --out "$RUNNER_TEMP/w57-117"
       - id: i117
         if: ${{ steps.p117.outputs.action == 'collect' }}
@@ -4200,6 +4318,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i117.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i117.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-117"
       - if: ${{ always() && steps.p117.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-117"
@@ -4219,7 +4338,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-117"
       - name: Wait for absolute slot 118
         id: p118
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 118 --out "$RUNNER_TEMP/w57-118"
       - id: i118
         if: ${{ steps.p118.outputs.action == 'collect' }}
@@ -4234,6 +4353,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i118.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i118.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-118"
       - if: ${{ always() && steps.p118.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-118"
@@ -4253,7 +4373,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-118"
       - name: Wait for absolute slot 119
         id: p119
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 119 --out "$RUNNER_TEMP/w57-119"
       - id: i119
         if: ${{ steps.p119.outputs.action == 'collect' }}
@@ -4268,6 +4388,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i119.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i119.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-119"
       - if: ${{ always() && steps.p119.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-119"
@@ -4288,7 +4409,7 @@ jobs:
 
   segment_06:
     needs: segment_05
-    if: ${{ success() && (inputs.phase == 'start') }}
+    if: ${{ success() && (inputs.phase == 'start' || inputs.phase == 'start192') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 330
     steps:
@@ -4305,7 +4426,7 @@ jobs:
         run: python .github/scripts/render_w57_session_workflow.py --check
       - name: Wait for absolute slot 120
         id: p120
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 120 --out "$RUNNER_TEMP/w57-120"
       - id: i120
         if: ${{ steps.p120.outputs.action == 'collect' }}
@@ -4320,6 +4441,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i120.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i120.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-120"
       - if: ${{ always() && steps.p120.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-120"
@@ -4339,7 +4461,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-120"
       - name: Wait for absolute slot 121
         id: p121
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 121 --out "$RUNNER_TEMP/w57-121"
       - id: i121
         if: ${{ steps.p121.outputs.action == 'collect' }}
@@ -4354,6 +4476,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i121.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i121.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-121"
       - if: ${{ always() && steps.p121.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-121"
@@ -4373,7 +4496,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-121"
       - name: Wait for absolute slot 122
         id: p122
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 122 --out "$RUNNER_TEMP/w57-122"
       - id: i122
         if: ${{ steps.p122.outputs.action == 'collect' }}
@@ -4388,6 +4511,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i122.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i122.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-122"
       - if: ${{ always() && steps.p122.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-122"
@@ -4407,7 +4531,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-122"
       - name: Wait for absolute slot 123
         id: p123
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 123 --out "$RUNNER_TEMP/w57-123"
       - id: i123
         if: ${{ steps.p123.outputs.action == 'collect' }}
@@ -4422,6 +4546,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i123.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i123.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-123"
       - if: ${{ always() && steps.p123.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-123"
@@ -4441,7 +4566,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-123"
       - name: Wait for absolute slot 124
         id: p124
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 124 --out "$RUNNER_TEMP/w57-124"
       - id: i124
         if: ${{ steps.p124.outputs.action == 'collect' }}
@@ -4456,6 +4581,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i124.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i124.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-124"
       - if: ${{ always() && steps.p124.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-124"
@@ -4475,7 +4601,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-124"
       - name: Wait for absolute slot 125
         id: p125
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 125 --out "$RUNNER_TEMP/w57-125"
       - id: i125
         if: ${{ steps.p125.outputs.action == 'collect' }}
@@ -4490,6 +4616,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i125.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i125.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-125"
       - if: ${{ always() && steps.p125.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-125"
@@ -4509,7 +4636,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-125"
       - name: Wait for absolute slot 126
         id: p126
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 126 --out "$RUNNER_TEMP/w57-126"
       - id: i126
         if: ${{ steps.p126.outputs.action == 'collect' }}
@@ -4524,6 +4651,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i126.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i126.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-126"
       - if: ${{ always() && steps.p126.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-126"
@@ -4543,7 +4671,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-126"
       - name: Wait for absolute slot 127
         id: p127
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 127 --out "$RUNNER_TEMP/w57-127"
       - id: i127
         if: ${{ steps.p127.outputs.action == 'collect' }}
@@ -4558,6 +4686,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i127.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i127.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-127"
       - if: ${{ always() && steps.p127.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-127"
@@ -4577,7 +4706,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-127"
       - name: Wait for absolute slot 128
         id: p128
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 128 --out "$RUNNER_TEMP/w57-128"
       - id: i128
         if: ${{ steps.p128.outputs.action == 'collect' }}
@@ -4592,6 +4721,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i128.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i128.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-128"
       - if: ${{ always() && steps.p128.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-128"
@@ -4611,7 +4741,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-128"
       - name: Wait for absolute slot 129
         id: p129
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 129 --out "$RUNNER_TEMP/w57-129"
       - id: i129
         if: ${{ steps.p129.outputs.action == 'collect' }}
@@ -4626,6 +4756,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i129.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i129.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-129"
       - if: ${{ always() && steps.p129.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-129"
@@ -4645,7 +4776,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-129"
       - name: Wait for absolute slot 130
         id: p130
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 130 --out "$RUNNER_TEMP/w57-130"
       - id: i130
         if: ${{ steps.p130.outputs.action == 'collect' }}
@@ -4660,6 +4791,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i130.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i130.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-130"
       - if: ${{ always() && steps.p130.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-130"
@@ -4679,7 +4811,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-130"
       - name: Wait for absolute slot 131
         id: p131
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 131 --out "$RUNNER_TEMP/w57-131"
       - id: i131
         if: ${{ steps.p131.outputs.action == 'collect' }}
@@ -4694,6 +4826,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i131.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i131.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-131"
       - if: ${{ always() && steps.p131.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-131"
@@ -4713,7 +4846,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-131"
       - name: Wait for absolute slot 132
         id: p132
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 132 --out "$RUNNER_TEMP/w57-132"
       - id: i132
         if: ${{ steps.p132.outputs.action == 'collect' }}
@@ -4728,6 +4861,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i132.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i132.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-132"
       - if: ${{ always() && steps.p132.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-132"
@@ -4747,7 +4881,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-132"
       - name: Wait for absolute slot 133
         id: p133
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 133 --out "$RUNNER_TEMP/w57-133"
       - id: i133
         if: ${{ steps.p133.outputs.action == 'collect' }}
@@ -4762,6 +4896,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i133.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i133.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-133"
       - if: ${{ always() && steps.p133.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-133"
@@ -4781,7 +4916,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-133"
       - name: Wait for absolute slot 134
         id: p134
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 134 --out "$RUNNER_TEMP/w57-134"
       - id: i134
         if: ${{ steps.p134.outputs.action == 'collect' }}
@@ -4796,6 +4931,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i134.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i134.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-134"
       - if: ${{ always() && steps.p134.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-134"
@@ -4815,7 +4951,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-134"
       - name: Wait for absolute slot 135
         id: p135
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 135 --out "$RUNNER_TEMP/w57-135"
       - id: i135
         if: ${{ steps.p135.outputs.action == 'collect' }}
@@ -4830,6 +4966,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i135.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i135.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-135"
       - if: ${{ always() && steps.p135.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-135"
@@ -4849,7 +4986,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-135"
       - name: Wait for absolute slot 136
         id: p136
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 136 --out "$RUNNER_TEMP/w57-136"
       - id: i136
         if: ${{ steps.p136.outputs.action == 'collect' }}
@@ -4864,6 +5001,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i136.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i136.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-136"
       - if: ${{ always() && steps.p136.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-136"
@@ -4883,7 +5021,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-136"
       - name: Wait for absolute slot 137
         id: p137
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 137 --out "$RUNNER_TEMP/w57-137"
       - id: i137
         if: ${{ steps.p137.outputs.action == 'collect' }}
@@ -4898,6 +5036,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i137.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i137.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-137"
       - if: ${{ always() && steps.p137.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-137"
@@ -4917,7 +5056,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-137"
       - name: Wait for absolute slot 138
         id: p138
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 138 --out "$RUNNER_TEMP/w57-138"
       - id: i138
         if: ${{ steps.p138.outputs.action == 'collect' }}
@@ -4932,6 +5071,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i138.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i138.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-138"
       - if: ${{ always() && steps.p138.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-138"
@@ -4951,7 +5091,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-138"
       - name: Wait for absolute slot 139
         id: p139
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 139 --out "$RUNNER_TEMP/w57-139"
       - id: i139
         if: ${{ steps.p139.outputs.action == 'collect' }}
@@ -4966,6 +5106,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i139.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i139.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-139"
       - if: ${{ always() && steps.p139.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-139"
@@ -4986,7 +5127,7 @@ jobs:
 
   segment_07:
     needs: segment_06
-    if: ${{ success() && (inputs.phase == 'start') }}
+    if: ${{ success() && (inputs.phase == 'start' || inputs.phase == 'start192') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 330
     steps:
@@ -5003,7 +5144,7 @@ jobs:
         run: python .github/scripts/render_w57_session_workflow.py --check
       - name: Wait for absolute slot 140
         id: p140
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 140 --out "$RUNNER_TEMP/w57-140"
       - id: i140
         if: ${{ steps.p140.outputs.action == 'collect' }}
@@ -5018,6 +5159,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i140.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i140.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-140"
       - if: ${{ always() && steps.p140.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-140"
@@ -5037,7 +5179,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-140"
       - name: Wait for absolute slot 141
         id: p141
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 141 --out "$RUNNER_TEMP/w57-141"
       - id: i141
         if: ${{ steps.p141.outputs.action == 'collect' }}
@@ -5052,6 +5194,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i141.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i141.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-141"
       - if: ${{ always() && steps.p141.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-141"
@@ -5071,7 +5214,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-141"
       - name: Wait for absolute slot 142
         id: p142
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 142 --out "$RUNNER_TEMP/w57-142"
       - id: i142
         if: ${{ steps.p142.outputs.action == 'collect' }}
@@ -5086,6 +5229,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i142.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i142.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-142"
       - if: ${{ always() && steps.p142.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-142"
@@ -5105,7 +5249,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-142"
       - name: Wait for absolute slot 143
         id: p143
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 143 --out "$RUNNER_TEMP/w57-143"
       - id: i143
         if: ${{ steps.p143.outputs.action == 'collect' }}
@@ -5120,6 +5264,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i143.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i143.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-143"
       - if: ${{ always() && steps.p143.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-143"
@@ -5139,7 +5284,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-143"
       - name: Wait for absolute slot 144
         id: p144
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 144 --out "$RUNNER_TEMP/w57-144"
       - id: i144
         if: ${{ steps.p144.outputs.action == 'collect' }}
@@ -5154,6 +5299,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i144.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i144.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-144"
       - if: ${{ always() && steps.p144.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-144"
@@ -5173,7 +5319,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-144"
       - name: Wait for absolute slot 145
         id: p145
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 145 --out "$RUNNER_TEMP/w57-145"
       - id: i145
         if: ${{ steps.p145.outputs.action == 'collect' }}
@@ -5188,6 +5334,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i145.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i145.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-145"
       - if: ${{ always() && steps.p145.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-145"
@@ -5207,7 +5354,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-145"
       - name: Wait for absolute slot 146
         id: p146
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 146 --out "$RUNNER_TEMP/w57-146"
       - id: i146
         if: ${{ steps.p146.outputs.action == 'collect' }}
@@ -5222,6 +5369,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i146.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i146.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-146"
       - if: ${{ always() && steps.p146.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-146"
@@ -5241,7 +5389,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-146"
       - name: Wait for absolute slot 147
         id: p147
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 147 --out "$RUNNER_TEMP/w57-147"
       - id: i147
         if: ${{ steps.p147.outputs.action == 'collect' }}
@@ -5256,6 +5404,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i147.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i147.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-147"
       - if: ${{ always() && steps.p147.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-147"
@@ -5275,7 +5424,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-147"
       - name: Wait for absolute slot 148
         id: p148
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 148 --out "$RUNNER_TEMP/w57-148"
       - id: i148
         if: ${{ steps.p148.outputs.action == 'collect' }}
@@ -5290,6 +5439,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i148.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i148.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-148"
       - if: ${{ always() && steps.p148.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-148"
@@ -5309,7 +5459,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-148"
       - name: Wait for absolute slot 149
         id: p149
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 149 --out "$RUNNER_TEMP/w57-149"
       - id: i149
         if: ${{ steps.p149.outputs.action == 'collect' }}
@@ -5324,6 +5474,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i149.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i149.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-149"
       - if: ${{ always() && steps.p149.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-149"
@@ -5343,7 +5494,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-149"
       - name: Wait for absolute slot 150
         id: p150
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 150 --out "$RUNNER_TEMP/w57-150"
       - id: i150
         if: ${{ steps.p150.outputs.action == 'collect' }}
@@ -5358,6 +5509,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i150.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i150.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-150"
       - if: ${{ always() && steps.p150.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-150"
@@ -5377,7 +5529,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-150"
       - name: Wait for absolute slot 151
         id: p151
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 151 --out "$RUNNER_TEMP/w57-151"
       - id: i151
         if: ${{ steps.p151.outputs.action == 'collect' }}
@@ -5392,6 +5544,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i151.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i151.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-151"
       - if: ${{ always() && steps.p151.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-151"
@@ -5411,7 +5564,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-151"
       - name: Wait for absolute slot 152
         id: p152
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 152 --out "$RUNNER_TEMP/w57-152"
       - id: i152
         if: ${{ steps.p152.outputs.action == 'collect' }}
@@ -5426,6 +5579,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i152.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i152.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-152"
       - if: ${{ always() && steps.p152.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-152"
@@ -5445,7 +5599,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-152"
       - name: Wait for absolute slot 153
         id: p153
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 153 --out "$RUNNER_TEMP/w57-153"
       - id: i153
         if: ${{ steps.p153.outputs.action == 'collect' }}
@@ -5460,6 +5614,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i153.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i153.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-153"
       - if: ${{ always() && steps.p153.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-153"
@@ -5479,7 +5634,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-153"
       - name: Wait for absolute slot 154
         id: p154
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 154 --out "$RUNNER_TEMP/w57-154"
       - id: i154
         if: ${{ steps.p154.outputs.action == 'collect' }}
@@ -5494,6 +5649,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i154.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i154.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-154"
       - if: ${{ always() && steps.p154.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-154"
@@ -5513,7 +5669,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-154"
       - name: Wait for absolute slot 155
         id: p155
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 155 --out "$RUNNER_TEMP/w57-155"
       - id: i155
         if: ${{ steps.p155.outputs.action == 'collect' }}
@@ -5528,6 +5684,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i155.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i155.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-155"
       - if: ${{ always() && steps.p155.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-155"
@@ -5547,7 +5704,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-155"
       - name: Wait for absolute slot 156
         id: p156
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 156 --out "$RUNNER_TEMP/w57-156"
       - id: i156
         if: ${{ steps.p156.outputs.action == 'collect' }}
@@ -5562,6 +5719,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i156.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i156.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-156"
       - if: ${{ always() && steps.p156.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-156"
@@ -5581,7 +5739,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-156"
       - name: Wait for absolute slot 157
         id: p157
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 157 --out "$RUNNER_TEMP/w57-157"
       - id: i157
         if: ${{ steps.p157.outputs.action == 'collect' }}
@@ -5596,6 +5754,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i157.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i157.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-157"
       - if: ${{ always() && steps.p157.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-157"
@@ -5615,7 +5774,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-157"
       - name: Wait for absolute slot 158
         id: p158
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 158 --out "$RUNNER_TEMP/w57-158"
       - id: i158
         if: ${{ steps.p158.outputs.action == 'collect' }}
@@ -5630,6 +5789,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i158.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i158.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-158"
       - if: ${{ always() && steps.p158.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-158"
@@ -5649,7 +5809,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-158"
       - name: Wait for absolute slot 159
         id: p159
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 159 --out "$RUNNER_TEMP/w57-159"
       - id: i159
         if: ${{ steps.p159.outputs.action == 'collect' }}
@@ -5664,6 +5824,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i159.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i159.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-159"
       - if: ${{ always() && steps.p159.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-159"
@@ -5684,7 +5845,7 @@ jobs:
 
   segment_08:
     needs: segment_07
-    if: ${{ success() && (inputs.phase == 'start') }}
+    if: ${{ success() && (inputs.phase == 'start' || inputs.phase == 'start192') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 330
     steps:
@@ -5701,7 +5862,7 @@ jobs:
         run: python .github/scripts/render_w57_session_workflow.py --check
       - name: Wait for absolute slot 160
         id: p160
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 160 --out "$RUNNER_TEMP/w57-160"
       - id: i160
         if: ${{ steps.p160.outputs.action == 'collect' }}
@@ -5716,6 +5877,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i160.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i160.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-160"
       - if: ${{ always() && steps.p160.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-160"
@@ -5735,7 +5897,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-160"
       - name: Wait for absolute slot 161
         id: p161
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 161 --out "$RUNNER_TEMP/w57-161"
       - id: i161
         if: ${{ steps.p161.outputs.action == 'collect' }}
@@ -5750,6 +5912,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i161.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i161.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-161"
       - if: ${{ always() && steps.p161.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-161"
@@ -5769,7 +5932,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-161"
       - name: Wait for absolute slot 162
         id: p162
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 162 --out "$RUNNER_TEMP/w57-162"
       - id: i162
         if: ${{ steps.p162.outputs.action == 'collect' }}
@@ -5784,6 +5947,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i162.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i162.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-162"
       - if: ${{ always() && steps.p162.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-162"
@@ -5803,7 +5967,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-162"
       - name: Wait for absolute slot 163
         id: p163
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 163 --out "$RUNNER_TEMP/w57-163"
       - id: i163
         if: ${{ steps.p163.outputs.action == 'collect' }}
@@ -5818,6 +5982,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i163.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i163.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-163"
       - if: ${{ always() && steps.p163.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-163"
@@ -5837,7 +6002,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-163"
       - name: Wait for absolute slot 164
         id: p164
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 164 --out "$RUNNER_TEMP/w57-164"
       - id: i164
         if: ${{ steps.p164.outputs.action == 'collect' }}
@@ -5852,6 +6017,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i164.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i164.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-164"
       - if: ${{ always() && steps.p164.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-164"
@@ -5871,7 +6037,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-164"
       - name: Wait for absolute slot 165
         id: p165
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 165 --out "$RUNNER_TEMP/w57-165"
       - id: i165
         if: ${{ steps.p165.outputs.action == 'collect' }}
@@ -5886,6 +6052,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i165.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i165.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-165"
       - if: ${{ always() && steps.p165.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-165"
@@ -5905,7 +6072,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-165"
       - name: Wait for absolute slot 166
         id: p166
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 166 --out "$RUNNER_TEMP/w57-166"
       - id: i166
         if: ${{ steps.p166.outputs.action == 'collect' }}
@@ -5920,6 +6087,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i166.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i166.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-166"
       - if: ${{ always() && steps.p166.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-166"
@@ -5939,7 +6107,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-166"
       - name: Wait for absolute slot 167
         id: p167
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 167 --out "$RUNNER_TEMP/w57-167"
       - id: i167
         if: ${{ steps.p167.outputs.action == 'collect' }}
@@ -5954,6 +6122,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i167.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i167.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-167"
       - if: ${{ always() && steps.p167.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-167"
@@ -5973,7 +6142,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-167"
       - name: Wait for absolute slot 168
         id: p168
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 168 --out "$RUNNER_TEMP/w57-168"
       - id: i168
         if: ${{ steps.p168.outputs.action == 'collect' }}
@@ -5988,6 +6157,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i168.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i168.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-168"
       - if: ${{ always() && steps.p168.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-168"
@@ -6007,7 +6177,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-168"
       - name: Wait for absolute slot 169
         id: p169
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 169 --out "$RUNNER_TEMP/w57-169"
       - id: i169
         if: ${{ steps.p169.outputs.action == 'collect' }}
@@ -6022,6 +6192,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i169.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i169.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-169"
       - if: ${{ always() && steps.p169.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-169"
@@ -6041,7 +6212,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-169"
       - name: Wait for absolute slot 170
         id: p170
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 170 --out "$RUNNER_TEMP/w57-170"
       - id: i170
         if: ${{ steps.p170.outputs.action == 'collect' }}
@@ -6056,6 +6227,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i170.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i170.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-170"
       - if: ${{ always() && steps.p170.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-170"
@@ -6075,7 +6247,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-170"
       - name: Wait for absolute slot 171
         id: p171
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 171 --out "$RUNNER_TEMP/w57-171"
       - id: i171
         if: ${{ steps.p171.outputs.action == 'collect' }}
@@ -6090,6 +6262,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i171.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i171.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-171"
       - if: ${{ always() && steps.p171.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-171"
@@ -6109,7 +6282,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-171"
       - name: Wait for absolute slot 172
         id: p172
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 172 --out "$RUNNER_TEMP/w57-172"
       - id: i172
         if: ${{ steps.p172.outputs.action == 'collect' }}
@@ -6124,6 +6297,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i172.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i172.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-172"
       - if: ${{ always() && steps.p172.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-172"
@@ -6143,7 +6317,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-172"
       - name: Wait for absolute slot 173
         id: p173
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 173 --out "$RUNNER_TEMP/w57-173"
       - id: i173
         if: ${{ steps.p173.outputs.action == 'collect' }}
@@ -6158,6 +6332,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i173.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i173.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-173"
       - if: ${{ always() && steps.p173.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-173"
@@ -6177,7 +6352,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-173"
       - name: Wait for absolute slot 174
         id: p174
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 174 --out "$RUNNER_TEMP/w57-174"
       - id: i174
         if: ${{ steps.p174.outputs.action == 'collect' }}
@@ -6192,6 +6367,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i174.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i174.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-174"
       - if: ${{ always() && steps.p174.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-174"
@@ -6211,7 +6387,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-174"
       - name: Wait for absolute slot 175
         id: p175
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 175 --out "$RUNNER_TEMP/w57-175"
       - id: i175
         if: ${{ steps.p175.outputs.action == 'collect' }}
@@ -6226,6 +6402,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i175.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i175.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-175"
       - if: ${{ always() && steps.p175.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-175"
@@ -6245,7 +6422,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-175"
       - name: Wait for absolute slot 176
         id: p176
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 176 --out "$RUNNER_TEMP/w57-176"
       - id: i176
         if: ${{ steps.p176.outputs.action == 'collect' }}
@@ -6260,6 +6437,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i176.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i176.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-176"
       - if: ${{ always() && steps.p176.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-176"
@@ -6279,7 +6457,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-176"
       - name: Wait for absolute slot 177
         id: p177
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 177 --out "$RUNNER_TEMP/w57-177"
       - id: i177
         if: ${{ steps.p177.outputs.action == 'collect' }}
@@ -6294,6 +6472,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i177.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i177.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-177"
       - if: ${{ always() && steps.p177.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-177"
@@ -6313,7 +6492,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-177"
       - name: Wait for absolute slot 178
         id: p178
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 178 --out "$RUNNER_TEMP/w57-178"
       - id: i178
         if: ${{ steps.p178.outputs.action == 'collect' }}
@@ -6328,6 +6507,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i178.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i178.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-178"
       - if: ${{ always() && steps.p178.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-178"
@@ -6347,7 +6527,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-178"
       - name: Wait for absolute slot 179
         id: p179
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 179 --out "$RUNNER_TEMP/w57-179"
       - id: i179
         if: ${{ steps.p179.outputs.action == 'collect' }}
@@ -6362,6 +6542,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i179.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i179.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-179"
       - if: ${{ always() && steps.p179.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-179"
@@ -6382,7 +6563,7 @@ jobs:
 
   segment_09:
     needs: segment_08
-    if: ${{ success() && (inputs.phase == 'start') }}
+    if: ${{ success() && (inputs.phase == 'start' || inputs.phase == 'start192') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 330
     steps:
@@ -6399,7 +6580,7 @@ jobs:
         run: python .github/scripts/render_w57_session_workflow.py --check
       - name: Wait for absolute slot 180
         id: p180
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 180 --out "$RUNNER_TEMP/w57-180"
       - id: i180
         if: ${{ steps.p180.outputs.action == 'collect' }}
@@ -6414,6 +6595,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i180.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i180.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-180"
       - if: ${{ always() && steps.p180.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-180"
@@ -6433,7 +6615,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-180"
       - name: Wait for absolute slot 181
         id: p181
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 181 --out "$RUNNER_TEMP/w57-181"
       - id: i181
         if: ${{ steps.p181.outputs.action == 'collect' }}
@@ -6448,6 +6630,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i181.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i181.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-181"
       - if: ${{ always() && steps.p181.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-181"
@@ -6467,7 +6650,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-181"
       - name: Wait for absolute slot 182
         id: p182
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 182 --out "$RUNNER_TEMP/w57-182"
       - id: i182
         if: ${{ steps.p182.outputs.action == 'collect' }}
@@ -6482,6 +6665,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i182.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i182.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-182"
       - if: ${{ always() && steps.p182.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-182"
@@ -6501,7 +6685,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-182"
       - name: Wait for absolute slot 183
         id: p183
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 183 --out "$RUNNER_TEMP/w57-183"
       - id: i183
         if: ${{ steps.p183.outputs.action == 'collect' }}
@@ -6516,6 +6700,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i183.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i183.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-183"
       - if: ${{ always() && steps.p183.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-183"
@@ -6535,7 +6720,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-183"
       - name: Wait for absolute slot 184
         id: p184
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 184 --out "$RUNNER_TEMP/w57-184"
       - id: i184
         if: ${{ steps.p184.outputs.action == 'collect' }}
@@ -6550,6 +6735,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i184.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i184.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-184"
       - if: ${{ always() && steps.p184.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-184"
@@ -6569,7 +6755,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-184"
       - name: Wait for absolute slot 185
         id: p185
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 185 --out "$RUNNER_TEMP/w57-185"
       - id: i185
         if: ${{ steps.p185.outputs.action == 'collect' }}
@@ -6584,6 +6770,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i185.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i185.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-185"
       - if: ${{ always() && steps.p185.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-185"
@@ -6603,7 +6790,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-185"
       - name: Wait for absolute slot 186
         id: p186
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 186 --out "$RUNNER_TEMP/w57-186"
       - id: i186
         if: ${{ steps.p186.outputs.action == 'collect' }}
@@ -6618,6 +6805,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i186.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i186.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-186"
       - if: ${{ always() && steps.p186.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-186"
@@ -6637,7 +6825,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-186"
       - name: Wait for absolute slot 187
         id: p187
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 187 --out "$RUNNER_TEMP/w57-187"
       - id: i187
         if: ${{ steps.p187.outputs.action == 'collect' }}
@@ -6652,6 +6840,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i187.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i187.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-187"
       - if: ${{ always() && steps.p187.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-187"
@@ -6671,7 +6860,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-187"
       - name: Wait for absolute slot 188
         id: p188
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 188 --out "$RUNNER_TEMP/w57-188"
       - id: i188
         if: ${{ steps.p188.outputs.action == 'collect' }}
@@ -6686,6 +6875,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i188.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i188.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-188"
       - if: ${{ always() && steps.p188.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-188"
@@ -6705,7 +6895,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-188"
       - name: Wait for absolute slot 189
         id: p189
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 189 --out "$RUNNER_TEMP/w57-189"
       - id: i189
         if: ${{ steps.p189.outputs.action == 'collect' }}
@@ -6720,6 +6910,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i189.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i189.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-189"
       - if: ${{ always() && steps.p189.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-189"
@@ -6739,7 +6930,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-189"
       - name: Wait for absolute slot 190
         id: p190
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 190 --out "$RUNNER_TEMP/w57-190"
       - id: i190
         if: ${{ steps.p190.outputs.action == 'collect' }}
@@ -6754,6 +6945,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i190.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i190.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-190"
       - if: ${{ always() && steps.p190.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-190"
@@ -6773,7 +6965,7 @@ jobs:
         run: python bench/rugcheck_w57_session.py finish --out "$RUNNER_TEMP/w57-190"
       - name: Wait for absolute slot 191
         id: p191
-        if: ${{ inputs.phase == 'start' }}
+        if: ${{ inputs.phase == 'start' || inputs.phase == 'start192' }}
         run: python bench/rugcheck_w57_session.py prepare --slot 191 --out "$RUNNER_TEMP/w57-191"
       - id: i191
         if: ${{ steps.p191.outputs.action == 'collect' }}
@@ -6788,6 +6980,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i191.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i191.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-191"
       - if: ${{ always() && steps.p191.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-191"
@@ -6822,6 +7015,7 @@ jobs:
         continue-on-error: true
         env:
           W57_INTENT_ID: ${{ steps.i192.outputs.artifact-id }}
+          W57_INTENT_DIGEST: ${{ steps.i192.outputs.artifact-digest }}
         run: python bench/rugcheck_w57_session.py collect --out "$RUNNER_TEMP/w57-192"
       - if: ${{ always() && steps.p192.outputs.ready == 'true' }}
         run: python bench/rugcheck_w57_session.py finalize --out "$RUNNER_TEMP/w57-192"
@@ -6842,7 +7036,7 @@ jobs:
 
   closure:
     needs: [segment_00, segment_01, segment_02, segment_03, segment_04, segment_05, segment_06, segment_07, segment_08, segment_09]
-    if: ${{ always() && inputs.phase != 'report' && inputs.phase != 'legacy-report' }}
+    if: ${{ always() && inputs.phase != 'report' && inputs.phase != 'legacy-report' && inputs.phase != 'report192' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 330
     steps:
@@ -6878,7 +7072,7 @@ jobs:
         if: ${{ always() && steps.index.outputs.ready == 'true' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: w57-admission-result-v2
+          name: ${{ (inputs.phase == 'pilot192' || inputs.phase == 'start192') && 'w57-admission-result-v3' || 'w57-admission-result-v2' }}
           path: ${{ runner.temp }}/w57-closure/admission-result
           if-no-files-found: error
           retention-days: 7
@@ -6886,7 +7080,7 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: ${{ format('w57-{0}-closure-r{1}-v2', inputs.phase == 'canary' && 'canary' || 'live', github.run_id) }}
+          name: ${{ format('w57-{0}-closure-r{1}-v{2}', inputs.phase == 'canary' && 'canary' || ((inputs.phase == 'pilot192' || inputs.phase == 'start192') && 'live192' || 'live'), github.run_id, (inputs.phase == 'pilot192' || inputs.phase == 'start192') && '3' || '2') }}
           path: ${{ runner.temp }}/w57-closure
           if-no-files-found: error
           retention-days: 7

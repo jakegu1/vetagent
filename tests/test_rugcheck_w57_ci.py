@@ -2114,5 +2114,786 @@ class New192CoreTests(unittest.TestCase):
         self.assertTrue(answer["endpoint_right_censored"])
 
 
+class New192SessionTests(unittest.TestCase):
+    """T-060: actual finite v3 transport and CLI graph, with synthetic IO only."""
+
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location("new192_session", ROOT / "bench/rugcheck_w57_session.py")
+        self.session = importlib.util.module_from_spec(spec)
+        with patch.dict(sys.modules, {"rugcheck_w57_ci": driver}):
+            spec.loader.exec_module(self.session)
+        self.protocol = driver.START192_V1
+
+    def env(self, run=300, phase="start192"):
+        return {"GITHUB_REPOSITORY": "synthetic/study", "GITHUB_REF_NAME": "master", "W57_DEFAULT_BRANCH": "master",
+                "GITHUB_SHA": "a" * 40, "GITHUB_RUN_ID": str(run), "GITHUB_RUN_ATTEMPT": "1",
+                "GITHUB_EVENT_NAME": "workflow_dispatch", "W57_PHASE": phase, "W57_STUDY": "session-new"}
+
+    def ctx(self, run=300, phase="start192"):
+        return self.session.context(self.env(run, phase))
+
+    def memory(self, ctx, clock):
+        module = self.session
+        class Store(SessionMemory):
+            def load(store, ident):
+                meta, data = store.items[ident]
+                selected = driver.START192_V1 if meta["name"].endswith("-v3") else driver.LEGACY193
+                return module.decode_bundle(data, meta["provenance"], store.ctx, protocol=selected)
+
+            def publish(store, state, rows, kind, source_ctx, namespace="live192"):
+                if store.fail_upload:
+                    raise driver.StudyError("upload_failed")
+                ident = 9000000 - len(store.items) * 7919
+                name = module.artifact_name(state, kind, source_ctx, namespace)
+                if any((meta["workflow_run"]["id"], meta["name"]) == (source_ctx["run_id"], name)
+                       for meta, _ in store.items.values()):
+                    raise driver.StudyError("duplicate_publication")
+                data = module.bundle_bytes(state, rows, kind, source_ctx, namespace)
+                store.items[ident] = ({"id": ident, "name": name, "expired": False,
+                                       "size_in_bytes": len(data), "digest": "sha256:" + driver.sha(data),
+                                       "created_at": stamp(clock.utc()).replace("+00:00", "Z"),
+                                       "workflow_run": {"id": source_ctx["run_id"], "head_sha": source_ctx["head"],
+                                                        "head_branch": source_ctx["branch"]},
+                                       "provenance": copy.deepcopy(source_ctx)}, data)
+                return ident
+        return Store(module, ctx)
+
+    def index(self, memory, ident, ctx):
+        part = memory.load(ident)
+        state = copy.deepcopy(part["state"])
+        state["session"]["last_durable"] = {"id": ident, "digest": part["digest"]}
+        return memory.publish(state, part["rows"], "admission-result", ctx)
+
+    def admission(self, memory, clock, ctx, phase, study, pilot=None):
+        plan = self.session.prepare_admission(phase, memory, ctx, clock.utc(), study, pilot)
+        intent = memory.publish(plan["state"], [], "intent", ctx)
+        memory.publish(plan["state"], [], "admission-intent", ctx)
+        state, rows = self.session.collect(plan, intent, memory, ctx, clock, self.session.Lease(clock))
+        result = memory.publish(state, rows, "result", ctx)
+        return result, state, rows, plan
+
+    def active(self, count=60, failures=None):
+        clock = SessionClock()
+        ctx = self.ctx(298, "pilot192")
+        memory = self.memory(ctx, clock)
+        fetch, calls = StudyTests().vendor(clock.utc, count=count, failures=failures)
+        with patch.object(probe, "curl", side_effect=fetch):
+            pilot, state, pilot_rows, _ = self.admission(memory, clock, ctx, "pilot192", "pilot-new")
+            self.index(memory, pilot, ctx)
+            if state["status"] != "pilot_passed":
+                return clock, memory, ctx, pilot, state, pilot_rows, calls
+            clock.sleep(1)
+            ctx = self.ctx()
+            memory.ctx = ctx
+            ident, state, rows, _ = self.admission(memory, clock, ctx, "start192", "session-new", pilot)
+        return clock, memory, ctx, ident, state, rows, calls
+
+    def service(self, memory, ctx, **kwargs):
+        harness = RunningSessionTests()
+        harness.session, harness.ctx = self.session, ctx
+        return harness.service(memory, **kwargs)
+
+    def expression(self, value, phase, outputs=None, outcomes=None):
+        import ast
+        import re
+        outputs, outcomes = outputs or {}, outcomes or {}
+        value = value.strip()
+        if value.startswith("${{"):
+            value = value[3:-2].strip()
+        value = value.replace("always()", "True").replace("success()", "True")
+        value = value.replace("inputs.phase", repr(phase))
+        value = value.replace("inputs.report-namespace", repr("live192" if phase.endswith("192") else "canary"))
+        value = value.replace("github.run_id", "300")
+        value = re.sub(r"steps\.([A-Za-z0-9_]+)\.outputs\.([A-Za-z0-9_-]+)",
+                       lambda m: repr(outputs.get(m[1], {}).get(m[2], "")), value)
+        value = re.sub(r"steps\.([A-Za-z0-9_]+)\.outcome", lambda m: repr(outcomes.get(m[1], "skipped")), value)
+        value = value.replace("&&", " and ").replace("||", " or ")
+        tree = ast.parse(value, mode="eval")
+        allowed = (ast.Expression, ast.Constant, ast.BoolOp, ast.And, ast.Or, ast.Compare, ast.Eq, ast.NotEq,
+                   ast.Call, ast.Name, ast.Load)
+        self.assertTrue(all(isinstance(node, allowed) for node in ast.walk(tree)), value)
+        self.assertTrue(all(node.id in ("format",) for node in ast.walk(tree) if isinstance(node, ast.Name)), value)
+        return eval(compile(tree, "<bounded workflow expression>", "eval"), {"__builtins__": {},
+                    "format": lambda template, *args: template.format(*args)})
+
+    def rendered(self):
+        spec = importlib.util.spec_from_file_location("new192_generator", ROOT / ".github/scripts/render_w57_session_workflow.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        sys.path.insert(0, str(ROOT / "tests"))
+        import test_deploy_gate as workflow
+        return module, workflow, module.render().decode("utf-8")
+
+    def test_explicit_new_modes_bind_protocol_source_and_keep_default_offline(self):
+        new = self.ctx()
+        self.assertEqual(new.get("protocol"), driver.protocol_descriptor(self.protocol), "start192 must explicitly bind protocol")
+        self.assertEqual(new["protocol_digest"], driver.protocol_digest(self.protocol))
+        old = self.ctx(301, "start")
+        self.assertNotIn("protocol", old)
+        self.assertEqual(old["source"], self.session.composite(old["control_sources"]))
+        self.assertEqual(new["control_sources"], old["control_sources"])
+        self.assertNotEqual(new["source"]["workflow"], old["source"]["workflow"])
+        with patch.object(probe, "curl", side_effect=AssertionError("Vendor")), \
+                patch.object(self.session, "Artifacts", side_effect=AssertionError("transport")), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(self.session.main([]), 0)
+        for phase in ("unknown192", "live192"):
+            with self.assertRaises(driver.StudyError):
+                self.session.context(self.env(phase=phase))
+
+    def test_new_pilot_and_independent_enrollment_keep_original_qualification(self):
+        clock, memory, ctx, ident, state, rows, calls = self.active(count=40)
+        self.assertEqual(state["status"], "active")
+        self.assertEqual(state["schema"], 3)
+        self.assertEqual(state["session"]["namespace"], "live192")
+        self.assertEqual(state["session"]["protocol_digest"], driver.protocol_digest(self.protocol))
+        self.assertEqual(len([m for m in state["cohort"] if m["group"] == "fresh"]), 40)
+        self.assertEqual([m["mint"] for m in state["cohort"] if m["group"] == "control"], [m for _, m in probe.MAJORS])
+        self.assertEqual(len(calls), 7 + 43)
+        pilot = memory.load(state["pilot"]["id"])
+        self.assertEqual(len(pilot["rows"]), 7)
+        self.assertEqual([r["mint"] for r in pilot["rows"] if r["kind"] == "report"], [m for _, m in probe.MAJORS[:6]])
+        self.assertEqual(sum(r["kind"] == "listing" for r in pilot["rows"]), 1)
+        self.assertEqual({r["phase"] for r in rows}, {"start"})
+        self.assertGreater(state["started_at"], max(r["ts"] for r in pilot["rows"]))
+        self.assertTrue(all(0 <= m["enrollment"]["age_minutes"] <= 10 for m in state["cohort"] if m["group"] == "fresh"))
+        self.assertEqual(memory.load(ident)["state"], state)
+        _, _, _, _, under, _, _ = self.active(count=39)
+        self.assertEqual(under["status"], "insufficient_cohort")
+        self.assertIsNone(under["started_at"])
+        for response in (("400", {}), ("200", {"score_normalised": float("nan"), "detectedAt": stamp(EPOCH)}),
+                         ("200", {"score_normalised": 1, "detectedAt": stamp(EPOCH + 1000)})):
+            with self.subTest(response=response):
+                _, _, _, _, failed, failed_rows, failed_calls = self.active(failures={probe.MAJORS[2][1]: response})
+                self.assertEqual(failed["status"], "pilot_failed")
+                self.assertEqual(len(failed_calls), 7)
+                self.assertEqual(len(failed_rows), 7)
+
+    def test_v3_envelopes_restore_and_reject_protocol_namespace_and_digest_corruption(self):
+        _, memory, ctx, ident, state, rows, _ = self.active()
+        meta, packed = memory.items[ident]
+        self.assertTrue(meta["name"].endswith("-v3"))
+        part = memory.load(ident)
+        for envelope in (part["transport"], part["manifest"], part["state"], part["state"]["session"]):
+            self.assertEqual(envelope["protocol"], driver.protocol_descriptor(self.protocol))
+            self.assertEqual(envelope["protocol_digest"], driver.protocol_digest(self.protocol))
+        with self.assertRaises(driver.StudyError):
+            self.session.decode_bundle(packed, ctx, ctx)
+        for target, key, value in (("transport.json", "protocol_digest", "0" * 64),
+                                   ("transport.json", "schema", 2), ("transport.json", "namespace", "live"),
+                                   ("manifest.json", "protocol_digest", "0" * 64),
+                                   ("state.json", "protocol_digest", "0" * 64)):
+            with zipfile.ZipFile(io.BytesIO(packed)) as archive:
+                files = {name: archive.read(name) for name in archive.namelist()}
+            changed = json.loads(files[target])
+            changed[key] = value
+            files[target] = driver.encoded(changed)
+            with self.subTest(target=target, key=key), self.assertRaises(driver.StudyError):
+                self.session.decode_bundle(self.session._zip(files), ctx, ctx, protocol=self.protocol)
+        for namespace in ("live", "canary", "foreign"):
+            with self.subTest(namespace=namespace), self.assertRaises(driver.StudyError):
+                self.session.bundle_bytes(state, rows, "result", ctx, namespace)
+
+    def test_global_six_stream_admission_blocks_older_unresolved_and_foreign_pilots(self):
+        clock, memory, ctx, ident, state, _, _ = self.active()
+        clock.sleep(1)
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory)
+            service, requests, transport = self.service(memory, ctx, report=True)
+            with transport, patch.object(self.session, "_store", return_value=service):
+                self.session.closure(out, ctx, clock, "start192")
+            terminal = self.session._local(out / "result", ctx, protocol=self.protocol)["state"]
+        result = memory.publish(terminal, [], "result", ctx)
+        self.index(memory, result, ctx)
+        clock.sleep(1)
+        next_ctx = self.ctx(302, "pilot192")
+        service, requests, transport = self.service(memory, next_ctx, admission=True)
+        with transport:
+            plan = self.session.prepare_admission("pilot192", service, next_ctx, clock.utc(), "next-new")
+        selectors = {path.split("name=", 1)[1].split("&", 1)[0] for path, _ in requests if "?name=" in path}
+        self.assertEqual(selectors, {"w57-intent-v1", "w57-result-v1", "w57-admission-intent-v2",
+                                     "w57-admission-result-v2", "w57-admission-intent-v3", "w57-admission-result-v3"})
+        self.assertTrue(set(state["used_studies"]).issubset(plan["state"]["used_studies"]))
+        self.assertLessEqual(service.reads, 16)
+        self.assertLessEqual(service.downloads, 3)
+        self.assertEqual(service.max_downloads, 3)
+        pilot_id = state["pilot"]["id"]
+        pilot_ctx = memory.load(pilot_id)["manifest"]["context"]
+        with self.assertRaises(driver.StudyError):
+            self.session.prepare_admission("start192", memory, pilot_ctx, clock.utc(), "same-run-refused", pilot_id)
+        legacy_ctx = self.ctx(297, "pilot")
+        legacy_pilot = driver._new_state("legacy-pilot", "pilot", legacy_ctx, EPOCH)
+        legacy_pilot["status"] = "pilot_passed"
+        legacy_pilot = self.session.bind_state(legacy_pilot, legacy_ctx, "live")
+        old_pilot = memory.publish(legacy_pilot, [], "result", legacy_ctx, "live")
+        with self.assertRaises(driver.StudyError):
+            self.session.prepare_admission("start192", memory, next_ctx, clock.utc(), "legacy-refused", old_pilot)
+        # A dangling old intent predates a newer terminal index and still blocks.
+        legacy = driver._new_state("unresolved-old", "pilot", self.ctx(200, "pilot"), EPOCH)
+        legacy_ctx = self.ctx(200, "pilot")
+        data = driver.bundle_bytes(legacy, [], "intent", legacy_ctx)
+        memory.items[71] = ({"id": 71, "name": "w57-intent-v1", "expired": False,
+                             "size_in_bytes": len(data), "digest": "sha256:" + driver.sha(data),
+                             "created_at": stamp(EPOCH - 1), "workflow_run": {"id": 200, "head_sha": "a" * 40,
+                             "head_branch": "master"}, "provenance": legacy_ctx}, data)
+        service, requests, transport = self.service(memory, next_ctx, admission=True)
+        with transport, patch.object(probe, "curl", side_effect=AssertionError("Vendor")), self.assertRaises(driver.StudyError):
+            self.session.prepare_admission("pilot192", service, next_ctx, clock.utc(), "must-not-start")
+        self.assertLessEqual(service.downloads, 3)
+
+    def test_new_metadata_pagination_retains_every_stream_and_preserves_phase_caps(self):
+        ctx, clock = self.ctx(), SessionClock()
+        memory = self.memory(ctx, clock)
+        service, requests, transport = self.service(memory, ctx, admission=True)
+        with transport:
+            self.assertEqual(service.list(scope="admission"), [])
+        self.assertEqual(len(requests), 6)
+        self.assertEqual((service.max_reads, service.max_downloads), (16, 3))
+        old = self.ctx(301, "pilot")
+        service, requests, transport = self.service(self.memory(old, clock), old, admission=True)
+        with transport:
+            service.list(scope="admission")
+        self.assertEqual(len(requests), 4)
+        for change in (lambda body: body.update(total_count=100), lambda body: body.update(total_count=True),
+                       lambda body: body.update(total_count=201)):
+            service, requests, transport = self.service(memory, ctx, admission=True, body_change=change)
+            with transport, self.subTest(change=change), self.assertRaises(driver.StudyError):
+                service.list(scope="admission")
+            self.assertLessEqual(len(requests), 8)
+            self.assertEqual(service.downloads, 0)
+
+    def test_actual_generated_new_cli_graph_excludes_slot192_and_restores_192_results(self):
+        import os
+        import re
+        clock, memory, ctx, _, initial, _, _ = self.active()
+        generator, workflow, text = self.rendered()
+        graph = workflow.jobs(text)
+        self.assertEqual(len(graph), 11)
+        calls, slots, leases, seen_commands = [], [], [], []
+        def vendor(url):
+            calls.append(clock.utc())
+            return "200", {"score_normalised": 1, "detectedAt": stamp(initial["started_at"] - 60),
+                           "topHolders": [], "totalHolders": 0, "token_extensions": {}}
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            environment = dict(self.env(), RUNNER_TEMP=str(base), GITHUB_OUTPUT=str(base / "outputs"))
+            with patch.dict(os.environ, environment), patch.object(self.session, "Clock", return_value=clock), \
+                    patch.object(probe, "curl", side_effect=vendor), contextlib.redirect_stdout(io.StringIO()):
+                for name, lines in graph.items():
+                    if not name.startswith("segment_"):
+                        continue
+                    job_condition = next((line.split("if:", 1)[1] for line in lines if line.startswith("    if:")), "True")
+                    if not self.expression(job_condition, "start192"):
+                        continue
+                    lease = self.session.Lease(clock)
+                    leases.append(lease.record)
+                    (base / "w57-job-clock.json").write_bytes(driver.encoded(lease.record))
+                    opportunities = 0
+                    for step in workflow.steps(lines):
+                        if not any(" prepare --slot " in command for command in step["run"]):
+                            continue
+                        if not self.expression(step["keys"].get("if", "True"), "start192"):
+                            continue
+                        command = next(command for command in step["run"] if " prepare --slot " in command)
+                        command = command.replace('"$W57_SLOT"', "20")
+                        slot = int(re.search(r"--slot (\d+)", command)[1])
+                        slots.append(slot)
+                        opportunities += 1
+                        out = base / ("w57-%03d" % slot)
+                        service, requests, transport = self.service(memory, ctx)
+                        with transport, patch.object(self.session, "_store", return_value=service):
+                            for action in ("prepare", "collect", "finalize", "finish"):
+                                if action == "collect":
+                                    prepared = json.loads((out / "plan.json").read_bytes())
+                                    intent = memory.publish(prepared["state"], [], "intent", ctx)
+                                    os.environ["W57_INTENT_ID"] = str(intent)
+                                if action == "finish":
+                                    part = self.session._local(out / "result", ctx, protocol=self.protocol)
+                                    result = memory.publish(part["state"], part["rows"], "result", ctx)
+                                    os.environ.update(W57_UPLOADED="success", W57_RESULT_ID=str(result),
+                                                      W57_RESULT_DIGEST=memory.items[result][0]["digest"].split(":", 1)[1])
+                                args = [action, "--out", str(out)] + (["--slot", str(slot)] if action == "prepare" else [])
+                                self.assertEqual(self.session.main(args), 0, (slot, action))
+                                seen_commands.append(action)
+                        self.assertLessEqual(service.reads, 12)
+                        self.assertLessEqual(service.downloads, 2)
+                    self.assertLessEqual(opportunities, 20)
+        self.assertEqual(slots, list(range(192)))
+        self.assertEqual(len(leases), 10)
+        self.assertEqual(len(calls), 192 * 63)
+        self.assertEqual(calls[::63], [initial["started_at"] + slot * 900 for slot in range(192)])
+        self.assertLessEqual(max(clock.sleeps), 30)
+        self.assertEqual(len(seen_commands), 192 * 4)
+        service, requests, transport = self.service(memory, ctx, report=True)
+        with transport:
+            answer = self.session.reconstruct(service, ctx, "session-new", "live192")
+        self.assertEqual(answer["coverage"]["fresh"]["scheduled_slots"], 192)
+        self.assertEqual(answer["coverage"]["control"]["expected_cells"], 18 * 192)
+        self.assertTrue(answer["planned_schedule_complete"])
+        self.assertTrue(answer["endpoint_right_censored"])
+        self.assertFalse(answer["negative_tail_established"])
+        self.assertFalse(answer["sampling_completion_inferred_from_job"])
+        self.assertLessEqual(service.reads, 600)
+        self.assertLessEqual(service.downloads, 195)
+        with self.assertRaises(driver.StudyError):
+            self.session.prepare_slot(memory, ctx, clock, self.session.Lease(clock), 192, "live192")
+
+    def test_new_strict_end_preserves_late_response_and_readout_censoring(self):
+        clock, memory, ctx, _, state, _, _ = self.active()
+        state = copy.deepcopy(state)
+        state["slots"] = [{"slot": slot, "status": "not_observed"} for slot in range(191)]
+        state["generation"] = 191
+        state["chunks"] = []
+        state["parent"] = state.get("pilot")
+        clock.sleep(state["ends_at"] - 32 - clock.utc())
+        memory = self.memory(ctx, clock)
+        memory.publish(state, [], "result", ctx)
+        plan = self.session.prepare_slot(memory, ctx, clock, self.session.Lease(clock), 191, "live192")
+        ident = memory.publish(plan["state"], [], "intent", ctx)
+        calls = []
+        def vendor(url):
+            calls.append(url)
+            clock.sleep(33)
+            return "200", {"score_normalised": 1, "detectedAt": stamp(state["started_at"] - 60)}
+        with patch.object(probe, "curl", side_effect=vendor):
+            result, rows = self.session.collect(plan, ident, memory, ctx, clock, self.session.Lease(clock))
+        self.assertEqual(len(calls), 1)
+        self.assertTrue(rows[0]["outside_window"])
+        self.assertEqual(sum(row["body"] == "not_observed" for row in rows), 62)
+        memory.publish(result, rows, "result", ctx)
+        answer = driver.readout(result, rows, protocol=self.protocol)
+        self.assertEqual(answer["coverage"]["fresh"]["fields"]["score_normalised"]["usable"], 0)
+        self.assertEqual(answer["coverage"]["fresh"]["fields"]["score_normalised"]["outside_window"], 1)
+        self.assertTrue(answer["endpoint_right_censored"])
+        self.assertEqual(answer["final_tenth_start"], state["started_at"] + 155520)
+
+    def test_new_clock_source_and_durable_intent_failures_stop_without_replay(self):
+        clock, memory, ctx, _, _, _, _ = self.active()
+        lease = self.session.Lease(clock)
+        plan = self.session.prepare_slot(memory, ctx, clock, lease, 0, "live192")
+        intent = memory.publish(plan["state"], [], "intent", ctx)
+        with patch.object(probe, "curl", side_effect=AssertionError("replay")):
+            lost = self.session.prepare_slot(memory, ctx, clock, lease, 0, "live192")
+        self.assertEqual(lost["state"]["status"], "lost_checkpoint")
+        self.assertEqual(lost["state"]["lost_intent"]["id"], intent)
+        for shift in (-3, 3):
+            changed = copy.deepcopy(clock)
+            changed.value += shift
+            with self.subTest(shift=shift), self.assertRaises(driver.StudyError):
+                lease.check(changed)
+        def backwards(url):
+            clock.value -= 3
+            return "200", {"score_normalised": 1, "detectedAt": stamp(EPOCH - 60)}
+        with patch.object(probe, "curl", side_effect=backwards) as fetch:
+            state, rows = self.session.collect(plan, intent, memory, ctx, clock, lease)
+        self.assertEqual(fetch.call_count, 1)
+        self.assertEqual(state["status"], "failed")
+        self.assertEqual(rows[0]["timing_state"], "uncertain")
+        self.assertFalse(self.session._state_clock_stable(state))
+        self.assertEqual(driver.readout(state, rows, protocol=self.protocol)["coverage"]["fresh"]["fields"]["score_normalised"]["usable"], 0)
+
+    def test_new_partial_finalize_local_restore_and_read_only_closure_bind_protocol(self):
+        clock, memory, ctx, _, initial, _, _ = self.active()
+        lease = self.session.Lease(clock)
+        plan = self.session.prepare_slot(memory, ctx, clock, lease, 0, "live192")
+        plan["lease"] = lease.record
+        intent = memory.publish(plan["state"], [], "intent", ctx)
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory)
+            self.session.write_bundle(out / "intent", plan["state"], [], "intent", ctx, "live192")
+            self.session.write_bundle(out / "result", dict(plan["state"], status="lost_checkpoint"), [], "result", ctx, "live192")
+            row = New192CoreTests().row(plan["state"], 0, 1)
+            (out / "result/observations.jsonl").write_bytes(driver.encoded(row) + b"\n" + b'{"partial":')
+            (out / "plan.json").write_bytes(driver.encoded(plan))
+            (out / "collection.json").write_bytes(driver.encoded({"id": intent}))
+            clock.sleep(2)
+            with patch.object(probe, "curl", side_effect=AssertionError("Vendor")):
+                self.session.finalize(out, ctx, clock)
+            restored = self.session._local(out / "result", ctx, protocol=self.protocol)
+            self.assertEqual(restored["state"]["status"], "failed")
+            self.assertEqual(restored["rows"], [row])
+            self.assertEqual((out / "result/unverified.jsonl").read_bytes(), b'{"partial":')
+            self.assertEqual(restored["manifest"]["protocol_digest"], driver.protocol_digest(self.protocol))
+            memory.publish(restored["state"], restored["rows"], "result", ctx)
+            clock.sleep(initial["ends_at"] + 1 - clock.utc())
+            service, requests, transport = self.service(memory, ctx, report=True)
+            with transport, patch.object(self.session, "_store", return_value=service), \
+                    patch.object(probe, "curl", side_effect=AssertionError("after-end Vendor")):
+                answer = self.session.closure(out / "closed", ctx, clock, "start192")
+            self.assertIn("last_durable", answer)
+            self.assertTrue((out / "closed/result/transport.json").exists())
+            closed = self.session._local(out / "closed/result", ctx, protocol=self.protocol)
+            self.assertEqual(closed["transport"]["namespace"], "live192")
+
+    def test_generated_shared_graph_keeps_legacy_canary_and_scanner_guards(self):
+        import re
+        generator, workflow, text = self.rendered()
+        import test_workflow_runtime_pins as pins
+        self.assertEqual(pins.workflow_errors("rugcheck-w57.yml", text), [])
+        self.assertEqual(generator.render(), (ROOT / driver.WORKFLOW).read_bytes())
+        self.assertLess(len(generator.render()), 500000)
+        for phrase in ("pilot192", "start192", "report192", "live192", "w57-admission-intent-v3", "w57-admission-result-v3"):
+            self.assertIn(phrase, text)
+        self.assertIn("default: canary", text)
+        self.assertIn("group: rugcheck-w57-study", text)
+        self.assertIn("cancel-in-progress: false", text)
+        self.assertNotIn("schedule:", text)
+        self.assertNotIn("steps: &", text)
+        self.assertNotIn(": write", text)
+        self.assertNotIn("secrets.", text.replace("secrets.GITHUB_TOKEN", ""))
+        for mode, expected in (("start", list(range(193))), ("start192", list(range(192)))):
+            slots = []
+            for lines in workflow.jobs(text).values():
+                for step in workflow.steps(lines):
+                    for command in step["run"]:
+                        if " prepare --slot " in command and self.expression(step["keys"].get("if", "True"), mode):
+                            command = command.replace('"$W57_SLOT"', "20")
+                            match = re.search(r"--slot (\d+)", command)
+                            if match:
+                                slots.append(int(match[1]))
+            self.assertEqual(slots, expected)
+        self.assertIn("inputs.phase == 'canary' && '2' || '20'", text)
+        self.assertEqual(text.count("    timeout-minutes: 330"), 11)
+        self.assertLess(text.index("id: intent"), text.index("id: collect"))
+        self.assertIn("always() &&", text)
+
+    def test_a5_helper_context_mismatch_rejects_before_any_remote_constructor_or_use(self):
+        old, new = self.ctx(303, "start"), self.ctx(304, "start192")
+        class NoTransport:
+            def list(self, **kwargs):
+                raise AssertionError("remote listing")
+            def load(self, ident):
+                raise AssertionError("remote restore")
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory)
+            (out / "plan.json").write_bytes(driver.encoded({"namespace": "live192"}))
+            cases = {"reconstruct": lambda: self.session.reconstruct(NoTransport(), old, "new-study", "live192"),
+                     "closure": lambda: self.session.closure(out, old, SessionClock(), "start192"),
+                     "finalize": lambda: self.session.finalize(out, old, SessionClock()),
+                     "local-new-with-old-context": lambda: self.session._local(out, old, protocol=self.protocol),
+                     "local-default-with-new-context": lambda: self.session._local(out, new)}
+            with patch.object(self.session, "_store", side_effect=AssertionError("remote store")) as store, \
+                    patch.object(self.session.Artifacts, "request", side_effect=AssertionError("GitHub")) as github, \
+                    patch.object(self.session, "Artifacts", side_effect=AssertionError("remote constructor")) as constructor, \
+                    patch.object(driver.GitHubArtifacts, "request", side_effect=AssertionError("core GitHub")) as core_github, \
+                    patch.object(driver.subprocess, "run", side_effect=AssertionError("native transport")) as native, \
+                    patch.object(probe, "curl", side_effect=AssertionError("Vendor")) as vendor:
+                for name, invoke in cases.items():
+                    with self.subTest(name=name), self.assertRaisesRegex(driver.StudyError, "protocol_context_mismatch"):
+                        invoke()
+                for trap in (store, github, constructor, core_github, native, vendor):
+                    trap.assert_not_called()
+
+    @contextlib.contextmanager
+    def _a6_offline(self):
+        import http.client
+        import socket
+        import urllib.request
+        with contextlib.ExitStack() as stack:
+            for target, name in ((socket, "create_connection"), (socket.socket, "connect"),
+                                 (socket.socket, "connect_ex"), (urllib.request, "urlopen"),
+                                 (http.client.HTTPConnection, "connect"), (http.client.HTTPSConnection, "connect"),
+                                 (driver.subprocess, "run"), (driver.subprocess, "Popen"),
+                                 (probe, "curl"), (driver.GitHubArtifacts, "request"), (self.session.Artifacts, "request")):
+                stack.enter_context(patch.object(target, name, side_effect=AssertionError("unexpected remote transport")))
+            yield
+
+    def _a6_terminal(self):
+        clock, memory, ctx, _, _, _, _ = self.active()
+        clock.sleep(1)
+        with tempfile.TemporaryDirectory() as directory:
+            service, _, transport = self.service(memory, ctx, report=True)
+            with transport, patch.object(self.session, "_store", return_value=service):
+                self.session.closure(Path(directory), ctx, clock, "start192")
+            terminal = self.session._local(Path(directory) / "result", ctx, protocol=self.protocol)
+        ident = memory.publish(terminal["state"], terminal["rows"], "result", ctx)
+        self.index(memory, ident, ctx)
+        return clock, memory, ctx, terminal["state"]
+
+    def _a6_old_pilot(self, memory, clock, run, study):
+        ctx = self.ctx(run, "pilot")
+        memory.ctx = ctx
+        service, requests, transport = self.service(memory, ctx, admission=True)
+        with transport:
+            plan = self.session.prepare_admission("pilot", service, ctx, clock.utc(), study)
+        intent = memory.publish(plan["state"], [], "intent", ctx, "live")
+        memory.publish(plan["state"], [], "admission-intent", ctx, "live")
+        fetch, _ = StudyTests().vendor(clock.utc)
+        with patch.object(probe, "curl", side_effect=fetch):
+            state, rows = self.session.collect(plan, intent, memory, ctx, clock, self.session.Lease(clock))
+        ident = memory.publish(state, rows, "result", ctx, "live")
+        indexed = copy.deepcopy(state)
+        indexed["session"]["last_durable"] = {"id": ident, "digest": memory.load(ident)["digest"]}
+        memory.publish(indexed, rows, "admission-result", ctx, "live")
+        return state
+
+    def _a6_add_v1(self, memory, fixture, created):
+        for ident, (meta, data) in fixture.items.items():
+            ctx = meta["provenance"]
+            memory.items[ident] = ({**meta, "size_in_bytes": len(data), "digest": "sha256:" + driver.sha(data),
+                                   "created_at": stamp(created + ident), "workflow_run": {"id": ctx["run_id"],
+                                   "head_sha": ctx["head"], "head_branch": ctx["branch"]}}, data)
+
+    def test_a6_later_legacy_terminal_cannot_erase_new_ledger_and_proof_exhaustion_is_closed(self):
+        with self._a6_offline():
+            clock, memory, _, state = self._a6_terminal()
+            clock.sleep(1)
+            legacy = self._a6_old_pilot(memory, clock, 400, "later-legacy")
+            self.assertEqual(legacy["used_studies"], ["later-legacy"])
+            clock.sleep(1)
+            ctx = self.ctx(500, "pilot192")
+            memory.ctx = ctx
+            for study in (state["study"], "requires-complete-proof"):
+                service, requests, transport = self.service(memory, ctx, admission=True)
+                with transport, self.subTest(study=study), self.assertRaises(driver.StudyError):
+                    self.session.prepare_admission("pilot192", service, ctx, clock.utc(), study)
+                self.assertLessEqual(service.reads, 16)
+                self.assertLessEqual(service.downloads, 3)
+                self.assertLessEqual(sum(binary for _, binary in requests), 3)
+                self.assertEqual(len({path.split("name=", 1)[1].split("&", 1)[0]
+                                      for path, _ in requests if "?name=" in path}), 6)
+
+    def test_a6_older_paired_active_v1_is_not_closed_by_unrelated_new_terminal(self):
+        with self._a6_offline():
+            clock, memory, _, _ = self._a6_terminal()
+            _, old, _, _, active, _ = StudyTests().active()
+            self.assertEqual(active["result_state"]["status"], "active")
+            self._a6_add_v1(memory, old, EPOCH - 100)
+            clock.sleep(1)
+            ctx = self.ctx(500, "pilot192")
+            memory.ctx = ctx
+            service, requests, transport = self.service(memory, ctx, admission=True)
+            with transport, self.assertRaises(driver.StudyError):
+                self.session.prepare_admission("pilot192", service, ctx, clock.utc(), active["state"]["study"])
+            self.assertLessEqual(service.reads, 16)
+            self.assertLessEqual(service.downloads, 3)
+
+    def test_a6_dormant_history_is_union_or_refusal_and_compatible_closure_remains_usable(self):
+        with self._a6_offline():
+            clock = SessionClock()
+            memory = self.memory(self.ctx(210, "pilot"), clock)
+            self._a6_old_pilot(memory, clock, 210, "legacy-dormant")
+            clock.sleep(1)
+            old_ctx = context(211)
+            old = MemoryArtifacts(old_ctx)
+            old.items = copy.deepcopy(memory.items)
+            plan = driver.prepare("pilot", old, old_ctx, clock.utc(), study="v1-later")
+            intent = old.publish(plan["state"], [], "intent", old_ctx)
+            fetch, _ = StudyTests().vendor(clock.utc)
+            with patch.object(probe, "curl", side_effect=fetch):
+                state, rows = driver.collect(plan, intent, old, old_ctx, clock.utc, clock.sleep)
+            result = old.publish(state, rows, "result", old_ctx)
+            old.items = {ident: part for ident, part in old.items.items() if ident in (intent, result)}
+            self._a6_add_v1(memory, old, clock.utc())
+            clock.sleep(10)
+            ctx = self.ctx(300, "pilot192")
+            memory.ctx = ctx
+            service, requests, transport = self.service(memory, ctx, admission=True)
+            with transport:
+                try:
+                    plan = self.session.prepare_admission("pilot192", service, ctx, clock.utc(), "new-cumulative")
+                except driver.StudyError as exc:
+                    self.assertIn(str(exc), ("admission_history_unavailable", "artifact_read_budget", "artifact_download_budget"))
+                else:
+                    self.assertTrue({"legacy-dormant", "v1-later"}.issubset(plan["state"]["used_studies"]))
+                    intent = memory.publish(plan["state"], [], "intent", ctx)
+                    memory.publish(plan["state"], [], "admission-intent", ctx)
+                    fetch, _ = StudyTests().vendor(clock.utc)
+                    with patch.object(probe, "curl", side_effect=fetch):
+                        state, rows = self.session.collect(plan, intent, memory, ctx, clock, self.session.Lease(clock))
+                    result = memory.publish(state, rows, "result", ctx)
+                    self.index(memory, result, ctx)
+                    clock.sleep(1)
+                    next_ctx = self.ctx(301, "pilot192")
+                    memory.ctx = next_ctx
+                    with self.assertRaises(driver.StudyError):
+                        self.session.prepare_admission("pilot192", memory, next_ctx, clock.utc(), "legacy-dormant")
+            self.assertLessEqual(service.reads, 16)
+            self.assertLessEqual(service.downloads, 3)
+
+            # Valid actual same-study terminal closure still admits a distinct ID.
+            clock, memory, _, terminal = self._a6_terminal()
+            clock.sleep(1)
+            ctx = self.ctx(500, "pilot192")
+            memory.ctx = ctx
+            service, requests, transport = self.service(memory, ctx, admission=True)
+            with transport:
+                plan = self.session.prepare_admission("pilot192", service, ctx, clock.utc(), "compatible-next")
+            self.assertTrue(set(terminal["used_studies"]).issubset(plan["state"]["used_studies"]))
+            self.assertLessEqual(service.reads, 16)
+            self.assertLessEqual(service.downloads, 3)
+
+    def _a7_generated_harness(self):
+        import os
+        import re
+        import shlex
+        clock = SessionClock()
+        memory = self.memory(self.ctx(600, "pilot192"), clock)
+        _, workflow, text = self.rendered()
+        graph = workflow.jobs(text)
+        events, requests, vendors, services = [], [], [], []
+        fetch, _ = StudyTests().vendor(clock.utc)
+        def vendor(url):
+            vendors.append(clock.utc())
+            return fetch(url)
+        def remote(service, path, binary=False):
+            if all(service is not previous for previous in services):
+                services.append(service)
+            service._count(2 if binary else 1)
+            requests.append((service.ctx["run_id"], path, binary, service.reads))
+            tail = path.split("/actions/", 1)[1]
+            if "artifacts?" in tail:
+                rows = [copy.deepcopy(meta) for meta, _ in memory.items.values()]
+                if tail.startswith("artifacts?name="):
+                    name = tail.split("name=", 1)[1].split("&", 1)[0]
+                    rows = [row for row in rows if row["name"] == name]
+                else:
+                    rows = [row for row in rows if row["workflow_run"]["id"] == int(tail.split("/")[1])]
+                page = int(tail.rsplit("page=", 1)[1])
+                return {"total_count": len(rows), "artifacts": list(reversed(rows))[(page - 1) * 100:page * 100]}
+            if tail.startswith("runs/"):
+                run = int(tail.split("/")[1])
+                ctx = next(meta["provenance"] for meta, _ in memory.items.values() if meta["workflow_run"]["id"] == run)
+                return {"id": run, "run_attempt": 1, "event": "workflow_dispatch", "status": "in_progress" if run == service.ctx["run_id"] else "completed",
+                        "conclusion": None if run == service.ctx["run_id"] else "success", "path": driver.WORKFLOW,
+                        "head_sha": ctx["head"], "head_branch": ctx["branch"], "repository": {"full_name": ctx["repository"]},
+                        "head_repository": {"full_name": ctx["repository"]}}
+            ident = int(tail.split("/")[1])
+            return memory.items[ident][1] if binary else copy.deepcopy(memory.items[ident][0])
+        def steps(lines):
+            blocks, block = [], []
+            for line in lines:
+                if re.match(r"^      - ", line):
+                    if block:
+                        blocks.append(block)
+                    block = [line]
+                elif block:
+                    block.append(line)
+            if block:
+                blocks.append(block)
+            parsed = workflow.steps(lines)
+            self.assertEqual(len(blocks), len(parsed))
+            for step, raw in zip(parsed, blocks):
+                step["env"] = {}
+                in_env = False
+                for line in raw:
+                    if line == "        env:":
+                        in_env = True
+                    elif in_env and line.startswith("          "):
+                        key, value = line.strip().split(":", 1)
+                        step["env"][key] = value.strip()
+                    else:
+                        in_env = False
+            return parsed
+        def execute(phase, run, study, pilot=None, stop_after_slot=None, fail_upload=None):
+            with tempfile.TemporaryDirectory() as directory:
+                temp = Path(directory)
+                env = dict(self.env(run, phase), W57_STUDY=study, W57_PILOT=str(pilot or ""),
+                           RUNNER_TEMP=temp.as_posix(), GITHUB_OUTPUT=str(temp / "outputs"), W57_REPORT_NAMESPACE="live192")
+                with patch.dict(os.environ, env), patch.object(self.session.Artifacts, "request", new=remote), \
+                        patch.object(probe, "curl", side_effect=vendor), patch.object(self.session, "Clock", return_value=clock):
+                    ctx = self.session.context()
+                    memory.ctx = ctx
+                    jobs, receipts, failures = {}, [], []
+                    for job, lines in graph.items():
+                        condition = next((line.split("if:", 1)[1] for line in lines if line.startswith("    if:")), "True")
+                        success = all(jobs.get("segment_%02d" % n) == "success" for n in range(int(job[-2:]))) if job.startswith("segment_") else False
+                        if not self.expression(condition.replace("success()", str(success)).replace("github.run_id", str(run)), phase):
+                            jobs[job] = "skipped"
+                            continue
+                        (temp / "w57-job-clock.json").write_bytes(driver.encoded(self.session.Lease(clock).record))
+                        outputs, outcomes, healthy = {}, {}, True
+                        for position, step in enumerate(steps(lines)):
+                            ident = step["keys"].get("id", "anonymous_%d" % position)
+                            condition = step["keys"].get("if", "True")
+                            if not healthy and not re.search(r"(?:always|success|failure|cancelled)\(\)", condition):
+                                continue
+                            if not self.expression(condition.replace("success()", str(healthy)).replace("github.run_id", str(run)), phase, outputs, outcomes):
+                                continue
+                            step_env = {key: str(self.expression(value.replace("github.run_id", str(run)), phase, outputs, outcomes))
+                                        if value.startswith("${{") else value for key, value in step["env"].items()}
+                            command, result, code = "", {}, 0
+                            with patch.dict(os.environ, step_env):
+                                if "upload-artifact@" in step["keys"].get("uses", ""):
+                                    name = str(self.expression(step["with"]["name"].replace("github.run_id", str(run)), phase, outputs, outcomes))
+                                    path = Path(step["with"]["path"].replace("${{ runner.temp }}", temp.as_posix()))
+                                    if ident == fail_upload:
+                                        code = 1
+                                    else:
+                                        files = {p.relative_to(path).as_posix(): p.read_bytes() for p in path.rglob("*") if p.is_file()} if path.is_dir() else {path.name: path.read_bytes()}
+                                        data = self.session._zip(files)
+                                        artifact = 8000000 - len(memory.items) * 7919
+                                        self.assertFalse(any(meta["name"] == name and meta["workflow_run"]["id"] == run for meta, _ in memory.items.values()))
+                                        memory.items[artifact] = ({"id": artifact, "name": name, "expired": False, "size_in_bytes": len(data),
+                                            "digest": "sha256:" + driver.sha(data), "created_at": stamp(clock.utc()), "workflow_run": {
+                                            "id": run, "head_sha": ctx["head"], "head_branch": ctx["branch"]}, "provenance": copy.deepcopy(ctx)}, data)
+                                        result = {"artifact-id": str(artifact), "artifact-digest": driver.sha(data)}
+                                elif step["run"] and "bench/rugcheck_w57_session.py " in step["run"][0]:
+                                    command = os.path.expandvars(step["run"][0].split("bench/rugcheck_w57_session.py ", 1)[1])
+                                    (temp / "outputs").write_text("", encoding="utf-8")
+                                    with contextlib.redirect_stdout(io.StringIO()):
+                                        code = self.session.main(shlex.split(command))
+                                    result = dict(line.split("=", 1) for line in (temp / "outputs").read_text(encoding="utf-8").splitlines())
+                                else:
+                                    continue
+                            outputs[ident], outcomes[ident] = result, "success" if code == 0 else "failure"
+                            events.append({"run": run, "job": job, "step": ident, "command": command, "code": code, "vendor_count": len(vendors)})
+                            if command.startswith("finish "):
+                                folder = Path(shlex.split(command)[-1])
+                                if (folder / "receipt.json").exists():
+                                    receipt = json.loads((folder / "receipt.json").read_bytes())
+                                    receipts.append({"job": job, "folder": folder.name, **receipt["artifact_budget"]})
+                                if (folder / "failure.json").exists():
+                                    failures.append(json.loads((folder / "failure.json").read_bytes()))
+                                if stop_after_slot is not None and folder.name == "w57-%03d" % stop_after_slot:
+                                    return {"receipts": receipts, "failures": failures, "jobs": jobs, "stopped_after_slot": stop_after_slot}
+                            if code and step["keys"].get("continue-on-error") != "true":
+                                healthy = False
+                        jobs[job] = "success" if healthy else "failure"
+                    indexes = [(meta, data) for meta, data in memory.items.values()
+                               if meta["workflow_run"]["id"] == run and meta["name"] == "w57-admission-result-v3"]
+                    self.assertEqual(len(indexes), 1)
+                    part = self.session.decode_bundle(indexes[0][1], ctx, ctx, protocol=self.protocol)
+                    return {"receipts": receipts, "failures": failures, "jobs": jobs, "index": part}
+        return execute, clock, events, requests, vendors, services
+
+    def test_a7_actual_generated_pilot_start_and_physical_handoff_restore_whole_phase_budgets(self):
+        with self._a6_offline():
+            execute, clock, events, requests, vendors, services = self._a7_generated_harness()
+            pilot = execute("pilot192", 600, "graph-pilot")
+            self.assertEqual(pilot["index"]["state"]["status"], "pilot_passed")
+            self.assertEqual(len(vendors), 7)
+            clock.sleep(1)
+            start = execute("start192", 601, "graph-study", pilot["index"]["transport"]["last_durable"]["id"], stop_after_slot=20)
+            admission = [event for event in events if event["run"] == 601 and event["command"].startswith("finish ")
+                         and "w57-admission" in event["command"]]
+            self.assertEqual([event["code"] for event in admission], [0], "healthy admission must persist before slot0")
+            self.assertEqual(start["failures"], [])
+            self.assertEqual(start["stopped_after_slot"], 20)
+            self.assertTrue(any(event["run"] == 601 and event["job"] == "segment_01" and "w57-020" in event["command"] and event["code"] == 0 for event in events))
+            for receipt in start["receipts"]:
+                self.assertLessEqual(receipt["reads"], 16 if receipt["folder"] == "w57-admission" else 12)
+                self.assertLessEqual(receipt["downloads"], 3 if receipt["folder"] == "w57-admission" else 2)
+                self.assertLess(receipt["seconds"], 110)
+            self.assertTrue(all(event["code"] == 0 for event in events))
+            self.assertGreater(len(services), 21 * 2)
+            self.assertLessEqual(max(clock.sleeps), 30)
+
+    def test_a7_generated_upload_failure_is_reached_preserved_and_stops_further_vendor_calls(self):
+        with self._a6_offline():
+            execute, clock, events, requests, vendors, services = self._a7_generated_harness()
+            pilot = execute("pilot192", 700, "failure-pilot")
+            clock.sleep(1)
+            failed = execute("start192", 701, "failure-study", pilot["index"]["transport"]["last_durable"]["id"], fail_upload="r001")
+            injection = [event for event in events if event["run"] == 701 and event["step"] == "r001"]
+            self.assertEqual(len(injection), 1, "the intended slot1 upload failure must actually be reached")
+            self.assertEqual(injection[0]["code"], 1)
+            self.assertEqual(len(vendors), injection[0]["vendor_count"])
+            self.assertEqual(failed["index"]["state"]["status"], "lost_checkpoint")
+            self.assertTrue(failed["index"]["state"].get("lost_intent"))
+            self.assertTrue(any(value["reason"] == "failed_persistence" for value in failed["failures"]))
+            self.assertFalse(any("artifact_read_budget" == value["reason"] for value in failed["failures"]))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
