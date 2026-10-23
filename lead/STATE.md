@@ -16,8 +16,12 @@ independent complete45/native0/all999 raw bytes exact and actual source Linux
 is integrating it and owns the remaining integration/master publication gates.
 Source-only historical HTTP400 counts cannot prove which old requests failed
 or why. Keep all existing probes and scientific bars. See reviews/T-058.md.
-T-059 is in isolated tests-first implementation under its adopted192-core spec;
-T-060 finite session integration is ready and waits for T059 source approval.
+T-059 sourceacf1ff3 has fresh combined round-two approval12/12/RED-TEAM:none,
+52 focused tests and sole exact-source complete45/native0/all1002 raw bytes
+exact. Actual source Linux39967067929 succeeds; release provenance checks follow.
+The lead is integrating approved source and the latest scheduled snapshot data.
+T-060 finite session implementation may start against the approved T059 base;
+its real pilot and launch still require all reviewed source publication gates.
 No new scientific clock has started. T047 and its held
 dependencies remain outside this authorization.
 Earlier detailed source/review/release records remain in Git history at 53e3549

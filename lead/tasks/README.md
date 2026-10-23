@@ -58,5 +58,5 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-056 | Compare an elapsed float budget at its representable precision | 1 | S | T-052 | done in049e78c; named test-only correction, approved12/12, complete45/master/two builds pass |
 | T-057 | Start a refusal cancellation test after durable child headers | 1 | S | T-046, T-052, T-055, T-056 | done in049e78c; A1 second-round12/12 at4b4dbb3, independent/integrated45 and actual master/two builds pass; old44/45 failures retained |
 | T-058 | Preserve bounded per-probe upstream refusal diagnostics | 3 | M | T-023, T-037 | sourcefa7de79 approved12/12/red-team none; independent45 and actual source Linux/two builds pass; integration/publication next |
-| T-059 | Add an explicit192-start scientific protocol with legacy defaults | 3 | M | T-054 | ready; immutable new protocol, default193 characterization and endpoint censoring |
+| T-059 | Add an explicit192-start scientific protocol with legacy defaults | 3 | M | T-054 | sourceacf1ff3 approved12/12/red-team none; exact-source complete45 and actual Linux pass; integration/publication next |
 | T-060 | Bind finite sessions and the real pilot to the new192-start protocol | 3 | M | T-059 | ready; explicit source/protocol qualification required before any real launch |
