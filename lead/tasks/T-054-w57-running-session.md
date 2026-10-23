@@ -1,7 +1,7 @@
 ---
 id: T-054
 title: Preserve finite research slots inside bounded running CI sessions
-status: ready
+status: in_progress
 level: 3
 size: M
 depends_on: [T-043, T-048, T-053]

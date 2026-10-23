@@ -61,7 +61,9 @@ with explicit finite running sessions and an unarmed real-clock canary. Its read
 spec preserves both legacy scientific modules and the original study rules.
 The lead owns integration and actual deployment/canary; an isolated executor owns
 tests-first implementation, followed by fresh ordinary and adversarial review.
-Current stage: spec ready, executor dispatch next. The normal merge b0fea0e retains
+Current stage: isolated executor w57_session_executor, acceptance tests first;
+next action is source READY, then fresh ordinary and adversarial review.
+The normal merge b0fea0e retains
 all latest bot observations and passes the complete45 gate, native exit zero,
 with all985 tracked bytes exact. Actual origin106fb87 CI39872827237 is green.
 This source task does not authorize a new scientific enrollment, new provider,
