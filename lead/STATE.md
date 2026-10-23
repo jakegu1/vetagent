@@ -20,13 +20,18 @@ or why. Keep all existing probes and scientific bars. See reviews/T-058.md.
 Current master access records16 of17 RugCheck purposes usable, with one purpose
 still HTTP400 through all attempts and a separate recovered400/200 attempt.
 Instrument/source approval does not claim that Vendor rejection is eliminated.
-T-060 candidate4cb3166 is held after fresh round-one CHANGES_REQUIRED6/12 and
-two material adversarial findings: cross-version history loss and a normal
-start admission that needs a forbidden seventeenth read. Source Linux/all45 and
-both builds pass but do not override those findings. The Windows full was held
-before invocation. A6/A7 require separate tests-first repairs under unchanged
-proof/receipt/budget/scientific rules; see reviews/T-060-round1.md. A fresh
-combined second round and all publication/pilot gates remain required.
+T-060 repaired source3ea8a3d passes fresh combined second-round12/12 and
+RED-TEAM:none after separate A6/A7 tests-first history and real-CLI budget
+repairs. All68 focused checks pass independently; the complete generated192
+graph and failure preservation pass with synthetic Vendor responses. Its one
+independent complete45/native0 preserves all1004 raw files. Actual feature
+39980853539 checks out3ea8a3d and passes all45, upstream/backfill and both
+independent locked builds; downloaded provenance is verified. Approve normal
+integration; post-integration and actual master publication gates remain pending.
+The old4cb3166 candidate and its two material failures remain held historical
+evidence, not an approved release. See reviews/T-060-round1.md and
+reviews/T-060-round2.md. Separately reviewed bounded operations and one actual
+qualified persisted6+1 pilot remain mandatory before new study enrollment.
 No new scientific clock has started. T047 and its held
 dependencies remain outside this authorization.
 Earlier detailed source/review/release records remain in Git history at 53e3549
