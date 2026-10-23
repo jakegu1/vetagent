@@ -2710,6 +2710,7 @@ class New192SessionTests(unittest.TestCase):
                         self.session.prepare_admission("pilot192", memory, next_ctx, clock.utc(), "legacy-dormant")
             self.assertLessEqual(service.reads, 16)
             self.assertLessEqual(service.downloads, 3)
+
             # Valid actual same-study terminal closure still admits a distinct ID.
             clock, memory, _, terminal = self._a6_terminal()
             clock.sleep(1)
@@ -2721,6 +2722,177 @@ class New192SessionTests(unittest.TestCase):
             self.assertTrue(set(terminal["used_studies"]).issubset(plan["state"]["used_studies"]))
             self.assertLessEqual(service.reads, 16)
             self.assertLessEqual(service.downloads, 3)
+
+    def _a7_generated_harness(self):
+        import os
+        import re
+        import shlex
+        clock = SessionClock()
+        memory = self.memory(self.ctx(600, "pilot192"), clock)
+        _, workflow, text = self.rendered()
+        graph = workflow.jobs(text)
+        events, requests, vendors, services = [], [], [], []
+        fetch, _ = StudyTests().vendor(clock.utc)
+        def vendor(url):
+            vendors.append(clock.utc())
+            return fetch(url)
+        def remote(service, path, binary=False):
+            if all(service is not previous for previous in services):
+                services.append(service)
+            service._count(2 if binary else 1)
+            requests.append((service.ctx["run_id"], path, binary, service.reads))
+            tail = path.split("/actions/", 1)[1]
+            if "artifacts?" in tail:
+                rows = [copy.deepcopy(meta) for meta, _ in memory.items.values()]
+                if tail.startswith("artifacts?name="):
+                    name = tail.split("name=", 1)[1].split("&", 1)[0]
+                    rows = [row for row in rows if row["name"] == name]
+                else:
+                    rows = [row for row in rows if row["workflow_run"]["id"] == int(tail.split("/")[1])]
+                page = int(tail.rsplit("page=", 1)[1])
+                return {"total_count": len(rows), "artifacts": list(reversed(rows))[(page - 1) * 100:page * 100]}
+            if tail.startswith("runs/"):
+                run = int(tail.split("/")[1])
+                ctx = next(meta["provenance"] for meta, _ in memory.items.values() if meta["workflow_run"]["id"] == run)
+                return {"id": run, "run_attempt": 1, "event": "workflow_dispatch", "status": "in_progress" if run == service.ctx["run_id"] else "completed",
+                        "conclusion": None if run == service.ctx["run_id"] else "success", "path": driver.WORKFLOW,
+                        "head_sha": ctx["head"], "head_branch": ctx["branch"], "repository": {"full_name": ctx["repository"]},
+                        "head_repository": {"full_name": ctx["repository"]}}
+            ident = int(tail.split("/")[1])
+            return memory.items[ident][1] if binary else copy.deepcopy(memory.items[ident][0])
+        def steps(lines):
+            blocks, block = [], []
+            for line in lines:
+                if re.match(r"^      - ", line):
+                    if block:
+                        blocks.append(block)
+                    block = [line]
+                elif block:
+                    block.append(line)
+            if block:
+                blocks.append(block)
+            parsed = workflow.steps(lines)
+            self.assertEqual(len(blocks), len(parsed))
+            for step, raw in zip(parsed, blocks):
+                step["env"] = {}
+                in_env = False
+                for line in raw:
+                    if line == "        env:":
+                        in_env = True
+                    elif in_env and line.startswith("          "):
+                        key, value = line.strip().split(":", 1)
+                        step["env"][key] = value.strip()
+                    else:
+                        in_env = False
+            return parsed
+        def execute(phase, run, study, pilot=None, stop_after_slot=None, fail_upload=None):
+            with tempfile.TemporaryDirectory() as directory:
+                temp = Path(directory)
+                env = dict(self.env(run, phase), W57_STUDY=study, W57_PILOT=str(pilot or ""),
+                           RUNNER_TEMP=temp.as_posix(), GITHUB_OUTPUT=str(temp / "outputs"), W57_REPORT_NAMESPACE="live192")
+                with patch.dict(os.environ, env), patch.object(self.session.Artifacts, "request", new=remote), \
+                        patch.object(probe, "curl", side_effect=vendor), patch.object(self.session, "Clock", return_value=clock):
+                    ctx = self.session.context()
+                    memory.ctx = ctx
+                    jobs, receipts, failures = {}, [], []
+                    for job, lines in graph.items():
+                        condition = next((line.split("if:", 1)[1] for line in lines if line.startswith("    if:")), "True")
+                        success = all(jobs.get("segment_%02d" % n) == "success" for n in range(int(job[-2:]))) if job.startswith("segment_") else False
+                        if not self.expression(condition.replace("success()", str(success)).replace("github.run_id", str(run)), phase):
+                            jobs[job] = "skipped"
+                            continue
+                        (temp / "w57-job-clock.json").write_bytes(driver.encoded(self.session.Lease(clock).record))
+                        outputs, outcomes, healthy = {}, {}, True
+                        for position, step in enumerate(steps(lines)):
+                            ident = step["keys"].get("id", "anonymous_%d" % position)
+                            condition = step["keys"].get("if", "True")
+                            if not healthy and not re.search(r"(?:always|success|failure|cancelled)\(\)", condition):
+                                continue
+                            if not self.expression(condition.replace("success()", str(healthy)).replace("github.run_id", str(run)), phase, outputs, outcomes):
+                                continue
+                            step_env = {key: str(self.expression(value.replace("github.run_id", str(run)), phase, outputs, outcomes))
+                                        if value.startswith("${{") else value for key, value in step["env"].items()}
+                            command, result, code = "", {}, 0
+                            with patch.dict(os.environ, step_env):
+                                if "upload-artifact@" in step["keys"].get("uses", ""):
+                                    name = str(self.expression(step["with"]["name"].replace("github.run_id", str(run)), phase, outputs, outcomes))
+                                    path = Path(step["with"]["path"].replace("${{ runner.temp }}", temp.as_posix()))
+                                    if ident == fail_upload:
+                                        code = 1
+                                    else:
+                                        files = {p.relative_to(path).as_posix(): p.read_bytes() for p in path.rglob("*") if p.is_file()} if path.is_dir() else {path.name: path.read_bytes()}
+                                        data = self.session._zip(files)
+                                        artifact = 8000000 - len(memory.items) * 7919
+                                        self.assertFalse(any(meta["name"] == name and meta["workflow_run"]["id"] == run for meta, _ in memory.items.values()))
+                                        memory.items[artifact] = ({"id": artifact, "name": name, "expired": False, "size_in_bytes": len(data),
+                                            "digest": "sha256:" + driver.sha(data), "created_at": stamp(clock.utc()), "workflow_run": {
+                                            "id": run, "head_sha": ctx["head"], "head_branch": ctx["branch"]}, "provenance": copy.deepcopy(ctx)}, data)
+                                        result = {"artifact-id": str(artifact), "artifact-digest": driver.sha(data)}
+                                elif step["run"] and "bench/rugcheck_w57_session.py " in step["run"][0]:
+                                    command = os.path.expandvars(step["run"][0].split("bench/rugcheck_w57_session.py ", 1)[1])
+                                    (temp / "outputs").write_text("", encoding="utf-8")
+                                    with contextlib.redirect_stdout(io.StringIO()):
+                                        code = self.session.main(shlex.split(command))
+                                    result = dict(line.split("=", 1) for line in (temp / "outputs").read_text(encoding="utf-8").splitlines())
+                                else:
+                                    continue
+                            outputs[ident], outcomes[ident] = result, "success" if code == 0 else "failure"
+                            events.append({"run": run, "job": job, "step": ident, "command": command, "code": code, "vendor_count": len(vendors)})
+                            if command.startswith("finish "):
+                                folder = Path(shlex.split(command)[-1])
+                                if (folder / "receipt.json").exists():
+                                    receipt = json.loads((folder / "receipt.json").read_bytes())
+                                    receipts.append({"job": job, "folder": folder.name, **receipt["artifact_budget"]})
+                                if (folder / "failure.json").exists():
+                                    failures.append(json.loads((folder / "failure.json").read_bytes()))
+                                if stop_after_slot is not None and folder.name == "w57-%03d" % stop_after_slot:
+                                    return {"receipts": receipts, "failures": failures, "jobs": jobs, "stopped_after_slot": stop_after_slot}
+                            if code and step["keys"].get("continue-on-error") != "true":
+                                healthy = False
+                        jobs[job] = "success" if healthy else "failure"
+                    indexes = [(meta, data) for meta, data in memory.items.values()
+                               if meta["workflow_run"]["id"] == run and meta["name"] == "w57-admission-result-v3"]
+                    self.assertEqual(len(indexes), 1)
+                    part = self.session.decode_bundle(indexes[0][1], ctx, ctx, protocol=self.protocol)
+                    return {"receipts": receipts, "failures": failures, "jobs": jobs, "index": part}
+        return execute, clock, events, requests, vendors, services
+
+    def test_a7_actual_generated_pilot_start_and_physical_handoff_restore_whole_phase_budgets(self):
+        with self._a6_offline():
+            execute, clock, events, requests, vendors, services = self._a7_generated_harness()
+            pilot = execute("pilot192", 600, "graph-pilot")
+            self.assertEqual(pilot["index"]["state"]["status"], "pilot_passed")
+            self.assertEqual(len(vendors), 7)
+            clock.sleep(1)
+            start = execute("start192", 601, "graph-study", pilot["index"]["transport"]["last_durable"]["id"], stop_after_slot=20)
+            admission = [event for event in events if event["run"] == 601 and event["command"].startswith("finish ")
+                         and "w57-admission" in event["command"]]
+            self.assertEqual([event["code"] for event in admission], [0], "healthy admission must persist before slot0")
+            self.assertEqual(start["failures"], [])
+            self.assertEqual(start["stopped_after_slot"], 20)
+            self.assertTrue(any(event["run"] == 601 and event["job"] == "segment_01" and "w57-020" in event["command"] and event["code"] == 0 for event in events))
+            for receipt in start["receipts"]:
+                self.assertLessEqual(receipt["reads"], 16 if receipt["folder"] == "w57-admission" else 12)
+                self.assertLessEqual(receipt["downloads"], 3 if receipt["folder"] == "w57-admission" else 2)
+                self.assertLess(receipt["seconds"], 110)
+            self.assertTrue(all(event["code"] == 0 for event in events))
+            self.assertGreater(len(services), 21 * 2)
+            self.assertLessEqual(max(clock.sleeps), 30)
+
+    def test_a7_generated_upload_failure_is_reached_preserved_and_stops_further_vendor_calls(self):
+        with self._a6_offline():
+            execute, clock, events, requests, vendors, services = self._a7_generated_harness()
+            pilot = execute("pilot192", 700, "failure-pilot")
+            clock.sleep(1)
+            failed = execute("start192", 701, "failure-study", pilot["index"]["transport"]["last_durable"]["id"], fail_upload="r001")
+            injection = [event for event in events if event["run"] == 701 and event["step"] == "r001"]
+            self.assertEqual(len(injection), 1, "the intended slot1 upload failure must actually be reached")
+            self.assertEqual(injection[0]["code"], 1)
+            self.assertEqual(len(vendors), injection[0]["vendor_count"])
+            self.assertEqual(failed["index"]["state"]["status"], "lost_checkpoint")
+            self.assertTrue(failed["index"]["state"].get("lost_intent"))
+            self.assertTrue(any(value["reason"] == "failed_persistence" for value in failed["failures"]))
+            self.assertFalse(any("artifact_read_budget" == value["reason"] for value in failed["failures"]))
 
 
 if __name__ == "__main__":
