@@ -2584,6 +2584,144 @@ class New192SessionTests(unittest.TestCase):
                 for trap in (store, github, constructor, core_github, native, vendor):
                     trap.assert_not_called()
 
+    @contextlib.contextmanager
+    def _a6_offline(self):
+        import http.client
+        import socket
+        import urllib.request
+        with contextlib.ExitStack() as stack:
+            for target, name in ((socket, "create_connection"), (socket.socket, "connect"),
+                                 (socket.socket, "connect_ex"), (urllib.request, "urlopen"),
+                                 (http.client.HTTPConnection, "connect"), (http.client.HTTPSConnection, "connect"),
+                                 (driver.subprocess, "run"), (driver.subprocess, "Popen"),
+                                 (probe, "curl"), (driver.GitHubArtifacts, "request"), (self.session.Artifacts, "request")):
+                stack.enter_context(patch.object(target, name, side_effect=AssertionError("unexpected remote transport")))
+            yield
+
+    def _a6_terminal(self):
+        clock, memory, ctx, _, _, _, _ = self.active()
+        clock.sleep(1)
+        with tempfile.TemporaryDirectory() as directory:
+            service, _, transport = self.service(memory, ctx, report=True)
+            with transport, patch.object(self.session, "_store", return_value=service):
+                self.session.closure(Path(directory), ctx, clock, "start192")
+            terminal = self.session._local(Path(directory) / "result", ctx, protocol=self.protocol)
+        ident = memory.publish(terminal["state"], terminal["rows"], "result", ctx)
+        self.index(memory, ident, ctx)
+        return clock, memory, ctx, terminal["state"]
+
+    def _a6_old_pilot(self, memory, clock, run, study):
+        ctx = self.ctx(run, "pilot")
+        memory.ctx = ctx
+        service, requests, transport = self.service(memory, ctx, admission=True)
+        with transport:
+            plan = self.session.prepare_admission("pilot", service, ctx, clock.utc(), study)
+        intent = memory.publish(plan["state"], [], "intent", ctx, "live")
+        memory.publish(plan["state"], [], "admission-intent", ctx, "live")
+        fetch, _ = StudyTests().vendor(clock.utc)
+        with patch.object(probe, "curl", side_effect=fetch):
+            state, rows = self.session.collect(plan, intent, memory, ctx, clock, self.session.Lease(clock))
+        ident = memory.publish(state, rows, "result", ctx, "live")
+        indexed = copy.deepcopy(state)
+        indexed["session"]["last_durable"] = {"id": ident, "digest": memory.load(ident)["digest"]}
+        memory.publish(indexed, rows, "admission-result", ctx, "live")
+        return state
+
+    def _a6_add_v1(self, memory, fixture, created):
+        for ident, (meta, data) in fixture.items.items():
+            ctx = meta["provenance"]
+            memory.items[ident] = ({**meta, "size_in_bytes": len(data), "digest": "sha256:" + driver.sha(data),
+                                   "created_at": stamp(created + ident), "workflow_run": {"id": ctx["run_id"],
+                                   "head_sha": ctx["head"], "head_branch": ctx["branch"]}}, data)
+
+    def test_a6_later_legacy_terminal_cannot_erase_new_ledger_and_proof_exhaustion_is_closed(self):
+        with self._a6_offline():
+            clock, memory, _, state = self._a6_terminal()
+            clock.sleep(1)
+            legacy = self._a6_old_pilot(memory, clock, 400, "later-legacy")
+            self.assertEqual(legacy["used_studies"], ["later-legacy"])
+            clock.sleep(1)
+            ctx = self.ctx(500, "pilot192")
+            memory.ctx = ctx
+            for study in (state["study"], "requires-complete-proof"):
+                service, requests, transport = self.service(memory, ctx, admission=True)
+                with transport, self.subTest(study=study), self.assertRaises(driver.StudyError):
+                    self.session.prepare_admission("pilot192", service, ctx, clock.utc(), study)
+                self.assertLessEqual(service.reads, 16)
+                self.assertLessEqual(service.downloads, 3)
+                self.assertLessEqual(sum(binary for _, binary in requests), 3)
+                self.assertEqual(len({path.split("name=", 1)[1].split("&", 1)[0]
+                                      for path, _ in requests if "?name=" in path}), 6)
+
+    def test_a6_older_paired_active_v1_is_not_closed_by_unrelated_new_terminal(self):
+        with self._a6_offline():
+            clock, memory, _, _ = self._a6_terminal()
+            _, old, _, _, active, _ = StudyTests().active()
+            self.assertEqual(active["result_state"]["status"], "active")
+            self._a6_add_v1(memory, old, EPOCH - 100)
+            clock.sleep(1)
+            ctx = self.ctx(500, "pilot192")
+            memory.ctx = ctx
+            service, requests, transport = self.service(memory, ctx, admission=True)
+            with transport, self.assertRaises(driver.StudyError):
+                self.session.prepare_admission("pilot192", service, ctx, clock.utc(), active["state"]["study"])
+            self.assertLessEqual(service.reads, 16)
+            self.assertLessEqual(service.downloads, 3)
+
+    def test_a6_dormant_history_is_union_or_refusal_and_compatible_closure_remains_usable(self):
+        with self._a6_offline():
+            clock = SessionClock()
+            memory = self.memory(self.ctx(210, "pilot"), clock)
+            self._a6_old_pilot(memory, clock, 210, "legacy-dormant")
+            clock.sleep(1)
+            old_ctx = context(211)
+            old = MemoryArtifacts(old_ctx)
+            old.items = copy.deepcopy(memory.items)
+            plan = driver.prepare("pilot", old, old_ctx, clock.utc(), study="v1-later")
+            intent = old.publish(plan["state"], [], "intent", old_ctx)
+            fetch, _ = StudyTests().vendor(clock.utc)
+            with patch.object(probe, "curl", side_effect=fetch):
+                state, rows = driver.collect(plan, intent, old, old_ctx, clock.utc, clock.sleep)
+            result = old.publish(state, rows, "result", old_ctx)
+            old.items = {ident: part for ident, part in old.items.items() if ident in (intent, result)}
+            self._a6_add_v1(memory, old, clock.utc())
+            clock.sleep(10)
+            ctx = self.ctx(300, "pilot192")
+            memory.ctx = ctx
+            service, requests, transport = self.service(memory, ctx, admission=True)
+            with transport:
+                try:
+                    plan = self.session.prepare_admission("pilot192", service, ctx, clock.utc(), "new-cumulative")
+                except driver.StudyError as exc:
+                    self.assertIn(str(exc), ("admission_history_unavailable", "artifact_read_budget", "artifact_download_budget"))
+                else:
+                    self.assertTrue({"legacy-dormant", "v1-later"}.issubset(plan["state"]["used_studies"]))
+                    intent = memory.publish(plan["state"], [], "intent", ctx)
+                    memory.publish(plan["state"], [], "admission-intent", ctx)
+                    fetch, _ = StudyTests().vendor(clock.utc)
+                    with patch.object(probe, "curl", side_effect=fetch):
+                        state, rows = self.session.collect(plan, intent, memory, ctx, clock, self.session.Lease(clock))
+                    result = memory.publish(state, rows, "result", ctx)
+                    self.index(memory, result, ctx)
+                    clock.sleep(1)
+                    next_ctx = self.ctx(301, "pilot192")
+                    memory.ctx = next_ctx
+                    with self.assertRaises(driver.StudyError):
+                        self.session.prepare_admission("pilot192", memory, next_ctx, clock.utc(), "legacy-dormant")
+            self.assertLessEqual(service.reads, 16)
+            self.assertLessEqual(service.downloads, 3)
+            # Valid actual same-study terminal closure still admits a distinct ID.
+            clock, memory, _, terminal = self._a6_terminal()
+            clock.sleep(1)
+            ctx = self.ctx(500, "pilot192")
+            memory.ctx = ctx
+            service, requests, transport = self.service(memory, ctx, admission=True)
+            with transport:
+                plan = self.session.prepare_admission("pilot192", service, ctx, clock.utc(), "compatible-next")
+            self.assertTrue(set(terminal["used_studies"]).issubset(plan["state"]["used_studies"]))
+            self.assertLessEqual(service.reads, 16)
+            self.assertLessEqual(service.downloads, 3)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
