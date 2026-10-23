@@ -223,8 +223,81 @@ _UNOBSERVED = []
 # rather than failed -- see R2.
 _COLLAPSES = []
 
+# References describe a fixed probe's position or separate assertion purpose. Never
+# derive one from the request, even by hashing it: that would identify the input.
+_PROBE_REFERENCES = {
+    source: tuple("fields-%02d" % (i + 1) for i in range(count))
+    for source, count in (("rugcheck", len(RUGCHECK_MINTS)),
+                          ("honeypot.is", len(HONEYPOT_TOKENS)),
+                          ("dexscreener", len(DEXSCREENER_TOKENS)),
+                          ("geckoterminal", len(GECKO_PATHS)))
+}
+_PROBE_REFERENCES["rugcheck"] += ("extensions",)
+_PROBE_REFERENCES["honeypot.is"] += ("facts",) + tuple(
+    "chains-%02d" % i for i in range(1, 8))
+_MAX_DIAGNOSTIC_PROBES = 49
+_MAX_DIAGNOSTIC_BYTES = 65536
+_PROBE_DIAGNOSTICS = []
 
-def fetch(source, url, record=True):
+
+def _attempt_reason(source, code, body, parsed, native_exit):
+    """Only exact whitelisted Vendor messages have a more specific meaning."""
+    if native_exit != 0:
+        return "transport_failed"
+    if code == "429":
+        return "rate_limited"
+    error = body.get("error") if isinstance(body, dict) else None
+    known = {("honeypot.is", "400", "Invalid chain"): "invalid_chain",
+             ("rugcheck", "400", "Token not found"): "token_not_found"}
+    if isinstance(error, str) and (source, code, error) in known:
+        return known[source, code, error]
+    rejected = risk._is_error_body(body) or (isinstance(body, dict) and (
+        bool(body.get("error")) or bool(body.get("errors"))
+        or (type(body.get("code")) is int and body["code"] >= 400)))
+    if code != "200" or rejected:
+        return "unclassified" if code in ("no response", "000") else "vendor_rejected"
+    if not parsed:
+        return "malformed_body"
+    if body is None or body == {} or body == []:
+        return "empty_body"
+    return "ok" if isinstance(body, (dict, list)) else "malformed_body"
+
+
+def _probe_diagnostic_payload():
+    """Bounded additive evidence; old source-only records cannot fill these gaps."""
+    counts = {}
+    for probe in _PROBE_DIAGNOSTICS:
+        row = counts.setdefault(probe["source"], {
+            "probes": 0, "usable": 0, "blind": 0, "blindness_excluded": 0})
+        row["probes"] += 1
+        usable = any(attempt["usable_body"] for attempt in probe["attempts"])
+        row["usable"] += int(usable)
+        row["blind"] += int(not usable and probe["counts_for_blindness"])
+        row["blindness_excluded"] += int(not probe["counts_for_blindness"])
+    payload = {"version": 1, "probes": _PROBE_DIAGNOSTICS, "source_counts": counts}
+    if (len(_PROBE_DIAGNOSTICS) > _MAX_DIAGNOSTIC_PROBES
+            or any(not 1 <= len(row["attempts"]) <= 3 for row in _PROBE_DIAGNOSTICS)
+            or len((json.dumps(payload, indent=1, sort_keys=True) + "\n").encode("utf-8"))
+            > _MAX_DIAGNOSTIC_BYTES):
+        raise RuntimeError("probe diagnostic bounds exceeded; no records were dropped")
+    return payload
+
+
+def _print_probe_diagnostics():
+    if _PROBE_DIAGNOSTICS:
+        payload = _probe_diagnostic_payload()
+        print("\nFixed probe diagnostics (%d probes):" % len(payload["probes"]))
+        for probe in payload["probes"]:
+            attempts = ["HTTP%s exit=%s %s" % (
+                row["http_status"], row["transport_exit"], row["reason"])
+                for row in probe["attempts"]]
+            print("  %s/%s%s: %s" % (probe["source"], probe["probe"],
+                  " (blindness excluded)" if not probe["counts_for_blindness"] else "",
+                  "; ".join(attempts)))
+    print("Historical status-only records cannot reconstruct failed probe inputs or causes.")
+
+
+def fetch(source, url, record=True, *, probe):
     """A usable body, or None with the reason recorded (unless `record` is False).
 
     `record=False` is for a probe whose *failure is the measurement*. Asking honeypot.is
@@ -252,24 +325,45 @@ def fetch(source, url, record=True):
     # after a rate limit is still inside it, so a short retry just spends a second request
     # proving the first one. Measured here: 8 probes drew 3 x 429 at a 1.5s gap, 1 x 429
     # at 5s, and none once the backoff below was added.
+    if (probe not in _PROBE_REFERENCES.get(source, ())
+            or any(row["source"] == source and row["probe"] == probe for row in _PROBE_DIAGNOSTICS)
+            or len(_PROBE_DIAGNOSTICS) >= _MAX_DIAGNOSTIC_PROBES):
+        raise ValueError("invalid, duplicate or excess fixed diagnostic probe; no request sent")
+    diagnostic = {"source": source, "probe": probe, "counts_for_blindness": bool(record),
+                  "attempts": []}
+    _PROBE_DIAGNOSTICS.append(diagnostic)
     code, body = "no response", None
     for attempt in (0, 1, 2):
         if attempt:
             time.sleep(20.0 if code == "429" else 3.0)
-        r = subprocess.run(
-            ["curl", "-s", "-m", TIMEOUT, "-A", UA, "-w", "\n%{http_code}", url],
-            capture_output=True, encoding="utf-8", errors="replace")
-        text = r.stdout or ""
-        code = text.rpartition("\n")[2].strip() or "no response"
         try:
-            body = json.loads(text.rpartition("\n")[0] or "null")
+            r = subprocess.run(
+                ["curl", "-s", "-m", TIMEOUT, "-A", UA, "-w", "\n%{http_code}", url],
+                capture_output=True, encoding="utf-8", errors="replace")
+            text, native_exit = r.stdout or "", r.returncode
+        except OSError:
+            text, native_exit = "", None
+        raw_body, _, status = text.rpartition("\n")
+        code = status.strip()
+        if re.fullmatch(r"[1-5][0-9]{2}|000", code) is None:
+            code = "no response"
+        parsed = True
+        try:
+            body = json.loads(raw_body or "null")
         except json.JSONDecodeError:
-            body = None
-        if code == "200" and isinstance(body, (dict, list)) and body:
+            body, parsed = None, False
+        reason = _attempt_reason(source, code, body, parsed, native_exit)
+        usable = reason == "ok"
+        diagnostic["attempts"].append({"http_status": code, "transport_exit": native_exit,
+                                       "usable_body": usable, "reason": reason})
+        _probe_diagnostic_payload()
+        if usable:
             return body
     if record:
-        _UNOBSERVED.append((source, "HTTP %s" % code if code != "200"
-                            else "empty or unparseable body"))
+        _UNOBSERVED.append((source, "native transport failure" if native_exit != 0 else
+                            "HTTP %s" % code if code != "200" else
+                            "Vendor rejected body" if reason == "vendor_rejected" else
+                            "empty or unparseable body"))
     return None
 
 
@@ -366,22 +460,22 @@ def fetch_bodies():
     bodies = {"rugcheck": [], "honeypot.is": [], "dexscreener": [], "geckoterminal": []}
     asked = dict((k, 0) for k in bodies)
 
-    def add(source, url):
+    def add(source, url, index):
         asked[source] += 1
-        body = fetch(source, url)
+        body = fetch(source, url, probe="fields-%02d" % (index + 1))
         if body is not None:
             bodies[source].append(body)
         time.sleep(SOURCE_CALL_GAP.get(source, CALL_GAP))
 
-    for mint in RUGCHECK_MINTS:
-        add("rugcheck", "https://api.rugcheck.xyz/v1/tokens/%s/report" % mint)
-    for addr, cid in HONEYPOT_TOKENS:
+    for index, mint in enumerate(RUGCHECK_MINTS):
+        add("rugcheck", "https://api.rugcheck.xyz/v1/tokens/%s/report" % mint, index)
+    for index, (addr, cid) in enumerate(HONEYPOT_TOKENS):
         add("honeypot.is",
-            "https://api.honeypot.is/v2/IsHoneypot?address=%s&chainID=%d" % (addr, cid))
-    for addr in DEXSCREENER_TOKENS:
-        add("dexscreener", "https://api.dexscreener.com/latest/dex/tokens/%s" % addr)
-    for p in GECKO_PATHS:
-        add("geckoterminal", "https://api.geckoterminal.com/api/v2/%s" % p)
+            "https://api.honeypot.is/v2/IsHoneypot?address=%s&chainID=%d" % (addr, cid), index)
+    for index, addr in enumerate(DEXSCREENER_TOKENS):
+        add("dexscreener", "https://api.dexscreener.com/latest/dex/tokens/%s" % addr, index)
+    for index, p in enumerate(GECKO_PATHS):
+        add("geckoterminal", "https://api.geckoterminal.com/api/v2/%s" % p, index)
     return bodies, asked
 
 
@@ -729,7 +823,8 @@ def test_honeypot_facts_a_shape_cannot_state():
     domain. Both stay hand-written, because both are genuinely facts about meaning.
     """
     print("\n[upstream] honeypot.is facts that are not field presence")
-    d = fetch("honeypot.is", "https://api.honeypot.is/v2/IsHoneypot?address=%s" % WETH)
+    d = fetch("honeypot.is", "https://api.honeypot.is/v2/IsHoneypot?address=%s" % WETH,
+              probe="facts")
     if d is None:
         print("  BLIND honeypot.is did not answer; nothing asserted")
         return
@@ -772,11 +867,11 @@ def test_simulator_chain_coverage():
     }
 
     answers, arrived = {}, 0
-    for name, (cid, addr) in PROBE.items():
+    for index, (name, (cid, addr)) in enumerate(PROBE.items()):
         # record=False: a 400 here is the answer, not a failure to get one.
         body = fetch("honeypot.is",
                      "https://api.honeypot.is/v2/IsHoneypot?address=%s&chainID=%d"
-                     % (addr, cid), record=False)
+                     % (addr, cid), record=False, probe="chains-%02d" % (index + 1))
         if body is not None:
             arrived += 1
         answers[name] = bool(body and "honeypotResult" in body)
@@ -835,7 +930,8 @@ def test_rugcheck_extension_inventory():
     print("\n[coverage] RugCheck sends exactly the extension keys we have considered")
     import risk  # noqa: E402
 
-    d = fetch("rugcheck", "https://api.rugcheck.xyz/v1/tokens/%s/report" % PYUSD)
+    d = fetch("rugcheck", "https://api.rugcheck.xyz/v1/tokens/%s/report" % PYUSD,
+              probe="extensions")
     if d is None:
         print("  BLIND RugCheck did not answer; nothing asserted")
         return
@@ -954,6 +1050,8 @@ def write_status(path, failures, unobserved, collapses=()):
         "unobserved_probes": len(unobserved),
         "collapsed_paths": collapsed,
     }
+    if _PROBE_DIAGNOSTICS:
+        payload["probe_diagnostics"] = _probe_diagnostic_payload()
     # The history is the point: one day's status cannot answer "has this been blind for a
     # week", and that question is the whole residual. Kept in the artifact rather than
     # derived from git log, so the guard reading it stays offline and deterministic.
@@ -1015,6 +1113,8 @@ def main():
     for i, arg in enumerate(sys.argv):
         if arg == "--status-json" and i + 1 < len(sys.argv):
             write_status(sys.argv[i + 1], _FAILURES, _UNOBSERVED, _COLLAPSES)
+
+    _print_probe_diagnostics()
 
     if _FAILURES:
         print("\nFailures (upstream may have changed a field; risk.py has to change too):")

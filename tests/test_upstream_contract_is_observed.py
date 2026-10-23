@@ -578,6 +578,320 @@ def test_default_generated_monitor_keeps_common_observed_and_structural_rules():
           not receipt["network"] and receipt["protected"])
 
 
+def _refusal_diagnostic_scenario():
+    """The real monitor, fixed probes and status writer over deterministic transport."""
+    import copy
+    import importlib.util
+    import socket
+    import tempfile
+    import types
+    from unittest import mock
+
+    spec = importlib.util.spec_from_file_location(
+        "upstream_refusal_scenario", os.path.join(HERE, "test_upstream_contract.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    healthy = {"field": [1], "honeypotResult": {"isHoneypot": False},
+               "simulationResult": {}, "summary": {"risk": "low"},
+               "transferFee": {}, "token": {"supply": "100", "decimals": 6}}
+    healthy["token_extensions"] = dict.fromkeys(
+        set(module.risk._TOKEN2022_SCORED) | set(module.risk._TOKEN2022_NOT_SCORED))
+    healthy["token_extensions"].update({
+        "mintCloseAuthority": "synthetic authority",
+        "transferFeeConfig": {key: {"transferFeeBasisPoints": 1, "maximumFee": "1"}
+                              for key in ("olderTransferFee", "newerTransferFee")}})
+    private = "synthetic-private-error request-input secret https://private.invalid/"
+    rejection = {"error": private * 2048, "field": [1]}
+    scripts = {
+        module.RUGCHECK_MINTS[0]: [(400, {"error": "Token not found"}, 0)] * 3,
+        module.RUGCHECK_MINTS[1]: [(400, rejection, 0)] * 3,
+        module.RUGCHECK_MINTS[2]: [(429, rejection, 0), (200, healthy, 0)],
+        module.RUGCHECK_MINTS[3]: [(200, "malformed", 0)] * 3,
+        module.RUGCHECK_MINTS[4]: [(200, "", 0)] * 3,
+        module.RUGCHECK_MINTS[5]: [(200, healthy, 23)] * 3,
+        module.RUGCHECK_MINTS[7]: [(200, rejection, 0)] * 3,
+    }
+    attempts, requests, sleeps, measures, network = {}, [], [], [], []
+    stdout = io.StringIO()
+    protected = (module.BASELINE, STATUS)
+    before = [open(path, "rb").read() for path in protected]
+    real_measure = module.measure
+
+    def fake_run(command, **kwargs):
+        assert command[:2] == ["curl", "-s"]
+        assert kwargs == {"capture_output": True, "encoding": "utf-8", "errors": "replace"}
+        url = command[-1]
+        requests.append(list(command))
+        index = attempts.get(url, 0)
+        attempts[url] = index + 1
+        row = next((rows[index] if index < len(rows) else (200, healthy, 0)
+                    for mint, rows in scripts.items()
+                    if url == "https://api.rugcheck.xyz/v1/tokens/%s/report" % mint),
+                   (200, healthy, 0))
+        if any("chainID=%d" % cid in url for cid in (42161, 137, 10, 43114)):
+            row = (400, {"code": 400, "error": "Invalid chain"}, 0)
+        code, body, native_exit = row
+        text = body if isinstance(body, str) else json.dumps(body)
+        return types.SimpleNamespace(stdout=text + "\n" + str(code),
+                                     stderr=private, returncode=native_exit)
+
+    def measure():
+        result = real_measure()
+        measures.append(copy.deepcopy(result))
+        return result
+
+    def fatal(*args, **kwargs):
+        network.append(True)
+        raise AssertionError("refusal acceptance attempted network")
+
+    with tempfile.TemporaryDirectory(prefix="upstream-refusal-") as directory:
+        baseline = os.path.join(directory, "baseline.json")
+        status = os.path.join(directory, "status.json")
+        sources = {name: _coverage_source(8, 8) for name in module.PROBED_TEMPLATES}
+        with open(baseline, "w", encoding="utf-8") as f:
+            json.dump({"sources": sources}, f)
+        legacy = {"date": "2020-01-01", "status": "blind", "failures": [],
+                  "unobserved_sources": ["rugcheck"], "unobserved_probes": 4,
+                  "collapsed_paths": [], "history": [{"date": "2020-01-01",
+                  "status": "blind", "unobserved_sources": ["rugcheck"], "collapsed_paths": []}]}
+        with open(status, "w", encoding="utf-8") as f:
+            json.dump(legacy, f)
+        fields = mock.Mock(incomplete=False, rounds=1)
+        fields.table.return_value = {name: {"field"} for name in sources}
+        fields.urls.return_value = module.PROBED_TEMPLATES
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(mock.patch.object(module, "BASELINE", baseline))
+            stack.enter_context(mock.patch.object(module.subprocess, "run", fake_run))
+            stack.enter_context(mock.patch.object(module.time, "sleep", sleeps.append))
+            stack.enter_context(mock.patch.object(module, "measure", measure))
+            stack.enter_context(mock.patch.object(module.upstream_fields, "build", return_value=fields))
+            stack.enter_context(mock.patch.object(module, "test_owner_power_rpc_contract", lambda: None))
+            stack.enter_context(mock.patch.object(module, "_owner_rpc_open", fatal))
+            stack.enter_context(mock.patch.object(socket.socket, "connect", fatal))
+            stack.enter_context(mock.patch.object(socket, "create_connection", fatal))
+            stack.enter_context(mock.patch.object(sys, "argv", ["contract", "--status-json", status]))
+            stack.enter_context(contextlib.redirect_stdout(stdout))
+            result = module.main()
+            with open(status, encoding="utf-8") as f:
+                payload = json.load(f)
+            # A repeat of an already fixed purpose must fail visibly before another request.
+            bounded = False
+            count_before = len(requests)
+            if payload.get("probe_diagnostics"):
+                try:
+                    module.fetch("rugcheck", "https://private.invalid/" + private, probe="fields-01")
+                except (ValueError, RuntimeError):
+                    bounded = len(requests) == count_before
+        with mock.patch.dict(globals(), STATUS=status):
+            readable = _load() == payload
+        return {"module": module, "result": result, "status": payload, "legacy": legacy,
+                "requests": requests, "sleeps": sleeps, "measures": measures,
+                "stdout": stdout.getvalue(), "private": private, "bounded": bounded,
+                "readable": readable, "network": network,
+                "protected": all(open(path, "rb").read() == raw for path, raw in zip(protected, before))}
+
+
+def _nested_refusal_scenario(gecko_bodies):
+    """A real field monitor and status handoff for every fixed Gecko probe."""
+    import copy
+    import importlib.util
+    import socket
+    import tempfile
+    import types
+    from unittest import mock
+
+    spec = importlib.util.spec_from_file_location(
+        "upstream_nested_refusal_scenario", os.path.join(HERE, "test_upstream_contract.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    output, requests, sleeps, measures, network = io.StringIO(), [], [], [], []
+    protected = (module.BASELINE, STATUS)
+    before = [open(path, "rb").read() for path in protected]
+    original_measure = module.measure
+
+    def fake_run(command, **kwargs):
+        assert command[:2] == ["curl", "-s"] and command[-3:-1] == ["-w", "\n%{http_code}"]
+        assert kwargs == {"capture_output": True, "encoding": "utf-8", "errors": "replace"}
+        requests.append(list(command))
+        prefix = "https://api.geckoterminal.com/api/v2/"
+        body = gecko_bodies[module.GECKO_PATHS.index(command[-1][len(prefix):])] if (
+            command[-1].startswith(prefix)) else {"field": [1]}
+        return types.SimpleNamespace(stdout=json.dumps(body) + "\n200", stderr="", returncode=0)
+
+    def measure():
+        result = original_measure()
+        measures.append(copy.deepcopy(result))
+        return result
+
+    def fatal(*args, **kwargs):
+        network.append(True)
+        raise AssertionError("nested refusal acceptance attempted network")
+
+    with tempfile.TemporaryDirectory(prefix="upstream-nested-refusal-") as directory:
+        baseline, status = [os.path.join(directory, name + ".json") for name in ("baseline", "status")]
+        sources = {name: _coverage_source(8, 8) for name in module.PROBED_TEMPLATES}
+        with open(baseline, "w", encoding="utf-8") as f:
+            json.dump({"sources": sources}, f)
+        baseline_before = open(baseline, "rb").read()
+        fields = mock.Mock(incomplete=False, rounds=1)
+        fields.table.return_value = {name: {"field"} for name in sources}
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(mock.patch.object(module, "BASELINE", baseline))
+            stack.enter_context(mock.patch.object(module.subprocess, "run", fake_run))
+            stack.enter_context(mock.patch.object(module.time, "sleep", sleeps.append))
+            stack.enter_context(mock.patch.object(module, "measure", measure))
+            stack.enter_context(mock.patch.object(module.upstream_fields, "build", return_value=fields))
+            stack.enter_context(mock.patch.object(module, "_owner_rpc_open", fatal))
+            stack.enter_context(mock.patch.object(socket.socket, "connect", fatal))
+            stack.enter_context(mock.patch.object(socket, "create_connection", fatal))
+            stack.enter_context(mock.patch.object(sys, "argv", ["contract", "--status-json", status]))
+            for name in vars(module):
+                if name.startswith("test_") and name != "test_generated_field_contract":
+                    stack.enter_context(mock.patch.object(module, name, lambda: None))
+            stack.enter_context(contextlib.redirect_stdout(output))
+            result = module.main()
+        with open(status, encoding="utf-8") as f:
+            payload = json.load(f)
+        return {"module": module, "result": result, "status": payload, "stdout": output.getvalue(),
+                "requests": requests, "sleeps": sleeps, "measures": measures, "network": network,
+                "baseline_exact": open(baseline, "rb").read() == baseline_before,
+                "protected": all(open(path, "rb").read() == raw for path, raw in zip(protected, before))}
+
+
+def test_upstream_refusal_diagnostics_survive_the_real_monitor_and_status_handoff():
+    """Fixed safe probe purposes retain bounded attempts without voting failed bodies in."""
+    receipt = _refusal_diagnostic_scenario()
+    module, status = receipt["module"], receipt["status"]
+    diagnostic = status.get("probe_diagnostics") or {}
+    probes = diagnostic.get("probes") or []
+    by_probe = {(row["source"], row["probe"]): row for row in probes}
+    expected = {(source, "fields-%02d" % (index + 1))
+                for source, count in (("rugcheck", 16), ("honeypot.is", 8),
+                                      ("dexscreener", 8), ("geckoterminal", 8))
+                for index in range(count)}
+    expected |= {("honeypot.is", "facts"), ("rugcheck", "extensions")}
+    expected |= {("honeypot.is", "chains-%02d" % index) for index in range(1, 8)}
+    check("every fixed probe has a distinct safe position or purpose", set(by_probe) == expected
+          and len(probes) == 49, repr(sorted(by_probe)))
+    check("diagnostics use an explicit version", diagnostic.get("version") == 1)
+    reason_cases = {1: ["token_not_found"] * 3, 2: ["vendor_rejected"] * 3,
+                    3: ["rate_limited", "ok"], 4: ["malformed_body"] * 3,
+                    5: ["empty_body"] * 3, 6: ["transport_failed"] * 3,
+                    7: ["ok"], 8: ["vendor_rejected"] * 3}
+    for index, expected_reasons in reason_cases.items():
+        row = by_probe.get(("rugcheck", "fields-%02d" % index), {})
+        attempts = row.get("attempts") or []
+        check("fixed RugCheck probe %d keeps every attempt reason" % index,
+              [attempt.get("reason") for attempt in attempts] == expected_reasons, repr(attempts))
+        check("fixed RugCheck probe %d keeps HTTP, native exit and usable flag" % index,
+              bool(attempts) and all(set(attempt) == {
+                  "http_status", "transport_exit", "usable_body", "reason"} for attempt in attempts)
+              and [attempt["http_status"] for attempt in attempts] == (
+                  ["400"] * 3 if index in (1, 2) else ["429", "200"] if index == 3
+                  else ["200"] * len(expected_reasons))
+              and all(attempt["transport_exit"] == (23 if index == 6 else 0)
+                      and attempt["usable_body"] is (attempt["reason"] == "ok") for attempt in attempts))
+    native = by_probe.get(("rugcheck", "fields-06"), {}).get("attempts") or []
+    check("parseable partial HTTP200 never overrides native transport failure",
+          len(native) == 3 and all(row["http_status"] == "200" and row["transport_exit"] == 23
+                                  and not row["usable_body"] for row in native))
+    check("failed risk fields are unobserved throughout measure",
+          len(receipt["measures"]) == 1 and receipt["measures"][0][0]["rugcheck"]["probes"] == 10
+          and len(receipt["measures"][0][1]["rugcheck"]) == 10)
+    negatives = [by_probe.get(("honeypot.is", "chains-%02d" % index), {}) for index in range(4, 8)]
+    check("expected negative chain purposes stay distinct from blindness",
+          all(row.get("counts_for_blindness") is False and len(row.get("attempts", [])) == 3
+              and all(attempt["reason"] == "invalid_chain" for attempt in row["attempts"])
+              for row in negatives)
+          and status["unobserved_probes"] == 6 and status["unobserved_sources"] == ["rugcheck"])
+    check("legacy status priority and history semantics survive additive diagnostics",
+          receipt["result"] == 0 and not module._FAILURES and status["status"] == "blind"
+          and status["history"][0] == receipt["legacy"]["history"][0]
+          and all("probe_diagnostics" not in row for row in status["history"]))
+    check("existing status reader accepts additive diagnostics", receipt["readable"])
+    check("source aggregates preserve every recorded and usable probe",
+          diagnostic.get("source_counts") == {
+              "rugcheck": {"probes": 17, "usable": 11, "blind": 6, "blindness_excluded": 0},
+              "honeypot.is": {"probes": 16, "usable": 12, "blind": 0, "blindness_excluded": 7},
+              "dexscreener": {"probes": 8, "usable": 8, "blind": 0, "blindness_excluded": 0},
+              "geckoterminal": {"probes": 8, "usable": 8, "blind": 0, "blindness_excluded": 0}})
+    public = json.dumps(diagnostic) + receipt["stdout"]
+    forbidden = [receipt["private"], "https://", "synthetic authority", "request-input", "secret"]
+    forbidden += module.RUGCHECK_MINTS + [address for address, _ in module.HONEYPOT_TOKENS]
+    check("public diagnostics contain no inputs, URL, body or error prose",
+          bool(probes) and not any(value in public for value in forbidden))
+    check("diagnostic schema has no arbitrary text or input hashes",
+          bool(probes) and all(set(row) == {"source", "probe", "counts_for_blindness", "attempts"}
+                               for row in probes))
+    check("console preserves concise retry and transport outcomes",
+          "rugcheck/fields-03" in receipt["stdout"] and "rate_limited" in receipt["stdout"]
+          and "transport_failed" in receipt["stdout"] and "exit=23" in receipt["stdout"])
+    check("historical source-only records are explicitly insufficient for reconstruction",
+          "historical" in receipt["stdout"].lower()
+          and "cannot reconstruct" in receipt["stdout"].lower()
+          and "probe_diagnostics" not in receipt["legacy"])
+    check("bounded probes, attempts and serialized diagnostics fail visibly on overflow",
+          receipt["bounded"] and len(probes) == 49
+          and all(1 <= len(row["attempts"]) <= 3 for row in probes)
+          and len((json.dumps(diagnostic, indent=1, sort_keys=True) + "\n").encode()) <= 65536)
+    check("unchanged fixed request set, retry limit and pacing",
+          len(receipt["requests"]) == 70
+          and receipt["sleeps"].count(20.0) == 1 and receipt["sleeps"].count(3.0) == 20
+          and receipt["sleeps"].count(5.0) == 8 and receipt["sleeps"].count(1.5) == 32
+          and receipt["sleeps"].count(2.0) == 7
+          and all(command[2:6] == ["-m", "30", "-A", "vetagent-contract-test"]
+                  for command in receipt["requests"]))
+    check("acceptance uses only fake transport and protects committed artifacts",
+          not receipt["network"] and receipt["protected"])
+
+    private = "NESTED_PRIVATE_ERROR https://private.invalid/request-input secret"
+    error_body = lambda code: {"status": {"error_code": code, "error_message": private * 2048}}
+    cases = (
+        ("documented nested rate limit", [error_body(429) for _ in range(8)], True),
+        ("all set nested code values", [error_body(code) for code in (0, "429", "0", "", False, {}, [], 1)], True),
+        ("absent and null nested code", [
+            {"field": [1]}, {"field": [1], "status": None}, {"field": [1], "status": {}},
+            {"field": [1], "status": {"error_code": None, "error_message": private}},
+            {"field": [1], "status": "ok"}, {"field": [1], "status": False},
+            {"field": [1], "status": []}, {"field": [1], "status": {"message": "ok"}}], False),
+    )
+    for label, bodies, rejected in cases:
+        nested = _nested_refusal_scenario(bodies)
+        module, status = nested["module"], nested["status"]
+        diagnostic = status["probe_diagnostics"]
+        gecko = [row for row in diagnostic["probes"] if row["source"] == "geckoterminal"]
+        check(label + ": engine predicate matches explicit rejection expectation",
+              all(module.risk._is_error_body(body) is rejected for body in bodies))
+        check(label + ": failed documents never become field observations",
+              len(nested["measures"]) == 1
+              and nested["measures"][0][0]["geckoterminal"]["probes"] == (0 if rejected else 8)
+              and len(nested["measures"][0][1]["geckoterminal"]) == (0 if rejected else 8)
+              and nested["result"] == 0 and not module._FAILURES)
+        check(label + ": all fixed probes keep every safe HTTP200 attempt",
+              len(gecko) == 8 and all(row["probe"] == "fields-%02d" % (index + 1)
+                  and row["counts_for_blindness"] is True
+                  and row["attempts"] == [{"http_status": "200", "transport_exit": 0,
+                      "usable_body": not rejected, "reason": "vendor_rejected" if rejected else "ok"}]
+                      * (3 if rejected else 1) for index, row in enumerate(gecko)))
+        check(label + ": source aggregates and status preserve blindness",
+              diagnostic["source_counts"]["geckoterminal"] == {
+                  "probes": 8, "usable": 0 if rejected else 8, "blind": 8 if rejected else 0,
+                  "blindness_excluded": 0}
+              and status["unobserved_sources"] == (["geckoterminal"] if rejected else [])
+              and status["unobserved_probes"] == (8 if rejected else 0)
+              and status["status"] == ("blind" if rejected else "green"))
+        public = json.dumps(status) + nested["stdout"] + repr(module._UNOBSERVED)
+        check(label + ": nested Vendor prose stays private",
+              not any(value in public for value in (private, "NESTED_PRIVATE_ERROR", "https://", "secret")))
+        check(label + ": original requests and HTTP-based pacing remain unchanged",
+              len(nested["requests"]) == (56 if rejected else 40)
+              and nested["sleeps"].count(3.0) == (16 if rejected else 0)
+              and nested["sleeps"].count(20.0) == 0 and nested["sleeps"].count(5.0) == 8
+              and nested["sleeps"].count(1.5) == 32)
+        check(label + ": fake transport protects baseline and committed artifacts",
+              not nested["network"] and nested["baseline_exact"] and nested["protected"])
+
+
 def test_freeze_acceptance_uses_the_existing_offline_registration():
     """The additive cases run through the unchanged discovered runner and CI step."""
     with open(os.path.join(ROOT, ".github", "workflows", "test.yml"), encoding="utf-8") as f:
@@ -585,7 +899,9 @@ def test_freeze_acceptance_uses_the_existing_offline_registration():
     check("the observed guard remains registered exactly once",
           workflow.count("run: python tests/test_upstream_contract_is_observed.py") == 1)
     check("the discovered runner sees every new freeze case",
-          sum(name.startswith("test_") for name in globals()) == 12)
+          sum(name.startswith("test_") for name in globals()) == 13
+          and callable(globals().get(
+              "test_upstream_refusal_diagnostics_survive_the_real_monitor_and_status_handoff")))
 
 
 def main():
