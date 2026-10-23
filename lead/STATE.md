@@ -20,9 +20,13 @@ or why. Keep all existing probes and scientific bars. See reviews/T-058.md.
 Current master access records16 of17 RugCheck purposes usable, with one purpose
 still HTTP400 through all attempts and a separate recovered400/200 attempt.
 Instrument/source approval does not claim that Vendor rejection is eliminated.
-T-060 finite sessions are in isolated tests-first implementation at base173f4ab,
-under pre-acceptance A1/A2. Acceptancefb0309f is tests-only and parent-red10/10.
-Its real pilot and launch still require all reviewed source publication gates.
+T-060 candidate4cb3166 is held after fresh round-one CHANGES_REQUIRED6/12 and
+two material adversarial findings: cross-version history loss and a normal
+start admission that needs a forbidden seventeenth read. Source Linux/all45 and
+both builds pass but do not override those findings. The Windows full was held
+before invocation. A6/A7 require separate tests-first repairs under unchanged
+proof/receipt/budget/scientific rules; see reviews/T-060-round1.md. A fresh
+combined second round and all publication/pilot gates remain required.
 No new scientific clock has started. T047 and its held
 dependencies remain outside this authorization.
 Earlier detailed source/review/release records remain in Git history at 53e3549
