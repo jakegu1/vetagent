@@ -1,0 +1,1092 @@
+{
+  "base_state": {
+    "chunks": [],
+    "cohort": [
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-0",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA11"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-1",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA12"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-2",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA13"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-3",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA14"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-4",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA15"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-5",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA16"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-6",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA17"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-7",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA18"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-8",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA19"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-9",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1A"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-10",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1B"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-11",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1C"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-12",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1D"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-13",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1E"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-14",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1F"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-15",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1G"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-16",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1H"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-17",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1J"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-18",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1K"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-19",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1L"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-20",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1M"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-21",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1N"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-22",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1P"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-23",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1Q"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-24",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1R"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-25",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1S"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-26",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1T"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-27",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1U"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-28",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1V"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-29",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1W"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-30",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1X"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-31",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1Y"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-32",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1Z"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-33",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1a"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-34",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1b"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-35",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1c"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-36",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1d"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-37",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1e"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-38",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1f"
+      },
+      {
+        "enrollment": {
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "http": "200",
+          "ts": 1792454400.0
+        },
+        "group": "fresh",
+        "label": "fresh-39",
+        "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1g"
+      },
+      {
+        "group": "control",
+        "label": "USDC",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      },
+      {
+        "group": "control",
+        "label": "USDT",
+        "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"
+      },
+      {
+        "group": "control",
+        "label": "BONK",
+        "mint": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"
+      },
+      {
+        "group": "control",
+        "label": "PYUSD",
+        "mint": "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo"
+      },
+      {
+        "group": "control",
+        "label": "BERN",
+        "mint": "CKfatsPMUf8SkiURsDXs7eK6GWb4Jsd6UDbs7twMCWxo"
+      },
+      {
+        "group": "control",
+        "label": "TRUMP",
+        "mint": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"
+      },
+      {
+        "group": "control",
+        "label": "W",
+        "mint": "85VBFQZC9TZkfaptBWjvUw7YbZjy52A6mjtPGjstQAmQ"
+      },
+      {
+        "group": "control",
+        "label": "JUP",
+        "mint": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN"
+      },
+      {
+        "group": "control",
+        "label": "WIF",
+        "mint": "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm"
+      },
+      {
+        "group": "control",
+        "label": "JTO",
+        "mint": "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL"
+      },
+      {
+        "group": "control",
+        "label": "RAY",
+        "mint": "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R"
+      },
+      {
+        "group": "control",
+        "label": "PYTH",
+        "mint": "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3"
+      },
+      {
+        "group": "control",
+        "label": "ORCA",
+        "mint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE"
+      },
+      {
+        "group": "control",
+        "label": "mSOL",
+        "mint": "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So"
+      },
+      {
+        "group": "control",
+        "label": "jitoSOL",
+        "mint": "J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn"
+      },
+      {
+        "group": "control",
+        "label": "RENDER",
+        "mint": "rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof"
+      },
+      {
+        "group": "control",
+        "label": "HNT",
+        "mint": "hntyVP6YFm1Hg25TN9WGLqM12b8TQmcknKrdu1oxWux"
+      },
+      {
+        "group": "control",
+        "label": "WSOL",
+        "mint": "So11111111111111111111111111111111111111112"
+      }
+    ],
+    "ends_at": 1792627200.0,
+    "generation": 0,
+    "origin_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "origin_run": 1,
+    "parent": null,
+    "phase": "tick",
+    "requests": {
+      "gecko": 0,
+      "rugcheck": 0
+    },
+    "schema": 1,
+    "slots": [],
+    "source": {
+      "driver": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "probe": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "workflow": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    "started_at": 1792454400.0,
+    "status": "active",
+    "study": "legacy-fixture",
+    "used_studies": [
+      "legacy-fixture"
+    ]
+  },
+  "cases": [
+    {
+      "expected": {
+        "censored": true,
+        "coverage": {
+          "control": {
+            "attempted_cells": 0,
+            "attempted_failed_requests": 0,
+            "expected_cells": 3474,
+            "fields": {
+              "detectedAt": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 3474,
+                "outside_window": 0,
+                "usable": 0
+              },
+              "freeze_or_mint": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 3474,
+                "outside_window": 0,
+                "usable": 0
+              },
+              "mintCloseAuthority": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 3474,
+                "outside_window": 0,
+                "usable": 0
+              },
+              "pausableConfig": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 3474,
+                "outside_window": 0,
+                "usable": 0
+              },
+              "permanentDelegate": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 3474,
+                "outside_window": 0,
+                "usable": 0
+              },
+              "score_normalised": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 3474,
+                "outside_window": 0,
+                "usable": 0
+              },
+              "topHolders_n": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 3474,
+                "outside_window": 0,
+                "usable": 0
+              },
+              "totalHolders": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 3474,
+                "outside_window": 0,
+                "usable": 0
+              }
+            },
+            "never_attempted_cells": 3474,
+            "observation_intervals": [],
+            "population": 18,
+            "scheduled_slots": 193,
+            "slots": {
+              "0": {
+                "attempted_cells": 0,
+                "never_attempted_cells": 18
+              },
+              "176": {
+                "attempted_cells": 0,
+                "never_attempted_cells": 18
+              }
+            }
+          },
+          "fresh": {
+            "attempted_cells": 2,
+            "attempted_failed_requests": 0,
+            "expected_cells": 7720,
+            "fields": {
+              "detectedAt": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 7718,
+                "outside_window": 0,
+                "usable": 2
+              },
+              "freeze_or_mint": {
+                "attempted_unavailable_or_invalid": 2,
+                "never_attempted": 7718,
+                "outside_window": 0,
+                "usable": 0
+              },
+              "mintCloseAuthority": {
+                "attempted_unavailable_or_invalid": 2,
+                "never_attempted": 7718,
+                "outside_window": 0,
+                "usable": 0
+              },
+              "pausableConfig": {
+                "attempted_unavailable_or_invalid": 2,
+                "never_attempted": 7718,
+                "outside_window": 0,
+                "usable": 0
+              },
+              "permanentDelegate": {
+                "attempted_unavailable_or_invalid": 2,
+                "never_attempted": 7718,
+                "outside_window": 0,
+                "usable": 0
+              },
+              "score_normalised": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 7718,
+                "outside_window": 0,
+                "usable": 2
+              },
+              "topHolders_n": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 7718,
+                "outside_window": 0,
+                "usable": 2
+              },
+              "totalHolders": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 7718,
+                "outside_window": 0,
+                "usable": 2
+              }
+            },
+            "never_attempted_cells": 7718,
+            "observation_intervals": [
+              {
+                "first_response_at": 1792454402.0,
+                "last_response_at": 1792454402.0,
+                "responses": 1,
+                "slot": 0
+              },
+              {
+                "first_response_at": 1792612802.0,
+                "last_response_at": 1792612802.0,
+                "responses": 1,
+                "slot": 176
+              }
+            ],
+            "population": 40,
+            "scheduled_slots": 193,
+            "slots": {
+              "0": {
+                "attempted_cells": 1,
+                "never_attempted_cells": 39
+              },
+              "176": {
+                "attempted_cells": 1,
+                "never_attempted_cells": 39
+              }
+            }
+          }
+        },
+        "duration_seconds": 172800,
+        "ends_at": 1792627200.0,
+        "events": [
+          {
+            "elapsed_interval_minutes": [
+              0.03333333333333333,
+              2640.0333333333333
+            ],
+            "elapsed_minutes": 2640.0333333333333,
+            "gap_censored": true,
+            "index_age_interval_minutes": [
+              1.0333333333333334,
+              2641.0333333333333
+            ],
+            "index_origin_compatible": true,
+            "interval_end": 1792612802.0,
+            "interval_start": 1792454402.0,
+            "lower_bound_minutes": 1.0333333333333334,
+            "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA11",
+            "tail_location": "ambiguous"
+          }
+        ],
+        "expected_score_cells": 7720,
+        "final_tenth_start": 1792609920.0,
+        "fresh_enrolled": 40,
+        "latest_flip": {
+          "elapsed_interval_minutes": [
+            0.03333333333333333,
+            2640.0333333333333
+          ],
+          "elapsed_minutes": 2640.0333333333333,
+          "gap_censored": true,
+          "index_age_interval_minutes": [
+            1.0333333333333334,
+            2641.0333333333333
+          ],
+          "index_origin_compatible": true,
+          "interval_end": 1792612802.0,
+          "interval_start": 1792454402.0,
+          "lower_bound_minutes": 1.0333333333333334,
+          "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA11",
+          "tail_location": "ambiguous"
+        },
+        "losses": [],
+        "missing_slot_intervals": [],
+        "negative_tail_established": false,
+        "not_observed_score_cells": 7718,
+        "observed_score_cells": 2,
+        "outside_window_observations": 0,
+        "proposal": "inconclusive",
+        "proposed_lower_bound_minutes": 1.0333333333333334,
+        "started_at": 1792454400.0,
+        "study": "legacy-fixture",
+        "unavailable_score_cells": 0
+      },
+      "name": "ambiguous-crossing",
+      "rows": [
+        {
+          "age_minutes": 1.0333333333333334,
+          "attempt": 0,
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "gated": {
+            "freeze_or_mint": null,
+            "mintCloseAuthority": null,
+            "pausableConfig": null,
+            "permanentDelegate": null
+          },
+          "http": "200",
+          "kind": "report",
+          "label": "fresh-0",
+          "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA11",
+          "phase": "tick",
+          "request_started_at": 1792454401.0,
+          "score_normalised": 1,
+          "score_state": "observed",
+          "slot": 0,
+          "study": "legacy-fixture",
+          "sweep": 1,
+          "topHolders_n": 0,
+          "totalHolders": 0,
+          "ts": 1792454402.0
+        },
+        {
+          "age_minutes": 2641.0333333333333,
+          "attempt": 0,
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "gated": {
+            "freeze_or_mint": null,
+            "mintCloseAuthority": null,
+            "pausableConfig": null,
+            "permanentDelegate": null
+          },
+          "http": "200",
+          "kind": "report",
+          "label": "fresh-0",
+          "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA11",
+          "phase": "tick",
+          "request_started_at": 1792612801.0,
+          "score_normalised": 80,
+          "score_state": "observed",
+          "slot": 176,
+          "study": "legacy-fixture",
+          "sweep": 177,
+          "topHolders_n": 0,
+          "totalHolders": 0,
+          "ts": 1792612802.0
+        }
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "status": "observed"
+        },
+        {
+          "slot": 176,
+          "status": "observed"
+        }
+      ]
+    },
+    {
+      "expected": {
+        "censored": true,
+        "coverage": {
+          "control": {
+            "attempted_cells": 0,
+            "attempted_failed_requests": 0,
+            "expected_cells": 3474,
+            "fields": {
+              "detectedAt": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 3474,
+                "outside_window": 0,
+                "usable": 0
+              },
+              "freeze_or_mint": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 3474,
+                "outside_window": 0,
+                "usable": 0
+              },
+              "mintCloseAuthority": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 3474,
+                "outside_window": 0,
+                "usable": 0
+              },
+              "pausableConfig": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 3474,
+                "outside_window": 0,
+                "usable": 0
+              },
+              "permanentDelegate": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 3474,
+                "outside_window": 0,
+                "usable": 0
+              },
+              "score_normalised": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 3474,
+                "outside_window": 0,
+                "usable": 0
+              },
+              "topHolders_n": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 3474,
+                "outside_window": 0,
+                "usable": 0
+              },
+              "totalHolders": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 3474,
+                "outside_window": 0,
+                "usable": 0
+              }
+            },
+            "never_attempted_cells": 3474,
+            "observation_intervals": [],
+            "population": 18,
+            "scheduled_slots": 193,
+            "slots": {
+              "0": {
+                "attempted_cells": 0,
+                "never_attempted_cells": 18
+              },
+              "192": {
+                "attempted_cells": 0,
+                "never_attempted_cells": 18
+              }
+            }
+          },
+          "fresh": {
+            "attempted_cells": 2,
+            "attempted_failed_requests": 0,
+            "expected_cells": 7720,
+            "fields": {
+              "detectedAt": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 7718,
+                "outside_window": 1,
+                "usable": 1
+              },
+              "freeze_or_mint": {
+                "attempted_unavailable_or_invalid": 1,
+                "never_attempted": 7718,
+                "outside_window": 1,
+                "usable": 0
+              },
+              "mintCloseAuthority": {
+                "attempted_unavailable_or_invalid": 1,
+                "never_attempted": 7718,
+                "outside_window": 1,
+                "usable": 0
+              },
+              "pausableConfig": {
+                "attempted_unavailable_or_invalid": 1,
+                "never_attempted": 7718,
+                "outside_window": 1,
+                "usable": 0
+              },
+              "permanentDelegate": {
+                "attempted_unavailable_or_invalid": 1,
+                "never_attempted": 7718,
+                "outside_window": 1,
+                "usable": 0
+              },
+              "score_normalised": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 7718,
+                "outside_window": 1,
+                "usable": 1
+              },
+              "topHolders_n": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 7718,
+                "outside_window": 1,
+                "usable": 1
+              },
+              "totalHolders": {
+                "attempted_unavailable_or_invalid": 0,
+                "never_attempted": 7718,
+                "outside_window": 1,
+                "usable": 1
+              }
+            },
+            "never_attempted_cells": 7718,
+            "observation_intervals": [
+              {
+                "first_response_at": 1792454402.0,
+                "last_response_at": 1792454402.0,
+                "responses": 1,
+                "slot": 0
+              },
+              {
+                "first_response_at": 1792627210.0,
+                "last_response_at": 1792627210.0,
+                "responses": 1,
+                "slot": 192
+              }
+            ],
+            "population": 40,
+            "scheduled_slots": 193,
+            "slots": {
+              "0": {
+                "attempted_cells": 1,
+                "never_attempted_cells": 39
+              },
+              "192": {
+                "attempted_cells": 1,
+                "never_attempted_cells": 39
+              }
+            }
+          }
+        },
+        "duration_seconds": 172800,
+        "ends_at": 1792627200.0,
+        "events": [],
+        "expected_score_cells": 7720,
+        "final_tenth_start": 1792609920.0,
+        "fresh_enrolled": 40,
+        "losses": [],
+        "missing_slot_intervals": [],
+        "negative_tail_established": false,
+        "not_observed_score_cells": 7718,
+        "observed_score_cells": 1,
+        "outside_window_observations": 1,
+        "proposal": "inconclusive",
+        "started_at": 1792454400.0,
+        "study": "legacy-fixture",
+        "unavailable_score_cells": 0
+      },
+      "name": "outside-terminal",
+      "rows": [
+        {
+          "age_minutes": 1.0333333333333334,
+          "attempt": 0,
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "gated": {
+            "freeze_or_mint": null,
+            "mintCloseAuthority": null,
+            "pausableConfig": null,
+            "permanentDelegate": null
+          },
+          "http": "200",
+          "kind": "report",
+          "label": "fresh-0",
+          "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA11",
+          "phase": "tick",
+          "request_started_at": 1792454401.0,
+          "score_normalised": 1,
+          "score_state": "observed",
+          "slot": 0,
+          "study": "legacy-fixture",
+          "sweep": 1,
+          "topHolders_n": 0,
+          "totalHolders": 0,
+          "ts": 1792454402.0
+        },
+        {
+          "age_minutes": 2881.1666666666665,
+          "attempt": 0,
+          "body": "ok",
+          "detectedAt": "2026-10-19T23:59:00+00:00",
+          "gated": {
+            "freeze_or_mint": null,
+            "mintCloseAuthority": null,
+            "pausableConfig": null,
+            "permanentDelegate": null
+          },
+          "http": "200",
+          "kind": "report",
+          "label": "fresh-0",
+          "mint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA11",
+          "phase": "tick",
+          "request_started_at": 1792627209.0,
+          "score_normalised": 80,
+          "score_state": "observed",
+          "slot": 192,
+          "study": "legacy-fixture",
+          "sweep": 193,
+          "topHolders_n": 0,
+          "totalHolders": 0,
+          "ts": 1792627210.0
+        }
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "status": "observed"
+        },
+        {
+          "slot": 192,
+          "status": "observed"
+        }
+      ]
+    }
+  ],
+  "legacy_protocol": {
+    "acquisition_grace_seconds": 900,
+    "duration_seconds": 172800,
+    "id": "legacy193",
+    "interval_seconds": 900,
+    "last_slot": 192,
+    "max_vendor_calls": 12414,
+    "planned_starts": 193,
+    "schema": 1
+  },
+  "provenance": {
+    "driver_lf_sha256": "7649040cb53bee691ea678d0c7876bda772d48ffc12fa5c04510715e31a3fe29",
+    "head": "5b1f13a4ac2a239ff7989cc5c572784decf2e750"
+  }
+}
