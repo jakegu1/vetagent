@@ -10,10 +10,12 @@ immutable. Do not launch before all pre-registered conditions are met.
 
 ## New independent study preparation
 
-T-058 is in progress: isolated executor preserves per-probe refusal evidence and
-transport outcomes without identifying inputs. Lead owns capped real diagnosis,
-CI readback and integration. Source-only historical HTTP400 counts cannot prove
-which old requests failed or why. Keep all existing probes and scientific bars.
+T-058 sourcefa7de79 has fresh combined round-two approval12/12/RED-TEAM:none,
+independent complete45/native0/all999 raw bytes exact and actual source Linux
+39963755437 with all45/upstream/backfill/two locked builds verified. The lead
+is integrating it and owns the remaining integration/master publication gates.
+Source-only historical HTTP400 counts cannot prove which old requests failed
+or why. Keep all existing probes and scientific bars. See reviews/T-058.md.
 T-059 is in isolated tests-first implementation under its adopted192-core spec;
 T-060 finite session integration is ready and waits for T059 source approval.
 No new scientific clock has started. T047 and its held
