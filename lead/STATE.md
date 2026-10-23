@@ -20,8 +20,9 @@ The authoritative A1 amendment atacdfd0d preceded the tests-only commit.
 T057 A1 is now independently approved12/12 at4b4dbb3. Its new independent
 complete45 passes with raw995 exact, and actual feature Linux39941061884 passes
 all45 and both locked builds. Normal mergefb1b1ec integrates the reviewed source;
-ae6c764 normally retains current bot dataccbdcb6. Generation, post-integration
-checks, actual master gates, publication read-back and the one real canary remain
+ae6c764 normally retains current bot dataccbdcb6. Explicit generation passes;
+only proved recent-display and line-ending output is restored from exact external
+copies. Post-integration checks, actual master gates, publication read-back and the one real canary remain
 pending. No new scientific study is authorized; a separately registered study
 remains a recommendation only after operational proof.
 
@@ -98,8 +99,9 @@ all45, upstream/backfill and two locked builds; exact checkout, command order,
 source and downloaded lock Artifact provenance are verified.
 
 Normal mergefb1b1ec integrates the reviewed source and ae6c764 retains all latest
-scheduled dataccbdcb6. Next: explicit generation, a frozen post-integration
-complete45, actual master/locked gates, manual-only workflow read-back and one
+scheduled dataccbdcb6. Explicit generation succeeds; only proved recent-display
+and line-ending output is restored from exact external raw copies. Next: a frozen
+post-integration complete45, actual master/locked gates, manual-only workflow read-back and one
 real-clock synthetic canary. Deployment and readiness remain pending.
 
 Both historical cd1c534 and f9cd525 combined44/45 failures remain failed. Their

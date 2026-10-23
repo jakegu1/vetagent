@@ -10,7 +10,7 @@
 The sampling batch is independently source-approved. T057 A1 at4b4dbb3 passes
 fresh review12/12, independent complete45, and actual Linux39941061884 with two
 locked builds. Normal mergesfb1b1ec/ae6c764 retain reviewed source and current
-scheduled dataccbdcb6. Generation, integrated/master gates, actual publication
+scheduled dataccbdcb6. Explicit generation passes. Integrated/master gates, actual publication
 read-back and the single unarmed real-clock canary remain pending. Existing
 production and snapshots are preserved; a new scientific study is a separate
 decision after operational proof. See lead/STATE.md.
