@@ -496,6 +496,7 @@ class NativeAcceptance(unittest.TestCase):
         for captured_status, callback_failure in ((401, False), (403, False), (403, True), (200, False)):
             with Fixture() as f, server(_json({"observed": True}), status=captured_status) as (port, calls, _):
                 held_entries = 0
+                headers_ready, cancellation_started = asyncio.Event(), asyncio.Event()
                 async def hold_after_headers(name, worker):
                     nonlocal held_entries
                     if name != "native_entry":
@@ -503,18 +504,40 @@ class NativeAcceptance(unittest.TestCase):
                     held_entries += 1
                     if held_entries != 1:
                         return
-                    for _ in range(100):
-                        if (worker.directory / "headers.json").exists():
-                            break
-                        await asyncio.sleep(.005)
+                    await worker.wait_file("headers.json")
                     self.assertEqual(json.loads((worker.directory / "headers.json").read_bytes())["status"], captured_status)
+                    headers_ready.set()
                     if callback_failure:
                         raise ValueError()
+                    await asyncio.wait_for(cancellation_started.wait(), timeout=5)
                     await asyncio.sleep(1)
                 async def refusal_control():
                     async with native.adapter_scope(f.runtime, f.private, token=f.token, chain="base",
                             route=("127.0.0.1", port), hooks=hold_after_headers) as adapter:
-                        answer = await risk._fetch_json(f.ds, retries=1, timeout=.7)
+                        native_fetch = risk.cf_fetch
+                        first_task = asyncio.create_task(native_fetch(f.ds, headers={"Accept": "application/json"}))
+                        handed_off = False
+                        async def fetch_after_headers(url, **kwargs):
+                            nonlocal handed_off
+                            if not handed_off:
+                                handed_off = True
+                                cancellation_started.set()
+                                return await first_task
+                            return await native_fetch(url, **kwargs)
+                        startup_started = time.monotonic()
+                        try:
+                            try:
+                                await asyncio.wait_for(headers_ready.wait(), timeout=5)
+                            except asyncio.TimeoutError:
+                                self.fail("native_refusal_headers_unavailable")
+                            self.assertLess(time.monotonic() - startup_started, 5)
+                            with patch.object(risk, "cf_fetch", fetch_after_headers):
+                                answer = await risk._fetch_json(f.ds, retries=1, timeout=.7)
+                        finally:
+                            if not first_task.done():
+                                first_task.cancel()
+                            with contextlib.suppress(asyncio.CancelledError, native.NativeError):
+                                await first_task
                         if captured_status in (401, 403):
                             self.assertIsNone(answer)
                             self.assertEqual(len(adapter.attempts), 1)
