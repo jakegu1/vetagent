@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- lead: close T053 source after reviewed integration and real archive check
-- lead: record independent T053 review and current observation stages
-- T-053: select coverage by observed UTC chronology
-- T-053: acceptance tests
-- T-053: define chronological snapshot coverage acceptance
-- docs: record verified native runtime and archive candidate gates
-- T-052: record reviewed source closure and retained runtime boundaries
-- T-052: preserve datetime pins in native engine scopes
+- lead: close the sampling batch after the verified single real-clock canary
+- lead: record explicit generation and freeze the integrated sampling release candidate
+- lead: accept the independently verified sampling batch for integrated release gates
+- T-057: named change (A1) isolate first cancellation from retry startup
+- lead: resume the verified sampling checkpoint under renewed Owner instruction
+- lead: pause at Owner-requested tests-only checkpoint without publication
+- T-057: named change (A1) acceptance tests and exact fixture extraction
+- lead: freeze positive retry fixture repair before second-round acceptance
 
-_327 more not shown (335 commits in total)._
+_359 more not shown (367 commits in total)._
 
 ## What I got wrong
 
