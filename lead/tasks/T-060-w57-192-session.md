@@ -137,4 +137,19 @@ run200 dangling-intent rejection unchanged. Preserve the earlier fixture failure
 and record a separate `T-060: acceptance test fix (A4)` commit. Do not weaken
 source admission, add a retry, or accept a newer unrelated index as closure.
 
+2026-10-23 A5: add a frozen regression for direct `reconstruct`, `_local`,
+`finalize` and `closure` helper calls with conflicting legacy/new contexts,
+protocols, namespaces or phase selection. Each must reject a conflict before
+constructing or using any GitHub or Vendor transport; required bounded local
+validation and failure preservation may still occur. Trap every transport in
+the regression, not only Vendor calls. Preserve all previous assertions.
+
+The initial private probe attempted a synthetic-repository GitHub read when its
+closure transport trap was missing. Record that attempt honestly; zero Vendor
+calls does not mean zero transport attempts. Retain the unreviewed fix1fcd87f
+and its original probe evidence on the existing branch. On a separate branch
+from6c821c5, adopt this amendment, commit the additive A5 test alone, reproduce
+its red under complete traps, then normally cherry-pick the identical source
+repair. No history rewrite, deleted failure or checker change is authorized.
+
 
