@@ -567,7 +567,7 @@ def identity_alive(identity):
     if sys.platform.startswith("linux"):
         try:
             text = Path("/proc/%d/stat" % pid).read_text()
-        except FileNotFoundError:
+        except (FileNotFoundError, ProcessLookupError):
             return False
         except OSError:
             fail("cleanup_uncertain")

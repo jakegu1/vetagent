@@ -1062,6 +1062,49 @@ class NativeAcceptance(unittest.TestCase):
             self.assertEqual(hashlib.sha256((ROOT / relative).read_bytes().replace(b"\r\n", b"\n")).hexdigest(), expected)
 
 
+class LinuxIdentityDisappearanceTests(unittest.TestCase):
+    """T-055: explicit Linux absence is different from unreadable identity."""
+
+    def setUp(self):
+        self.native = importlib.import_module("w40_native")
+        self.identity = {"pid": 4321, "creation": "987654"}
+
+    def test_exit_during_linux_stat_read_is_explicit_absence(self):
+        for failure in (FileNotFoundError(2, "synthetic absence"),
+                        ProcessLookupError(3, "synthetic process disappeared")):
+            with self.subTest(error=type(failure).__name__), \
+                    patch.object(self.native.sys, "platform", "linux"), \
+                    patch.object(Path, "read_text", side_effect=failure) as read:
+                self.assertFalse(self.native.identity_alive(self.identity))
+                read.assert_called_once_with()
+
+    def test_inaccessible_or_unrelated_os_error_is_still_uncertain(self):
+        for failure in (PermissionError(13, "synthetic unreadable identity"),
+                        OSError(5, "synthetic I/O failure"), OSError(22, "synthetic invalid operation")):
+            with self.subTest(error=type(failure).__name__, errno=failure.errno), \
+                    patch.object(self.native.sys, "platform", "linux"), \
+                    patch.object(Path, "read_text", side_effect=failure), \
+                    self.assertRaisesRegex(self.native.NativeError, "^cleanup_uncertain$"):
+                self.native.identity_alive(self.identity)
+
+    def test_creation_match_mismatch_and_zombie_keep_their_meaning(self):
+        for status, creation, expected in (("S", "987654", True), ("S", "different", False),
+                                            ("Z", "987654", False)):
+            fields = [status] + ["0"] * 18 + [creation]
+            text = "4321 (synthetic worker) " + " ".join(fields)
+            with self.subTest(status=status, creation=creation), \
+                    patch.object(self.native.sys, "platform", "linux"), \
+                    patch.object(Path, "read_text", return_value=text):
+                self.assertIs(self.native.identity_alive(self.identity), expected)
+
+    def test_malformed_linux_stat_remains_uncertain(self):
+        for text in ("", "malformed", "4321 (synthetic worker) S 0"):
+            with self.subTest(stat=text), patch.object(self.native.sys, "platform", "linux"), \
+                    patch.object(Path, "read_text", return_value=text), \
+                    self.assertRaisesRegex(self.native.NativeError, "^cleanup_uncertain$"):
+                self.native.identity_alive(self.identity)
+
+
 def fixture_parent(path):
     config = json.loads(Path(path).read_bytes())
     native = importlib.import_module("w40_native")
