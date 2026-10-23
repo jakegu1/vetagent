@@ -94,6 +94,8 @@ def artifact_name(state, kind, ctx, *, protocol=LEGACY193):
 
 def _validate_state(state, *, protocol=LEGACY193):
     protocol = _protocol(protocol)
+    if protocol is LEGACY193 and isinstance(state, dict) and ("protocol" in state or "protocol_digest" in state):
+        raise StudyError("unexpected_protocol_marker")
     if protocol is not LEGACY193:
         try:
             valid = (isinstance(state, dict) and type(state.get("schema")) is int
@@ -218,6 +220,8 @@ def decode_bundle(data, provenance, expected, *, protocol=LEGACY193):
             files = {name: archive.read(name) for name in names}
         manifest = json.loads(files["manifest.json"])
         state = json.loads(files["state.json"])
+        if protocol is LEGACY193 and isinstance(manifest, dict) and ("protocol" in manifest or "protocol_digest" in manifest):
+            raise StudyError("unexpected_protocol_marker")
         rows = [json.loads(line) for line in files["observations.jsonl"].splitlines()]
         _validate_state(state, protocol=protocol)
         ctx = manifest["context"]
@@ -587,8 +591,8 @@ def collect(plan, intent_id, store, ctx, clock=time.time, sleep=time.sleep, on_r
     protocol = _protocol(protocol)
     if plan.get("action") != "collect":
         raise StudyError("intent_required")
+    _validate_state(plan.get("state"), protocol=protocol)
     if protocol is not LEGACY193:
-        _validate_state(plan.get("state"), protocol=protocol)
         if plan["state"]["source"] != ctx.get("source"):
             raise StudyError("source_changed")
         if (plan.get("phase") == "tick" and
