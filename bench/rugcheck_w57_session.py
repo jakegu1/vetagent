@@ -687,6 +687,37 @@ def verify_result(store, ident, state, ctx, namespace):
     return {"id": ident, "digest": result["digest"]}
 
 
+def _canary_intents(store, metadata, chain):
+    """The three result receipts prove preserved intent ZIPs, not just IDs."""
+    listed = {row["id"]: row for row in metadata}
+    consumed = set()
+    try:
+        for reference, result in chain:
+            state, ctx = result["state"], result["manifest"]["context"]
+            receipt = state["session"]["intent_receipt"]
+            if (set(receipt) != {"id", "digest", "zip_digest"} or type(receipt["id"]) is not int
+                    or receipt["id"] <= 0 or receipt["id"] in consumed
+                    or state.get("intent") != {"id": receipt["id"], "digest": receipt["digest"]}
+                    or listed[reference["id"]]["name"] != artifact_name(state, "result", ctx, "canary")
+                    or listed[receipt["id"]]["name"] != artifact_name(state, "intent", ctx, "canary")
+                    or listed[receipt["id"]]["digest"] != "sha256:" + receipt["zip_digest"]):
+                raise StudyError("canary_intent_proof")
+            intent = store.load(receipt["id"])
+            prepared = intent["state"]
+            if (intent["manifest"]["kind"] != "intent" or intent["manifest"]["context"] != ctx
+                    or intent["transport"]["kind"] != "intent" or intent["transport"]["namespace"] != "canary"
+                    or intent["digest"] != receipt["digest"] or intent["zip_digest"] != receipt["zip_digest"]
+                    or any(prepared.get(key) != state.get(key) for key in
+                           ("study", "generation", "parent", "source", "members", "started_at", "ends_at", "slot"))
+                    or prepared["session"]["freeze"] != state["session"]["freeze"]):
+                raise StudyError("canary_intent_proof")
+            consumed.update((reference["id"], receipt["id"]))
+        if consumed != set(listed):
+            raise StudyError("canary_intent_proof")
+    except (KeyError, TypeError, ValueError):
+        raise StudyError("canary_intent_proof") from None
+
+
 def reconstruct(store, ctx, study, namespace="live"):
     metadata = _run_rows(store, ctx, namespace)
     if not metadata:
@@ -728,6 +759,7 @@ def reconstruct(store, ctx, study, namespace="live"):
         answer["session_clock_proof_coverage"] = {"generations": len(chain),
                                                  "valid": sum(_state_clock_stable(part["state"]) for _, part in chain)}
         return answer
+    _canary_intents(store, metadata, chain)
     cells = {(row["slot"], row["member"]) for row in rows}
     passed = (state["status"] == "completed" and len(chain) == 3 and len(cells) == len(rows) == 189
               and [item["slot"] for item in timings] == [0, 1, 2]
@@ -923,7 +955,10 @@ def closure(out, ctx, clock, phase):
                 return metadata
             def load(self, ident):
                 return latest if ident == reference["id"] else store.load(ident)
-        report = reconstruct(Cached(), ctx, state["study"], namespace)
+        try:
+            report = reconstruct(Cached(), ctx, state["study"], namespace)
+        except StudyError as exc:
+            report.update(coverage="failed_or_unknown_proof", failure=str(exc), last_durable=reference)
     write_bundle(out / "result", state, rows, "result", ctx, namespace)
     _atomic(out / "closure.json", core.encoded({"state": state, "rows": rows, "last": reference,
                                                "rescue": rescue, "namespace": namespace,
