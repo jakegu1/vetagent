@@ -72,3 +72,14 @@ Artifacts. The lead alone makes capped real requests and inspects actual CI.
 Threats include misattributed retries, Vendor prose leaking an input or secret,
 partial curl output voting as healthy, and a repaired instrument being mistaken
 for proof of a repaired Vendor incident. No reduced coverage or green-by-retry.
+
+## Amendments
+
+2026-10-23 A1, before acceptance: the conflict search identifies the exact count
+in `test_freeze_acceptance_uses_the_existing_offline_registration`. Permit its
+named assertion to change from twelve functions to the explicit new total
+(thirteen if one new acceptance function is added). Keep the original discovered
+functions and assert the new named acceptance is discovered. Add a normal
+`test_` acceptance function; do not hide it behind a separately maintained runner.
+No other original assertion is relaxed. Baseline comparison bands and schema
+guards retain their original semantics; diagnostic status fields are additive.
