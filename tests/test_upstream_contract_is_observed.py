@@ -785,7 +785,9 @@ def test_freeze_acceptance_uses_the_existing_offline_registration():
     check("the observed guard remains registered exactly once",
           workflow.count("run: python tests/test_upstream_contract_is_observed.py") == 1)
     check("the discovered runner sees every new freeze case",
-          sum(name.startswith("test_") for name in globals()) == 12)
+          sum(name.startswith("test_") for name in globals()) == 13
+          and callable(globals().get(
+              "test_upstream_refusal_diagnostics_survive_the_real_monitor_and_status_handoff")))
 
 
 def main():
