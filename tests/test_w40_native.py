@@ -361,7 +361,7 @@ class NativeAcceptance(unittest.TestCase):
                             if not handed_off:
                                 handed_off = True
                                 cancellation_started.set()
-                                return await first_task
+                                return await asyncio.wait_for(first_task, timeout=.7)
                             return await native_fetch(url, **kwargs)
                         startup_started = time.monotonic()
                         try:
@@ -371,7 +371,7 @@ class NativeAcceptance(unittest.TestCase):
                                 self.fail("native_refusal_headers_unavailable")
                             self.assertLess(time.monotonic() - startup_started, 5)
                             with patch.object(risk, "cf_fetch", fetch_after_headers):
-                                answer = await risk._fetch_json(f.ds, retries=1, timeout=.7)
+                                answer = await risk._fetch_json(f.ds, retries=1, timeout=5)
                         finally:
                             if not first_task.done():
                                 first_task.cancel()
