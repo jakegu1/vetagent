@@ -152,4 +152,37 @@ from6c821c5, adopt this amendment, commit the additive A5 test alone, reproduce
 its red under complete traps, then normally cherry-pick the identical source
 repair. No history rewrite, deleted failure or checker change is authorized.
 
+2026-10-23 A6, round-one material global-history finding: freeze additive
+regressions for both directions of cross-version history loss. A later legacy
+terminal index must not erase an earlier new-protocol used-study ledger, and a
+later new terminal index must not hide an older legacy active result or its
+used IDs. Scan all six streams and prove coverage/closure of every relevant
+protocol root before enrollment. A used ID in an unrelated terminal ledger is
+not proof that an active study was closed. Preserve the cumulative used-study
+union whenever closure is proved; otherwise refuse within the existing bounds.
+Newer timestamp alone, unmatched-intent pairing alone and latest-root-only state
+are insufficient. Keep valid same-study terminal closure usable, and keep old
+default behavior unchanged. Include the original two fresh-review reproducers,
+healthy compatible history and an explicit proof-budget refusal. No fourth ZIP,
+larger read cap, skipped stream or unverified history assertion is permitted.
+Commit A6 additive tests alone, reproduce their red at4cb3166, then repair this
+one finding separately. Preserve every earlier assertion and failed receipt.
+
+2026-10-23 A7, round-one material CLI-budget seam finding: freeze an additive
+test that executes the actual generated pilot192 then start192 admission graph,
+including uploads, collect, finalize and finish, with a fresh real adapter for
+each CLI entry and actual persisted budget restoration. Do not start from an
+already-active fixture or share a fake service/cache across commands. The
+original4cb path spends12 reads/two ZIPs on admission, four reads/one ZIP on
+its own intent, then attempts the forbidden seventeenth read in finish before
+slot0. Require qualified recruitment, successful persistence/readback and slot0
+within the unchanged whole-phase16-read/three-ZIP/110-second limit. Also exercise
+the ordinary phase budget and physical segment handoff with restored state.
+Preserve deliberate upload/receipt failure evidence and no further acquisition.
+Any cache or redundant-read elimination must retain equivalent provenance and
+fresh persistence verification. Never skip the receipt check, undercount actual
+physical requests, reset counters between commands or increase a budget.
+Commit A7 additive tests alone with this seam red, then its separate repair;
+all prior assertions, pilot/cohort/scientific bars and legacy behavior remain.
+
 
