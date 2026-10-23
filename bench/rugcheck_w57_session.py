@@ -514,8 +514,8 @@ class Artifacts(core.GitHubArtifacts):
                     or run["path"] != core.WORKFLOW or run["head_branch"] != self.ctx["default_branch"]
                     or run["event"] not in (("schedule", "workflow_dispatch") if legacy else ("workflow_dispatch",))
                     or (not legacy and (run.get("run_attempt") != 1
-                                        or run.get("status") not in ("in_progress", "completed")
-                                        or run.get("conclusion") not in (None, "success")))):
+                                        or (run.get("status"), run.get("conclusion")) not in
+                                        (("in_progress", None), ("completed", "success"))))):
                 raise StudyError("artifact_provenance")
             provenance = {"repository": run["repository"]["full_name"], "workflow": run["path"],
                           "branch": run["head_branch"], "run_id": run_id, "head": run["head_sha"]}
