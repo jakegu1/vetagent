@@ -76,6 +76,24 @@ failure in the old refusal fixture. Its original sidecars are unavailable. A
 bounded delayed-start witness reproduces the premise on both candidate and old
 base; T057 names a separate test-only synchronization repair before any edit.
 The fresh T054 A2 review continues; final source publication remains gated.
+The fresh combined round2 source review is now PASS12/12 and RED-TEAM none;
+overall READY remains held for the separately named T057 test repair and new
+exact-head complete gate. Its3718-file evidence seal and every raw source byte
+are verified by the lead. See lead/reviews/T-054.md for the retained qualifications.
+T057 sourcef9cd525 now passes its fresh independent review12/12 and native12/12;
+the lead verifies every2055-file seal member. The final combined source is that
+same frozenf9cd525, preserving all T054 controls and acceptance exactly. Actual
+Linux39925732179 checks out that head and passes all45, upstream/backfill and
+both locked builds with source/Artifact provenance verified. The same T054
+second-round reviewer now owns the sole local complete45 at this changed head.
+That final combined gate retains a new44of45 failure in the200 positive retry
+control. Its exact original sidecars are unobserved. A bounded second-worker
+delay reproduces the old body assertion while retaining real cancellation and
+cleanup. T057 amendmentA1 now separates the intentional cancellation from the
+normal retry's fixture watchdog before new tests. T054 sources remain exact and
+approved; no implementation is merged or published. Normal integration, master
+gates and the actual unarmed canary remain unobserved. No unchanged failed gate
+is retried, and the first T057 review/source-Linux success stays historical.
 No new source publication, actual real-clock canary or scientific enrollment is
 yet observed. The earlier failed source/Linux/full-gate receipts remain failed.
 The normal merge b0fea0e retains
