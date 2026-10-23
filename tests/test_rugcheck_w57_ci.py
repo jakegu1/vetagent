@@ -1957,6 +1957,61 @@ class New192CoreTests(unittest.TestCase):
             driver.decode_bundle(target.getvalue(), context(), context())
         self.assertEqual(driver.decode_bundle(packed, context(), context())["state"], genuine)
 
+    def test_a2_clock_backwards_or_nonfinite_stops_and_retains_attempt_evidence(self):
+        protocol = self.protocol()
+        for bad_at in (1, 2):
+            for fault in ("backward", "nan", "infinity"):
+                with self.subTest(fault=fault, bad_at=bad_at):
+                    clock, store, _, _, initial, _ = self.active()
+                    start = initial["result_state"]["started_at"]
+                    ctx = context(3)
+                    plan = driver.prepare("tick", store, ctx, clock(), study="new-study", protocol=protocol)
+                    ident = store.publish(plan["state"], [], "intent", ctx)
+                    earlier = {key: value[1] for key, value in store.items.items()}
+                    calls = []
+                    def vendor(url):
+                        calls.append(clock())
+                        if len(calls) == bad_at:
+                            clock.value = start - 100 if fault == "backward" else float("nan" if fault == "nan" else "inf")
+                        return "200", {"score_normalised": 1, "detectedAt": plan["state"]["cohort"][0]["enrollment"]["detectedAt"]}
+                    with patch.object(probe, "curl", side_effect=vendor):
+                        state, rows = driver.collect(plan, ident, store, ctx, clock, clock.sleep, protocol=protocol)
+                    self.assertEqual(len(calls), bad_at)
+                    self.assertEqual(state["status"], "failed")
+                    self.assertEqual(state["failure"], "clock_changed")
+                    self.assertEqual(len(rows), bad_at)
+                    uncertain = rows[-1]
+                    self.assertEqual(uncertain["timing_state"], "uncertain")
+                    self.assertEqual(uncertain["http"], "200")
+                    self.assertIsNone(uncertain["score_normalised"])
+                    self.assertTrue(driver.number(uncertain["request_started_at"]))
+                    self.assertEqual(uncertain["ts"], start - 100 if fault == "backward" else None)
+                    answer = driver.readout(state, rows, protocol=protocol)
+                    self.assertEqual(answer["observed_score_cells"], bad_at - 1)
+                    self.assertEqual(answer["coverage"]["fresh"]["attempted_cells"], bad_at)
+                    self.assertEqual(answer["coverage"]["fresh"]["attempted_failed_requests"], 0)
+                    self.assertEqual(answer["coverage"]["fresh"]["timing_uncertain_cells"], 1)
+                    packed = driver.bundle_bytes(state, rows, "result", ctx, protocol=protocol)
+                    self.assertEqual(driver.decode_bundle(packed, ctx, context(), protocol=protocol)["rows"], rows)
+                    self.assertEqual({key: value[1] for key, value in store.items.items()}, earlier)
+        # A backwards step in pacing is detected before another physical call.
+        clock, store, _, _, _, _ = self.active()
+        ctx, calls = context(3), []
+        plan = driver.prepare("tick", store, ctx, clock(), study="new-study", protocol=protocol)
+        ident = store.publish(plan["state"], [], "intent", ctx)
+        def pacing(seconds):
+            clock.sleep(seconds)
+            clock.value -= 100
+        def valid(url):
+            calls.append(clock())
+            return "200", {"score_normalised": 1, "detectedAt": plan["state"]["cohort"][0]["enrollment"]["detectedAt"]}
+        with patch.object(probe, "curl", side_effect=valid):
+            state, rows = driver.collect(plan, ident, store, ctx, clock, pacing, protocol=protocol)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(state["failure"], "clock_changed")
+        self.assertEqual(driver.readout(state, rows, protocol=protocol)["observed_score_cells"], 1)
+
     def test_new_lost_intent_and_partial_finalize_preserve_chain_without_replay(self):
         protocol = self.protocol()
         clock, store, _, _, initial, _ = self.active()
