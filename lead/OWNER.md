@@ -7,6 +7,12 @@
 
 ## Status in one line
 
+The Owner now approves a new independent192-start study only after refusal
+diagnostics, the new protocol, reviewed source and a qualified real pilot. T058
+and T059 are in isolated preparation/implementation; T060 follows their approved
+interfaces. No new scientific clock has started; old studies remain inconclusive.
+Historical delivery records below describe their original source and scope.
+
 The sampling batch is delivered at source049e78c after fresh independent reviews,
 complete local/integrated45, actual feature/master checks and two locked builds.
 The sole real-clock canary39944892451 passes: three preserved pairs,189 synthetic
