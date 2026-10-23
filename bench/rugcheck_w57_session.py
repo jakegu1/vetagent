@@ -341,7 +341,7 @@ def decode_bundle(data, provenance, expected):
         _validate(state, namespace)
         if (transport.get("schema") != 2 or transport.get("control_sources") != state["session"]["freeze"]
                 or transport.get("core_digest") != core.sha(files["manifest.json"])
-                or ctx != manifest.get("context") or ctx.get("attempt") != 1
+                or ctx != manifest.get("context") or type(ctx.get("attempt")) is not int or ctx["attempt"] != 1
                 or composite(ctx.get("control_sources")) != ctx.get("source")
                 or (state.get("status") != "source_changed" and
                     (ctx.get("source") != state["source"] or ctx.get("control_sources") != transport["control_sources"]))
@@ -513,7 +513,7 @@ class Artifacts(core.GitHubArtifacts):
                     or run["head_repository"]["full_name"] != self.ctx["repository"]
                     or run["path"] != core.WORKFLOW or run["head_branch"] != self.ctx["default_branch"]
                     or run["event"] not in (("schedule", "workflow_dispatch") if legacy else ("workflow_dispatch",))
-                    or (not legacy and (run.get("run_attempt") != 1
+                    or (not legacy and (type(run.get("run_attempt")) is not int or run["run_attempt"] != 1
                                         or (run.get("status"), run.get("conclusion")) not in
                                         (("in_progress", None), ("completed", "success"))))):
                 raise StudyError("artifact_provenance")
