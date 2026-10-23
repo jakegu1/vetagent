@@ -2141,8 +2141,20 @@ class New192SessionTests(unittest.TestCase):
                 return module.decode_bundle(data, meta["provenance"], store.ctx, protocol=selected)
 
             def publish(store, state, rows, kind, source_ctx, namespace="live192"):
-                ident = super().publish(state, rows, kind, source_ctx, namespace)
-                store.items[ident][0]["created_at"] = stamp(clock.utc()).replace("+00:00", "Z")
+                if store.fail_upload:
+                    raise driver.StudyError("upload_failed")
+                ident = 9000000 - len(store.items) * 7919
+                name = module.artifact_name(state, kind, source_ctx, namespace)
+                if any((meta["workflow_run"]["id"], meta["name"]) == (source_ctx["run_id"], name)
+                       for meta, _ in store.items.values()):
+                    raise driver.StudyError("duplicate_publication")
+                data = module.bundle_bytes(state, rows, kind, source_ctx, namespace)
+                store.items[ident] = ({"id": ident, "name": name, "expired": False,
+                                       "size_in_bytes": len(data), "digest": "sha256:" + driver.sha(data),
+                                       "created_at": stamp(clock.utc()).replace("+00:00", "Z"),
+                                       "workflow_run": {"id": source_ctx["run_id"], "head_sha": source_ctx["head"],
+                                                        "head_branch": source_ctx["branch"]},
+                                       "provenance": copy.deepcopy(source_ctx)}, data)
                 return ident
         return Store(module, ctx)
 
