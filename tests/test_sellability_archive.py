@@ -3086,6 +3086,313 @@ def test_snapshot_coverage_cli_utc_chronology_and_read_only_contract():
                   and collect.call_count == probe.call_count == write.call_count == 0)
 
 
+def test_snapshot_readiness_real_cli_and_read_only_contract():
+    import hashlib
+    import subprocess
+    import tempfile
+    from pathlib import Path
+    with tempfile.TemporaryDirectory() as tmp:
+        archive = Path(tmp)
+        sources = {
+            "pools-2026-10-01.ndjson": [{"fetched_at": "2026-10-01T10:00:00Z",
+                                        "pool_id": "private-token", "reserve_usd": "12"}],
+            "sellability-2026-10-01.ndjson": [{"seen_at": "2026-10-01T09:00:00Z",
+                                              "token": "private-token", "answered": True}],
+            "runs-2026-10-01.ndjson": [{"fetched_at": "2026-10-01T10:00:00Z", "outcome": "ok"}],
+        }
+        for name, rows in sources.items():
+            (archive / name).write_bytes((json.dumps(rows[0]) + "\n").encode())
+        before = {name: (archive / name).read_bytes() for name in sources}
+        proc = subprocess.run([sys.executable, os.path.join(ROOT, "bench", "snapshot_readiness.py"),
+                               "--archive", tmp, "--as-of", "2026-10-01T12:00:00Z"],
+                              capture_output=True, text=True, encoding="utf-8")
+        check("readiness real CLI exists and completes inventory", proc.returncode == 0,
+              "exit=%d" % proc.returncode)
+        if proc.returncode:
+            return
+        result = json.loads(proc.stdout)
+        check("readiness exit zero never means replay or independent outcomes",
+              result["schema"] == "snapshot-input-readiness-v1"
+              and result["replay_ready"] is False
+              and result["independent_outcomes_established"] is False
+              and result["reasons"] == ["engine_inputs_not_validated", "independent_outcomes_not_established",
+                                        "sellability_response_clock_not_recorded"])
+        check("readiness CLI does not modify archive bytes",
+              before == {name: (archive / name).read_bytes() for name in sources}
+              and set(os.listdir(tmp)) == set(sources))
+        check("readiness includes exact complete byte hashes without raw paths",
+              {f["kind"]: f["sha256"] for f in result["files"]}
+              == {name.split("-")[0]: hashlib.sha256(data).hexdigest() for name, data in before.items()}
+              and all(f["hash_complete"] for f in result["files"])
+              and "private-token" not in proc.stdout and tmp not in proc.stdout)
+
+
+def test_snapshot_readiness_future_response_clock_and_unknown_times():
+    import importlib
+    import tempfile
+    from pathlib import Path
+    try:
+        module = importlib.import_module("snapshot_readiness")
+    except ModuleNotFoundError:
+        check("readiness clock feature exists", False)
+        return
+    with tempfile.TemporaryDirectory() as tmp:
+        rows = [{"seen_at": "2026-09-01T00:00:00Z", "fetched_at": value}
+                for value in ("2026-10-01T13:00:00Z", "2026-10-01T14:00:00+02:00",
+                              "2026-10-01T12:00:00Z", "2026-10-01T12:00:00", "invalid", None)]
+        rows.append({"seen_at": "2026-09-01T00:00:00Z"})
+        path = Path(tmp) / "pools-2026-09-01.ndjson"
+        path.write_bytes(b"".join((json.dumps(row) + "\n").encode() for row in rows))
+        result = module.inventory(tmp, "2026-10-01T12:00:00Z")
+        pool = result["kinds"]["pools"]
+        check("old filename and seen_at cannot admit a future response",
+              pool["eligible_rows"] == 2 and pool["future_rows"] == 1)
+        check("missing naive and invalid response clocks stay unknown",
+              pool["unknown_time_rows"] == 4 and result["inventory_complete"] is False)
+        check("offset-equivalent times use aware UTC observation bounds",
+              pool["observation_min_utc"] == "2026-10-01T12:00:00Z"
+              and pool["observation_max_utc"] == "2026-10-01T13:00:00Z")
+
+
+def test_snapshot_readiness_batch_clocks_and_field_presence_are_not_replay_inputs():
+    import importlib
+    import tempfile
+    from pathlib import Path
+    try:
+        module = importlib.import_module("snapshot_readiness")
+    except ModuleNotFoundError:
+        check("readiness batch-clock distinction exists", False)
+        return
+    with tempfile.TemporaryDirectory() as tmp:
+        rows = [{"seen_at": "2026-10-01T09:00:00Z", "answered": True,
+                 "isHoneypot": False, "fetched_at": "2026-10-01T09:00:00Z"},
+                {"seen_at": None, "answered": False}]
+        (Path(tmp) / "sellability-2026-10-01.ndjson").write_text(
+            "".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+        (Path(tmp) / "runs-2026-10-01.ndjson").write_text(json.dumps({
+            "fetched_at": "2026-10-01T09:00:00Z", "recovery_fetched_at": "2026-10-01T13:00:00Z",
+            "outcome": "ok"}) + "\n", encoding="utf-8")
+        result = module.inventory(tmp, "2026-10-01T12:00:00Z")
+        sell = result["kinds"]["sellability"]
+        check("sellability batch timestamp never certifies response availability",
+              sell["eligible_rows"] == 0 and sell["unknown_time_rows"] == 2
+              and sell["batch_time_only_rows"] == 1 and sell["observation_min_utc"] is None)
+        check("field presence is explicit and never called full engine input",
+              sell["field_presence"]["answered"] == 2
+              and sell["field_presence"]["isHoneypot"] == 1
+              and result["full_engine_inputs_validated"] is False)
+        check("a recovered run cannot use its earlier attempt to admit future state",
+              result["kinds"]["runs"]["future_rows"] == 1)
+
+
+def test_snapshot_readiness_absent_empty_corrupt_and_unreadable_are_distinct():
+    import importlib
+    import tempfile
+    from pathlib import Path
+    from unittest.mock import patch
+    try:
+        module = importlib.import_module("snapshot_readiness")
+    except ModuleNotFoundError:
+        check("readiness absence and corruption feature exists", False)
+        return
+    with tempfile.TemporaryDirectory() as tmp:
+        archive = Path(tmp)
+        absent = module.inventory(str(archive / "missing"), "2026-10-01T12:00:00Z")
+        check("absent archive is not empty or unreadable", absent["status"] == "absent"
+              and absent["inventory_complete"] is False and absent["diagnostics"] == ["archive_absent"])
+        for kind in ("pools", "sellability", "runs"):
+            (archive / (kind + "-2026-10-01.ndjson")).write_bytes(b"")
+        empty = module.inventory(tmp, "2026-10-01T12:00:00Z")
+        check("valid empty source files are inventoried as empty",
+              empty["inventory_complete"] is True
+              and all(f["status"] == "empty" and f["rows"] == 0 for f in empty["files"]))
+        path = archive / "pools-2026-10-01.ndjson"
+        path.write_bytes(b'{"private-key":"private-value"\nnull\n\xff\n')
+        corrupt = module.inventory(tmp, "2026-10-01T12:00:00Z")
+        check("malformed JSON shape and UTF8 remain explicit corrupt input",
+              corrupt["inventory_complete"] is False
+              and corrupt["kinds"]["pools"]["malformed_rows"] == 3
+              and "malformed_input" in corrupt["diagnostics"])
+        with patch.object(module, "_open_readonly", side_effect=PermissionError("private-exception")):
+            unreadable = module.inventory(tmp, "2026-10-01T12:00:00Z")
+        encoded = json.dumps(unreadable)
+        check("unreadable source has fixed diagnostics without exception text",
+              unreadable["inventory_complete"] is False
+              and "source_unreadable" in unreadable["diagnostics"]
+              and "private-exception" not in encoded and "private-key" not in encoded
+              and "private-value" not in encoded and tmp not in encoded)
+
+
+def test_snapshot_readiness_every_cap_is_explicit_and_bounded():
+    import importlib
+    import tempfile
+    from pathlib import Path
+    from unittest.mock import patch
+    try:
+        module = importlib.import_module("snapshot_readiness")
+    except ModuleNotFoundError:
+        check("readiness bounded streaming feature exists", False)
+        return
+    expected_limits = {"max_entries": 256, "max_file_bytes": 64 * 1024 * 1024,
+                       "max_total_bytes": 512 * 1024 * 1024,
+                       "max_line_bytes": 256 * 1024, "max_rows": 1000000}
+    check("readiness production limits match the registered bounds", module.LIMITS == expected_limits)
+    for limit, lowered, diagnostic in (("max_entries", 1, "entry_cap"),
+                                       ("max_file_bytes", 4, "file_byte_cap"),
+                                       ("max_total_bytes", 5, "total_byte_cap"),
+                                       ("max_line_bytes", 3, "line_byte_cap"),
+                                       ("max_rows", 1, "row_cap")):
+        with tempfile.TemporaryDirectory() as tmp:
+            for kind in ("pools", "runs"):
+                (Path(tmp) / (kind + "-2026-10-01.ndjson")).write_bytes(b"{}\n{}\n")
+            real_open = module._open_readonly
+            calls = []
+            def count_open(path):
+                calls.append(1)
+                return real_open(path)
+            with patch.object(module, "_open_readonly", side_effect=count_open):
+                result = module.inventory(tmp, "2026-10-01T12:00:00Z", limits={limit: lowered})
+            check("readiness " + diagnostic + " cannot claim complete coverage",
+                  result["inventory_complete"] is False and diagnostic in result["diagnostics"]
+                  and result["limits"][limit] == lowered)
+            if limit in ("max_entries", "max_file_bytes", "max_total_bytes"):
+                check("readiness " + diagnostic + " refuses before opening input", calls == [])
+            if limit == "max_line_bytes":
+                check("readiness oversized line has no complete digest",
+                      any(f["sha256"] is None and not f["hash_complete"] for f in result["files"]))
+
+
+def test_snapshot_readiness_source_mutation_and_symlinks_are_refused():
+    import importlib
+    import tempfile
+    from pathlib import Path
+    from unittest.mock import patch
+    try:
+        module = importlib.import_module("snapshot_readiness")
+    except ModuleNotFoundError:
+        check("readiness stable source identity feature exists", False)
+        return
+    with tempfile.TemporaryDirectory() as tmp:
+        archive = Path(tmp)
+        path = archive / "pools-2026-10-01.ndjson"
+        path.write_bytes(b"{}\n{}\n")
+        real_open = module._open_readonly
+        class ChangingReader:
+            def __init__(self, stream):
+                self.stream = stream
+                self.changed = False
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return self.stream.__exit__(*args)
+            def __getattr__(self, name):
+                return getattr(self.stream, name)
+            def readline(self, size):
+                line = self.stream.readline(size)
+                if not self.changed:
+                    self.changed = True
+                    with path.open("ab") as writer:
+                        writer.write(b"{}\n")
+                return line
+        with patch.object(module, "_open_readonly", side_effect=lambda p: ChangingReader(real_open(p))):
+            changed = module.inventory(tmp, "2026-10-01T12:00:00Z")
+        check("mutation during streaming invalidates source and digest",
+              changed["inventory_complete"] is False
+              and "source_changed" in changed["diagnostics"]
+              and changed["files"][0]["sha256"] is None)
+        original_lstat = module.os.lstat
+        def synthetic_symlink(value, *args, **kwargs):
+            observed = original_lstat(value, *args, **kwargs)
+            if os.fspath(value) == str(path):
+                import stat
+                values = list(observed)
+                values[0] = stat.S_IFLNK | 0o777
+                return os.stat_result(values)
+            return observed
+        with patch.object(module.os, "lstat", side_effect=synthetic_symlink), \
+             patch.object(module, "_open_readonly", side_effect=AssertionError("must refuse before open")):
+            refused = module.inventory(tmp, "2026-10-01T12:00:00Z")
+        check("symlink source is refused before reading on every platform",
+              refused["inventory_complete"] is False and "source_symlink" in refused["diagnostics"])
+
+
+def test_snapshot_readiness_safe_output_and_hostile_cli_arguments():
+    import importlib
+    import subprocess
+    import tempfile
+    from pathlib import Path
+    try:
+        module = importlib.import_module("snapshot_readiness")
+    except ModuleNotFoundError:
+        check("readiness privacy allowlist feature exists", False)
+        return
+    secret = "private-identity-value"
+    with tempfile.TemporaryDirectory() as tmp:
+        (Path(tmp) / "pools-2026-10-01.ndjson").write_text(json.dumps({
+            secret: {secret: secret}, "pool_id": secret, "base_token": secret,
+            "name": secret, "query": secret, "fetched_at": secret}) + "\n", encoding="utf-8")
+        (Path(tmp) / (secret + ".ndjson")).write_text(secret, encoding="utf-8")
+        result = module.inventory(tmp, "2026-10-01T12:00:00Z")
+        check("untrusted keys identities and file paths cannot enter inventory output",
+              secret not in json.dumps(result) and tmp not in json.dumps(result))
+        allowed_top = {"schema", "as_of_utc", "status", "inventory_complete", "replay_ready",
+                       "independent_outcomes_established", "full_engine_inputs_validated", "reasons",
+                       "limits", "diagnostics", "entries_seen", "ignored_entries", "files", "kinds"}
+        check("readiness uses the fixed aggregate output schema", set(result) == allowed_top)
+        for args in (["--archive", tmp, "--as-of", secret],
+                     ["--archive", tmp, "--as-of", "2026-10-01T00:00:00"],
+                     ["--archive", tmp, "--as-of", "2026-10-01T00:00:00Z", "--" + secret],
+                     ["--archive", "\x00" + secret, "--as-of", "2026-10-01T00:00:00Z"]):
+            if any("\x00" in value for value in args):
+                import contextlib
+                stream = io.StringIO()
+                with contextlib.redirect_stdout(stream), contextlib.redirect_stderr(stream):
+                    code = module.main(args)
+                output = stream.getvalue()
+            else:
+                proc = subprocess.run([sys.executable, os.path.join(ROOT, "bench", "snapshot_readiness.py")] + args,
+                                      capture_output=True, text=True, encoding="utf-8")
+                code, output = proc.returncode, proc.stdout + proc.stderr
+            check("hostile readiness CLI arguments have fixed safe diagnostics",
+                  code == 2 and secret not in output and tmp not in output
+                  and json.loads(output)["diagnostics"] == ["invalid_arguments"])
+
+
+def test_snapshot_readiness_never_calls_network_or_assessment():
+    import ast
+    import importlib
+    import tempfile
+    import urllib.request
+    from pathlib import Path
+    from unittest.mock import patch
+    try:
+        module = importlib.import_module("snapshot_readiness")
+    except ModuleNotFoundError:
+        check("readiness offline-only implementation exists", False)
+        return
+    def forbidden(*args, **kwargs):
+        raise AssertionError("inventory must remain offline")
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "pools-2026-10-01.ndjson"
+        path.write_bytes(b'{"fetched_at":"2026-10-01T10:00:00Z"}\n')
+        before = path.read_bytes()
+        with patch("socket.socket", side_effect=forbidden), \
+             patch.object(urllib.request, "urlopen", side_effect=forbidden), \
+             patch.object(snapshot, "fetch_json", side_effect=forbidden), \
+             patch.object(snapshot, "collect", side_effect=forbidden), \
+             patch.object(snapshot, "probe_sellability", side_effect=forbidden):
+            result = module.inventory(tmp, "2026-10-01T12:00:00Z")
+        check("readiness inventory is offline and archive bytes are preserved",
+              result["kinds"]["pools"]["eligible_rows"] == 1 and path.read_bytes() == before)
+    tree = ast.parse(Path(module.__file__).read_text(encoding="utf-8"))
+    imports = {node.module.split(".")[0] for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)}
+    imports.update(alias.name.split(".")[0] for node in ast.walk(tree) if isinstance(node, ast.Import)
+                   for alias in node.names)
+    check("readiness imports no network engine collector or label implementation",
+          imports.issubset({"argparse", "datetime", "hashlib", "json", "os", "re", "stat", "sys"}),
+          str(sorted(imports)))
+
+
 def main():
     print("=" * 68)
     print("Sellability archive: asking on the day, because later is too late")
