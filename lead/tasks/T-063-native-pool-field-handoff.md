@@ -187,3 +187,48 @@ alone as a tests-only named change D. With the corrected fixture, replay the
 actual pre-quote parent _row in an isolated in-memory namespace and verify that
 the new quote acceptance still fails for its real missing-field defect. The
 repaired-source focused run must pass. All old definitions remain exact.
+
+### A4: contain an unrepresentable optional quote without losing the old row
+
+Independent R1 reproduced a row-retention regression at candidate e01ad2d.
+Python's JSON decoder accepts the valid numeric lexeme 1e400 as an infinite
+float. Copying that optional quote to the row makes the current serializer emit
+Infinity, and the unchanged strict inventory rejects the whole row. The parent
+omits that optional field and retains the old row. This is a synthetic prospective
+boundary finding; no historical occurrence or Vendor behavior is established.
+
+Acceptance criterion3 applies to JSON-representable raw values: retain them
+without coercion, including malformed-valued but valid JSON containers. For a
+value that cannot be encoded as strict JSON, instead retain the new quote key
+as null and add only the fixed field
+quote_token_price_usd_capture_status = "not_json_representable". That status
+means the original value was not recorded. Missing or explicit null remains
+ordinary null with no capture-status field. Do not stringify nonfinite numbers,
+invent a replacement price, mutate the response, or relax the reader, JSON
+guards, fetcher, engine, row limits or original-field projection. In particular,
+handle nested nonfinite values as well as a scalar overflow. Preserve valid
+finite raw values exactly. No diagnostic status is added to the field inventory
+or interpreted as engine usability in this task.
+
+The source scope permits a small local quote-capture helper in snapshot.py if
+needed, with only TypeError, ValueError or RecursionError from strict JSON
+representability checking contained. Do not catch unrelated collector errors
+or create a general serialization framework. Existing writer behavior and old
+raw fields remain exact; this fix only prevents the newly retained optional
+value from poisoning a previously readable row.
+
+Named change E permits a new tests-only commit titled
+`T-063: named change (E) contain unrepresentable optional quotes`. Append only
+test_snapshot_pool_quote_unrepresentable_row_retained and
+test_snapshot_pool_quote_unrepresentable_writer_reader_cli_handoff, narrowly
+scoped fixtures, and their runner invocations. Keep every earlier acceptance
+definition, assertion and invocation exact. Reproduce the real JSON 1e400
+decode at the candidate, nested nonfinite input, finite/null/missing controls,
+source-input immutability and actual serializer/strict reader/aggregate CLI
+handoff. Require a readable row and unchanged old-field projection, literal
+quote-key membership, fixed capture status only for failed capture, and the
+original time/unknown/full-input semantics. Record the candidate's meaningful
+red before the separate minimal fix. Kill a raw-quote/no-containment mutant
+and verify restoration. A fresh R2 independent functional and adversarial
+review, author/independent/integrated complete45 gates and the existing source
+protection proofs remain required. R1 did not approve the candidate.
