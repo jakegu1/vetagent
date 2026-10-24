@@ -109,6 +109,15 @@ that authorization. Do not request routine technical approval again.
 Read docs/agent-context.md, docs/AUDIT_BRIEF.md, lead/QUALITY.md and config.yml.
 Repository files are English. Owner communications and private business evidence
 stay outside the public tree. Preserve the primary checkout and private caches.
+A subsequent bounded read-only triage found no additional demonstrated product
+defect and changed no implementation. The human-review administrative handoff
+now includes a complete canonical tree of the existing T047 candidate, verified
+against its Git blobs. The original smaller administrative packet remains intact.
+This is source export only, not security analysis, a review verdict or permission
+to integrate T047/T049/T050. A genuinely qualified independent human review or
+legitimately restored original review path must still satisfy the same contract.
+Unrelated authorized technical work and the original study closure continue.
+
 All production probes carry x-mcp-client: vetagent-manual-probe; no risk MCP calls.
 Keep source/cache/benchmark work isolated. Serialize heavy Windows gates on this
 host; isolated Linux CI may overlap on its separate host, tree and cache. Preserve

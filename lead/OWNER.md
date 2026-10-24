@@ -14,15 +14,26 @@ cross-job handoff is independently verified. Its original protocol/window and
 five sources remain frozen. Research results and operational evidence stay private;
 current activity is not a claim of complete coverage or scientific success.
 
-T061/T062 are a related source-reviewed local batch: bounded as-of input
-inventory followed by prospective response-availability clocks. They prevent
-batch/start clocks from impersonating later responses and preserve unknowns.
-Old data are not rewritten and full-engine replay or independent outcomes are
-not established. Both tasks pass fresh required source reviews and complete45.
-Integration validation is mandatory; actual Linux/build/publication is queued
-until the active study has qualified report/preservation/owned-stop evidence,
-because existing push CI accesses real upstreams. This is a technical wait,
-not a new approval request. No new source, scoring policy, label or study is adopted.
+T061/T062/T063 are locally reviewed and normally integrated: bounded as-of
+input inventory, prospective response-availability clocks, literal native pool
+field census and safe raw quote retention. Original data are not rewritten;
+literal field presence does not establish validated engine inputs or replay.
+T063's R1 optional-value serialization regression is repaired and retained in
+the review history. Fresh R2 functional and adversarial reviews approve25bfb43;
+author, independent and merged complete45 all pass. The post-gate closure changes
+only lead metadata and passes its applicable metadata checks.
+
+Actual same-source Linux/two locked builds/publication and the first normal
+scheduled snapshot trial remain pending. The latest order requires the current
+study's qualified report, complete original preservation and owned stop, then
+the future diagnostic repair with independent reviews and full gates, before
+normal source CI and publication. Its accepted diagnostic design is dependency-
+held and unimplemented. Existing normal snapshot activity does not verify the
+unpublished collector. Old research results and all active scientific controls
+remain unchanged. This is a technical wait, not a repeat approval request.
+The bounded next-gap triage found no new demonstrated source defect; it does
+not establish that every possible defect has been excluded.
+
 T047's mandatory security verdict remains incomplete; T049/T050 depend on it.
 Normal technical quality/release work is already authorized; decisions about
 money, rights, scoring rules or new experiments keep their existing gates.
