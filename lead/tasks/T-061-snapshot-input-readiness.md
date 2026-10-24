@@ -111,3 +111,28 @@ test_snapshot_readiness_every_cap_is_explicit_and_bounded, in its own test-only
 commit before source acceptance. Preserve every assertion, all other cases and
 all original archive tests. Keep both original and candidate red outputs. This
 does not change production bounds, coverage, the scientific bar or any old test.
+
+### A2: preserve the as-of order across timestamp precision and offsets
+
+Before acceptance, the executor and two independent reviewers reproduce real
+future data admitted by datetime.fromisoformat normalization: more than six
+fraction digits truncate, and a negative subsecond zero-hour/minute/second UTC
+offset can disappear even with six or fewer fractional digits. This violates
+AC2. Preserve the old candidate and its gate evidence; fix the entire timestamp
+normalization class prospectively in the new offline inventory only.
+
+Authorize additive test_snapshot_readiness_lossy_timestamp_precision_is_unknown
+before the unchanged archive main. Assert request-clock fractions beyond six
+digits, negative fractional offsets with both short and long precision and
+offset seconds cannot be normalized into an admitted response; report unknown
+without echoing raw input. Apply the same acceptance policy to the CLI cutoff,
+returning fixed invalid_as_of diagnostics for unsupported forms. Preserve valid
+exact-cutoff, one-microsecond future, UTC Z and equivalent minute-offset clocks.
+
+The inventory's supported input grammar is now explicit: calendar date, T or
+space separator, hour/minute/second, optional one-to-six decimal fractional
+digits, and Z or a signed hour:minute offset. Unsupported precision/offset forms
+remain unknown, not rewritten timestamps or missing rows. Existing original and
+new acceptance functions/assertions stay exact; this is an additive tests-only
+commit with a reproduced old-source red, followed by the minimal parser fix.
+No active scientific source, record, window, score or decision bar changes.
