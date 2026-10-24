@@ -27,9 +27,11 @@ FIELDS = {"pools": ("pool_id", "base_token", "reserve_usd", "price_usd",
 COUNTS = ("bytes_read", "lines_read", "rows", "malformed_rows", "eligible_rows",
           "future_rows", "unknown_time_rows", "batch_time_only_rows")
 NAME = re.compile(r"(pools|sellability|runs)-(\d{4}-\d{2}-\d{2})\.ndjson\Z")
+CLOCK = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}[T ][0-9]{2}:[0-9]{2}:[0-9]{2}"
+                   r"(?:\.[0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])\Z")
 
 
-def _instant(value):
+def _aware(value):
     if not isinstance(value, str) or not 1 <= len(value) <= 64:
         return None
     try:
@@ -39,6 +41,13 @@ def _instant(value):
         return stamp.astimezone(timezone.utc)
     except (ValueError, OverflowError):
         return None
+
+
+def _instant(value):
+    # Do not let fromisoformat truncate precision or erase a fractional offset.
+    if not isinstance(value, str) or CLOCK.fullmatch(value) is None:
+        return None
+    return _aware(value)
 
 
 def _utc(value):
@@ -246,8 +255,10 @@ def inventory(archive, as_of, limits=None):
                     bounds[key] = value
     result = _result(cutoff, bounds)
     if not valid:
-        _problem(result, "invalid_arguments")
-        result["status"] = "invalid_arguments"
+        # Legacy parsing is used only to choose a safe error, never eligibility.
+        diagnostic = "invalid_as_of" if cutoff is None and _aware(as_of) is not None else "invalid_arguments"
+        _problem(result, diagnostic)
+        result["status"] = diagnostic
         return result
     try:
         archive = os.path.abspath(archive)
@@ -304,19 +315,23 @@ class _Parser(argparse.ArgumentParser):
 
 
 def main(argv=None):
+    diagnostic = "invalid_arguments"
     try:
         parser = _Parser(add_help=False, allow_abbrev=False)
         parser.add_argument("--archive", required=True)
         parser.add_argument("--as-of", required=True)
         args = parser.parse_args(argv)
         result = inventory(args.archive, args.as_of)
+        if "invalid_as_of" in result["diagnostics"]:
+            diagnostic = "invalid_as_of"
+            raise ValueError
         if "invalid_arguments" in result["diagnostics"]:
             raise ValueError
     except (ValueError, TypeError, OverflowError):
-        print(json.dumps({"schema": "snapshot-input-readiness-v1", "status": "invalid_arguments",
+        print(json.dumps({"schema": "snapshot-input-readiness-v1", "status": diagnostic,
                           "inventory_complete": False, "replay_ready": False,
                           "independent_outcomes_established": False,
-                          "diagnostics": ["invalid_arguments"]}, sort_keys=True))
+                          "diagnostics": [diagnostic]}, sort_keys=True))
         return 2
     print(json.dumps(result, sort_keys=True))
     return 0 if result["inventory_complete"] or result["files"] else 1
