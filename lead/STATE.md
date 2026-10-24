@@ -28,6 +28,7 @@ the source's earlier Linux/build evidence remains separately bound toc571d3f.
 |---|---|---|---|
 | T-061 / W7 | source reviewed and normally integrated; release gates outstanding | lead | Run integrated offline gate; defer real Linux/build/publication until the current study has qualified closure |
 | T-062 / W7 | source reviewed and normally integrated; release gates outstanding | lead | Preserve prospective fetch timing and verify the same related-batch release |
+| T-063 / W7 | ready related native-field handoff repair | executor | Tests-first literal field census and prospective raw quote retention, then fresh reviews and complete gates |
 | T-047 / W40 | held, genuine mandatory security verdict incomplete | lead / required reviewer | Preserve candidate and existing qualified handoff; no replay through another AI |
 | T-049 / T-050 | dependency-held drafts | lead | Bind accepted integrated archive/runtime APIs before implementation |
 
@@ -41,6 +42,14 @@ Actual same-source Linux, both locked builds and publication remain outstanding.
 Normal push CI makes real upstream/backfill requests, so publication waits for
 the same current study's qualified report, complete preservation and owned stop.
 No skipped CI, replacement workflow or additional live probe is authorized here.
+The Owner's latest sequence adds an explicit post-window diagnostic prerequisite
+before publication: qualified current-study closure, HTTP/transport/budget refusal
+diagnostic repairs, required fresh reviews and complete gates, normal source CI,
+publication and the first normal snapshot trial. The earlier T061/T062-only
+local-ready certificate is historical and cannot release this expanded batch.
+T063 may proceed now outside the scientific import closure; diagnostic collectors
+remain untouched until qualified closure. Existing finite followup identity,
+original wake-up ledger and maximum count must not be reset or duplicated.
 
 T061 is a bounded offline as-of inventory; T062 adds prospective availability
 clocks around the existing fetch operation, including its original retries and
