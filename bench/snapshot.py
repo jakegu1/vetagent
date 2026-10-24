@@ -49,6 +49,15 @@ DEFAULT_CHAINS = ["eth", "base", "bsc", "solana", "arbitrum", "polygon_pos",
 # Fields recorded per pool. Deliberately the raw observables rather than today's scores —
 # scoring rules change, raw numbers don't. Rescoring history under new rules later is only
 # possible if the raw numbers are there.
+def _pool_quote_fields(value):
+    try:
+        json.dumps(value, ensure_ascii=False, allow_nan=False).encode("utf-8")
+    except (TypeError, ValueError, RecursionError):
+        return {"quote_token_price_usd": None,
+                "quote_token_price_usd_capture_status": "not_json_representable"}
+    return {"quote_token_price_usd": value}
+
+
 def _row(chain, kind, p, seen_at):
     a = p.get("attributes") or {}
     rel = p.get("relationships") or {}
@@ -68,7 +77,7 @@ def _row(chain, kind, p, seen_at):
         "pool_created_at": a.get("pool_created_at"),
         "price_usd": a.get("base_token_price_usd"),
         "price_quote": a.get("base_token_price_quote_token"),
-        "quote_token_price_usd": a.get("quote_token_price_usd"),
+        **_pool_quote_fields(a.get("quote_token_price_usd")),
         "reserve_usd": a.get("reserve_in_usd"),
         "fdv_usd": a.get("fdv_usd"),
         "market_cap_usd": a.get("market_cap_usd"),
