@@ -1,7 +1,7 @@
 ---
 id: T-062
 title: Preserve prospective sellability response availability clocks
-status: draft
+status: ready
 level: 3
 size: M
 depends_on: [T-061]
@@ -24,7 +24,11 @@ adversarial reviews and the existing complete release gates. Stop after those
 gates and an offline collector-to-writer-to-reader handoff. Do not expand into
 new collection, labels, outcomes, scoring or monitoring. W7 remains open.
 
-Adopt only after T-061 final-source reviews and its complete local gate pass.
+T-061 dependency source3316698 is accepted locally after combined second-round
+12/12 and RED-TEAM:none, independent complete45/native0 and executor
+complete45/native0. It remains unpublished pending the live-study boundary.
+Use that exact reviewed dependency as this implementation base; do not import
+the earlier5971f45 candidate or restart its completed review loop.
 Publication must wait for qualified closure of the active frozen study: normal
 publication CI emits Vendor requests. This draft authorizes no actual request,
 pilot, canary, study observation, dispatch or production probe.
