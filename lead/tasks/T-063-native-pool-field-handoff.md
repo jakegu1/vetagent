@@ -135,3 +135,22 @@ actual producer/writer/reader/CLI fake-network witness, exact output source
 hashes, mutant failures/restoration, focused/contract/native complete45 receipts,
 and independent exact-source verdicts. Existing actual archive measurements
 remain private and dated; do not claim that existing historical verdicts changed.
+
+## Amendments
+
+### A1: register the second tests-only addition before dispatching it
+
+The kit's contract checker treats any edit to an already changed acceptance file
+after its first tests-only commit as a named change, even an additive second
+finding's test. The planned two finding histories therefore need an explicit
+registration, not a weaker test contract.
+
+Named change B permits a second tests-only commit titled
+`T-063: named change (B) quote-preservation acceptance`. It may append only
+`test_snapshot_pool_quote_raw_value_preserved` and
+`test_snapshot_pool_quote_writer_reader_cli_handoff`, their narrowly scoped
+synthetic fixtures/helpers if needed, and only their new runner invocations.
+Every old definition/assertion and every first-finding acceptance definition
+must remain byte/AST exact; no old call is removed or reordered. Parent red,
+then a separate minimal quote-field source fix, remain required. If different
+names or another prior expectation must change, get the lead's amendment first.
