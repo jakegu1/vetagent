@@ -1,14 +1,8 @@
 {
  "collapsed_paths": [],
- "date": "2026-10-23",
+ "date": "2026-10-24",
  "failures": [],
  "history": [
-  {
-   "collapsed_paths": [],
-   "date": "2026-09-24",
-   "status": "green",
-   "unobserved_sources": []
-  },
   {
    "collapsed_paths": [],
    "date": "2026-09-25",
@@ -194,11 +188,737 @@
    "unobserved_sources": [
     "rugcheck"
    ]
+  },
+  {
+   "collapsed_paths": [],
+   "date": "2026-10-24",
+   "status": "green",
+   "unobserved_sources": []
   }
  ],
- "status": "blind",
- "unobserved_probes": 3,
- "unobserved_sources": [
-  "rugcheck"
- ]
+ "probe_diagnostics": {
+  "probes": [
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-01",
+    "source": "rugcheck"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-02",
+    "source": "rugcheck"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-03",
+    "source": "rugcheck"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-04",
+    "source": "rugcheck"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-05",
+    "source": "rugcheck"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-06",
+    "source": "rugcheck"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-07",
+    "source": "rugcheck"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-08",
+    "source": "rugcheck"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-09",
+    "source": "rugcheck"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-10",
+    "source": "rugcheck"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-11",
+    "source": "rugcheck"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-12",
+    "source": "rugcheck"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-13",
+    "source": "rugcheck"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-14",
+    "source": "rugcheck"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-15",
+    "source": "rugcheck"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-16",
+    "source": "rugcheck"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-01",
+    "source": "honeypot.is"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-02",
+    "source": "honeypot.is"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-03",
+    "source": "honeypot.is"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-04",
+    "source": "honeypot.is"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-05",
+    "source": "honeypot.is"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-06",
+    "source": "honeypot.is"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-07",
+    "source": "honeypot.is"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-08",
+    "source": "honeypot.is"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-01",
+    "source": "dexscreener"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-02",
+    "source": "dexscreener"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-03",
+    "source": "dexscreener"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-04",
+    "source": "dexscreener"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-05",
+    "source": "dexscreener"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-06",
+    "source": "dexscreener"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-07",
+    "source": "dexscreener"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-08",
+    "source": "dexscreener"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-01",
+    "source": "geckoterminal"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-02",
+    "source": "geckoterminal"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-03",
+    "source": "geckoterminal"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-04",
+    "source": "geckoterminal"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-05",
+    "source": "geckoterminal"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-06",
+    "source": "geckoterminal"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "429",
+      "reason": "rate_limited",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-07",
+    "source": "geckoterminal"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "fields-08",
+    "source": "geckoterminal"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "facts",
+    "source": "honeypot.is"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
+    "probe": "extensions",
+    "source": "rugcheck"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": false,
+    "probe": "chains-01",
+    "source": "honeypot.is"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": false,
+    "probe": "chains-02",
+    "source": "honeypot.is"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": false,
+    "probe": "chains-03",
+    "source": "honeypot.is"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "400",
+      "reason": "invalid_chain",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "invalid_chain",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "invalid_chain",
+      "transport_exit": 0,
+      "usable_body": false
+     }
+    ],
+    "counts_for_blindness": false,
+    "probe": "chains-04",
+    "source": "honeypot.is"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "400",
+      "reason": "invalid_chain",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "invalid_chain",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "invalid_chain",
+      "transport_exit": 0,
+      "usable_body": false
+     }
+    ],
+    "counts_for_blindness": false,
+    "probe": "chains-05",
+    "source": "honeypot.is"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "400",
+      "reason": "invalid_chain",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "invalid_chain",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "invalid_chain",
+      "transport_exit": 0,
+      "usable_body": false
+     }
+    ],
+    "counts_for_blindness": false,
+    "probe": "chains-06",
+    "source": "honeypot.is"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "400",
+      "reason": "invalid_chain",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "invalid_chain",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "invalid_chain",
+      "transport_exit": 0,
+      "usable_body": false
+     }
+    ],
+    "counts_for_blindness": false,
+    "probe": "chains-07",
+    "source": "honeypot.is"
+   }
+  ],
+  "source_counts": {
+   "dexscreener": {
+    "blind": 0,
+    "blindness_excluded": 0,
+    "probes": 8,
+    "usable": 8
+   },
+   "geckoterminal": {
+    "blind": 0,
+    "blindness_excluded": 0,
+    "probes": 8,
+    "usable": 8
+   },
+   "honeypot.is": {
+    "blind": 0,
+    "blindness_excluded": 7,
+    "probes": 16,
+    "usable": 12
+   },
+   "rugcheck": {
+    "blind": 0,
+    "blindness_excluded": 0,
+    "probes": 17,
+    "usable": 17
+   }
+  },
+  "version": 1
+ },
+ "status": "green",
+ "unobserved_probes": 0,
+ "unobserved_sources": []
 }
