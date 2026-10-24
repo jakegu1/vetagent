@@ -1,7 +1,7 @@
 ---
 id: T-063
 title: Preserve and inventory native pool fields across the snapshot handoff
-status: ready
+status: in_progress
 level: 3
 size: M
 depends_on: [T-061, T-062]

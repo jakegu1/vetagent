@@ -28,7 +28,7 @@ the source's earlier Linux/build evidence remains separately bound toc571d3f.
 |---|---|---|---|
 | T-061 / W7 | source reviewed and normally integrated; release gates outstanding | lead | Run integrated offline gate; defer real Linux/build/publication until the current study has qualified closure |
 | T-062 / W7 | source reviewed and normally integrated; release gates outstanding | lead | Preserve prospective fetch timing and verify the same related-batch release |
-| T-063 / W7 | ready related native-field handoff repair | executor | Tests-first literal field census and prospective raw quote retention, then fresh reviews and complete gates |
+| T-063 / W7 | in_progress related native-field handoff repair | executor | Tests-first literal field census and prospective raw quote retention, then fresh reviews and complete gates |
 | T-047 / W40 | held, genuine mandatory security verdict incomplete | lead / required reviewer | Preserve candidate and existing qualified handoff; no replay through another AI |
 | T-049 / T-050 | dependency-held drafts | lead | Bind accepted integrated archive/runtime APIs before implementation |
 
