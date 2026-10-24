@@ -3436,6 +3436,209 @@ def test_snapshot_readiness_lossy_timestamp_precision_is_unknown():
                   and value not in output and tmp not in output)
 
 
+def test_sellability_clock_collector_writer_inventory_handoff():
+    import contextlib
+    import hashlib
+    import importlib
+    import subprocess
+    import tempfile
+    from pathlib import Path
+    from unittest.mock import patch
+    readiness = importlib.import_module("snapshot_readiness")
+    if not hasattr(snapshot, "_sellability_clock_sample"):
+        check("prospective sellability clock capture exists", False)
+        return
+    batch = "2026-10-01T09:00:00Z"
+    payload = {"simulationSuccess": True, "simulationError": "synthetic",
+               "honeypotResult": {"isHoneypot": False, "honeypotReason": "synthetic"},
+               "simulationResult": {"buyTax": 1, "sellTax": 2, "transferTax": 3, "buyGas": 4, "sellGas": 5},
+               "flags": ["synthetic"], "holderAnalysis": {"failed": 6}, "contractCode": {"openSource": True},
+               "token": {"totalHolders": 7}, "pair": {"liquidity": 8}, "summary": {"risk": "synthetic"},
+               "pairAddress": "private-clock-value", "router": "private-clock-value"}
+    rows = [{"kind": "new", "chain": "base", "base_token": "base_0x" + str(n) * 40,
+             "pool_address": "private-clock-value", "pool_created_at": batch, "reserve_usd": "12"}
+            for n in (1, 2, 3)]
+    clock_values = [("2026-10-01T12:00:00Z", 0), ("2026-10-01T12:00:02Z", 2000000000),
+                    ("2026-10-01T12:00:03Z", 3000000000), ("2026-10-01T12:00:04Z", 4000000000),
+                    ("2026-10-01T12:00:05Z", 5000000000), ("2026-10-01T12:00:06Z", 6000000000)]
+    events, calls = [], []
+    clocks, replies = iter(clock_values), iter([payload, snapshot.NOT_FOUND, None])
+    def sample():
+        events.append("clock")
+        return next(clocks)
+    def fetch(url, **kwargs):
+        events.append("fetch")
+        calls.append((url, kwargs))
+        return next(replies)
+    with tempfile.TemporaryDirectory() as tmp:
+        with patch.object(snapshot, "_probed_already", return_value={}), \
+             patch.object(snapshot, "_sellability_clock_sample", side_effect=sample), \
+             patch.object(snapshot, "fetch_json", side_effect=fetch), \
+             patch.object(snapshot.time, "sleep", side_effect=AssertionError("no added pacing")), \
+             patch.object(snapshot, "OUT_DIR", tmp):
+            result = snapshot.probe_sellability(rows, batch, 3)
+            check("one operation envelope preserves existing fetch order kwargs and call budget",
+                  events == ["clock", "fetch", "clock"] * 3 and len(calls) == 3
+                  and calls == [("https://api.honeypot.is/v2/IsHoneypot?address=0x" + str(n) * 40 + "&chainID=8453",
+                                 {"role": "engine", "use_cache": False, "write_cache": False, "mark_missing": True})
+                                for n in (1, 2, 3)])
+            common = {"seen_at": batch, "chain": "base", "pool_address": "private-clock-value",
+                      "pool_created_at": batch, "reserve_usd": "12", "unsimulatable_venue": False, "schema": 2}
+            raw_fields = ["simulationSuccess", "simulationError", "isHoneypot", "honeypotReason", "buyTax", "sellTax",
+                          "transferTax", "flags", "holderAnalysis", "contractCode", "totalHolders", "buyGas",
+                          "sellGas", "pair", "summary", "pairAddress", "router"]
+            expected = []
+            for number, outcome in enumerate(("ok", "no_record", "unreachable"), 1):
+                row = dict.fromkeys(raw_fields)
+                row.update(common, token="0x" + str(number) * 40, outcome=outcome, answered=number == 1)
+                if number == 1:
+                    row.update({key: payload.get(key) for key in ("simulationSuccess", "simulationError", "flags",
+                               "holderAnalysis", "contractCode", "pair", "summary", "pairAddress", "router")})
+                    row.update(payload["honeypotResult"], **payload["simulationResult"], totalHolders=7)
+                expected.append(row)
+            check("the timing field is the only change to every schema2 raw row",
+                  [{k: v for k, v in row.items() if k != "timing"} for row in result] == expected)
+            check("returned absence has availability but unreachable only has valid operation timing",
+                  [row["timing"]["status"] for row in result] == ["valid"] * 3
+                  and [row["timing"]["response_available_at"] for row in result]
+                  == [clock_values[1][0], clock_values[3][0], None]
+                  and result[0]["timing"]["scope"] == "fetch_json"
+                  and result[0]["timing"]["elapsed_ns"] == 2000000000)
+            legacy = dict(expected[0])
+            invalid = dict(result[0], timing=dict(result[0]["timing"], status="invalid", response_available_at=None))
+            stream = io.StringIO()
+            with contextlib.redirect_stdout(stream):
+                code = snapshot._write_sellability(result + [legacy, invalid], batch)
+            path = Path(tmp) / "sellability-2026-10-01.ndjson"
+            before = path.read_bytes()
+            saved = [json.loads(line) for line in before.splitlines()]
+            check("real writer keeps all successful absent unreachable legacy and invalid rows",
+                  code == 0 and saved == result + [legacy, invalid] and len(saved) == 5)
+            inventory = readiness.inventory(tmp, clock_values[1][0])
+            sell = inventory["kinds"]["sellability"]
+            check("write-to-reader uses completion availability rather than batch or start",
+                  (sell["eligible_rows"], sell["future_rows"], sell["unknown_time_rows"], sell["batch_time_only_rows"])
+                  == (1, 1, 3, 1)
+                  and "sellability_response_clock_not_recorded" in inventory["reasons"]
+                  and "sellability_response_clock_unusable" in inventory["reasons"])
+            proc = subprocess.run([sys.executable, os.path.join(ROOT, "bench", "snapshot_readiness.py"),
+                                   "--archive", tmp, "--as-of", clock_values[3][0]], capture_output=True,
+                                  text=True, encoding="utf-8")
+            actual = json.loads(proc.stdout)
+            check("real inventory CLI hashes exact writer bytes and redacts all identities",
+                  proc.returncode == 0 and actual["kinds"]["sellability"]["eligible_rows"] == 2
+                  and actual["files"][0]["sha256"] == hashlib.sha256(before).hexdigest()
+                  and path.read_bytes() == before and "private-clock-value" not in proc.stdout
+                  and tmp not in proc.stdout and not actual["replay_ready"]
+                  and not actual["full_engine_inputs_validated"] and not actual["independent_outcomes_established"])
+
+
+def test_sellability_clock_anomalies_preserve_raw_response_without_retry():
+    import copy
+    from unittest.mock import patch
+    if not hasattr(snapshot, "_sellability_clock_sample"):
+        check("sellability operation clock anomaly handling exists", False)
+        return
+    start, end = "2026-10-01T12:00:00Z", "2026-10-01T12:00:02Z"
+    cases = [("valid zero", (start, 0), (start, 0), True),
+             ("valid positive", (start, 0), (end, 2000000000), True),
+             ("tolerance equality", (start, 0), ("2026-10-01T12:00:01Z", 0), True),
+             ("tolerance exceeded", (start, 0), ("2026-10-01T12:00:01.000001Z", 0), False),
+             ("backward wall", (end, 0), (start, 0), False),
+             ("forward wall", (start, 0), (end, 0), False),
+             ("naive clock", (start[:-1], 0), (end, 2000000000), False),
+             ("invalid clock", ("private-clock-error", 0), (end, 2000000000), False),
+             ("lossy clock", (start, 0), ("2026-10-01T12:00:00.0000001Z", 0), False),
+             ("negative elapsed", (start, 1), (start, 0), False),
+             ("bool elapsed", (start, False), (start, True), False),
+             ("float elapsed", (start, 0.0), (start, 0.0), False),
+             ("overflow elapsed", (start, 0), (start, 2 ** 63), False)]
+    payload = {"simulationSuccess": True, "holderAnalysis": {"failed": 8}, "flags": ["synthetic"]}
+    before = copy.deepcopy(payload)
+    for label, first, last, valid in cases:
+        with patch.object(snapshot, "_sellability_clock_sample", side_effect=[first, last]):
+            result, calls = _probe(payload)
+        check(label + " changes timing only and cannot retry or drop a raw row",
+              len(result) == len(calls) == 1 and result[0]["holderAnalysis"] == {"failed": 8}
+              and result[0]["flags"] == ["synthetic"] and result[0]["outcome"] == "ok"
+              and result[0]["timing"]["status"] == ("valid" if valid else "invalid")
+              and (result[0]["timing"]["response_available_at"] is not None) == valid
+              and payload == before and "private-clock-error" not in json.dumps(result[0]["timing"]))
+    class BrokenWall:
+        @staticmethod
+        def now(zone):
+            raise ValueError("private-clock-error")
+    class BrokenFormat:
+        @staticmethod
+        def now(zone):
+            return BrokenFormat()
+        def isoformat(self):
+            raise ValueError("private-clock-error")
+    for wall in (BrokenWall, BrokenFormat):
+        with patch.object(snapshot, "datetime", wall), patch.object(snapshot.time, "monotonic_ns", return_value=1):
+            sample = snapshot._sellability_clock_sample()
+        check("wall read and format exceptions become unknown without exception text", sample == (None, 1))
+    with patch.object(snapshot.time, "monotonic_ns", side_effect=ValueError("private-clock-error")):
+        sample = snapshot._sellability_clock_sample()
+    check("monotonic read exceptions become unknown", sample[1] is None and isinstance(sample[0], str))
+
+
+def test_sellability_clock_reader_revalidates_status_outcome_and_exact_boundary():
+    import copy
+    import importlib
+    import tempfile
+    from pathlib import Path
+    module = importlib.import_module("snapshot_readiness")
+    cutoff = "2026-10-01T12:00:00Z"
+    valid = {"schema": "sellability-fetch-clock-v1", "scope": "fetch_json", "status": "valid",
+             "request_started_at": cutoff, "operation_completed_at": cutoff,
+             "response_available_at": cutoff, "elapsed_ns": 0}
+    cases = [("exact cutoff", valid, "ok", True, 1, 0, 0),
+             ("one us future", dict(valid, operation_completed_at="2026-10-01T12:00:00.000001Z",
+                                    response_available_at="2026-10-01T12:00:00.000001Z", elapsed_ns=1000), "ok", True, 0, 1, 0),
+             ("equivalent offset representations", dict(valid, request_started_at="2026-10-01 13:59:59+02:00",
+                                                       operation_completed_at="2026-10-01T14:00:00+02:00", elapsed_ns=1000000000),
+              "ok", True, 1, 0, 0),
+             ("dated absence", valid, "no_record", False, 1, 0, 0),
+             ("unreachable", dict(valid, response_available_at=None), "unreachable", False, 0, 0, 1)]
+    for key, value in (("schema", "private-clock-value"), ("scope", "wire_attempt"), ("status", "invalid"),
+                       ("elapsed_ns", True), ("elapsed_ns", -1), ("elapsed_ns", 0.0), ("elapsed_ns", 2 ** 63),
+                       ("operation_completed_at", "2026-10-01T11:59:59Z"),
+                       ("request_started_at", "2026-10-01T11:59:58Z"),
+                       ("response_available_at", "2026-10-01T11:59:59Z"),
+                       ("request_started_at", "2026-10-01T12:00:00.0000001Z"),
+                       ("request_started_at", "2026-10-01T12:00:00-00:00:00.5"),
+                       ("request_started_at", "2026-10-01T12:00:00,1Z")):
+        cases.append(("invalid " + key, dict(valid, **{key: value}), "ok", True, 0, 0, 1))
+    cases += [("inconsistent answer", valid, "ok", False, 0, 0, 1),
+              ("inconsistent absence", valid, "no_record", True, 0, 0, 1),
+              ("unreachable with a timestamp", valid, "unreachable", False, 0, 0, 1),
+              ("malformed record", ["private-clock-value"], "ok", True, 0, 0, 1),
+              ("null record", None, "ok", True, 0, 0, 1)]
+    for label, timing, outcome, answered, eligible, future, unknown in cases:
+        with tempfile.TemporaryDirectory() as tmp:
+            row = {"seen_at": "2026-09-01T00:00:00Z", "fetched_at": "2026-09-01T00:00:00Z",
+                   "timing": copy.deepcopy(timing), "outcome": outcome, "answered": answered,
+                   "token": "private-clock-value", "private-clock-key": {"private-clock-key": "private-clock-value"}}
+            if isinstance(row["timing"], dict):
+                row["timing"]["private-clock-key"] = "private-clock-value"
+            path = Path(tmp) / "sellability-2026-09-01.ndjson"
+            path.write_text(json.dumps(row) + "\n", encoding="utf-8")
+            before = path.read_bytes()
+            result = module.inventory(tmp, cutoff)
+            sell = result["kinds"]["sellability"]
+            check(label + " is independently validated at conservative response availability",
+                  (sell["eligible_rows"], sell["future_rows"], sell["unknown_time_rows"], sell["batch_time_only_rows"])
+                  == (eligible, future, unknown, 0)
+                  and "sellability_response_clock_not_recorded" not in result["reasons"]
+                  and ("sellability_response_clock_unusable" in result["reasons"]) == bool(unknown))
+            check(label + " retains fixed private safe output and unchanged source",
+                  path.read_bytes() == before and "private-clock-value" not in json.dumps(result)
+                  and "private-clock-key" not in json.dumps(result) and tmp not in json.dumps(result)
+                  and not result["replay_ready"] and not result["full_engine_inputs_validated"]
+                  and not result["independent_outcomes_established"])
+
+
 def main():
     print("=" * 68)
     print("Sellability archive: asking on the day, because later is too late")
