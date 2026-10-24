@@ -128,6 +128,11 @@ offset seconds cannot be normalized into an admitted response; report unknown
 without echoing raw input. Apply the same acceptance policy to the CLI cutoff,
 returning fixed invalid_as_of diagnostics for unsupported forms. Preserve valid
 exact-cutoff, one-microsecond future, UTC Z and equivalent minute-offset clocks.
+Existing naive/wholly invalid cutoff cases keep their frozen invalid_arguments
+diagnostic. Only unsupported aware forms previously recognized by the old parser
+use invalid_as_of; recognizing them for error classification never admits data.
+Cover positive and negative fractional offsets and comma fractions as well as
+excessive precision. Preserve every old diagnostic assertion.
 
 The inventory's supported input grammar is now explicit: calendar date, T or
 space separator, hour/minute/second, optional one-to-six decimal fractional
