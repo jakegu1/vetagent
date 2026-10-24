@@ -3738,6 +3738,148 @@ def test_snapshot_native_pool_field_inventory_writer_reader_cli_handoff():
               and before == {path.name: path.read_bytes() for path in Path(tmp).iterdir()})
 
 
+def test_snapshot_pool_quote_raw_value_preserved():
+    import copy
+    missing = object()
+    batch = "2026-10-01T12:00:00+00:00"
+    attributes = {"address": "private-quote-value", "name": "private-quote-value",
+                  "pool_created_at": batch, "base_token_price_usd": None,
+                  "base_token_price_quote_token": "2", "reserve_in_usd": "7", "fdv_usd": "11",
+                  "market_cap_usd": "13", "volume_usd": {"h24": "17", "h1": "19", "m5": "23"},
+                  "transactions": {"h24": {"buys": 29, "sells": 31, "buyers": 37, "sellers": 41}, "m5": {}},
+                  "price_change_percentage": {"h24": "43", "m5": "47"}}
+    expected = {"seen_at": batch, "chain": "base", "kind": "new", "pool_id": "private-quote-value",
+                "pool_address": "private-quote-value", "name": "private-quote-value", "base_token": "base_fixture",
+                "quote_token": "base_quote", "pool_created_at": batch, "price_usd": None, "price_quote": "2",
+                "reserve_usd": "7", "fdv_usd": "11", "market_cap_usd": "13", "volume_h24": "17", "volume_h1": "19",
+                "price_change_h24": "43", "buys_h24": 29, "sells_h24": 31, "buyers_h24": 37, "sellers_h24": 41,
+                "tx": attributes["transactions"], "volume": attributes["volume_usd"],
+                "price_change": attributes["price_change_percentage"], "dex": "fixture-dex", "schema": 2}
+    for value in (missing, None, False, 0, "", [], {}, {"private-quote-key": [None, "private-quote-value"]}, "invalid", "3", "5", 3.5):
+        pool = {"id": "private-quote-value", "attributes": copy.deepcopy(attributes), "relationships": {
+            side: {"data": {"id": identity}} for side, identity in
+            (("base_token", "base_fixture"), ("quote_token", "base_quote"), ("dex", "fixture-dex"))}}
+        if value is not missing:
+            pool["attributes"]["quote_token_price_usd"] = copy.deepcopy(value)
+        before = copy.deepcopy(pool)
+        row = snapshot._row("base", "new", pool, batch)
+        check("quote field is raw JSON with missing represented as null",
+              "quote_token_price_usd" in row and row.get("quote_token_price_usd") == (None if value is missing else value)
+              and pool == before)
+        check("quote addition preserves every old schema2 field and never writes a replacement price",
+              {key: val for key, val in row.items() if key != "quote_token_price_usd"} == expected
+              and row["price_usd"] is None and row["price_quote"] == "2" and row["schema"] == 2)
+
+
+def test_snapshot_pool_quote_writer_reader_cli_handoff():
+    import contextlib
+    import copy
+    from datetime import datetime, timezone
+    import hashlib
+    import importlib
+    import importlib.util
+    from pathlib import Path
+    import socket
+    import subprocess
+    import tempfile
+    from unittest.mock import patch
+    import urllib.request
+    readiness = importlib.import_module("snapshot_readiness")
+    spec = importlib.util.spec_from_file_location("t063_pure_risk", os.path.join(ROOT, "src", "risk.py"))
+    risk = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(risk)
+    batch = "2026-10-01T12:00:00+00:00"
+    secret = "private-quote-value"
+    missing = object()
+    saved_runs, fetches = [], []
+
+    class Clock:
+        @staticmethod
+        def now(zone):
+            return datetime(2026, 10, 1, 12, tzinfo=timezone.utc)
+
+    for quote in ("3", "5"):
+        values = [quote, missing, None, False, 0, "", [], {}, {"private-quote-key": secret}, "invalid"]
+        pools = []
+        for index, value in enumerate(values):
+            attributes = {"address": secret, "base_token_price_usd": None, "base_token_price_quote_token": "2"}
+            if value is not missing:
+                attributes["quote_token_price_usd"] = copy.deepcopy(value)
+            pools.append({"id": secret + str(index), "attributes": attributes})
+        original = copy.deepcopy(pools)
+        calls = []
+
+        def fake_http(url, role, **kw):
+            calls.append((url, role, copy.deepcopy(kw)))
+            kw["diagnostics"].update(status=200, attempts=1, error=None)
+            return {"data": copy.deepcopy(pools) if "/new_pools?" in url else []}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            stream = io.StringIO()
+            with patch.object(snapshot, "OUT_DIR", tmp), patch.object(snapshot, "datetime", Clock), \
+                 patch.object(snapshot.sys, "argv", ["snapshot.py", "--chains", "base", "--pages", "1", "--sellability", "0"]), \
+                 patch.object(snapshot, "fetch_json", side_effect=fake_http), \
+                 patch.object(snapshot, "probe_sellability", side_effect=AssertionError("unexpected assessment")), \
+                 patch.object(risk, "assess", side_effect=AssertionError("unexpected assessment")), \
+                 patch.object(socket, "socket", side_effect=AssertionError("unexpected network")), \
+                 patch.object(urllib.request, "urlopen", side_effect=AssertionError("unexpected network")), \
+                 contextlib.redirect_stdout(stream):
+                code = snapshot.main()
+            path = Path(tmp) / "pools-2026-10-01.ndjson"
+            writer_bytes = path.read_bytes()
+            saved = [json.loads(line) for line in writer_bytes.splitlines()]
+            saved_runs.append(saved)
+            fetches.append(calls)
+            check("real quote writer retains every row and exact JSON quote values without mutating HTTP data",
+                  code == 0 and len(saved) == 10 and pools == original
+                  and all("quote_token_price_usd" in row and row["quote_token_price_usd"] == (None if value is missing else value)
+                          for row, value in zip(saved, values))
+                  and all(row["price_usd"] is None and row["price_quote"] == "2" and row["schema"] == 2
+                          and row["fetched_at"] == batch for row in saved))
+            mapped = [{"base_token_price_usd": row["price_usd"], "base_token_price_quote_token": row["price_quote"],
+                       "quote_token_price_usd": row.get("quote_token_price_usd")} for row in saved]
+            check("saved raw inputs reproduce the unchanged pure fallback including invalid and missing quotes",
+                  [risk._gt_base_price(row) for row in mapped] == [float(quote) * 2] + [None] * 9)
+            legacy = {"price_usd": None, "price_quote": "2", "fetched_at": batch}
+            unknown = {"price_usd": None, "price_quote": "2", "quote_token_price_usd": None}
+            with path.open("ab") as stream:
+                stream.write((json.dumps(legacy) + "\n" + json.dumps(unknown) + "\n").encode("utf-8"))
+            before = {item.name: item.read_bytes() for item in Path(tmp).iterdir()}
+            result = readiness.inventory(tmp, batch)
+            counts = result["kinds"]["pools"]
+            pool_file = next(item for item in result["files"] if item["kind"] == "pools")
+            check("new legacy and null rows keep literal quote counts separate from usable inputs and clocks",
+                  counts["rows"] == 12 and counts["eligible_rows"] == 11 and counts["unknown_time_rows"] == 1
+                  and counts["future_rows"] == 0 and counts["field_presence"]["quote_token_price_usd"] == 11
+                  and pool_file["field_presence"]["quote_token_price_usd"] == 11
+                  and counts["field_presence"]["price_quote"] == 12
+                  and counts["field_presence"]["volume_usd"] == counts["field_presence"]["transactions"] == 0
+                  and not result["inventory_complete"] and "unknown_observation_time" in result["diagnostics"])
+            proc = subprocess.run([sys.executable, os.path.join(ROOT, "bench", "snapshot_readiness.py"),
+                                   "--archive", tmp, "--as-of", batch], capture_output=True, text=True, encoding="utf-8")
+            check("quote real CLI exposes fixed aggregates and exact hashes without fixture identities values keys or paths",
+                  proc.returncode == 0 and not proc.stderr and json.loads(proc.stdout) == result
+                  and all(value not in proc.stdout for value in (secret, "private-quote-key", tmp, "https://"))
+                  and pool_file["sha256"] == hashlib.sha256(before[path.name]).hexdigest()
+                  and path.read_bytes().startswith(writer_bytes)
+                  and before == {item.name: item.read_bytes() for item in Path(tmp).iterdir()}
+                  and not result["replay_ready"] and not result["full_engine_inputs_validated"]
+                  and not result["independent_outcomes_established"])
+    check("two otherwise identical real writes retain distinct quote inputs and exact old field projections",
+          saved_runs[0][0] != saved_runs[1][0]
+          and saved_runs[0][0].get("quote_token_price_usd") == "3" and saved_runs[1][0].get("quote_token_price_usd") == "5"
+          and [{key: value for key, value in row.items() if key != "quote_token_price_usd"} for row in saved_runs[0]]
+          == [{key: value for key, value in row.items() if key != "quote_token_price_usd"} for row in saved_runs[1]])
+    expected_calls = [("https://api.geckoterminal.com/api/v2/networks/base/" + endpoint + "?page=1", "label",
+                       {"retries": 1, "timeout": 10, "use_cache": False, "write_cache": False,
+                        "diagnostics": {}, "absolute_timeout": True}) for endpoint in ("new_pools", "trending_pools")]
+    check("quote preservation changes no HTTP URL options order count retries or cache policy", fetches == [expected_calls] * 2)
+    for primary, expected_price in ((None, 6), ("", 6), ("0", 6), (0, 0), ("invalid", None), ("7", 7), (False, None)):
+        check("unchanged pure fallback keeps original missing empty zero and invalid primary semantics",
+              risk._gt_base_price({"base_token_price_usd": primary, "base_token_price_quote_token": "2",
+                                   "quote_token_price_usd": "3"}) == expected_price)
+
+
 def main():
     print("=" * 68)
     print("Sellability archive: asking on the day, because later is too late")
