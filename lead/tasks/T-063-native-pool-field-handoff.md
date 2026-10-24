@@ -154,3 +154,20 @@ Every old definition/assertion and every first-finding acceptance definition
 must remain byte/AST exact; no old call is removed or reordered. Parent red,
 then a separate minimal quote-field source fix, remain required. If different
 names or another prior expectation must change, get the lead's amendment first.
+
+### A2: keep the new inventory fixture compatible with the planned writer key
+
+The first finding's new tests-only commit9c25888 assumes six fixture quote keys
+at kind level. The real writer row has no such key before the second finding;
+the authorized second fix adds it even when null, so the correct literal total
+then becomes seven. This is a newly authored fixture premise, not a production
+defect or permission to change pre-existing acceptance.
+
+Named change C permits exactly that new assertion's expected quote count to
+change from6 to `6 + int('quote_token_price_usd' in saved[0])`, based only on the
+independently retained synthetic writer row. Do not derive the expectation from
+inventory output, drop the assertion, remove the new key from the real writer
+seam, or change any other expectation. Commit it alone as a tests-only named
+change C after retaining the original parent red. The separate second finding's
+tests must still require exact quote retention and3/5 differentiation and catch
+a discarded-quote mutant. Every pre-existing definition remains byte/AST exact.
