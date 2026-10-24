@@ -14,9 +14,15 @@ cross-job handoff is independently verified. Its original protocol/window and
 five sources remain frozen. Research results and operational evidence stay private;
 current activity is not a claim of complete coverage or scientific success.
 
-T061 now prepares W7's offline point-in-time input-availability inventory. It
-prevents early batch clocks or incomplete historical inputs from impersonating
-replay readiness. No new sources, scoring policy, labels or research are adopted.
+T061/T062 are a related source-reviewed local batch: bounded as-of input
+inventory followed by prospective response-availability clocks. They prevent
+batch/start clocks from impersonating later responses and preserve unknowns.
+Old data are not rewritten and full-engine replay or independent outcomes are
+not established. Both tasks pass fresh required source reviews and complete45.
+Integration validation is mandatory; actual Linux/build/publication is queued
+until the active study has qualified report/preservation/owned-stop evidence,
+because existing push CI accesses real upstreams. This is a technical wait,
+not a new approval request. No new source, scoring policy, label or study is adopted.
 T047's mandatory security verdict remains incomplete; T049/T050 depend on it.
 Normal technical quality/release work is already authorized; decisions about
 money, rights, scoring rules or new experiments keep their existing gates.

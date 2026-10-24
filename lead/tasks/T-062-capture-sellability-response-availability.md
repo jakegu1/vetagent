@@ -1,7 +1,7 @@
 ---
 id: T-062
 title: Preserve prospective sellability response availability clocks
-status: ready
+status: in_review
 level: 3
 size: M
 depends_on: [T-061]

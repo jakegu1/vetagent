@@ -26,14 +26,28 @@ the source's earlier Linux/build evidence remains separately bound toc571d3f.
 
 | Task | Stage | Owner | Next action |
 |---|---|---|---|
-| T-061 / W7 | tests-first isolated implementation | executor | Offline as-of input-availability inventory, then fresh functional/adversarial reviews and exact-source gates |
+| T-061 / W7 | source reviewed and normally integrated; release gates outstanding | lead | Run integrated offline gate; defer real Linux/build/publication until the current study has qualified closure |
+| T-062 / W7 | source reviewed and normally integrated; release gates outstanding | lead | Preserve prospective fetch timing and verify the same related-batch release |
 | T-047 / W40 | held, genuine mandatory security verdict incomplete | lead / required reviewer | Preserve candidate and existing qualified handoff; no replay through another AI |
 | T-049 / T-050 | dependency-held drafts | lead | Bind accepted integrated archive/runtime APIs before implementation |
 
-T061 adds an offline read-only inventory only. It cannot infer full contemporaneous
-engine inputs from market rows, use a batch timestamp as a later response clock,
-produce independent outcome labels or close W7's elapsed/evaluation requirements.
-No current research source or transport strategy changes during this batch.
+The related T061/T062 source batch is normally integrated in1d1f8d5. T061
+source3316698 passes the combined second-round functional/adversarial review
+at12/12 after the named timestamp precision repair. T062 sourceedd4351 passes
+fresh functional12/12 and RED-TEAM none. Both exact sources pass author and
+independent complete45. Independent public verdicts are in lead/reviews/.
+The integrated offline gate remains mandatory and its receipts stay private.
+Actual same-source Linux, both locked builds and publication remain outstanding.
+Normal push CI makes real upstream/backfill requests, so publication waits for
+the same current study's qualified report, complete preservation and owned stop.
+No skipped CI, replacement workflow or additional live probe is authorized here.
+
+T061 is a bounded offline as-of inventory; T062 adds prospective availability
+clocks around the existing fetch operation, including its original retries and
+throttling. Neither claims per-wire timing, retrofits old clocks, establishes
+complete contemporaneous engine inputs, independent outcomes or replay readiness,
+or closes W7's elapsed/evaluation requirements. All five active-study controls,
+their import dependencies and transport strategy remain unchanged.
 
 Earlier detailed source/review/release records remain in Git history and
 lead/reviews/. Their past pending or no-new-study statements describe those
