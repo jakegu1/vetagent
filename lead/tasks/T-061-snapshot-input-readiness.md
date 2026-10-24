@@ -136,3 +136,21 @@ remain unknown, not rewritten timestamps or missing rows. Existing original and
 new acceptance functions/assertions stay exact; this is an additive tests-only
 commit with a reproduced old-source red, followed by the minimal parser fix.
 No active scientific source, record, window, score or decision bar changes.
+
+### A3: clarify the existing bounded-report interface, no acceptance changes
+
+Independent review finds the existing CLI contract deliberately returns zero
+after generating a bounded diagnostic report even when its explicit completeness
+or replay fields are false. Exit0 means report generation, not complete evidence
+or readiness. Consumers must read inventory_complete/replay_ready and diagnostics;
+do not silently change the frozen real-CLI expectations. No current replay or
+assessment consumer invokes this new inventory.
+
+The directory cap bounds retained entries and source opens to256. At most one
+additional metadata-only lookahead detects overflow, refuses content reads and
+reports entry_cap/incomplete explicitly. This is the same bounded sentinel
+principle as reading one extra byte to detect a line overflow. No further
+enumeration, allocation or content read is allowed after the refusal. Tests and
+production cap values remain unchanged. The observed timestamp class in A2 is
+the sole material first-round source finding; these interface clarifications
+are not grounds for an unrelated implementation expansion.
