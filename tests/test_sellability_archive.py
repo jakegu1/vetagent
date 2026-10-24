@@ -3240,7 +3240,7 @@ def test_snapshot_readiness_every_cap_is_explicit_and_bounded():
     for limit, lowered, diagnostic in (("max_entries", 1, "entry_cap"),
                                        ("max_file_bytes", 4, "file_byte_cap"),
                                        ("max_total_bytes", 5, "total_byte_cap"),
-                                       ("max_line_bytes", 3, "line_byte_cap"),
+                                       ("max_line_bytes", 2, "line_byte_cap"),
                                        ("max_rows", 1, "row_cap")):
         with tempfile.TemporaryDirectory() as tmp:
             for kind in ("pools", "runs"):
