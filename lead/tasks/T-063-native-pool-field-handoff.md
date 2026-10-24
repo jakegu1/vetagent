@@ -1,7 +1,7 @@
 ---
 id: T-063
 title: Preserve and inventory native pool fields across the snapshot handoff
-status: in_progress
+status: done
 level: 3
 size: M
 depends_on: [T-061, T-062]
@@ -246,3 +246,21 @@ losing or changing old fields. Valid Unicode values remain exact. No serializer,
 reader, response or old test change is authorized. Retain the pure witness and
 the meaningful candidate red. This is a precise expansion of optional-value
 capture failure, not a general Unicode sanitization policy.
+
+
+## Local closure
+
+R1 candidate e01ad2d was held on a real optional-value row-loss regression.
+Named E tests-only28c3242 produced36 failures before the minimal25bfb43 repair.
+The exact final source25bfb43 passes fresh R2 functional12/12 and RED-TEAM:none,
+actual author and independent complete45, and normal merged2ab2495 complete45.
+The native-key finding also retains its original4 parent failures; quote retention
+retains19 parent failures. Old acceptance definitions and actual runner coverage
+remain exact except the preregistered named changes. The five active scientific
+controls/import closure, original archives and protected primary are unchanged.
+
+This closes the scoped local source task, not W7's full evidence requirements or
+the expanded release. Qualified current-study closure, the separately reviewed
+post-closure diagnostic task, exact-source Linux/two locked builds/master
+publication and the first normal scheduled snapshot trial remain outstanding.
+No push, workflow dispatch, new Vendor request or Worker upload occurred here.

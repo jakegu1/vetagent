@@ -28,7 +28,7 @@ the source's earlier Linux/build evidence remains separately bound toc571d3f.
 |---|---|---|---|
 | T-061 / W7 | source reviewed and normally integrated; release gates outstanding | lead | Run integrated offline gate; defer real Linux/build/publication until the current study has qualified closure |
 | T-062 / W7 | source reviewed and normally integrated; release gates outstanding | lead | Preserve prospective fetch timing and verify the same related-batch release |
-| T-063 / W7 | R1 changes required; bounded optional-field repair in progress | executor | A4 tests-first containment, fresh R2 functional/adversarial review and complete gates before integration |
+| T-063 / W7 | source reviewed and locally integrated; expanded release gates outstanding | lead | Preserve native raw inputs; qualified study closure, diagnostic repair and normal release gates remain |
 | T-047 / W40 | held, genuine mandatory security verdict incomplete | lead / required reviewer | Preserve candidate and existing qualified handoff; no replay through another AI |
 | T-049 / T-050 | dependency-held drafts | lead | Bind accepted integrated archive/runtime APIs before implementation |
 
@@ -50,6 +50,19 @@ local-ready certificate is historical and cannot release this expanded batch.
 T063 may proceed now outside the scientific import closure; diagnostic collectors
 remain untouched until qualified closure. Existing finite followup identity,
 original wake-up ledger and maximum count must not be reset or duplicated.
+
+T063 is normally integrated in2ab2495 after fresh R2 functional12/12 and
+RED-TEAM:none on25bfb43. Author, independent and merged complete45 all pass.
+R1's real optional-value serialization regression and its CHANGES_REQUIRED
+verdict remain in the record. The fix retains finite JSON/UTF-8 values exactly
+and explicitly records failed optional capture without poisoning old row fields.
+Literal presence is not validated engine input. No historical value is restored.
+The post-closure diagnostic design has independent DESIGN_PASS_DEPENDENCY_HELD;
+it is not implemented or dispatched, and the active scientific controls stay exact.
+The existing finite release followup is updated in place for this order, without
+resetting its original identity/count/ledger. No new source CI or publication has
+occurred; its future trigger is not established by a saved configuration.
+
 
 T061 is a bounded offline as-of inventory; T062 adds prospective availability
 clocks around the existing fetch operation, including its original retries and
