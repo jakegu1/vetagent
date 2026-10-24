@@ -232,3 +232,17 @@ red before the separate minimal fix. Kill a raw-quote/no-containment mutant
 and verify restoration. A fresh R2 independent functional and adversarial
 review, author/independent/integrated complete45 gates and the existing source
 protection proofs remain required. R1 did not approve the candidate.
+
+### A5: use the real writer's UTF-8 representability in named change E
+
+Before named E was committed, a bounded pure JSON witness established that the
+decoder accepts an escaped lone surrogate. Default ASCII-escaping json.dumps
+accepts it, while the real writer's ensure_ascii=False UTF-8 encoding rejects
+it with UnicodeEncodeError, a ValueError subclass. Apply A4 to values encodable
+by the actual writer: strict JSON with ensure_ascii=False followed by UTF-8
+encoding. Add scalar and nested lone-surrogate cases to the same new named E
+tests; they must produce the same fixed capture status and null quote, without
+losing or changing old fields. Valid Unicode values remain exact. No serializer,
+reader, response or old test change is authorized. Retain the pure witness and
+the meaningful candidate red. This is a precise expansion of optional-value
+capture failure, not a general Unicode sanitization policy.
