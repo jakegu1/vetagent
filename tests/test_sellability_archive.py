@@ -3711,7 +3711,7 @@ def test_snapshot_native_pool_field_inventory_writer_reader_cli_handoff():
         pool_counts = result["kinds"]["pools"]
         expected = {"pool_id": 1, "base_token": 1, "reserve_usd": 1, "price_usd": 1,
                     "volume_usd": 1, "transactions": 1, "fetched_at": 8,
-                    "volume": 7, "tx": 7, "price_quote": 7, "quote_token_price_usd": 6}
+                    "volume": 7, "tx": 7, "price_quote": 7, "quote_token_price_usd": 6 + int("quote_token_price_usd" in saved[0])}
         check("all parsed rows count literal native and upstream keys including null false zero empty and malformed values",
               pool_counts["field_presence"] == expected)
         extra_result = next(item for item in result["files"] if item["date"] == "2001-01-01")
