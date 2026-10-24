@@ -3639,6 +3639,105 @@ def test_sellability_clock_reader_revalidates_status_outcome_and_exact_boundary(
                   and not result["independent_outcomes_established"])
 
 
+def test_snapshot_native_pool_field_inventory_writer_reader_cli_handoff():
+    import contextlib
+    import copy
+    from datetime import datetime, timezone
+    import hashlib
+    import importlib
+    from pathlib import Path
+    import socket
+    import subprocess
+    import tempfile
+    from unittest.mock import patch
+    import urllib.request
+    readiness = importlib.import_module("snapshot_readiness")
+    secret = "private-native-pool-value"
+    pool = {"id": secret, "attributes": {
+        "address": secret, "base_token_price_usd": "7", "base_token_price_quote_token": "2",
+        "reserve_in_usd": "11", "volume_usd": {"h24": "13", "m5": "17"},
+        "transactions": {"h24": {"buys": 19, "sells": 23}, "m5": {"buys": 29}}}}
+    original = copy.deepcopy(pool)
+    calls = []
+
+    def fake_http(url, role, **kw):
+        calls.append((url, role, copy.deepcopy(kw)))
+        kw["diagnostics"].update(status=200, attempts=1, error=None)
+        return {"data": [copy.deepcopy(pool)] if "/new_pools?" in url else []}
+
+    with tempfile.TemporaryDirectory() as tmp:
+        lower = datetime.now(timezone.utc)
+        stream = io.StringIO()
+        with patch.object(snapshot, "OUT_DIR", tmp), \
+             patch.object(snapshot.sys, "argv", ["snapshot.py", "--chains", "base", "--pages", "1", "--sellability", "0"]), \
+             patch.object(snapshot, "fetch_json", side_effect=fake_http), \
+             patch.object(snapshot, "probe_sellability", side_effect=AssertionError("unexpected assessment")), \
+             patch.object(socket, "socket", side_effect=AssertionError("unexpected network")), \
+             patch.object(urllib.request, "urlopen", side_effect=AssertionError("unexpected network")), \
+             contextlib.redirect_stdout(stream):
+            code = snapshot.main()
+        upper = datetime.now(timezone.utc)
+        as_of = upper.isoformat()
+        paths = list(Path(tmp).glob("pools-*.ndjson"))
+        raw = paths[0].read_bytes()
+        saved = [json.loads(line) for line in raw.splitlines()]
+        check("native field witness uses the real collector row writer and response clock",
+              code == 0 and len(saved) == 1 and lower <= datetime.fromisoformat(saved[0]["fetched_at"]) <= upper
+              and saved[0]["schema"] == 2 and saved[0]["volume"] == pool["attributes"]["volume_usd"]
+              and saved[0]["tx"] == pool["attributes"]["transactions"] and pool == original)
+        expected_calls = [("https://api.geckoterminal.com/api/v2/networks/base/" + endpoint + "?page=1", "label",
+                           {"retries": 1, "timeout": 10, "use_cache": False, "write_cache": False,
+                            "diagnostics": {}, "absolute_timeout": True})
+                          for endpoint in ("new_pools", "trending_pools")]
+        check("native handoff preserves exact fetch URL order count retry and cache options", calls == expected_calls)
+        produced = readiness.inventory(tmp, as_of)
+        file_result = next(item for item in produced["files"] if item["kind"] == "pools")
+        for level in (file_result, produced["kinds"]["pools"]):
+            check("real writer native dictionaries and quote key are inventoried literally",
+                  {key: level["field_presence"].get(key) for key in ("volume", "tx", "price_quote")}
+                  == {"volume": 1, "tx": 1, "price_quote": 1}
+                  and level["field_presence"]["volume_usd"] == level["field_presence"]["transactions"] == 0)
+        values = [None, 0, False, {}, [], secret]
+        clocks = ["2001-01-01T00:00:00Z", "9999-01-01T00:00:00Z", None, secret,
+                  "2001-01-01T00:00:00Z", "9999-01-01T00:00:00Z"]
+        rows = [dict.fromkeys(("volume", "tx", "price_quote", "quote_token_price_usd"), value)
+                | {"fetched_at": stamp} for value, stamp in zip(values, clocks)]
+        rows += [{"volume_usd": {"private-native-key": secret}, "transactions": None,
+                  "fetched_at": "2001-01-01T00:00:00Z"}, {}]
+        extra = Path(tmp) / "pools-2001-01-01.ndjson"
+        extra.write_bytes(b"".join((json.dumps(row) + "\n").encode("utf-8") for row in rows))
+        before = {path.name: path.read_bytes() for path in Path(tmp).iterdir()}
+        result = readiness.inventory(tmp, as_of)
+        pool_counts = result["kinds"]["pools"]
+        expected = {"pool_id": 1, "base_token": 1, "reserve_usd": 1, "price_usd": 1,
+                    "volume_usd": 1, "transactions": 1, "fetched_at": 8,
+                    "volume": 7, "tx": 7, "price_quote": 7, "quote_token_price_usd": 6}
+        check("all parsed rows count literal native and upstream keys including null false zero empty and malformed values",
+              pool_counts["field_presence"] == expected)
+        extra_result = next(item for item in result["files"] if item["date"] == "2001-01-01")
+        check("upstream spellings cannot create native presence through aliases",
+              all(extra_result["field_presence"].get(key) == 6 for key in ("volume", "tx", "price_quote", "quote_token_price_usd"))
+              and extra_result["field_presence"]["volume_usd"] == extra_result["field_presence"]["transactions"] == 1)
+        check("literal presence keeps future unknown and eligible clocks separate with unchanged bounds reasons and limits",
+              (pool_counts["rows"], pool_counts["eligible_rows"], pool_counts["future_rows"], pool_counts["unknown_time_rows"])
+              == (9, 4, 2, 3) and pool_counts["malformed_rows"] == 0
+              and pool_counts["observation_min_utc"] == "2001-01-01T00:00:00Z"
+              and pool_counts["observation_max_utc"] == "9999-01-01T00:00:00Z"
+              and result["limits"] == readiness.LIMITS and result["reasons"] == ["engine_inputs_not_validated",
+                  "independent_outcomes_not_established", "sellability_response_clock_not_recorded"])
+        proc = subprocess.run([sys.executable, os.path.join(ROOT, "bench", "snapshot_readiness.py"),
+                               "--archive", tmp, "--as-of", as_of], capture_output=True, text=True, encoding="utf-8")
+        actual = json.loads(proc.stdout)
+        check("native real CLI emits exact fixed aggregates and source hashes without raw fixture information",
+              proc.returncode == 0 and actual == result and not proc.stderr and secret not in proc.stdout
+              and "private-native-key" not in proc.stdout and tmp not in proc.stdout
+              and "https://" not in proc.stdout and not actual["replay_ready"]
+              and not actual["full_engine_inputs_validated"] and not actual["independent_outcomes_established"]
+              and all(item["sha256"] == hashlib.sha256(before[item["kind"] + "-" + item["date"] + ".ndjson"]).hexdigest()
+                      for item in actual["files"])
+              and before == {path.name: path.read_bytes() for path in Path(tmp).iterdir()})
+
+
 def main():
     print("=" * 68)
     print("Sellability archive: asking on the day, because later is too late")
