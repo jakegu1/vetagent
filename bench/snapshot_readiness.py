@@ -20,7 +20,8 @@ LIMITS = {"max_entries": 256, "max_file_bytes": 64 * 1024 * 1024,
           "max_line_bytes": 256 * 1024, "max_rows": 1000000}
 KINDS = ("pools", "sellability", "runs")
 FIELDS = {"pools": ("pool_id", "base_token", "reserve_usd", "price_usd",
-                    "volume_usd", "transactions", "fetched_at"),
+                    "volume_usd", "transactions", "fetched_at", "volume", "tx",
+                    "price_quote", "quote_token_price_usd"),
           "sellability": ("answered", "isHoneypot", "simulationSuccess",
                           "buyTax", "sellTax", "seen_at"),
           "runs": ("outcome", "rows", "page", "fetched_at", "recovery_fetched_at")}
