@@ -171,3 +171,19 @@ seam, or change any other expectation. Commit it alone as a tests-only named
 change C after retaining the original parent red. The separate second finding's
 tests must still require exact quote retention and3/5 differentiation and catch
 a discarded-quote mutant. Every pre-existing definition remains byte/AST exact.
+
+### A3: supply the native parser in the new writer-seam clock fixture
+
+The newly added quote writer/reader seam replaces snapshot.datetime with a Clock
+that implements now but omits fromisoformat. The real coverage path needs that
+native parser, so it returns manifest_invalid even though every raw quote field
+is preserved. Keep the original failed synthetic run as a fixture failure.
+
+Named change D permits only adding
+`fromisoformat = staticmethod(datetime.fromisoformat)` to that new Clock fixture.
+Retain every input and assertion, including the successful-main exit assertion;
+no production coverage or clock change is authorized. Commit the fixture repair
+alone as a tests-only named change D. With the corrected fixture, replay the
+actual pre-quote parent _row in an isolated in-memory namespace and verify that
+the new quote acceptance still fails for its real missing-field defect. The
+repaired-source focused run must pass. All old definitions remain exact.
