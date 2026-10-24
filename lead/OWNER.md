@@ -37,6 +37,11 @@ not establish that every possible defect has been excluded.
 T047's mandatory security verdict remains incomplete; T049/T050 depend on it.
 Normal technical quality/release work is already authorized; decisions about
 money, rights, scoring rules or new experiments keep their existing gates.
+The Owner explicitly retains this isolation while authorizing a requirements-only
+comparison of future alternatives. That comparison supplies neither a security
+verdict nor permission to implement, activate or change an existing scientific
+protocol. The latest bounded offline calendar/UTC consumer check exposed no new
+defect; it does not justify a new implementation task or early publication.
 
 ### Earlier source and deployment history
 

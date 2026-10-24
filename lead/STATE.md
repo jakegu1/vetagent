@@ -118,6 +118,16 @@ to integrate T047/T049/T050. A genuinely qualified independent human review or
 legitimately restored original review path must still satisfy the same contract.
 Unrelated authorized technical work and the original study closure continue.
 
+The latest Owner instruction keeps T047 and its dependent runtime/scheduler
+isolated while unaffected engineering follows its existing release gates. A
+requirements-only comparison of future W40 architectures is authorized. It is
+not a replay of the interrupted source investigation, a review verdict, a new
+implementation or a scientific start. Any alternative must disclose unmet
+requirements and satisfy its own applicable contract and reviews before use;
+the existing candidate and its unresolved gate remain unchanged. A further
+bounded calendar/UTC health-consumer check found no demonstrated new defect.
+No product change or premature publication is claimed from that result.
+
 All production probes carry x-mcp-client: vetagent-manual-probe; no risk MCP calls.
 Keep source/cache/benchmark work isolated. Serialize heavy Windows gates on this
 host; isolated Linux CI may overlap on its separate host, tree and cache. Preserve
