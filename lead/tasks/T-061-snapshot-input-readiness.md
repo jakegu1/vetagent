@@ -1,7 +1,7 @@
 ---
 id: T-061
 title: Inventory point-in-time snapshot input availability without replay claims
-status: ready
+status: in_progress
 level: 3
 size: M
 depends_on: [T-053]

@@ -1,7 +1,7 @@
 ---
 id: T-060
 title: Bind finite W57 sessions and the real pilot to the new192-start protocol
-status: in_progress
+status: done
 level: 3
 size: M
 depends_on: [T-059]

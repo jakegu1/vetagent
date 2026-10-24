@@ -3,24 +3,23 @@
 > This page holds only what the lead needs from you. The project's own dashboard, with its
 > deadlines and gates, is `docs/OWNER.md` (generated). Messages to you are in Chinese; files
 > here are English because the repository is English-only. Maintained by the project lead (AI).
-> Last updated: 2026-10-23 (Codex)
+> Last updated: 2026-10-24 (Codex)
 
 ## Status in one line
 
-The Owner now approves a new independent192-start study only after refusal
-diagnostics, the new protocol, reviewed source and a qualified real pilot. T058
-and T059 are in isolated preparation/implementation; T060 follows their approved
-interfaces. No new scientific clock has started; old studies remain inconclusive.
-Historical delivery records below describe their original source and scope.
+T058/T059/T060 source is delivered at c571d3f after reviewed repairs, complete45
+local/integrated checks, exact-source master CI and both locked builds. The one
+qualified pilot and separately preregistered192-start study are running; first
+cross-job handoff is independently verified. Its original protocol/window and
+five sources remain frozen. Research results and operational evidence stay private;
+current activity is not a claim of complete coverage or scientific success.
 
-The sampling batch is delivered at source049e78c after fresh independent reviews,
-complete local/integrated45, actual feature/master checks and two locked builds.
-The sole real-clock canary39944892451 passes: three preserved pairs,189 synthetic
-cells, two sampling jobs plus closure, and zero Vendor requests. Full evidence and
-local reconstruction match. Current scheduled dataccbdcb6 and other eight
-workflow states are preserved. The deployed sampling workflow is manual-only.
-A new scientific study remains a separate protocol/pilot/enrollment decision;
-the old studies stay inconclusive. See lead/STATE.md and lead/reviews/T-054.md.
+T061 now prepares W7's offline point-in-time input-availability inventory. It
+prevents early batch clocks or incomplete historical inputs from impersonating
+replay readiness. No new sources, scoring policy, labels or research are adopted.
+T047's mandatory security verdict remains incomplete; T049/T050 depend on it.
+Normal technical quality/release work is already authorized; decisions about
+money, rights, scoring rules or new experiments keep their existing gates.
 
 ### Earlier source and deployment history
 

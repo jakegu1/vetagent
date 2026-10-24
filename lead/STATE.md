@@ -1,6 +1,6 @@
 # Lead state
 
-Last updated: 2026-10-23 by Codex. This is the current baton, not a release log.
+Last updated: 2026-10-24 by Codex. This is the current baton, not a release log.
 The Owner has now approved a NEW independent 192-start-point study after bounded
 HTTP400 diagnosis/repair, a new frozen protocol, implementation, independent and
 adversarial review, exact-source deployment and a qualified real pilot. This
@@ -8,34 +8,36 @@ supersedes the earlier no-new-study authorization statements below only for that
 new protocol. Both old studies, their windows, bars and inconclusive results stay
 immutable. Do not launch before all pre-registered conditions are met.
 
-## New independent study preparation
+## Current source, science boundary and engineering work
 
-T-058 sourcefa7de79 and T-059 sourceacf1ff3 are published in normal integration
-043bb97 after fresh second-round12/12/RED-TEAM:none approvals, source complete45
-and exact Linux/build checks. Post-integration complete45/native0 preserves
-all1004 raw files. Actual master39970401776 checks out043bb97 and passes all45,
-upstream/backfill and two independent locked builds; downloaded proof is verified.
-Source-only historical HTTP400 counts cannot prove which old requests failed
-or why. Keep all existing probes and scientific bars. See reviews/T-058.md.
-Current master access records16 of17 RugCheck purposes usable, with one purpose
-still HTTP400 through all attempts and a separate recovered400/200 attempt.
-Instrument/source approval does not claim that Vendor rejection is eliminated.
-T-060 repaired source3ea8a3d passes fresh combined second-round12/12 and
-RED-TEAM:none after separate A6/A7 tests-first history and real-CLI budget
-repairs. All68 focused checks pass independently; the complete generated192
-graph and failure preservation pass with synthetic Vendor responses. Its one
-independent complete45/native0 preserves all1004 raw files. Actual feature
-39980853539 checks out3ea8a3d and passes all45, upstream/backfill and both
-independent locked builds; downloaded provenance is verified. Approve normal
-integration; post-integration and actual master publication gates remain pending.
-The old4cb3166 candidate and its two material failures remain held historical
-evidence, not an approved release. See reviews/T-060-round1.md and
-reviews/T-060-round2.md. Separately reviewed bounded operations and one actual
-qualified persisted6+1 pilot remain mandatory before new study enrollment.
-No new scientific clock has started. T047 and its held
-dependencies remain outside this authorization.
-Earlier detailed source/review/release records remain in Git history at 53e3549
-and in lead/reviews/. Do not interpret their historical pending stages as current.
+T058/T059 are normally integrated in043bb97 and T060 in f3096ed. Exact deployed
+source c571d3f passes the complete45 local/post-integration gates, actual master
+39984359161 and both locked builds. Its separately qualified actual pilot and
+one preregistered192-start study are launched. Current evidence and operational
+receipts are private. The first real cross-job handoff is independently verified.
+The fixed window is still active; neither study success nor continuous coverage
+is asserted. Both earlier studies remain inconclusive. Do not repeat enrollment,
+alter five frozen controls or their dependencies, backfill, extend or change bars.
+
+The later scheduled archive head92df4e7 is retained by normal merge47a909d.
+All changed canonical raw data remain exact prefixes and all five scientific
+controls are byte-identical. Actual bot CI40039156897 succeeds on92df4e7;
+the source's earlier Linux/build evidence remains separately bound toc571d3f.
+
+| Task | Stage | Owner | Next action |
+|---|---|---|---|
+| T-061 / W7 | tests-first isolated implementation | executor | Offline as-of input-availability inventory, then fresh functional/adversarial reviews and exact-source gates |
+| T-047 / W40 | held, genuine mandatory security verdict incomplete | lead / required reviewer | Preserve candidate and existing qualified handoff; no replay through another AI |
+| T-049 / T-050 | dependency-held drafts | lead | Bind accepted integrated archive/runtime APIs before implementation |
+
+T061 adds an offline read-only inventory only. It cannot infer full contemporaneous
+engine inputs from market rows, use a batch timestamp as a later response clock,
+produce independent outcome labels or close W7's elapsed/evaluation requirements.
+No current research source or transport strategy changes during this batch.
+
+Earlier detailed source/review/release records remain in Git history and
+lead/reviews/. Their past pending or no-new-study statements describe those
+earlier deliveries, not the separately authorized current study.
 
 ## Current delivery
 
@@ -146,8 +148,9 @@ do not reconstruct them. Earlier reviews and green Linux/full receipts remain
 bound to their original heads. No unchanged failed full gate is retried for green.
 See lead/reviews/T-054.md through T-057.md for the source decisions.
 
-No new study, provider, spending, changed scientific bar or dependency-held T047
-work is authorized. Existing production and daily snapshots are preserved.
+That earlier delivery authorized no new study, provider, spending or changed
+scientific bar. Current scope is the section above; T047 remains dependency-held.
+Existing production and daily snapshots are preserved.
 
 T-046 source 4dd8474 and T-048 source 512c7d5 are published at 1de0259 after
 the combined exact-source forty-four-command local gate, actual feature Linux
