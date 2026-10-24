@@ -35,6 +35,7 @@ from datetime import datetime, timezone
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import fetcher  # noqa: E402
+import snapshot_readiness  # noqa: E402
 from fetcher import NOT_FOUND, fetch_json  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -364,6 +365,34 @@ def _probed_already():
     return {k: (_MAX_ATTEMPTS if k in answered else n) for k, n in attempts.items()}
 
 
+def _sellability_clock_sample():
+    """Read each local clock once; a clock failure must not lose a response."""
+    try:
+        wall = datetime.now(timezone.utc).isoformat()
+    except Exception:
+        wall = None
+    try:
+        mono = time.monotonic_ns()
+    except Exception:
+        mono = None
+    return wall, mono
+
+
+def _sellability_fetch_clock(first, last, returned):
+    elapsed = (last[1] - first[1]) if type(first[1]) is int and type(last[1]) is int else None
+    if elapsed is not None and not 0 <= elapsed <= 2 ** 63 - 1:
+        elapsed = None
+    timing = {"schema": "sellability-fetch-clock-v1", "scope": "fetch_json",
+              "request_started_at": snapshot_readiness._utc(snapshot_readiness._instant(first[0])),
+              "operation_completed_at": snapshot_readiness._utc(snapshot_readiness._instant(last[0])),
+              "response_available_at": None, "elapsed_ns": elapsed, "status": "valid"}
+    if snapshot_readiness._operation_clock(timing) is None:
+        timing["status"] = "invalid"
+    elif returned is not None:
+        timing["response_available_at"] = timing["operation_completed_at"]
+    return timing
+
+
 def probe_sellability(rows, seen_at, limit):
     """Ask, of the newest tokens seen this pass, whether they can be sold *today*.
 
@@ -436,8 +465,11 @@ def probe_sellability(rows, seen_at, limit):
         # this probe deliberately asks about tokens minutes old, and depositing that
         # answer in the shared cache would let a benchmark run days later score the
         # engine against a birth-moment response.
+        clock_start = _sellability_clock_sample()
         hp = fetch_json(url, role="engine", use_cache=False, write_cache=False,
                         mark_missing=True)
+        clock_end = _sellability_clock_sample()
+        timing = _sellability_fetch_clock(clock_start, clock_end, hp)
         # `answered: false` merged four different facts into one boolean: honeypot.is has
         # no record of this token, honeypot.is refused us, our request timed out, and the
         # venue is one it structurally cannot read. Those mean opposite things -- the
@@ -505,6 +537,7 @@ def probe_sellability(rows, seen_at, limit):
             "router": (hp or {}).get("router"),
             "unsimulatable_venue": bool(_unsimulatable(r)),
             "schema": 2,
+            "timing": timing,
         })
     return out
 

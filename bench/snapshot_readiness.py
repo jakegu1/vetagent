@@ -1,7 +1,7 @@
 """Offline input-availability inventory; a completed inventory is not a replay.
 
-Pool fetched_at records a response observation. Sellability seen_at instead
-records the earlier batch, so those rows have no certified response clock.
+Pool fetched_at records a response observation. Legacy sellability seen_at
+records the earlier batch; only a validated fetch clock establishes availability.
 Only aggregate, fixed-schema facts leave this reader; source bytes stay put.
 """
 
@@ -98,9 +98,33 @@ def _open_readonly(path):
     return os.fdopen(os.open(path, flags), "rb")
 
 
+def _operation_clock(timing):
+    """Validate a local fetch envelope, without claiming UTC synchronization."""
+    if (not isinstance(timing, dict) or timing.get("schema") != "sellability-fetch-clock-v1"
+            or timing.get("scope") != "fetch_json" or timing.get("status") != "valid"):
+        return None
+    start = _instant(timing.get("request_started_at"))
+    end = _instant(timing.get("operation_completed_at"))
+    elapsed = timing.get("elapsed_ns")
+    if start is None or end is None or end < start or type(elapsed) is not int or not 0 <= elapsed <= 2 ** 63 - 1:
+        return None
+    delta = end - start
+    wall_ns = ((delta.days * 86400 + delta.seconds) * 1000000 + delta.microseconds) * 1000
+    if abs(wall_ns - elapsed) > 1000000000:
+        return None
+    return end
+
+
 def _observation_time(kind, row):
     if kind == "sellability":
-        return None
+        timing = row.get("timing")
+        completed = _operation_clock(timing)
+        if completed is None:
+            return None
+        response = _instant(timing.get("response_available_at"))
+        consistent = ((row.get("outcome") == "ok" and row.get("answered") is True)
+                      or (row.get("outcome") == "no_record" and row.get("answered") is False))
+        return response if response == completed and consistent else None
     if kind == "runs" and "recovery_fetched_at" in row:
         # The final recovery state cannot be available at its initial attempt.
         return _instant(row["recovery_fetched_at"])
@@ -120,13 +144,19 @@ def _invalid_constant(value):
     raise ValueError
 
 
-def _row(file_result, kind, row, cutoff):
+def _row(file_result, kind, row, cutoff, budget):
     file_result["rows"] += 1
     for field in FIELDS[kind]:
         file_result["field_presence"][field] += int(field in row)
     observed = _observation_time(kind, row)
-    if kind == "sellability" and _instant(row.get("seen_at")) is not None:
-        file_result["batch_time_only_rows"] += 1
+    if kind == "sellability":
+        budget["sellability_seen"] = True
+        if "timing" not in row:
+            budget["sellability_missing"] = True
+            if _instant(row.get("seen_at")) is not None:
+                file_result["batch_time_only_rows"] += 1
+        elif observed is None:
+            budget["sellability_unusable"] = True
     if observed is None:
         file_result["unknown_time_rows"] += 1
         return
@@ -180,7 +210,7 @@ def _read_file(path, before, file_result, kind, cutoff, limits, budget, result):
                 file_result["malformed_rows"] += 1
                 _problem(result, "malformed_input")
                 continue
-            _row(file_result, kind, row, cutoff)
+            _row(file_result, kind, row, cutoff, budget)
         try:
             stable = (_identity(before) == _identity(os.fstat(stream.fileno()))
                       == _identity(os.lstat(path)))
@@ -293,9 +323,16 @@ def inventory(archive, as_of, limits=None):
                     _problem(result, "unsupported_entry")
                     continue
                 selected.append((match[1], match[2], entry.path))
-        budget = {"bytes": 0, "lines": 0}
+        budget = {"bytes": 0, "lines": 0, "sellability_seen": False,
+                  "sellability_missing": False, "sellability_unusable": False}
         for kind, date, path in sorted(selected):
             _source(path, kind, date, cutoff, bounds, budget, result)
+        if budget["sellability_seen"]:
+            result["reasons"] = ["engine_inputs_not_validated", "independent_outcomes_not_established"]
+            if budget["sellability_missing"]:
+                result["reasons"].append("sellability_response_clock_not_recorded")
+            if budget["sellability_unusable"]:
+                result["reasons"].append("sellability_response_clock_unusable")
         if _identity(before) != _identity(os.lstat(archive)):
             _problem(result, "archive_changed")
         if any(result["kinds"][kind]["files"] == 0 for kind in KINDS):
