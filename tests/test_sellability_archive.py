@@ -3393,6 +3393,49 @@ def test_snapshot_readiness_never_calls_network_or_assessment():
           str(sorted(imports)))
 
 
+def test_snapshot_readiness_lossy_timestamp_precision_is_unknown():
+    import contextlib
+    import importlib
+    import tempfile
+    from pathlib import Path
+    module = importlib.import_module("snapshot_readiness")
+    cutoff = "2026-10-01T12:00:00Z"
+    unsupported = ["2026-10-01T12:00:00.0000001Z",
+                   "2026-10-01T12:00:00,0000001Z",
+                   "2026-10-01T12:00:00,1Z",
+                   "2026-10-01T12:00:00-00:00:00.5",
+                   "2026-10-01T12:00:00-00:00:00.000001",
+                   "2026-10-01T12:00:00-00:00:00.0000001",
+                   "2026-10-01T12:00:00+00:00:00.5",
+                   "2026-10-01T12:00:00+00:00:00.000001",
+                   "2026-10-01T12:00:00+00:00:00.0000001",
+                   "2026-10-01T12:00:00-00:00:01",
+                   "2026-10-01T12:00:00+00:00:00"]
+    supported = [cutoff, "2026-10-01 14:00:00+02:00", "2026-10-01T12:00:00.000001Z"]
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "pools-2026-10-01.ndjson"
+        path.write_bytes(b"".join((json.dumps({"fetched_at": value, "token": "private-clock-value"}) + "\n").encode()
+                                 for value in unsupported + supported))
+        before = path.read_bytes()
+        result = module.inventory(tmp, cutoff)
+        pool = result["kinds"]["pools"]
+        check("lossy request precision offset seconds and comma forms stay unknown",
+              pool["unknown_time_rows"] == len(unsupported) and pool["eligible_rows"] == 2
+              and pool["future_rows"] == 1 and result["inventory_complete"] is False)
+        check("supported exact and minute-offset clocks preserve UTC order and source bytes",
+              pool["observation_min_utc"] == cutoff
+              and pool["observation_max_utc"] == "2026-10-01T12:00:00.000001Z"
+              and path.read_bytes() == before and "private-clock-value" not in json.dumps(result))
+        for value in unsupported:
+            stream = io.StringIO()
+            with contextlib.redirect_stdout(stream), contextlib.redirect_stderr(stream):
+                code = module.main(["--archive", tmp, "--as-of", value])
+            output = stream.getvalue()
+            check("unsupported aware cutoff is rejected without normalizing or echoing it",
+                  code == 2 and json.loads(output)["diagnostics"] == ["invalid_as_of"]
+                  and value not in output and tmp not in output)
+
+
 def main():
     print("=" * 68)
     print("Sellability archive: asking on the day, because later is too late")
