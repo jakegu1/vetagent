@@ -81,6 +81,13 @@ UTC synchronization. Compare duration without lossy float normalization. A
 clock read/format error, backward step, material forward step or invalid elapsed
 value marks timing invalid and response_available_at null. Preserve the original
 row/raw response and do not retry the request to obtain a better clock.
+The status describes operation-clock validity; an unreachable operation may have
+valid clocks while response_available_at remains null. Equality with completion
+means the same strictly parsed UTC instant, including equivalent supported
+minute-offset/Z representations, not raw-string identity. The collector normally
+writes the identical completion string; the reader must not reject equivalent
+representations. A collector-to-pure-reader-helper import is permitted; the
+offline reader must never import the collector, engine or network adapter.
 
 ## Acceptance criteria
 
