@@ -3794,6 +3794,7 @@ def test_snapshot_pool_quote_writer_reader_cli_handoff():
     saved_runs, fetches = [], []
 
     class Clock:
+        fromisoformat = staticmethod(datetime.fromisoformat)
         @staticmethod
         def now(zone):
             return datetime(2026, 10, 1, 12, tzinfo=timezone.utc)
