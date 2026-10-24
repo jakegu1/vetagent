@@ -68,6 +68,7 @@ def _row(chain, kind, p, seen_at):
         "pool_created_at": a.get("pool_created_at"),
         "price_usd": a.get("base_token_price_usd"),
         "price_quote": a.get("base_token_price_quote_token"),
+        "quote_token_price_usd": a.get("quote_token_price_usd"),
         "reserve_usd": a.get("reserve_in_usd"),
         "fdv_usd": a.get("fdv_usd"),
         "market_cap_usd": a.get("market_cap_usd"),
