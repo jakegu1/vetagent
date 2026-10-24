@@ -97,3 +97,17 @@ acceptance proof, no-network/read-only witnesses, final source/fixture hashes,
 configured command inventory, complete native/source/CI/build receipts and a
 private bounded real-archive invocation. Real output stays private; no archive
 counts, strategy, physical local paths or live-study results enter shared docs.
+
+## Amendments
+
+### A1: exact line-cap fixture boundary, before source acceptance
+
+The tests-only contract set max_line_bytes=3 for the three-byte line b'{}\n'
+while requiring line_byte_cap. The registered at-most bound admits equality;
+the fixture premise is incorrect, not the source's inclusive comparison.
+The lead reproduced len(b'{}\n') == 3 directly. Authorize only the
+max_line_bytes case value3 ->2 in
+test_snapshot_readiness_every_cap_is_explicit_and_bounded, in its own test-only
+commit before source acceptance. Preserve every assertion, all other cases and
+all original archive tests. Keep both original and candidate red outputs. This
+does not change production bounds, coverage, the scientific bar or any old test.
