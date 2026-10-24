@@ -3881,6 +3881,187 @@ def test_snapshot_pool_quote_writer_reader_cli_handoff():
                                    "quote_token_price_usd": "3"}) == expected_price)
 
 
+def test_snapshot_pool_quote_unrepresentable_row_retained():
+    import math
+    import pickle
+    from unittest.mock import patch
+    batch = "2026-10-01T12:00:00+00:00"
+    secret = "private-unrepresentable-quote"
+    missing = object()
+    cycle = []
+    cycle.append(cycle)
+    overflow = json.loads("1e400")
+    surrogate = json.loads(r'"\ud800"')
+    check("actual JSON overflow and escaped lone surrogate reach the quote capture boundary",
+          math.isinf(overflow) and surrogate == chr(0xd800))
+    cases = [(missing, False), (None, False), (False, False), (0, False), ("", False),
+             ([], False), ({}, False), ({"nested": [1.25, None, "NaN"]}, False),
+             ("\u6d4b\u8bd5", False), ("Infinity", False), ("NaN", False),
+             (overflow, True), (json.loads("-1e400"), True), (json.loads("NaN"), True),
+             (json.loads('{"nested":[1e400]}'), True), ([{"nested": float("nan")}], True),
+             (surrogate, True), ({"nested": [surrogate]}, True), ({"nested": {1, 2}}, True), (cycle, True)]
+    expected_old = {"seen_at": batch, "chain": "base", "kind": "new", "pool_id": secret,
+                    "pool_address": None, "name": None, "base_token": "", "quote_token": "",
+                    "pool_created_at": None, "price_usd": "7", "price_quote": "2", "reserve_usd": "11",
+                    "fdv_usd": None, "market_cap_usd": None, "volume_h24": None, "volume_h1": None,
+                    "price_change_h24": None, "buys_h24": None, "sells_h24": None, "buyers_h24": None,
+                    "sellers_h24": None, "tx": None, "volume": None, "price_change": None, "dex": None, "schema": 2}
+    for value, failed in cases:
+        attributes = {"base_token_price_usd": "7", "base_token_price_quote_token": "2", "reserve_in_usd": "11"}
+        if value is not missing:
+            attributes["quote_token_price_usd"] = value
+        pool = {"id": secret, "attributes": attributes}
+        before = pickle.dumps(pool, protocol=5)
+        row = snapshot._row("base", "new", pool, batch)
+        if failed:
+            exact_capture = (row.get("quote_token_price_usd") is None
+                             and row.get("quote_token_price_usd_capture_status") == "not_json_representable")
+        else:
+            exact_capture = (pickle.dumps(row.get("quote_token_price_usd"), protocol=5)
+                             == pickle.dumps(None if value is missing else value, protocol=5)
+                             and "quote_token_price_usd_capture_status" not in row)
+        check("optional quote capture contains only failed values and preserves finite null missing and valid Unicode exactly",
+              "quote_token_price_usd" in row and exact_capture and pickle.dumps(pool, protocol=5) == before)
+        projection = {key: val for key, val in row.items()
+                      if key not in ("quote_token_price_usd", "quote_token_price_usd_capture_status")}
+        check("unrepresentable quote leaves the entire old raw row and primary price intact", projection == expected_old)
+        try:
+            json.dumps(row, ensure_ascii=False, allow_nan=False).encode("utf-8")
+            readable = True
+        except (TypeError, ValueError, RecursionError):
+            readable = False
+        check("captured optional quote cannot poison strict JSON or the writer UTF8 encoding", readable)
+    pool = {"id": secret, "attributes": {"quote_token_price_usd": "finite-control"}}
+    before = pickle.dumps(pool, protocol=5)
+    for failure in (TypeError, ValueError, RecursionError):
+        with patch.object(snapshot.json, "dumps", side_effect=failure(secret)):
+            row = snapshot._row("base", "new", pool, batch)
+        check("only typed strict capture failures become the fixed status without mutating input",
+              row.get("quote_token_price_usd") is None
+              and row.get("quote_token_price_usd_capture_status") == "not_json_representable"
+              and pickle.dumps(pool, protocol=5) == before)
+    propagated = False
+    try:
+        with patch.object(snapshot.json, "dumps", side_effect=RuntimeError(secret)):
+            snapshot._row("base", "new", pool, batch)
+    except RuntimeError:
+        propagated = True
+    check("unrelated capture failures remain visible to the caller", propagated)
+
+
+def test_snapshot_pool_quote_unrepresentable_writer_reader_cli_handoff():
+    import contextlib
+    from datetime import datetime, timezone
+    import hashlib
+    import importlib
+    from pathlib import Path
+    import pickle
+    import socket
+    import subprocess
+    import tempfile
+    from unittest.mock import patch
+    import urllib.request
+    readiness = importlib.import_module("snapshot_readiness")
+    secret = "private-unrepresentable-quote"
+    status_key = "quote_token_price_usd_capture_status"
+    cases = [("overflow", '"quote_token_price_usd":1e400', True),
+             ("nested overflow", '"quote_token_price_usd":{"nested":[1e400]}', True),
+             ("surrogate", r'"quote_token_price_usd":"\ud800"', True),
+             ("nested surrogate", r'"quote_token_price_usd":{"nested":["\ud800"]}', True),
+             ("finite", '"quote_token_price_usd":1.25', False),
+             ("missing", "", False), ("null", '"quote_token_price_usd":null', False),
+             ("false", '"quote_token_price_usd":false', False),
+             ("finite container", r'"quote_token_price_usd":{"nested":[0,"NaN","\u6d4b\u8bd5"]}', False),
+             ("valid Unicode", r'"quote_token_price_usd":"\u6d4b\u8bd5"', False)]
+    for label, fragment, failed in cases:
+        payload = ('{"data":[{"id":"' + secret + '","attributes":{"base_token_price_usd":"7",'
+                   '"base_token_price_quote_token":"2","reserve_in_usd":"11"'
+                   + ("," + fragment if fragment else "") + '}}]}')
+        calls, responses, input_bytes = [], [], []
+
+        def fake_http(url, role, **kw):
+            calls.append((url, role, {key: value for key, value in kw.items() if key != "diagnostics"}))
+            kw["diagnostics"].update(status=200, attempts=1, error=None)
+            data = json.loads(payload if "/new_pools?" in url else '{"data":[]}')
+            responses.append(data)
+            input_bytes.append(pickle.dumps(data, protocol=5))
+            return data
+
+        with tempfile.TemporaryDirectory() as tmp:
+            stream = io.StringIO()
+            lower = datetime.now(timezone.utc)
+            code, writer_failure = None, None
+            with patch.object(snapshot, "OUT_DIR", tmp), \
+                 patch.object(snapshot.sys, "argv", ["snapshot.py", "--chains", "base", "--pages", "1", "--sellability", "0"]), \
+                 patch.object(snapshot, "fetch_json", side_effect=fake_http), \
+                 patch.object(snapshot, "probe_sellability", side_effect=AssertionError("unexpected assessment")), \
+                 patch.object(socket, "socket", side_effect=AssertionError("unexpected network")), \
+                 patch.object(urllib.request, "urlopen", side_effect=AssertionError("unexpected network")), \
+                 contextlib.redirect_stdout(stream):
+                try:
+                    code = snapshot.main()
+                except (TypeError, ValueError, RecursionError) as error:
+                    writer_failure = type(error).__name__
+            upper = datetime.now(timezone.utc)
+            paths = list(Path(tmp).glob("pools-*.ndjson"))
+            path = paths[0] if paths else Path(tmp) / ("pools-" + upper.isoformat()[:10] + ".ndjson")
+            writer_bytes = path.read_bytes() if path.exists() else b""
+            saved = [json.loads(line) for line in writer_bytes.splitlines()]
+            input_quote = responses[0]["data"][0]["attributes"].get("quote_token_price_usd")
+            original = readiness.inventory(tmp, upper.isoformat())["kinds"]["pools"]
+            check(label + " real writer keeps one previously readable strict row with its actual response clock",
+                  code == 0 and writer_failure is None and len(saved) == 1 and original["rows"] == 1
+                  and original["eligible_rows"] == 1 and original["malformed_rows"] == 0
+                  and lower <= datetime.fromisoformat(saved[0]["fetched_at"]) <= upper)
+            captured = saved[0] if len(saved) == 1 else {}
+            if failed:
+                exact_capture = (captured.get("quote_token_price_usd") is None
+                                 and captured.get(status_key) == "not_json_representable")
+            else:
+                exact_capture = (pickle.dumps(captured.get("quote_token_price_usd"), protocol=5)
+                                 == pickle.dumps(input_quote, protocol=5) and status_key not in captured)
+            check(label + " actual serializer retains exact safe values or only null and fixed capture status",
+                  "quote_token_price_usd" in captured and exact_capture
+                  and input_bytes == [pickle.dumps(data, protocol=5) for data in responses])
+            expected_old = {"seen_at": captured.get("seen_at"), "chain": "base", "kind": "new", "pool_id": secret,
+                            "pool_address": None, "name": None, "base_token": "", "quote_token": "",
+                            "pool_created_at": None, "price_usd": "7", "price_quote": "2", "reserve_usd": "11",
+                            "fdv_usd": None, "market_cap_usd": None, "volume_h24": None, "volume_h1": None,
+                            "price_change_h24": None, "buys_h24": None, "sells_h24": None, "buyers_h24": None,
+                            "sellers_h24": None, "tx": None, "volume": None, "price_change": None, "dex": None,
+                            "schema": 2, "fetched_at": captured.get("fetched_at")}
+            check(label + " preserves every previous raw field without replacing the primary price",
+                  {key: value for key, value in captured.items() if key not in ("quote_token_price_usd", status_key)} == expected_old)
+            with path.open("ab") as output:
+                for row in ({"fetched_at": "9999-01-01T00:00:00Z", "quote_token_price_usd": None},
+                            {"quote_token_price_usd": None}):
+                    output.write((json.dumps(row) + "\n").encode("utf-8"))
+            before = {item.name: item.read_bytes() for item in Path(tmp).iterdir()}
+            result = readiness.inventory(tmp, upper.isoformat())
+            counts = result["kinds"]["pools"]
+            check(label + " keeps literal quote membership separate from eligible future and unknown clocks",
+                  (counts["rows"], counts["eligible_rows"], counts["future_rows"], counts["unknown_time_rows"], counts["malformed_rows"])
+                  == (3, 1, 1, 1, 0) and counts["field_presence"]["quote_token_price_usd"] == 3
+                  and status_key not in counts["field_presence"] and status_key not in json.dumps(result)
+                  and result["reasons"] == ["engine_inputs_not_validated", "independent_outcomes_not_established",
+                                             "sellability_response_clock_not_recorded"])
+            proc = subprocess.run([sys.executable, os.path.join(ROOT, "bench", "snapshot_readiness.py"),
+                                   "--archive", tmp, "--as-of", upper.isoformat()], capture_output=True, text=True, encoding="utf-8")
+            check(label + " actual strict CLI emits fixed private-safe aggregates and exact source hashes",
+                  proc.returncode == 0 and not proc.stderr and json.loads(proc.stdout) == result
+                  and all(value not in proc.stdout for value in (secret, tmp, "https://", status_key))
+                  and before == {item.name: item.read_bytes() for item in Path(tmp).iterdir()}
+                  and path.read_bytes().startswith(writer_bytes)
+                  and all(item["sha256"] == hashlib.sha256(before[item["kind"] + "-" + item["date"] + ".ndjson"]).hexdigest()
+                          for item in result["files"])
+                  and not result["replay_ready"] and not result["full_engine_inputs_validated"]
+                  and not result["independent_outcomes_established"])
+            expected_calls = [("https://api.geckoterminal.com/api/v2/networks/base/" + endpoint + "?page=1", "label",
+                               {"retries": 1, "timeout": 10, "use_cache": False, "write_cache": False, "absolute_timeout": True})
+                              for endpoint in ("new_pools", "trending_pools")]
+            check(label + " capture containment changes no request order count retries or cache contract", calls == expected_calls)
+
+
 def main():
     print("=" * 68)
     print("Sellability archive: asking on the day, because later is too late")
