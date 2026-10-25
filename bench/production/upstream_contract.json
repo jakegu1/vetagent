@@ -1,16 +1,8 @@
 {
  "collapsed_paths": [],
- "date": "2026-10-24",
+ "date": "2026-10-25",
  "failures": [],
  "history": [
-  {
-   "collapsed_paths": [],
-   "date": "2026-09-25",
-   "status": "blind",
-   "unobserved_sources": [
-    "rugcheck"
-   ]
-  },
   {
    "collapsed_paths": [],
    "date": "2026-09-26",
@@ -192,6 +184,12 @@
   {
    "collapsed_paths": [],
    "date": "2026-10-24",
+   "status": "green",
+   "unobserved_sources": []
+  },
+  {
+   "collapsed_paths": [],
+   "date": "2026-10-25",
    "status": "green",
    "unobserved_sources": []
   }
@@ -682,19 +680,6 @@
    {
     "attempts": [
      {
-      "http_status": "200",
-      "reason": "ok",
-      "transport_exit": 0,
-      "usable_body": true
-     }
-    ],
-    "counts_for_blindness": true,
-    "probe": "fields-06",
-    "source": "geckoterminal"
-   },
-   {
-    "attempts": [
-     {
       "http_status": "429",
       "reason": "rate_limited",
       "transport_exit": 0,
@@ -708,11 +693,30 @@
      }
     ],
     "counts_for_blindness": true,
+    "probe": "fields-06",
+    "source": "geckoterminal"
+   },
+   {
+    "attempts": [
+     {
+      "http_status": "200",
+      "reason": "ok",
+      "transport_exit": 0,
+      "usable_body": true
+     }
+    ],
+    "counts_for_blindness": true,
     "probe": "fields-07",
     "source": "geckoterminal"
    },
    {
     "attempts": [
+     {
+      "http_status": "429",
+      "reason": "rate_limited",
+      "transport_exit": 0,
+      "usable_body": false
+     },
      {
       "http_status": "200",
       "reason": "ok",
