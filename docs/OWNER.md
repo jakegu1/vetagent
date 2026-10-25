@@ -149,7 +149,7 @@ problem looked like before it was fixed.
 - lead: register cross-version history and actual admission budget repairs
 - lead: hold192 session candidate on two reproduced admission defects
 
-_291 more not shown (299 commits in total)._
+_254 more not shown (262 commits in total)._
 
 ## What I got wrong
 
