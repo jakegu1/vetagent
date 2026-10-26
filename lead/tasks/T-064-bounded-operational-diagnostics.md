@@ -414,3 +414,16 @@ root acceptance below; its historical source/evidence remains unchanged.
 original archive and owned-only stop bindings are reverified. The exact design
 passes DoR after unchanged-source reconciliation; implementation is now authorized.
 NamedP and every original scientific/transport boundary remain exactly as above.
+
+2026-10-26, A1 named additive-test fixture repair: the first acceptance-only
+commit exposes two setup defects before the intended missing-diagnostics seam.
+Only the newly added StudyTests.t064_run synthetic tick cohort may change its
+three synthetic members from fresh to control so enrollment-free members satisfy
+the unchanged parent state validator. Only the newly added session helper may
+initialize its fake service's reads/downloads/seconds_spent/runs statistics to
+their appropriate empty values required by the unchanged existing _stats seam.
+Do not alter old helpers/classes, any old or new assertion, expected diagnostic
+count, runner, source validator or other fixture. Keep the original failure logs.
+Commit this exact setup-only repair separately before the runtime fix, and rerun
+the original parent to establish meaningful missing-diagnostic reds through the
+now valid setup. No assertion or acceptance threshold is relaxed.
