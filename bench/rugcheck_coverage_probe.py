@@ -58,6 +58,7 @@ DEFAULT_OUT = os.path.join(HERE, "rugcheck_coverage.jsonl")
 UA = "vetagent-coverage-probe"
 REPORT_URL = "https://api.rugcheck.xyz/v1/tokens/%s/report"
 GECKO_NEW = "https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page=%d"
+_ATTEMPT_DIAGNOSTIC = None
 
 # The bands `src/risk.py` sorts this number into today: >=50 a `critical` signal, >=20 a
 # `warn`, below that a passing `ok`. Copied rather than imported on purpose -- a probe that
@@ -114,21 +115,77 @@ MAJORS = [
 ]
 
 
+def _safe_attempt(source, code, body, parsed, native_exit, *, legacy=False):
+    """Classify acquired values without retaining any response or error text."""
+    http = code if type(code) is str and code in ("200", "400", "429") else (
+        "other_http" if type(code) is str and len(code) == 3 and code.isascii()
+        and code.isdigit() and code != "000" else "no_http")
+    native = (str(native_exit) if type(native_exit) is int and native_exit in
+              (0, 6, 7, 23, 28, 35, 52, 56, 60) else
+              "other_nonzero" if type(native_exit) is int and native_exit != 0 else "unavailable")
+    error = body.get("error") if isinstance(body, dict) else None
+    status = body.get("status") if isinstance(body, dict) else None
+    rejected = isinstance(body, dict) and (
+        bool(body.get("error")) or bool(body.get("errors"))
+        or isinstance(status, dict) and status.get("error_code") is not None
+        or type(body.get("code")) is int and body["code"] >= 400)
+    if not legacy and native != "0":
+        reason = "transport_failed"
+    elif code == "429":
+        reason = "rate_limited"
+    elif source == "rugcheck" and code == "400" and error == "Token not found":
+        reason = "token_not_found"
+    elif legacy and body is None:
+        reason = "unclassified"
+    elif code != "200" or rejected:
+        reason = "unclassified" if code in ("no response", "000") else "vendor_rejected"
+    elif not parsed:
+        reason = "malformed_body"
+    elif body is None or body == {} or body == []:
+        reason = "empty_body"
+    else:
+        reason = "ok" if isinstance(body, (dict, list)) else "malformed_body"
+    return {"http_status": http, "native_exit": native, "reason": reason,
+            "usable_body": native == "0" and http == "200" and reason == "ok"}
+
+
+def _emit_attempt(code, body, parsed, native):
+    hook = _ATTEMPT_DIAGNOSTIC
+    if hook is None:
+        return
+    try:
+        source, callback = hook
+        if source not in ("rugcheck", "geckoterminal"):
+            raise ValueError()
+        callback(_safe_attempt(source, code, body, parsed, native))
+    except Exception:
+        # A capture failure cannot replace the original result or repeat a request.
+        try:
+            callback._invalidate()
+        except Exception:
+            pass
+
+
 def curl(url):
     """(http_status, parsed_body_or_None). Status is kept apart from the body on purpose."""
     try:
         r = subprocess.run(["curl", "-s", "-m", "30", "-A", UA, "-w", "\n%{http_code}", url],
                            capture_output=True, encoding="utf-8", errors="replace")
     except (OSError, subprocess.SubprocessError):
+        _emit_attempt("0", None, False, None)
         return "0", None
     text = r.stdout or ""
     code = text.rpartition("\n")[2].strip() or "0"
     if r.returncode:
+        _emit_attempt(code, None, False, r.returncode)
         return code, None
     try:
-        return code, json.loads(text.rpartition("\n")[0] or "null")
+        body = json.loads(text.rpartition("\n")[0] or "null")
     except json.JSONDecodeError:
+        _emit_attempt(code, None, False, r.returncode)
         return code, None
+    _emit_attempt(code, body, True, r.returncode)
+    return code, body
 
 
 def gecko_new_mints(want):
