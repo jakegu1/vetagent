@@ -460,3 +460,31 @@ file persistence before reaching the required status seam. All assertions,
 scientific data, original os.replace behavior outside that fixed destination,
 and original runtime/test code remain unchanged. Keep the earlier failure and
 commit this setup-only change separately before the runtime fix.
+
+2026-10-26, A5 named salvage-fixture preservation: only the added capacity test's
+later legacy/missing-diagnostics write may pass the same existing unverified tail
+explicitly. The existing writer correctly rejects a leftover scientific tail
+whose rebuilt manifest did not name it. Do not delete the tail, change the writer
+or alter any assertion to make this setup pass. Preserve its failure and commit
+the one input-wiring correction tests-only before the runtime fix.
+
+2026-10-26, A6 bounded acceptance supplement before the runtime fix: add only
+these four new methods in the already registered test file; every original and
+previously committed assertion remains unchanged:
+
+- StudyTests.test_t064_refusal_limiters_and_unrepresentable_timing_preserve_original_traces
+- StudyTests.test_t064_recorded_zero_missing_and_reused_target_remain_distinct
+- New192SessionTests.test_t064_capacity_status_survives_actual_finish_receipt_and_summary
+- New192SessionTests.test_t064_rescue_has_no_aggregate_and_canary_rejects_result_member
+
+They complete the existing AC3-7 obligations for phase/study/equal limiters and
+nonrepresentable timing, recorded-zero versus missing and caller-dict replacement,
+actual finish receipt/allowlisted summary capacity status, rescue and valid
+canary-member rejection. This is no new behavior or scope: runtime stays in the
+same three files, all caps/traces/science remain original, and all new methods
+are tests-only before the runtime fix. Reproduce missing-feature reds against
+unmodified parent runtime in an isolated bounded fixture; preserve the originals.
+Characterizations already supported by the old runtime need not be falsely made
+red. Distinguish synthetic pure unreachable-schema witnesses from actual operation
+evidence. Report HELD if any required seam cannot be demonstrated within thisM
+task; no partial publication or self-certified READY from code inspection.
