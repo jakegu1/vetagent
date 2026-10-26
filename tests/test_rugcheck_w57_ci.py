@@ -2356,7 +2356,7 @@ class New192SessionTests(unittest.TestCase):
                         self.session.write_bundle(folder / 'result', state, rows, 'result', ctx, namespace,
                                                   tail, diagnostics=diag)
                 self.assertEqual({p.name: p.read_bytes() for p in (folder / 'result').iterdir()}, original)
-                self.session.write_bundle(folder / 'result', state, rows, 'result', ctx, namespace)
+                self.session.write_bundle(folder / 'result', state, rows, 'result', ctx, namespace, tail)
                 self.assertNotIn('operational_diagnostics', self.session._local(
                     folder / 'result', ctx, protocol=self.session._selection(namespace))['manifest'])
                 # A corrupt interrupted member is never reconstructed from scientific rows.
