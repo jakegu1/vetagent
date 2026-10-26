@@ -451,3 +451,12 @@ equality, never be silently filtered. This corrects NTFS enumeration-order input
 to the deterministic ZIP constructor, not ZIP/file bytes or digest assertions.
 Only these two added test-setup paths may change in a separate tests-only commit;
 retain the original failures and all old tests/helpers/source behavior.
+
+2026-10-26, A4 named status-persistence failure injection: only the newly added
+capacity test's os.replace fault may delegate to the original replacement for
+every destination except collection.json, where it raises the same synthetic
+OSError. The prior module-wide replacement fault also interrupted scientific
+file persistence before reaching the required status seam. All assertions,
+scientific data, original os.replace behavior outside that fixed destination,
+and original runtime/test code remain unchanged. Keep the earlier failure and
+commit this setup-only change separately before the runtime fix.
