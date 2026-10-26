@@ -438,3 +438,16 @@ existing order. Both original protocol validators accept this proposed setup.
 Keep all assertions, expected counts, clocks, guard behavior, old helpers and
 runtime validators unchanged. Commit A2 tests-only and reproduce the intended
 missing-diagnostics parent red, preserving both earlier setup-failure records.
+
+2026-10-26, A3 named new-test serialization fixtures only: in the added manifest
+read-rejection case, serialize the deliberately malformed manifest with
+json.dumps(...).encode('utf-8') so its intended NaN reaches the production decoder
+instead of being rejected by the valid-output encoder in test setup. The write
+rejection and every existing/new assertion remain unchanged. In the added
+capacity case, enumerate all actual on-disk result files in the original _files
+key order before constructing the actual ZIP comparison. Retain every actual
+file; unexpected filenames must remain included and fail the existing dictionary
+equality, never be silently filtered. This corrects NTFS enumeration-order input
+to the deterministic ZIP constructor, not ZIP/file bytes or digest assertions.
+Only these two added test-setup paths may change in a separate tests-only commit;
+retain the original failures and all old tests/helpers/source behavior.
