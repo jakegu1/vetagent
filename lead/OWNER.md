@@ -3,16 +3,17 @@
 > This page holds only what the lead needs from you. The project's own dashboard, with its
 > deadlines and gates, is `docs/OWNER.md` (generated). Messages to you are in Chinese; files
 > here are English because the repository is English-only. Maintained by the project lead (AI).
-> Last updated: 2026-10-24 (Codex)
+> Last updated: 2026-10-26 (Codex)
 
 ## Status in one line
 
 T058/T059/T060 source is delivered at c571d3f after reviewed repairs, complete45
 local/integrated checks, exact-source master CI and both locked builds. The one
-qualified pilot and separately preregistered192-start study are running; first
-cross-job handoff is independently verified. Its original protocol/window and
-five sources remain frozen. Research results and operational evidence stay private;
-current activity is not a claim of complete coverage or scientific success.
+qualified pilot and separately preregistered192-start study have ended. Same-study
+report reconstruction, complete original preservation and owned-only workflow
+stop have qualified operational closure. Scientific conclusions remain
+inconclusive. Historical protocol/window, executed sources and original evidence
+remain immutable; detailed research evidence stays private.
 
 T061/T062/T063 are locally reviewed and normally integrated: bounded as-of
 input inventory, prospective response-availability clocks, literal native pool
@@ -27,8 +28,9 @@ Actual same-source Linux/two locked builds/publication and the first normal
 scheduled snapshot trial remain pending. The latest order requires the current
 study's qualified report, complete original preservation and owned stop, then
 the future diagnostic repair with independent reviews and full gates, before
-normal source CI and publication. Its accepted diagnostic design is dependency-
-held and unimplemented. Existing normal snapshot activity does not verify the
+normal source CI and publication. Its accepted diagnostic design has now passed
+the original closure prerequisite and is entering isolated tests-first work.
+Existing normal snapshot activity does not verify the
 unpublished collector. Old research results and all active scientific controls
 remain unchanged. This is a technical wait, not a repeat approval request.
 The bounded next-gap triage found no new demonstrated source defect; it does

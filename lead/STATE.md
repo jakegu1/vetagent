@@ -1,6 +1,6 @@
 # Lead state
 
-Last updated: 2026-10-24 by Codex. This is the current baton, not a release log.
+Last updated: 2026-10-26 by Codex. This is the current baton, not a release log.
 The Owner has now approved a NEW independent 192-start-point study after bounded
 HTTP400 diagnosis/repair, a new frozen protocol, implementation, independent and
 adversarial review, exact-source deployment and a qualified real pilot. This
@@ -15,9 +15,12 @@ source c571d3f passes the complete45 local/post-integration gates, actual master
 39984359161 and both locked builds. Its separately qualified actual pilot and
 one preregistered192-start study are launched. Current evidence and operational
 receipts are private. The first real cross-job handoff is independently verified.
-The fixed window is still active; neither study success nor continuous coverage
-is asserted. Both earlier studies remain inconclusive. Do not repeat enrollment,
-alter five frozen controls or their dependencies, backfill, extend or change bars.
+The original fixed window has ended. Same-study report reconstruction, complete
+original preservation and owned-only workflow stop have qualified operational
+closure. Original scientific conclusions remain inconclusive and continuous
+coverage is not asserted. Both earlier studies remain inconclusive. No repeat
+enrollment, backfill, extension or changed bars. Historical executed controls and
+evidence remain immutable; reviewed prospective diagnostics are now authorized.
 
 The later scheduled archive head92df4e7 is retained by normal merge47a909d.
 All changed canonical raw data remain exact prefixes and all five scientific
@@ -29,6 +32,7 @@ the source's earlier Linux/build evidence remains separately bound toc571d3f.
 | T-061 / W7 | source reviewed and normally integrated; release gates outstanding | lead | Run integrated offline gate; defer real Linux/build/publication until the current study has qualified closure |
 | T-062 / W7 | source reviewed and normally integrated; release gates outstanding | lead | Preserve prospective fetch timing and verify the same related-batch release |
 | T-063 / W7 | source reviewed and locally integrated; expanded release gates outstanding | lead | Preserve native raw inputs; qualified study closure, diagnostic repair and normal release gates remain |
+| T-064 / W7 | in_progress; qualified closure and exact reviewed design accepted | isolated executor / lead | Commit acceptance tests alone, implement bounded future diagnostics, then fresh functional/adversarial review and complete gates |
 | T-047 / W40 | held, genuine mandatory security verdict incomplete | lead / required reviewer | Preserve candidate and existing qualified handoff; no replay through another AI |
 | T-049 / T-050 | dependency-held drafts | lead | Bind accepted integrated archive/runtime APIs before implementation |
 
@@ -57,8 +61,10 @@ R1's real optional-value serialization regression and its CHANGES_REQUIRED
 verdict remain in the record. The fix retains finite JSON/UTF-8 values exactly
 and explicitly records failed optional capture without poisoning old row fields.
 Literal presence is not validated engine input. No historical value is restored.
-The post-closure diagnostic design has independent DESIGN_PASS_DEPENDENCY_HELD;
-it is not implemented or dispatched, and the active scientific controls stay exact.
+The post-closure diagnostic design had independent DESIGN_PASS_DEPENDENCY_HELD.
+The lead has independently verified its original closure dependency and reconciled
+all scoped raw/canonical source bytes. T064 is now accepted for isolated tests-first
+implementation. Old executed controls and original scientific evidence stay exact.
 The existing finite release followup is updated in place for this order, without
 resetting its original identity/count/ledger. No new source CI or publication has
 occurred; its future trigger is not established by a saved configuration.
