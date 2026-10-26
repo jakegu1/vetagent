@@ -204,7 +204,7 @@ class StudyTests(unittest.TestCase):
                 raw = dict(files)
                 manifest = json.loads(raw['manifest.json'])
                 manifest['operational_diagnostics'] = changed
-                raw['manifest.json'] = driver.encoded(manifest)
+                raw['manifest.json'] = json.dumps(manifest, sort_keys=True, separators=(',', ':')).encode('utf-8')
                 target = io.BytesIO()
                 with zipfile.ZipFile(target, 'w') as archive:
                     for name, value in raw.items():
@@ -2331,7 +2331,8 @@ class New192SessionTests(unittest.TestCase):
                 original_zip = self.session._zip(original)
                 self.session.write_bundle(folder / 'result', state, rows, 'result', ctx, namespace,
                                           tail, diagnostics=diag)
-                actual = {p.name: p.read_bytes() for p in (folder / 'result').iterdir()}
+                actual = {p.name: p.read_bytes() for p in sorted((folder / 'result').iterdir(),
+                          key=lambda p: list(original).index(p.name) if p.name in original else len(original))}
                 self.assertEqual(actual, original, 'capacity fallback changed original scientific/tail bytes')
                 self.assertEqual(self.session._zip(actual), original_zip)
                 self.assertEqual(json.loads((folder / 'collection.json').read_bytes())['diagnostics_status'],
