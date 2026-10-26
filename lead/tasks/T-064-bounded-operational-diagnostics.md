@@ -488,3 +488,13 @@ Characterizations already supported by the old runtime need not be falsely made
 red. Distinguish synthetic pure unreachable-schema witnesses from actual operation
 evidence. Report HELD if any required seam cannot be demonstrated within thisM
 task; no partial publication or self-certified READY from code inspection.
+
+2026-10-26, namedP fixed literal approval: the lead reviewed the final minimal
+probe diff and an independent source-identity check computed the same LF-canonical
+SHA using Python and PowerShell, with a byte-exact retained copy. For those exact
+probe bytes only, the approved replacement is
+c1fb2e3b5b0fb68c43a2a6442aa404aeb5a9b5983dc5107aa7bbff22abe2bf6c.
+Apply only the previously named expected current-probe literal in its separate
+tests-only commit after the runtime fix. Preserve every other legacy fixture,
+old assertion and historical source pin. Changed probe bytes require renewed
+review/hash agreement. This narrow approval is not task or publication acceptance.
