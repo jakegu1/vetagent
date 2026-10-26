@@ -86,6 +86,361 @@ class MemoryArtifacts:
 
 
 class StudyTests(unittest.TestCase):
+    def test_t064_mixed_native_evidence_enforces_usable_bounds_on_write_and_read(self):
+        harness = New192SessionTests()
+        harness.setUp()
+        session = harness.session
+        native_transport = probe.curl
+        for protocol in (driver.LEGACY193, driver.START192_V1):
+            namespace = 'live' if protocol is driver.LEGACY193 else 'live192'
+            for source in ('rugcheck', 'geckoterminal'):
+                phase = 'pilot' if source == 'rugcheck' else 'start'
+                cli_phase = phase if namespace == 'live' else phase + '192'
+                ctx = harness.ctx(300, cli_phase)
+                for mode in ('all_unavailable', 'all_native', 'mixed'):
+                    clock, store, diagnostics = Clock(), MemoryArtifacts(), {}
+                    state = driver._new_state('mixed-evidence', phase, ctx, EPOCH, protocol=protocol)
+                    plan = dict(action='collect', phase=phase, state=state, prepared_at=EPOCH)
+                    intent = driver.decode_bundle(driver.bundle_bytes(state, [], 'intent', ctx, protocol=protocol),
+                                                  ctx, ctx, protocol=protocol)
+                    store.load = lambda ident: intent
+                    calls, target_calls = [], 0
+                    report_fetch, _ = self.vendor(clock)
+                    def fetch(url):
+                        calls.append(url)
+                        if source == 'geckoterminal':
+                            page = int(url.rsplit('page=', 1)[-1])
+                            # Six actual listing entries, within the original eight-page
+                            # start maximum. Invalid identities cause no report requests.
+                            return '200', {'data': [] if page == 6 else [
+                                {'relationships': {'base_token': {'data': {'id': 'invalid'}}}}]}
+                        return report_fetch(url)
+                    def native(argv, **kwargs):
+                        code, body = fetch(argv[-1])
+                        return type('Synthetic', (), dict(returncode=0, stdout=json.dumps(body) + '\n' + code))()
+                    def injected(url):
+                        nonlocal target_calls
+                        targeted = ('/tokens/' in url) if source == 'rugcheck' else 'geckoterminal' in url
+                        if targeted:
+                            target_calls += 1
+                        legacy = mode == 'all_unavailable' or mode == 'mixed' and targeted and target_calls == 6
+                        return fetch(url) if legacy else native_transport(url)
+                    with patch.object(probe, 'curl', side_effect=injected), \
+                            patch.object(probe.subprocess, 'run', side_effect=native) as subprocess_run:
+                        state, rows = driver.collect(plan, 1, store, ctx, clock, clock.sleep,
+                                                     protocol=protocol, diagnostics=diagnostics)
+                    self.assertEqual(target_calls, 6)
+                    self.assertEqual(len(calls), 7 if source == 'rugcheck' else 6)
+                    expected_native = {'all_unavailable': 0, 'all_native': 6, 'mixed': 5}[mode]
+                    self.assertEqual(subprocess_run.call_count,
+                                     expected_native + int(source == 'rugcheck' and mode != 'all_unavailable'))
+                    captured = diagnostics['sources'][source]
+                    self.assertEqual(captured['reason']['ok'], 6)
+                    self.assertEqual(captured['native_exit']['0'], expected_native)
+                    self.assertEqual(captured['native_exit']['unavailable'], 6 - expected_native)
+                    self.assertEqual(captured['usable_body'], expected_native)
+                    bound_state = session.bind_state(state, ctx, namespace)
+                    core_zip = driver.bundle_bytes(state, rows, 'result', ctx, protocol=protocol,
+                                                   diagnostics=diagnostics)
+                    session_zip = session.bundle_bytes(bound_state, rows, 'result', ctx, namespace,
+                                                       diagnostics=diagnostics)
+                    reference = {'id': 1, 'digest': session.decode_bundle(
+                        session_zip, ctx, ctx, protocol=protocol)['digest']}
+                    admission_state = copy.deepcopy(bound_state)
+                    admission_state['session']['last_durable'] = reference
+                    admission_zip = session.bundle_bytes(admission_state, rows, 'admission-result', ctx, namespace,
+                                                         diagnostics=diagnostics)
+                    def check_valid(value):
+                        core_data = driver.bundle_bytes(state, rows, 'result', ctx, protocol=protocol,
+                                                        diagnostics=value)
+                        self.assertEqual(driver.decode_bundle(core_data, ctx, ctx, protocol=protocol)
+                                         ['manifest']['operational_diagnostics'], value)
+                        session_data = session.bundle_bytes(bound_state, rows, 'result', ctx, namespace,
+                                                            diagnostics=value)
+                        self.assertEqual(session.decode_bundle(session_data, ctx, ctx, protocol=protocol)
+                                         ['manifest']['operational_diagnostics'], value)
+                    def changed_zip(original, value, *, transport_pin=True, reference_pin=True):
+                        with zipfile.ZipFile(io.BytesIO(original)) as archive:
+                            files = {name: archive.read(name) for name in archive.namelist()}
+                        manifest = json.loads(files['manifest.json'])
+                        manifest['operational_diagnostics'] = value
+                        files['manifest.json'] = driver.encoded(manifest)
+                        if 'transport.json' in files:
+                            transport = json.loads(files['transport.json'])
+                            digest = driver.sha(files['manifest.json'])
+                            if transport_pin:
+                                transport['core_digest'] = digest
+                            if reference_pin and transport.get('last_durable'):
+                                transport['last_durable']['digest'] = digest
+                            files['transport.json'] = driver.encoded(transport)
+                        return session._zip(files)
+                    def check_invalid(value, case):
+                        for channel, writer in (
+                            ('core_write', lambda: driver.bundle_bytes(state, rows, 'result', ctx,
+                                                                      protocol=protocol, diagnostics=value)),
+                            ('session_write', lambda: session.bundle_bytes(bound_state, rows, 'result', ctx,
+                                                                          namespace, diagnostics=value)),
+                            ('admission_write', lambda: session.bundle_bytes(admission_state, rows, 'admission-result',
+                                                                            ctx, namespace, diagnostics=value))):
+                            with self.subTest(protocol=protocol.identifier, source=source, mode=mode,
+                                              case=case, channel=channel), \
+                                    self.assertRaisesRegex(driver.StudyError, '^invalid_operational_diagnostics$'):
+                                writer()
+                        for channel, data, decoder in (
+                            ('core_read', core_zip, driver.decode_bundle),
+                            ('session_read', session_zip, session.decode_bundle),
+                            ('admission_read', admission_zip, session.decode_bundle)):
+                            with self.subTest(protocol=protocol.identifier, source=source, mode=mode,
+                                              case=case, channel=channel), \
+                                    self.assertRaisesRegex(driver.StudyError, '^invalid_operational_diagnostics$'):
+                                decoder(changed_zip(data, value), ctx, ctx, protocol=protocol)
+                    check_valid(diagnostics)
+                    inconsistent = copy.deepcopy(diagnostics)
+                    inconsistent['sources'][source]['usable_body'] = 1 if mode == 'all_unavailable' else 5 if mode == 'all_native' else 4
+                    check_invalid(inconsistent, 'captured_native_bound')
+                    if mode == 'mixed':
+                        # A schema witness, distinct from the six actual ok captures:
+                        # one of five ok reasons may be missing native evidence, so
+                        # four and five are the legal lower/upper usable bounds.
+                        ambiguous = copy.deepcopy(diagnostics)
+                        row = ambiguous['sources'][source]
+                        row['http']['200'], row['http']['no_http'] = 5, 1
+                        row['reason']['ok'], row['reason']['unclassified'] = 5, 1
+                        for usable in (4, 5):
+                            row['usable_body'] = usable
+                            check_valid(ambiguous)
+                        for usable in (0, 3, 6):
+                            invalid = copy.deepcopy(ambiguous)
+                            invalid['sources'][source]['usable_body'] = usable
+                            check_invalid(invalid, 'ambiguous_usable_%d' % usable)
+                    # Valid changed diagnostics still cannot bypass independent pins.
+                    changed = copy.deepcopy(diagnostics)
+                    changed['vendor_call_ceiling'] = 1
+                    with self.assertRaisesRegex(driver.StudyError, '^bundle_manifest$'):
+                        session.decode_bundle(changed_zip(session_zip, changed, transport_pin=False),
+                                              ctx, ctx, protocol=protocol)
+                    with self.assertRaisesRegex(driver.StudyError, '^admission_dependency$'):
+                        session.decode_bundle(changed_zip(admission_zip, changed, reference_pin=False),
+                                              ctx, ctx, protocol=protocol)
+
+    def test_t064_refusal_limiters_and_unrepresentable_timing_preserve_original_traces(self):
+        import inspect
+        for protocol in (driver.LEGACY193, driver.START192_V1):
+            for limiter in ('phase_deadline', 'study_end', 'equal'):
+                state = driver._new_state('limiter-test', 'tick', context(), EPOCH, protocol=protocol)
+                state.update(status='active', started_at=EPOCH, ends_at=EPOCH + protocol.duration, slot=0,
+                             cohort=[dict(mint=mint(i), label='synthetic', group='fresh',
+                                          enrollment=dict(http='200', body='ok', detectedAt=stamp(EPOCH - 60), ts=EPOCH))
+                                     for i in range(40)] +
+                                    [dict(mint=m, label=label, group='control') for label, m in probe.MAJORS])
+                end = state['ends_at'] + protocol.acquisition_grace
+                prepared = end - {'phase_deadline': 400, 'study_end': 300, 'equal': 360}[limiter]
+                deadline = min(prepared + 360, end)
+                plan = dict(action='collect', phase='tick', prepared_at=prepared, state=state)
+                ctx = context()
+                intent = driver.decode_bundle(driver.bundle_bytes(state, [], 'intent', ctx, protocol=protocol),
+                                              ctx, ctx, protocol=protocol)
+                traces, results, target = [], [], {}
+                for enabled in (False, True):
+                    trace = []
+                    store = MemoryArtifacts()
+                    store.load = lambda ident: intent
+                    def wall():
+                        trace.append(('clock', deadline - 31))
+                        return deadline - 31
+                    kwargs = dict(protocol=protocol)
+                    if enabled and 'diagnostics' in inspect.signature(driver.collect).parameters:
+                        kwargs['diagnostics'] = target
+                    with patch.object(probe, 'curl', side_effect=AssertionError('refused request')):
+                        results.append(driver.collect(plan, 1, store, ctx, wall,
+                                       lambda n: trace.append(('sleep', n)),
+                                       lambda row: trace.append(('row', driver.encoded(row))), **kwargs))
+                    traces.append(trace)
+                self.assertEqual(traces[0], traces[1])
+                self.assertEqual(results[0], results[1])
+                self.assertEqual(target.get('status'), 'recorded', 'original refusal decisions were not captured')
+                self.assertEqual(target['budget']['limiting_deadline'][limiter], 58)
+                self.assertEqual(target['budget']['refused'], 58)
+                self.assertEqual(target['budget']['first_remaining_ms'], 31000)
+                self.assertEqual(target['sources']['rugcheck']['not_attempted'], 58)
+        (state, rows), target, trace, ctx = self.t064_run(remaining=-3000000)
+        disabled = self.t064_run(enabled=False, remaining=-3000000)
+        self.assertEqual((state, rows), disabled[0])
+        self.assertEqual(trace, disabled[2])
+        self.assertEqual(target['budget']['timing_unavailable'], 7)
+        self.assertEqual(target['budget']['timing_samples'], 0)
+        self.assertIsNone(target['budget']['first_remaining_ms'])
+        # Pure schema/width witnesses; these do not assert a reachable scientific clock.
+        for deadline, wall in ((float('inf'), EPOCH), (EPOCH, float('nan')), (EPOCH, True),
+                               (10 ** 1000, EPOCH)):
+            accumulator = driver._Diagnostics('pilot')
+            accumulator.room(False, deadline, wall, 'phase_deadline')
+            witness = {}
+            accumulator.finish(witness)
+            self.assertEqual(witness['budget']['timing_unavailable'], 1)
+            self.assertIsNone(witness['budget']['last_remaining_ms'])
+
+    def test_t064_recorded_zero_missing_and_reused_target_remain_distinct(self):
+        import inspect
+        ctx, target, snapshots = context(), {'obsolete': 'private'}, []
+        state = driver._new_state('replacement-test', 'pilot', ctx, EPOCH)
+        plan = dict(action='collect', phase='pilot', state=state, prepared_at=EPOCH)
+        intent = driver.decode_bundle(driver.bundle_bytes(state, [], 'intent', ctx), ctx, ctx)
+        for operation in range(2):
+            clock, store = Clock(), MemoryArtifacts()
+            store.load = lambda ident: intent
+            fetch, calls = self.vendor(clock)
+            extra = {'diagnostics': target} if 'diagnostics' in inspect.signature(driver.collect).parameters else {}
+            with patch.object(probe, 'curl', side_effect=fetch):
+                result, rows = driver.collect(plan, 1, store, ctx, clock, clock.sleep, **extra)
+            self.assertEqual(target.get('status'), 'recorded', 'caller target was not replaced')
+            self.assertNotIn('obsolete', target)
+            snapshots.append(copy.deepcopy(target))
+        self.assertEqual(snapshots[0], snapshots[1], 'a later operation inherited earlier counts')
+        # A valid all-zero schema is distinct from missing evidence, not a claim that
+        # the scientific pilot above made zero attempts or that preflight completed.
+        zero = driver._new_diagnostics('pilot')
+        recorded = driver.bundle_bytes(result, rows, 'result', ctx, diagnostics=zero)
+        missing = driver.bundle_bytes(result, rows, 'result', ctx)
+        self.assertEqual(driver.decode_bundle(recorded, ctx, ctx)['manifest']['operational_diagnostics'], zero)
+        self.assertNotIn('operational_diagnostics', driver.decode_bundle(missing, ctx, ctx)['manifest'])
+        self.assertNotEqual(recorded, missing)
+        for forbidden in ('operational_diagnostics', 'diagnostics_status'):
+            changed = copy.deepcopy(result)
+            changed[forbidden] = zero
+            with self.assertRaises(driver.StudyError):
+                driver.bundle_bytes(changed, rows, 'result', ctx)
+
+    def t064_run(self, *, phase='pilot', enabled=True, remaining=None, native=False, slow=0,
+                 protocol=None, ceiling=False, fail_clock=False):
+        import inspect
+        protocol = protocol or driver.LEGACY193
+        clock, store, ctx, trace = Clock(), MemoryArtifacts(), context(), []
+        state = driver._new_state('diagnostics-test', phase, ctx, EPOCH, protocol=protocol)
+        if phase == 'tick':
+            state.update(status='active', started_at=EPOCH, ends_at=EPOCH + protocol.duration, slot=0,
+                         cohort=[dict(mint=mint(i), label='synthetic', group='fresh',
+                                      enrollment=dict(http='200', body='ok', detectedAt=stamp(EPOCH - 60), ts=EPOCH))
+                                 for i in range(40)] +
+                                [dict(mint=m, label=label, group='control') for label, m in probe.MAJORS])
+        if ceiling:
+            state['requests']['rugcheck'] = protocol.max_vendor_calls
+        plan = dict(action='collect', phase=phase, state=state, prepared_at=EPOCH)
+        data = driver.bundle_bytes(state, [], 'intent', ctx, protocol=protocol)
+        intent = driver.decode_bundle(data, ctx, ctx, protocol=protocol)
+        store.load = lambda ident: intent
+        if remaining is not None:
+            clock.value = EPOCH + {'pilot': 180, 'start': 1080, 'tick': 360}[phase] - remaining
+        def wall():
+            trace.append(('clock', clock.value))
+            if fail_clock and len(trace) > 5:
+                raise driver.StudyError('clock_changed')
+            return clock.value
+        def sleep(seconds):
+            trace.append(('sleep', seconds))
+            clock.sleep(seconds)
+        fetch, _ = self.vendor(clock, count=2)
+        def vendor(url):
+            trace.append(('request', url))
+            value = fetch(url)
+            clock.value += slow
+            return value
+        def run(argv, **kwargs):
+            code, body = vendor(argv[-1])
+            return type('Synthetic', (), dict(stdout=json.dumps(body) + '\n' + code, returncode=0))()
+        diagnostics = {'obsolete': 'must be replaced'}
+        extra = dict(protocol=protocol)
+        if enabled and 'diagnostics' in inspect.signature(driver.collect).parameters:
+            extra['diagnostics'] = diagnostics
+        with patch.object(probe.subprocess, 'run', side_effect=run) if native else \
+                patch.object(probe, 'curl', side_effect=vendor):
+            result = driver.collect(plan, 1, store, ctx, wall, sleep,
+                                    lambda row: trace.append(('row', driver.encoded(row))), **extra)
+        return result, diagnostics, trace, ctx
+
+    def test_t064_legacy_injected_transport_has_explicit_missing_native_evidence(self):
+        (state, rows), diagnostics, trace, ctx = self.t064_run()
+        self.assertEqual(diagnostics.get('status'), 'recorded', 'operation counts are missing')
+        self.assertEqual(diagnostics['sources']['rugcheck']['native_exit']['unavailable'], 6)
+        self.assertEqual(diagnostics['sources']['rugcheck']['usable_body'], 0)
+        self.assertEqual(diagnostics['sources']['geckoterminal']['native_exit']['unavailable'], 1)
+        self.assertEqual(diagnostics['sources']['rugcheck']['reason']['ok'], 6)
+        self.assertEqual(diagnostics['sources']['rugcheck']['http']['200'], 6)
+        self.assertTrue(all(row['body'] == 'ok' for row in rows))
+        data = driver.bundle_bytes(state, rows, 'result', ctx, diagnostics=diagnostics)
+        manifest = driver.decode_bundle(data, ctx, ctx)['manifest']
+        self.assertEqual(manifest['operational_diagnostics'], diagnostics)
+        for secret in ('obsolete', 'stderr', 'message', 'synthetic-mint', 'body_hash', 'traceback'):
+            self.assertNotIn(secret, json.dumps(diagnostics))
+
+    def test_t064_budget_counts_reuse_original_decisions_and_do_not_change_traces(self):
+        for phase, remaining, slow in [('pilot', 31, 0), ('pilot', 32, 0), ('pilot', None, 30),
+                                       ('start', None, 0), ('tick', 31, 0)]:
+            with self.subTest(phase=phase, remaining=remaining, slow=slow):
+                disabled = self.t064_run(phase=phase, enabled=False, remaining=remaining, slow=slow)
+                enabled = self.t064_run(phase=phase, remaining=remaining, slow=slow)
+                self.assertEqual(enabled[0], disabled[0])
+                self.assertEqual(enabled[2], disabled[2], 'diagnostics changed a request/time/sleep/row trace')
+                diagnostics = enabled[1]
+                self.assertEqual(diagnostics.get('status'), 'recorded', 'budget decisions are missing')
+                budget = diagnostics['budget']
+                self.assertEqual(budget['checks'], budget['allowed'] + budget['refused'])
+                self.assertEqual(sum(budget['limiting_deadline'].values()), budget['refused'])
+                self.assertEqual(budget['timing_samples'] + budget['timing_unavailable'], budget['refused'])
+                if remaining == 31:
+                    self.assertEqual(budget['allowed'], 0)
+                    self.assertEqual(budget['first_remaining_ms'], 31000)
+                for source in diagnostics['sources'].values():
+                    self.assertEqual(source['opportunities'], source['attempted'] + source['not_attempted'])
+        failed = self.t064_run(protocol=driver.START192_V1, ceiling=True)
+        self.assertEqual(failed[1]['vendor_call_ceiling'], 1)
+        self.assertEqual(failed[1]['sources']['geckoterminal']['attempted'], 0)
+        self.assertEqual(self.t064_run(fail_clock=True)[1], {}, 'an interrupted capture is incomplete')
+
+    def test_t064_result_manifest_schema_is_exact_bounded_and_operation_local(self):
+        (state, rows), diag, _, ctx = self.t064_run(native=True)
+        self.assertEqual(diag.get('status'), 'recorded', 'manifest aggregate is missing')
+        self.assertLessEqual(len(driver.encoded(diag)), 2048)
+        for protocol in (driver.LEGACY193, driver.START192_V1):
+            (state, rows), diag, _, ctx = self.t064_run(native=True, protocol=protocol)
+            normal = driver._bundle_files(state, rows, 'result', ctx, protocol=protocol)
+            files = driver._bundle_files(state, rows, 'result', ctx, protocol=protocol, diagnostics=diag)
+            self.assertEqual(files['state.json'], normal['state.json'])
+            self.assertEqual(files['observations.jsonl'], normal['observations.jsonl'])
+            data = driver.bundle_bytes(state, rows, 'result', ctx, protocol=protocol, diagnostics=diag)
+            decoded = driver.decode_bundle(data, ctx, ctx, protocol=protocol)
+            self.assertEqual(decoded['manifest']['operational_diagnostics'], diag)
+            self.assertEqual(driver.readout(state, rows, protocol=protocol),
+                             driver.readout(decoded['state'], decoded['rows'], protocol=protocol))
+            mutations = [lambda x: x.update(private='private'), lambda x: x.update(version=True),
+                         lambda x: x.update(operation='canary'), lambda x: x.update(status='unrecorded'),
+                         lambda x: x['sources']['rugcheck'].update(attempted=-1),
+                         lambda x: x['sources']['rugcheck']['http'].update(secret=1),
+                         lambda x: x['sources']['rugcheck'].update(opportunities=241),
+                         lambda x: x['budget'].update(first_remaining_ms=True),
+                         lambda x: x['budget'].update(required_ms=32001),
+                         lambda x: x['budget'].update(first_remaining_ms=float('nan')),
+                         lambda x: x.update(private='x' * 2049)]
+            for mutate in mutations:
+                changed = copy.deepcopy(diag)
+                mutate(changed)
+                with self.assertRaises(driver.StudyError):
+                    driver._bundle_files(state, rows, 'result', ctx, protocol=protocol, diagnostics=changed)
+                raw = dict(files)
+                manifest = json.loads(raw['manifest.json'])
+                manifest['operational_diagnostics'] = changed
+                raw['manifest.json'] = json.dumps(manifest, sort_keys=True, separators=(',', ':')).encode('utf-8')
+                target = io.BytesIO()
+                with zipfile.ZipFile(target, 'w') as archive:
+                    for name, value in raw.items():
+                        archive.writestr(name, value)
+                with self.assertRaises(driver.StudyError):
+                    driver.decode_bundle(target.getvalue(), ctx, ctx, protocol=protocol)
+            with self.assertRaises(driver.StudyError):
+                driver._bundle_files(state, [], 'intent', ctx, protocol=protocol, diagnostics=diag)
+        self.assertNotIn('operational_diagnostics', normal['state.json'].decode())
+        self.assertNotIn('operational_diagnostics', normal['observations.jsonl'].decode())
+
     def need(self):
         self.assertIsNotNone(driver, "the durable W57 driver is not implemented")
 
@@ -1191,7 +1546,7 @@ class RunningSessionTests(unittest.TestCase):
         legacy = json.loads((ROOT / "tests/fixtures/w57_legacy193_characterization.json").read_bytes())
         self.assertEqual(driver.protocol_descriptor(driver.LEGACY193), legacy["legacy_protocol"])
         self.assertEqual(driver.sha((ROOT / expected["probe"]).read_bytes().replace(b"\r\n", b"\n")),
-                         "3734d9c3b51114a90c7512ee77c6d90754e205a14085bbf22eee012acb4fbc21")
+                         "c1fb2e3b5b0fb68c43a2a6442aa404aeb5a9b5983dc5107aa7bbff22abe2bf6c")
         self.assertEqual(set(self.ctx["source"]), {"driver", "probe", "workflow"})
         self.assertNotEqual(self.ctx["source"]["workflow"], freeze["workflow"])
         self.assertIn("composite", self.session.__doc__.lower())
@@ -2116,6 +2471,239 @@ class New192CoreTests(unittest.TestCase):
 
 class New192SessionTests(unittest.TestCase):
     """T-060: actual finite v3 transport and CLI graph, with synthetic IO only."""
+
+    def test_t064_capacity_status_survives_actual_finish_receipt_and_summary(self):
+        import subprocess
+        for namespace in ('live', 'live192'):
+            with self.subTest(namespace=namespace), tempfile.TemporaryDirectory(prefix='t064-finish-capacity-') as directory:
+                folder = Path(directory) / 'operation'
+                ctx, clock, memory, state, rows, diag, phase = self.t064_collected(folder, namespace)
+                base = self.session._files(state, rows, 'result', ctx, namespace, b'')
+                tail = b'x' * (driver.BUNDLE_BYTES - sum(map(len, base.values())) - 1024)
+                original = self.session._files(state, rows, 'result', ctx, namespace, tail)
+                self.session.write_bundle(folder / 'result', state, rows, 'result', ctx, namespace,
+                                          tail, diagnostics=diag)
+                self.assertEqual({p.name: p.read_bytes() for p in (folder / 'result').iterdir()}, original)
+                self.session.finalize(folder, ctx, clock)
+                self.assertEqual((folder / 'result/unverified.jsonl').read_bytes(), tail)
+                value = self.session._local(folder / 'result', ctx, protocol=self.session._selection(namespace))
+                self.assertNotIn('operational_diagnostics', value['manifest'])
+                ident, data = self.t064_publish_actual(folder, memory, value['state'], rows, ctx, namespace)
+                service, _, mocked = self.service(memory, ctx)
+                summary = folder / 'summary.txt'
+                env = dict(self.env(300, phase), W57_UPLOADED='success', W57_RESULT_ID=str(ident),
+                           W57_RESULT_DIGEST=driver.sha(data), GITHUB_STEP_SUMMARY=str(summary))
+                with mocked, patch.object(self.session, '_store', return_value=service), \
+                        patch.object(self.session, 'Clock', return_value=clock), \
+                        patch.dict(self.session.os.environ, env), contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(self.session.main(['finish', '--out', str(folder)]), 0)
+                receipt = json.loads((folder / 'receipt.json').read_bytes())
+                self.assertEqual(receipt['diagnostics_status'], 'diagnostics_not_recorded_capacity')
+                self.assertEqual(receipt['last_durable']['digest'], value['digest'])
+                self.assertEqual(receipt['last_durable']['zip_digest'], driver.sha(data))
+                text = summary.read_text(encoding='utf-8')
+                self.assertIn('"diagnostics_status":"diagnostics_not_recorded_capacity"', text)
+                self.assertNotIn('operational_diagnostics', text)
+                code = ('import json,sys; print(json.load(open(sys.argv[1]))["diagnostics_status"])')
+                fresh = subprocess.run([sys.executable, '-c', code, str(folder / 'receipt.json')],
+                                       capture_output=True, encoding='utf-8', check=True)
+                self.assertEqual(fresh.stdout.strip(), 'diagnostics_not_recorded_capacity')
+                original_receipt = (folder / 'collection.json').read_bytes()
+                for unsafe in (b'[]', b'{"diagnostics_status":"private"}', b'x' * 4097):
+                    (folder / 'collection.json').write_bytes(unsafe)
+                    with self.assertRaises(driver.StudyError):
+                        driver._read_diagnostics_status(folder)
+                (folder / 'collection.json').write_bytes(original_receipt)
+
+    def test_t064_rescue_has_no_aggregate_and_canary_rejects_result_member(self):
+        for namespace in ('live', 'live192'):
+            with self.subTest(namespace=namespace), tempfile.TemporaryDirectory(prefix='t064-rescue-') as directory:
+                folder = Path(directory) / 'operation'
+                ctx, clock, memory, state, rows, diag, phase = self.t064_collected(folder, namespace)
+                # Only the original intent is in the service: no result was published.
+                self.assertEqual(len(memory.items), 1)
+                service, _, mocked = self.service(memory, ctx, report=True)
+                target = Path(directory) / 'closure'
+                with mocked, patch.object(self.session, '_store', return_value=service), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    answer = self.session.closure(target, ctx, clock, phase)
+                value = self.session._local(target / 'result', ctx, protocol=self.session._selection(namespace))
+                self.assertEqual(value['state']['status'], 'lost_checkpoint')
+                self.assertNotIn('operational_diagnostics', value['manifest'])
+                self.assertEqual(answer['diagnostics_status'], 'not_recorded')
+                self.assertNotIn('operational_diagnostics', (target / 'closure.json').read_text(encoding='utf-8'))
+        ctx, clock = self.ctx(310, 'canary'), SessionClock()
+        state = self.session.canary_state(ctx, clock.utc())
+        files = self.session._files(state, [], 'result', ctx, 'canary')
+        self.assertEqual(self.session.decode_bundle(self.session._zip(files), ctx, ctx)['state'], state)
+        with self.assertRaises(driver.StudyError):
+            self.session._files(state, [], 'result', ctx, 'canary', diagnostics=driver._new_diagnostics('pilot'))
+        manifest = json.loads(files['manifest.json'])
+        manifest['operational_diagnostics'] = driver._new_diagnostics('pilot')
+        files['manifest.json'] = driver.encoded(manifest)
+        transport = json.loads(files['transport.json'])
+        transport['core_digest'] = driver.sha(files['manifest.json'])
+        files['transport.json'] = driver.encoded(transport)
+        with self.assertRaises(driver.StudyError):
+            self.session.decode_bundle(self.session._zip(files), ctx, ctx)
+
+    def t064_collected(self, folder, namespace='live192'):
+        import inspect
+        phase = 'pilot192' if namespace == 'live192' else 'pilot'
+        ctx, clock = self.ctx(300, phase), SessionClock()
+        memory = self.memory(ctx, clock)
+        memory.reads, memory.downloads, memory.seconds_spent, memory.runs = 0, 0, 0, {}
+        plan = self.session.prepare_admission(phase, memory, ctx, clock.utc(), 'diagnostic-pilot')
+        plan['lease'] = self.session.Lease(clock).record
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.session._save_plan(folder, plan, memory, ctx)
+        ident = memory.publish(plan['state'], [], 'intent', ctx, namespace)
+        self.session._atomic(folder / 'collection.json', driver.encoded(
+            dict(id=ident, verified_operation_started_at=None)))
+        fetch, calls = StudyTests().vendor(clock.utc)
+        def native(argv, **kwargs):
+            code, body = fetch(argv[-1])
+            return type('Synthetic', (), dict(returncode=0, stdout=json.dumps(body) + '\n' + code))()
+        diag = {}
+        extra = {'diagnostics': diag} if 'diagnostics' in inspect.signature(self.session.collect).parameters else {}
+        with patch.object(probe.subprocess, 'run', side_effect=native):
+            state, rows = self.session.collect(plan, ident, memory, ctx, clock,
+                                               self.session.Lease(clock), **extra)
+        self.assertEqual(diag.get('status'), 'recorded', 'session did not capture the existing attempts')
+        self.session.write_bundle(folder / 'result', state, rows, 'result', ctx, namespace, diagnostics=diag)
+        return ctx, clock, memory, state, rows, diag, phase
+
+    def t064_publish_actual(self, folder, memory, state, rows, ctx, namespace):
+        ident = memory.publish(state, rows, 'result', ctx, namespace)
+        files = {p.name: p.read_bytes() for p in (folder / 'result').iterdir() if not p.name.endswith('.tmp')}
+        data = self.session._zip(files)
+        meta, _ = memory.items[ident]
+        meta.update(size_in_bytes=len(data), digest='sha256:' + driver.sha(data))
+        memory.items[ident] = meta, data
+        return ident, data
+
+    def test_t064_existing_attempt_collect_bundle_finalize_decode_finish_preserves_diagnostics(self):
+        for namespace in ('live', 'live192'):
+            with self.subTest(namespace=namespace), tempfile.TemporaryDirectory(prefix='t064-e2e-') as directory:
+                folder = Path(directory) / 'operation'
+                ctx, clock, memory, state, rows, diag, phase = self.t064_collected(folder, namespace)
+                protocol = self.session._selection(namespace)
+                original = self.session._local(folder / 'result', ctx, protocol=protocol)
+                self.assertEqual(original['manifest']['operational_diagnostics'], diag)
+                driver.finalize(folder, ctx, protocol=protocol)
+                self.session.finalize(folder, ctx, clock)
+                restored = self.session._local(folder / 'result', ctx, protocol=protocol)
+                self.assertEqual(restored['manifest']['operational_diagnostics'], diag)
+                self.assertEqual(restored['rows'], rows)
+                state = restored['state']
+                ident, data = self.t064_publish_actual(folder, memory, state, rows, ctx, namespace)
+                self.assertEqual(memory.load(ident)['manifest']['operational_diagnostics'], diag)
+                self.assertEqual(memory.load(ident)['zip_digest'], driver.sha(data))
+                service, _, mocked = self.service(memory, ctx)
+                summary = folder / 'step-summary.txt'
+                env = dict(self.env(300, phase), W57_UPLOADED='success', W57_RESULT_ID=str(ident),
+                           W57_RESULT_DIGEST=driver.sha(data), GITHUB_STEP_SUMMARY=str(summary))
+                with mocked, patch.object(self.session, '_store', return_value=service), \
+                        patch.object(self.session, 'Clock', return_value=clock), \
+                        patch.dict(self.session.os.environ, env), contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(self.session.main(['finish', '--out', str(folder)]), 0)
+                receipt = json.loads((folder / 'receipt.json').read_bytes())
+                self.assertEqual(receipt['diagnostics_status'], 'recorded')
+                self.assertEqual(receipt['last_durable']['digest'], restored['digest'])
+                self.assertIn('"diagnostics_status":"recorded"', summary.read_text(encoding='utf-8'))
+                self.assertNotIn('operational_diagnostics', summary.read_text(encoding='utf-8'))
+                files = {p.name: p.read_bytes() for p in (folder / 'result').iterdir()}
+                manifest = json.loads(files['manifest.json'])
+                manifest['operational_diagnostics']['vendor_call_ceiling'] = 1
+                files['manifest.json'] = driver.encoded(manifest)
+                with self.assertRaises(driver.StudyError):
+                    self.session.decode_bundle(self.session._zip(files), ctx, ctx, protocol=protocol)
+
+    def test_t064_interruption_and_capacity_fallback_preserve_exact_scientific_bundle(self):
+        for namespace in ('live', 'live192'):
+            with self.subTest(namespace=namespace), tempfile.TemporaryDirectory(prefix='t064-capacity-') as directory:
+                folder = Path(directory) / 'operation'
+                ctx, clock, memory, state, rows, diag, phase = self.t064_collected(folder, namespace)
+                original = self.session._files(state, rows, 'result', ctx, namespace, b'')
+                room = driver.BUNDLE_BYTES - sum(map(len, original.values())) - 1024
+                tail = b'x' * room
+                original = self.session._files(state, rows, 'result', ctx, namespace, tail)
+                original_zip = self.session._zip(original)
+                self.session.write_bundle(folder / 'result', state, rows, 'result', ctx, namespace,
+                                          tail, diagnostics=diag)
+                actual = {p.name: p.read_bytes() for p in sorted((folder / 'result').iterdir(),
+                          key=lambda p: list(original).index(p.name) if p.name in original else len(original))}
+                self.assertEqual(actual, original, 'capacity fallback changed original scientific/tail bytes')
+                self.assertEqual(self.session._zip(actual), original_zip)
+                self.assertEqual(json.loads((folder / 'collection.json').read_bytes())['diagnostics_status'],
+                                 'diagnostics_not_recorded_capacity')
+                code = ('import sys; from pathlib import Path; sys.path.insert(0,sys.argv[1]); '
+                        'import rugcheck_w57_ci as c; print(c._read_diagnostics_status(Path(sys.argv[2])))')
+                import subprocess
+                readback = subprocess.run([sys.executable, '-c', code, str(ROOT / 'bench'), str(folder)],
+                                          capture_output=True, encoding='utf-8', check=True)
+                self.assertEqual(readback.stdout.strip(), 'diagnostics_not_recorded_capacity')
+                with self.assertRaises(driver.StudyError):
+                    self.session.write_bundle(folder / 'result', state, rows, 'result', ctx, namespace,
+                                              tail + b'x' * 2048, diagnostics=diag)
+                replace = driver.os.replace
+                def fail_status(source, destination):
+                    if Path(destination).name == 'collection.json':
+                        raise OSError('synthetic write failure')
+                    return replace(source, destination)
+                with patch.object(driver.os, 'replace', side_effect=fail_status):
+                    with self.assertRaises(driver.StudyError):
+                        self.session.write_bundle(folder / 'result', state, rows, 'result', ctx, namespace,
+                                                  tail, diagnostics=diag)
+                self.assertEqual({p.name: p.read_bytes() for p in (folder / 'result').iterdir()}, original)
+                self.session.write_bundle(folder / 'result', state, rows, 'result', ctx, namespace, tail)
+                self.assertNotIn('operational_diagnostics', self.session._local(
+                    folder / 'result', ctx, protocol=self.session._selection(namespace))['manifest'])
+                # A corrupt interrupted member is never reconstructed from scientific rows.
+                path = folder / 'result/manifest.json'
+                malformed = json.loads(path.read_bytes())
+                malformed['operational_diagnostics'] = {'status': 'recorded'}
+                path.write_bytes(driver.encoded(malformed))
+                self.session.finalize(folder, ctx, clock)
+                self.assertNotIn('operational_diagnostics', self.session._local(
+                    folder / 'result', ctx, protocol=self.session._selection(namespace))['manifest'])
+                self.assertEqual(driver._read_diagnostics_status(folder), 'not_recorded')
+
+    def test_t064_terminal_closure_admission_and_rescue_keep_original_digest_contract(self):
+        for namespace in ('live', 'live192'):
+            with self.subTest(namespace=namespace), tempfile.TemporaryDirectory(prefix='t064-terminal-') as directory:
+                folder = Path(directory) / 'operation'
+                ctx, clock, memory, state, rows, diag, phase = self.t064_collected(folder, namespace)
+                ident, data = self.t064_publish_actual(folder, memory, state, rows, ctx, namespace)
+                reference = dict(id=ident, digest=memory.load(ident)['digest'])
+                service, _, mocked = self.service(memory, ctx, report=True)
+                target = Path(directory) / 'closure'
+                with mocked, patch.object(self.session, '_store', return_value=service), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    self.session.closure(target, ctx, clock, phase)
+                value = self.session._local(target / 'result', ctx, protocol=self.session._selection(namespace))
+                self.assertEqual(value['manifest']['operational_diagnostics'], diag)
+                self.assertEqual(value['digest'], reference['digest'])
+                closure = json.loads((target / 'closure.json').read_bytes())
+                self.assertNotIn('operational_diagnostics', json.dumps(closure))
+                env = self.env(300, phase)
+                with patch.dict(self.session.os.environ, env), \
+                        patch.object(self.session, 'Clock', return_value=clock), contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(self.session.main(['close-index', '--out', str(target)]), 0)
+                admitted = self.session._local(target / 'admission-result', ctx,
+                                               protocol=self.session._selection(namespace))
+                self.assertEqual(admitted['manifest'], value['manifest'])
+                self.assertEqual(admitted['transport']['last_durable'], reference)
+                loss = copy.deepcopy(state)
+                loss['session']['last_durable'] = reference
+                with self.assertRaises(driver.StudyError):
+                    self.session._files(loss, rows, 'admission-result', ctx, namespace)
+                changed = copy.deepcopy(diag)
+                changed['vendor_call_ceiling'] = 1
+                with self.assertRaises(driver.StudyError):
+                    self.session._files(loss, rows, 'admission-result', ctx, namespace, diagnostics=changed)
+                with self.assertRaises(driver.StudyError):
+                    self.session._files(state, rows, 'result', ctx, 'canary', diagnostics=diag)
 
     def setUp(self):
         spec = importlib.util.spec_from_file_location("new192_session", ROOT / "bench/rugcheck_w57_session.py")

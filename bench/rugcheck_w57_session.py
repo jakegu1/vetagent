@@ -254,6 +254,8 @@ def bind_state(state, ctx, namespace):
 def _validate(state, namespace):
     protocol = _selection(namespace)
     session = state.get("session", {}) if isinstance(state, dict) else {}
+    if isinstance(state, dict) and ("operational_diagnostics" in state or "diagnostics_status" in state):
+        raise StudyError("invalid_operational_diagnostics")
     if (session.get("schema") != (3 if namespace == "live192" else 2) or not _marker(session, protocol)
             or session.get("namespace") != namespace
             or composite(session.get("freeze"), protocol=protocol) != state.get("source")):
@@ -332,7 +334,7 @@ def _canary_rows(state, rows):
     return cells
 
 
-def _files(state, rows, kind, ctx, namespace, unverified=None):
+def _files(state, rows, kind, ctx, namespace, unverified=None, *, diagnostics=None):
     protocol = _selection(namespace)
     if _context_protocol(ctx) is not protocol:
         raise StudyError("protocol_context_mismatch")
@@ -357,11 +359,6 @@ def _files(state, rows, kind, ctx, namespace, unverified=None):
                                               "context": ctx, "rows": len(rows),
                                               "files": {name: core.sha(value) for name, value in files.items()}})
     digest = core.sha(files["manifest.json"])
-    if kind == "admission-result":
-        if (not isinstance(dependency, dict) or set(dependency) != {"id", "digest"}
-                or type(dependency["id"]) is not int or dependency["id"] <= 0 or dependency["digest"] != digest
-                or state["status"] not in core.TERMINAL):
-            raise StudyError("admission_dependency")
     transport = {"schema": 2, "namespace": namespace, "kind": kind, "study": state["study"],
                  "generation": state["generation"], "parent": state["parent"], "context": ctx,
                  "control_sources": state["session"]["freeze"], "core_digest": digest,
@@ -373,11 +370,34 @@ def _files(state, rows, kind, ctx, namespace, unverified=None):
     limit = core.INTENT_BYTES if actual_kind == "intent" else core.BUNDLE_BYTES
     if sum(map(len, files.values())) > limit:
         raise StudyError("bundle_overflow")
+    if diagnostics is not None and diagnostics != {}:
+        if namespace not in ("live", "live192") or actual_kind != "result":
+            raise StudyError("invalid_operational_diagnostics")
+        original_zip = _zip(files)
+        if len(original_zip) > limit:
+            raise StudyError("bundle_overflow")
+        if kind != "admission-result":
+            decode_bundle(original_zip, ctx, ctx, protocol=protocol)
+        core._validate_diagnostics(diagnostics)
+        if diagnostics["operation"] != state.get("phase"):
+            raise StudyError("invalid_operational_diagnostics")
+        manifest = _parse(files["manifest.json"])
+        manifest["operational_diagnostics"] = diagnostics
+        candidate = dict(files, **{"manifest.json": core.encoded(manifest)})
+        candidate_transport = dict(transport, core_digest=core.sha(candidate["manifest.json"]))
+        candidate["transport.json"] = core.encoded(candidate_transport)
+        if sum(map(len, candidate.values())) <= limit and len(_zip(candidate)) <= limit:
+            files = candidate
+    if kind == "admission-result":
+        if (not isinstance(dependency, dict) or set(dependency) != {"id", "digest"}
+                or type(dependency["id"]) is not int or dependency["id"] <= 0
+                or dependency["digest"] != core.sha(files["manifest.json"]) or state["status"] not in core.TERMINAL):
+            raise StudyError("admission_dependency")
     return files
 
 
-def bundle_bytes(state, rows, kind, ctx, namespace="live"):
-    files = _files(state, rows, kind, ctx, namespace)
+def bundle_bytes(state, rows, kind, ctx, namespace="live", *, diagnostics=None):
+    files = _files(state, rows, kind, ctx, namespace, diagnostics=diagnostics)
     data = _zip(files)
     if len(data) > (core.INTENT_BYTES if kind.endswith("intent") else core.BUNDLE_BYTES):
         raise StudyError("bundle_overflow")
@@ -438,6 +458,8 @@ def decode_bundle(data, provenance, expected, *, protocol=core.LEGACY193):
         if namespace in ("live", "live192"):
             decoded = core.decode_bundle(_zip(files), provenance, expected, protocol=protocol)
         else:
+            if "operational_diagnostics" in manifest:
+                raise StudyError("invalid_operational_diagnostics")
             _canary_rows(state, rows)
             if (manifest.get("files") != {name: core.sha(value) for name, value in files.items() if name != "manifest.json"}
                     or manifest.get("rows") != len(rows) or manifest.get("study") != state["study"]
@@ -914,7 +936,9 @@ def prepare_slot(store, ctx, clock, lease, slot, namespace="live"):
             "prepared_at": clock.utc(), "namespace": namespace}
 
 
-def collect(plan, intent_id, store, ctx, clock, lease, on_row=None):
+def collect(plan, intent_id, store, ctx, clock, lease, on_row=None, *, diagnostics=None):
+    if diagnostics is not None:
+        diagnostics.clear()
     namespace, state = plan["namespace"], copy.deepcopy(plan["state"])
     protocol = _selection(namespace)
     _validate(state, namespace)
@@ -942,7 +966,8 @@ def collect(plan, intent_id, store, ctx, clock, lease, on_row=None):
             lease.check(clock)
             frozen()
             return clock.utc()
-        state, rows = core.collect(plan, intent_id, cached, ctx, guarded, clock.sleep, on_row, protocol=protocol)
+        extra = {"diagnostics": diagnostics} if diagnostics is not None else {}
+        state, rows = core.collect(plan, intent_id, cached, ctx, guarded, clock.sleep, on_row, protocol=protocol, **extra)
     else:
         state["intent"] = {"id": intent_id, "digest": intent["digest"]}
         rows, slot = [], state["slot"]
@@ -1087,10 +1112,14 @@ def _atomic(path, data):
     os.replace(temporary, path)
 
 
-def write_bundle(folder, state, rows, kind, ctx, namespace, unverified=None):
-    files = _files(state, rows, kind, ctx, namespace, unverified)
+def write_bundle(folder, state, rows, kind, ctx, namespace, unverified=None, *, diagnostics=None):
+    files = _files(state, rows, kind, ctx, namespace, unverified, diagnostics=diagnostics)
     for name, data in files.items():
         _atomic(folder / name, data)
+    if diagnostics:
+        status = "recorded" if "operational_diagnostics" in _parse(files["manifest.json"]) else "diagnostics_not_recorded_capacity"
+        if (folder.parent / "collection.json").exists() or status == "diagnostics_not_recorded_capacity":
+            core._write_diagnostics_status(folder.parent, status)
 
 
 def _local(folder, ctx, *, protocol=core.LEGACY193):
@@ -1158,6 +1187,7 @@ def finalize(out, ctx, clock):
     if _context_protocol(ctx) is not protocol:
         raise StudyError("protocol_context_mismatch")
     folder = out / "result"
+    diagnostics = None
     if namespace in ("live", "live192"):
         # The legacy finalizer reads only its original core files. Its interrupted
         # journal salvage is reused unchanged, then wrapped with the v2 envelope.
@@ -1165,6 +1195,7 @@ def finalize(out, ctx, clock):
         files = {name: (folder / name).read_bytes() for name in
                  ("state.json", "observations.jsonl", "manifest.json", "unverified.jsonl") if (folder / name).exists()}
         value = core.decode_bundle(_zip(files), ctx, ctx, protocol=protocol)
+        diagnostics = value["manifest"].get("operational_diagnostics")
         state, rows = value["state"], value["rows"]
         unverified = files.get("unverified.jsonl")
     else:
@@ -1197,7 +1228,7 @@ def finalize(out, ctx, clock):
     if state["status"] in ("lost_checkpoint", "failed", "overflow"):
         timing.setdefault("operation_completed_at", _clock_value(clock.utc()))
         timing["coverage"] = "failed_or_unknown_persistence"
-    write_bundle(folder, state, rows, "result", ctx, namespace, unverified)
+    write_bundle(folder, state, rows, "result", ctx, namespace, unverified, diagnostics=diagnostics)
     for path in folder.glob("*.tmp"):
         path.unlink()
 
@@ -1223,9 +1254,10 @@ def _summary(value):
     if path:
         with open(path, "a", encoding="utf-8") as stream:
             allowed = ("status", "namespace", "coverage", "readiness", "vendor_requests", "scientific_evidence",
-                       "last_durable", "timing", "reason", "command", "no_further_acquisition")
+                       "last_durable", "timing", "reason", "command", "no_further_acquisition", "diagnostics_status")
             safe = {key: value[key] for key in allowed if key in value and
-                    (key != "coverage" or isinstance(value[key], str))}
+                    (key != "coverage" or isinstance(value[key], str)) and
+                    (key != "diagnostics_status" or type(value[key]) is str and value[key] in core._DIAGNOSTIC_STATUSES)}
             stream.write("W57 finite session: " + core.encoded(safe).decode("utf-8") + "\n")
 
 
@@ -1271,7 +1303,9 @@ def closure(out, ctx, clock, phase):
             report = reconstruct(Cached(), ctx, state["study"], namespace)
         except StudyError as exc:
             report.update(coverage="failed_or_unknown_proof", failure=str(exc), last_durable=reference)
-    write_bundle(out / "result", state, rows, "result", ctx, namespace)
+    diagnostics = latest["manifest"].get("operational_diagnostics") if not rescue else None
+    write_bundle(out / "result", state, rows, "result", ctx, namespace, diagnostics=diagnostics)
+    report["diagnostics_status"] = "recorded" if diagnostics else "not_recorded"
     _atomic(out / "closure.json", core.encoded({"state": state, "rows": rows, "last": reference,
                                                "rescue": rescue, "namespace": namespace,
                                                "artifact_budget": _stats(store)}))
@@ -1347,6 +1381,7 @@ def main(argv=None):
                 ident = int(os.environ["W57_INTENT_ID"])
                 _atomic(out / "collection.json", core.encoded({"id": ident, "verified_operation_started_at": None}))
                 try:
+                    diagnostics = {} if namespace in ("live", "live192") else None
                     if protocol is core.START192_V1 and os.environ.get("W57_INTENT_DIGEST"):
                         store.uploaded_intent(ident, os.environ["W57_INTENT_DIGEST"], plan["state"], plan["namespace"])
                     with (out / "result/observations.jsonl").open("wb") as stream:
@@ -1355,8 +1390,8 @@ def main(argv=None):
                             stream.flush()
                             os.fsync(stream.fileno())
                         state, rows = collect(plan, ident, store, ctx, clock,
-                                              Lease(clock, record=plan["lease"]), append)
-                    write_bundle(out / "result", state, rows, "result", ctx, plan["namespace"])
+                                              Lease(clock, record=plan["lease"]), append, diagnostics=diagnostics)
+                    write_bundle(out / "result", state, rows, "result", ctx, plan["namespace"], diagnostics=diagnostics)
                 finally:
                     plan["artifact_budget"] = _stats(store)
                     _atomic(out / "plan.json", core.encoded(plan))
@@ -1368,9 +1403,15 @@ def main(argv=None):
                 reference = _receipt(store, int(os.environ["W57_RESULT_ID"]), os.environ["W57_RESULT_DIGEST"],
                                      state, ctx, plan["namespace"])
                 reference["digest"] = result["digest"]
-                _atomic(out / "receipt.json", core.encoded({"last_durable": reference, "artifact_budget": _stats(store)}))
+                previous_status = core._read_diagnostics_status(out)
+                diagnostics_status = ("recorded" if "operational_diagnostics" in result["manifest"] else
+                                      "diagnostics_not_recorded_capacity" if previous_status == "diagnostics_not_recorded_capacity"
+                                      else "not_recorded")
+                _atomic(out / "receipt.json", core.encoded({"last_durable": reference, "artifact_budget": _stats(store),
+                                                           "diagnostics_status": diagnostics_status}))
                 _summary({"status": state["status"], "namespace": plan["namespace"], "last_durable": reference,
-                          "timing": state["session"].get("timing"), "scientific_completion_inferred": False})
+                          "timing": state["session"].get("timing"), "scientific_completion_inferred": False,
+                          "diagnostics_status": diagnostics_status})
                 if state["status"] not in ("active", "completed", "pilot_passed"):
                     return 2
         elif args.command == "closure":
@@ -1391,7 +1432,10 @@ def main(argv=None):
                 _receipt(store, int(os.environ["W57_RESULT_ID"]), os.environ["W57_RESULT_DIGEST"], state, ctx, namespace)
                 reference = {"id": int(os.environ["W57_RESULT_ID"]), "digest": _local(out / "result", ctx, protocol=protocol)["digest"]}
             state["session"]["last_durable"] = reference
-            write_bundle(out / "admission-result", state, value["rows"], "admission-result", ctx, namespace)
+            terminal = _local(out / "result", ctx, protocol=protocol)
+            diagnostics = terminal["manifest"].get("operational_diagnostics")
+            write_bundle(out / "admission-result", state, value["rows"], "admission-result", ctx, namespace,
+                         diagnostics=diagnostics)
             _output("ready", "true")
         else:
             report = _parse((out / "summary.json").read_bytes())

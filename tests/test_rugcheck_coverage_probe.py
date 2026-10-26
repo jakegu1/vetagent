@@ -53,6 +53,81 @@ def row(mint="synthetic-primary", sweep=1, score=80, holders=1, **fields):
 
 
 class CoverageProbeContract(unittest.TestCase):
+    def test_t064_original_curl_emits_one_safe_attempt_without_changing_legacy_tuple(self):
+        cases = [(0, '{"error":"Token not found"}', '400', 'token_not_found'),
+                 (0, '{"error":"private"}', '400', 'vendor_rejected'),
+                 (0, '{}', '429', 'rate_limited'), (0, '{', '200', 'malformed_body'),
+                 (0, '', '200', 'empty_body'), (0, '{"data":[]}', '200', 'ok'),
+                 (28, '{"data":[]}', '200', 'transport_failed'),
+                 (23, '{"data":[]}', '200', 'transport_failed')]
+        for native, body, code, reason in cases:
+            seen = []
+            prior = ('geckoterminal', lambda value: None)
+            result = types.SimpleNamespace(returncode=native, stdout=body + '\n' + code,
+                                           stderr='private credential')
+            with self.subTest(native=native, body=body, code=code), \
+                    patch.object(probe, '_ATTEMPT_DIAGNOSTIC', prior, create=True), \
+                    patch.object(probe.subprocess, 'run', return_value=result) as run:
+                baseline = probe.curl('synthetic')
+                probe._ATTEMPT_DIAGNOSTIC = ('rugcheck', seen.append)
+                actual = probe.curl('synthetic')
+                self.assertEqual(actual, baseline)
+                self.assertEqual(run.call_count, 2)
+                self.assertEqual(run.call_args.args[0], ['curl', '-s', '-m', '30', '-A', probe.UA,
+                                                        '-w', '\n%{http_code}', 'synthetic'])
+                self.assertEqual(run.call_args.kwargs,
+                                 dict(capture_output=True, encoding='utf-8', errors='replace'))
+                self.assertEqual(len(seen), 1, 'the original attempt must emit exactly one safe record')
+                self.assertEqual(seen[0], dict(http_status=code, native_exit=str(native), reason=reason,
+                                               usable_body=reason == 'ok'))
+        for error in (OSError('private'), probe.subprocess.SubprocessError('private')):
+            seen = []
+            with patch.object(probe, '_ATTEMPT_DIAGNOSTIC', ('rugcheck', seen.append), create=True), \
+                    patch.object(probe.subprocess, 'run', side_effect=error) as run:
+                self.assertEqual(probe.curl('synthetic'), ('0', None))
+                run.assert_called_once()
+            self.assertEqual(seen, [dict(http_status='no_http', native_exit='unavailable',
+                                         reason='transport_failed', usable_body=False)])
+        with patch.object(probe, '_ATTEMPT_DIAGNOSTIC', ('rugcheck', lambda value: 1 / 0), create=True), \
+                patch.object(probe.subprocess, 'run', return_value=result) as run:
+            self.assertEqual(probe.curl('synthetic'), ('200', None))
+            run.assert_called_once()
+
+    def test_t064_safe_reasons_match_t058_without_changing_scientific_observations(self):
+        import ast
+        tree = ast.parse((ROOT / 'tests/test_upstream_contract.py').read_text(encoding='utf-8'))
+        node = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == '_attempt_reason')
+        risk_tree = ast.parse((ROOT / 'src/risk.py').read_text(encoding='utf-8'))
+        predicate = next(n for n in risk_tree.body if isinstance(n, ast.FunctionDef) and n.name == '_is_error_body')
+        isolated = {}
+        exec(compile(ast.Module(body=[predicate], type_ignores=[]), '<pure error predicate>', 'exec'), isolated)
+        isolated['risk'] = types.SimpleNamespace(_is_error_body=isolated['_is_error_body'])
+        exec(compile(ast.Module(body=[node], type_ignores=[]), '<pure T058 reason>', 'exec'), isolated)
+        cases = [('400', {'error': 'Token not found'}, True, 0), ('429', {}, True, 0),
+                 ('200', None, False, 0), ('200', [], True, 0), ('000', None, False, 0)]
+        cases += [('200', {'status': {'error_code': value}}, True, 0)
+                  for value in (False, 0, '', [], {})]
+        cases += [('400', {'error': value}, True, 0) for value in
+                  ('unknown', 'Bearer private https://private.example/0x' + 'a' * 40, 'x' * 10000)]
+        cases += [('200', {'score_normalised': 1}, True, value) for value in (28, 23, None, '0', False, [])]
+        for source in ('rugcheck', 'geckoterminal'):
+            for code, body, parsed, native in cases:
+                seen = []
+                stdout = ('{' if not parsed else json.dumps(body)) + '\n' + code
+                with patch.object(probe, '_ATTEMPT_DIAGNOSTIC', (source, seen.append), create=True), \
+                        patch.object(probe.subprocess, 'run', return_value=types.SimpleNamespace(
+                            returncode=native, stdout=stdout)):
+                    probe.curl('synthetic')
+                self.assertEqual(len(seen), 1, 'safe classification is missing')
+                expected = isolated['_attempt_reason'](source, code, body, parsed, native)
+                if type(native) is not int:
+                    expected = 'transport_failed'
+                self.assertEqual(seen[0]['reason'], expected)
+                self.assertNotIn('private', json.dumps(seen))
+        body = dict(valid_body(), error='synthetic refusal')
+        with patch.object(probe, 'curl', return_value=('200', body)):
+            self.assertEqual(probe.observe('synthetic', MINT, 'scores')['body'], 'ok')
+
     def setUp(self):
         self.stack = contextlib.ExitStack()
         self.addCleanup(self.stack.close)

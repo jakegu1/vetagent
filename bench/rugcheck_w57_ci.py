@@ -94,6 +94,8 @@ def artifact_name(state, kind, ctx, *, protocol=LEGACY193):
 
 def _validate_state(state, *, protocol=LEGACY193):
     protocol = _protocol(protocol)
+    if isinstance(state, dict) and ("operational_diagnostics" in state or "diagnostics_status" in state):
+        raise StudyError("invalid_operational_diagnostics")
     if protocol is LEGACY193 and isinstance(state, dict) and ("protocol" in state or "protocol_digest" in state):
         raise StudyError("unexpected_protocol_marker")
     if protocol is not LEGACY193:
@@ -168,10 +170,230 @@ def _validate_state(state, *, protocol=LEGACY193):
         raise StudyError("state_overflow")
 
 
-def _bundle_files(state, rows, kind, ctx, unverified=None, *, protocol=LEGACY193):
+_DIAGNOSTIC_HTTP = ("200", "400", "429", "other_http", "no_http")
+_DIAGNOSTIC_REASONS = ("ok", "token_not_found", "vendor_rejected", "rate_limited",
+                       "transport_failed", "malformed_body", "empty_body", "unclassified")
+_DIAGNOSTIC_NATIVE = ("0", "6", "7", "23", "28", "35", "52", "56", "60", "other_nonzero", "unavailable")
+_DIAGNOSTIC_LIMITS = {"pilot": (6, 1, 7), "start": (240, 8, 496), "tick": (63, 0, 63)}
+_DIAGNOSTIC_STATUSES = ("recorded", "not_recorded", "diagnostics_not_recorded_capacity")
+
+
+def _new_diagnostics(operation):
+    return {"version": 1, "operation": operation, "status": "recorded",
+            "sources": {source: {"opportunities": 0, "attempted": 0, "not_attempted": 0, "usable_body": 0,
+                                 "http": dict.fromkeys(_DIAGNOSTIC_HTTP, 0),
+                                 "reason": dict.fromkeys(_DIAGNOSTIC_REASONS, 0),
+                                 "native_exit": dict.fromkeys(_DIAGNOSTIC_NATIVE, 0)}
+                        for source in ("rugcheck", "geckoterminal")},
+            "budget": {"checks": 0, "allowed": 0, "refused": 0, "timing_samples": 0, "timing_unavailable": 0,
+                       "required_ms": 32000, "first_remaining_ms": None, "minimum_remaining_ms": None,
+                       "last_remaining_ms": None,
+                       "limiting_deadline": dict.fromkeys(("phase_deadline", "study_end", "equal"), 0)},
+            "vendor_call_ceiling": 0}
+
+
+def _validate_diagnostics(value):
+    def counters(group, keys, limit):
+        return (type(group) is dict and set(group) == set(keys)
+                and all(type(key) is str for key in group)
+                and all(type(n) is int and 0 <= n <= limit for n in group.values()))
+    try:
+        operation = value["operation"]
+        if type(operation) is not str:
+            raise ValueError()
+        limits = _DIAGNOSTIC_LIMITS[operation]
+        template = _new_diagnostics(operation)
+        if (type(value) is not dict or set(value) != set(template) or any(type(key) is not str for key in value)
+                or type(value["version"]) is not int or value["version"] != 1
+                or type(value["status"]) is not str or value["status"] != "recorded"
+                or type(value["vendor_call_ceiling"]) is not int or value["vendor_call_ceiling"] not in (0, 1)
+                or type(value["sources"]) is not dict or set(value["sources"]) != set(template["sources"])
+                or any(type(key) is not str for key in value["sources"])):
+            raise ValueError()
+        for (source, maximum) in zip(("rugcheck", "geckoterminal"), limits[:2]):
+            row = value["sources"][source]
+            count_keys = ("opportunities", "attempted", "not_attempted", "usable_body")
+            if (type(row) is not dict or set(row) != set(template["sources"][source])
+                    or any(type(key) is not str for key in row)
+                    or not counters({k: row[k] for k in count_keys}, count_keys, maximum)
+                    or row["opportunities"] != row["attempted"] + row["not_attempted"]):
+                raise ValueError()
+            for family, keys in (("http", _DIAGNOSTIC_HTTP), ("reason", _DIAGNOSTIC_REASONS),
+                                 ("native_exit", _DIAGNOSTIC_NATIVE)):
+                if not counters(row[family], keys, maximum) or sum(row[family].values()) != row["attempted"]:
+                    raise ValueError()
+            nonzero = sum(n for k, n in row["native_exit"].items() if k not in ("0", "unavailable"))
+            if (row["usable_body"] > min(row["reason"]["ok"], row["http"]["200"], row["native_exit"]["0"])
+                    or row["usable_body"] < max(0, row["reason"]["ok"] - row["native_exit"]["unavailable"])
+                    or nonzero > row["reason"]["transport_failed"]
+                    or (row["native_exit"]["unavailable"] == 0 and row["usable_body"] != row["reason"]["ok"])):
+                raise ValueError()
+        budget, maximum = value["budget"], limits[2]
+        keys = ("checks", "allowed", "refused", "timing_samples", "timing_unavailable")
+        if (type(budget) is not dict or set(budget) != set(template["budget"])
+                or any(type(key) is not str for key in budget)
+                or not counters({k: budget[k] for k in keys}, keys, maximum)
+                or type(budget["required_ms"]) is not int or budget["required_ms"] != 32000
+                or budget["checks"] != budget["allowed"] + budget["refused"]
+                or budget["timing_samples"] + budget["timing_unavailable"] != budget["refused"]
+                or not counters(budget["limiting_deadline"], template["budget"]["limiting_deadline"], maximum)
+                or sum(budget["limiting_deadline"].values()) != budget["refused"]
+                or operation != "tick" and (budget["limiting_deadline"]["study_end"] or budget["limiting_deadline"]["equal"])):
+            raise ValueError()
+        times = [budget[k] for k in ("first_remaining_ms", "minimum_remaining_ms", "last_remaining_ms")]
+        if budget["timing_samples"] == 0:
+            if times != [None, None, None]:
+                raise ValueError()
+        elif (any(type(n) is not int or not -(2 ** 31) <= n < 2 ** 31 for n in times)
+              or times[1] > min(times[0], times[2])):
+            raise ValueError()
+        if len(encoded(value)) > 2048:
+            raise ValueError()
+    except (KeyError, ValueError, TypeError, OverflowError):
+        raise StudyError("invalid_operational_diagnostics") from None
+    return value
+
+
+class _Diagnostics:
+    """One operation's transient counters; no scientific state or history."""
+    def __init__(self, operation):
+        self.value, self.valid = _new_diagnostics(operation), True
+
+    def invalidate(self):
+        self.valid = False
+
+    def opportunity(self, source):
+        self.value["sources"][source]["opportunities"] += 1
+
+    def room(self, allowed, deadline, wall, limiter):
+        budget = self.value["budget"]
+        budget["checks"] += 1
+        budget["allowed" if allowed else "refused"] += 1
+        if allowed:
+            return
+        budget["limiting_deadline"][limiter] += 1
+        try:
+            if any(type(n) not in (int, float) or not math.isfinite(n) for n in (deadline, wall)):
+                raise ValueError()
+            delta = (deadline - wall) * 1000
+            if not math.isfinite(delta) or not -(2 ** 31) <= delta < 2 ** 31:
+                raise ValueError()
+            remaining = math.floor(delta)
+        except (ValueError, OverflowError):
+            budget["timing_unavailable"] += 1
+            return
+        budget["timing_samples"] += 1
+        if budget["first_remaining_ms"] is None:
+            budget["first_remaining_ms"] = remaining
+        minimum = budget["minimum_remaining_ms"]
+        budget["minimum_remaining_ms"] = remaining if minimum is None else min(minimum, remaining)
+        budget["last_remaining_ms"] = remaining
+
+    def transport(self, transport, url, source):
+        row = self.value["sources"][source]
+        row["attempted"] += 1
+        captured, count = {}, 0
+        def capture(record):
+            nonlocal count
+            count += 1
+            if (type(record) is not dict or set(record) != {"http_status", "native_exit", "reason", "usable_body"}
+                    or record["http_status"] not in _DIAGNOSTIC_HTTP
+                    or record["native_exit"] not in _DIAGNOSTIC_NATIVE or record["reason"] not in _DIAGNOSTIC_REASONS
+                    or type(record["usable_body"]) is not bool or count != 1):
+                self.invalidate()
+            else:
+                captured.update(record)
+        capture._invalidate = self.invalidate
+        prior = probe._ATTEMPT_DIAGNOSTIC
+        probe._ATTEMPT_DIAGNOSTIC = (source, capture)
+        try:
+            code, body = transport(url)
+        finally:
+            probe._ATTEMPT_DIAGNOSTIC = prior
+        if count == 0:
+            try:
+                captured = probe._safe_attempt(source, code, body, body is not None, None, legacy=True)
+            except Exception:
+                self.invalidate()
+        if self.valid:
+            row["http"][captured["http_status"]] += 1
+            row["native_exit"][captured["native_exit"]] += 1
+            row["reason"][captured["reason"]] += 1
+            row["usable_body"] += int(captured["usable_body"])
+        return code, body
+
+    def finish(self, target):
+        for row in self.value["sources"].values():
+            row["not_attempted"] = row["opportunities"] - row["attempted"]
+        if self.valid:
+            try:
+                target.update(_validate_diagnostics(self.value))
+            except StudyError:
+                self.invalidate()
+
+
+def _collection_receipt(out):
+    path = out / "collection.json"
+    if not path.exists():
+        return {}
+    try:
+        with path.open("rb") as stream:
+            data = stream.read(4097)
+        if len(data) > 4096:
+            raise ValueError()
+        receipt = json.loads(data)
+        status = receipt.get("diagnostics_status", "not_recorded")
+        if type(receipt) is not dict or type(status) is not str or status not in _DIAGNOSTIC_STATUSES:
+            raise ValueError()
+        return receipt
+    except (OSError, ValueError, TypeError, AttributeError):
+        raise StudyError("diagnostics_status_unavailable") from None
+
+
+def _read_diagnostics_status(out):
+    return _collection_receipt(out).get("diagnostics_status", "not_recorded")
+
+
+def _write_diagnostics_status(out, status):
+    try:
+        receipt = _collection_receipt(out)
+        path = out / "collection.json"
+        if not path.exists():
+            raise ValueError()
+        if status not in _DIAGNOSTIC_STATUSES:
+            raise ValueError()
+        receipt["diagnostics_status"] = status
+        data = encoded(receipt)
+        if len(data) > 4096:
+            raise ValueError()
+        temporary = path.with_name(path.name + ".tmp")
+        with temporary.open("wb") as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+        if encoded(_collection_receipt(out)) != data:
+            raise ValueError()
+    except (OSError, ValueError, TypeError, AttributeError):
+        raise StudyError("diagnostics_status_unavailable") from None
+
+
+def _diagnostic_zip(files):
+    target = io.BytesIO()
+    with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
+        for name, data in files.items():
+            info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            archive.writestr(info, data)
+    return target.getvalue()
+
+
+def _bundle_files(state, rows, kind, ctx, unverified=None, *, protocol=LEGACY193, diagnostics=None):
     _validate_state(state, protocol=protocol)
     if kind not in ("intent", "result") or not isinstance(rows, list) or len(rows) > 256:
         raise StudyError("bundle_bounds")
+    if any(isinstance(row, dict) and ("operational_diagnostics" in row or "diagnostics_status" in row) for row in rows):
+        raise StudyError("invalid_operational_diagnostics")
     row_data = b"".join(encoded(row) + b"\n" for row in rows)
     state_data = encoded(state)
     manifest = {"schema": protocol.schema, "kind": kind, "study": state["study"],
@@ -189,13 +411,27 @@ def _bundle_files(state, rows, kind, ctx, unverified=None, *, protocol=LEGACY193
     limit = INTENT_BYTES if kind == "intent" else BUNDLE_BYTES
     if sum(map(len, files.values())) > limit:
         raise StudyError("bundle_overflow")
+    if diagnostics is not None and diagnostics != {}:
+        if kind != "result":
+            raise StudyError("invalid_operational_diagnostics")
+        original_zip = _diagnostic_zip(files)
+        if len(original_zip) > limit:
+            raise StudyError("bundle_overflow")
+        decode_bundle(original_zip, ctx, ctx, protocol=protocol)
+        _validate_diagnostics(diagnostics)
+        if diagnostics["operation"] != state.get("phase"):
+            raise StudyError("invalid_operational_diagnostics")
+        manifest["operational_diagnostics"] = diagnostics
+        candidate = dict(files, **{"manifest.json": encoded(manifest)})
+        if sum(map(len, candidate.values())) <= limit and len(_diagnostic_zip(candidate)) <= limit:
+            files = candidate
     return files
 
 
-def bundle_bytes(state, rows, kind, ctx, *, protocol=LEGACY193):
+def bundle_bytes(state, rows, kind, ctx, *, protocol=LEGACY193, diagnostics=None):
     target = io.BytesIO()
     with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
-        for name, data in _bundle_files(state, rows, kind, ctx, protocol=protocol).items():
+        for name, data in _bundle_files(state, rows, kind, ctx, protocol=protocol, diagnostics=diagnostics).items():
             info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
             info.compress_type = zipfile.ZIP_DEFLATED
             archive.writestr(info, data)
@@ -223,8 +459,16 @@ def decode_bundle(data, provenance, expected, *, protocol=LEGACY193):
         if protocol is LEGACY193 and isinstance(manifest, dict) and ("protocol" in manifest or "protocol_digest" in manifest):
             raise StudyError("unexpected_protocol_marker")
         rows = [json.loads(line) for line in files["observations.jsonl"].splitlines()]
+        if any(isinstance(row, dict) and ("operational_diagnostics" in row or "diagnostics_status" in row) for row in rows):
+            raise StudyError("invalid_operational_diagnostics")
         _validate_state(state, protocol=protocol)
         ctx = manifest["context"]
+        if "operational_diagnostics" in manifest:
+            if manifest.get("kind") != "result":
+                raise StudyError("invalid_operational_diagnostics")
+            _validate_diagnostics(manifest["operational_diagnostics"])
+            if manifest["operational_diagnostics"]["operation"] != state.get("phase"):
+                raise StudyError("invalid_operational_diagnostics")
         if (manifest.get("schema") != protocol.schema or manifest.get("kind") not in ("intent", "result")
                 or manifest.get("study") != state["study"] or manifest.get("generation") != state["generation"]
                 or manifest.get("parent") != state["parent"] or manifest.get("rows") != len(rows)
@@ -505,7 +749,7 @@ def prepare(phase, store, ctx, now, study=None, pilot_id=None, *, protocol=LEGAC
     return {"action": "collect", "state": state, "phase": phase, "prepared_at": now}
 
 
-def _observe_fields(label, mint):
+def _observe_fields(label, mint, diagnostics=None):
     """Keep availability from the same response which the unchanged probe observes.
 
     observe() intentionally exposes Boolean summaries. Its default False cannot tell
@@ -550,7 +794,7 @@ def _observe_fields(label, mint):
             return True
         return public_key(value)
     def capture(url):
-        code, body = transport(url)
+        code, body = (transport(url) if diagnostics is None else diagnostics.transport(transport, url, "rugcheck"))
         if str(code) == "200" and isinstance(body, dict):
             extensions = body.get("token_extensions")
             extensions = extensions if isinstance(extensions, dict) else {}
@@ -598,7 +842,10 @@ def _row(raw, state, label, mint, now, slot=None):
     return rec
 
 
-def collect(plan, intent_id, store, ctx, clock=time.time, sleep=time.sleep, on_row=None, *, protocol=LEGACY193):
+def collect(plan, intent_id, store, ctx, clock=time.time, sleep=time.sleep, on_row=None, *, protocol=LEGACY193,
+            diagnostics=None):
+    if diagnostics is not None:
+        diagnostics.clear()
     protocol = _protocol(protocol)
     if plan.get("action") != "collect":
         raise StudyError("intent_required")
@@ -620,9 +867,14 @@ def collect(plan, intent_id, store, ctx, clock=time.time, sleep=time.sleep, on_r
     state, rows = copy.deepcopy(plan["state"]), []
     state["intent"] = {"id": intent_id, "digest": intent["digest"]}
     phase = plan["phase"]
+    diagnostic = _Diagnostics(phase) if diagnostics is not None else None
     deadline = plan["prepared_at"] + {"pilot": 180, "start": 1080, "tick": 360}[phase]
+    phase_deadline = deadline
+    limiter = "phase_deadline"
     if phase == "tick":
         deadline = min(deadline, state["ends_at"] + protocol.acquisition_grace)
+        end = state["ends_at"] + protocol.acquisition_grace
+        limiter = "study_end" if end < phase_deadline else "equal" if end == phase_deadline else "phase_deadline"
     last_wall = plan["prepared_at"]
     def read_clock(stage):
         nonlocal last_wall
@@ -647,11 +899,22 @@ def collect(plan, intent_id, store, ctx, clock=time.time, sleep=time.sleep, on_r
         if on_row:
             on_row(rec)
     def room():
-        return read_clock("before_request") + 30 + 2 <= deadline
+        wall = read_clock("before_request")
+        allowed = wall + 30 + 2 <= deadline
+        if diagnostic is not None:
+            try:
+                diagnostic.room(allowed, deadline, wall, limiter)
+            except Exception:
+                diagnostic.invalidate()
+        return allowed
     def vendor_room():
         if protocol is not LEGACY193 and sum(state["requests"].values()) >= protocol.max_vendor_calls:
+            if diagnostic is not None:
+                diagnostic.value["vendor_call_ceiling"] = 1
             raise StudyError("vendor_call_ceiling")
     def report(label, mint, slot=None):
+        if diagnostic is not None:
+            diagnostic.opportunity("rugcheck")
         requested_at = None
         if not room():
             raw = {"http": "0", "body": "not_observed"}
@@ -659,7 +922,7 @@ def collect(plan, intent_id, store, ctx, clock=time.time, sleep=time.sleep, on_r
             vendor_room()
             requested_at = read_clock("request_started")
             state["requests"]["rugcheck"] += 1
-            raw = _observe_fields(label, mint)
+            raw = _observe_fields(label, mint) if diagnostic is None else _observe_fields(label, mint, diagnostic)
         try:
             observed_at = read_clock("response" if requested_at is not None else "unattempted")
         except StudyError as exc:
@@ -702,13 +965,16 @@ def collect(plan, intent_id, store, ctx, clock=time.time, sleep=time.sleep, on_r
             sleep(2)
         return rec
     def listing(page):
+        if diagnostic is not None:
+            diagnostic.opportunity("geckoterminal")
         if not room():
             emit({"kind": "listing", "phase": phase, "page": page, "ts": read_clock("unattempted"), "http": "0", "body": "not_observed"})
             return None
         vendor_room()
         state["requests"]["gecko"] += 1
         requested_at = read_clock("request_started") if protocol is not LEGACY193 else None
-        code, body = probe.curl(probe.GECKO_NEW % page)
+        code, body = (probe.curl(probe.GECKO_NEW % page) if diagnostic is None else
+                      diagnostic.transport(probe.curl, probe.GECKO_NEW % page, "geckoterminal"))
         try:
             observed_at = read_clock("response")
         except StudyError as exc:
@@ -793,18 +1059,24 @@ def collect(plan, intent_id, store, ctx, clock=time.time, sleep=time.sleep, on_r
         if protocol is not LEGACY193:
             read_clock("collection_completed")
     except StudyError as exc:
+        if diagnostic is not None and str(exc) != "vendor_call_ceiling":
+            diagnostic.invalidate()
         state["status"] = "overflow" if str(exc) == "row_overflow" else "failed"
         state["failure"] = (str(exc) if str(exc) == "row_overflow" or protocol is not LEGACY193 and str(exc) == "clock_changed"
                             else "collection_unavailable")
         if phase == "tick" and not any(s["slot"] == state["slot"] for s in state["slots"]):
             state["slots"].append({"slot": state["slot"], "status": "partial"})
     except Exception:
+        if diagnostic is not None:
+            diagnostic.invalidate()
         # Preserve already written measurements; the unexpected local failure is terminal.
         state["status"] = "failed"
         state["failure"] = "collection_interrupted"
         if phase == "tick" and not any(s["slot"] == state["slot"] for s in state["slots"]):
             state["slots"].append({"slot": state["slot"], "status": "partial"})
     _validate_state(state, protocol=protocol)
+    if diagnostic is not None:
+        diagnostic.finish(diagnostics)
     return state, rows
 
 
@@ -1067,12 +1339,17 @@ def _context_env():
         raise StudyError("ci_context_unavailable") from None
 
 
-def write_bundle(folder, state, rows, kind, ctx, unverified=None, *, protocol=LEGACY193):
+def write_bundle(folder, state, rows, kind, ctx, unverified=None, *, protocol=LEGACY193, diagnostics=None):
     folder.mkdir(parents=True, exist_ok=True)
-    for name, data in _bundle_files(state, rows, kind, ctx, unverified, protocol=protocol).items():
+    files = _bundle_files(state, rows, kind, ctx, unverified, protocol=protocol, diagnostics=diagnostics)
+    for name, data in files.items():
         temporary = folder / (name + ".tmp")
         temporary.write_bytes(data)
         os.replace(temporary, folder / name)
+    if diagnostics:
+        status = "recorded" if "operational_diagnostics" in json.loads(files["manifest.json"]) else "diagnostics_not_recorded_capacity"
+        if (folder.parent / "collection.json").exists() or status == "diagnostics_not_recorded_capacity":
+            _write_diagnostics_status(folder.parent, status)
 
 
 def finalize(out, ctx, *, protocol=LEGACY193):
@@ -1093,7 +1370,32 @@ def finalize(out, ctx, *, protocol=LEGACY193):
         decoded = decode_bundle(target.getvalue(), ctx, ctx, protocol=protocol)
         if decoded["state"]["status"] == "lost_checkpoint" and (out / "collection.json").exists():
             raise StudyError("collection_interrupted")
-    except StudyError:
+    except StudyError as exc:
+        if str(exc) == "invalid_operational_diagnostics" and "manifest.json" in files:
+            # Invalid optional capture is not evidence that scientific files were lost.
+            # Revalidate the complete original bundle after removing only that member.
+            manifest = json.loads(files["manifest.json"])
+            if "operational_diagnostics" in manifest:
+                manifest.pop("operational_diagnostics")
+                clean = dict(files, **{"manifest.json": encoded(manifest)})
+                target = io.BytesIO()
+                with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
+                    for name, data in clean.items():
+                        archive.writestr(name, data)
+                try:
+                    recovered = decode_bundle(target.getvalue(), ctx, ctx, protocol=protocol)
+                    if recovered["state"]["status"] == "lost_checkpoint" and (out / "collection.json").exists():
+                        raise StudyError("collection_interrupted")
+                except StudyError:
+                    pass
+                else:
+                    write_bundle(folder, recovered["state"], recovered["rows"], "result", ctx,
+                                 files.get("unverified.jsonl"), protocol=protocol)
+                    if (out / "collection.json").exists():
+                        _write_diagnostics_status(out, "not_recorded")
+                    for name in names:
+                        (folder / (name + ".tmp")).unlink(missing_ok=True)
+                    return
         plan = json.loads((out / "plan.json").read_bytes())
         state = copy.deepcopy(plan["state"])
         # Trust only the exact locally prepared intent, never an arbitrary state file.
@@ -1134,6 +1436,8 @@ def finalize(out, ctx, *, protocol=LEGACY193):
                 "unverified_bytes": len(unverified), "inflight_request_unavailable": True}
         state.setdefault("losses", []).append(loss)
         write_bundle(folder, state, rows, "result", ctx, unverified or None, protocol=protocol)
+        if (out / "collection.json").exists():
+            _write_diagnostics_status(out, "not_recorded")
     # A killed atomic replacement can leave a temporary file; it is not an upload entry.
     for name in names:
         (folder / (name + ".tmp")).unlink(missing_ok=True)
