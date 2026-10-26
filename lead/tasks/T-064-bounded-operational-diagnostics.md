@@ -427,3 +427,14 @@ count, runner, source validator or other fixture. Keep the original failure logs
 Commit this exact setup-only repair separately before the runtime fix, and rerun
 the original parent to establish meaningful missing-diagnostic reds through the
 now valid setup. No assertion or acceptance threshold is relaxed.
+
+2026-10-26, A2 supersedes only A1's synthetic tick population choice. The unchanged
+active-state validator requires40-45 fresh members and the exact existing control
+population; three enrollment-free controls are also invalid. Only the new
+StudyTests.t064_run tick-cohort setup may instead contain40 synthetic fresh mints
+with fixed valid HTTP200/ok enrollment, fixed aware detectedAt one minute before
+the existing EPOCH, ts=EPOCH, followed by exact probe.MAJORS controls in their
+existing order. Both original protocol validators accept this proposed setup.
+Keep all assertions, expected counts, clocks, guard behavior, old helpers and
+runtime validators unchanged. Commit A2 tests-only and reproduce the intended
+missing-diagnostics parent red, preserving both earlier setup-failure records.
