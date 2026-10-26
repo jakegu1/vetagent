@@ -94,7 +94,7 @@ class StudyTests(unittest.TestCase):
         state = driver._new_state('diagnostics-test', phase, ctx, EPOCH, protocol=protocol)
         if phase == 'tick':
             state.update(status='active', started_at=EPOCH, ends_at=EPOCH + protocol.duration, slot=0,
-                         cohort=[dict(mint=mint(i), label='synthetic', group='fresh') for i in range(3)])
+                         cohort=[dict(mint=mint(i), label='synthetic', group='control') for i in range(3)])
         if ceiling:
             state['requests']['rugcheck'] = protocol.max_vendor_calls
         plan = dict(action='collect', phase=phase, state=state, prepared_at=EPOCH)
@@ -2249,6 +2249,7 @@ class New192SessionTests(unittest.TestCase):
         phase = 'pilot192' if namespace == 'live192' else 'pilot'
         ctx, clock = self.ctx(300, phase), SessionClock()
         memory = self.memory(ctx, clock)
+        memory.reads, memory.downloads, memory.seconds_spent, memory.runs = 0, 0, 0, {}
         plan = self.session.prepare_admission(phase, memory, ctx, clock.utc(), 'diagnostic-pilot')
         plan['lease'] = self.session.Lease(clock).record
         with contextlib.redirect_stdout(io.StringIO()):
