@@ -1409,7 +1409,7 @@ class RunningSessionTests(unittest.TestCase):
         legacy = json.loads((ROOT / "tests/fixtures/w57_legacy193_characterization.json").read_bytes())
         self.assertEqual(driver.protocol_descriptor(driver.LEGACY193), legacy["legacy_protocol"])
         self.assertEqual(driver.sha((ROOT / expected["probe"]).read_bytes().replace(b"\r\n", b"\n")),
-                         "3734d9c3b51114a90c7512ee77c6d90754e205a14085bbf22eee012acb4fbc21")
+                         "c1fb2e3b5b0fb68c43a2a6442aa404aeb5a9b5983dc5107aa7bbff22abe2bf6c")
         self.assertEqual(set(self.ctx["source"]), {"driver", "probe", "workflow"})
         self.assertNotEqual(self.ctx["source"]["workflow"], freeze["workflow"])
         self.assertIn("composite", self.session.__doc__.lower())
