@@ -1,7 +1,7 @@
 ---
 id: T-064
 title: Preserve bounded diagnostics from existing collector attempts in result manifests
-status: in_progress
+status: done
 level: 3
 size: M
 depends_on: [T-061, T-062, T-063]

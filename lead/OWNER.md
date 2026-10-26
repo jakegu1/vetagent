@@ -30,11 +30,12 @@ study's qualified report, complete original preservation and owned stop, then
 the future diagnostic repair with independent reviews and full gates, before
 normal source CI and publication. Its accepted diagnostic design has passed
 the original closure prerequisite. R1 independent reviews found a mixed-native
-diagnostic-counter consistency gap; its tests-first R2 correction is under fresh
-combined review. The actual complete R1 gate and unchanged base also fail on
-dated local records; the correction log is repaired truthfully while snapshot
-freshness still needs actual source-data reconciliation. No publication is
-approved before all current exact-source quality gates pass.
+diagnostic-counter consistency gap. Its tests-first R2 correction now passes fresh
+combined12/12 and RED-TEAM none; author and independent complete45 pass at97ab4db.
+Real normal bot originals resolve local snapshot freshness and a truthful anchored
+entry repairs the correction log. The old failures remain retained. The source
+is normally integrated; exact integrated and normal release gates still apply.
+No publication is approved before those current exact-source gates pass.
 Existing normal snapshot activity does not verify the
 unpublished collector. Old research results and all active scientific controls
 remain unchanged. This is a technical wait, not a repeat approval request.

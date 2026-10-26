@@ -32,7 +32,7 @@ the source's earlier Linux/build evidence remains separately bound toc571d3f.
 | T-061 / W7 | source reviewed and normally integrated; release gates outstanding | lead | Run integrated offline gate; defer real Linux/build/publication until the current study has qualified closure |
 | T-062 / W7 | source reviewed and normally integrated; release gates outstanding | lead | Preserve prospective fetch timing and verify the same related-batch release |
 | T-063 / W7 | source reviewed and locally integrated; expanded release gates outstanding | lead | Preserve native raw inputs; qualified study closure, diagnostic repair and normal release gates remain |
-| T-064 / W7 | R2 source correction implemented; fresh combined review in progress | lead / independent reviewer | Verify mixed-native schema repair, retain actual bot data, and complete exact-source full and release gates |
+| T-064 / W7 | source accepted and normally integrated; release gates outstanding | lead | Require the exact integrated complete45, normal source CI, both locked builds, publication and first scheduled snapshot |
 | T-047 / W40 | held, genuine mandatory security verdict incomplete | lead / required reviewer | Preserve candidate and existing qualified handoff; no replay through another AI |
 | T-049 / T-050 | dependency-held drafts | lead | Bind accepted integrated archive/runtime APIs before implementation |
 
@@ -64,14 +64,15 @@ Literal presence is not validated engine input. No historical value is restored.
 The post-closure diagnostic design had independent DESIGN_PASS_DEPENDENCY_HELD.
 The lead has independently verified its original closure dependency and reconciled
 all scoped raw/canonical source bytes. T064 is now accepted for isolated tests-first
-implementation. R1's functional and adversarial reviews reproduce one material
-mixed-native diagnostic-count inconsistency and require correction. R2 adds its
-acceptance test before a one-condition fix and is under fresh combined review.
-The actual R1 complete gate is44/45/native1; the unchanged base reproduces its
-dated local-data and correction-log failures. A truthful correction and generated
-page resolve the log; local snapshot freshness still blocks publication. Preserve
-the failures, reconcile actual existing data and require current complete45/native0
-before release. Old executed controls and original scientific evidence stay exact.
+implementation. R1's functional and adversarial reviews exposed one material
+mixed-native diagnostic-count inconsistency. R2 adds its acceptance test before
+a one-condition fix; fresh combined review passes12/12 with RED-TEAM none at
+97ab4db. Author and independent complete45 both pass at that exact source. The
+original R1 complete44/45/native1 and rejected review remain retained. Real normal
+bot originals resolve the stale local snapshot; a truthful anchored correction
+repairs the correction log. The lead has normally integrated the reviewed source.
+The exact integrated full gate and actual source CI/builds/publication remain
+mandatory. Old executed controls and original scientific evidence stay exact.
 The existing finite release followup is updated in place for this order, without
 resetting its original identity/count/ledger. No new source CI or publication has
 occurred; its future trigger is not established by a saved configuration.
