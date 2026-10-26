@@ -510,3 +510,27 @@ assertions and the original invalid-bundle failure. This is a test-input repair,
 not a capacity increase or permission to suppress original clock sealing.
 Commit A7 tests-only before the runtime fix and preserve both candidate and true
 original-parent witnesses with their distinct provenance.
+
+2026-10-26, R1 decision/A8 mixed-native consistency: independent functional and
+adversarial runtime checks reproduce one material AC4 gap. A restored aggregate
+can undercount usable bodies when any native evidence is unavailable. Add only
+StudyTests.test_t064_mixed_native_evidence_enforces_usable_bounds_on_write_and_read
+as a tests-only commit against the frozen R1 runtime. Exercise actual mixed
+native/legacy capture, all-unavailable and all-native controls, representable
+valid bounds, and inconsistent lower-bound values in both protocols and both
+source envelopes where their original operation maxima allow a mixture. Test
+write rejection and real generated-ZIP read rejection through core and session
+constructors/decoders; keep independent stale transport/reference checks effective.
+Read-rejection fixtures must carry otherwise valid recomputed envelope digests so
+they fail for the actual schema inconsistency, not an unrelated stale pin.
+
+Keep every prior test/assertion/fixture and namedP exact. The minimum source fix
+enforces usable_body >= max(0,reason.ok-native_exit.unavailable), retaining all
+existing upper bounds, nonzero-native transport-failure constraints and complete
+evidence equality. No classification/request/clock/science/protocol/cap change,
+probe edit or new persisted field is authorized. Preserve meaningful R1-parent
+red before the separate fix commit. This closes the malformed mixed-evidence
+class; final fresh combined R2 review and actual exact-source complete45 remain
+mandatory. The existing six mutation classes remain the cap; direct R1-parent
+reproduction is not a new mutation family. An unrelated dated-data baseline
+failure stays explicit and must be resolved before normal source publication.
