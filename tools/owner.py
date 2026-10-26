@@ -97,6 +97,19 @@ EXTRA_ACTIONS = []
 # claim, which is itself a thing that can turn out to be false.
 CORRECTION_WINDOW = 14
 CORRECTIONS = [
+    ("2026-10-26",
+     "The first current-check summary called an expired correction-log record an "
+     "expired opportunity record.",
+     "The failing tests/test_owner_page.py guard reads tools/owner.py CORRECTIONS, "
+     "not the parked opportunities. "
+     "Its other failure describes the newest snapshot in the local checkout; that "
+     "does not establish whether remote collection stopped. The unchanged integration "
+     "source reproduced both failures before the new diagnostic source was integrated. "
+     "The original failures remain recorded and the freshness thresholds are unchanged.",
+     "Reading the actual failing assertions and reproducing the unchanged-base check "
+     "corrected the summary. Future release checks must distinguish local data age "
+     "from observed remote execution, and validate existing normal snapshot evidence "
+     "before claiming a runtime recovery."),
     ("2026-10-11",
      "The first T-021 candidate treated a parsed zero string as an observed zero market "
      "measurement when its mantissa contained no nonzero ASCII decimal digit.",
