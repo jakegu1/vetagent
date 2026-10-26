@@ -224,6 +224,7 @@ def _validate_diagnostics(value):
                     raise ValueError()
             nonzero = sum(n for k, n in row["native_exit"].items() if k not in ("0", "unavailable"))
             if (row["usable_body"] > min(row["reason"]["ok"], row["http"]["200"], row["native_exit"]["0"])
+                    or row["usable_body"] < max(0, row["reason"]["ok"] - row["native_exit"]["unavailable"])
                     or nonzero > row["reason"]["transport_failed"]
                     or (row["native_exit"]["unavailable"] == 0 and row["usable_body"] != row["reason"]["ok"])):
                 raise ValueError()
