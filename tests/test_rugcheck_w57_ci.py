@@ -2346,7 +2346,12 @@ class New192SessionTests(unittest.TestCase):
                 with self.assertRaises(driver.StudyError):
                     self.session.write_bundle(folder / 'result', state, rows, 'result', ctx, namespace,
                                               tail + b'x' * 2048, diagnostics=diag)
-                with patch.object(driver.os, 'replace', side_effect=OSError('synthetic write failure')):
+                replace = driver.os.replace
+                def fail_status(source, destination):
+                    if Path(destination).name == 'collection.json':
+                        raise OSError('synthetic write failure')
+                    return replace(source, destination)
+                with patch.object(driver.os, 'replace', side_effect=fail_status):
                     with self.assertRaises(driver.StudyError):
                         self.session.write_bundle(folder / 'result', state, rows, 'result', ctx, namespace,
                                                   tail, diagnostics=diag)
