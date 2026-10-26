@@ -498,3 +498,15 @@ Apply only the previously named expected current-probe literal in its separate
 tests-only commit after the runtime fix. Preserve every other legacy fixture,
 old assertion and historical source pin. Changed probe bytes require renewed
 review/hash agreement. This narrow approval is not task or publication acceptance.
+
+2026-10-26, A7 named near-capacity fixture headroom: only the added capacity
+fixture's artificial margin changes from100 to1024 bytes. A bounded eight-case
+witness actually loads the five original parent sources and executes unmodified
+finalizers: the original100-byte setup already overflows without diagnostics;
+the1024-byte setup permits ordinary original finalization in both namespaces
+while still refusing the added aggregate. Keep all original outer caps, every
+scientific/unverified byte within that chosen valid fixture, fallback/status/ZIP
+assertions and the original invalid-bundle failure. This is a test-input repair,
+not a capacity increase or permission to suppress original clock sealing.
+Commit A7 tests-only before the runtime fix and preserve both candidate and true
+original-parent witnesses with their distinct provenance.
