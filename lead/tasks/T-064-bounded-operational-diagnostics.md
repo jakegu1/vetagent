@@ -414,3 +414,99 @@ root acceptance below; its historical source/evidence remains unchanged.
 original archive and owned-only stop bindings are reverified. The exact design
 passes DoR after unchanged-source reconciliation; implementation is now authorized.
 NamedP and every original scientific/transport boundary remain exactly as above.
+
+2026-10-26, A1 named additive-test fixture repair: the first acceptance-only
+commit exposes two setup defects before the intended missing-diagnostics seam.
+Only the newly added StudyTests.t064_run synthetic tick cohort may change its
+three synthetic members from fresh to control so enrollment-free members satisfy
+the unchanged parent state validator. Only the newly added session helper may
+initialize its fake service's reads/downloads/seconds_spent/runs statistics to
+their appropriate empty values required by the unchanged existing _stats seam.
+Do not alter old helpers/classes, any old or new assertion, expected diagnostic
+count, runner, source validator or other fixture. Keep the original failure logs.
+Commit this exact setup-only repair separately before the runtime fix, and rerun
+the original parent to establish meaningful missing-diagnostic reds through the
+now valid setup. No assertion or acceptance threshold is relaxed.
+
+2026-10-26, A2 supersedes only A1's synthetic tick population choice. The unchanged
+active-state validator requires40-45 fresh members and the exact existing control
+population; three enrollment-free controls are also invalid. Only the new
+StudyTests.t064_run tick-cohort setup may instead contain40 synthetic fresh mints
+with fixed valid HTTP200/ok enrollment, fixed aware detectedAt one minute before
+the existing EPOCH, ts=EPOCH, followed by exact probe.MAJORS controls in their
+existing order. Both original protocol validators accept this proposed setup.
+Keep all assertions, expected counts, clocks, guard behavior, old helpers and
+runtime validators unchanged. Commit A2 tests-only and reproduce the intended
+missing-diagnostics parent red, preserving both earlier setup-failure records.
+
+2026-10-26, A3 named new-test serialization fixtures only: in the added manifest
+read-rejection case, serialize the deliberately malformed manifest with
+json.dumps(...).encode('utf-8') so its intended NaN reaches the production decoder
+instead of being rejected by the valid-output encoder in test setup. The write
+rejection and every existing/new assertion remain unchanged. In the added
+capacity case, enumerate all actual on-disk result files in the original _files
+key order before constructing the actual ZIP comparison. Retain every actual
+file; unexpected filenames must remain included and fail the existing dictionary
+equality, never be silently filtered. This corrects NTFS enumeration-order input
+to the deterministic ZIP constructor, not ZIP/file bytes or digest assertions.
+Only these two added test-setup paths may change in a separate tests-only commit;
+retain the original failures and all old tests/helpers/source behavior.
+
+2026-10-26, A4 named status-persistence failure injection: only the newly added
+capacity test's os.replace fault may delegate to the original replacement for
+every destination except collection.json, where it raises the same synthetic
+OSError. The prior module-wide replacement fault also interrupted scientific
+file persistence before reaching the required status seam. All assertions,
+scientific data, original os.replace behavior outside that fixed destination,
+and original runtime/test code remain unchanged. Keep the earlier failure and
+commit this setup-only change separately before the runtime fix.
+
+2026-10-26, A5 named salvage-fixture preservation: only the added capacity test's
+later legacy/missing-diagnostics write may pass the same existing unverified tail
+explicitly. The existing writer correctly rejects a leftover scientific tail
+whose rebuilt manifest did not name it. Do not delete the tail, change the writer
+or alter any assertion to make this setup pass. Preserve its failure and commit
+the one input-wiring correction tests-only before the runtime fix.
+
+2026-10-26, A6 bounded acceptance supplement before the runtime fix: add only
+these four new methods in the already registered test file; every original and
+previously committed assertion remains unchanged:
+
+- StudyTests.test_t064_refusal_limiters_and_unrepresentable_timing_preserve_original_traces
+- StudyTests.test_t064_recorded_zero_missing_and_reused_target_remain_distinct
+- New192SessionTests.test_t064_capacity_status_survives_actual_finish_receipt_and_summary
+- New192SessionTests.test_t064_rescue_has_no_aggregate_and_canary_rejects_result_member
+
+They complete the existing AC3-7 obligations for phase/study/equal limiters and
+nonrepresentable timing, recorded-zero versus missing and caller-dict replacement,
+actual finish receipt/allowlisted summary capacity status, rescue and valid
+canary-member rejection. This is no new behavior or scope: runtime stays in the
+same three files, all caps/traces/science remain original, and all new methods
+are tests-only before the runtime fix. Reproduce missing-feature reds against
+unmodified parent runtime in an isolated bounded fixture; preserve the originals.
+Characterizations already supported by the old runtime need not be falsely made
+red. Distinguish synthetic pure unreachable-schema witnesses from actual operation
+evidence. Report HELD if any required seam cannot be demonstrated within thisM
+task; no partial publication or self-certified READY from code inspection.
+
+2026-10-26, namedP fixed literal approval: the lead reviewed the final minimal
+probe diff and an independent source-identity check computed the same LF-canonical
+SHA using Python and PowerShell, with a byte-exact retained copy. For those exact
+probe bytes only, the approved replacement is
+c1fb2e3b5b0fb68c43a2a6442aa404aeb5a9b5983dc5107aa7bbff22abe2bf6c.
+Apply only the previously named expected current-probe literal in its separate
+tests-only commit after the runtime fix. Preserve every other legacy fixture,
+old assertion and historical source pin. Changed probe bytes require renewed
+review/hash agreement. This narrow approval is not task or publication acceptance.
+
+2026-10-26, A7 named near-capacity fixture headroom: only the added capacity
+fixture's artificial margin changes from100 to1024 bytes. A bounded eight-case
+witness actually loads the five original parent sources and executes unmodified
+finalizers: the original100-byte setup already overflows without diagnostics;
+the1024-byte setup permits ordinary original finalization in both namespaces
+while still refusing the added aggregate. Keep all original outer caps, every
+scientific/unverified byte within that chosen valid fixture, fallback/status/ZIP
+assertions and the original invalid-bundle failure. This is a test-input repair,
+not a capacity increase or permission to suppress original clock sealing.
+Commit A7 tests-only before the runtime fix and preserve both candidate and true
+original-parent witnesses with their distinct provenance.
