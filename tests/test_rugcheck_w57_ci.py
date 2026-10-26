@@ -2488,7 +2488,7 @@ class New192SessionTests(unittest.TestCase):
                 folder = Path(directory) / 'operation'
                 ctx, clock, memory, state, rows, diag, phase = self.t064_collected(folder, namespace)
                 original = self.session._files(state, rows, 'result', ctx, namespace, b'')
-                room = driver.BUNDLE_BYTES - sum(map(len, original.values())) - 100
+                room = driver.BUNDLE_BYTES - sum(map(len, original.values())) - 1024
                 tail = b'x' * room
                 original = self.session._files(state, rows, 'result', ctx, namespace, tail)
                 original_zip = self.session._zip(original)
