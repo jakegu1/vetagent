@@ -86,6 +86,143 @@ class MemoryArtifacts:
 
 
 class StudyTests(unittest.TestCase):
+    def test_t064_mixed_native_evidence_enforces_usable_bounds_on_write_and_read(self):
+        harness = New192SessionTests()
+        harness.setUp()
+        session = harness.session
+        native_transport = probe.curl
+        for protocol in (driver.LEGACY193, driver.START192_V1):
+            namespace = 'live' if protocol is driver.LEGACY193 else 'live192'
+            for source in ('rugcheck', 'geckoterminal'):
+                phase = 'pilot' if source == 'rugcheck' else 'start'
+                cli_phase = phase if namespace == 'live' else phase + '192'
+                ctx = harness.ctx(300, cli_phase)
+                for mode in ('all_unavailable', 'all_native', 'mixed'):
+                    clock, store, diagnostics = Clock(), MemoryArtifacts(), {}
+                    state = driver._new_state('mixed-evidence', phase, ctx, EPOCH, protocol=protocol)
+                    plan = dict(action='collect', phase=phase, state=state, prepared_at=EPOCH)
+                    intent = driver.decode_bundle(driver.bundle_bytes(state, [], 'intent', ctx, protocol=protocol),
+                                                  ctx, ctx, protocol=protocol)
+                    store.load = lambda ident: intent
+                    calls, target_calls = [], 0
+                    report_fetch, _ = self.vendor(clock)
+                    def fetch(url):
+                        calls.append(url)
+                        if source == 'geckoterminal':
+                            page = int(url.rsplit('page=', 1)[-1])
+                            # Six actual listing entries, within the original eight-page
+                            # start maximum. Invalid identities cause no report requests.
+                            return '200', {'data': [] if page == 6 else [
+                                {'relationships': {'base_token': {'data': {'id': 'invalid'}}}}]}
+                        return report_fetch(url)
+                    def native(argv, **kwargs):
+                        code, body = fetch(argv[-1])
+                        return type('Synthetic', (), dict(returncode=0, stdout=json.dumps(body) + '\n' + code))()
+                    def injected(url):
+                        nonlocal target_calls
+                        targeted = ('/tokens/' in url) if source == 'rugcheck' else 'geckoterminal' in url
+                        if targeted:
+                            target_calls += 1
+                        legacy = mode == 'all_unavailable' or mode == 'mixed' and targeted and target_calls == 6
+                        return fetch(url) if legacy else native_transport(url)
+                    with patch.object(probe, 'curl', side_effect=injected), \
+                            patch.object(probe.subprocess, 'run', side_effect=native) as subprocess_run:
+                        state, rows = driver.collect(plan, 1, store, ctx, clock, clock.sleep,
+                                                     protocol=protocol, diagnostics=diagnostics)
+                    self.assertEqual(target_calls, 6)
+                    self.assertEqual(len(calls), 7 if source == 'rugcheck' else 6)
+                    expected_native = {'all_unavailable': 0, 'all_native': 6, 'mixed': 5}[mode]
+                    self.assertEqual(subprocess_run.call_count,
+                                     expected_native + int(source == 'rugcheck' and mode != 'all_unavailable'))
+                    captured = diagnostics['sources'][source]
+                    self.assertEqual(captured['reason']['ok'], 6)
+                    self.assertEqual(captured['native_exit']['0'], expected_native)
+                    self.assertEqual(captured['native_exit']['unavailable'], 6 - expected_native)
+                    self.assertEqual(captured['usable_body'], expected_native)
+                    bound_state = session.bind_state(state, ctx, namespace)
+                    core_zip = driver.bundle_bytes(state, rows, 'result', ctx, protocol=protocol,
+                                                   diagnostics=diagnostics)
+                    session_zip = session.bundle_bytes(bound_state, rows, 'result', ctx, namespace,
+                                                       diagnostics=diagnostics)
+                    reference = {'id': 1, 'digest': session.decode_bundle(
+                        session_zip, ctx, ctx, protocol=protocol)['digest']}
+                    admission_state = copy.deepcopy(bound_state)
+                    admission_state['session']['last_durable'] = reference
+                    admission_zip = session.bundle_bytes(admission_state, rows, 'admission-result', ctx, namespace,
+                                                         diagnostics=diagnostics)
+                    def check_valid(value):
+                        core_data = driver.bundle_bytes(state, rows, 'result', ctx, protocol=protocol,
+                                                        diagnostics=value)
+                        self.assertEqual(driver.decode_bundle(core_data, ctx, ctx, protocol=protocol)
+                                         ['manifest']['operational_diagnostics'], value)
+                        session_data = session.bundle_bytes(bound_state, rows, 'result', ctx, namespace,
+                                                            diagnostics=value)
+                        self.assertEqual(session.decode_bundle(session_data, ctx, ctx, protocol=protocol)
+                                         ['manifest']['operational_diagnostics'], value)
+                    def changed_zip(original, value, *, transport_pin=True, reference_pin=True):
+                        with zipfile.ZipFile(io.BytesIO(original)) as archive:
+                            files = {name: archive.read(name) for name in archive.namelist()}
+                        manifest = json.loads(files['manifest.json'])
+                        manifest['operational_diagnostics'] = value
+                        files['manifest.json'] = driver.encoded(manifest)
+                        if 'transport.json' in files:
+                            transport = json.loads(files['transport.json'])
+                            digest = driver.sha(files['manifest.json'])
+                            if transport_pin:
+                                transport['core_digest'] = digest
+                            if reference_pin and transport.get('last_durable'):
+                                transport['last_durable']['digest'] = digest
+                            files['transport.json'] = driver.encoded(transport)
+                        return session._zip(files)
+                    def check_invalid(value, case):
+                        for channel, writer in (
+                            ('core_write', lambda: driver.bundle_bytes(state, rows, 'result', ctx,
+                                                                      protocol=protocol, diagnostics=value)),
+                            ('session_write', lambda: session.bundle_bytes(bound_state, rows, 'result', ctx,
+                                                                          namespace, diagnostics=value)),
+                            ('admission_write', lambda: session.bundle_bytes(admission_state, rows, 'admission-result',
+                                                                            ctx, namespace, diagnostics=value))):
+                            with self.subTest(protocol=protocol.identifier, source=source, mode=mode,
+                                              case=case, channel=channel), \
+                                    self.assertRaisesRegex(driver.StudyError, '^invalid_operational_diagnostics$'):
+                                writer()
+                        for channel, data, decoder in (
+                            ('core_read', core_zip, driver.decode_bundle),
+                            ('session_read', session_zip, session.decode_bundle),
+                            ('admission_read', admission_zip, session.decode_bundle)):
+                            with self.subTest(protocol=protocol.identifier, source=source, mode=mode,
+                                              case=case, channel=channel), \
+                                    self.assertRaisesRegex(driver.StudyError, '^invalid_operational_diagnostics$'):
+                                decoder(changed_zip(data, value), ctx, ctx, protocol=protocol)
+                    check_valid(diagnostics)
+                    inconsistent = copy.deepcopy(diagnostics)
+                    inconsistent['sources'][source]['usable_body'] = 1 if mode == 'all_unavailable' else 5 if mode == 'all_native' else 4
+                    check_invalid(inconsistent, 'captured_native_bound')
+                    if mode == 'mixed':
+                        # A schema witness, distinct from the six actual ok captures:
+                        # one of five ok reasons may be missing native evidence, so
+                        # four and five are the legal lower/upper usable bounds.
+                        ambiguous = copy.deepcopy(diagnostics)
+                        row = ambiguous['sources'][source]
+                        row['http']['200'], row['http']['no_http'] = 5, 1
+                        row['reason']['ok'], row['reason']['unclassified'] = 5, 1
+                        for usable in (4, 5):
+                            row['usable_body'] = usable
+                            check_valid(ambiguous)
+                        for usable in (0, 3, 6):
+                            invalid = copy.deepcopy(ambiguous)
+                            invalid['sources'][source]['usable_body'] = usable
+                            check_invalid(invalid, 'ambiguous_usable_%d' % usable)
+                    # Valid changed diagnostics still cannot bypass independent pins.
+                    changed = copy.deepcopy(diagnostics)
+                    changed['vendor_call_ceiling'] = 1
+                    with self.assertRaisesRegex(driver.StudyError, '^bundle_manifest$'):
+                        session.decode_bundle(changed_zip(session_zip, changed, transport_pin=False),
+                                              ctx, ctx, protocol=protocol)
+                    with self.assertRaisesRegex(driver.StudyError, '^admission_dependency$'):
+                        session.decode_bundle(changed_zip(admission_zip, changed, reference_pin=False),
+                                              ctx, ctx, protocol=protocol)
+
     def test_t064_refusal_limiters_and_unrepresentable_timing_preserve_original_traces(self):
         import inspect
         for protocol in (driver.LEGACY193, driver.START192_V1):
