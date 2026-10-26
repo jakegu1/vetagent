@@ -80,12 +80,12 @@ gantt
 ### Is the archive still collecting?
 
 ```text
-█████████████████████   2026-10-03 -> 2026-10-23
+█████████████████████   2026-10-06 -> 2026-10-26
 ```
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**51 days, no gaps.** Newest is 2026-10-23, 3 days ago.
+**54 days, no gaps.** Newest is 2026-10-26, today.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- lead: retain T064 independent R1 rejection and R2 release hold
+- docs: generate the current correction and calendar record
 - lead: anchor the dated correction to its actual check
 - lead: require mixed-native diagnostic consistency after R1 review
 - lead: record the measured freshness-report correction
 - lead: bind near-capacity fixture to original finalize headroom
 - lead: approve independently bound T064 probe source literal
 - lead: complete bounded T064 seam acceptance before source fix
-- lead: target T064 status-persistence fault precisely
-- lead: register T064 malformed JSON and ZIP-order fixtures
 
-_162 more not shown (170 commits in total)._
+_164 more not shown (172 commits in total)._
 
 ## What I got wrong
 

@@ -28,8 +28,13 @@ Actual same-source Linux/two locked builds/publication and the first normal
 scheduled snapshot trial remain pending. The latest order requires the current
 study's qualified report, complete original preservation and owned stop, then
 the future diagnostic repair with independent reviews and full gates, before
-normal source CI and publication. Its accepted diagnostic design has now passed
-the original closure prerequisite and is entering isolated tests-first work.
+normal source CI and publication. Its accepted diagnostic design has passed
+the original closure prerequisite. R1 independent reviews found a mixed-native
+diagnostic-counter consistency gap; its tests-first R2 correction is under fresh
+combined review. The actual complete R1 gate and unchanged base also fail on
+dated local records; the correction log is repaired truthfully while snapshot
+freshness still needs actual source-data reconciliation. No publication is
+approved before all current exact-source quality gates pass.
 Existing normal snapshot activity does not verify the
 unpublished collector. Old research results and all active scientific controls
 remain unchanged. This is a technical wait, not a repeat approval request.
