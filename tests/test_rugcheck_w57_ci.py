@@ -94,7 +94,10 @@ class StudyTests(unittest.TestCase):
         state = driver._new_state('diagnostics-test', phase, ctx, EPOCH, protocol=protocol)
         if phase == 'tick':
             state.update(status='active', started_at=EPOCH, ends_at=EPOCH + protocol.duration, slot=0,
-                         cohort=[dict(mint=mint(i), label='synthetic', group='control') for i in range(3)])
+                         cohort=[dict(mint=mint(i), label='synthetic', group='fresh',
+                                      enrollment=dict(http='200', body='ok', detectedAt=stamp(EPOCH - 60), ts=EPOCH))
+                                 for i in range(40)] +
+                                [dict(mint=m, label=label, group='control') for label, m in probe.MAJORS])
         if ceiling:
             state['requests']['rugcheck'] = protocol.max_vendor_calls
         plan = dict(action='collect', phase=phase, state=state, prepared_at=EPOCH)
