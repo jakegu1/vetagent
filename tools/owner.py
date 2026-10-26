@@ -100,7 +100,8 @@ CORRECTIONS = [
     ("2026-10-26",
      "The first current-check summary called an expired correction-log record an "
      "expired opportunity record.",
-     "The failing guard reads this CORRECTIONS list, not the parked opportunities. "
+     "The failing tests/test_owner_page.py guard reads tools/owner.py CORRECTIONS, "
+     "not the parked opportunities. "
      "Its other failure describes the newest snapshot in the local checkout; that "
      "does not establish whether remote collection stopped. The unchanged integration "
      "source reproduced both failures before the new diagnostic source was integrated. "
