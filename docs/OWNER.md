@@ -119,7 +119,7 @@ Rounded = parked by you. Hexagons are not work items -- they are what a row is w
 
 | | |
 |---|---|
-| Maturity score | 47 / 100 (`docs/SCORECARD.md`) |
+| Maturity score | 45 / 100 (`docs/SCORECARD.md`) |
 | Tokens measured | 576 |
 | False positives | 1.9% -- we called a healthy token dangerous |
 | Answers we refuse | 20.7% -- `unknown`, on purpose |
@@ -149,7 +149,7 @@ problem looked like before it was fixed.
 - T-064: named change (A8) pin mixed-native usable bounds
 - lead: require mixed-native diagnostic consistency after R1 review
 
-_167 more not shown (175 commits in total)._
+_154 more not shown (162 commits in total)._
 
 ## What I got wrong
 
