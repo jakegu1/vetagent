@@ -80,12 +80,12 @@ gantt
 ### Is the archive still collecting?
 
 ```text
-█████████████████████   2026-10-06 -> 2026-10-26
+█████████████████████   2026-10-07 -> 2026-10-27
 ```
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**54 days, no gaps.** Newest is 2026-10-26, yesterday.
+**55 days, no gaps.** Newest is 2026-10-27, today.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -149,7 +149,7 @@ problem looked like before it was fixed.
 - T-064: named change (A8) pin mixed-native usable bounds
 - lead: require mixed-native diagnostic consistency after R1 review
 
-_178 more not shown (186 commits in total)._
+_167 more not shown (175 commits in total)._
 
 ## What I got wrong
 
