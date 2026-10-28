@@ -1,14 +1,8 @@
 {
  "collapsed_paths": [],
- "date": "2026-10-27",
+ "date": "2026-10-28",
  "failures": [],
  "history": [
-  {
-   "collapsed_paths": [],
-   "date": "2026-09-28",
-   "status": "green",
-   "unobserved_sources": []
-  },
   {
    "collapsed_paths": [],
    "date": "2026-09-29",
@@ -192,6 +186,12 @@
    "date": "2026-10-27",
    "status": "green",
    "unobserved_sources": []
+  },
+  {
+   "collapsed_paths": [],
+   "date": "2026-10-28",
+   "status": "green",
+   "unobserved_sources": []
   }
  ],
  "probe_diagnostics": {
@@ -224,18 +224,6 @@
    },
    {
     "attempts": [
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
-     },
      {
       "http_status": "200",
       "reason": "ok",
@@ -704,18 +692,6 @@
    },
    {
     "attempts": [
-     {
-      "http_status": "429",
-      "reason": "rate_limited",
-      "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "429",
-      "reason": "rate_limited",
-      "transport_exit": 0,
-      "usable_body": false
-     },
      {
       "http_status": "200",
       "reason": "ok",
