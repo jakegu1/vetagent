@@ -148,11 +148,12 @@ def _fetch_pool_page(chain, kind, page, seen_at, retries=1, timeout=10, deadline
                 and isinstance(p.get("attributes"), dict) for p in pools):
             raise ValueError("invalid listing")
         page_rows = [_row(chain, kind, p, seen_at) for p in pools]
-    except (KeyError, TypeError, AttributeError, ValueError):
+        for row in page_rows:
+            row["fetched_at"] = fetched_at
+            json.dumps(row, ensure_ascii=False, allow_nan=False).encode("utf-8")
+    except (KeyError, TypeError, AttributeError, ValueError, RecursionError):
         diagnostics["error"] = "invalid_payload"
         return None, fetched_at, diagnostics
-    for row in page_rows:
-        row["fetched_at"] = fetched_at
     return page_rows, fetched_at, diagnostics
 
 
