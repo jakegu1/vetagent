@@ -4062,6 +4062,254 @@ def test_snapshot_pool_quote_unrepresentable_writer_reader_cli_handoff():
             check(label + " capture containment changes no request order count retries or cache contract", calls == expected_calls)
 
 
+def _snapshot_evidence_main(directory, reply, chains=("base",), pages=3):
+    import contextlib
+    from datetime import datetime, timedelta, timezone
+    import socket
+    from unittest.mock import patch
+    from urllib.parse import parse_qs, urlparse
+    import urllib.request
+    clock, reads, visits, calls = [0], [], {}, []
+
+    class Clock(datetime):
+        @staticmethod
+        def now(zone):
+            reads.append(clock[0])
+            return datetime(2026, 10, 20, tzinfo=timezone.utc) + timedelta(seconds=clock[0])
+
+    def fake_http(url, role, **options):
+        parsed = urlparse(url)
+        chain, endpoint = parsed.path.split("/")[-2:]
+        kind = "new" if endpoint == "new_pools" else "trending"
+        page = int(parse_qs(parsed.query)["page"][0])
+        key = (chain, kind, page)
+        visits[key] = visits.get(key, 0) + 1
+        calls.append((chain, kind, page, visits[key], role,
+                      {k: v for k, v in options.items() if k != "diagnostics"}))
+        payload = reply(chain, kind, page, visits[key])
+        options["diagnostics"].update(status=429 if payload is None else 200,
+                                      error="http" if payload is None else None,
+                                      attempts=2 if options["retries"] else 1)
+        clock[0] += 1
+        return None if payload is None else json.loads(payload)
+
+    output, failure, code = io.StringIO(), None, None
+    with patch.object(snapshot, "OUT_DIR", directory), \
+         patch.object(snapshot.sys, "argv", ["snapshot.py", "--chains", ",".join(chains),
+                                             "--pages", str(pages), "--sellability", "0"]), \
+         patch.object(snapshot, "fetch_json", side_effect=fake_http), \
+         patch.object(snapshot, "datetime", Clock), \
+         patch.object(snapshot.time, "monotonic", side_effect=lambda: clock[0]), \
+         patch.object(snapshot.time, "sleep"), \
+         patch.object(snapshot, "probe_sellability", side_effect=AssertionError("unexpected assessment")), \
+         patch.object(socket, "socket", side_effect=AssertionError("unexpected network")), \
+         patch.object(urllib.request, "urlopen", side_effect=AssertionError("unexpected network")), \
+         contextlib.redirect_stdout(output):
+        try:
+            code = snapshot.main()
+        except (TypeError, ValueError, RecursionError) as error:
+            failure = type(error).__name__
+    return code, failure, calls, reads, output.getvalue()
+
+
+def test_snapshot_end_confirmation_collector_writer_reader_cli_handoff():
+    import importlib
+    from pathlib import Path
+    import subprocess
+    import tempfile
+    readiness = importlib.import_module("snapshot_readiness")
+
+    def reply(chain, kind, page, visit):
+        if kind == "new":
+            return None if visit == 1 else '{"data":[]}'
+        return json.dumps({"data": [_snapshot_pool("private-end-proof-" + chain)]})
+
+    with tempfile.TemporaryDirectory() as tmp:
+        code, failure, calls, reads, output = _snapshot_evidence_main(tmp, reply, ("base", "eth"))
+        paths = {p.name: p.read_bytes() for p in Path(tmp).iterdir()}
+        manifest = [json.loads(line) for line in paths["runs-2026-10-20.ndjson"].splitlines()]
+        check("recovered ends preserve complete real main output and the original fetch and clock counts",
+              code == 0 and failure is None and "coverage: complete" in output
+              and [(c[0], c[1], c[2], c[3]) for c in calls] == [
+                  ("base", "new", 1, 1), ("base", "new", 2, 1), ("base", "trending", 1, 1),
+                  ("eth", "new", 1, 1), ("eth", "new", 2, 1), ("eth", "trending", 1, 1),
+                  ("base", "new", 1, 2), ("eth", "new", 1, 2)]
+              and reads == list(range(9)))
+        for chain, second in (("base", 7), ("eth", 8)):
+            group = {m["page"]: m for m in manifest if m["chain"] == chain and m["kind"] == "new"}
+            proof = "2026-10-20T00:00:0%d+00:00" % second
+            check(chain + " later failed and skipped pages inherit only the lower actual end proof",
+                  group[1]["outcome"] == "end_of_listing" and group[1]["recovery_fetched_at"] == proof
+                  and all(group[p].get("confirmed_end_fetched_at") == proof
+                          and group[p].get("confirmed_end_page") == 1
+                          and group[p]["outcome"] == "past_end_of_listing"
+                          and group[p]["recovery_outcome"] == "not_needed" and group[p]["rows"] == 0
+                          and "recovery_fetched_at" not in group[p] for p in (2, 3))
+                  and group[2]["initial_outcome"] == "fetch_failed"
+                  and group[2]["diagnostics"] == {"status": 429, "error": "http", "attempts": 2}
+                  and group[3]["initial_outcome"] == "skipped" and "fetched_at" not in group[3])
+        for as_of, eligible, future in (("2026-10-20T00:00:06.999999Z", 2, 6),
+                                       ("2026-10-20T08:00:07+08:00", 5, 3),
+                                       ("2026-10-20T00:00:07.999999Z", 5, 3),
+                                       ("2026-10-20T00:00:08Z", 8, 0)):
+            result = readiness.inventory(tmp, as_of)
+            counts = result["kinds"]["runs"]
+            proc = subprocess.run([sys.executable, os.path.join(ROOT, "bench", "snapshot_readiness.py"),
+                                   "--archive", tmp, "--as-of", as_of], capture_output=True,
+                                  text=True, encoding="utf-8")
+            check("real confirmation boundary " + as_of + " counts both derived pages at their own chain proof",
+                  (counts["rows"], counts["eligible_rows"], counts["future_rows"], counts["unknown_time_rows"])
+                  == (8, eligible, future, 0) and proc.returncode == 0 and not proc.stderr
+                  and json.loads(proc.stdout) == result and len(proc.stdout) < 20000
+                  and all(value not in proc.stdout for value in (tmp, "private-end-proof", "https://"))
+                  and not result["replay_ready"] and not result["full_engine_inputs_validated"]
+                  and not result["independent_outcomes_established"])
+        check("confirmation inventory and CLI preserve every original writer byte",
+              paths == {p.name: p.read_bytes() for p in Path(tmp).iterdir()})
+    # An initial end keeps its own observation, without extra fetches or clock reads.
+    with tempfile.TemporaryDirectory() as tmp:
+        code, failure, calls, reads, _ = _snapshot_evidence_main(
+            tmp, lambda chain, kind, page, visit: '{"data":[]}' if kind == "new"
+            else json.dumps({"data": [_snapshot_pool("valid-initial-end")]}))
+        manifest = [json.loads(line) for line in (Path(tmp) / "runs-2026-10-20.ndjson").read_bytes().splitlines()]
+        check("initial listing end retains its existing observation and unchanged two-call trace",
+              code == 0 and failure is None and len(calls) == 2 and reads == [0, 1, 2]
+              and manifest[0]["outcome"] == manifest[0]["initial_outcome"] == "end_of_listing"
+              and manifest[0]["fetched_at"] == "2026-10-20T00:00:01+00:00"
+              and "recovery_fetched_at" not in manifest[0])
+
+
+def test_snapshot_end_confirmation_strict_proof_metadata_and_legacy_rows():
+    import importlib
+    from pathlib import Path
+    import tempfile
+    readiness = importlib.import_module("snapshot_readiness")
+    base = {"outcome": "past_end_of_listing", "page": 3, "confirmed_end_page": 1,
+            "confirmed_end_fetched_at": "2026-10-20T00:00:12Z",
+            "fetched_at": "2026-10-20T00:00:01Z", "recovery_fetched_at": "2026-10-20T00:00:02Z"}
+    variants = [{}, {"confirmed_end_fetched_at": "2026-10-20T08:00:12+08:00"}]
+    invalid = [{"confirmed_end_fetched_at": value} for value in (
+        None, True, 12, [], {}, "", "broken", "2026-10-20T00:00:12", "2026-10-20T00:00:12.0000001Z",
+        "2026-10-20T00:00:12+00:00:00.1")]
+    invalid += [{"confirmed_end_page": value} for value in (None, True, False, 0, -1, 3, 4, "1", 1.0, [], {})]
+    invalid += [{"page": value} for value in (None, True, False, 0, -1, "3", 3.0, [], {})]
+    rows = [dict(base, **change) for change in variants + invalid]
+    for key in ("confirmed_end_fetched_at", "confirmed_end_page"):
+        legacy = dict(base)
+        legacy.pop(key)
+        rows.append(legacy)
+    for index, row in enumerate(rows):
+        check("strict proof row %d uses only a valid lower-page confirmation" % index,
+              readiness._observation_time("runs", row) == (readiness._instant(base["confirmed_end_fetched_at"])
+                                                           if index < 2 else None))
+    ordinary = [dict(base, outcome="ok"), {"outcome": "fetch_failed", "fetched_at": base["fetched_at"]},
+                {"outcome": "ok", "fetched_at": base["fetched_at"], "recovery_fetched_at": None}]
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "runs-2026-10-20.ndjson"
+        path.write_bytes(b"".join((json.dumps(row) + "\n").encode("utf-8") for row in rows + ordinary))
+        before = path.read_bytes()
+        result = readiness.inventory(tmp, "2026-10-20T00:00:12Z")
+        counts = result["kinds"]["runs"]
+        check("missing malformed and legacy proof clocks remain unknown despite old fetch clocks",
+              (counts["rows"], counts["eligible_rows"], counts["future_rows"], counts["unknown_time_rows"])
+              == (len(rows) + 3, 4, 0, len(rows) - 1) and counts["malformed_rows"] == 0
+              and result["diagnostics"] == ["unknown_observation_time"] and path.read_bytes() == before)
+        check("confirmation metadata does not expand literal field presence or ordinary recovery semantics",
+              readiness.FIELDS["runs"] == ("outcome", "rows", "page", "fetched_at", "recovery_fetched_at")
+              and readiness._observation_time("runs", ordinary[0]) == readiness._instant(base["recovery_fetched_at"])
+              and readiness._observation_time("runs", ordinary[1]) == readiness._instant(base["fetched_at"])
+              and readiness._observation_time("runs", ordinary[2]) is None
+              and readiness._observation_time("pools", base) == readiness._instant(base["fetched_at"]))
+
+
+def test_snapshot_native_page_representation_real_writer_reader_handoff():
+    import importlib
+    from pathlib import Path
+    import pickle
+    import subprocess
+    import tempfile
+    readiness = importlib.import_module("snapshot_readiness")
+    cases = [("overflow", '"base_token_price_usd":1e400', True),
+             ("surrogate", r'"name":"\ud800"', True),
+             ("nested overflow", '"volume_usd":{"m5":{"nested":[1e400]}}', True),
+             ("nested negative overflow", '"transactions":{"m5":{"buys":-1e400}}', True),
+             ("nested surrogate", r'"price_change_percentage":{"m5":["\udfff"]}', True),
+             ("valid Unicode zero and null", r'"name":"\u6d4b\u8bd5","base_token_price_usd":0,"fdv_usd":null,"transactions":{"m5":{"buys":0}},"volume_usd":{"h1":null}', False)]
+    for label, fragment, invalid in cases:
+        good = '{"id":"private-valid-page","attributes":{"reserve_in_usd":"7"}}'
+        bad = '{"id":"private-native-page","attributes":{' + fragment + '}}'
+        body = '{"data":[' + good + ',' + bad + ']}'
+        parsed = json.loads(body)
+        original = pickle.dumps(parsed, protocol=5)
+
+        def reply(chain, kind, page, visit):
+            if kind == "trending":
+                return '{"data":[]}'
+            if page == 2:
+                return body
+            return json.dumps({"data": [_snapshot_pool("private-page-%d" % page)]})
+
+        with tempfile.TemporaryDirectory() as tmp:
+            historical = Path(tmp) / "pools-2001-01-01.ndjson"
+            old = b'{"fetched_at":"2001-01-01T00:00:00Z","pool_id":"historical"}\n'
+            historical.write_bytes(old)
+            code, failure, calls, reads, output = _snapshot_evidence_main(tmp, reply)
+            run_path = Path(tmp) / "runs-2026-10-20.ndjson"
+            pool_path = Path(tmp) / "pools-2026-10-20.ndjson"
+            raw = pool_path.read_bytes() if pool_path.exists() else b""
+            try:
+                saved = [json.loads(line.decode("utf-8"), parse_constant=readiness._invalid_constant)
+                         for line in raw.splitlines()]
+                strict = bool(saved)
+            except (ValueError, UnicodeError):
+                saved, strict = [], False
+            manifest = [json.loads(line) for line in run_path.read_bytes().splitlines()] if run_path.exists() else []
+            page2 = next((m for m in manifest if m["kind"] == "new" and m["page"] == 2), {})
+            check(label + " real main rejects an entire bad page before writing and preserves the failure manifest",
+                  failure is None and code == (1 if invalid else 0) and strict and manifest
+                  and len(saved) == (2 if invalid else 4)
+                  and {r["pool_id"] for r in saved} == ({"private-page-1", "private-page-3"} if invalid
+                      else {"private-page-1", "private-page-3", "private-valid-page", "private-native-page"})
+                  and page2.get("outcome") == ("fetch_failed" if invalid else "ok")
+                  and page2.get("initial_outcome") == ("fetch_failed" if invalid else "ok")
+                  and page2.get("rows") == (0 if invalid else 2)
+                  and (not invalid or page2.get("diagnostics", {}).get("error") ==
+                       page2.get("recovery_diagnostics", {}).get("error") == "invalid_payload")
+                  and ("coverage: incomplete" if invalid else "coverage: complete") in output)
+            check(label + " retains valid earlier and later native rows exactly and preserves history",
+                  all(r == dict(snapshot._row("base", "new", _snapshot_pool(r["pool_id"]), r["seen_at"]),
+                                fetched_at=r["fetched_at"]) for r in saved if r["pool_id"].startswith("private-page-"))
+                  and historical.read_bytes() == old and pickle.dumps(parsed, protocol=5) == original)
+            if not invalid:
+                captured = next((r for r in saved if r["pool_id"] == "private-native-page"), {})
+                check("writable Unicode zero null and nested fields preserve their original raw values",
+                      captured == dict(snapshot._row("base", "new", parsed["data"][1], captured.get("seen_at")),
+                                       fetched_at=captured.get("fetched_at")) and captured.get("price_usd") == 0
+                      and captured.get("fdv_usd") is None)
+            expected = [("new", 1, 1), ("new", 2, 1), ("new", 3, 1), ("trending", 1, 1)]
+            if invalid:
+                expected.append(("new", 2, 2))
+            check(label + " uses only existing bounded recovery without cache or new clock reads",
+                  [(c[1], c[2], c[3]) for c in calls] == expected and reads == list(range(len(calls) + 1))
+                  and all(c[4] == "label" and c[5]["use_cache"] is False and c[5]["write_cache"] is False
+                          and c[5]["absolute_timeout"] is True and c[5]["retries"] == (0 if c[3] == 2 else 1)
+                          and c[5]["timeout"] == 10 for c in calls))
+            before = {p.name: p.read_bytes() for p in Path(tmp).iterdir()}
+            result = readiness.inventory(tmp, "2026-10-20T01:00:00Z")
+            proc = subprocess.run([sys.executable, os.path.join(ROOT, "bench", "snapshot_readiness.py"),
+                                   "--archive", tmp, "--as-of", "2026-10-20T01:00:00Z"],
+                                  capture_output=True, text=True, encoding="utf-8")
+            check(label + " real strict reader and CLI consume every preserved row with bounded private-safe output",
+                  failure is None and proc.returncode == 0 and not proc.stderr and json.loads(proc.stdout) == result
+                  and result["kinds"]["pools"]["rows"] == (3 if invalid else 5)
+                  and result["kinds"]["pools"]["malformed_rows"] == 0
+                  and result["kinds"]["runs"]["rows"] == 4 and len(proc.stdout) < 20000
+                  and all(value not in proc.stdout for value in (tmp, "private-native-page", "https://", "invalid_payload"))
+                  and not result["replay_ready"] and not result["full_engine_inputs_validated"]
+                  and not result["independent_outcomes_established"]
+                  and before == {p.name: p.read_bytes() for p in Path(tmp).iterdir()})
+
+
 def main():
     print("=" * 68)
     print("Sellability archive: asking on the day, because later is too late")
