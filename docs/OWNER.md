@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- lead: record accepted T064 R2 source and remaining related release gates
-- docs: regenerate owner archive status from actual normal bot originals
-- lead: retain T064 independent R1 rejection and R2 release hold
-- docs: generate the current correction and calendar record
-- lead: anchor the dated correction to its actual check
-- T-064: reject mixed-native usable undercounts; parent accepted 72 invalid write/read cases
-- T-064: named change (A8) pin mixed-native usable bounds
-- lead: require mixed-native diagnostic consistency after R1 review
+- lead: close accepted T065 source while retaining exact publication gates
+- lead: record independently accepted T065 source and exact release requirements
+- lead: reconcile delivered snapshot batch and start evidence integrity repairs
+- T-065: reject pool pages that cannot preserve strict rows
+- T-065: preserve confirmed listing-end availability
+- T-065: named change (runs-only absent-kind expectation)
+- lead: register T065 runs-only fixture premise correction
+- T-065: acceptance tests
 
-_149 more not shown (157 commits in total)._
+_158 more not shown (166 commits in total)._
 
 ## What I got wrong
 
