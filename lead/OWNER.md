@@ -18,12 +18,15 @@ evidence and owned workflow stop verified. All old scientific conclusions remain
 inconclusive. Protocols, windows, executed controls and originals stay immutable.
 No new scientific run is authorized by this engineering continuation.
 
-The next priority is T065: prospectively keep derived listing-end conclusions
-at their true confirmation time and reject unwritable native fields before
-they can poison the snapshot stream or interrupt the coverage manifest. Both
-seams are reproduced offline; historical incidence is unmeasured. Independent
-reviews, complete checks and normal publication gates remain mandatory. Current
-normal scheduled originals are retained without changing the freshness bar.
+T065's two prospective repairs are independently accepted and normally integrated:
+derived listing-end conclusions retain their confirmation time, and unwritable
+native fields are rejected before poisoning the stream or interrupting the
+coverage manifest. Fresh functional review scores12/12; focused adversarial
+review finds no material issue. Author and independent complete45 checks pass
+at the exact reviewed source. Final integration and publication gates still
+require actual evidence. Historical incidence remains unmeasured; old records
+and scientific conclusions are unchanged. Current normal scheduled originals
+are retained without changing the freshness bar.
 
 T047's mandatory security verdict remains incomplete; T049/T050 depend on it.
 Normal technical quality/release work is already authorized; decisions about

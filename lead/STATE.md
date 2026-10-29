@@ -25,16 +25,24 @@ the completed actual study closure does not repair that separate unsupported cas
 
 | Task | Stage | Owner | Next action |
 |---|---|---|---|
-| T-065 / W7 | isolated tests-first implementation | executor / lead | Repair derived confirmation time and page writability; fresh reviews, complete gates and normal publication |
+| T-065 / W7 | source accepted and normally integrated | lead | Complete exact integrated generation/full gate, normal source CI/builds and publication; preserve first real normal-run observations |
 | T-047 / W40 | held, genuine mandatory security verdict incomplete | lead / required reviewer | Preserve candidate and existing qualified handoff; no replay through another AI |
 | T-049 / T-050 | dependency-held drafts | lead | Bind accepted integrated archive/runtime APIs before implementation |
 
-New bounded offline witnesses expose two additional snapshot seams: derived
-past-end conclusions can inherit an earlier failed-fetch time; unrepresentable
-native fields can poison a row or interrupt manifest preservation. T065 repairs
-these prospectively without historical rewrites or new collection. Historical
-incidence is unmeasured. Do not turn the successful previous source reviews into
-acceptance for this new source; its own tests-first and release gates are required.
+T065 prospectively repairs two independently reproduced snapshot seams: derived
+past-end conclusions inherited an earlier failed-fetch time, and unwritable
+native fields could poison a row or interrupt manifest preservation. Historical
+incidence is unmeasured. Tests-only95b8029 precedes finding-specific fixes63e4b1c
+and591fea1; exact A1 corrects one new fixture's absent-kind diagnostic premise.
+Original intended reds and the naive post-merge contract-helper refusal remain
+retained. Original source-prefix and explicit first-parent/blob verification
+establish the tests-first contract through the normal scheduled-data merge.
+At exact b04364d, author and independent complete45/native0 pass with all1040
+raw files unchanged. Fresh functional review scores12/12 and the separate focused
+adversarial review has no material finding. Normal integration7c6a046 retains
+the three reviewed source/test blobs exactly. Public verdicts are in lead/reviews/.
+Final integrated and normal publication gates remain separate requirements; these
+offline receipts do not assert that a future producer or research run succeeded.
 
 The initial unchanged bdd6e69 local full gate is44/45 solely because its local
 archive stopped at October26. Actual normal scheduled originals throughOctober29
@@ -252,7 +260,7 @@ final publication evidence is recorded separately. No Worker, workflow, active
 study, scientific rule, archive/native source or T047 security gate changes. The
 three frozen W57 source hashes match its actual current checkpoint exactly.
 
-## Next engineering: three related M-sized loops
+## Held dependent engineering loops (earlier source context)
 
 The unadopted broad local-runtime proposal is split before tests under QUALITY's
 size rule. Preserve every original requirement and test the handoffs explicitly:
