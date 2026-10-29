@@ -3,53 +3,33 @@
 > This page holds only what the lead needs from you. The project's own dashboard, with its
 > deadlines and gates, is `docs/OWNER.md` (generated). Messages to you are in Chinese; files
 > here are English because the repository is English-only. Maintained by the project lead (AI).
-> Last updated: 2026-10-26 (Codex)
+> Last updated: 2026-10-29 (Codex)
 
 ## Status in one line
 
-T058/T059/T060 source is delivered at c571d3f after reviewed repairs, complete45
-local/integrated checks, exact-source master CI and both locked builds. The one
-qualified pilot and separately preregistered192-start study have ended. Same-study
-report reconstruction, complete original preservation and owned-only workflow
-stop have qualified operational closure. Scientific conclusions remain
-inconclusive. Historical protocol/window, executed sources and original evidence
-remain immutable; detailed research evidence stays private.
+T061/T062/T063/T064 are published at bdd6e69 after full exact-source CI and
+two actual locked builds. The first normal scheduled producer-to-reader trial
+and following45-step bot CI are qualified. The finite release followup is
+complete and deleted. Raw-value presence and availability clocks still do not
+establish validated full engine inputs, independent outcomes or replay readiness.
 
-T061/T062/T063 are locally reviewed and normally integrated: bounded as-of
-input inventory, prospective response-availability clocks, literal native pool
-field census and safe raw quote retention. Original data are not rewritten;
-literal field presence does not establish validated engine inputs or replay.
-T063's R1 optional-value serialization regression is repaired and retained in
-the review history. Fresh R2 functional and adversarial reviews approve25bfb43;
-author, independent and merged complete45 all pass. The post-gate closure changes
-only lead metadata and passes its applicable metadata checks.
+The192-start study is operationally closed with its original report, complete
+evidence and owned workflow stop verified. All old scientific conclusions remain
+inconclusive. Protocols, windows, executed controls and originals stay immutable.
+No new scientific run is authorized by this engineering continuation.
 
-Actual same-source Linux/two locked builds/publication and the first normal
-scheduled snapshot trial remain pending. The latest order requires the current
-study's qualified report, complete original preservation and owned stop, then
-the future diagnostic repair with independent reviews and full gates, before
-normal source CI and publication. Its accepted diagnostic design has passed
-the original closure prerequisite. R1 independent reviews found a mixed-native
-diagnostic-counter consistency gap. Its tests-first R2 correction now passes fresh
-combined12/12 and RED-TEAM none; author and independent complete45 pass at97ab4db.
-Real normal bot originals resolve local snapshot freshness and a truthful anchored
-entry repairs the correction log. The old failures remain retained. The source
-is normally integrated; exact integrated and normal release gates still apply.
-No publication is approved before those current exact-source gates pass.
-Existing normal snapshot activity does not verify the
-unpublished collector. Old research results and all active scientific controls
-remain unchanged. This is a technical wait, not a repeat approval request.
-The bounded next-gap triage found no new demonstrated source defect; it does
-not establish that every possible defect has been excluded.
+The next priority is T065: prospectively keep derived listing-end conclusions
+at their true confirmation time and reject unwritable native fields before
+they can poison the snapshot stream or interrupt the coverage manifest. Both
+seams are reproduced offline; historical incidence is unmeasured. Independent
+reviews, complete checks and normal publication gates remain mandatory. Current
+normal scheduled originals are retained without changing the freshness bar.
 
 T047's mandatory security verdict remains incomplete; T049/T050 depend on it.
 Normal technical quality/release work is already authorized; decisions about
 money, rights, scoring rules or new experiments keep their existing gates.
-The Owner explicitly retains this isolation while authorizing a requirements-only
-comparison of future alternatives. That comparison supplies neither a security
-verdict nor permission to implement, activate or change an existing scientific
-protocol. The latest bounded offline calendar/UTC consumer check exposed no new
-defect; it does not justify a new implementation task or early publication.
+The Owner retains this isolation. Existing requirements-only alternatives supply
+neither the missing verdict nor permission to activate the held candidate.
 
 ### Earlier source and deployment history
 

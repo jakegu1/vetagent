@@ -1,93 +1,52 @@
 # Lead state
 
-Last updated: 2026-10-26 by Codex. This is the current baton, not a release log.
-The Owner has now approved a NEW independent 192-start-point study after bounded
-HTTP400 diagnosis/repair, a new frozen protocol, implementation, independent and
-adversarial review, exact-source deployment and a qualified real pilot. This
-supersedes the earlier no-new-study authorization statements below only for that
-new protocol. Both old studies, their windows, bars and inconclusive results stay
-immutable. Do not launch before all pre-registered conditions are met.
+Last updated: 2026-10-29 by Codex. This is the current baton, not a release log.
 
 ## Current source, science boundary and engineering work
 
-T058/T059 are normally integrated in043bb97 and T060 in f3096ed. Exact deployed
-source c571d3f passes the complete45 local/post-integration gates, actual master
-39984359161 and both locked builds. Its separately qualified actual pilot and
-one preregistered192-start study are launched. Current evidence and operational
-receipts are private. The first real cross-job handoff is independently verified.
-The original fixed window has ended. Same-study report reconstruction, complete
-original preservation and owned-only workflow stop have qualified operational
-closure. Original scientific conclusions remain inconclusive and continuous
-coverage is not asserted. Both earlier studies remain inconclusive. No repeat
-enrollment, backfill, extension or changed bars. Historical executed controls and
-evidence remain immutable; reviewed prospective diagnostics are now authorized.
+T061/T062/T063/T064 are published at bdd6e69. Exact-source normal push CI
+40353996165 and master CI40355233461 pass all45 required steps, upstream and
+backfill checks, and two actual locked builds each. The first subsequent existing
+normal scheduled snapshot40423011704 checks out that producer and preserves694
+new pool rows and25 sellability rows. Actual following bot CI40424038705 passes
+all45 required test steps; its skipped packaging jobs are not new build evidence.
+Strict offline before/after availability checks qualify the normal handoff.
+The finite release followup is complete and deleted; do not recreate its budget.
+Literal native values and availability clocks do not establish full engine inputs,
+independent outcomes, continuous coverage or historical replay readiness.
 
-The later scheduled archive head92df4e7 is retained by normal merge47a909d.
-All changed canonical raw data remain exact prefixes and all five scientific
-controls are byte-identical. Actual bot CI40039156897 succeeds on92df4e7;
-the source's earlier Linux/build evidence remains separately bound toc571d3f.
+The sole authorized192-start study has qualified same-study operational closure:
+actual report, complete395-object preservation, original reconstruction and
+owned-only workflow stop. All three old scientific readouts remain inconclusive.
+Historical protocol/window, executed sources and original evidence stay exact.
+No repeat enrollment, backfill, extension, observation or changed scientific bar.
+The retained terminal-plus-unverified-tail combination remains dependency-held;
+the completed actual study closure does not repair that separate unsupported case.
 
 | Task | Stage | Owner | Next action |
 |---|---|---|---|
-| T-061 / W7 | source reviewed and normally integrated; release gates outstanding | lead | Run integrated offline gate; defer real Linux/build/publication until the current study has qualified closure |
-| T-062 / W7 | source reviewed and normally integrated; release gates outstanding | lead | Preserve prospective fetch timing and verify the same related-batch release |
-| T-063 / W7 | source reviewed and locally integrated; expanded release gates outstanding | lead | Preserve native raw inputs; qualified study closure, diagnostic repair and normal release gates remain |
-| T-064 / W7 | source accepted and normally integrated; release gates outstanding | lead | Require the exact integrated complete45, normal source CI, both locked builds, publication and first scheduled snapshot |
+| T-065 / W7 | isolated tests-first implementation | executor / lead | Repair derived confirmation time and page writability; fresh reviews, complete gates and normal publication |
 | T-047 / W40 | held, genuine mandatory security verdict incomplete | lead / required reviewer | Preserve candidate and existing qualified handoff; no replay through another AI |
 | T-049 / T-050 | dependency-held drafts | lead | Bind accepted integrated archive/runtime APIs before implementation |
 
-The related T061/T062 source batch is normally integrated in1d1f8d5. T061
-source3316698 passes the combined second-round functional/adversarial review
-at12/12 after the named timestamp precision repair. T062 sourceedd4351 passes
-fresh functional12/12 and RED-TEAM none. Both exact sources pass author and
-independent complete45. Independent public verdicts are in lead/reviews/.
-The integrated offline gate remains mandatory and its receipts stay private.
-Actual same-source Linux, both locked builds and publication remain outstanding.
-Normal push CI makes real upstream/backfill requests, so publication waits for
-the same current study's qualified report, complete preservation and owned stop.
-No skipped CI, replacement workflow or additional live probe is authorized here.
-The Owner's latest sequence adds an explicit post-window diagnostic prerequisite
-before publication: qualified current-study closure, HTTP/transport/budget refusal
-diagnostic repairs, required fresh reviews and complete gates, normal source CI,
-publication and the first normal snapshot trial. The earlier T061/T062-only
-local-ready certificate is historical and cannot release this expanded batch.
-T063 may proceed now outside the scientific import closure; diagnostic collectors
-remain untouched until qualified closure. Existing finite followup identity,
-original wake-up ledger and maximum count must not be reset or duplicated.
+New bounded offline witnesses expose two additional snapshot seams: derived
+past-end conclusions can inherit an earlier failed-fetch time; unrepresentable
+native fields can poison a row or interrupt manifest preservation. T065 repairs
+these prospectively without historical rewrites or new collection. Historical
+incidence is unmeasured. Do not turn the successful previous source reviews into
+acceptance for this new source; its own tests-first and release gates are required.
 
-T063 is normally integrated in2ab2495 after fresh R2 functional12/12 and
-RED-TEAM:none on25bfb43. Author, independent and merged complete45 all pass.
-R1's real optional-value serialization regression and its CHANGES_REQUIRED
-verdict remain in the record. The fix retains finite JSON/UTF-8 values exactly
-and explicitly records failed optional capture without poisoning old row fields.
-Literal presence is not validated engine input. No historical value is restored.
-The post-closure diagnostic design had independent DESIGN_PASS_DEPENDENCY_HELD.
-The lead has independently verified its original closure dependency and reconciled
-all scoped raw/canonical source bytes. T064 is now accepted for isolated tests-first
-implementation. R1's functional and adversarial reviews exposed one material
-mixed-native diagnostic-count inconsistency. R2 adds its acceptance test before
-a one-condition fix; fresh combined review passes12/12 with RED-TEAM none at
-97ab4db. Author and independent complete45 both pass at that exact source. The
-original R1 complete44/45/native1 and rejected review remain retained. Real normal
-bot originals resolve the stale local snapshot; a truthful anchored correction
-repairs the correction log. The lead has normally integrated the reviewed source.
-The exact integrated full gate and actual source CI/builds/publication remain
-mandatory. Old executed controls and original scientific evidence stay exact.
-The existing finite release followup is updated in place for this order, without
-resetting its original identity/count/ledger. No new source CI or publication has
-occurred; its future trigger is not established by a saved configuration.
-
-
-T061 is a bounded offline as-of inventory; T062 adds prospective availability
-clocks around the existing fetch operation, including its original retries and
-throttling. Neither claims per-wire timing, retrofits old clocks, establishes
-complete contemporaneous engine inputs, independent outcomes or replay readiness,
-or closes W7's elapsed/evaluation requirements. All five active-study controls,
-their import dependencies and transport strategy remain unchanged.
+The initial unchanged bdd6e69 local full gate is44/45 solely because its local
+archive stopped at October26. Actual normal scheduled originals throughOctober29
+are retained by normal merge880842b of ca22e68:154 prior canonical archive prefixes
+and1021 other raw files remain exact,18 changed files equal the actual remote.
+The unchanged original archive-freshness test then passes5 checks with no missing
+day. This resolves the stale input premise, not a source regression or threshold.
+The first failure is retained; the next complete gate must use the refreshed data.
 
 Earlier detailed source/review/release records remain in Git history and
-lead/reviews/. Their past pending or no-new-study statements describe those
-earlier deliveries, not the separately authorized current study.
+lead/reviews/. The sections below retain earlier delivery context; their canary
+and source approvals do not authorize another study or repeat completed work.
 
 ## Current delivery
 
