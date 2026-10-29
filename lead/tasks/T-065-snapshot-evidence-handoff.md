@@ -111,4 +111,15 @@ historical prevalence, production success or replay readiness from these tests.
 
 ## Amendments
 
-None.
+### A1 - 2026-10-29: preserve the runs-only fixture's absent-kind diagnostic
+
+The first tests-only contract95b8029 has one incorrect expected diagnostic list
+in test_snapshot_end_confirmation_strict_proof_metadata_and_legacy_rows. Its
+fixture intentionally contains only runs, so the unchanged inventory correctly
+reports source_kind_absent as well as unknown_observation_time. Permit exactly
+one named test change: replace the expected list[unknown_observation_time] with
+the exact ordered list[unknown_observation_time, source_kind_absent]. Preserve
+all inputs, row/count assertions, other assertions and all old tests. Commit
+this separately as T-065: named change (runs-only absent-kind expectation).
+The original red remains retained. This corrects the new test's premise; it
+does not weaken a runtime guard or authorize any other test change.
