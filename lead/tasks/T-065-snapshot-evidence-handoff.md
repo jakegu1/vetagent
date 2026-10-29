@@ -1,7 +1,7 @@
 ---
 id: T-065
 title: Preserve writable snapshot pages and truthful confirmation availability
-status: in_review
+status: done
 level: 3
 size: M
 depends_on: [T-061, T-062, T-063, T-064]
