@@ -242,16 +242,16 @@ def collect(chains, pages=5):
         m["chains"] = chains
     missing = sorted((m for m in manifest if m["outcome"] in ("fetch_failed", "skipped")),
                      key=lambda m: (m["kind"] != "new", m["page"], chains.index(m["chain"])))
-    ends = {(m["chain"], m["kind"]): m["page"] for m in manifest
+    ends = {(m["chain"], m["kind"]): (m["page"], m["fetched_at"]) for m in manifest
             if m["outcome"] == "end_of_listing"}
     deadline, attempts, budget_exhausted = time.monotonic() + 90, 0, False
     if collection_deadline is not None:
         deadline = min(deadline, collection_deadline)
     for m in missing:
         key = (m["chain"], m["kind"])
-        if key in ends and m["page"] > ends[key]:
+        if key in ends and m["page"] > ends[key][0]:
             m.update(outcome="past_end_of_listing", recovery_outcome="not_needed",
-                     confirmed_end_page=ends[key])
+                     confirmed_end_page=ends[key][0], confirmed_end_fetched_at=ends[key][1])
             continue
         remaining = deadline - time.monotonic()
         if attempts >= 12 or remaining <= 0.000001 or budget_exhausted:
@@ -270,7 +270,7 @@ def collect(chains, pages=5):
         if fetched is not None:
             m["rows"] = _append_pool_rows(rows, seen_ids, fetched)
         if outcome == "end_of_listing":
-            ends[key] = m["page"]
+            ends[key] = (m["page"], fetched_at)
     return rows, seen_at, manifest
 
 

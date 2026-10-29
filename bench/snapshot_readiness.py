@@ -126,6 +126,11 @@ def _observation_time(kind, row):
         consistent = ((row.get("outcome") == "ok" and row.get("answered") is True)
                       or (row.get("outcome") == "no_record" and row.get("answered") is False))
         return response if response == completed and consistent else None
+    if kind == "runs" and row.get("outcome") == "past_end_of_listing":
+        page, end = row.get("page"), row.get("confirmed_end_page")
+        if type(page) is not int or type(end) is not int or not 1 <= end < page:
+            return None
+        return _instant(row.get("confirmed_end_fetched_at"))
     if kind == "runs" and "recovery_fetched_at" in row:
         # The final recovery state cannot be available at its initial attempt.
         return _instant(row["recovery_fetched_at"])
