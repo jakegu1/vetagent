@@ -4213,7 +4213,7 @@ def test_snapshot_end_confirmation_strict_proof_metadata_and_legacy_rows():
         check("missing malformed and legacy proof clocks remain unknown despite old fetch clocks",
               (counts["rows"], counts["eligible_rows"], counts["future_rows"], counts["unknown_time_rows"])
               == (len(rows) + 3, 4, 0, len(rows) - 1) and counts["malformed_rows"] == 0
-              and result["diagnostics"] == ["unknown_observation_time"] and path.read_bytes() == before)
+              and result["diagnostics"] == ["unknown_observation_time", "source_kind_absent"] and path.read_bytes() == before)
         check("confirmation metadata does not expand literal field presence or ordinary recovery semantics",
               readiness.FIELDS["runs"] == ("outcome", "rows", "page", "fetched_at", "recovery_fetched_at")
               and readiness._observation_time("runs", ordinary[0]) == readiness._instant(base["recovery_fetched_at"])
