@@ -12,9 +12,11 @@ do something "when the repo gets big" is a wish; a test that fails on the day is
 
 Two properties this deliberately has:
 
-**It measures the packed repository, not the working tree.** `du -sh bench/snapshots` says
-12 MB and `.git` says 5.8 MB, and the second is what a person cloning this actually pays.
-This project once filed a storage ticket off the working-tree number and was wrong by 18x.
+**It measures existing packed objects, not the working tree.** Git's `size-pack` counts
+pack and index storage in KiB, including the shared store of a linked worktree. Loose
+objects and other metadata are excluded. This is not an exact server allocation or a
+newly repacked clone estimate. This project once filed a storage ticket off the
+working-tree number and was wrong by 18x.
 
 **It warns before it fails.** Crossing the threshold is not an emergency -- it is a day of
 work that should be scheduled, so the run goes yellow at 80% and red at 100%.
@@ -24,6 +26,7 @@ Run: python tests/test_archive_budget.py
 
 import io
 import os
+import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -50,21 +53,46 @@ def check(name, ok, detail=""):
 
 
 def packed_mb():
-    """What the server stores, which is what a cloner pays -- not the working tree."""
-    total = 0
-    git_dir = os.path.join(ROOT, ".git")
-    for root, _, files in os.walk(git_dir):
-        for f in files:
-            try:
-                total += os.path.getsize(os.path.join(root, f))
-            except OSError:
-                continue
-    return total / 1048576.0
+    """Existing shared pack/index MiB at Git's KiB precision, or None if unmeasured."""
+    env = {key: value for key, value in os.environ.items()
+           if not key.upper().startswith("GIT_")}
+    try:
+        result = subprocess.run(["git", "-C", ROOT, "count-objects", "-v"],
+                                shell=False, capture_output=True, timeout=10,
+                                encoding="utf-8", errors="strict", env=env)
+        if result.returncode != 0:
+            return None
+        required = {"count", "size", "in-pack", "packs", "size-pack",
+                    "prune-packable", "garbage", "size-garbage"}
+        stats = {}
+        for line in result.stdout.splitlines():
+            key, separator, value = line.partition(": ")
+            if (separator != ": " or key not in required or key in stats
+                    or not value.isascii() or not value.isdecimal()):
+                return None
+            number = int(value)
+            if number > 9223372036854775807:
+                return None
+            stats[key] = number
+        if stats.keys() != required:
+            return None
+        if stats["packs"] == 0:
+            if stats["count"] or stats["in-pack"] or stats["size-pack"]:
+                return None
+        elif stats["in-pack"] == 0 or stats["size-pack"] == 0:
+            return None
+        return stats["size-pack"] / 1024.0
+    except (OSError, subprocess.SubprocessError, UnicodeError, ValueError):
+        return None
 
 
 def test_the_repository_is_inside_its_budget():
     print("\n[B15] the archive's cost to a cloner")
     mb = packed_mb()
+    if mb is None:
+        check("the packed repository size is available", False,
+              "packed storage measurement unavailable")
+        return
     print("       .git is %.1f MB of a %d MB budget (%.0f%%)"
           % (mb, BUDGET_MB, 100.0 * mb / BUDGET_MB))
 
