@@ -80,12 +80,12 @@ gantt
 ### Is the archive still collecting?
 
 ```text
-█████████████████████   2026-10-09 -> 2026-10-29
+█████████████████████   2026-10-10 -> 2026-10-30
 ```
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**57 days, no gaps.** Newest is 2026-10-29, yesterday.
+**58 days, no gaps.** Newest is 2026-10-30, today.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- lead: accept T066 source and retain qualified full-gate evidence
+- T-066: named change (packed-size acquisition)
+- T-066: acceptance tests
+- lead: close actual T065 normal trial and start packed-budget repair
+- lead: specify linked-worktree packed archive measurement repair
 - lead: close accepted T065 source while retaining exact publication gates
 - lead: record independently accepted T065 source and exact release requirements
 - lead: reconcile delivered snapshot batch and start evidence integrity repairs
-- T-065: reject pool pages that cannot preserve strict rows
-- T-065: preserve confirmed listing-end availability
-- T-065: named change (runs-only absent-kind expectation)
-- lead: register T065 runs-only fixture premise correction
-- T-065: acceptance tests
 
-_158 more not shown (166 commits in total)._
+_139 more not shown (147 commits in total)._
 
 ## What I got wrong
 
