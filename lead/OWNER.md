@@ -29,10 +29,13 @@ and following45-step bot CI40943568008 qualify the operational handoff; neither
 exceptional repair path occurred in that run. Historical incidence remains
 unmeasured; old records and scientific conclusions are unchanged.
 
-Next is T066: the archive-budget helper falsely measures zero in linked
-worktrees. Repair the measurement and fail closed when unavailable, retaining
-the existing budget/warning/retention. Storage cleanup and migration are separate
-decisions, not actions authorized by a capacity reading.
+T066 repairs the archive-budget helper's false zero in linked worktrees and
+fails closed when packed size is unavailable. The existing budget, warning and
+retention stay fixed. Fresh functional12/12 and focused adversarial acceptance
+qualify the source; the independent full gate preserves every byte and ref.
+The author's separate wrapper failure from lead-created review-ref concurrency
+is retained and attributed. Exact integrated and normal release gates remain.
+Storage cleanup and migration are separate decisions; no deletion is implied.
 
 T047's mandatory security verdict remains incomplete; T049/T050 depend on it.
 Normal technical quality/release work is already authorized; decisions about

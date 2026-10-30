@@ -1,7 +1,7 @@
 ---
 id: T-066
 title: Measure packed Git storage in linked worktrees without false zero readings
-status: in_progress
+status: done
 level: 3
 size: S
 depends_on: [T-065]

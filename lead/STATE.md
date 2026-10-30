@@ -25,7 +25,7 @@ the completed actual study closure does not repair that separate unsupported cas
 
 | Task | Stage | Owner | Next action |
 |---|---|---|---|
-| T-066 / B15 | isolated tests-first implementation | executor / lead | Correct packed-size measurement in linked worktrees; retain budget, warn point and retention, then fresh reviews and complete release gates |
+| T-066 / B15 | independently accepted and normally integrated | lead | Run exact integrated generation/full gate, normal source/master CI and two actual locked builds; retain all original limits |
 | T-047 / W40 | held, genuine mandatory security verdict incomplete | lead / required reviewer | Preserve candidate and existing qualified handoff; no replay through another AI |
 | T-049 / T-050 | dependency-held drafts | lead | Bind accepted integrated archive/runtime APIs before implementation |
 
@@ -56,6 +56,18 @@ measurement exposed the next concrete defect: the B15 helper walks ROOT/.git,
 which is a pointer file in linked worktrees, so it silently reports zero. T066
 corrects that measurement and unavailable handling, not the pre-registered bar.
 Do not delete data, pack/GC the real object store, migrate or relax thresholds.
+
+T066 tests-onlycb9baa8 precedes the named measurement source fixf0f6807. Fresh
+functional review scores12/12 and focused adversarial review has no material
+finding. Both reproduce the parent90 failures and meaningful zero/unavailable
+mutants. At exactf0f6807 the author actual complete45/native0 passes with all
+source and primary bytes exact. Its separate ref-preservation wrapper fails
+because the lead concurrently creates the one review branch; the original
+failure, exact added ref and reflog attribution remain retained. This is not
+an unqualified author preservation pass. The later independent complete45
+passes with all1045 source files,876 primary files and every shared ref exact.
+Normal merge2c37e8f preserves the reviewed guard blob exactly. Final integrated
+and normal publication gates remain mandatory; source verdicts are in reviews.
 
 The initial unchanged bdd6e69 local full gate is44/45 solely because its local
 archive stopped at October26. Actual normal scheduled originals throughOctober29
