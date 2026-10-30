@@ -1,14 +1,8 @@
 {
  "collapsed_paths": [],
- "date": "2026-10-29",
+ "date": "2026-10-30",
  "failures": [],
  "history": [
-  {
-   "collapsed_paths": [],
-   "date": "2026-09-30",
-   "status": "green",
-   "unobserved_sources": []
-  },
   {
    "collapsed_paths": [],
    "date": "2026-10-01",
@@ -190,6 +184,12 @@
   {
    "collapsed_paths": [],
    "date": "2026-10-29",
+   "status": "green",
+   "unobserved_sources": []
+  },
+  {
+   "collapsed_paths": [],
+   "date": "2026-10-30",
    "status": "green",
    "unobserved_sources": []
   }
@@ -680,18 +680,6 @@
    {
     "attempts": [
      {
-      "http_status": "429",
-      "reason": "rate_limited",
-      "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "429",
-      "reason": "rate_limited",
-      "transport_exit": 0,
-      "usable_body": false
-     },
-     {
       "http_status": "200",
       "reason": "ok",
       "transport_exit": 0,
@@ -717,12 +705,6 @@
    },
    {
     "attempts": [
-     {
-      "http_status": "429",
-      "reason": "rate_limited",
-      "transport_exit": 0,
-      "usable_body": false
-     },
      {
       "http_status": "200",
       "reason": "ok",
