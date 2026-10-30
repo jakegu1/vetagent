@@ -1,6 +1,6 @@
 # Lead state
 
-Last updated: 2026-10-29 by Codex. This is the current baton, not a release log.
+Last updated: 2026-10-30 by Codex. This is the current baton, not a release log.
 
 ## Current source, science boundary and engineering work
 
@@ -25,7 +25,7 @@ the completed actual study closure does not repair that separate unsupported cas
 
 | Task | Stage | Owner | Next action |
 |---|---|---|---|
-| T-065 / W7 | source accepted and normally integrated | lead | Complete exact integrated generation/full gate, normal source CI/builds and publication; preserve first real normal-run observations |
+| T-066 / B15 | isolated tests-first implementation | executor / lead | Correct packed-size measurement in linked worktrees; retain budget, warn point and retention, then fresh reviews and complete release gates |
 | T-047 / W40 | held, genuine mandatory security verdict incomplete | lead / required reviewer | Preserve candidate and existing qualified handoff; no replay through another AI |
 | T-049 / T-050 | dependency-held drafts | lead | Bind accepted integrated archive/runtime APIs before implementation |
 
@@ -41,8 +41,21 @@ At exact b04364d, author and independent complete45/native0 pass with all1040
 raw files unchanged. Fresh functional review scores12/12 and the separate focused
 adversarial review has no material finding. Normal integration7c6a046 retains
 the three reviewed source/test blobs exactly. Public verdicts are in lead/reviews/.
-Final integrated and normal publication gates remain separate requirements; these
-offline receipts do not assert that a future producer or research run succeeded.
+T065 is published at6fe4440 after integrated complete45 and actual source
+40906077584/master40907191996 CI, each with45 required tests and two real locked
+builds. Its first actual existing scheduled run40942209360 checks out that source
+and appends658 pools,40 manifest rows and25 simulator records with old prefixes
+exact. Strict before/after readers qualify the normal availability handoff.
+Actual following bot CI40943568008 checks out5d17896 and passes45 required tests;
+its other jobs are skipped and are not new build evidence. No exceptional T065
+path occurred in that run. The normal operational verdict is in lead/reviews/.
+
+The latest actual scheduled originals through1a43485 are retained by normal
+merge5f81580. Production sources are unchanged. A separate read-only storage
+measurement exposed the next concrete defect: the B15 helper walks ROOT/.git,
+which is a pointer file in linked worktrees, so it silently reports zero. T066
+corrects that measurement and unavailable handling, not the pre-registered bar.
+Do not delete data, pack/GC the real object store, migrate or relax thresholds.
 
 The initial unchanged bdd6e69 local full gate is44/45 solely because its local
 archive stopped at October26. Actual normal scheduled originals throughOctober29

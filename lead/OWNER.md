@@ -3,7 +3,7 @@
 > This page holds only what the lead needs from you. The project's own dashboard, with its
 > deadlines and gates, is `docs/OWNER.md` (generated). Messages to you are in Chinese; files
 > here are English because the repository is English-only. Maintained by the project lead (AI).
-> Last updated: 2026-10-29 (Codex)
+> Last updated: 2026-10-30 (Codex)
 
 ## Status in one line
 
@@ -18,15 +18,21 @@ evidence and owned workflow stop verified. All old scientific conclusions remain
 inconclusive. Protocols, windows, executed controls and originals stay immutable.
 No new scientific run is authorized by this engineering continuation.
 
-T065's two prospective repairs are independently accepted and normally integrated:
+T065's two prospective repairs are published and its first normal trial qualifies:
 derived listing-end conclusions retain their confirmation time, and unwritable
 native fields are rejected before poisoning the stream or interrupting the
 coverage manifest. Fresh functional review scores12/12; focused adversarial
 review finds no material issue. Author and independent complete45 checks pass
-at the exact reviewed source. Final integration and publication gates still
-require actual evidence. Historical incidence remains unmeasured; old records
-and scientific conclusions are unchanged. Current normal scheduled originals
-are retained without changing the freshness bar.
+at the exact reviewed source. Actual integrated and source/master release gates
+pass, including two real locked builds each. First normal scheduled40942209360
+and following45-step bot CI40943568008 qualify the operational handoff; neither
+exceptional repair path occurred in that run. Historical incidence remains
+unmeasured; old records and scientific conclusions are unchanged.
+
+Next is T066: the archive-budget helper falsely measures zero in linked
+worktrees. Repair the measurement and fail closed when unavailable, retaining
+the existing budget/warning/retention. Storage cleanup and migration are separate
+decisions, not actions authorized by a capacity reading.
 
 T047's mandatory security verdict remains incomplete; T049/T050 depend on it.
 Normal technical quality/release work is already authorized; decisions about
