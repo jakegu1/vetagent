@@ -149,7 +149,7 @@ problem looked like before it was fixed.
 - lead: record independently accepted T065 source and exact release requirements
 - lead: reconcile delivered snapshot batch and start evidence integrity repairs
 
-_123 more not shown (131 commits in total)._
+_81 more not shown (89 commits in total)._
 
 ## What I got wrong
 
