@@ -80,12 +80,12 @@ gantt
 ### Is the archive still collecting?
 
 ```text
-█████████████████████   2026-10-10 -> 2026-10-30
+█████████████████████   2026-10-11 -> 2026-10-31
 ```
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**58 days, no gaps.** Newest is 2026-10-30, yesterday.
+**59 days, no gaps.** Newest is 2026-10-31, today.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -149,7 +149,7 @@ problem looked like before it was fixed.
 - lead: record independently accepted T065 source and exact release requirements
 - lead: reconcile delivered snapshot batch and start evidence integrity repairs
 
-_81 more not shown (89 commits in total)._
+_57 more not shown (65 commits in total)._
 
 ## What I got wrong
 
