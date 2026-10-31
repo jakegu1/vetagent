@@ -1,14 +1,8 @@
 {
  "collapsed_paths": [],
- "date": "2026-10-30",
+ "date": "2026-10-31",
  "failures": [],
  "history": [
-  {
-   "collapsed_paths": [],
-   "date": "2026-10-01",
-   "status": "green",
-   "unobserved_sources": []
-  },
   {
    "collapsed_paths": [],
    "date": "2026-10-02",
@@ -192,6 +186,14 @@
    "date": "2026-10-30",
    "status": "green",
    "unobserved_sources": []
+  },
+  {
+   "collapsed_paths": [],
+   "date": "2026-10-31",
+   "status": "blind",
+   "unobserved_sources": [
+    "rugcheck"
+   ]
   }
  ],
  "probe_diagnostics": {
@@ -225,10 +227,22 @@
    {
     "attempts": [
      {
-      "http_status": "200",
-      "reason": "ok",
+      "http_status": "400",
+      "reason": "vendor_rejected",
       "transport_exit": 0,
-      "usable_body": true
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
      }
     ],
     "counts_for_blindness": true,
@@ -251,10 +265,22 @@
    {
     "attempts": [
      {
-      "http_status": "200",
-      "reason": "ok",
+      "http_status": "400",
+      "reason": "vendor_rejected",
       "transport_exit": 0,
-      "usable_body": true
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
      }
     ],
     "counts_for_blindness": true,
@@ -264,10 +290,22 @@
    {
     "attempts": [
      {
-      "http_status": "200",
-      "reason": "ok",
+      "http_status": "400",
+      "reason": "vendor_rejected",
       "transport_exit": 0,
-      "usable_body": true
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
      }
     ],
     "counts_for_blindness": true,
@@ -277,10 +315,22 @@
    {
     "attempts": [
      {
-      "http_status": "200",
-      "reason": "ok",
+      "http_status": "400",
+      "reason": "vendor_rejected",
       "transport_exit": 0,
-      "usable_body": true
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
      }
     ],
     "counts_for_blindness": true,
@@ -290,10 +340,22 @@
    {
     "attempts": [
      {
-      "http_status": "200",
-      "reason": "ok",
+      "http_status": "400",
+      "reason": "vendor_rejected",
       "transport_exit": 0,
-      "usable_body": true
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
      }
     ],
     "counts_for_blindness": true,
@@ -303,10 +365,22 @@
    {
     "attempts": [
      {
-      "http_status": "200",
-      "reason": "ok",
+      "http_status": "400",
+      "reason": "vendor_rejected",
       "transport_exit": 0,
-      "usable_body": true
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
      }
     ],
     "counts_for_blindness": true,
@@ -316,10 +390,22 @@
    {
     "attempts": [
      {
-      "http_status": "200",
-      "reason": "ok",
+      "http_status": "400",
+      "reason": "vendor_rejected",
       "transport_exit": 0,
-      "usable_body": true
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
      }
     ],
     "counts_for_blindness": true,
@@ -329,10 +415,22 @@
    {
     "attempts": [
      {
-      "http_status": "200",
-      "reason": "ok",
+      "http_status": "400",
+      "reason": "vendor_rejected",
       "transport_exit": 0,
-      "usable_body": true
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
      }
     ],
     "counts_for_blindness": true,
@@ -342,10 +440,22 @@
    {
     "attempts": [
      {
-      "http_status": "200",
-      "reason": "ok",
+      "http_status": "400",
+      "reason": "vendor_rejected",
       "transport_exit": 0,
-      "usable_body": true
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
      }
     ],
     "counts_for_blindness": true,
@@ -355,10 +465,22 @@
    {
     "attempts": [
      {
-      "http_status": "200",
-      "reason": "ok",
+      "http_status": "400",
+      "reason": "vendor_rejected",
       "transport_exit": 0,
-      "usable_body": true
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
      }
     ],
     "counts_for_blindness": true,
@@ -368,10 +490,22 @@
    {
     "attempts": [
      {
-      "http_status": "200",
-      "reason": "ok",
+      "http_status": "400",
+      "reason": "vendor_rejected",
       "transport_exit": 0,
-      "usable_body": true
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
      }
     ],
     "counts_for_blindness": true,
@@ -381,10 +515,22 @@
    {
     "attempts": [
      {
-      "http_status": "200",
-      "reason": "ok",
+      "http_status": "400",
+      "reason": "vendor_rejected",
       "transport_exit": 0,
-      "usable_body": true
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
+      "http_status": "400",
+      "reason": "vendor_rejected",
+      "transport_exit": 0,
+      "usable_body": false
      }
     ],
     "counts_for_blindness": true,
@@ -680,6 +826,12 @@
    {
     "attempts": [
      {
+      "http_status": "429",
+      "reason": "rate_limited",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
       "http_status": "200",
       "reason": "ok",
       "transport_exit": 0,
@@ -902,15 +1054,17 @@
     "usable": 12
    },
    "rugcheck": {
-    "blind": 0,
+    "blind": 12,
     "blindness_excluded": 0,
     "probes": 17,
-    "usable": 17
+    "usable": 5
    }
   },
   "version": 1
  },
- "status": "green",
- "unobserved_probes": 0,
- "unobserved_sources": []
+ "status": "blind",
+ "unobserved_probes": 12,
+ "unobserved_sources": [
+  "rugcheck"
+ ]
 }
