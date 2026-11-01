@@ -4,13 +4,13 @@
 > It moves with every commit, so `git diff` tells you what the change was worth.
 
 
-## Total: **47 / 100**
+## Total: **45 / 100**
 
 | Dimension | Score | Max |
 |---|---|---|
-| Correctness | 19.0 ⚠️ | 30 |
+| Correctness | 16.5 ⚠️ | 30 |
 | Coverage | 10.8 | 20 |
-| Credibility | 13.2 | 20 |
+| Credibility | 13.3 | 20 |
 | Distribution | 4.2 ⚠️ | 15 |
 | Demand | 0.0 | 15 |
 
@@ -31,11 +31,11 @@
 | Correctness | false positive rate (healthy rated high) | 5.0 | 5 | 1.9% |
 | Correctness | false-block rate (liquid healthy rated medium or high) | 2.0 | 5 | 13.0% (20 of 154) |
 | Correctness | unknown rate (benchmark, cached upstreams) | 2.0 | 5 | 20.7% |
-| Correctness | unknown rate (production, served answers) | — | 5 | not measured (38 answers in the window, need 100) |
-| Correctness | production guards observed live | 5.0 | 5 | 429 after 61 calls; batch of 11 -> HTTP 400; service 6728275 on 2026-10-29 |
+| Correctness | unknown rate (production, served answers) | — | 5 | not measured (53 answers in the window, need 100) |
+| Correctness | production guards observed live | 2.5 | 5 | 429 after none of 75 calls; batch of 11 -> HTTP 400; service 5c6d024 on 2026-11-01 |
 | Coverage | risk dimensions covered, per advertised chain | 10.8 | 20 | 39 / 72 chain-dimension cells |
 | Credibility | recall is measurable | 10.0 | 10 | dead samples: 30 (need ≥20) |
-| Credibility | days of snapshots | 3.2 | 10 | 57 of 180 days |
+| Credibility | days of snapshots | 3.3 | 10 | 60 of 180 days |
 | Distribution | channels listed on | 4.2 | 10 | 5 / 12 |
 | Distribution | external callers | — | 5 | not measured (needs CLOUDFLARE_API_TOKEN, see bench/usage.py) |
 | Demand | paying users | 0.0 | 10 | 0 |
@@ -103,7 +103,7 @@ with false positives and false blocks <2%, unknown <5% in the benchmark and in p
 outcome data, the benchmark methodology cited as a standard by peers, the default
 choice at every agent entry point, and paying users who would complain if it disappeared.
 
-**The current 47 is not a failure** — it says precisely that the
+**The current 45 is not a failure** — it says precisely that the
 engineering is decent, proof and demand are both still zero, and writing more code
 cannot solve those last two.
 
