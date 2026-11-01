@@ -3480,7 +3480,8 @@ def test_sellability_clock_collector_writer_inventory_handoff():
             check("one operation envelope preserves existing fetch order kwargs and call budget",
                   events == ["clock", "fetch", "clock"] * 3 and len(calls) == 3
                   and calls == [("https://api.honeypot.is/v2/IsHoneypot?address=0x" + str(n) * 40 + "&chainID=8453",
-                                 {"role": "engine", "use_cache": False, "write_cache": False, "mark_missing": True})
+                                 {"role": "engine", "use_cache": False, "write_cache": False, "mark_missing": True,
+                                  "diagnostics": {}})
                                 for n in (1, 2, 3)])
             common = {"seen_at": batch, "chain": "base", "pool_address": "private-clock-value",
                       "pool_created_at": batch, "reserve_usd": "12", "unsimulatable_venue": False, "schema": 2}
@@ -4474,7 +4475,8 @@ def test_t067_received_payload_failures_survive_real_fetch_writer_and_reader():
               and rows[0].get("sellTax") == rows[2].get("sellTax") == 0
               and result["raw"].startswith(result["prefix"]) and result["inputs_exact"]
               and result["events"] == ["clock", "fetch", "http", "clock"] * 3
-              and result["calls"] == [("engine", {"use_cache": False, "write_cache": False, "mark_missing": True})] * 3)
+              and result["calls"] == [("engine", {"use_cache": False, "write_cache": False, "mark_missing": True,
+                                                  "diagnostics": {"status": 200, "error": None, "attempts": 1}})] * 3)
         counts = result["inventory"]["kinds"]["sellability"]
         check(label + " actual failure counts one attempt but cannot become a usable response",
               result["accounting"].get(("base", "0x" + "2" * 40)) == 1
