@@ -1,14 +1,8 @@
 {
  "collapsed_paths": [],
- "date": "2026-10-31",
+ "date": "2026-11-01",
  "failures": [],
  "history": [
-  {
-   "collapsed_paths": [],
-   "date": "2026-10-02",
-   "status": "green",
-   "unobserved_sources": []
-  },
   {
    "collapsed_paths": [],
    "date": "2026-10-03",
@@ -194,6 +188,12 @@
    "unobserved_sources": [
     "rugcheck"
    ]
+  },
+  {
+   "collapsed_paths": [],
+   "date": "2026-11-01",
+   "status": "green",
+   "unobserved_sources": []
   }
  ],
  "probe_diagnostics": {
@@ -227,22 +227,10 @@
    {
     "attempts": [
      {
-      "http_status": "400",
-      "reason": "vendor_rejected",
+      "http_status": "200",
+      "reason": "ok",
       "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
+      "usable_body": true
      }
     ],
     "counts_for_blindness": true,
@@ -265,22 +253,10 @@
    {
     "attempts": [
      {
-      "http_status": "400",
-      "reason": "vendor_rejected",
+      "http_status": "200",
+      "reason": "ok",
       "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
+      "usable_body": true
      }
     ],
     "counts_for_blindness": true,
@@ -290,22 +266,10 @@
    {
     "attempts": [
      {
-      "http_status": "400",
-      "reason": "vendor_rejected",
+      "http_status": "200",
+      "reason": "ok",
       "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
+      "usable_body": true
      }
     ],
     "counts_for_blindness": true,
@@ -315,22 +279,10 @@
    {
     "attempts": [
      {
-      "http_status": "400",
-      "reason": "vendor_rejected",
+      "http_status": "200",
+      "reason": "ok",
       "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
+      "usable_body": true
      }
     ],
     "counts_for_blindness": true,
@@ -340,22 +292,10 @@
    {
     "attempts": [
      {
-      "http_status": "400",
-      "reason": "vendor_rejected",
+      "http_status": "200",
+      "reason": "ok",
       "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
+      "usable_body": true
      }
     ],
     "counts_for_blindness": true,
@@ -365,22 +305,10 @@
    {
     "attempts": [
      {
-      "http_status": "400",
-      "reason": "vendor_rejected",
+      "http_status": "200",
+      "reason": "ok",
       "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
+      "usable_body": true
      }
     ],
     "counts_for_blindness": true,
@@ -390,22 +318,10 @@
    {
     "attempts": [
      {
-      "http_status": "400",
-      "reason": "vendor_rejected",
+      "http_status": "200",
+      "reason": "ok",
       "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
+      "usable_body": true
      }
     ],
     "counts_for_blindness": true,
@@ -415,22 +331,10 @@
    {
     "attempts": [
      {
-      "http_status": "400",
-      "reason": "vendor_rejected",
+      "http_status": "200",
+      "reason": "ok",
       "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
+      "usable_body": true
      }
     ],
     "counts_for_blindness": true,
@@ -440,22 +344,10 @@
    {
     "attempts": [
      {
-      "http_status": "400",
-      "reason": "vendor_rejected",
+      "http_status": "200",
+      "reason": "ok",
       "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
+      "usable_body": true
      }
     ],
     "counts_for_blindness": true,
@@ -465,22 +357,10 @@
    {
     "attempts": [
      {
-      "http_status": "400",
-      "reason": "vendor_rejected",
+      "http_status": "200",
+      "reason": "ok",
       "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
+      "usable_body": true
      }
     ],
     "counts_for_blindness": true,
@@ -490,22 +370,10 @@
    {
     "attempts": [
      {
-      "http_status": "400",
-      "reason": "vendor_rejected",
+      "http_status": "200",
+      "reason": "ok",
       "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
+      "usable_body": true
      }
     ],
     "counts_for_blindness": true,
@@ -515,22 +383,10 @@
    {
     "attempts": [
      {
-      "http_status": "400",
-      "reason": "vendor_rejected",
+      "http_status": "200",
+      "reason": "ok",
       "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
-     },
-     {
-      "http_status": "400",
-      "reason": "vendor_rejected",
-      "transport_exit": 0,
-      "usable_body": false
+      "usable_body": true
      }
     ],
     "counts_for_blindness": true,
@@ -832,6 +688,12 @@
       "usable_body": false
      },
      {
+      "http_status": "429",
+      "reason": "rate_limited",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
       "http_status": "200",
       "reason": "ok",
       "transport_exit": 0,
@@ -1054,17 +916,15 @@
     "usable": 12
    },
    "rugcheck": {
-    "blind": 12,
+    "blind": 0,
     "blindness_excluded": 0,
     "probes": 17,
-    "usable": 5
+    "usable": 17
    }
   },
   "version": 1
  },
- "status": "blind",
- "unobserved_probes": 12,
- "unobserved_sources": [
-  "rugcheck"
- ]
+ "status": "green",
+ "unobserved_probes": 0,
+ "unobserved_sources": []
 }
