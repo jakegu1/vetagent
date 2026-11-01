@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- lead: accept T066 source and retain qualified full-gate evidence
-- T-066: named change (packed-size acquisition)
-- T-066: acceptance tests
-- lead: close actual T065 normal trial and start packed-budget repair
-- lead: specify linked-worktree packed archive measurement repair
-- lead: close accepted T065 source while retaining exact publication gates
-- lead: record independently accepted T065 source and exact release requirements
-- lead: reconcile delivered snapshot batch and start evidence integrity repairs
+- lead: accept T067 independent source reviews and retain release gates
+- T-067: preserve received JSON null as a failed observation
+- T-067: named change (A2 additive received-null acceptance)
+- T-067: named change (A2 received-null diagnostic receiver)
+- lead: correct null diagnostic premise before implementation
+- lead: register T067 received-null class repair before acceptance
+- lead: isolate frozen-engine candidate and advance unaffected snapshot repair
+- T-067: propagate invalid sellability status from normal main
 
-_33 more not shown (41 commits in total)._
+_44 more not shown (52 commits in total)._
 
 ## What I got wrong
 
