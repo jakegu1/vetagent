@@ -25,7 +25,7 @@ the completed actual study closure does not repair that separate unsupported cas
 
 | Task | Stage | Owner | Next action |
 |---|---|---|---|
-| T-067 / W7 | implemented96afd64, independent review/full gates pending | lead | Serialize complete gate, fresh functional/adversarial reviews, normal source/master CI and normal scheduled trial |
+| T-067 / W7 | source accepted44174ea after R2 and two exact complete45 gates | lead | Complete normal integration/generation/full gates, source/master CI with locked builds and natural scheduled trial |
 | T-068 / market correctness | dependency-held, unpublished partial candidate | lead | Resolve production/research source-version contract separately; do not change frozen pins or skip tests |
 | T-047 / W40 | held, genuine mandatory security verdict incomplete | lead / required reviewer | Preserve candidate and existing qualified handoff; no replay through another AI |
 | T-049 / T-050 | dependency-held drafts | lead | Bind accepted integrated archive/runtime APIs before implementation |

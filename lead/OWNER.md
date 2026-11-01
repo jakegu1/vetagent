@@ -483,3 +483,9 @@ work continues under existing authorization without another approval.
   (a quoted Chinese phrase in `lead/STATE.md`, committed without running the checks). The T-001
   reviewer caught it before anything was pushed. Fixed; autonomy demoted A1 to A0 by rule Q1.
 - **2026-09-28** · lead · Adopted the project into the lead workflow. Nothing pushed.
+
+T067 source44174ea passes fresh R2 functional12/12, focused adversarial none
+and both author/independent complete45 gates. R1's actual received-null failure
+is retained and repaired. Runtime/clock/request limits and frozen sources stay
+exact. Integration, normal CI/builds and the natural snapshot trial remain
+separate release evidence; this source decision does not claim them complete.
