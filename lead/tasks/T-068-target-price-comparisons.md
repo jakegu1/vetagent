@@ -1,12 +1,27 @@
 ---
 id: T-068
 title: Compare target-token prices without losing finite consensus
-status: ready
+status: draft
 level: 3
 size: M
 depends_on: [T-021, T-065, T-066]
 backlog: existing finite market-input and selected-pool correctness
 ---
+
+## Current disposition: dependency-held
+
+The initial conflict search missed the deployed native adapter's FROZEN engine
+contract and its existing test. This is a lead scope error. Its unchanged
+code_manifest rejects the partial target-price candidate with source_drift;
+the unchanged T067 source passes. The candidate and tests-first reds are retained
+on a separate unpublished branch. The median fix, full gates and reviews are
+not complete. Do not integrate this task, update the frozen hash, weaken the old
+test or introduce an alternate production path to avoid that contract.
+
+Before returning to ready, separately resolve the production/research source
+version contract with explicit scope, acceptance, preserved historical sources
+and applicable independent qualification. T047/T049/T050 remain isolated. The
+original plan below is historical intent, not authorization to cross this hold.
 
 ## Context, benefit, cost and stop
 
@@ -72,7 +87,7 @@ fill, benchmark rebuild/enrollment or published measurement changes.
 
 ## Conflict search and evidence
 
-Conflict search covered all tests/callers for _unranked_price_conflict, _price_of_target,
+The initial incomplete conflict search covered tests/callers for _unranked_price_conflict, _price_of_target,
 _drop_price_outliers, statistics.median, price_disagreement, _PRICE_DISAGREEMENT_FACTOR,
 _MAX_PRICE_DEVIATION, _MIN_POOLS_FOR_CONSENSUS and both registered numeric runners.
 Named existing-test changes: NONE. Existing finite market, finite price conflict

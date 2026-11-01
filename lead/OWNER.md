@@ -8,9 +8,12 @@
 ## Status in one line
 
 T066 has completed normal source/master publication with45 required steps and
-two actual locked builds on each exact head. T067/T068 now address three bounded
-offline-demonstrated snapshot/target-price seams. Historical incidence is not
-measured. Independent reviews, complete gates and normal publication remain
+two actual locked builds on each exact head. T067 addresses the bounded snapshot
+admission/main-status seams. T068's price candidates remain unpublished: an
+initially missed frozen native engine contract rejects that source change.
+No pin/test is weakened; source-version separation needs its own scoped design
+and qualification. Historical incidence is not measured. Independent reviews,
+complete gates and normal publication of unaffected T067 remain
 mandatory; no new scientific run, changed decision rule or provider request.
 Future validation uses the accepted shared compressed source-baseline retention
 workflow rather than persistent full-tree copies. T047/T049/T050 stay isolated.

@@ -1,7 +1,7 @@
 ---
 id: T-067
 title: Preserve writable sellability observations and explicit payload failures
-status: ready
+status: in_review
 level: 3
 size: M
 depends_on: [T-062, T-065, T-066]

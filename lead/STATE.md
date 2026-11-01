@@ -25,8 +25,8 @@ the completed actual study closure does not repair that separate unsupported cas
 
 | Task | Stage | Owner | Next action |
 |---|---|---|---|
-| T-067 / W7 | ready, demonstrated writable-sellability seams | executor | Frozen additive tests, payload-failure preservation and main return propagation, then independent review/full gates |
-| T-068 / market correctness | ready, demonstrated target-price and finite-median seams | executor | Frozen additive tests, two finding-specific fixes, then independent review/full gates |
+| T-067 / W7 | implemented96afd64, independent review/full gates pending | lead | Serialize complete gate, fresh functional/adversarial reviews, normal source/master CI and normal scheduled trial |
+| T-068 / market correctness | dependency-held, unpublished partial candidate | lead | Resolve production/research source-version contract separately; do not change frozen pins or skip tests |
 | T-047 / W40 | held, genuine mandatory security verdict incomplete | lead / required reviewer | Preserve candidate and existing qualified handoff; no replay through another AI |
 | T-049 / T-050 | dependency-held drafts | lead | Bind accepted integrated archive/runtime APIs before implementation |
 
@@ -41,7 +41,13 @@ sellability projection/write can lose valid neighboring responses on malformed
 payloads, unranked conflict compares another token's base price for quote-side
 pools, and an even finite median can overflow and disable existing outlier
 selection. These are offline witnesses, not measured historical incidents.
-T067 and T068 preserve all original rules, thresholds, request traces and holds.
+T067 preserves all original rules, thresholds, request traces and holds.
+The initial T068 conflict search missed the deployed native adapter's FROZEN
+engine contract. Its unchanged code_manifest rejects the partial candidate as
+source_drift. The candidate/test reds stay isolated; T067 restores the exact
+frozen engine and passes that unchanged guard. No frozen pin/test or alternate
+production path is changed. A separately scoped source-version design and its
+qualification must precede any resumed engine repair. T068 is not release-ready.
 New validation uses shared compressed raw-SHA baselines and small hash manifests;
 raw failures/reviews remain retained without permanent whole-tree before/after
 copies. Heavy Windows gates run serially, with no shared-ref changes during them.
