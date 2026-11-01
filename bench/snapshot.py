@@ -835,7 +835,7 @@ def main():
         print("No pool rows collected; failure manifest preserved.")
         return 1
     if status == 0 and args.sellability:
-        _write_sellability(probe_sellability(rows, seen_at, args.sellability), seen_at)
+        status = _write_sellability(probe_sellability(rows, seen_at, args.sellability), seen_at)
 
     total_days = len({fn[6:16] for fn in os.listdir(OUT_DIR)
                       if fn.startswith("pools-") and fn.endswith(".ndjson")})
