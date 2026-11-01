@@ -1,6 +1,6 @@
 # Lead state
 
-Last updated: 2026-10-30 by Codex. This is the current baton, not a release log.
+Last updated: 2026-11-01 by Codex. This is the current baton, not a release log.
 
 ## Current source, science boundary and engineering work
 
@@ -25,9 +25,26 @@ the completed actual study closure does not repair that separate unsupported cas
 
 | Task | Stage | Owner | Next action |
 |---|---|---|---|
-| T-066 / B15 | independently accepted and normally integrated | lead | Run exact integrated generation/full gate, normal source/master CI and two actual locked builds; retain all original limits |
+| T-067 / W7 | ready, demonstrated writable-sellability seams | executor | Frozen additive tests, payload-failure preservation and main return propagation, then independent review/full gates |
+| T-068 / market correctness | ready, demonstrated target-price and finite-median seams | executor | Frozen additive tests, two finding-specific fixes, then independent review/full gates |
 | T-047 / W40 | held, genuine mandatory security verdict incomplete | lead / required reviewer | Preserve candidate and existing qualified handoff; no replay through another AI |
 | T-049 / T-050 | dependency-held drafts | lead | Bind accepted integrated archive/runtime APIs before implementation |
+
+T066 is completely published at56baead: exact source41003782542 and master
+41004315601 pass45 required steps, upstream/backfill and two actual locked builds
+each. This corrects the older pending table; do not repeat its implementation.
+Normal merge6420c00 retains actual scheduled originals throughab750aba with all
+other1042 raw source files exact. Source/collector/dependency bytes are unchanged.
+
+Bounded ordinary-correctness triage now demonstrates three prospective defects:
+sellability projection/write can lose valid neighboring responses on malformed
+payloads, unranked conflict compares another token's base price for quote-side
+pools, and an even finite median can overflow and disable existing outlier
+selection. These are offline witnesses, not measured historical incidents.
+T067 and T068 preserve all original rules, thresholds, request traces and holds.
+New validation uses shared compressed raw-SHA baselines and small hash manifests;
+raw failures/reviews remain retained without permanent whole-tree before/after
+copies. Heavy Windows gates run serially, with no shared-ref changes during them.
 
 T065 prospectively repairs two independently reproduced snapshot seams: derived
 past-end conclusions inherited an earlier failed-fetch time, and unwritable

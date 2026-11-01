@@ -3,9 +3,17 @@
 > This page holds only what the lead needs from you. The project's own dashboard, with its
 > deadlines and gates, is `docs/OWNER.md` (generated). Messages to you are in Chinese; files
 > here are English because the repository is English-only. Maintained by the project lead (AI).
-> Last updated: 2026-10-30 (Codex)
+> Last updated: 2026-11-01 (Codex)
 
 ## Status in one line
+
+T066 has completed normal source/master publication with45 required steps and
+two actual locked builds on each exact head. T067/T068 now address three bounded
+offline-demonstrated snapshot/target-price seams. Historical incidence is not
+measured. Independent reviews, complete gates and normal publication remain
+mandatory; no new scientific run, changed decision rule or provider request.
+Future validation uses the accepted shared compressed source-baseline retention
+workflow rather than persistent full-tree copies. T047/T049/T050 stay isolated.
 
 T061/T062/T063/T064 are published at bdd6e69 after full exact-source CI and
 two actual locked builds. The first normal scheduled producer-to-reader trial
