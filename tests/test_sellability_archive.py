@@ -4310,6 +4310,266 @@ def test_snapshot_native_page_representation_real_writer_reader_handoff():
                   and before == {p.name: p.read_bytes() for p in Path(tmp).iterdir()})
 
 
+def _t067_exchange(payloads, mode="probe"):
+    """Exercise real decoding, projection, append and inventory using local HTTP only."""
+    import contextlib
+    import copy
+    from datetime import datetime, timedelta, timezone
+    import importlib
+    from pathlib import Path
+    import socket
+    import subprocess
+    import tempfile
+    from unittest.mock import patch
+    import urllib.request
+    readiness = importlib.import_module("snapshot_readiness")
+    batch = "2026-11-01T00:00:00+00:00"
+    candidates = [{"seen_at": batch, "kind": "new", "chain": "base",
+                   "base_token": "base_0x" + str(i) * 40,
+                   "pool_address": "fixture-pool", "pool_created_at": batch,
+                   "reserve_usd": "12"} for i in range(1, len(payloads) + 1)]
+    pools = [{"id": "base_fixture_" + str(i), "attributes": {
+                 "address": "fixture-pool", "pool_created_at": batch, "reserve_in_usd": "12"},
+              "relationships": {"base_token": {"data": {"id": row["base_token"]}}}}
+             for i, row in enumerate(candidates, 1)]
+    prefix = b'{"seen_at":"2001-01-01T00:00:00Z","outcome":"unreachable","answered":false}\n'
+    pool_prefix = b'{"seen_at":"2001-01-01T00:00:00Z","fetched_at":"2001-01-01T00:00:00Z"}\n'
+    run_prefix = b'{"seen_at":"2001-01-01T00:00:00Z","fetched_at":"2001-01-01T00:00:00Z"}\n'
+    calls, events, samples = [], [], []
+    replies = iter(payloads)
+    wall_reads = [0]
+    actual_fetch = snapshot.fetcher.fetch_json
+
+    class Response:
+        status = 200
+        def __init__(self, body):
+            self.body = body
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self):
+            return self.body
+
+    class Clock:
+        fromisoformat = staticmethod(datetime.fromisoformat)
+        @staticmethod
+        def now(zone):
+            value = datetime(2026, 11, 1, tzinfo=timezone.utc) + timedelta(seconds=wall_reads[0])
+            wall_reads[0] += 1
+            return value
+
+    def sample():
+        i = len(samples)
+        value = ("2026-11-01T00:00:%02dZ" % (10 + i), (10 + i) * 1000000000)
+        samples.append(value)
+        events.append("clock")
+        return value
+
+    def fetch(url, role, **kwargs):
+        if "api.honeypot.is" in url:
+            events.append("fetch")
+            calls.append((role, kwargs.copy()))
+        return actual_fetch(url, role=role, **kwargs)
+
+    def http(request, *args, **kwargs):
+        url = request.full_url
+        if "api.honeypot.is" in url:
+            events.append("http")
+            return Response(next(replies).encode("utf-8"))
+        if "/new_pools?" in url:
+            return Response(json.dumps({"data": pools}).encode("utf-8"))
+        if "/trending_pools?" in url:
+            return Response(b'{"data":[]}')
+        raise AssertionError("unexpected fixture request")
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("network/cache/pacing forbidden")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        archive = Path(tmp)
+        sell_path = archive / "sellability-2026-11-01.ndjson"
+        sell_path.write_bytes(prefix)
+        pool_path = archive / "pools-2026-11-01.ndjson"
+        run_path = archive / "runs-2026-11-01.ndjson"
+        pool_path.write_bytes(pool_prefix if mode == "normal" else b"".join(
+            (json.dumps(row) + "\n").encode("utf-8") for row in candidates))
+        run_path.write_bytes(run_prefix if mode == "normal" else b"")
+        original = copy.deepcopy(candidates)
+        error, code, projected = None, None, []
+        argv = (["snapshot.py", "--chains", "base", "--pages", "1", "--sellability", str(len(payloads))]
+                if mode == "normal" else ["snapshot.py", "--sellability-only", str(len(payloads))])
+        with patch.object(snapshot, "OUT_DIR", tmp), \
+             patch.object(snapshot, "datetime", Clock), \
+             patch.object(snapshot, "_sellability_clock_sample", side_effect=sample), \
+             patch.object(snapshot, "fetch_json", side_effect=fetch), \
+             patch.object(snapshot.fetcher, "_throttle", return_value=None), \
+             patch.object(snapshot.fetcher, "_absolute_urlopen", side_effect=http), \
+             patch.object(snapshot.fetcher, "read_cache_entry", side_effect=forbidden), \
+             patch.object(snapshot.fetcher, "_write_cache_entry", side_effect=forbidden), \
+             patch.object(snapshot.time, "sleep", side_effect=forbidden), \
+             patch.object(socket, "socket", side_effect=forbidden), \
+             patch.object(urllib.request, "urlopen", side_effect=http), \
+             patch.object(snapshot.sys, "argv", argv), \
+             contextlib.redirect_stdout(io.StringIO()):
+            try:
+                if mode == "probe":
+                    projected = snapshot.probe_sellability(candidates, batch, len(payloads))
+                    code = snapshot._write_sellability(projected, batch)
+                else:
+                    code = snapshot.main()
+            except (AttributeError, TypeError, ValueError, RecursionError) as exc:
+                error = type(exc).__name__
+            accounting = snapshot._probed_already()
+            coverage = snapshot._check_coverage() if mode == "normal" else None
+        raw = sell_path.read_bytes()
+        saved = [json.loads(line) for line in raw[len(prefix):].splitlines()]
+        before = {p.name: p.read_bytes() for p in archive.iterdir()}
+        result = readiness.inventory(tmp, "2026-11-01T00:01:00Z")
+        proc = subprocess.run([sys.executable, "-B", os.path.join(ROOT, "bench", "snapshot_readiness.py"),
+                               "--archive", tmp, "--as-of", "2026-11-01T00:01:00Z"],
+                              capture_output=True, text=True, encoding="utf-8")
+        return {"error": error, "code": code, "projected": projected, "saved": saved,
+                "calls": calls, "events": events, "samples": samples, "wall_reads": wall_reads[0],
+                "raw": raw, "prefix": prefix, "accounting": accounting, "coverage": coverage,
+                "pool_prefix_exact": pool_path.read_bytes().startswith(pool_prefix) if mode == "normal" else True,
+                "run_prefix_exact": run_path.read_bytes().startswith(run_prefix) if mode == "normal" else True,
+                "inputs_exact": candidates == original, "inventory": result,
+                "cli_exact": not proc.stderr and json.loads(proc.stdout) == result,
+                "cli_safe": len(proc.stdout) < 20000 and all(value not in proc.stdout for value in (
+                    tmp, "fixture-pool", "base_fixture", "private-payload", "https://")),
+                "bytes_exact": before == {p.name: p.read_bytes() for p in archive.iterdir()}}
+
+
+def test_t067_received_payload_failures_survive_real_fetch_writer_and_reader():
+    bad = [("overflow", '{"simulationResult":{"sellTax":1e400}}'),
+           ("nested overflow", '{"holderAnalysis":{"nested":[1e400]}}'),
+           ("surrogate", r'{"simulationError":"\ud800"}'),
+           ("nested surrogate", r'{"summary":{"nested":["\udfff"]}}'),
+           ("array reply", '[{"private-payload":1}]'), ("empty array reply", '[]'),
+           ("false reply", 'false'), ("numeric reply", '0'), ("string reply", '"private-payload"'),
+           ("simulation branch", '{"simulationResult":[1]}'),
+           ("honeypot branch", '{"honeypotResult":"private-payload"}'),
+           ("token branch", '{"token":true}')]
+    good = '{"simulationSuccess":true,"simulationResult":{"sellTax":0},"summary":{"nested":[0,null,"ok"]}}'
+    for label, body in bad:
+        result = _t067_exchange([good, body, good])
+        rows = result["saved"]
+        check(label + " retains every completed response as readable rows",
+              result["error"] is None and len(rows) == 3 and result["code"] == 1)
+        if len(rows) != 3:
+            continue
+        failed = rows[1]
+        check(label + " is a distinct failed observation with unchanged request metadata and timing",
+              failed.get("outcome") == "invalid_payload" and failed.get("answered") is False
+              and failed.get("schema") == 2 and failed.get("seen_at") == "2026-11-01T00:00:00+00:00"
+              and failed.get("chain") == "base" and failed.get("token") == "0x" + "2" * 40
+              and failed.get("pool_address") == "fixture-pool" and failed.get("reserve_usd") == "12"
+              and failed.get("timing") == {"schema": "sellability-fetch-clock-v1", "scope": "fetch_json",
+                  "request_started_at": "2026-11-01T00:00:12Z", "operation_completed_at": "2026-11-01T00:00:13Z",
+                  "response_available_at": "2026-11-01T00:00:13Z", "elapsed_ns": 1000000000, "status": "valid"}
+              and all(failed.get(key) is None for key in ("isHoneypot", "sellTax", "simulationSuccess", "summary")))
+        check(label + " preserves the neighbors prefix original inputs and exact fetch/clock trace",
+              rows[0].get("outcome") == rows[2].get("outcome") == "ok"
+              and rows[0].get("sellTax") == rows[2].get("sellTax") == 0
+              and result["raw"].startswith(result["prefix"]) and result["inputs_exact"]
+              and result["events"] == ["clock", "fetch", "http", "clock"] * 3
+              and result["calls"] == [("engine", {"use_cache": False, "write_cache": False, "mark_missing": True})] * 3)
+        counts = result["inventory"]["kinds"]["sellability"]
+        check(label + " actual failure counts one attempt but cannot become a usable response",
+              result["accounting"].get(("base", "0x" + "2" * 40)) == 1
+              and (counts["rows"], counts["eligible_rows"], counts["unknown_time_rows"], counts["malformed_rows"])
+              == (4, 2, 2, 0)
+              and result["cli_exact"] and result["cli_safe"] and result["bytes_exact"]
+              and not result["inventory"]["replay_ready"] and not result["inventory"]["full_engine_inputs_validated"]
+              and not result["inventory"]["independent_outcomes_established"])
+
+
+def test_t067_writer_strict_admission_preserves_legacy_bytes_and_disk_failures():
+    import contextlib
+    import copy
+    import importlib
+    from pathlib import Path
+    import tempfile
+    from unittest.mock import patch
+    readiness = importlib.import_module("snapshot_readiness")
+    batch = "2026-11-01T00:00:00Z"
+    legacy = {"seen_at": batch, "chain": "base", "token": "0x" + "1" * 40, "schema": 2,
+              "answered": False, "outcome": "unreachable", "summary": {"finite": [0, None, "\u6d4b\u8bd5"]},
+              "timing": {"status": "invalid", "response_available_at": None}}
+    prefix = b'{"legacy":true}\n'
+    for label, value in (("overflow", float("inf")), ("nested overflow", {"nested": [float("nan")]}),
+                         ("surrogate", chr(0xd800)), ("nested surrogate", [chr(0xdfff)])):
+        bad = dict(legacy, token="0x" + "2" * 40, answered=True, outcome="ok", sellTax=value)
+        rows = [legacy, bad, dict(legacy, token="0x" + "3" * 40)]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "sellability-2026-11-01.ndjson"
+            path.write_bytes(prefix)
+            error, code = None, None
+            with patch.object(snapshot, "OUT_DIR", tmp), contextlib.redirect_stdout(io.StringIO()):
+                try:
+                    code = snapshot._write_sellability(rows, batch)
+                except (TypeError, ValueError, RecursionError) as exc:
+                    error = type(exc).__name__
+            raw = path.read_bytes()
+            result = readiness.inventory(tmp, batch)
+            saved = [json.loads(line) for line in raw[len(prefix):].splitlines()]
+            check(label + " writer preserves strict predecessor successor and failure instead of a late abort",
+                  error is None and code == 1 and len(saved) == 3
+                  and result["kinds"]["sellability"]["malformed_rows"] == 0)
+            if len(saved) == 3:
+                check(label + " writable legacy rows keep exact serialization while invalid facts are explicit",
+                      raw.startswith(prefix + (json.dumps(legacy, ensure_ascii=False) + "\n").encode("utf-8"))
+                      and raw.endswith((json.dumps(rows[2], ensure_ascii=False) + "\n").encode("utf-8"))
+                      and saved[1].get("outcome") == "invalid_payload" and saved[1].get("answered") is False
+                      and saved[1].get("sellTax") is None and saved[1].get("timing") == legacy["timing"])
+    with tempfile.TemporaryDirectory() as tmp:
+        with patch.object(snapshot, "OUT_DIR", tmp), \
+             patch.object(snapshot.io, "open", side_effect=OSError("fixture disk failure")), \
+             contextlib.redirect_stdout(io.StringIO()):
+            raised = False
+            try:
+                snapshot._write_sellability([legacy], batch)
+            except OSError:
+                raised = True
+        check("genuine writer disk errors still fail honestly", raised)
+
+
+def test_t067_permissive_writable_projection_and_normal_main_status():
+    controls = [r'{"simulationSuccess":true,"simulationResult":{"sellTax":0},"summary":{"nested":[0,null,"\u6d4b\u8bd5"]},"holderAnalysis":[{"odd":false}],"flags":{"odd":[]}}',
+                '{"simulationResult":[],"honeypotResult":false,"token":0,"summary":null}',
+                '{}']
+    control = _t067_exchange(controls)
+    check("ordinary writable finite Unicode null zero and permissive raw containers remain exact",
+          control["error"] is None and control["code"] == 0 and len(control["saved"]) == 3
+          and control["saved"][0].get("summary") == {"nested": [0, None, "\u6d4b\u8bd5"]}
+          and control["saved"][0].get("holderAnalysis") == [{"odd": False}]
+          and control["saved"][0].get("flags") == {"odd": []}
+          and all(row.get("outcome") == "ok" and row.get("answered") is True for row in control["saved"])
+          and control["raw"] == control["prefix"] + b"".join(
+              (json.dumps(row, ensure_ascii=False) + "\n").encode("utf-8") for row in control["projected"]))
+    good = '{"simulationSuccess":true,"simulationResult":{"sellTax":0}}'
+    for mode in ("sellability-only", "normal"):
+        for label, body in (("overflow", '{"simulationResult":{"sellTax":1e400}}'),
+                            ("surrogate", r'{"summary":{"nested":["\ud800"]}}'),
+                            ("wrong projection", '{"simulationResult":[1]}')):
+            result = _t067_exchange([good, body, good], mode=mode)
+            check(mode + " " + label + " preserves the complete acquired batch and propagates failure",
+                  result["error"] is None and result["code"] == 1 and len(result["saved"]) == 3
+                  and result["saved"][1].get("outcome") == "invalid_payload"
+                  and result["raw"].startswith(result["prefix"])
+                  and result["pool_prefix_exact"] and result["run_prefix_exact"]
+                  and result["inventory"]["kinds"]["sellability"]["malformed_rows"] == 0
+                  and result["events"] == ["clock", "fetch", "http", "clock"] * 3
+                  and len(result["samples"]) == 6 and result["wall_reads"] == (3 if mode == "normal" else 0)
+                  and (result["coverage"] == 0 if mode == "normal" else True)
+                  and result["cli_exact"] and result["cli_safe"] and result["bytes_exact"])
+        normal = _t067_exchange([good, good, good], mode=mode)
+        check(mode + " ordinary successful batch keeps its original zero status",
+              normal["error"] is None and normal["code"] == 0 and len(normal["saved"]) == 3
+              and (normal["coverage"] == 0 if mode == "normal" else True))
+
+
 def main():
     print("=" * 68)
     print("Sellability archive: asking on the day, because later is too late")
