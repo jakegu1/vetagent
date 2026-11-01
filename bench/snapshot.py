@@ -404,6 +404,26 @@ def _sellability_fetch_clock(first, last, returned):
     return timing
 
 
+def _sellability_writable(row):
+    try:
+        json.dumps(row, ensure_ascii=False, allow_nan=False).encode("utf-8")
+    except (TypeError, ValueError, RecursionError):
+        return False
+    return True
+
+
+def _sellability_failure(row):
+    """Retain a failed attempt without storing the offending response value."""
+    failure = {}
+    for key in ("seen_at", "chain", "token", "pool_address", "pool_created_at", "reserve_usd", "timing"):
+        if isinstance(row, dict) and key in row:
+            value = row[key]
+            failure[key] = value if _sellability_writable(value) else None
+    failure.update(answered=False, outcome="invalid_payload", schema=2,
+                   diagnostics={"error": "invalid_payload"})
+    return failure
+
+
 def probe_sellability(rows, seen_at, limit):
     """Ask, of the newest tokens seen this pass, whether they can be sold *today*.
 
@@ -499,14 +519,30 @@ def probe_sellability(rows, seen_at, limit):
         outcome = ("ok" if hp is not None
                    else "no_record" if missing
                    else "unreachable")
-        sim = (hp or {}).get("simulationResult") or {}
-        res = (hp or {}).get("honeypotResult") or {}
-        hold = (hp or {}).get("holderAnalysis") or {}
-        code = (hp or {}).get("contractCode") or {}
-        tok = (hp or {}).get("token") or {}
-        out.append({
+        try:
+            row = _sellability_row(r, seen_at, token, hp, outcome, timing)
+        except (AttributeError, TypeError, ValueError, RecursionError):
+            row = _sellability_failure({"seen_at": seen_at, "chain": chain, "token": token,
+                                       "pool_address": r.get("pool_address"),
+                                       "pool_created_at": r.get("pool_created_at"),
+                                       "reserve_usd": r.get("reserve_usd"), "timing": timing})
+        if not _sellability_writable(row):
+            row = _sellability_failure(row)
+        out.append(row)
+    return out
+
+
+def _sellability_row(r, seen_at, token, hp, outcome, timing):
+    if hp is not None and not isinstance(hp, dict):
+        raise ValueError("invalid payload")
+    sim = (hp or {}).get("simulationResult") or {}
+    res = (hp or {}).get("honeypotResult") or {}
+    hold = (hp or {}).get("holderAnalysis") or {}
+    code = (hp or {}).get("contractCode") or {}
+    tok = (hp or {}).get("token") or {}
+    return {
             "seen_at": seen_at,
-            "chain": chain,
+            "chain": r["chain"],
             "token": token,
             "pool_address": r.get("pool_address"),
             "pool_created_at": r.get("pool_created_at"),
@@ -549,8 +585,7 @@ def probe_sellability(rows, seen_at, limit):
             "unsimulatable_venue": bool(_unsimulatable(r)),
             "schema": 2,
             "timing": timing,
-        })
-    return out
+        }
 
 
 def _last_pass():
@@ -586,15 +621,17 @@ def _write_sellability(sell, seen_at):
     if not sell:
         print("sellability: nothing to record")
         return 0
+    sell = [r if isinstance(r, dict) and _sellability_writable(r) else _sellability_failure(r)
+            for r in sell]
     path = os.path.join(OUT_DIR, "sellability-%s.ndjson" % seen_at[:10])
     with io.open(path, "a", encoding="utf-8", newline="") as f:
         for r in sell:
-            f.write(json.dumps(r, ensure_ascii=False) + "\n")
+            f.write(json.dumps(r, ensure_ascii=False, allow_nan=False) + "\n")
     answered = sum(1 for r in sell if r.get("answered"))
     hp = sum(1 for r in sell if r.get("isHoneypot"))
     print("sellability: asked %d, answered %d, honeypot %d -> %s"
           % (len(sell), answered, hp, os.path.basename(path)))
-    return 0
+    return int(any(r.get("outcome") == "invalid_payload" for r in sell))
 
 
 def _coverage(manifest):
