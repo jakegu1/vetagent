@@ -26,12 +26,14 @@ No new schema-wide engine validator, provider, collection, budget or research.
 ## Scope and files
 
 - bench/snapshot.py: future sellability projection/admission/write and main status.
+- bench/fetcher.py: A1's opt-in, bounded parsed-null diagnostic only; all default
+  return/cache/diagnostic/retry behavior remains unchanged.
 - tests/test_sellability_archive.py: additive functions/helpers only, auto-discovered
   through the existing configured runner. No workflow or runner change.
 - Lead-owned task/index/state/review metadata is separate.
 
 No historical row rewriting or archive migration; scientific executed sources,
-T047/T049/T050, src/, fetcher.py, sampling/attempt caps, request order, rate,
+T047/T049/T050, src/, all other fetcher behavior, sampling/attempt caps, request order, rate,
 timeout, retries, clock reads, dependencies and permission files are unchanged.
 
 ## Acceptance criteria
@@ -101,3 +103,62 @@ Ordinary upstream JSON, UTF8 edge cases and malformed reply shape must not corru
 the append stream, lose neighboring acquired observations, publish false success
 or equate a failed check with observed absence. Do not repair historical scientific
 evidence or bypass the held mandatory T047 security review.
+
+## A1 - received JSON null, registered before new tests (2026-11-01)
+
+Both fresh R1 reviewers independently reproduce a decoded HTTP200 JSON null
+reply being collapsed into legacy None/unreachable with zero received-attempt
+accounting and success status. R1 is rejected. Its complete45 pass does not
+override that missing seam. This amendment closes the original received-payload
+class; it does not weaken the acceptance or any scientific/source gate.
+
+Existing fetch diagnostics retain earlier failures across internal retries.
+Status/error alone cannot reliably identify a later parsed null. Do not clear
+or reinterpret those prior failure diagnostics to force a classification.
+Add only an optional response_metadata=False parameter to fetcher.fetch_json.
+When explicitly true and diagnostics is supplied, add json_null=False initially;
+set it to whether the decoded value is None only after the successful existing
+HTTP200 JSON parse and existing budget check. Never set it for a timeout, failed
+parse, HTTP error, missing record or cache/replay shortcut. Default callers keep
+their exact old three diagnostic fields, return values, caching, provenance,
+error retention, requests, retry/sleep limits and clock reads. No new raw body,
+URL, exception, identity or content hash is recorded in this diagnostic.
+
+The snapshot call requests diagnostics and response_metadata=True. A proven
+parsed null produces the same explicit invalid_payload failure record and actual
+attempt accounting as other decoded non-object JSON. Its existing valid local
+operation envelope records response availability at completion using an internal
+presence marker; no invented payload field or added clock read. Invalid envelopes
+remain invalid/missing. Unproven legacy None, real transport/HTTP failures and404
+retain their existing categories and timing. Failed parsing remains a fetcher
+failure rather than a claim about a decoded JSON value.
+
+Named frozen-test changes, each limited to complete expected keyword dictionaries:
+
+1. tests/test_sellability_archive.py::test_sellability_clock_collector_writer_inventory_handoff:
+   add only diagnostics={} and response_metadata=True to the expected existing
+   call dictionaries. Its fake deliberately leaves diagnostics empty. Keep every
+   old row, clock, payload, ordering, call count and assertion purpose exact.
+2. tests/test_sellability_archive.py::test_t067_received_payload_failures_survive_real_fetch_writer_and_reader:
+   add only response_metadata=True and diagnostics={status:200,error:None,
+   attempts:1,json_null:False} to the expected actual successful parse calls.
+   Preserve all original payload/admission/clock/count assertions and helper bytes.
+
+Commit those exact named changes separately before a new tests-only commit that
+adds actual-null acceptance. On the unchanged source the new assertions must fail
+for the observed classification/accounting/status defects, not a setup exception.
+All other old and original T067 acceptance definitions remain frozen. The new
+tests also freeze after their own commit. Unexpected additional conflicts mean
+BLOCKED and a fresh named decision, not silently edited tests.
+
+Additional acceptance: actual good/null/good through probe, writer, strict reader
+and both main modes preserves neighbors/prefixes, unchanged physical request and
+clock traces and nonzero status. Repeated actual received-null responses exhaust
+the unchanged three-operation allowance; a fourth pass sends no replacement.
+Exercise valid/invalid local clocks,404,403/429, transport, fake None without
+diagnostics and ordinary finite payloads. Exercise earlier failed attempts followed
+by parsed null so old diagnostic errors remain while json_null proves the final
+parse; a later terminal timeout must not become a fabricated null. Default fetch
+diagnostic/cache/provenance behavior and all native/scientific frozen pins stay
+exact. Both independent R2 reviews and new author/independent/integrated complete
+gates must pass on the revised exact source before normal publication.
