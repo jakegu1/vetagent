@@ -4572,6 +4572,189 @@ def test_t067_permissive_writable_projection_and_normal_main_status():
               and (normal["coverage"] == 0 if mode == "normal" else True))
 
 
+def _t067_null_operations(effects, passes=1, clock_values=None, legacy_none=False, direct=False):
+    """Use the real fetcher against bounded response/retry fixtures and real attempt storage."""
+    import contextlib
+    from datetime import datetime, timedelta, timezone
+    import importlib
+    from pathlib import Path
+    import socket
+    import tempfile
+    from unittest.mock import patch
+    import urllib.error
+    import urllib.request
+    readiness = importlib.import_module("snapshot_readiness")
+    batch = "2026-11-01T00:00:00Z"
+    candidate = {"kind": "new", "chain": "base", "base_token": "base_0x" + "1" * 40,
+                 "pool_address": "fixture-pool", "pool_created_at": batch, "reserve_usd": "12"}
+    url = "https://fixture.invalid/response"
+    prefix = b'{"seen_at":"2001-01-01T00:00:00Z","outcome":"unreachable","answered":false}\n'
+    physical, pauses, samples, diagnostics, events = [], [], [], [], []
+    statuses, returned, counts = [], [], []
+    effects = list(effects)
+    actual_fetch = snapshot.fetcher.fetch_json
+
+    class Response:
+        status = 200
+        def __init__(self, body): self.body = body
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self): return self.body
+
+    def http(*args, **kwargs):
+        effect = effects[min(len(physical), len(effects) - 1)]
+        physical.append(effect)
+        events.append("http")
+        if effect == "timeout":
+            raise TimeoutError("fixture transport failure")
+        if effect in ("403", "404", "429"):
+            raise urllib.error.HTTPError(url, int(effect), "fixture status", {}, None)
+        return Response({"null": b"null", "good": b'{"simulationSuccess":true}',
+                         "invalid_json": b"{invalid", "empty": b""}[effect])
+
+    def sample():
+        i = len(samples)
+        value = (clock_values[i] if clock_values is not None else (
+            (datetime(2026, 11, 1, tzinfo=timezone.utc) + timedelta(seconds=10+i)).isoformat(),
+            (10+i) * 1000000000))
+        samples.append(value)
+        events.append("clock")
+        return value
+
+    def fetch(request_url, role, **kwargs):
+        events.append("fetch")
+        value = None if legacy_none else actual_fetch(request_url, role=role, **kwargs)
+        diagnostics.append(dict(kwargs.get("diagnostics", {})))
+        return value
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("unexpected network/cache")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "sellability-2026-11-01.ndjson"
+        path.write_bytes(prefix)
+        with patch.object(snapshot, "OUT_DIR", tmp), \
+             patch.object(snapshot, "_sellability_clock_sample", side_effect=sample), \
+             patch.object(snapshot, "fetch_json", side_effect=fetch), \
+             patch.object(snapshot.fetcher, "_ACCESS_LOG", {"engine": set(), "label": set()}), \
+             patch.object(snapshot.fetcher, "_throttle", return_value=None), \
+             patch.object(snapshot.fetcher, "read_cache_entry", side_effect=forbidden), \
+             patch.object(snapshot.fetcher, "_write_cache_entry", side_effect=forbidden), \
+             patch.object(snapshot.time, "sleep", side_effect=pauses.append), \
+             patch.object(socket, "socket", side_effect=forbidden), \
+             patch.object(urllib.request, "urlopen", side_effect=http), \
+             contextlib.redirect_stdout(io.StringIO()):
+            for _ in range(passes):
+                if direct:
+                    receiver = {}
+                    actual_fetch(url, role="engine", use_cache=False, write_cache=False,
+                                 mark_missing=True, diagnostics=receiver)
+                    diagnostics.append(receiver)
+                else:
+                    rows = snapshot.probe_sellability([candidate], batch, 1)
+                    returned.append(rows)
+                    statuses.append(snapshot._write_sellability(rows, batch))
+                    counts.append(snapshot._probed_already().get(("base", "0x" + "1" * 40), 0))
+            provenance = snapshot.fetcher.access_report()
+        raw = path.read_bytes()
+        inventory = readiness.inventory(tmp, "2026-11-01T00:01:00Z")
+        return {"physical": physical, "pauses": pauses, "samples": samples, "events": events,
+                "diagnostics": diagnostics, "statuses": statuses, "returned": returned, "counts": counts,
+                "saved": [json.loads(line) for line in raw[len(prefix):].splitlines()],
+                "prefix_exact": raw.startswith(prefix), "inventory": inventory,
+                "reader_bytes_exact": path.read_bytes() == raw, "provenance": provenance}
+
+
+def test_t067_received_json_null_preserves_failure_completion_and_main_handoffs():
+    good = '{"simulationSuccess":true,"simulationResult":{"sellTax":0}}'
+    for mode in ("probe", "sellability-only", "normal"):
+        result = _t067_exchange([good, "null", good], mode=mode)
+        rows = result["saved"]
+        check(mode + " parsed null preserves both neighbors and propagates explicit failure",
+              result["error"] is None and result["code"] == 1 and len(rows) == 3
+              and rows[0].get("outcome") == rows[2].get("outcome") == "ok"
+              and rows[1].get("outcome") == "invalid_payload" and rows[1].get("answered") is False
+              and result["raw"].startswith(result["prefix"]) and result["pool_prefix_exact"] and result["run_prefix_exact"])
+        check(mode + " parsed null retains the actual completion clock without another sample",
+              len(rows) == 3 and rows[1].get("timing") == {
+                  "schema": "sellability-fetch-clock-v1", "scope": "fetch_json", "status": "valid",
+                  "request_started_at": "2026-11-01T00:00:12Z", "operation_completed_at": "2026-11-01T00:00:13Z",
+                  "response_available_at": "2026-11-01T00:00:13Z", "elapsed_ns": 1000000000}
+              and result["events"] == ["clock", "fetch", "http", "clock"] * 3
+              and len(result["samples"]) == 6 and result["wall_reads"] == (3 if mode == "normal" else 0))
+        counts = result["inventory"]["kinds"]["sellability"]
+        check(mode + " received null counts once but stays unvalidated in the strict reader",
+              result["accounting"].get(("base", "0x" + "2" * 40)) == 1
+              and (counts["rows"], counts["eligible_rows"], counts["unknown_time_rows"], counts["malformed_rows"]) == (4, 2, 2, 0)
+              and result["cli_exact"] and result["cli_safe"] and result["bytes_exact"]
+              and not result["inventory"]["replay_ready"] and not result["inventory"]["full_engine_inputs_validated"]
+              and not result["inventory"]["independent_outcomes_established"])
+
+
+def test_t067_received_json_null_counts_toward_unchanged_attempt_cap():
+    result = _t067_null_operations(["null"], passes=4)
+    check("received null uses exactly the existing three-operation allowance and no fourth request",
+          snapshot._MAX_ATTEMPTS == 3 and result["physical"] == ["null"] * 3
+          and result["counts"] == [1, 2, 3, 3] and result["statuses"] == [1, 1, 1, 0]
+          and [len(rows) for rows in result["returned"]] == [1, 1, 1, 0]
+          and result["events"] == ["clock", "fetch", "http", "clock"] * 3)
+    check("received null allowance retains every failure and preserves the original archive prefix",
+          len(result["saved"]) == 3 and all(row.get("outcome") == "invalid_payload"
+              and row.get("answered") is False for row in result["saved"])
+          and result["prefix_exact"] and result["reader_bytes_exact"]
+          and result["inventory"]["kinds"]["sellability"]["malformed_rows"] == 0)
+
+
+def test_t067_received_null_diagnostics_preserve_failure_and_legacy_controls():
+    for first, pause in (("timeout", 0.8), ("429", 3.0), ("invalid_json", 0.8)):
+        result = _t067_null_operations([first, "null"])
+        check(first + " then parsed null preserves the actual retry trace and final reset diagnostics",
+              result["physical"] == [first, "null"] and result["pauses"] == [pause]
+              and result["diagnostics"] == [{"status": 200, "error": None, "attempts": 2}]
+              and result["events"] == ["clock", "fetch", "http", "http", "clock"])
+        check(first + " then received null is invalid rather than unreachable or no-record",
+              result["statuses"] == [1] and result["counts"] == [1]
+              and len(result["saved"]) == 1 and result["saved"][0].get("outcome") == "invalid_payload"
+              and result["saved"][0].get("timing", {}).get("response_available_at") == "2026-11-01T00:00:11Z")
+        direct = _t067_null_operations([first, "null"], direct=True)
+        check(first + " default fetch caller retains exact diagnostics retry pauses and provenance",
+              direct["diagnostics"] == [{"status": 200, "error": None, "attempts": 2}]
+              and direct["physical"] == [first, "null"] and direct["pauses"] == [pause]
+              and len(direct["provenance"][0]) == 1 and not direct["provenance"][1])
+    cases = [("404", ["404"], "no_record", 1, [], 404, "http", 1),
+             ("403", ["403"], "unreachable", 0, [], 403, "http", 1),
+             ("429", ["429"], "unreachable", 0, [3.0, 6.0], 429, "http", 3),
+             ("transport", ["timeout"], "unreachable", 0, [0.8, 1.6], None, "timeout", 3),
+             ("failed parse", ["invalid_json"], "unreachable", 0, [0.8, 1.6], 200, "invalid_json", 3),
+             ("empty", ["empty"], "unreachable", 0, [0.8, 1.6], 200, "empty_body", 3),
+             ("terminal timeout", ["invalid_json", "timeout", "timeout"], "unreachable", 0,
+              [0.8, 1.6], None, "timeout", 3)]
+    for label, effects, outcome, count, pauses, status, error, attempts in cases:
+        result = _t067_null_operations(effects)
+        row = result["saved"][0]
+        check(label + " preserves its original failure or absence category status allowance and timing",
+              row.get("outcome") == outcome and row.get("answered") is False
+              and result["statuses"] == [0] and result["counts"] == [count]
+              and result["pauses"] == pauses and len(result["physical"]) == attempts
+              and result["diagnostics"] == [{"status": status, "error": error, "attempts": attempts}]
+              and len(result["samples"]) == 2
+              and row.get("timing", {}).get("response_available_at") == (
+                  "2026-11-01T00:00:11Z" if outcome == "no_record" else None))
+    legacy = _t067_null_operations(["null"], legacy_none=True)
+    check("legacy None without diagnostics remains unreachable and does not consume an allowance",
+          legacy["diagnostics"] == [{}] and not legacy["physical"]
+          and legacy["saved"][0].get("outcome") == "unreachable"
+          and legacy["saved"][0].get("timing", {}).get("response_available_at") is None
+          and legacy["statuses"] == [0] and legacy["counts"] == [0])
+    invalid = _t067_null_operations(["null"], clock_values=[
+        ("2026-11-01T00:00:12Z", 1000000000), ("2026-11-01T00:00:11Z", 2000000000)])
+    check("received null with invalid original clocks stays an explicit failure without invented availability",
+          invalid["saved"][0].get("outcome") == "invalid_payload" and invalid["statuses"] == [1]
+          and invalid["saved"][0].get("timing", {}).get("status") == "invalid"
+          and invalid["saved"][0].get("timing", {}).get("response_available_at") is None
+          and len(invalid["samples"]) == 2 and invalid["physical"] == ["null"])
+
+
 def main():
     print("=" * 68)
     print("Sellability archive: asking on the day, because later is too late")
