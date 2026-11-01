@@ -496,11 +496,16 @@ def probe_sellability(rows, seen_at, limit):
         # this probe deliberately asks about tokens minutes old, and depositing that
         # answer in the shared cache would let a benchmark run days later score the
         # engine against a birth-moment response.
+        fetch_diagnostics = {}
         clock_start = _sellability_clock_sample()
         hp = fetch_json(url, role="engine", use_cache=False, write_cache=False,
-                        mark_missing=True)
+                        mark_missing=True, diagnostics=fetch_diagnostics)
         clock_end = _sellability_clock_sample()
-        timing = _sellability_fetch_clock(clock_start, clock_end, hp)
+        received_null = (hp is None and type(fetch_diagnostics.get("status")) is int
+                         and fetch_diagnostics["status"] == 200 and fetch_diagnostics.get("error") is None
+                         and type(fetch_diagnostics.get("attempts")) is int and fetch_diagnostics["attempts"] > 0)
+        # A parsed JSON null is received data even though the adapter returns None.
+        timing = _sellability_fetch_clock(clock_start, clock_end, NOT_FOUND if received_null else hp)
         # `answered: false` merged four different facts into one boolean: honeypot.is has
         # no record of this token, honeypot.is refused us, our request timed out, and the
         # venue is one it structurally cannot read. Those mean opposite things -- the
@@ -521,6 +526,8 @@ def probe_sellability(rows, seen_at, limit):
                    else "unreachable")
         try:
             row = _sellability_row(r, seen_at, token, hp, outcome, timing)
+            if received_null:
+                row = _sellability_failure(row)
         except (AttributeError, TypeError, ValueError, RecursionError):
             row = _sellability_failure({"seen_at": seen_at, "chain": chain, "token": token,
                                        "pool_address": r.get("pool_address"),
