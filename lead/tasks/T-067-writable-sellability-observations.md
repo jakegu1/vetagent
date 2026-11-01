@@ -1,7 +1,7 @@
 ---
 id: T-067
 title: Preserve writable sellability observations and explicit payload failures
-status: ready
+status: in_review
 level: 3
 size: M
 depends_on: [T-062, T-065, T-066]
@@ -101,3 +101,64 @@ Ordinary upstream JSON, UTF8 edge cases and malformed reply shape must not corru
 the append stream, lose neighboring acquired observations, publish false success
 or equate a failed check with observed absence. Do not repair historical scientific
 evidence or bypass the held mandatory T047 security review.
+
+## A2 - received JSON null through existing diagnostics (2026-11-01)
+
+Both fresh R1 reviewers independently reproduce a decoded HTTP200 JSON null
+reply being collapsed into legacy None/unreachable with zero received-attempt
+accounting and success status. R1 is rejected. Its complete45 pass does not
+override that missing seam. This amendment closes the original received-payload
+class; it weakens no acceptance, scientific/source gate or request limit.
+
+A1 at23b1e4d proposed an unnecessary fetcher API extension because the lead
+misread the retry reset position. Before any named-test or runtime edit, an
+actual parent probe and source line405 prove that diagnostics reset before each
+physical attempt. Timeout,429 and invalid JSON followed by200/null each produce
+status200,error=None,attempts2. The A1 extension and its premise are withdrawn
+before implementation. Original text remains in Git; the failed design premise
+and correcting raw proofs remain in the external evidence. Fetcher stays exact.
+
+The snapshot call requests the existing diagnostics receiver only. A None return
+with actual diagnostics status exactly integer200, error=None and positive
+integer attempts proves a successfully decoded JSON null at the existing fetcher
+boundary. It becomes the same explicit invalid_payload failure observation and
+actual received-attempt accounting as other decoded non-object JSON. A fake or
+legacy None without that proof, real transport/HTTP failure, failed parsing and
+404 retain their existing categories, pacing, timing and attempt accounting.
+No source change in fetcher, new API, request, retry, sleep, cache write, status
+reset or clock read is authorized.
+
+For proven parsed null, use the existing local operation envelope to retain
+response availability at completion through an internal presence marker, without
+inventing any payload value. Invalid local envelopes remain invalid/missing.
+The strict reader remains unchanged: invalid_payload is not a usable simulation
+and does not establish full inputs, independent outcomes or replay readiness.
+
+Named frozen-test changes, limited to complete expected keyword dictionaries:
+
+1. tests/test_sellability_archive.py::test_sellability_clock_collector_writer_inventory_handoff:
+   add only diagnostics={} to its expected existing call dictionaries. Its fake
+   deliberately leaves the receiver empty. Preserve all old row, clock, payload,
+   ordering, call count and equality assertions and every helper byte.
+2. tests/test_sellability_archive.py::test_t067_received_payload_failures_survive_real_fetch_writer_and_reader:
+   add only diagnostics={status:200,error:None,attempts:1} to expected actual
+   successful parse call dictionaries. Preserve all original admission, payload,
+   clock, count and equality assertions and helper bytes.
+
+Commit those exact named changes separately, then commit additive new-null
+acceptance alone before runtime changes. New assertions fail on the unchanged
+runtime for observed classification/accounting/status defects, not setup errors.
+All other old and original T067 definitions stay frozen; new tests freeze after
+their own tests-only commit. Unexpected conflicts mean BLOCKED, not silent edits.
+
+Additional acceptance: actual good/null/good through probe, writer, strict reader
+and both main modes preserves neighbors/prefixes, unchanged physical request and
+clock traces and nonzero status. Repeated actual received-null responses exhaust
+the unchanged three-operation allowance; a fourth pass sends no replacement.
+Cover valid/invalid local clocks,404,403/429, transport, fake None without
+diagnostics and ordinary finite payloads. Exercise earlier failed attempts then
+parsed null, preserving the exact original pauses/physical trace and terminal
+diagnostic reset. A terminal timeout must not become a fabricated null. Existing
+default fetch diagnostics/cache/provenance and all native/scientific frozen pins
+stay exact. Both R2 reviews and new author/independent/integrated complete gates
+must pass on the revised exact source before normal publication.
