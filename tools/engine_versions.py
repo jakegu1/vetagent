@@ -759,7 +759,8 @@ try:
         assert Path(module.__file__).resolve()==(root/name).resolve()
     runtime={"predicates":{"code_manifest":True,"engine_bindings":True},"interpreter_sha256":sha(Path(sys.executable).resolve().read_bytes()),
         "module_files":{"risk":"src/risk.py","native":"bench/w40_native.py","core":"bench/w40_evidence.py"},
-        "manifest_sha256":sha(encoded(manifest))}
+        "manifest_sha256":sha(encoded(manifest)),"test_process_pid":os.getpid(),
+        "validation_operation_id":payload["operation_id"]}
     sys.argv=[str(runner)]+([payload["selector"]] if payload["selector"] else [])
     sys.setprofile(observe)
     try:
@@ -809,7 +810,7 @@ def _launch_test_child(view, runner, expected_ids, seconds, operation, selector=
     members = [{"path": p.relative_to(view).as_posix(), "bytes": p.stat().st_size,
                 "sha256": sha(_read_file(p, FILE_CAP))} for p in view.rglob("*") if p.is_file()]
     require(len(members) <= MEMBER_CAP + 1, "source_mismatch")
-    payload = {"members": members, "runner": runner, "selector": selector}
+    payload = {"members": members, "runner": runner, "selector": selector, "operation_id": operation["id"]}
     command = [sys.executable, "-I", "-S", "-B", "-c", _TEST_CHILD_SCRIPT, str(view), str(path / "child-report.json")]
     _write_json(path / "child-intent.json", {"argv": command, "runner": runner,
         "selector": selector, "seconds": seconds, "stream_cap": STREAM_CAP}, exclusive=True)
@@ -870,6 +871,9 @@ def _launch_test_child(view, runner, expected_ids, seconds, operation, selector=
         evidence = report.pop("evidence_sha256")
         require(evidence == sha(encoded(report)), "child_protocol_invalid")
         require(report["reported_original_exit"] == actual_exit, "child_protocol_invalid")
+        if report.get("runtime") is not None:
+            require(report["runtime"].get("test_process_pid") == process.pid
+                and report["runtime"].get("validation_operation_id") == operation["id"], "child_protocol_invalid")
     except (VersionError, KeyError, TypeError):
         report = {}
     observation = dict(report)
