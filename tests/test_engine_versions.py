@@ -668,5 +668,106 @@ class B12DispatchAcceptance(unittest.TestCase):
             m.verify_view(view, selected)
 
 
+class B12ReviewRegressionAcceptance(unittest.TestCase):
+    """NC5: bounded review regressions; spies never start an OS process."""
+
+    def subject(self):
+        return EngineVersionAcceptance.subject(self)
+
+    def observation(self, ids):
+        return B12DispatchAcceptance.observation(self, ids)
+
+    def test_postlaunch_evidence_failures_preserve_admission_quarantine(self):
+        import io
+        modes = ("observation_cap", "observation_version", "observation_os",
+                 "marker_failure", "receipt_version", "receipt_os", "receipt_protocol", "valid_A1")
+        for mode in modes:
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory(prefix="t073-review-m1-") as directory:
+                m = self.subject()
+                scope = Path(directory) / "synthetic-scope"
+                original_launch, original_write = m._launch_test_child, m._write_json
+                seen = []
+                def launch(view, runner, ids, seconds, operation, selector=None):
+                    report = self.observation(ids)
+                    for field in ("child_exit_code", "stdout_sha256", "stderr_sha256", "stdout_complete",
+                                  "stderr_complete", "timed_out", "interrupted", "overflow"):
+                        report.pop(field)
+                    report["reported_original_exit"] = 0
+                    report["runtime"].update(test_process_pid=732001, validation_operation_id=operation["id"])
+                    if mode.startswith("observation") or mode == "marker_failure":
+                        report["outer_lifecycle"]["uncertain"] = True
+                    if mode == "observation_cap":
+                        report.update(padding="", evidence_sha256="0" * 64)
+                        report["padding"] = "x" * (m.STREAM_CAP - 32 - len(m.encoded(report)))
+                    report.pop("evidence_sha256", None)
+                    report["evidence_sha256"] = m.sha(m.encoded(report))
+                    raw = m.encoded(report)
+                    self.assertLessEqual(len(raw), m.STREAM_CAP)
+                    class Process:
+                        pid = 732001
+                        def __init__(self, *args, **kwargs):
+                            self.stdin, self.stdout, self.stderr = io.BytesIO(), io.BytesIO(), io.BytesIO()
+                            (operation["path"] / "child-report.json").write_bytes(raw)
+                        def poll(self):
+                            return 0
+                    seen.append(operation)
+                    with patch.object(m.subprocess, "Popen", Process):
+                        return original_launch(view, runner, ids, seconds, operation, selector)
+                def write(path, value, **kwargs):
+                    if path.name == "observation.json" and mode in ("observation_version", "observation_os", "marker_failure"):
+                        if mode == "observation_version":
+                            raise m.VersionError("child_protocol_invalid")
+                        raise OSError("synthetic evidence publication failure")
+                    if path.name == "quarantine.json" and mode == "marker_failure":
+                        raise OSError("synthetic marker publication failure")
+                    if path.name == "receipt.json" and mode in ("receipt_version", "receipt_os"):
+                        if mode == "receipt_version":
+                            raise m.VersionError("child_protocol_invalid")
+                        raise OSError("synthetic receipt publication failure")
+                    return original_write(path, value, **kwargs)
+                original_validator = m.validate_dispatch_receipt
+                def validate(value):
+                    if mode == "receipt_protocol" and seen:
+                        raise m.VersionError("child_protocol_invalid")
+                    return original_validator(value)
+                result = None
+                escaped = None
+                with patch.object(m, "_launch_test_child", side_effect=launch), \
+                        patch.object(m, "_write_json", side_effect=write), \
+                        patch.object(m, "validate_dispatch_receipt", side_effect=validate):
+                    try:
+                        result = m.legacy_test(CONTRACT, "git-lf", "tests/test_w40_native.py", scope=scope)
+                    except Exception as error:
+                        escaped = error
+                    admitted = False
+                    admission_error = None
+                    try:
+                        m.validation_admission(scope)
+                        admitted = True
+                    except Exception as error:
+                        admission_error = error
+                self.assertEqual(len(seen), 1)
+                op = seen[0]
+                self.assertTrue((op["path"] / "source/src/risk.py").is_file())
+                self.assertTrue((op["path"] / "child-report.json").is_file())
+                if mode == "valid_A1":
+                    self.assertIsNone(escaped)
+                    self.assertTrue(admitted)
+                    self.assertEqual(result["wrapper_exit_code"], 0)
+                    self.assertTrue(result["test_execution_qualified"])
+                    self.assertFalse(result["descendant_observations_complete"])
+                    self.assertIsNone(result["descendant_observations"][-1]["exit_code"])
+                else:
+                    self.assertFalse(admitted, "postlaunch evidence failure admitted a successor")
+                    self.assertIsInstance(admission_error, m.VersionError)
+                    self.assertNotEqual(json.loads((op["path"] / "state.json").read_bytes())["status"], "finished")
+                    self.assertTrue(escaped is None or isinstance(escaped, m.VersionError), repr(escaped))
+                    if result is not None:
+                        self.assertNotEqual(result["wrapper_exit_code"], 0)
+                        self.assertFalse(result["test_execution_qualified"])
+                        self.assertEqual(result["legacy_tests"]["child_exit_code"], 0)
+                        self.assertEqual(result["legacy_tests"]["status"], "failed")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
