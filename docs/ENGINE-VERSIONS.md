@@ -168,3 +168,35 @@ adopted or replaced. Original research sources, windows, rules, labels, threshol
 failed/unknown states and closed conclusions remain unchanged. Prices and the old partial
 T068 candidate are outside this source-identity slice. Any future operational adopter,
 production repair or release needs its own assigned contract and actual acceptance.
+
+## Review corrections: admission and exported execution receipts
+
+A dispatched operation remains running until source rechecks, execution-domain receipt
+validation and receipt publication succeed. Uncertainty is recorded before optional
+observation publication. A postlaunch capacity, protocol or write failure quarantines the
+operation; if quarantine publication itself fails, the unchanged unfinished state still
+refuses admission. The retained failure receipt reports failed execution, preserving an
+actually observed top-child exit independently of the nonzero wrapper exit. Neither a
+generic exception nor a known top-child exit establishes complete descendant retirement.
+
+Admission accepts only an exact two-key finished-state object whose string operation_id
+matches its canonical lowercase hexadecimal directory. Missing, copied, malformed,
+unexpected-key, aliased or unfinished state refuses admission without rewriting that
+evidence. Enumeration stops at the existing sixteen-operation bound. No migration or
+quarantine-clear interface exists.
+
+The separate execution-domain guard preserves the original four-layer source guard.
+Legacy execution receipts bind the fixed contract, commit, tree, profile, runner, exact
+sorted top-level ID count/digest and eleven-member raw-profile context seal. The ID
+digests are derived from the pinned original runner blobs, not supplied by the caller.
+Adapter receipts bind their own three IDs, six exact dependency records and two members
+of their named candidate Git commit/tree; they retain an eight-member context seal.
+Their candidate is not permanently pinned to an earlier adapter revision. An adapter
+receipt cannot qualify the original fixture, historical execution or production V2.
+
+Malformed types, duplicate membership, unknown fields and contradictory status/exit
+claims produce bounded VersionError codes. Known-absent historical layers stay
+unavailable and unexamined or inconclusive layers retain their separate meanings.
+This exported-artifact check does not prove actual execution: original raw reports,
+source views, runtime predicates and actual process/operation identity remain required.
+Missing deep telemetry stays null/not_recorded even for an A1-valid passing execution.

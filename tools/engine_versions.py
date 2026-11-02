@@ -477,6 +477,11 @@ def verify_source(contract_id, profile_id):
 
 RUNNERS = {"tests/test_w40_native.py": (13, 900), "tests/test_w40_native_clock.py": (3, 180),
            "tests/test_dataset_replayable.py": (9, 120)}
+# Sorted top-level IDs from the three runners in the pinned eleven-member fixture.
+RUNNER_IDS_SHA256 = {
+    "tests/test_w40_native.py": "59631c95ddbe6c756e67c80f8802e9baf700ee5a08221b2ebbf1bc6c4b84884b",
+    "tests/test_w40_native_clock.py": "39f2079c4022d0c24beafa0738f5017aafd5a561a905d88b9a606f103c8542ab",
+    "tests/test_dataset_replayable.py": "f273a599b919037385df091769fce0a8ca78750cc9fb174747bb18599911bdcf"}
 ADAPTER_CLASS = "InterruptedProgressStagingTests"
 ADAPTER_IDS = tuple(ADAPTER_CLASS + "." + name for name in (
     "test_pending_progress_handoff_binds_bytes_and_absence",
@@ -1034,45 +1039,153 @@ def adapter_test(contract_id, profile_id, selector, *, scope=None):
     return _dispatch(contract_id, profile_id, selector, adapter=True, scope=scope)
 
 
-def validate_dispatch_receipt(value):
-    _validate_result_layers(value)
-    if value.get("operation") == "adapter-test":
-        require(value.get("schema") == "engine-adapter-regression-v1"
-            and value.get("domain") == "current_adapter_on_v1_dependencies"
-            and value.get("original_v1_fixture_qualified_by_adapter_result") is False
-            and value.get("current_production_behavior_qualified") is False, "invalid_result_layers")
-        key = "adapter_tests"
-        if value.get("source_fixture", {}).get("status") == "passed":
-            dependency = value.get("dependency_identity", {})
-            current = value.get("current_adapter_identity", {})
-            require({row["path"] for row in dependency.get("members", [])} == set(DEPENDENCIES)
-                and {row["path"] for row in current.get("members", [])} == set(CURRENT_MEMBERS)
-                and type(current.get("candidate_commit")) is str and len(current["candidate_commit"]) == 40,
-                "invalid_result_layers")
-    else:
-        require(value.get("operation") == "legacy-test" and value.get("schema") == "engine-version-qualification-v1",
-                "invalid_result_layers")
-        key = "legacy_tests"
-    if value.get("selected_profile") is not None:
-        require(value.get("role") == ("current_adapter_on_v1_dependencies" if key == "adapter_tests" else "historical_v1"),
-                "invalid_result_layers")
-    require(value.get("v2_historical_native_positive_compatibility") == "unsupported", "invalid_result_layers")
-    require(value.get("descendant_observations_complete") is False, "invalid_result_layers")
-    require(type(value.get("wrapper_exit_code")) is int, "child_protocol_invalid")
-    test = value.get(key)
-    require(type(test) is dict and test.get("status") in {"passed", "failed", "not_run"}, "child_protocol_invalid")
-    if value.get("test_execution_qualified") is True:
-        require(value.get("invocation_status") == "completed" and value["wrapper_exit_code"] == 0
-            and test["status"] == "passed" and type(test.get("child_exit_code")) is int and test["child_exit_code"] == 0
-            and value["source_fixture"]["status"] == value["loaded_runtime"]["status"] == "passed", "invalid_result_layers")
-        ids = test.get("executed_test_ids")
-        require(type(ids) is list and len(ids) == len(set(ids)) and bool(ids)
-            and test.get("executed_test_ids_sha256") == sha(encoded(ids)), "test_ids_mismatch")
-    else:
-        require(value.get("invocation_status") in {"refused", "failed"} and value["wrapper_exit_code"] != 0
-                and test["status"] != "passed", "invalid_result_layers")
+def _digest(value, length=64):
+    return type(value) is str and len(value) == length and all(c in "0123456789abcdef" for c in value)
+
+
+def _adapter_receipt_members(value, registry):
+    """Check named Git identities; raw execution evidence is still a separate requirement."""
+    error = "invalid_result_layers"
+    dependency, current = value["dependency_identity"], value["current_adapter_identity"]
+    expected = {"contract_id": registry["contract_id"], "engine_source_commit": registry["engine_source_commit"],
+        "source_tree": registry["source_tree"], "profile": "git-lf", "registry_sha256": REGISTRY_SHA256,
+        "members": [row for row in registry["members"] if row["path"] in DEPENDENCIES]}
+    require(type(dependency) is dict and dependency == expected, error)
+    require(type(current) is dict and set(current) == {"candidate_commit", "candidate_tree", "members"}
+        and _digest(current["candidate_commit"], 40) and _digest(current["candidate_tree"], 40), error)
+    members = current["members"]
+    require(type(members) is list and len(members) == 2, error)
+    hashes = {row["path"]: row["canonical_sha256"] for row in expected["members"]}
+    require(_git_bytes("rev-parse", current["candidate_commit"] + "^{tree}").decode("ascii").strip()
+        == current["candidate_tree"], error)
+    listing = _git_bytes("ls-tree", "-z", current["candidate_commit"], "--", *CURRENT_MEMBERS)
+    actual = {}
+    for entry in listing.split(b"\0")[:-1]:
+        fields, name = entry.decode("ascii").split("\t")
+        mode, kind, blob = fields.split()
+        require(name in CURRENT_MEMBERS and mode == "100644" and kind == "blob", error)
+        actual[name] = blob
+    require(set(actual) == set(CURRENT_MEMBERS), error)
+    for row in members:
+        require(type(row) is dict and set(row) == {"path", "mode", "blob", "canonical_sha256", "raw_sha256", "raw_bytes"}, error)
+        name = row["path"]
+        require(type(name) is str and name in CURRENT_MEMBERS and name not in hashes
+            and row["mode"] == "100644" and _digest(row["blob"], 40) and row["blob"] == actual[name]
+            and _digest(row["canonical_sha256"]) and _digest(row["raw_sha256"])
+            and type(row["raw_bytes"]) is int and 0 < row["raw_bytes"] <= FILE_CAP, error)
+        require(int(_git_bytes("cat-file", "-s", row["blob"])) <= FILE_CAP, error)
+        raw = _git_bytes("cat-file", "blob", row["blob"])
+        require(sha(raw) == row["canonical_sha256"] and len(raw) <= row["raw_bytes"] <= 2 * len(raw), error)
+        if len(raw) == row["raw_bytes"]:
+            require(row["raw_sha256"] == row["canonical_sha256"], error)
+        hashes[name] = row["canonical_sha256"]
+    require(set(hashes) == set(DEPENDENCIES) | set(CURRENT_MEMBERS), error)
+    return sha(encoded(hashes))
+
+
+def _execution_receipt(value):
+    error = "invalid_result_layers"
+    _validate_result_layers(value)  # The original source-layer contract stays independent and unchanged.
     require(len(encoded(value)) <= RESULT_CAP, "child_protocol_invalid")
+    operation = value["operation"]
+    require(type(operation) is str and operation in {"legacy-test", "adapter-test"}, error)
+    adapter = operation == "adapter-test"
+    required = set(_receipt(None, None)) | {"test_execution_qualified", "descendant_observations_complete", "descendant_observations"}
+    optional = {"context_manifest_sha256", "direct_observations_evidence_sha256"}
+    if adapter:
+        required |= {"domain", "original_v1_fixture_qualified_by_adapter_result", "current_production_behavior_qualified", "adapter_tests"}
+        optional |= {"dependency_identity", "current_adapter_identity"}
+        require(value["domain"] == "current_adapter_on_v1_dependencies"
+            and value["original_v1_fixture_qualified_by_adapter_result"] is False
+            and value["current_production_behavior_qualified"] is False, error)
+        require(value["legacy_tests"] == _receipt(None, None)["legacy_tests"], error)
+    require(required <= set(value) <= required | optional, error)
+    require(value["schema"] == ("engine-adapter-regression-v1" if adapter else "engine-version-qualification-v1"), error)
+    require(value["v2_historical_native_positive_compatibility"] == "unsupported"
+        and value["descendant_observations_complete"] is False
+        and value["descendant_observations"] == [{"command": None, "exit_code": None,
+            "state": "not_recorded", "observation_source": "not_recorded"}]
+        and type(value["test_execution_qualified"]) is bool and type(value["wrapper_exit_code"]) is int
+        and 0 <= value["wrapper_exit_code"] <= 255, error)
+    reason = value["reason"]
+    require(reason is None or type(reason) is str and reason in REASONS, error)
+    registry = load_registry()
+    profile = value["selected_profile"]
+    require(profile is None or type(profile) is str and profile in registry["profiles"], error)
+    require(value["requested_profile"] is None or type(value["requested_profile"]) is str
+        and value["requested_profile"] in registry["profiles"], error)
+    key = "adapter_tests" if adapter else "legacy_tests"
+    test = value[key]
+    require(type(test) is dict and type(test.get("status")) is str and test["status"] in {"passed", "failed", "not_run"}, error)
+    if profile is None:
+        require(all(value[k] is None for k in ("contract_id", "role", "engine_source_commit", "source_tree", "original_runner"))
+            and value["command_argv"] == ["python", "tools/engine_versions.py", operation]
+            and test["status"] == "not_run" and value["source_fixture"]["status"] != "passed"
+            and not optional & set(value), error)
+    else:
+        require(value["contract_id"] == registry["contract_id"] and value["engine_source_commit"] == registry["engine_source_commit"]
+            and value["source_tree"] == registry["source_tree"] and value["requested_profile"] == profile
+            and value["role"] == ("current_adapter_on_v1_dependencies" if adapter else "historical_v1"), error)
+        runner = ADAPTER_CLASS if adapter else value["original_runner"]
+        require(value["original_runner"] is None and profile == "git-lf" if adapter
+            else type(runner) is str and runner in RUNNERS, error)
+        require(value["command_argv"] == ["python", "tools/engine_versions.py", operation, registry["contract_id"], profile, runner], error)
+        if adapter:
+            has_identity = "dependency_identity" in value or "current_adapter_identity" in value
+            if has_identity or value["source_fixture"]["status"] == "passed":
+                expected_seal = _adapter_receipt_members(value, registry)
+            else:
+                expected_seal = None
+        else:
+            expected_seal = sha(encoded({row["path"]: registry["profiles"][profile]["raw_sha256"][index]
+                for index, row in enumerate(registry["members"])}))
+        if "context_manifest_sha256" in value:
+            require(_digest(value["context_manifest_sha256"]) and value["context_manifest_sha256"] == expected_seal, error)
+        if value["source_fixture"]["status"] == "passed":
+            require(value.get("context_manifest_sha256") == expected_seal
+                and value["source_fixture"]["evidence_sha256"] == [expected_seal], error)
+    if "direct_observations_evidence_sha256" in value:
+        require(_digest(value["direct_observations_evidence_sha256"]), error)
+    base = _receipt(None, None)["legacy_tests"]
+    if test["status"] == "not_run":
+        require(test == base, error)
+    else:
+        require(profile is not None and set(test) == set(base) | {"executed_test_ids", "dynamic_counters"}, error)
+        ids = test["executed_test_ids"]
+        require(type(ids) is list and len(ids) <= 64 and all(type(item) is str for item in ids)
+            and ids == sorted(set(ids)) and test["executed_test_ids_sha256"] == sha(encoded(ids)), "test_ids_mismatch")
+        require(test["child_exit_code"] is None or type(test["child_exit_code"]) is int, error)
+        require(all(test[k] is None or _digest(test[k]) for k in ("stdout_sha256", "stderr_sha256")), error)
+        counters = test["dynamic_counters"]
+        require(counters is None or type(counters) is dict and set(counters) == {"passed", "failed", "not_checked"}
+            and all(type(v) is int and v >= 0 for v in counters.values()), error)
+    if value["test_execution_qualified"]:
+        require(profile is not None and value["invocation_status"] == "completed" and value["wrapper_exit_code"] == 0
+            and reason is None and test["status"] == "passed" and type(test["child_exit_code"]) is int and test["child_exit_code"] == 0
+            and value["source_fixture"]["status"] == value["loaded_runtime"]["status"] == "passed"
+            and _digest(value.get("direct_observations_evidence_sha256"))
+            and all(_digest(test[k]) for k in ("stdout_sha256", "stderr_sha256")), error)
+        expected_hash = sha(encoded(list(ADAPTER_IDS))) if adapter else RUNNER_IDS_SHA256[runner]
+        require(len(test["executed_test_ids"]) == (3 if adapter else RUNNERS[runner][0])
+            and test["executed_test_ids_sha256"] == expected_hash, "test_ids_mismatch")
+        if not adapter and runner == "tests/test_dataset_replayable.py":
+            require(counters is not None and counters["failed"] == 0, error)
+        else:
+            require(counters is None, error)
+    else:
+        require(type(value["invocation_status"]) is str and value["invocation_status"] in {"refused", "failed"}
+            and value["wrapper_exit_code"] != 0 and test["status"] != "passed", error)
     return value
+
+
+def validate_dispatch_receipt(value):
+    """Bounded execution-domain validation; a receipt alone does not prove execution."""
+    try:
+        return _execution_receipt(value)
+    except VersionError:
+        raise
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, IndexError, RecursionError, OverflowError):
+        raise VersionError("invalid_result_layers") from None
 
 
 def workflow_dispatch_contract(text):
