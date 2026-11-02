@@ -1,7 +1,7 @@
 ---
 id: T-071
 title: Qualify explicit historical W40 source identity without changing production
-status: changes_requested
+status: in_review
 level: 3
 size: M
 depends_on: []

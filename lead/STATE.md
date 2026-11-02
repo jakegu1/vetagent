@@ -26,8 +26,9 @@ the completed actual study closure does not repair that separate unsupported cas
 | Task | Stage | Owner | Next action |
 |---|---|---|---|
 | T-067 / W7 | published e3ec46a; first actual normal scheduled trial qualified | lead | Done; retain original failures and completed finite followup |
-| T-069 / offline diagnostics | author and independent actual45 pass atf85102f; final independent review sealing | lead / reviewer | Accept final source reviews, then integrate and obtain actual integrated/release evidence |
-| T-071 / source identity | source764113e passes14 focused; R1 requires the accepted result-vector coverage | lead / executor | Add named tests first and pure internal receipt guard; retain original14, then obtain fresh review and registered-source full gates |
+| T-069 / offline diagnostics | exact source accepted atf85102f; author/independent actual45, functional12/12 and privacy none | lead | Integrate with qualified dependent work and verify actual release |
+| T-070 / response policy example | implementation on acceptedf85102f base; named new-test correction authorized | lead / executor | Finish bounded offline example and focused evidence, then request assigned complete gates |
+| T-071 / source identity | corrected registered source7043083; functional code review finds no required change, complete46 gates pending | lead / reviewer | Qualify exact46 operator/runtime and run actual author/independent quiet gates; preserve rejected original history |
 | T-068 / market correctness | dependency-held, unpublished partial candidate | lead | Resolve production/research source-version contract separately; do not change frozen pins or skip tests |
 | T-047 / W40 | held, genuine mandatory security verdict incomplete | lead / required reviewer | Preserve candidate and existing qualified handoff; no replay through another AI |
 | T-049 / T-050 | dependency-held drafts | lead | Bind accepted integrated archive/runtime APIs before implementation |
@@ -57,6 +58,19 @@ Its tests-only3016a1b precedes a non-assertion harness correction5fd2fd8 and sou
 f85102f. A2 response examples are a separate accepted design awaiting dispatch.
 Production telemetry privacy/caller comparability and timing remain unqualified
 future work, not prerequisites for this offline slice.
+
+T070 consumes HTTP/MCP responses locally and demonstrates reject/review/continued
+evaluation/retry advice/abstention. It sends no request or order and adds no score,
+freshness or parser-depth policy. A named correction separates valid JSON that
+abstains on envelope shape from malformed input; original failed evidence remains.
+
+T071's original R1 title failed the unchanged tests-first checker. That branch and
+its BROKEN result remain at5d37ee2. A separately named candidate preserves the exact
+authorized tests/code tree, reproduces14old passes/3missing-guard reds, then obtains
+actual full-base CONTRACT HOLDS. Root registers one additional test command at
+7043083: all original45 and all other workflow bytes remain exact; actual count46.
+The registered source baseline uses one new compressed blob. No old45 receipt
+substitutes for this source's required actual46 evidence.
 
 T069's author actual45/source/preservation evidence is accepted for source handoff.
 Its extra controller-to-executor digest did not match; cause remains unknown and

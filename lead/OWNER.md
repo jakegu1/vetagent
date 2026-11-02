@@ -11,8 +11,10 @@ T067 has completed normal source/master publication with45 required steps and
 two actual locked builds on each exact head; its first actual normal scheduled
 snapshot and subsequent45-step CI qualify. T069's offline diagnostics pass both
 author and independent actual45 checks; final review/integration/release remain.
-T071 implements the approved historical/current source separation; independent
-R1 requires complete result-vector tests before whole-gate acceptance. T068's
+T070 now implements the local fail-closed response-routing example. T071's
+corrected candidate completes the required result-vector tests and passes the
+unchanged tests-first checker; its registered46-step full gates remain pending.
+The original failed candidate/history is retained. T068's
 price candidates remain unpublished: an
 initially missed frozen native engine contract rejects that source change.
 No pin/test is weakened; source-version separation needs its own scoped design
