@@ -178,6 +178,8 @@ operation; if quarantine publication itself fails, the unchanged unfinished stat
 refuses admission. The retained failure receipt reports failed execution, preserving an
 actually observed top-child exit independently of the nonzero wrapper exit. Neither a
 generic exception nor a known top-child exit establishes complete descendant retirement.
+A bounded private failure-stage.json records the failure phase and both exit fields;
+missing child observation remains null and never becomes a guessed numeric exit.
 
 Admission accepts only an exact two-key finished-state object whose string operation_id
 matches its canonical lowercase hexadecimal directory. Missing, copied, malformed,

@@ -927,6 +927,7 @@ def _dispatch(contract_id, profile_id, runner, *, adapter=False, scope=None):
             original_v1_fixture_qualified_by_adapter_result=False, current_production_behavior_qualified=False)
         result[key] = dict(result["legacy_tests"])
     operation = None
+    phase = "selection_and_admission"
     try:
         selected = select(load_registry(), contract_id, profile_id)
         require(runner == ADAPTER_CLASS if adapter else runner in RUNNERS,
@@ -939,6 +940,7 @@ def _dispatch(contract_id, profile_id, runner, *, adapter=False, scope=None):
             command_argv=["python", "tools/engine_versions.py", operation_name, contract_id, profile_id, runner])
         operation = begin_validation_operation(scope)
         operation["dispatch_managed"] = True
+        phase = "source_materialization"
         objects = read_objects(selected)
         if adapter:
             bodies, identity = adapter_sources(selected, objects)
@@ -957,9 +959,11 @@ def _dispatch(contract_id, profile_id, runner, *, adapter=False, scope=None):
             verify_view(view, selected)
         result["source_fixture"] = _layer("passed", evidence=[seal])
         result["context_manifest_sha256"] = seal
+        phase = "child_observation"
         operation["launch_attempted"] = True
         observed = _launch_test_child(view, selected_runner, expected, seconds, operation, selector=selector)
         operation["child_exit_code"] = observed.get("child_exit_code")
+        phase = "postlaunch_source_check"
         result[key] = {"status": "failed", "child_exit_code": observed.get("child_exit_code"),
             "executed_test_ids": observed.get("executed_test_ids", []),
             "executed_test_ids_sha256": sha(encoded(observed.get("executed_test_ids", []))),
@@ -1000,8 +1004,11 @@ def _dispatch(contract_id, profile_id, runner, *, adapter=False, scope=None):
             result["reason"] = reason
         else:
             result["reason"] = None if qualified else "test_failed"
+        phase = "receipt_validation"
         validate_dispatch_receipt(result)
+        phase = "receipt_publication"
         _write_json(operation["path"] / "receipt.json", result, exclusive=True)
+        phase = "operation_completion"
         _finish_operation(operation)
         return result
     except VersionError as error:
@@ -1025,6 +1032,9 @@ def _dispatch(contract_id, profile_id, runner, *, adapter=False, scope=None):
         except (OSError, VersionError):
             pass  # Keep the initial running state: admission still refuses it.
         try:
+            _write_json(operation["path"] / "failure-stage.json", {"schema": "validation-evidence-failure-v1",
+                "operation_id": operation["id"], "phase": phase, "reason": result["reason"],
+                "actual_child_exit_code": operation.get("child_exit_code"), "wrapper_exit_code": 2}, exclusive=True)
             _write_json(operation["path"] / "failure.json", result, exclusive=True)
         except (OSError, VersionError):
             pass  # Retain the selected view and all successfully recorded partial evidence.
