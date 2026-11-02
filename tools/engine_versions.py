@@ -20,7 +20,8 @@ RESULT_CAP = 128 * 1024
 MARKER = b"Historical validation boundary; not a Git checkout.\n"
 REASONS = {"invalid_registry", "unknown_contract", "unknown_profile", "role_mismatch",
            "source_unavailable", "source_mismatch", "unsafe_source_view", "runtime_mismatch",
-           "runtime_unavailable", "invalid_arguments", "unsupported_command", "verification_failed"}
+           "runtime_unavailable", "invalid_arguments", "unsupported_command", "verification_failed",
+           "invalid_result_layers"}
 
 
 class VersionError(Exception):
@@ -361,6 +362,42 @@ def _layer(status="not_evaluated", reason=None, evidence=()):
     return {"status": status, "reason": reason, "evidence_sha256": list(evidence)}
 
 
+def _validate_result_layers(value):
+    """Pure scope/shape check; synthetic states are not historical verification."""
+    error = "invalid_result_layers"
+    require(type(value) is dict and value.get("historical_execution_qualified") is False, error)
+    names = ("source_fixture", "loaded_runtime", "historical_record_tuple", "historical_interpreter")
+    states = {"passed", "failed", "not_evaluated", "unavailable", "unknown"}
+    for name in names:
+        layer = value.get(name)
+        require(type(layer) is dict and set(layer) == {"status", "reason", "evidence_sha256"}, error)
+        status, reason, hashes = layer["status"], layer["reason"], layer["evidence_sha256"]
+        require(type(status) is str and status in states, error)
+        require(reason is None or type(reason) is str, error)
+        require(type(hashes) is list and len(hashes) <= MEMBER_CAP, error)
+        require(all(type(item) is str and len(item) == 64
+                    and all(c in "0123456789abcdef" for c in item) for item in hashes), error)
+        require(len(set(hashes)) == len(hashes), error)
+        if status in {"not_evaluated", "unavailable"}:
+            require(not hashes, error)
+        if name in names[2:]:
+            reasons = {
+                "not_evaluated": "historical_record_not_supplied" if name == names[2] else "historical_interpreter_not_examined",
+                "unavailable": "historical_record_unavailable" if name == names[2] else "historical_interpreter_unavailable",
+                "unknown": "historical_record_unknown" if name == names[2] else "historical_interpreter_unknown",
+            }
+            require(status in reasons and reason == reasons[status], error)
+        elif status == "passed":
+            require(reason is None and bool(hashes), error)
+        else:
+            require(reason in REASONS or status == "not_evaluated" and reason is None, error)
+    if value["loaded_runtime"]["status"] == "passed":
+        require(value["source_fixture"]["status"] == "passed", error)
+        require(not set(value["loaded_runtime"]["evidence_sha256"]) &
+                set(value["source_fixture"]["evidence_sha256"]), error)
+    return value
+
+
 def _receipt(contract_id, profile_id, arguments=None):
     return {"schema": "engine-version-qualification-v1", "operation": "verify-source",
             "invocation_status": "refused", "contract_id": None, "role": None,
@@ -375,6 +412,21 @@ def _receipt(contract_id, profile_id, arguments=None):
                              "stderr_sha256": None, "child_exit_code": None},
             "wrapper_exit_code": 2, "reason": None, "historical_execution_qualified": False,
             "v2_historical_native_positive_compatibility": "unsupported"}
+
+
+def _checked_result(value):
+    try:
+        return _validate_result_layers(value)
+    except VersionError:
+        # Reset independently of a defective result; do not recurse into the guard.
+        refused = _receipt(None, None)
+        refused.update(invocation_status="refused", wrapper_exit_code=2,
+                       reason="invalid_result_layers", historical_execution_qualified=False)
+        for name in ("source_fixture", "loaded_runtime"):
+            refused[name] = {"status": "not_evaluated", "reason": "invalid_result_layers", "evidence_sha256": []}
+        refused["historical_record_tuple"] = {"status": "not_evaluated", "reason": "historical_record_not_supplied", "evidence_sha256": []}
+        refused["historical_interpreter"] = {"status": "not_evaluated", "reason": "historical_interpreter_not_examined", "evidence_sha256": []}
+        return refused
 
 
 def verify_source(contract_id, profile_id):
@@ -412,7 +464,7 @@ def verify_source(contract_id, profile_id):
     except (OSError, ValueError, TypeError, KeyError):
         result["reason"] = "verification_failed"
         result[stage] = _layer("unknown", "verification_failed")
-    return result
+    return _checked_result(result)
 
 
 def main(arguments=None):
@@ -425,6 +477,7 @@ def main(arguments=None):
     else:
         result = _receipt(None, None)
         result["reason"] = "invalid_arguments" if arguments[0] == "verify-source" else "unsupported_command"
+    result = _checked_result(result)
     sys.stdout.buffer.write(encoded(result) + b"\n")
     return result["wrapper_exit_code"]
 

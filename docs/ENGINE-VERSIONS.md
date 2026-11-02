@@ -85,6 +85,15 @@ current production risk/MCP/HTTP/benchmark/numeric regressions retain their dist
 Repaired V2 must still be rejected by the original native source predicates. Rejection is
 a negative guarantee and not positive V2 native execution evidence.
 
+An internal pure guard checks all four result layers before returning a verification and
+again before emitting a CLI receipt. It rejects historical promotion, a passed runtime
+without a passed fixture, copied fixture/runtime evidence, malformed hashes/reasons and
+fabricated evidence on unexamined layers. Synthetic contract tests preserve known-absent
+historical states as `unavailable` and inconclusive states as `unknown`; these tests do
+not introduce a historical input or operation. Real commands still leave both historical
+layers `not_evaluated`. Rejected result shapes produce a fixed sanitized refusal/nonzero,
+with no positive historical qualification.
+
 No T047/T049/T050 archive/seed/runtime/scheduler API or incomplete mandatory verdict is
 adopted or replaced. Original research sources, windows, rules, labels, thresholds, originals,
 failed/unknown states and closed conclusions remain unchanged. Prices and the old partial
