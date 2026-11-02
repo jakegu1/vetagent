@@ -44,6 +44,19 @@ Stop if implementation requires archive code, a changed source contract,
 process-control/safety edit, larger allowance or weaker refusal. Do not broaden
 this task. A separate test-readiness/phase-label finding stays parked.
 
+Named new-test change A is authorized after tests-onlye5afcb8: the new fixture
+retains attempt_end while deleting its mandatory commit. In the first and third
+new methods, expect the existing evidence_mismatch refusal at inventory/seal,
+preserving captured_prefix None, retired observations, exact staging bytes and
+the original actual-CI raw_directory_refused branch. Do not weaken production or
+continue read_prepared after seal refuses. In the third method's unknown-name
+controls only, remove optional end.json, first prove that the staging baseline
+still validates, then add the unknown name within the old actual15-entry cap.
+If that baseline is invalid, report it rather than silently changing more inputs.
+Commit only this named correction as
+`T-072: named change (A missing-commit fixture contract)`; retain the first red and
+two-error fixed-source result. All original13 test methods/helpers remain exact.
+
 ## Acceptance criteria
 
 1. Keep the original15-name ATTEMPT_SIDECARS mapping and every original cap
