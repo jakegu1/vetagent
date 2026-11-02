@@ -827,6 +827,116 @@ class B12ReviewRegressionAcceptance(unittest.TestCase):
                 if mode != "missing_file":
                     self.assertEqual(path.read_bytes(), raw)
 
+    def test_dispatch_receipt_cannot_cross_source_and_case_domains(self):
+        m = self.subject()
+        receipts = {}
+        def child(view, runner, ids, seconds, operation, selector=None):
+            observed = self.observation(ids)
+            if runner == "tests/test_dataset_replayable.py":
+                observed["dynamic_counters"] = {"passed": 1, "failed": 0, "not_checked": 0}
+            return observed
+        with tempfile.TemporaryDirectory(prefix="t073-review-m3-") as directory:
+            scope = Path(directory) / "synthetic-scope"
+            with patch.object(m, "_launch_test_child", side_effect=child):
+                for name, runner, count in (("native", "tests/test_w40_native.py", 13),
+                                             ("clock", "tests/test_w40_native_clock.py", 3),
+                                             ("dataset", "tests/test_dataset_replayable.py", 9)):
+                    value = m.legacy_test(CONTRACT, "git-lf", runner, scope=scope)
+                    self.assertEqual(len(value["legacy_tests"]["executed_test_ids"]), count)
+                    receipts[name] = value
+                receipts["crlf"] = m.legacy_test(CONTRACT, "observed-windows-crlf", "tests/test_w40_native.py", scope=scope)
+                receipts["adapter"] = m.adapter_test(CONTRACT, "git-lf", "InterruptedProgressStagingTests", scope=scope)
+            for name, value in receipts.items():
+                with self.subTest(valid=name):
+                    self.assertTrue(value["test_execution_qualified"])
+                    candidate = copy.deepcopy(value)
+                    self.assertIs(m.validate_dispatch_receipt(candidate), candidate)
+                    self.assertFalse(value["descendant_observations_complete"])
+        def refused(label, value):
+            with self.subTest(refused=label):
+                caught = None
+                try:
+                    m.validate_dispatch_receipt(value)
+                except Exception as error:
+                    caught = error
+                self.assertIsInstance(caught, m.VersionError, "invalid artifact admitted or escaped with an uncontrolled exception")
+                self.assertNotIn("NC5_UNKNOWN_CALLER", str(caught))
+        adapter = receipts["adapter"]
+        forged = copy.deepcopy(adapter)
+        forged.update(schema="engine-version-qualification-v1", operation="legacy-test", role="historical_v1",
+            original_runner="tests/test_w40_native.py",
+            command_argv=["python", "tools/engine_versions.py", "legacy-test", CONTRACT, "git-lf", "tests/test_w40_native.py"])
+        forged["legacy_tests"] = copy.deepcopy(forged["adapter_tests"])
+        refused("adapter relabel with adapter fields", forged)
+        for field in ("adapter_tests", "domain", "dependency_identity", "current_adapter_identity",
+                      "original_v1_fixture_qualified_by_adapter_result", "current_production_behavior_qualified"):
+            forged.pop(field)
+        refused("adapter relabel with adapter fields removed", forged)
+        vectors = [
+            ("contract_id", "NC5_UNKNOWN_CALLER"), ("engine_source_commit", "0" * 40),
+            ("source_tree", "1" * 40), ("selected_profile", "NC5_UNKNOWN_CALLER"),
+            ("requested_profile", "observed-windows-crlf"), ("original_runner", "tests/not_allowed.py"),
+            ("command_argv", ["NC5_UNKNOWN_CALLER"]), ("context_manifest_sha256", "2" * 64),
+            ("test_execution_qualified", 1), ("wrapper_exit_code", True), ("reason", "NC5_UNKNOWN_CALLER"),
+            ("invocation_status", "failed"), ("historical_execution_qualified", True),
+            ("v2_historical_native_positive_compatibility", "supported"), ("descendant_observations", []),
+            ("unexpected", "NC5_UNKNOWN_CALLER")]
+        for field, replacement in vectors:
+            value = copy.deepcopy(receipts["native"])
+            value[field] = replacement
+            refused("legacy " + field, value)
+        for name in ("native", "clock", "dataset"):
+            for ids in (["arbitrary.test"], list(m.ADAPTER_IDS), ["bad"] * 3, [{"bad": True}]):
+                value = copy.deepcopy(receipts[name])
+                value["legacy_tests"]["executed_test_ids"] = ids
+                value["legacy_tests"]["executed_test_ids_sha256"] = m.sha(m.encoded(ids))
+                refused(name + " wrong IDs " + str(ids)[:24], value)
+        for field, replacement in (("executed_test_ids_sha256", "x" * 64), ("stdout_sha256", None),
+                                   ("stderr_sha256", "2" * 63), ("child_exit_code", True), ("status", "not_run")):
+            value = copy.deepcopy(receipts["native"])
+            value["legacy_tests"][field] = replacement
+            refused("legacy test " + field, value)
+        for field, replacement in (("domain", "historical_v1"), ("original_runner", "tests/test_w40_native.py"),
+                                   ("selected_profile", "observed-windows-crlf"), ("current_production_behavior_qualified", True),
+                                   ("original_v1_fixture_qualified_by_adapter_result", True)):
+            value = copy.deepcopy(adapter)
+            value[field] = replacement
+            refused("adapter " + field, value)
+        for domain in ("dependency_identity", "current_adapter_identity"):
+            for fault in ("nonobject", "missing", "duplicate", "foreign_path", "wrong_type", "bad_blob", "bad_hash", "extra"):
+                value = copy.deepcopy(adapter)
+                identity = value[domain]
+                if fault == "nonobject":
+                    value[domain] = []
+                elif fault == "missing":
+                    identity["members"].pop()
+                elif fault == "duplicate":
+                    identity["members"].append(copy.deepcopy(identity["members"][0]))
+                elif fault == "foreign_path":
+                    identity["members"][0]["path"] = "NC5_UNKNOWN_CALLER"
+                elif fault == "wrong_type":
+                    identity["members"] = [None]
+                elif fault == "bad_blob":
+                    identity["members"][0]["blob"] = "z" * 40
+                elif fault == "bad_hash":
+                    identity["members"][0]["canonical_sha256"] = "3" * 64
+                else:
+                    identity["extra"] = True
+                refused(domain + " " + fault, value)
+        for field, replacement in (("candidate_commit", True), ("candidate_tree", "g" * 40)):
+            value = copy.deepcopy(adapter)
+            value["current_adapter_identity"][field] = replacement
+            refused(field, value)
+        for field, replacement in (("raw_bytes", True), ("mode", "100755"), ("raw_sha256", "g" * 64)):
+            value = copy.deepcopy(adapter)
+            value["current_adapter_identity"]["members"][0][field] = replacement
+            refused("candidate " + field, value)
+        value = copy.deepcopy(receipts["dataset"])
+        value["legacy_tests"]["dynamic_counters"]["failed"] = 1
+        refused("positive dataset with failed dynamic cases", value)
+        for value in (None, [], {"schema": "NC5_UNKNOWN_CALLER"}):
+            refused("nonreceipt", value)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
