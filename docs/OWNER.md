@@ -119,7 +119,7 @@ Rounded = parked by you. Hexagons are not work items -- they are what a row is w
 
 | | |
 |---|---|
-| Maturity score | 45 / 100 (`docs/SCORECARD.md`) |
+| Maturity score | 47 / 100 (`docs/SCORECARD.md`) |
 | Tokens measured | 576 |
 | False positives | 1.9% -- we called a healthy token dangerous |
 | Answers we refuse | 20.7% -- `unknown`, on purpose |
@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- lead: accept T067 independent source reviews and retain release gates
-- T-067: preserve received JSON null as a failed observation
-- T-067: named change (A2 additive received-null acceptance)
-- T-067: named change (A2 received-null diagnostic receiver)
-- lead: correct null diagnostic premise before implementation
-- lead: register T067 received-null class repair before acceptance
-- lead: isolate frozen-engine candidate and advance unaffected snapshot repair
-- T-067: propagate invalid sellability status from normal main
+- lead: accept exact parallel sources and retain integration gates
+- lead: name the T070 generated-scorecard dependency
+- T-070: regenerate the scorecard evidence after added MCP assertions
+- lead: advance parallel examples and registered source review
+- T-070: route assessment responses without executing actions
+- T-070: acceptance test fix (valid JSON yields envelope abstention)
+- T-071: register the complete source identity acceptance suite
+- T-070: acceptance tests
 
-_32 more not shown (40 commits in total)._
+_34 more not shown (42 commits in total)._
 
 ## What I got wrong
 

@@ -1178,6 +1178,340 @@ def fixture_parent(path):
         manifest=native.code_manifest(), route=("127.0.0.1", config["port"]), hooks=checkpoint))
 
 
+class InterruptedProgressStagingTests(unittest.TestCase):
+    """T-072: synthetic data only; staging never becomes an observation."""
+
+    @contextlib.contextmanager
+    def _offline(self, native):
+        def absent(identity):
+            self.assertEqual(identity, {"pid": 4321, "creation": "987654",
+                                       "token": "1" * 32, "parent": 4322})
+            return False
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(patch.object(native, "identity_alive", side_effect=absent))
+            for name in ("creation_identity", "NativeWorker", "Job", "collect_one", "_child"):
+                stack.enter_context(patch.object(native, name, side_effect=AssertionError("data_only")))
+            for name in ("socket.socket", "subprocess.Popen"):
+                stack.enter_context(patch(name, side_effect=AssertionError("data_only")))
+            yield
+
+    @contextlib.contextmanager
+    def _case(self):
+        from types import SimpleNamespace
+        n = importlib.import_module("w40_native")
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.assertFalse(any((p / ".git").exists() for p in (root,) + tuple(root.parents)))
+            f = SimpleNamespace(n=n, root=root, store=root / "store", runtime=root / "runtime",
+                                private=root / "private", now="2026-10-02T00:00:00Z")
+            token, pool = "0x" + "1" * 40, "0x" + "a" * 40
+            source = root / "source.ndjson"
+            source.write_bytes(_json({"chain": "base", "base_token": "base_" + token,
+                "pool_address": pool, "pool_created_at": "2026-10-01T00:00:00Z",
+                "seen_at": "2026-10-01T01:00:00Z"}) + b"\n")
+            f.sources = [{"path": str(source), "bytes": source.stat().st_size,
+                          "sha256": n.sha(source.read_bytes())}]
+            (root / "sources.json").write_bytes(_json(f.sources))
+            with self._offline(n):
+                n.core.enroll(n.core.plan("1" * 40, f.sources), f.sources,
+                    boundary="2026-10-01T02:00:00Z", ingested_at="2026-10-01T02:00:00Z", output=f.store)
+                _, plan, record, identity, _ = n.bound_store(f.store, f.sources, 1)
+                manifest = n.code_manifest()
+                binding = {"ordinal": 1, "plan_sha256": plan["plan_sha256"],
+                           "source_ref": record["source_ref"], "code_sha256": n.sha(n.dumps(manifest))}
+                f.journal = n.Journal(f.runtime, binding)
+                f.private.mkdir()
+                f.packet = n.base_packet(plan, record, identity)
+                config = {"keyless": True, "empty_cache": True, "cache_initial_entries": 0,
+                          "native_transport": True, "fixture_route": False, "frozen_assess": True,
+                          "configured_at": f.now}
+                context = n.dumps({"packet": f.packet, "manifest": manifest, "configuration": config})
+                (f.private / "context.json").write_bytes(context)
+                f.journal.append("claim", utc=f.now, manifest=manifest,
+                                 context_sha256=n.sha(context), state="native")
+                claims = f.store / "native-claims"
+                claims.mkdir()
+                (claims / "00000001.json").write_bytes(n.dumps(dict(binding, claim_sha256=f.journal.head)))
+                f.directory = f.private / "attempts/01"
+                f.directory.mkdir(parents=True)
+                f.request = n.validate_request("https://api.geckoterminal.com/api/v2/networks/base/pools/" + pool,
+                                               role="reserve", token=token, chain="base")
+                f.permit = dict(binding, attempt=1, role="reserve", host="gt", reserved_date="2026-10-02",
+                    request_deadline=130.0, expires_mono=130.0, allowance_seconds=30.0, private_bytes=589825)
+                f.identity = {"pid": 4321, "creation": "987654", "token": "1" * 32, "parent": 4322}
+                digest = n.sha(n.dumps(f.permit))
+                f.invocation = {"utc": f.now, "monotonic": 100.0, "permit_sha256": digest}
+                f.headers = {"status": 429, "headers": [], "utc": f.now, "monotonic": 100.1}
+                commit = {"body_bytes": 2, "body_sha256": n.sha(b"{}"), "state": "http_429",
+                          "reason": "http_429", "utc": f.now, "response_at": f.now}
+                values = {"metadata.json": f.request, "permit.json": f.permit,
+                    "request.json": {"request": f.request, "permit": f.permit, "permit_sha256": digest,
+                                     "parent": 4322, "nonce": "1" * 32, "route": None},
+                    "identity.json": f.identity, "creation.json": f.identity,
+                    "ready.json": {"identity_sha256": n.sha(n.dumps(f.identity))},
+                    "arming.json": {"permit_sha256": digest}, "invocation.json": f.invocation,
+                    "sent.json": {"state": "observed"}, "headers.json": f.headers, "commit.json": commit,
+                    "progress.json": {"bytes": 2, "sha256": n.sha(b"{}")},
+                    "end.json": {"state": "observed", "bytes": 2, "sha256": n.sha(b"{}"), "utc": f.now}}
+                for name, value in values.items():
+                    (f.directory / name).write_bytes(n.dumps(value))
+                (f.directory / "body.bin").write_bytes(b"{}")
+                f.journal.append("attempt_intent", attempt=1, role="reserve", host="gt", utc=f.now,
+                                 monotonic=100.0, allowance_seconds=30.0, private_bytes=589825)
+                f.journal.append("native_invocation", attempt=1, **f.invocation)
+                f.journal.append("headers", attempt=1, permit_sha256=digest, status=429, utc=f.now, monotonic=100.1)
+                f.journal.append("attempt_end", attempt=1, permit_sha256=digest, **commit)
+                f.journal.append("child_retired", attempt=1, permit_sha256=digest,
+                                 identity_sha256=n.sha(n.dumps(f.identity)), state="exited")
+                f.packet["reserve"] = n.stage_from_attempt({"state": "http_429", "reason": "http_429",
+                    "status": 429, "raw": b"{}", "invocation": f.invocation, "response_at": f.now})
+                f.packet["endpoints"]["label"] = [f.request["url"]]
+                f.packet["endpoints"]["eligibility"] = [f.request["url"]]
+            yield f
+
+    def _observe(self, f):
+        return f.n.retired_observation(f.directory, request=f.request, permit=f.permit, identity=f.identity)
+
+    def _snapshot(self, root):
+        return {p.relative_to(root).as_posix(): p.read_bytes() for p in root.rglob("*")
+                if p.is_file() and not p.is_symlink()}
+
+    def _ci_refuses(self):
+        return any(os.environ.get(k, "").lower() not in ("", "0", "false") for k in ("CI", "GITHUB_ACTIONS"))
+
+    def _fresh_recovery(self, f):
+        # Only this fixed interpreter harness is spawned; the fresh interpreter denies native ports.
+        code = "\n".join([
+            "import socket,subprocess,sys", "from unittest.mock import patch",
+            "sys.path[:0]=[sys.argv[1]+'/bench',sys.argv[1]+'/src']", "import w40_native as n",
+            "def forbidden(*a,**k): raise AssertionError('data_only')",
+            "def absent(identity):",
+            "    assert identity=={'pid':4321,'creation':'987654','token':'1'*32,'parent':4322}",
+            "    return False",
+            "with patch.object(n,'identity_alive',side_effect=absent),patch.object(n,'creation_identity',side_effect=forbidden),patch.object(n,'NativeWorker',side_effect=forbidden),patch.object(n,'Job',side_effect=forbidden),patch.object(n,'collect_one',side_effect=forbidden),patch.object(n,'_child',side_effect=forbidden),patch('socket.socket',side_effect=forbidden),patch('subprocess.Popen',side_effect=forbidden):",
+            "    raise SystemExit(n.main(sys.argv[2:]))",
+        ])
+        return subprocess.run([sys.executable, "-I", "-S", "-B", "-c", code, str(ROOT), "recover",
+            "--store", str(f.store), "--sources", str(f.root / "sources.json"), "--runtime", str(f.runtime),
+            "--private-dir", str(f.private)], cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
+
+    def test_pending_progress_is_opaque_retained_evidence(self):
+        for pending in (b"", b"\x00\xff{partial", _json({"bytes": 999, "sha256": "0" * 64,
+                "state": "observed", "status": 200, "utc": "2099-01-01T00:00:00Z", "identity": "fiction"})):
+            with self.subTest(pending=pending), self._case() as f, self._offline(f.n):
+                baseline = self._observe(f)
+                self.assertEqual(baseline, (f.invocation, f.headers))
+                inventory = f.n.evidence_inventory(f.journal, f.private)
+                prefix = f.n.captured_prefix(f.directory)
+                path = f.directory / "progress.json.pending"
+                path.write_bytes(pending)
+                before = self._snapshot(f.private)
+                self.assertEqual(self._observe(f), baseline)
+                current = f.n.evidence_inventory(f.journal, f.private)
+                references = current["attempts"][0]["sidecars"]
+                self.assertEqual(references.pop("progress.json.pending"),
+                                 {"bytes": len(pending), "sha256": f.n.sha(pending)})
+                inventory["attempts"][0]["sidecars"].pop("progress.json.pending", None)
+                self.assertEqual(current, inventory)
+                self.assertEqual(f.n.captured_prefix(f.directory), prefix)
+                self.assertEqual(self._snapshot(f.private), before)
+                self.assertFalse(path.is_symlink())
+                self.assertTrue(path.is_file())
+        with self._case() as f, self._offline(f.n):
+            path = f.directory / "progress.json.pending"
+            path.write_bytes(_json({"bytes": 2, "sha256": f.n.sha(b"{}"), "state": "observed"}))
+            for name in ("commit.json", "end.json", "progress.json"):
+                (f.directory / name).unlink()
+            self.assertIsNone(f.n.captured_prefix(f.directory))
+            self.assertEqual(self._observe(f), (f.invocation, f.headers))
+            with self.assertRaisesRegex(f.n.NativeError, "^evidence_mismatch$"):
+                f.n.evidence_inventory(f.journal, f.private)
+            self.assertEqual(path.read_bytes(), _json({"bytes": 2, "sha256": f.n.sha(b"{}"), "state": "observed"}))
+
+    def test_pending_progress_handoff_binds_bytes_and_absence(self):
+        for mutation in ("unchanged", "changed", "removed", "added"):
+            with self.subTest(mutation=mutation), self._case() as f:
+                path = f.directory / "progress.json.pending"
+                if mutation != "added":
+                    path.write_bytes(b"\x00partial")
+                with self._offline(f.n):
+                    self.assertEqual(f.n.seal(f.journal, f.private, f.packet)["state"], "prepared")
+                    ref = f.packet["native_provenance"]["inventory"]["attempts"][0]["sidecars"]["progress.json.pending"]
+                    self.assertEqual(ref, None if mutation == "added" else
+                                     {"bytes": 8, "sha256": f.n.sha(b"\x00partial")})
+                    if mutation == "changed":
+                        path.write_bytes(b"\x00Partial")
+                    elif mutation == "removed":
+                        path.unlink()
+                    elif mutation == "added":
+                        path.write_bytes(b"late")
+                    protected = {name: self._snapshot(getattr(f, name)) for name in ("store", "runtime", "private")}
+                    if mutation == "unchanged" and not self._ci_refuses():
+                        self.assertEqual(f.n.read_prepared(f.runtime, f.private), f.packet)
+                    else:
+                        with self.assertRaisesRegex(f.n.NativeError,
+                                "^raw_directory_refused$" if self._ci_refuses() else "^evidence_mismatch$"):
+                            f.n.read_prepared(f.runtime, f.private)
+                result = self._fresh_recovery(f)
+                self.assertEqual(result.stderr, b"")
+                accepted = mutation == "unchanged" and not self._ci_refuses()
+                self.assertEqual(result.returncode, 0 if accepted else 2, result.stdout.decode())
+                answer = json.loads(result.stdout)
+                if accepted:
+                    self.assertEqual(answer["state"], "imported")
+                    self.assertTrue((f.store / "native-claims/00000001.done").is_file())
+                    for name, raw in protected["private"].items():
+                        self.assertEqual((f.private / name).read_bytes(), raw)
+                    for name, raw in protected["store"].items():
+                        if name != "index.json":
+                            self.assertEqual((f.store / name).read_bytes(), raw)
+                else:
+                    self.assertEqual(answer, {"error": "raw_directory_refused" if self._ci_refuses() else "evidence_mismatch"})
+                    self.assertFalse((f.store / "native-claims/00000001.done").exists())
+                    for name, before in protected.items():
+                        self.assertEqual(self._snapshot(getattr(f, name)), before)
+
+    def test_pending_progress_keeps_prior_limits_and_refusals(self):
+        n = importlib.import_module("w40_native")
+        expected = {name: 65536 for name in ("metadata.json", "permit.json", "request.json", "identity.json",
+            "creation.json", "ready.json", "arming.json", "invocation.json", "sent.json", "headers.json",
+            "commit.json", "progress.json", "end.json", "metadata-reserve.bin")}
+        expected["body.bin"] = 262145
+        self.assertEqual(n.ATTEMPT_SIDECARS, expected)
+        self.assertEqual(sum(n.ATTEMPT_SIDECARS.values()), 1179649)
+        self.assertEqual((n.BODY_CAP, n.ROW_CAP, n.PRIVATE_ALLOWANCE, n.PACKET_CAP, n.REPORT_CAP,
+                          n.ATTEMPT_SECONDS, n.PACKET_SECONDS), (262144, 65536, 589825, 2097152, 1048576, 30.0, 1200.0))
+        for size in (0, 65536, 65537):
+            with self.subTest(staging_bytes=size), self._case() as f, self._offline(n):
+                (f.directory / "progress.json.pending").write_bytes(b"x" * size)
+                before = self._snapshot(f.private)
+                if size <= 65536:
+                    self.assertEqual(self._observe(f), (f.invocation, f.headers))
+                    ref = n.evidence_inventory(f.journal, f.private)["attempts"][0]["sidecars"]["progress.json.pending"]
+                    self.assertEqual(ref, {"bytes": size, "sha256": n.sha(b"x" * size)})
+                else:
+                    with self.assertRaises(n.NativeError):
+                        self._observe(f)
+                    with self.assertRaises(n.NativeError):
+                        n.evidence_inventory(f.journal, f.private)
+                self.assertEqual(self._snapshot(f.private), before)
+        with self._case() as f, self._offline(n):
+            (f.directory / "progress.json.pending").write_bytes(b"staging")
+            self.assertEqual(len(list(f.directory.iterdir())), 15)
+            self.assertEqual(self._observe(f), (f.invocation, f.headers))
+            n.evidence_inventory(f.journal, f.private)
+            (f.directory / "metadata-reserve.bin").write_bytes(b"")
+            self.assertEqual(len(list(f.directory.iterdir())), 16)
+            before = self._snapshot(f.private)
+            for call in (lambda: self._observe(f), lambda: n.evidence_inventory(f.journal, f.private)):
+                with self.assertRaises(n.NativeError):
+                    call()
+            self.assertEqual(self._snapshot(f.private), before)
+        with self.subTest(refusal="hardlinked_staging"), self._case() as f, self._offline(n):
+            pending = f.directory / "progress.json.pending"
+            pending.write_bytes(b"retained staging")
+            self.assertEqual(self._observe(f), (f.invocation, f.headers))
+            n.evidence_inventory(f.journal, f.private)
+            self.assertEqual(pending.stat().st_nlink, 1)
+            target = f.root / "staging-target.bin"
+            target.write_bytes(pending.read_bytes())
+            self.assertEqual(target.stat().st_dev, f.directory.stat().st_dev)
+            pending.unlink()
+            pending.hardlink_to(target)
+            self.assertTrue(pending.is_file())
+            self.assertFalse(pending.is_symlink())
+            self.assertTrue(pending.samefile(target))
+            self.assertEqual((pending.stat().st_nlink, target.stat().st_nlink), (2, 2))
+            before = self._snapshot(f.root)
+            for reader, call, error in (
+                    ("retired", lambda: self._observe(f), "invalid_evidence"),
+                    ("inventory", lambda: n.evidence_inventory(f.journal, f.private), "evidence_mismatch")):
+                with self.subTest(reader=reader), self.assertRaisesRegex(n.NativeError, "^" + error + "$"):
+                    call()
+                self.assertEqual(self._snapshot(f.root), before)
+                self.assertTrue(pending.samefile(target))
+                self.assertEqual((pending.stat().st_nlink, target.stat().st_nlink), (2, 2))
+        with tempfile.TemporaryDirectory() as temp, self._offline(n):
+            tree = Path(temp) / "private"
+            attempt = tree / "attempts/01"
+            attempt.mkdir(parents=True)
+            (attempt / "progress.json.pending").write_bytes(b"partial")
+            for number in range(567):
+                (attempt / ("entry%04d" % number)).write_bytes(b"")
+            self.assertEqual(len(list(tree.rglob("*"))), 570)
+            self.assertEqual(n.private_tree(tree), tree)
+            (attempt / "entry0570").write_bytes(b"")
+            self.assertEqual(len(list(tree.rglob("*"))), 571)
+            with self.assertRaisesRegex(n.NativeError, "^raw_directory_refused$"):
+                n.private_tree(tree)
+            self.assertEqual(len(list(tree.rglob("*"))), 571)
+        for bad in ("unknown", "other_pending", "directory", "alias", "oversize_body", "malformed_progress",
+                    "malformed_end", "malformed_commit", "conflicting_progress", "conflicting_end", "conflicting_commit",
+                    "changed_request", "missing_progress_end_commit"):
+            with self.subTest(refusal=bad), self._case() as f, self._offline(n):
+                pending = f.directory / "progress.json.pending"
+                pending.write_bytes(_json({"bytes": 2, "sha256": n.sha(b"{}"), "state": "observed"}))
+                alias = None
+                if bad in ("unknown", "other_pending"):
+                    (f.directory / "end.json").unlink()
+                    self.assertEqual(self._observe(f), (f.invocation, f.headers))
+                    n.evidence_inventory(f.journal, f.private)
+                    (f.directory / ("unknown.bin" if bad == "unknown" else "end.json.pending")).write_bytes(b"")
+                    self.assertEqual(len(list(f.directory.iterdir())), 15)
+                elif bad == "directory":
+                    pending.unlink()
+                    pending.mkdir()
+                elif bad == "alias":
+                    pending.unlink()
+                    alias = f.root / "alias-target"
+                    alias.mkdir()
+                    (alias / "retained.bin").write_bytes(b"unchanged")
+                    if sys.platform == "win32":
+                        import _winapi
+                        _winapi.CreateJunction(str(alias), str(pending))
+                    else:
+                        pending.symlink_to(alias, target_is_directory=True)
+                elif bad == "oversize_body":
+                    (f.directory / "body.bin").write_bytes(b"x" * 262146)
+                elif bad.startswith("malformed_"):
+                    (f.directory / (bad.removeprefix("malformed_") + ".json")).write_bytes(b"{")
+                elif bad.startswith("conflicting_"):
+                    name = bad.removeprefix("conflicting_")
+                    (f.directory / (name + ".json")).write_bytes(_json(
+                        {"body_bytes": 2, "body_sha256": "0" * 64} if name == "commit" else {"bytes": 2, "sha256": "0" * 64}))
+                elif bad == "changed_request":
+                    (f.directory / "metadata.json").write_bytes(_json({"changed": True}))
+                else:
+                    for name in ("progress.json", "end.json", "commit.json"):
+                        (f.directory / name).unlink()
+                try:
+                    before = self._snapshot(f.private) if alias is None else None
+                    if bad == "missing_progress_end_commit":
+                        self.assertIsNone(n.captured_prefix(f.directory))
+                        # A positive packet body still requires committed bytes; staging cannot provide them.
+                        with self.assertRaisesRegex(n.NativeError,
+                                "^raw_directory_refused$" if self._ci_refuses() else "^evidence_mismatch$"):
+                            n.private_paths(f.runtime, f.private, f.store)
+                            n.seal(f.journal, f.private, f.packet)
+                        self.assertEqual(self._snapshot(f.private), before)
+                    else:
+                        with self.assertRaises(n.NativeError):
+                            n.evidence_inventory(f.journal, f.private)
+                        if bad in ("unknown", "other_pending", "directory", "alias", "oversize_body", "changed_request"):
+                            with self.assertRaises(n.NativeError):
+                                self._observe(f)
+                        if before is not None:
+                            self.assertEqual(self._snapshot(f.private), before)
+                    if alias is not None:
+                        self.assertEqual((alias / "retained.bin").read_bytes(), b"unchanged")
+                finally:
+                    if alias is not None:
+                        if sys.platform == "win32":
+                            pending.rmdir()
+                        else:
+                            pending.unlink()
+
+
 if __name__ == "__main__":
     if len(sys.argv) == 3 and sys.argv[1] == "--fixture-parent":
         fixture_parent(sys.argv[2])
