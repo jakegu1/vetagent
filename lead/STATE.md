@@ -4,6 +4,31 @@ Last updated: 2026-11-03 by Codex. This is the current baton, not a release log.
 
 ## Current source, science boundary and engineering work
 
+T073's corrected source passes focused source review, but its sole actual47
+author attempt fails at command38, the original frozen native13 cancellation
+test. The first37 commands exit0 and nine commands do not start. Twelve original
+cases pass and one errors after an evidence-directory predicate rejects an
+unretained entry; its exact cause remains unknown. Both original quarantines and
+the failed attempt remain. Postrun whole preservation is unqualified. A bounded
+independent mapping of saved direct exits and original nested identity assertions
+supports fixed-QA owned retirement; it does not clear admission or qualify full.
+No independent full, retry, integration, CI or new publication is authorized.
+
+A maintained-adapter responsibility proposal passes independent design review
+after one exact fault-injection-reference correction. It preserves complete old
+assertions but changes every-release execution responsibility, so a new concrete
+Owner scope decision is pending. It neither changes ADR0003 now nor accepts T047.
+
+T074 is the independently reviewed existing-consumer slice of the corrected
+observability design: report query failure, empty, unsupported and unobserved
+domains accurately without new collection or a different adoption rule. The
+standalone codec and server writer remain parked. Existing platform aggregates
+are readable, and a separate count-only read verifies the fixed old-column
+projection; neither proves customers, complete report behavior or latency.
+The first implementation phase is tests-only and exact SQL preparation, ending
+at TESTS_AND_SQL_READY for lead review. Pure local stubbed checks only; full and
+heavy execution still require explicit qualified incident-admission binding.
+
 The corrective batch is code-published and qualified at9b83558. Root's actual46,
 source push CI41498770842 and master CI41502061176 pass every required command,
 upstream/backfill and two real locked builds each. Raw records are preserved;
@@ -67,7 +92,8 @@ the completed actual study closure does not repair that separate unsupported cas
 | T-070 / response policy example | code-published9b83558 after exact source and integrated/CI gates | lead | Retain old failures and await shared natural trial |
 | T-071 / source identity | code-published9b83558; historical qualification remains false | lead | Dispatch implementation T073; retain rejected history and shared trial |
 | T-072 / interrupted progress staging | code-published9b83558 after author/independent/integrated46 and normal CI | lead | Read-only first natural snapshot proof; retain all failures |
-| T-073 / explicit test domains | ready; independent design accepted with NC3/NC4/A1 | lead / executor | Tests-first implementation and focused checks, then root47 registration/reviews/operator; no full or push yet |
+| T-073 / explicit test domains | corrected source reviewed; author full failed at38 | lead | Preserve original failure/quarantines; maintained responsibility decision pending; no retry or independent full |
+| T-074 / usage observation domains | ready; independent design accepted | lead / executor | Add tests alone and prepare exact SQL; stop at TESTS_AND_SQL_READY; no new collection/full/CI |
 | T-068 / market correctness | dependency-held, unpublished partial candidate | lead | Resolve production/research source-version contract separately; do not change frozen pins or skip tests |
 | T-047 / W40 | held, genuine mandatory security verdict incomplete | lead / required reviewer | Preserve candidate and existing qualified handoff; no replay through another AI |
 | T-049 / T-050 | dependency-held drafts | lead | Bind accepted integrated archive/runtime APIs before implementation |

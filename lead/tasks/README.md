@@ -72,4 +72,5 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-070 | Demonstrate fail-closed HTTP and MCP response routing without sending requests | 2 | S | T-069 source acceptance | code-published9b83558; exact source/integrated/CI accepted; shared natural trial pending |
 | T-071 | Qualify explicit historical source identity without changing production | 3 | M | none | code-published9b83558; no historical execution claim; original failures retained; T073 next |
 | T-072 | Retain bounded interrupted progress publication without trusting staging | 3 | M | T-071 source acceptance | code-published9b83558; actual46 and both exact CI accepted; natural trial pending |
-| T-073 | Dispatch complete historical tests and retain contemporary adapter regressions | 3 | M | T-071, T-072, ADR0003 | ready; NC3/NC4/A1 and independent design accepted; tests-first implementation next |
+| T-073 | Dispatch complete historical tests and retain contemporary adapter regressions | 3 | M | T-071, T-072, ADR0003 | author actual47 failed at38; corrected source reviewed; failed scope retained, new responsibility decision pending |
+| T-074 | Scope usage reports to observed storage domains | 3 | M | T-069, T-072 | ready; independently reviewed design; first phase tests and exact SQL only, no collection/full |

@@ -7,6 +7,25 @@
 
 ## Status in one line
 
+T073's sole actual47 author gate fails at38 in original frozen native13; the
+failed execution, unrun tail and incomplete postrun preservation remain exact.
+Saved fixed-QA owned-retirement evidence is independently resolved, but no new
+admission or heavy slot is granted. A concrete maintained-adapter regression
+responsibility change is ready for Owner scope decision after independent design
+review. T047 dependencies remain held. Meanwhile T074 may prepare the existing
+usage consumer's tests and exact SQL without new collection, identity logging,
+changed rule or deployment. New server telemetry remains parked.
+
+## Needs the Owner
+
+Decide the separately supplied maintained-adapter scope: preserve strict old
+source and historical evidence while making the maintained adapter own complete
+native16/clock3 regressions against fixed V1 dependencies. This changes the prior
+every-release old-adapter execution responsibility and is not yet approved.
+Approval would not erase a failed run, clear quarantine or grant a test slot.
+
+## Earlier published checkpoint
+
 The corrective code batch is qualified and published at9b83558. Actual integrated
 46 and both normal CI runs pass all required tests, upstream/backfill and two
 real locked builds each. First natural snapshot verification remains pending;
