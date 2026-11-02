@@ -854,6 +854,243 @@ def test_operational_evidence_cli_and_opt_in_workflow_contract():
           "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9")))
 
 
+# T-069 acceptance contract: additions only; no older assertion is changed.
+def _a1_module():
+    import importlib.util
+    from pathlib import Path
+    path = Path(ROOT) / "bench" / "telemetry_diagnostics.py"
+    check("T069 offline diagnostic composer exists", path.is_file())
+    if not path.is_file():
+        return None
+    spec = importlib.util.spec_from_file_location("t069_acceptance", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _a1_bundle():
+    import json
+    from pathlib import Path
+    return json.loads((Path(ROOT) / "tests" / "fixtures" / "telemetry_diagnostics_v1.json").read_text(encoding="utf-8"))
+
+
+def _a1_cell(report, tool="assess_token_risk", cohort="self"):
+    return next(r for r in report["results"] if r["tool"] == tool and r["cohort"] == cohort)
+
+
+def _a1_cli(args):
+    import subprocess
+    from pathlib import Path
+    # The parent starts the real CLI; these guards run INSIDE the child process.
+    bootstrap = "\n".join([
+        "import runpy,socket,subprocess,sys,urllib.request",
+        "def refused(*args, **kwargs): raise AssertionError('offline_boundary_invoked')",
+        "socket.socket=refused", "socket.create_connection=refused",
+        "subprocess.run=refused", "subprocess.Popen=refused",
+        "urllib.request.urlopen=refused", "urllib.request.OpenerDirector.open=refused",
+        "sys.argv=sys.argv[1:]", "runpy.run_path(sys.argv[0],run_name='__main__')"])
+    env = dict(os.environ, PYTHONIOENCODING="utf-8", CLOUDFLARE_API_TOKEN="T069-TOKEN-PRIVATE",
+               CLOUDFLARE_ACCOUNT_ID="T069-ACCOUNT-PRIVATE", GITHUB_TOKEN="T069-GH-PRIVATE")
+    return subprocess.run([sys.executable, "-B", "-c", bootstrap,
+                           str(Path(ROOT) / "bench" / "telemetry_diagnostics.py"), *map(str, args)],
+                          capture_output=True, encoding="utf-8", env=env, timeout=20)
+
+
+def test_a1_telemetry_weighted_empty_missing():
+    import copy
+    import operational_evidence as op
+    from unittest.mock import patch
+    module = _a1_module()
+    if module is None:
+        return
+    bundle = _a1_bundle()
+    before = copy.deepcopy(bundle)
+    with patch.object(op, "aggregate_reply", wraps=op.aggregate_reply) as seam:
+        report = module.diagnose(bundle)
+    check("T069 reuses the existing parser once per selection", seam.call_count == 2)
+    check("T069 preserves caller input", bundle == before)
+    cell = _a1_cell(report)
+    check("T069 weights and rows stay distinct", cell["weighted_count"] == 6
+          and cell["sampled_rows"] == 2 and cell["sampled"] is True
+          and cell["rows"][0]["max_sample_interval"] == 3)
+    empty = _a1_cell(report, "find_new_hot_pools", "other")
+    missing = _a1_cell(report, "assess_token_risk", "other")
+    check("T069 valid empty is zero", empty["state"] == "empty"
+          and empty["weighted_count"] == empty["sampled_rows"] == 0)
+    check("T069 missing query is null", missing["state"] == "not_queried"
+          and missing["weighted_count"] is missing["sampled_rows"] is None)
+    check("T069 separate windows are never pooled", cell["start"] == "2026-10-18T10:00:00Z"
+          and empty["start"] == "2026-10-18T10:30:00Z" and "weighted_count" not in report)
+    check("T069 selections are fixed and sorted", [(r["tool"], r["cohort"]) for r in report["results"]]
+          == sorted((t, c) for t in op.TOOLS for c in op.COHORTS))
+    check("T069 missing dimensions alone do not fail", report["state"] == "observed")
+    bundle["aggregates"] = []
+    check("T069 no queries is unobserved", module.diagnose(bundle)["state"] == "unobserved")
+
+
+def test_a1_telemetry_query_failures():
+    import copy
+    import operational_evidence as op
+    module = _a1_module()
+    if module is None:
+        return
+    cases = [({"http_status": n, "body": {"data": []}}, state) for n, state in
+             ((401, "http_error"), (403, "http_error"), (500, "http_error"),
+              (302, "redirect"), (0, "transport_error"))]
+    cases += [(None, "malformed"), ({"http_status": True, "body": {}}, "malformed"),
+              ({"http_status": 200, "body": {}}, "malformed"),
+              ({"http_status": 200, "body": {"success": False, "data": []}}, "malformed"),
+              ({"http_status": 200, "error": "response_too_large"}, "truncated")]
+    base = _a1_bundle()
+    row = base["aggregates"][0]["reply"]["body"]["data"][0]
+    for change in ({"client": "T069-ROW-PRIVATE"}, {"weighted_count": 7}, {"weighted_count": True},
+                   {"weighted_count": "NaN"}, {"sampled_rows": 0}, {"max_sample_interval": 0},
+                   {"verdict": "T069-VERDICT-PRIVATE"}):
+        cases.append(({"http_status": 200, "body": {"data": [dict(row, **change)]}}, "malformed"))
+    cases += [({"http_status": 200, "body": {"data": [row, row]}}, "malformed"),
+              ({"http_status": 200, "body": {"data": [row] * (op.ROW_CAP + 1)}}, "truncated"),
+              ({"http_status": 200, "body": {"data": [], "rows_before_limit": 1}}, "truncated")]
+    for reply, expected in cases:
+        bundle = copy.deepcopy(base)
+        bundle["aggregates"][0]["reply"] = reply
+        report = module.diagnose(bundle)
+        got = _a1_cell(report)
+        check("T069 query %s cannot masquerade as zero" % expected, report["state"] == "partial"
+              and got["state"] == expected and got["weighted_count"] is got["sampled_rows"] is None)
+        check("T069 failed selection retains healthy neighbor",
+              _a1_cell(report, "find_new_hot_pools", "other")["state"] == "empty")
+
+
+def test_a1_telemetry_invalid_contract():
+    import copy
+    module = _a1_module()
+    if module is None:
+        return
+    base = _a1_bundle()
+    cases = [None, [], {}, dict(base, schema=True), dict(base, storage_schema="calls-v2"),
+             dict(base, captured_at="2026-10-18 11:00:00"), dict(base, captured_at=True),
+             dict(base, captured_at="2026-02-30T11:00:00Z"), dict(base, extra="T069-TOP-PRIVATE")]
+    for field, value in (("start", "2026-01-01T00:00:00Z"), ("start", "2026-10-18T11:00:00Z"),
+                         ("end", "2026-10-19T00:00:00Z"), ("end", "bad-T069-TIME-PRIVATE"),
+                         ("tool", []), ("cohort", "T069-COHORT-PRIVATE")):
+        bundle = copy.deepcopy(base)
+        bundle["aggregates"][0][field] = value
+        cases.append(bundle)
+    duplicate = copy.deepcopy(base)
+    duplicate["aggregates"].append(copy.deepcopy(duplicate["aggregates"][0]))
+    cases.extend([duplicate, dict(base, aggregates=base["aggregates"] * 3)])
+    for number in (float("nan"), float("inf"), float("-inf")):
+        bundle = copy.deepcopy(base)
+        bundle["aggregates"][0]["reply"]["body"]["data"][0]["weighted_count"] = number
+        cases.append(bundle)
+    for bundle in cases:
+        try:
+            module.diagnose(bundle)
+        except ValueError as exc:
+            check("T069 invalid bundle has a fixed safe error", len(str(exc)) < 80
+                  and "PRIVATE" not in str(exc) and "2026" not in str(exc))
+        else:
+            check("T069 invalid bundle is refused", False)
+
+
+def test_a1_telemetry_legacy_dimensions():
+    import json
+    module = _a1_module()
+    if module is None:
+        return
+    report = module.diagnose(_a1_bundle())
+    check("T069 fixed report schema", report["schema"] == "telemetry-diagnostics-report-v1")
+    for key in ("chain", "request_latency"):
+        check("T069 legacy %s is not recorded" % key, report["capabilities"][key]["state"] == "not_recorded")
+    for key in ("reason_breakdown", "error_rate", "liquidity_tool", "caller_identity"):
+        check("T069 %s is not queried" % key, report["capabilities"][key]["state"] == "not_queried")
+    check("T069 identity is explicitly unsupported", "unsupported_by_anonymous_diagnostics"
+          in json.dumps(report["capabilities"]["caller_identity"]))
+    check("T069 cannot claim a gate or readiness", report["production_gate_evaluated"] is False
+          and report["interpretation"] == "descriptive; not customer, readiness, or service-quality evidence")
+    check("T069 cannot invent missing measurements", all(key not in json.dumps(report)
+          for key in ('"p95"', '"latency_ms"', '"unknown_rate"', '"customers"', '"score"', '"slo"')))
+
+
+def test_a1_telemetry_private_input_and_offline_boundary():
+    import copy
+    import json
+    import socket
+    import subprocess
+    import tempfile
+    import urllib.request
+    from pathlib import Path
+    from unittest.mock import patch
+    module = _a1_module()
+    if module is None:
+        return
+    bundle = _a1_bundle()
+    bundle["aggregates"][0]["reply"].update(private="T069-ENVELOPE-PRIVATE", error="T069-ERROR-PRIVATE")
+    bundle["aggregates"][0]["reply"]["body"]["private"] = "T069-BODY-PRIVATE"
+    def blocked(*args, **kwargs):
+        raise AssertionError("offline_boundary_invoked")
+    with patch.object(socket, "socket", blocked), patch.object(socket, "create_connection", blocked), \
+            patch.object(subprocess, "run", blocked), patch.object(subprocess, "Popen", blocked), \
+            patch.object(urllib.request, "urlopen", blocked), patch.object(urllib.request.OpenerDirector, "open", blocked):
+        safe = json.dumps(module.diagnose(copy.deepcopy(bundle)))
+    check("T069 raw envelope/body/error never reflected", "T069-" not in safe)
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        src, out = root / "T069-INPUT-PATH-PRIVATE.json", root / "T069-OUTPUT-PATH-PRIVATE.json"
+        src.write_text(json.dumps(bundle), encoding="utf-8")
+        results = [_a1_cli(["--input", src, "--output", out]), _a1_cli([]),
+                   _a1_cli(["--T069-ARG-PRIVATE"]),
+                   _a1_cli(["--input", root / "T069-MISSING-PATH-PRIVATE", "--output", root / "unused.json"])]
+        text = "".join(r.stdout + r.stderr for r in results) + out.read_text(encoding="utf-8")
+        sentinels = ["T069-INPUT-PATH-PRIVATE", "T069-OUTPUT-PATH-PRIVATE", "T069-ARG-PRIVATE",
+                     "T069-MISSING-PATH-PRIVATE", "T069-TOKEN-PRIVATE", "T069-ACCOUNT-PRIVATE",
+                     "T069-GH-PRIVATE", "T069-ENVELOPE-PRIVATE", "T069-BODY-PRIVATE", "T069-ERROR-PRIVATE"]
+        check("T069 child errors do not echo private text", all(s not in text for s in sentinels), text[:100])
+        check("T069 default/unknown arguments/input failure refuse without network", results[0].returncode == 0
+              and all(r.returncode != 0 for r in results[1:]) and "Traceback" not in text
+              and "offline_boundary_invoked" not in text)
+
+
+def test_a1_telemetry_cli_preserves_files():
+    import hashlib
+    import json
+    import tempfile
+    from pathlib import Path
+    module = _a1_module()
+    if module is None:
+        return
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        src = root / "input.json"
+        src.write_text(json.dumps(_a1_bundle()), encoding="utf-8")
+        before = hashlib.sha256(src.read_bytes()).hexdigest()
+        first, second = root / "first.json", root / "second.json"
+        a, b = _a1_cli(["--input", src, "--output", first]), _a1_cli(["--input", src, "--output", second])
+        check("T069 real fixture CLI is deterministic", a.returncode == b.returncode == 0
+              and first.read_bytes() == second.read_bytes())
+        saved = first.read_bytes()
+        existing, alias = _a1_cli(["--input", src, "--output", first]), _a1_cli(["--input", src, "--output", src])
+        check("T069 preserves existing output and input aliases", existing.returncode != 0
+              and alias.returncode != 0 and first.read_bytes() == saved
+              and hashlib.sha256(src.read_bytes()).hexdigest() == before)
+        failed_bundle = _a1_bundle()
+        failed_bundle["aggregates"][0]["reply"] = {"http_status": 403, "body": {"data": []}}
+        failed_src, failed_out = root / "failed-input.json", root / "failed-output.json"
+        failed_src.write_text(json.dumps(failed_bundle), encoding="utf-8")
+        failed = _a1_cli(["--input", failed_src, "--output", failed_out])
+        report = json.loads(failed_out.read_text(encoding="utf-8"))
+        check("T069 failed query retains a report and failing native exit", failed.returncode == 1
+              and report["state"] == "partial" and _a1_cell(report)["state"] == "http_error")
+        invalids = ['{"schema":"one","schema":"two"}', '{"value":NaN}', '[[' * 1100,
+                    '"' + 'x' * (1024 * 1024) + '"', '{bad']
+        for i, raw in enumerate(invalids):
+            bad, out = root / ("bad%d.json" % i), root / ("bad-out%d.json" % i)
+            bad.write_text(raw, encoding="utf-8")
+            run = _a1_cli(["--input", bad, "--output", out])
+            check("T069 duplicate/deep/nonfinite/oversize/malformed input refuses safely", run.returncode != 0
+                  and "Traceback" not in run.stderr + run.stdout and "one" not in run.stderr + run.stdout)
+
+
 def main():
     print("=" * 68)
     print("Usage gate: does the counting rule count the right thing?")

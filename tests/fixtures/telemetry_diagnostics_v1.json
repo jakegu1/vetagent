@@ -1,0 +1,25 @@
+{
+  "schema": "telemetry-diagnostics-input-v1",
+  "storage_schema": "legacy-v1",
+  "captured_at": "2026-10-18T11:00:00Z",
+  "aggregates": [
+    {
+      "tool": "assess_token_risk",
+      "cohort": "self",
+      "start": "2026-10-18T10:00:00Z",
+      "end": "2026-10-18T11:00:00Z",
+      "reply": {"http_status": 200, "body": {"data": [
+        {"tool": "assess_token_risk", "cohort": "self", "verdict": "unknown",
+         "minute": "2026-10-18 10:01:00", "weighted_count": 6,
+         "sampled_rows": 2, "max_sample_interval": 3}
+      ]}}
+    },
+    {
+      "tool": "find_new_hot_pools",
+      "cohort": "other",
+      "start": "2026-10-18T10:30:00Z",
+      "end": "2026-10-18T11:00:00Z",
+      "reply": {"http_status": 200, "body": {"data": []}}
+    }
+  ]
+}
