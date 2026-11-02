@@ -57,6 +57,16 @@ Commit only this named correction as
 `T-072: named change (A missing-commit fixture contract)`; retain the first red and
 two-error fixed-source result. All original13 test methods/helpers remain exact.
 
+Named new-test change B addresses an independent material finding at87a5a70:
+staging hardlinks were accepted. Add only a real same-volume synthetic hardlink
+subcase to the third new method. Prove the valid baseline, alias identity and
+link count2, then require both readers to refuse without changing fixture or
+target bytes. Preserve its actual not-raised red before a separate minimal source
+fix. The new staging must require reliable single-link metadata; absent/invalid
+metadata refuses. Keep committed-file semantics and all old controls unchanged.
+Use exact tests-only title `T-072: named change (B staging hardlink refusal)`.
+The original reviewed source/finding remains retained, not retrospectively passed.
+
 ## Acceptance criteria
 
 1. Keep the original15-name ATTEMPT_SIDECARS mapping and every original cap
