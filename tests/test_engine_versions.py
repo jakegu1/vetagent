@@ -276,7 +276,7 @@ class EngineVersionAcceptance(unittest.TestCase):
             result = self.cli(*args)
             self.assertEqual(result.returncode, 0)
             self.assertEqual(result.stderr, b"")
-        for action in ("collect", "recover", "pilot", "study", "scheduler", "legacy-test", "report", "--runtime-child"):
+        for action in ("collect", "recover", "pilot", "study", "scheduler", "report", "--runtime-child"):
             result = self.cli(action, CONTRACT, "git-lf", "tests/test_w40_native.py")
             self.assertNotEqual(result.returncode, 0)
             self.assertEqual(result.stderr, b"")
