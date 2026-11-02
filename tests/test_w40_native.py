@@ -1324,8 +1324,8 @@ class InterruptedProgressStagingTests(unittest.TestCase):
                 (f.directory / name).unlink()
             self.assertIsNone(f.n.captured_prefix(f.directory))
             self.assertEqual(self._observe(f), (f.invocation, f.headers))
-            refs = f.n.evidence_inventory(f.journal, f.private)["attempts"][0]["sidecars"]
-            self.assertTrue(all(refs[name] is None for name in ("commit.json", "end.json", "progress.json")))
+            with self.assertRaisesRegex(f.n.NativeError, "^evidence_mismatch$"):
+                f.n.evidence_inventory(f.journal, f.private)
             self.assertEqual(path.read_bytes(), _json({"bytes": 2, "sha256": f.n.sha(b"{}"), "state": "observed"}))
 
     def test_pending_progress_handoff_binds_bytes_and_absence(self):
@@ -1429,7 +1429,11 @@ class InterruptedProgressStagingTests(unittest.TestCase):
                 pending.write_bytes(_json({"bytes": 2, "sha256": n.sha(b"{}"), "state": "observed"}))
                 alias = None
                 if bad in ("unknown", "other_pending"):
+                    (f.directory / "end.json").unlink()
+                    self.assertEqual(self._observe(f), (f.invocation, f.headers))
+                    n.evidence_inventory(f.journal, f.private)
                     (f.directory / ("unknown.bin" if bad == "unknown" else "end.json.pending")).write_bytes(b"")
+                    self.assertEqual(len(list(f.directory.iterdir())), 15)
                 elif bad == "directory":
                     pending.unlink()
                     pending.mkdir()
@@ -1461,11 +1465,10 @@ class InterruptedProgressStagingTests(unittest.TestCase):
                     if bad == "missing_progress_end_commit":
                         self.assertIsNone(n.captured_prefix(f.directory))
                         # A positive packet body still requires committed bytes; staging cannot provide them.
-                        n.seal(f.journal, f.private, f.packet)
-                        before = self._snapshot(f.private)
                         with self.assertRaisesRegex(n.NativeError,
                                 "^raw_directory_refused$" if self._ci_refuses() else "^evidence_mismatch$"):
-                            n.read_prepared(f.runtime, f.private)
+                            n.private_paths(f.runtime, f.private, f.store)
+                            n.seal(f.journal, f.private, f.packet)
                         self.assertEqual(self._snapshot(f.private), before)
                     else:
                         with self.assertRaises(n.NativeError):
