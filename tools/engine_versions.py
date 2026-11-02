@@ -537,13 +537,16 @@ def _quarantine_scope(scope, operation_id, reason):
 def _admission_state(scope):
     if os.path.lexists(scope / "quarantine.json"):
         raise VersionError("validation_quarantined")
-    for operation in (scope / "operations").iterdir():
+    for count, operation in enumerate((scope / "operations").iterdir(), 1):
         try:
-            require(operation.is_dir() and len(operation.name) == 32, "validation_quarantined")
+            require(count <= OPERATION_CAP and stat.S_ISDIR(_metadata(operation).st_mode)
+                and len(operation.name) == 32 and all(c in "0123456789abcdef" for c in operation.name),
+                "validation_quarantined")
             state = _json(_read_file(operation / "state.json", RESULT_CAP))
-            if state.get("status") != "finished":
-                _quarantine_scope(scope, operation.name, "unfinished_operation")
-                raise VersionError("validation_quarantined")
+            require(type(state) is dict and set(state) == {"status", "operation_id"}
+                and type(state["status"]) is str and state["status"] == "finished"
+                and type(state["operation_id"]) is str and state["operation_id"] == operation.name,
+                "validation_quarantined")
         except (OSError, VersionError):
             _quarantine_scope(scope, operation.name, "unfinished_operation")
             raise VersionError("validation_quarantined") from None
