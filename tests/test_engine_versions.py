@@ -768,6 +768,65 @@ class B12ReviewRegressionAcceptance(unittest.TestCase):
                         self.assertEqual(result["legacy_tests"]["child_exit_code"], 0)
                         self.assertEqual(result["legacy_tests"]["status"], "failed")
 
+    def test_finished_operation_state_requires_exact_identity(self):
+        modes = ("valid", "foreign_id", "missing_id", "integer_id", "null_id", "list_id",
+                 "extra_key", "boolean_status", "nonobject", "malformed", "duplicate_key",
+                 "missing_file", "running", "unknown_status", "invalid_directory", "linked_state", "overcount")
+        for mode in modes:
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory(prefix="t073-review-m2-") as directory:
+                m = self.subject()
+                scope = m._scope_path(Path(directory) / "synthetic-scope")
+                identity = "a" * 32 if mode != "invalid_directory" else "g" * 32
+                operation = scope / "operations" / identity
+                operation.mkdir()
+                state = {"status": "finished", "operation_id": identity}
+                if mode == "foreign_id":
+                    state["operation_id"] = "b" * 32
+                elif mode == "missing_id":
+                    state.pop("operation_id")
+                elif mode in ("integer_id", "null_id", "list_id"):
+                    state["operation_id"] = {"integer_id": 4, "null_id": None, "list_id": []}[mode]
+                elif mode == "extra_key":
+                    state["unproved"] = True
+                elif mode == "boolean_status":
+                    state["status"] = True
+                elif mode in ("running", "unknown_status"):
+                    state["status"] = "running" if mode == "running" else "retired_somehow"
+                elif mode == "nonobject":
+                    state = []
+                raw = encoded(state)
+                if mode == "malformed":
+                    raw = b"{"
+                elif mode == "duplicate_key":
+                    raw = ('{"status":"running","status":"finished","operation_id":"' + identity + '"}').encode()
+                path = operation / "state.json"
+                if mode != "missing_file":
+                    path.write_bytes(raw)
+                if mode == "linked_state":
+                    os.link(path, operation / "state-alias.json")
+                if mode == "overcount":
+                    for number in range(m.OPERATION_CAP):
+                        other_id = format(number, "032x")
+                        other = scope / "operations" / other_id
+                        other.mkdir()
+                        (other / "state.json").write_bytes(encoded({"status": "finished", "operation_id": other_id}))
+                admitted = False
+                error = None
+                try:
+                    m.validation_admission(scope)
+                    admitted = True
+                except Exception as observed:
+                    error = observed
+                if mode == "valid":
+                    self.assertTrue(admitted)
+                    self.assertIsNone(error)
+                    self.assertFalse((scope / "quarantine.json").exists())
+                else:
+                    self.assertFalse(admitted, "unproved completed-state identity admitted a successor")
+                    self.assertIsInstance(error, m.VersionError)
+                if mode != "missing_file":
+                    self.assertEqual(path.read_bytes(), raw)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
