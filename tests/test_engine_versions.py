@@ -298,6 +298,97 @@ class EngineVersionAcceptance(unittest.TestCase):
                 self.assertEqual(value["selected_profile"], "git-lf")
                 self.assertEqual(value["source_fixture"]["status"], "passed")
                 self.assertEqual(value["loaded_runtime"]["status"], "passed")
+    def test_r2_all_valid_result_layer_vectors(self):
+        m = self.subject()
+        self.assertTrue(callable(getattr(m, "_validate_result_layers", None)), "T-071 R2 pure result-layer guard is missing")
+        vectors = (
+            ("fixture_and_present_runtime_pass_history_not_checked", "passed", "passed", "not_evaluated", "not_evaluated"),
+            ("good_fixture_wrong_loaded_runtime", "passed", "failed", "not_evaluated", "not_evaluated"),
+            ("good_fixture_runtime_not_checked", "passed", "not_evaluated", "not_evaluated", "not_evaluated"),
+            ("known_absent_history_stays_unavailable", "passed", "passed", "unavailable", "unavailable"),
+            ("inconclusive_history_stays_unknown", "passed", "passed", "unknown", "unknown"),
+        )
+        for label, fixture, runtime, record, interpreter in vectors:
+            value = {"historical_execution_qualified": False}
+            for name, status, token in zip(LAYERS, (fixture, runtime, record, interpreter), "abcd"):
+                if name in LAYERS[2:]:
+                    reason = {"not_evaluated": "historical_record_not_supplied" if name == LAYERS[2] else "historical_interpreter_not_examined",
+                              "unavailable": "historical_record_unavailable" if name == LAYERS[2] else "historical_interpreter_unavailable",
+                              "unknown": "historical_record_unknown" if name == LAYERS[2] else "historical_interpreter_unknown"}[status]
+                else:
+                    reason = "runtime_mismatch" if status == "failed" else None
+                value[name] = {"status": status, "reason": reason,
+                               "evidence_sha256": [token * 64] if status == "passed" else []}
+            before = encoded(value)
+            with self.subTest(vector=label), patch.object(m.subprocess, "run", side_effect=AssertionError("pure guard performed IO")):
+                self.assertIs(m._validate_result_layers(value), value)
+            self.assertEqual(encoded(value), before)
+
+    def test_r2_rejects_result_layer_promotions(self):
+        m = self.subject()
+        self.assertTrue(callable(getattr(m, "_validate_result_layers", None)), "T-071 R2 pure result-layer guard is missing")
+        base = {"historical_execution_qualified": False,
+                "source_fixture": {"status": "passed", "reason": None, "evidence_sha256": ["a" * 64]},
+                "loaded_runtime": {"status": "passed", "reason": None, "evidence_sha256": ["b" * 64]},
+                "historical_record_tuple": {"status": "not_evaluated", "reason": "historical_record_not_supplied", "evidence_sha256": []},
+                "historical_interpreter": {"status": "not_evaluated", "reason": "historical_interpreter_not_examined", "evidence_sha256": []}}
+        bad = []
+        for label, layer in (("fixture_promotes_historical_tuple", LAYERS[2]),
+                             ("current_interpreter_promotes_historical_interpreter", LAYERS[3])):
+            value = copy.deepcopy(base)
+            value[layer] = {"status": "passed", "reason": None, "evidence_sha256": ["c" * 64]}
+            bad.append((label, value))
+        value = copy.deepcopy(base)
+        value["historical_execution_qualified"] = True
+        bad.append(("global_history_pass_from_fixture", value))
+        value = copy.deepcopy(base)
+        value["source_fixture"] = {"status": "failed", "reason": "source_mismatch", "evidence_sha256": []}
+        bad.append(("runtime_pass_without_matching_fixture", value))
+        value = copy.deepcopy(base)
+        value["loaded_runtime"] = copy.deepcopy(value["source_fixture"])
+        bad.append(("fixture_status_and_evidence_copied_into_runtime", value))
+        for label, layer, key, replacement in (
+            ("unexamined_history_with_fabricated_evidence", LAYERS[2], "evidence_sha256", ["c" * 64]),
+            ("unavailable_history_with_execution_evidence", LAYERS[3], "status", "unavailable"),
+            ("invalid_hash", LAYERS[0], "evidence_sha256", ["not-a-sha"]),
+            ("arbitrary_reason", LAYERS[1], "reason", "PRIVATE-SOURCE-SENTINEL"),
+            ("unknown_status", LAYERS[0], "status", "assumed_passed"),
+            ("extra_layer_key", LAYERS[0], "extra", True),
+        ):
+            value = copy.deepcopy(base)
+            value[layer][key] = replacement
+            if label == "unavailable_history_with_execution_evidence":
+                value[layer].update(reason="historical_interpreter_unavailable", evidence_sha256=["c" * 64])
+            bad.append((label, value))
+        for label, value in bad:
+            with self.subTest(vector=label), self.assertRaises(m.VersionError) as raised:
+                m._validate_result_layers(value)
+            self.assertEqual(raised.exception.code, "invalid_result_layers")
+
+    def test_r2_real_receipt_uses_layer_guard(self):
+        import io
+        m = self.subject()
+        self.assertTrue(callable(getattr(m, "_validate_result_layers", None)), "T-071 R2 pure result-layer guard is missing")
+        refusal = m.VersionError("invalid_result_layers")
+        with patch.object(m, "_validate_result_layers", side_effect=refusal) as guard:
+            value = m.verify_source(CONTRACT, "unknown")
+        self.assertEqual(guard.call_count, 1)
+        self.receipt(value)
+        self.assertEqual(value["reason"], "invalid_result_layers")
+        self.assertNotEqual(value["wrapper_exit_code"], 0)
+        forged = m._receipt(CONTRACT, "git-lf")
+        forged.update(invocation_status="completed", wrapper_exit_code=0)
+        stream = io.BytesIO()
+        with patch.object(m, "verify_source", return_value=forged), \
+                patch.object(m, "_validate_result_layers", side_effect=refusal) as guard, \
+                patch.object(m.sys, "stdout", types.SimpleNamespace(buffer=stream)):
+            native_exit = m.main(["verify-source", CONTRACT, "git-lf"])
+        self.assertEqual(guard.call_count, 1)
+        emitted = json.loads(stream.getvalue())
+        self.receipt(emitted)
+        self.assertEqual(emitted["reason"], "invalid_result_layers")
+        self.assertNotEqual(native_exit, 0)
+        self.assertEqual(emitted["wrapper_exit_code"], native_exit)
 
 
 if __name__ == "__main__":
