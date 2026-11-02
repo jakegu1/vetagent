@@ -1,19 +1,19 @@
 {
- "window_start": "2026-10-25T13:47:02Z",
- "window_end": "2026-11-01T13:47:02Z",
+ "window_start": "2026-10-26T16:32:08Z",
+ "window_end": "2026-11-02T16:32:08Z",
  "counts": {
-  "low": 12,
-  "medium": 19,
+  "low": 11,
+  "medium": 21,
   "high": 1,
-  "unknown": 21
+  "unknown": 23
  },
  "excluded_clients": [
   "vetagent-ci-smoke"
  ],
  "unknown_why": {
-  "coverage|sellability:no record": 19,
-  "coverage|sellability:chain not covered": 1,
-  "coverage|liquidity:unpriced|sellability:no record": 1
+  "coverage|sellability:no record": 20,
+  "coverage|liquidity:unpriced|sellability:no record": 2,
+  "coverage|sellability:chain not covered": 1
  },
  "high_why": {
   "driver=honeypot": 1
