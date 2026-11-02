@@ -9,13 +9,21 @@ an old plan, run a native collector, or change the sole production engine in `sr
 ```
 python tools/engine_versions.py verify-source w40-v1-e3ec46a git-lf
 python tools/engine_versions.py verify-source w40-v1-e3ec46a observed-windows-crlf
+python tools/engine_versions.py legacy-test w40-v1-e3ec46a git-lf tests/test_w40_native.py
+python tools/engine_versions.py legacy-test w40-v1-e3ec46a git-lf tests/test_w40_native_clock.py
+python tools/engine_versions.py legacy-test w40-v1-e3ec46a git-lf tests/test_dataset_replayable.py
+python tools/engine_versions.py adapter-test w40-v1-e3ec46a git-lf InterruptedProgressStagingTests
 ```
 
 The profile is mandatory. Default/help performs no verification. Missing/unknown contract
 or profile refuses; host OS, checkout line endings and failures cannot select another
-profile. `legacy-test`, collect, recover, report, study, pilot and scheduler are unsupported.
+profile. Collect, recover, report, study, pilot and scheduler are unsupported commands.
 No arbitrary test/source path, executable, commit, old record or interpreter input exists.
-Future historical-test dispatch is a separate task; existing workflow commands are unchanged.
+Only the three original runners above are accepted by legacy-test. Both explicit historical
+profiles are supported; configured historical dispatch uses git-lf. Adapter-test accepts
+only the literal class and git-lf. Workflow registration remains root-owned: the helper
+reports registration_pending for the unchanged46-command workflow and registered only
+for the exact reviewed47 commands. A focused pass is not an actual47 execution.
 
 ## Source and execution checks
 
@@ -43,7 +51,7 @@ A fresh child uses `-I -S -B`: no parent module state, PYTHONPATH, site packages
 It checks the actual loaded original native/core/risk paths, original `code_manifest()`
 and `engine_bindings()` (code filenames, compiled functions, defaults, closures and RPC
 roots). Socket and descendant-process actions are refused in this verification child.
-No engine assessment, acquisition or native test runner executes. Its interpreter hash,
+No engine assessment, acquisition or native test runner executes in verify-source. Its interpreter hash,
 version/cache tag, source manifest and predicate evidence are recorded as a digest.
 
 The child also validates an original synthetic empty-source core plan without changing its
@@ -72,18 +80,79 @@ categories, not private host paths or arbitrary exception prose.
 Historical layers stay `not_evaluated` with fixed reasons and empty evidence. Missing source
 objects/runtime may be `unavailable`; examined mismatches are `failed`, unexamined dimensions
 are not fabricated failures. `historical_execution_qualified` is always false. Legacy tests
-are `not_run`, and positive production-V2 compatibility with the historical native adapter
+are `not_run` for verify-source/refusal; a legacy-test receipt separately records the actual
+original test execution and child exit. Positive production-V2 compatibility with the historical native adapter
 is `unsupported`. No fixture/runtime success promotes either historical layer.
 
 ## Test responsibilities and holds
 
-This slice preserves the existing native commands and all old assertions. A later explicit
-dispatch task must run the complete old native GET/RPC/cache/context and datetime contracts
-in V1, retain the current dataset runner plus the entire historical dataset version, and
-independently verify today's actual command/child execution. Those native tests are V1-only;
+The historical dispatch runs the complete old native GET/RPC/cache/context and datetime contracts
+in V1, while the current dataset runner remains current and the entire historical dataset
+version runs once within the version suite. The workflow guard checks today's exact commands.
+Those native tests are V1-only;
 current production risk/MCP/HTTP/benchmark/numeric regressions retain their distinct duties.
 Repaired V2 must still be rejected by the original native source predicates. Rejection is
 a negative guarantee and not positive V2 native execution evidence.
+
+## Contemporary adapter and actual child evidence
+
+The separate eight-member adapter context combines six fixed V1 dependency blobs with the
+actual candidate's current native adapter and unchanged current native-test file. It does
+not modify the closed eleven-member registry. Current HEAD/tree/blob/canonical/physical-raw
+origins are recorded and rechecked; current members are not pinned forever to an older fix.
+The only selected class runs all three current staging regressions. Its source-fixture pass
+refers solely to this composed context, not original-V1 membership or production behavior.
+The receipt schema is engine-adapter-regression-v1, with domain
+current_adapter_on_v1_dependencies and explicit false historical/original-V1/production
+qualification fields. Positive V2 historical-native compatibility remains unsupported.
+
+A different fixed test child uses the same isolated interpreter flags, checks original
+code_manifest and engine_bindings in that actual test process, then runs the unchanged
+original __main__ harness. It observes exact top-level test IDs; nested calls to another
+test function remain separately recorded internal calls. Dataset pass/fail/not-checked
+counters remain the original dynamic values. No whole native/clock positive is embedded
+in version-suite unit tests; those units use controlled small children/spies.
+
+Actual observed command representations are preserved in private evidence: Windows command
+line strings are not guessed into POSIX argv. Direct Popen.poll values are their actual
+values, including negative/signal exits. Deeper unexported commands/exits are null with
+not_recorded state. Original lifecycle assertions remain labelled original harness evidence;
+they never become independent exit0 telemetry. descendant_observations_complete is false
+even when test_execution_qualified is true. Neither implies complete-tree retirement.
+
+The new outer child bounds are native900s, clock180s and dataset/adapter120s; each recorded
+raw stream is at most1MiB and each public receipt128KiB. Private metadata is bounded by1MiB,
+256 direct/audit/nested observations and65 top-level ID entries; dropped observations are
+explicit and an unobserved direct owner fails closed. A validation scope holds at most16
+operations. These bounds do not change original fixture/process/source/scientific limits.
+Original output hashes describe a complete stream only when its completeness flag is true;
+otherwise they bind only the retained prefix. All operation views and partial evidence are
+retained, including on failed or uncertain executions.
+
+## Quarantine admission interface
+
+The root47 operator must pin one dedicated external non-Git directory in
+VETAGENT_VALIDATION_SCOPE and inherit it into every nested version-suite/dispatcher child.
+Without it, the dispatcher uses a persistent external TEMP scope keyed by workspace path.
+The private scope contains operations, atomic state/intent/observation records and an
+immutable quarantine.json marker. TEMP, CI/GHA, actual interpreter and commands are recorded.
+CI/GHA are never cleared by the dispatcher. Unit-negative fixtures have their own explicit
+private scopes; they cannot clear the real operation's quarantine.
+
+Before EVERY successor command, the root operator calls
+`validation_admission(scope)` from this helper. It must refuse admission on a quarantine,
+unfinished operation, corrupt state or unknown admission owner. A nested dataset timeout
+therefore blocks a later native command even if an ordinary local runner would keep going
+after a nonzero test. Calling the ordinary runner without this independently reviewed
+operator does not satisfy the new full-gate contract.
+
+Timeout/interruption/overflow, incomplete output or missing/uncertain final ownership
+observation persist quarantine before returning. Top-child exit, waiting, a new demand or
+changing a ledger cannot clear it. There is no automatic clear, process-tree killer or
+recovery API. Root must separately qualify incident-bound owned-child retirement before
+allowing a later heavy operation. Do not change scope to bypass an unresolved real incident.
+The root operator's actual admission/notification propagation, including nested failures,
+requires independent small-fixture readiness before any full47 slot is granted.
 
 An internal pure guard checks all four result layers before returning a verification and
 again before emitting a CLI receipt. It rejects historical promotion, a passed runtime
