@@ -1385,6 +1385,13 @@ def attempt_sidecars(directory, error):
         cap = ROW_CAP if path.name == "progress.json.pending" else ATTEMPT_SIDECARS.get(path.name)
         if cap is None or not path.is_file() or path.is_symlink() or path.stat().st_size > cap:
             fail(error)
+        if path.name == "progress.json.pending":
+            try:
+                links = path.lstat().st_nlink
+            except (OSError, AttributeError):
+                fail(error)
+            if type(links) is not int or links != 1:
+                fail(error)
 
 
 def evidence_inventory(journal, private, events=None):
