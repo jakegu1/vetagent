@@ -3,13 +3,17 @@
 > This page holds only what the lead needs from you. The project's own dashboard, with its
 > deadlines and gates, is `docs/OWNER.md` (generated). Messages to you are in Chinese; files
 > here are English because the repository is English-only. Maintained by the project lead (AI).
-> Last updated: 2026-11-01 (Codex)
+> Last updated: 2026-11-02 (Codex)
 
 ## Status in one line
 
-T066 has completed normal source/master publication with45 required steps and
-two actual locked builds on each exact head. T067 addresses the bounded snapshot
-admission/main-status seams. T068's price candidates remain unpublished: an
+T067 has completed normal source/master publication with45 required steps and
+two actual locked builds on each exact head; its first actual normal scheduled
+snapshot and subsequent45-step CI qualify. T069's offline diagnostics pass both
+author and independent actual45 checks; final review/integration/release remain.
+T071 implements the approved historical/current source separation; independent
+R1 requires complete result-vector tests before whole-gate acceptance. T068's
+price candidates remain unpublished: an
 initially missed frozen native engine contract rejects that source change.
 No pin/test is weakened; source-version separation needs its own scoped design
 and qualification. Historical incidence is not measured. Independent reviews,

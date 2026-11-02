@@ -1,6 +1,6 @@
 # Lead state
 
-Last updated: 2026-11-01 by Codex. This is the current baton, not a release log.
+Last updated: 2026-11-02 by Codex. This is the current baton, not a release log.
 
 ## Current source, science boundary and engineering work
 
@@ -25,10 +25,49 @@ the completed actual study closure does not repair that separate unsupported cas
 
 | Task | Stage | Owner | Next action |
 |---|---|---|---|
-| T-067 / W7 | source accepted44174ea after R2 and two exact complete45 gates | lead | Complete normal integration/generation/full gates, source/master CI with locked builds and natural scheduled trial |
+| T-067 / W7 | published e3ec46a; first actual normal scheduled trial qualified | lead | Done; retain original failures and completed finite followup |
+| T-069 / offline diagnostics | author and independent actual45 pass atf85102f; final independent review sealing | lead / reviewer | Accept final source reviews, then integrate and obtain actual integrated/release evidence |
+| T-071 / source identity | source764113e passes14 focused; R1 requires the accepted result-vector coverage | lead / executor | Add named tests first and pure internal receipt guard; retain original14, then obtain fresh review and registered-source full gates |
 | T-068 / market correctness | dependency-held, unpublished partial candidate | lead | Resolve production/research source-version contract separately; do not change frozen pins or skip tests |
 | T-047 / W40 | held, genuine mandatory security verdict incomplete | lead / required reviewer | Preserve candidate and existing qualified handoff; no replay through another AI |
 | T-049 / T-050 | dependency-held drafts | lead | Bind accepted integrated archive/runtime APIs before implementation |
+
+T067's source and master push CI41326406742/41326946792 actually pass45 required
+steps, upstream/backfill checks and two genuine locked builds each. First actual
+scheduled run41339266312 checks out the published producer e3ec46a and appends789
+pool rows,43 run rows and25 sellability rows, preserving16 ok and9 no_record.
+Actual following bot CI41340128095 executes45 steps at86f9be6; its skipped builds
+are not new build evidence. Prefix/source/parent/log/strict-reader verification
+qualifies the normal handoff. The unique finite followup is complete and deleted.
+Old44/45 cleanup_uncertain remains unexplained; no engine replay, continuous
+coverage, independent outcomes or all-vendor availability is inferred.
+
+The Owner approves the exact historical V1/current production separation in
+ADR-0003 after two independent design rounds. It does not accept T047, activate
+research/native operations or accept the old T068 partial implementation. T071
+implements only fixed source identity/current loaded-runtime verification; actual
+historical test dispatch is a later task. Source fixture success cannot qualify
+historical records or interpreters. Existing source pins and old originals stay
+exact. Both source domains need their own actual execution evidence.
+
+T069 only composes existing bounded anonymous aggregate replies offline, keeping
+query failure, empty, unqueried and unrecorded dimensions separate. It changes no
+production writer, frozen rule, score, caller gate, upstream or research source.
+Its tests-only3016a1b precedes a non-assertion harness correction5fd2fd8 and source
+f85102f. A2 response examples are a separate accepted design awaiting dispatch.
+Production telemetry privacy/caller comparability and timing remain unqualified
+future work, not prerequisites for this offline slice.
+
+T069's author actual45/source/preservation evidence is accepted for source handoff.
+Its extra controller-to-executor digest did not match; cause remains unknown and
+that promise stays false. Independent preparation then refused before any product
+step because it compared complete retention manifests despite one changed mtime.
+All1065 raw identities match. Corrected preparation retains both originals and
+checks actual retention digest separately; whole-ref equality is not relaxed.
+Application-generated ref changes require a quiet execution window as well as
+explicit branch-write freezes. Preparations do not count as a full pass. The
+corrected independent run now actually executes45/45 with native0, qualified
+capture and source/primary/all-ref preservation. Old failed promises remain false.
 
 T066 is completely published at56baead: exact source41003782542 and master
 41004315601 pass45 required steps, upstream/backfill and two actual locked builds
