@@ -160,9 +160,9 @@ STORAGE_DOMAINS = ("legacy-v1", "calls-v2-io", "unsupported")
 
 def _count(value):
     """Accept provider numeric aggregates without accepting nonfinite/negative evidence."""
-    if isinstance(value, bool) or not isinstance(value, (int, float, str, type(None))):
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
         raise ValueError("invalid aggregate")
-    number = float(value) if value is not None and value != "" else 0.0
+    number = float(value)
     if not math.isfinite(number) or number < 0:
         raise ValueError("invalid aggregate")
     return int(number)
