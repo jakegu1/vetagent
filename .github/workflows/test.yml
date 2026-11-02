@@ -58,6 +58,9 @@ jobs:
       - name: Workflow actions and runner images stay pinned
         run: python tests/test_workflow_runtime_pins.py
 
+      - name: Historical fixtures and present loaded runtimes keep separate source identities
+        run: python tests/test_engine_versions.py
+
       - name: Regression tests (offline, real upstream snapshots)
         run: python tests/test_risk.py
 

@@ -64,13 +64,48 @@ Any MCP client (Cursor, opencode, custom agent) works the same way.
 
 | `risk_level` | What it means | What the agent should do |
 |---|---|---|
-| `high` | A fatal or high-severity signal fired | Warn the user and do not proceed without human review |
-| `medium` | Real risk signals present, none fatal | Surface the specific `signals` to the user and let them decide |
-| `low` | No fatal signal found across the checks that ran | Proceed with normal evaluation |
-| `unknown` | **A critical dimension could not be checked** | Treat as *not assessed*. This is **not** a low-risk result — do not use it to justify a trade |
+| `high` | A fatal or high-severity signal fired | Reject the automated path and surface the specific signals |
+| `medium` | Real risk signals present, none fatal | Route to manual review |
+| `low` | No fatal signal found across the checks that ran | Continue normal evaluation; this is not a safety guarantee or order permission |
+| `unknown` | **A critical dimension could not be checked** | Retry only with valid infrastructure/mixed retry guidance; otherwise abstain. Never use it to justify a trade |
 
 `confidence` measures **how complete the input data was**, not how safe the token is.
 `evidence.data_gaps` lists exactly which checks could not run and why.
+
+### Local response-routing example
+
+`examples/assessment_policy.py` consumes existing JSON and returns only `action`, `reason` and
+`retry_after_seconds`. It sends no request, waits for no retry, stores no input and places no
+order. Every returned action is response-handling advice; none authorizes a trade.
+
+These commands are fully local and need no token address or credentials:
+
+```sh
+echo '{"risk_level":"medium"}' | python -B examples/assessment_policy.py --transport http
+echo '{"result":{"structuredContent":{"risk_level":"unknown","unknown_kind":"infrastructure","next_action":"retry","retry_after_seconds":30}}}' | python -B examples/assessment_policy.py --transport mcp
+```
+
+For a real integration, pass the actual HTTP status to `route_http(payload, http_status=200)`
+or `route_mcp(envelope, http_status=200)`; the local CLI uses the default status. A present HTTP
+payload error or MCP top-level error wins even when null. MCP uses only `structuredContent`,
+requires dictionary result/content, and accepts a present `isError` only when exactly false.
+It never parses text content as a fallback or handles a batch envelope as a single response.
+
+An infrastructure/mixed unknown advises retry only when `next_action` is exactly `retry` and
+the delay is an exact non-boolean integer from 1 through 2147483647. Coverage unknowns always
+abstain. Missing kind or invalid/contradictory retry guidance also abstains, regardless of score.
+Only retry advice carries a delay; all other results carry null. No sleep or retry is executed.
+
+This adapter validates only consumed status, envelope, verdict and unknown-guidance fields.
+It does not validate the complete assessment schema: for example, a low response with a malformed
+unused score can still continue evaluation. `checked_at` and `evidence_max_age_seconds` remain
+response context; an integrator must apply its own pre-registered freshness/workflow policy.
+The example neither authenticates the response nor invents a freshness threshold or service goal.
+
+The CLI reads at most one MiB of UTF-8 JSON. Duplicate keys, nonstandard NaN/Infinity literals,
+malformed or oversized input and invalid arguments fail with a fixed diagnostic and nonzero exit,
+without echoing input or credentials. Parser failures from deeply nested text are handled safely.
+A parseable response that leads to abstention exits zero, including an unsupported envelope shape.
 
 > VetAgent reports observable on-chain risk. It does not size positions, does not
 > give financial advice, and cannot detect off-chain risk (team behaviour, social
