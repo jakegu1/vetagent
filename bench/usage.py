@@ -19,6 +19,7 @@ The price is that we have no idea which tokens are popular.
 
 import argparse
 import json
+import math
 import os
 import subprocess
 import sys
@@ -151,7 +152,86 @@ def gate_window(since):
             % (since, ATTRIBUTION_FIXED))
 
 
-def unattributable_calls(account, token, since):
+# This projection is a reporting boundary, not a writer/schema migration.
+STORAGE_SCHEMA_SQL = "if(blob7 = '', 'legacy-v1', if(blob7 = 'calls-v2-io', 'calls-v2-io', 'unsupported'))"
+STORAGE_DOMAINS = ("legacy-v1", "calls-v2-io", "unsupported")
+
+
+def _count(value):
+    """Accept provider numeric aggregates without accepting nonfinite/negative evidence."""
+    if isinstance(value, bool) or not isinstance(value, (int, float, str, type(None))):
+        raise ValueError("invalid aggregate")
+    number = float(value) if value is not None and value != "" else 0.0
+    if not math.isfinite(number) or number < 0:
+        raise ValueError("invalid aggregate")
+    return int(number)
+
+
+def _query_window(since, kind):
+    window = {"kind": kind, "since": since}
+    if kind in ("gate", "pre_floor"):
+        window["attribution_floor_utc"] = ATTRIBUTION_FIXED
+        window["floor_relation"] = ">=" if kind == "gate" else "<"
+    return window
+
+
+def _domain_rows(resp, query_id, since, domain_out, *, window="raw", cap=None,
+                 numbers=("n",), words=()):
+    """Validate all projected rows and save metadata BEFORE any eligibility filtering.
+
+    None means unavailable evidence; [] means an observed empty reply. Counts and cap
+    refer to the provider's returned groups, not unique people or complete acquisition.
+    Unsupported projected values are folded to a fixed word, never reflected.
+    """
+    meta = {"query_id": query_id, "window": _query_window(since, window),
+            "state": "failed", "domains": {}, "row_count": None,
+            "cap": cap, "capped": False, "coverage": "unknown"}
+    if domain_out is not None:
+        domain_out[query_id] = meta
+    rows = rows_of(resp)
+    if rows is None:
+        return None
+    if not isinstance(rows, list):
+        meta["state"] = "malformed"
+        return None
+    meta["row_count"] = len(rows)
+    meta["capped"] = cap is not None and len(rows) >= cap
+    clean, domains = [], {}
+    try:
+        for row in rows:
+            if not isinstance(row, dict) or not isinstance(row.get("storage_schema"), str):
+                raise ValueError("missing projected domain")
+            schema = row["storage_schema"]
+            if schema not in STORAGE_DOMAINS:
+                schema = "unsupported"
+            if any(key not in row for key in (*numbers, *words)):
+                raise ValueError("missing projected column")
+            if any(row[key] is not None and not isinstance(row[key], str) for key in words):
+                raise ValueError("invalid projected column")
+            for key in numbers:
+                _count(row[key])
+            value = _count(row["calls"] if query_id == "Q1" else row["n"])
+            if value > 0:
+                rec = domains.setdefault(schema, {"groups": 0, "count": 0})
+                rec["groups"] += 1
+                rec["count"] += value
+            clean.append(dict(row, storage_schema=schema))
+    except (ValueError, TypeError, OverflowError):
+        meta["state"] = "malformed"
+        return None
+    meta["domains"] = domains
+    meta["state"] = "truncated" if meta["capped"] else ("observed" if rows else "empty")
+    meta["coverage"] = "limited returned subset" if meta["capped"] else "returned groups only"
+    return clean
+
+
+def _not_queried(query_id, since, domain_out, reason):
+    domain_out[query_id] = {"query_id": query_id, "window": _query_window(since, "gate"),
+        "state": "not_queried", "domains": {}, "row_count": None,
+        "cap": 1000, "capped": False, "coverage": reason}
+
+
+def unattributable_calls(account, token, since, *, domain_out=None):
     """Tool calls inside the window that predate the fix. Set aside, never counted.
 
     Returns **None only when the query failed**, and an integer -- including 0 -- when it
@@ -162,17 +242,15 @@ def unattributable_calls(account, token, since):
     both printed nothing at all.
     """
     resp = query(
-        "SELECT sum(_sample_interval) AS n FROM %s WHERE timestamp > now() - %s "
+        "SELECT %s AS storage_schema, sum(_sample_interval) AS n FROM %s WHERE timestamp > now() - %s "
         "AND timestamp < toDateTime('%s') AND %s != '' AND %s != '?' "
-        "AND NOT startsWith(%s, '__')"
-        % (DATASET, since, ATTRIBUTION_FIXED, BLOB["tool"], BLOB["tool"], BLOB["tool"]),
+        "AND NOT startsWith(%s, '__') GROUP BY storage_schema"
+        % (STORAGE_SCHEMA_SQL, DATASET, since, ATTRIBUTION_FIXED, BLOB["tool"], BLOB["tool"], BLOB["tool"]),
         account, token)
-    rows = rows_of(resp)
+    rows = _domain_rows(resp, "Q5", since, domain_out, window="pre_floor")
     if rows is None:
-        return None                      # the query failed; we do not know
-    if not rows:
-        return 0                         # it answered: nothing in the window predates it
-    return int(float(rows[0].get("n") or 0))
+        return None
+    return sum(_count(row["n"]) for row in rows if row["storage_schema"] == "legacy-v1")
 
 
 def evidence_base_lines(set_aside):
@@ -195,14 +273,20 @@ def evidence_base_lines(set_aside):
             "  rows cannot say who called. They count neither for nor against."]
 
 
-def external_callers(account, token, since):
+def external_callers(account, token, since, *, domain_out=None):
     """Distinct (client, calls) that are neither our tooling nor the owner's country."""
     resp = query(
-        "SELECT %s AS client, %s AS country, count() AS n FROM %s "
-        "WHERE timestamp > now() - %s GROUP BY client, country ORDER BY n DESC LIMIT 500"
-        % (BLOB["client"], BLOB["country"], DATASET, since), account, token)
+        "SELECT %s AS storage_schema, %s AS client, %s AS country, count() AS n FROM %s "
+        "WHERE timestamp > now() - %s AND blob7 = '' "
+        "GROUP BY storage_schema, client, country ORDER BY n DESC LIMIT 500"
+        % (STORAGE_SCHEMA_SQL, BLOB["client"], BLOB["country"], DATASET, since), account, token)
+    rows = _domain_rows(resp, "Q2", since, domain_out, cap=500, words=("client", "country"))
+    if rows is None:
+        return None
     out = {}
-    for row in (rows_of(resp) or []):
+    for row in rows:
+        if row["storage_schema"] != "legacy-v1":
+            continue
         client = str(row.get("client") or "").strip().lower()
         country = str(row.get("country") or "").strip().upper()
         if not client or is_self(client) or country in OWNER_COUNTRIES:
@@ -211,7 +295,7 @@ def external_callers(account, token, since):
     return sorted(out.items(), key=lambda kv: -kv[1])
 
 
-def tool_callers(account, token, since):
+def tool_callers(account, token, since, *, domain_out=None):
     """Clients that actually invoked a tool, not clients that merely connected.
 
     This is the discriminator the first two versions of this gate were missing, and the
@@ -241,17 +325,20 @@ def tool_callers(account, token, since):
     cleared.
     """
     resp = query(
-        "SELECT %s AS client, %s AS tool, sum(_sample_interval) AS n, "
+        "SELECT %s AS storage_schema, %s AS client, %s AS tool, sum(_sample_interval) AS n, "
         "count(DISTINCT toDate(timestamp)) AS days FROM %s "
-        "WHERE %s AND %s != '' "
-        "GROUP BY client, tool ORDER BY n DESC LIMIT 200"
-        % (BLOB["client"], BLOB["tool"], DATASET, gate_window(since), BLOB["tool"]),
+        "WHERE %s AND %s != '' AND blob7 = '' "
+        "GROUP BY storage_schema, client, tool ORDER BY n DESC LIMIT 200"
+        % (STORAGE_SCHEMA_SQL, BLOB["client"], BLOB["tool"], DATASET, gate_window(since), BLOB["tool"]),
         account, token)
-    rows = rows_of(resp)
+    rows = _domain_rows(resp, "Q3", since, domain_out, window="gate", cap=200,
+                        numbers=("n", "days"), words=("client", "tool"))
     if rows is None:
         return None                      # query failed; not the same as "nobody called"
     by_client = {}
     for row in rows:
+        if row["storage_schema"] != "legacy-v1":
+            continue
         client = str(row.get("client") or "").strip().lower()
         tool = str(row.get("tool") or "").strip()
         if not client or is_self(client):
@@ -266,7 +353,7 @@ def tool_callers(account, token, since):
     return sorted(by_client.items(), key=lambda kv: -kv[1]["n"])
 
 
-def caller_profile(account, token, since, clients):
+def caller_profile(account, token, since, clients, *, domain_out=None):
     """Timing and verdict spread per client -- what separates a monitor from a user.
 
     Passing "did it call a tool" was necessary and is not sufficient. A thorough MCP
@@ -291,21 +378,26 @@ def caller_profile(account, token, since, clients):
     together rather than have a threshold decide.
     """
     if not clients:
+        if domain_out is not None:
+            _not_queried("Q4", since, domain_out, "no eligible legacy tool labels")
         return {}
     names = ", ".join("'%s'" % c.replace("'", "") for c, _ in clients)
     resp = query(
-        "SELECT %s AS client, %s AS verdict, %s AS country, %s AS method, "
+        "SELECT %s AS storage_schema, %s AS client, %s AS verdict, %s AS country, %s AS method, "
         "toDate(timestamp) AS day, "
         "toHour(timestamp) AS hour, sum(_sample_interval) AS n FROM %s "
-        "WHERE %s AND %s != '' AND %s IN (%s) "
-        "GROUP BY client, verdict, country, method, day, hour ORDER BY client LIMIT 1000"
-        % (BLOB["client"], BLOB["verdict"], BLOB["country"], BLOB["method"], DATASET,
+        "WHERE %s AND %s != '' AND %s IN (%s) AND blob7 = '' "
+        "GROUP BY storage_schema, client, verdict, country, method, day, hour ORDER BY client LIMIT 1000"
+        % (STORAGE_SCHEMA_SQL, BLOB["client"], BLOB["verdict"], BLOB["country"], BLOB["method"], DATASET,
            gate_window(since), BLOB["tool"], BLOB["client"], names), account, token)
-    rows = rows_of(resp)
+    rows = _domain_rows(resp, "Q4", since, domain_out, window="gate", cap=1000,
+                        numbers=("n", "hour"), words=("client", "verdict", "country", "method", "day"))
     if rows is None:
-        return {}
+        return None
     prof = {}
     for row in rows:
+        if row["storage_schema"] != "legacy-v1":
+            continue
         c = str(row.get("client") or "").strip().lower()
         p = prof.setdefault(c, {"verdicts": {}, "hours": set(), "days": set(),
                                 "countries": set(), "country_n": {}, "methods": {},
