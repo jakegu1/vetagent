@@ -1198,6 +1198,226 @@ def test_t031_limits_validation_and_network_block_are_preserved():
     check("T031 external networking guard is observed failing", state["blocked"] == ["external network blocked"])
 
 
+# T-070 acceptance contract: additions only; original tests stay exact.
+@contextmanager
+def _a2_no_effects():
+    import subprocess
+    import time
+    import urllib.request
+    def blocked(*args, **kwargs):
+        raise AssertionError("T070_effect_boundary_invoked")
+    with patch.object(socket, "socket", blocked), patch.object(socket, "create_connection", blocked), \
+            patch.object(subprocess, "run", blocked), patch.object(subprocess, "Popen", blocked), \
+            patch.object(urllib.request, "urlopen", blocked), patch.object(urllib.request.OpenerDirector, "open", blocked), \
+            patch.object(time, "sleep", blocked):
+        yield
+
+
+def _a2_module():
+    from pathlib import Path
+    path = Path(__file__).resolve().parents[1] / "examples" / "assessment_policy.py"
+    check("T070 assessment policy example exists", path.is_file())
+    if not path.is_file():
+        return None
+    spec = importlib.util.spec_from_file_location("t070_policy_acceptance", path)
+    module = importlib.util.module_from_spec(spec)
+    with _a2_no_effects():
+        spec.loader.exec_module(module)
+    return module
+
+
+def _a2_call(function, *args, **kwargs):
+    with _a2_no_effects():
+        return function(*args, **kwargs)
+
+
+def _a2_expected(action, reason, delay=None):
+    return {"action": action, "reason": reason, "retry_after_seconds": delay}
+
+
+def _a2_envelope(payload):
+    return {"jsonrpc": "2.0", "id": 70, "result": {"structuredContent": payload}}
+
+
+def _a2_cli(raw, arguments):
+    import subprocess
+    from pathlib import Path
+    path = Path(__file__).resolve().parents[1] / "examples" / "assessment_policy.py"
+    bootstrap = "\n".join([
+        "import runpy,sys,socket,subprocess,time,urllib.request",
+        "def blocked(*a,**k): raise AssertionError('T070_effect_boundary_invoked')",
+        "socket.socket=blocked", "socket.create_connection=blocked",
+        "subprocess.run=blocked", "subprocess.Popen=blocked", "time.sleep=blocked",
+        "urllib.request.urlopen=blocked", "urllib.request.OpenerDirector.open=blocked",
+        "sys.argv=sys.argv[1:]", "from pathlib import Path",
+        "sys.path.insert(0,str(Path(sys.argv[0]).parent))",
+        "runpy.run_path(sys.argv[0],run_name='__main__')"])
+    env = dict(os.environ, PYTHONIOENCODING="utf-8", CLOUDFLARE_API_TOKEN="T070-PRIVATE-TOKEN",
+               CLOUDFLARE_ACCOUNT_ID="T070-PRIVATE-ACCOUNT", GITHUB_TOKEN="T070-PRIVATE-GH")
+    return subprocess.run([sys.executable, "-B", "-c", bootstrap, str(path), *arguments],
+                          input=raw, capture_output=True, env=env, timeout=20)
+
+
+def test_a2_policy_http_and_mcp_actions():
+    module = _a2_module()
+    if module is None:
+        return
+    cases = [({"risk_level": "high", "risk_score": 0}, _a2_expected("reject", "high_risk")),
+             ({"risk_level": "medium"}, _a2_expected("manual_review", "risk_requires_review")),
+             ({"risk_level": "low", "risk_score": {"malformed": "unused"}},
+              _a2_expected("continue_evaluation", "checks_ran_without_fatal_signal")),
+             ({"risk_level": "unknown", "unknown_kind": "infrastructure", "next_action": "retry",
+               "retry_after_seconds": 30}, _a2_expected("retry", "infrastructure_retry_advised", 30)),
+             ({"risk_level": "unknown", "unknown_kind": "coverage", "risk_score": 0,
+               "next_action": "retry", "retry_after_seconds": 1},
+              _a2_expected("abstain", "coverage_requires_abstention"))]
+    for payload, expected in cases:
+        before = copy.deepcopy(payload)
+        for transport, value in ((module.route_http, payload), (module.route_mcp, _a2_envelope(payload))):
+            result = _a2_call(transport, value)
+            check("T070 exact action/reason/delay contract", result == expected, str(result))
+            check("T070 response has only the three policy fields", set(result) == {"action", "reason", "retry_after_seconds"})
+        check("T070 response routing does not mutate inputs", payload == before)
+
+
+def test_a2_policy_unknown_retry_or_abstain():
+    module = _a2_module()
+    if module is None:
+        return
+    for kind in ("infrastructure", "mixed"):
+        for delay in (1, 2147483647):
+            payload = {"risk_level": "unknown", "risk_score": 0, "unknown_kind": kind,
+                       "next_action": "retry", "retry_after_seconds": delay}
+            expected = _a2_expected("retry", "infrastructure_retry_advised", delay)
+            check("T070 strict valid retry is advice only", _a2_call(module.route_http, payload) == expected
+                  and _a2_call(module.route_mcp, _a2_envelope(payload)) == expected)
+        for delay in (None, -1, 0, True, False, 1.0, 1.5, "30", 2147483648, [], {}, float("nan"), float("inf")):
+            payload = {"risk_level": "unknown", "risk_score": 100, "unknown_kind": kind,
+                       "next_action": "retry", "retry_after_seconds": delay}
+            expected = _a2_expected("abstain", "retry_guidance_invalid")
+            check("T070 invalid delays do not coerce into retries", _a2_call(module.route_http, payload) == expected
+                  and _a2_call(module.route_mcp, _a2_envelope(payload)) == expected)
+        for changes in ({"next_action": "abstain"}, {"next_action": "Retry"}, {"next_action": None}):
+            payload = dict(risk_level="unknown", unknown_kind=kind, next_action="retry", retry_after_seconds=30)
+            payload.update(changes)
+            check("T070 contradictory retry guidance abstains", _a2_call(module.route_http, payload)
+                  == _a2_expected("abstain", "retry_guidance_invalid"))
+        for missing in ("next_action", "retry_after_seconds"):
+            payload = dict(risk_level="unknown", unknown_kind=kind, next_action="retry", retry_after_seconds=30)
+            payload.pop(missing)
+            check("T070 incomplete retry guidance abstains", _a2_call(module.route_mcp, _a2_envelope(payload))
+                  == _a2_expected("abstain", "retry_guidance_invalid"))
+    for kind in (None, "", "Infrastructure", "T070-PRIVATE-KIND", [], {}, True):
+        payload = dict(risk_level="unknown", risk_score=0, unknown_kind=kind, next_action="retry", retry_after_seconds=30)
+        check("T070 missing kind overrides even a low score", _a2_call(module.route_http, payload)
+              == _a2_expected("abstain", "unknown_kind_unavailable"))
+    for score in (0, 100, None, [], "T070-PRIVATE-SCORE"):
+        payload = dict(risk_level="unknown", risk_score=score, unknown_kind="coverage", next_action="retry", retry_after_seconds=True)
+        expected = _a2_expected("abstain", "coverage_requires_abstention")
+        check("T070 coverage overrides score and bad retry claim", _a2_call(module.route_http, payload) == expected
+              and _a2_call(module.route_mcp, _a2_envelope(payload)) == expected)
+
+
+def test_a2_policy_envelope_errors():
+    module = _a2_module()
+    if module is None:
+        return
+    invalid = _a2_expected("abstain", "invalid_envelope")
+    invalid_verdict = _a2_expected("abstain", "invalid_verdict")
+    low = {"risk_level": "low"}
+    for status in (None, True, False, 200.0, "200", 201, 429, 500):
+        check("T070 exact HTTP200 status required", _a2_call(module.route_http, low, status) == invalid
+              and _a2_call(module.route_mcp, _a2_envelope(low), status) == invalid)
+    for value in (None, [], True, 42, "T070-PRIVATE-ENVELOPE"):
+        check("T070 non-object HTTP/MCP envelopes abstain", _a2_call(module.route_http, value) == invalid
+              and _a2_call(module.route_mcp, value) == invalid)
+    for error in (None, False, 0, "", {}, []):
+        check("T070 present HTTP error beats a low verdict even when null", _a2_call(module.route_http, dict(low, error=error)) == invalid)
+        envelope = _a2_envelope(low)
+        envelope["error"] = error
+        check("T070 present MCP top-level error beats structured low", _a2_call(module.route_mcp, envelope) == invalid)
+    for flag in (None, True, 0, 1, "false", [], {}):
+        envelope = _a2_envelope(low)
+        envelope["result"]["isError"] = flag
+        check("T070 present MCP isError must be exactly false", _a2_call(module.route_mcp, envelope) == invalid)
+    success = _a2_envelope(low)
+    success["result"]["isError"] = False
+    check("T070 exact false isError permits success", _a2_call(module.route_mcp, success)
+          == _a2_expected("continue_evaluation", "checks_ran_without_fatal_signal"))
+    for envelope in ({}, {"result": None}, {"result": []}, {"result": {"structuredContent": []}},
+                     {"result": {"structuredContent": "T070-PRIVATE-TEXT"}},
+                     {"result": {"content": [{"type": "text", "text": '{"risk_level":"low"}'}]}},
+                     [_a2_envelope(low)]):
+        check("T070 malformed/batch/text-only MCP never becomes a verdict", _a2_call(module.route_mcp, envelope) == invalid)
+    for verdict in (None, "Low", "", "T070-PRIVATE-VERDICT", True, 0, [], {}):
+        payload = {"risk_level": verdict}
+        check("T070 unsupported verdicts abstain", _a2_call(module.route_http, payload) == invalid_verdict
+              and _a2_call(module.route_mcp, _a2_envelope(payload)) == invalid_verdict)
+    check("T070 absent verdict is not low", _a2_call(module.route_http, {}) == invalid_verdict
+          and _a2_call(module.route_mcp, _a2_envelope({})) == invalid_verdict)
+
+
+def test_a2_policy_private_data_and_no_network():
+    module = _a2_module()
+    if module is None:
+        return
+    secret = "T070-PRIVATE-IDENTITY@example.invalid"
+    address = "0x" + "1" * 40
+    payload = {"risk_level": "low", "address": address, "signals": [{"message": secret}],
+               "risk_score": {"unused": secret}, "url": "https://example.invalid/" + secret,
+               "checked_at": secret, "evidence": {"raw": secret}}
+    expected = _a2_expected("continue_evaluation", "checks_ran_without_fatal_signal")
+    check("T070 unused private assessment fields are ignored safely", _a2_call(module.route_http, payload) == expected
+          and _a2_call(module.route_mcp, _a2_envelope(payload)) == expected)
+    for transport, value in (("http", payload), ("mcp", _a2_envelope(payload)),
+                             ("http", {"error": secret, "risk_level": "low"}),
+                             ("mcp", {"error": secret, "result": {"structuredContent": payload}})):
+        run = _a2_cli(json.dumps(value).encode("utf-8"), ["--transport", transport])
+        text = (run.stdout + run.stderr).decode("utf-8")
+        check("T070 real child emits no identity/address/URL/credential text", run.returncode == 0
+              and all(s not in text for s in (secret, address, "https://example.invalid", "T070-PRIVATE-TOKEN",
+                                               "T070-PRIVATE-ACCOUNT", "T070-PRIVATE-GH")))
+        check("T070 child performed no forbidden effect", run.stderr == b""
+              and "T070_effect_boundary_invoked" not in text and "Traceback" not in text)
+    for arguments in ([], ["--transport", "T070-PRIVATE-TRANSPORT"], ["--T070-PRIVATE-ARG"], ["--trans", "http"]):
+        run = _a2_cli(b"", arguments)
+        text = (run.stdout + run.stderr).decode("utf-8")
+        check("T070 default and bad arguments fail without reflection", run.returncode != 0
+              and "T070-PRIVATE" not in text and "Traceback" not in text)
+
+
+def test_a2_policy_real_cli():
+    from pathlib import Path
+    module = _a2_module()
+    if module is None:
+        return
+    cases = [("http", {"risk_level": "medium"}, _a2_expected("manual_review", "risk_requires_review")),
+             ("mcp", _a2_envelope(dict(risk_level="unknown", unknown_kind="mixed", next_action="retry", retry_after_seconds=7)),
+              _a2_expected("retry", "infrastructure_retry_advised", 7)),
+             ("http", [], _a2_expected("abstain", "invalid_envelope")),
+             ("mcp", _a2_envelope({}), _a2_expected("abstain", "invalid_verdict"))]
+    for transport, value, expected in cases:
+        run = _a2_cli(json.dumps(value).encode("utf-8"), ["--transport", transport])
+        check("T070 real stdin CLI agrees with the exact policy", run.returncode == 0
+              and json.loads(run.stdout) == expected and run.stderr == b"")
+    valid = b'{"risk_level":"low"}'
+    at_limit = valid + b" " * (1024 * 1024 - len(valid))
+    boundary = _a2_cli(at_limit, ["--transport", "http"])
+    check("T070 byte cap admits its exact valid boundary", boundary.returncode == 0
+          and json.loads(boundary.stdout) == _a2_expected("continue_evaluation", "checks_ran_without_fatal_signal"))
+    invalids = [b"", b"{bad", b"\xff", b'{"risk_level":"low","risk_level":"high"}',
+                b'{"risk_level":"low","unused":{"x":1,"x":2}}', b"[" * 1100 + b"]" * 1100,
+                at_limit + b" ", b'{"risk_level":"low","risk_score":NaN}']
+    for raw in invalids:
+        run = _a2_cli(raw, ["--transport", "http"])
+        output = (run.stdout + run.stderr).decode("utf-8")
+        check("T070 invalid/duplicate/deep/oversized input has a safe native failure", run.returncode != 0
+              and "Traceback" not in output and "risk_level" not in output and "T070-PRIVATE" not in output)
+    doc = (Path(__file__).resolve().parents[1] / "docs" / "AGENT-INTEGRATION.md").read_text(encoding="utf-8")
+    check("T070 docs contain executable local examples and existing time context", all(word in doc for word in
+          ("examples/assessment_policy.py", "--transport http", "--transport mcp", "checked_at", "evidence_max_age_seconds")))
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
