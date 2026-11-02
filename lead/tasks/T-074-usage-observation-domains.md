@@ -22,7 +22,7 @@ to prepare this code; root's normal implementation/release authority remains req
 
 1. `bench/usage.py`, domain projection/metadata and all interactive CLI branches only.
 2. `tests/test_usage_gate.py`, additive U01-U20 acceptance cases and the two named SQL-fixture
-   metadata additions in TEST-CONSUMER-CONFLICTS.md; no old assertion/value change.
+   metadata additions named below; no old assertion/value change.
 3. New `docs/TELEMETRY-CONTRACT.md`, technical legacy/current-domain semantics and the explicit
    not-enabled candidate; no public legal/privacy wording or new metric/adoption claim.
 
@@ -37,7 +37,7 @@ suite-count inputs; do not edit SCORECARD absent a concrete generated dependency
    `test_a3_usage_reconciliation_and_tail`, `test_a3_usage_frozen_inputs_and_query_budget`.
    Actual main() is driven by stub replies/credentials/argv, never live query(); retain
    meaningful parent reds for wrong current NO/zero/strategy output and request counts.
-2. Implement the exact normalized domains and per-query metadata in USAGE-TRANSITION.md.
+2. Implement the exact normalized domains and per-query metadata in the normative matrix below.
    Validate projected marker before filtering/formatting; missing alias is malformed, unknown
    raw marker is unsupported without reflection. Q1 domain survives handshake-only, empty
    legacy tools and self filtering. Keep old public return shapes plus None failure semantics;
@@ -69,9 +69,9 @@ suite-count inputs; do not edit SCORECARD absent a concrete generated dependency
 
 ## Evidence and DoR
 
-USAGE-TRANSITION.md is the exact behavior/fixture table. Keep all original deciding functions
+The normative matrix below is the exact behavior/fixture table. Keep all original deciding functions
 reachable; old static string guards are not replaced, and new actual-main assertions test the
-seam they cannot see. Root can prepare bounded SQL qualification in QUALIFICATION-PLAN.md;
+seam they cannot see. Root prepares bounded SQL qualification under a separate exact read plan;
 unqualified provider replies fail closed. It is a technical experiment, not an Owner SDK choice.
 This spec is design-ready for independent review, not implementation-dispatched here.
 
@@ -267,9 +267,8 @@ and each branch above demonstrate the actual transition; a header notice alone i
 Keep original function calls reachable from main on the legacy branch, including the literal
 gate_verdict(tools, prof), tool_callers and external_callers source guards. No dead-code bypass.
 
-Only two old SQL fixtures need added projected metadata (see TEST-CONSUMER-CONFLICTS.md);
+Only two old SQL fixtures need added projected metadata (see the exact named changes above);
 their old values and assertions stay. New U01-U20 fixtures exercise actual future main output,
 ordered query() calls and native returns with stubbed replies, not merely search for strings.
 These are acceptance requirements. None was executed in this design revision.
-
 
