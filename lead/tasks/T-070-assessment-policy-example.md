@@ -134,3 +134,17 @@ interpreter accepts that depth. Native parser refusals remain sanitized/nonzero.
 Commit this named correction alone as an acceptance test fix before implementation.
 Preserve all other tests/inputs and original red/failed evidence. No custom depth
 cap, new schema/freshness rule, request, order or scope expansion is authorized.
+
+## Root-owned generated-scorecard dependency
+
+The first actual author gate at e3bdbdd executes45 steps:44 pass, and the
+published-number guard fails because the generated SCORECARD still records1432
+MCP assertions while the new actual runner reports1591. Source and complete ref
+protections pass. Preserve this original failed source and complete receipt.
+
+Root adds exactly docs/SCORECARD.md to the named scope as unchanged-generator
+output, solely updating that evidence count. The original generator's output
+must differ only at this cell; scores, rules and other figures do not change.
+The original failing guard must actually pass after generation. The separately
+committed correction is a new source requiring new complete gates and source
+bindings; no old failed plan/output is rewritten or reclassified as passed.
