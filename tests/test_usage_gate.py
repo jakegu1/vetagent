@@ -1397,6 +1397,8 @@ def test_a3_usage_reconciliation_and_tail():
         result = _t074_main(cap)
         name = "U20-%s" % slot
         _t074_show(name, result)
+        check("T074 %s returns partial1 for capped evidence" % name,
+              result["value"] == 1, str(result["value"]))
         check("T074 %s states cap/limited coverage" % name,
               any(word in result["stdout"].lower() for word in ("capped", "truncated", "limited", "incomplete")))
         check("T074 %s keeps the original slot budget" % name,
