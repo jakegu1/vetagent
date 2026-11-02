@@ -7,7 +7,12 @@
 
 ## Status in one line
 
-The new parallel batch is pushed atab905c1, but final release qualification is
+The bounded T072 correction now passes exact-source author/independent actual46,
+functional12/12 and ordinary data-integrity review. Its current integration keeps
+latest scheduled evidence; integrated checks and a new qualified release remain
+pending. The old failed master run stays failed with its exact cause unknown.
+
+The earlier parallel batch is pushed atab905c1, but its final release qualification is
 held by master CI41481523457. The existing native cancellation test refuses a
 sidecar; the lost artifact's exact cause is unknown. T072 narrowly addresses the
 known interrupted-progress staging seam with unchanged resource/safety rules.

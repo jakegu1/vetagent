@@ -1,7 +1,7 @@
 ---
 id: T-072
 title: Retain bounded interrupted progress publication without trusting staging
-status: ready
+status: source-accepted
 level: 3
 size: M
 base: ab905c1218d2081a77eee0db0415096470450c7f

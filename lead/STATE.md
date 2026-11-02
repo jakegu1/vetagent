@@ -4,7 +4,15 @@ Last updated: 2026-11-02 by Codex. This is the current baton, not a release log.
 
 ## Current source, science boundary and engineering work
 
-The parallel batch is pushed atab905c1. Its author/independent source gates and
+The T072 corrective sourcec2db55b is accepted after independent functional12/12,
+focused ordinary data-integrity review with no material finding, and separate
+author/independent actual46/native0 gates with all seven preservation checks.
+Normal mergef6c2063 retains latest scheduled evidence through06a5f24. Root's
+integrated46 and new exact-head feature/master CI remain mandatory and pending.
+The earlier87a source and hardlink finding remain rejected; exact pending bytes
+stay opaque evidence under unchanged entry/byte limits and committed semantics.
+
+The earlier parallel batch is pushed atab905c1. Its author/independent source gates and
 integrated actual46/native0 pass; feature push CI41480272754 passes all46,
 upstream/backfill and two real locked builds. Master push CI41481523457 is red
 in the existing T046 cancellation test; subsequent tests/builds are unverified.
@@ -39,7 +47,7 @@ the completed actual study closure does not repair that separate unsupported cas
 | T-069 / offline diagnostics | exact source accepted atf85102f; author/independent actual45, functional12/12 and privacy none | lead | Integrate with qualified dependent work and verify actual release |
 | T-070 / response policy example | source4d272c0 accepted; author and independent actual45/native0, functional12/12 and privacy none | lead | Qualify the integrated candidate and normal publication |
 | T-071 / source identity | registered source7043083 accepted; author recovery and independent actual46/native0, functional12/12 and boundary none | lead | Qualify the integrated candidate; preserve rejected history and first failed author attempt |
-| T-072 / interrupted progress staging | ready after independent bounded design review and exact-cap amendment | lead / executor | Reproduce valid retired staging refusal, repair only bounded classification/handoff, then fresh reviews and all publication gates |
+| T-072 / interrupted progress staging | exactc2 source accepted; author/independent actual46, functional12/12, ordinary data review none | lead | Verify integrated46, new normal exact-head CI/builds and first natural snapshot; retain old failures |
 | T-068 / market correctness | dependency-held, unpublished partial candidate | lead | Resolve production/research source-version contract separately; do not change frozen pins or skip tests |
 | T-047 / W40 | held, genuine mandatory security verdict incomplete | lead / required reviewer | Preserve candidate and existing qualified handoff; no replay through another AI |
 | T-049 / T-050 | dependency-held drafts | lead | Bind accepted integrated archive/runtime APIs before implementation |
