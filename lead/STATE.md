@@ -4,6 +4,16 @@ Last updated: 2026-11-02 by Codex. This is the current baton, not a release log.
 
 ## Current source, science boundary and engineering work
 
+The parallel batch is pushed atab905c1. Its author/independent source gates and
+integrated actual46/native0 pass; feature push CI41480272754 passes all46,
+upstream/backfill and two real locked builds. Master push CI41481523457 is red
+in the existing T046 cancellation test; subsequent tests/builds are unverified.
+Do not rerun that CI or claim final publication qualification. The exact rejected
+sidecar was not retained, so historical cause remains unknown. T072 is a bounded
+prospective correction for the separately reproducible fixed progress-staging
+classification gap; it does not change process controls or accept held T047.
+The new normal snapshot trial remains held; no actual trial or budget has started.
+
 T061/T062/T063/T064 are published at bdd6e69. Exact-source normal push CI
 40353996165 and master CI40355233461 pass all45 required steps, upstream and
 backfill checks, and two actual locked builds each. The first subsequent existing
@@ -29,6 +39,7 @@ the completed actual study closure does not repair that separate unsupported cas
 | T-069 / offline diagnostics | exact source accepted atf85102f; author/independent actual45, functional12/12 and privacy none | lead | Integrate with qualified dependent work and verify actual release |
 | T-070 / response policy example | source4d272c0 accepted; author and independent actual45/native0, functional12/12 and privacy none | lead | Qualify the integrated candidate and normal publication |
 | T-071 / source identity | registered source7043083 accepted; author recovery and independent actual46/native0, functional12/12 and boundary none | lead | Qualify the integrated candidate; preserve rejected history and first failed author attempt |
+| T-072 / interrupted progress staging | ready after independent bounded design review and exact-cap amendment | lead / executor | Reproduce valid retired staging refusal, repair only bounded classification/handoff, then fresh reviews and all publication gates |
 | T-068 / market correctness | dependency-held, unpublished partial candidate | lead | Resolve production/research source-version contract separately; do not change frozen pins or skip tests |
 | T-047 / W40 | held, genuine mandatory security verdict incomplete | lead / required reviewer | Preserve candidate and existing qualified handoff; no replay through another AI |
 | T-049 / T-050 | dependency-held drafts | lead | Bind accepted integrated archive/runtime APIs before implementation |

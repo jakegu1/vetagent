@@ -7,6 +7,12 @@
 
 ## Status in one line
 
+The new parallel batch is pushed atab905c1, but final release qualification is
+held by master CI41481523457. The existing native cancellation test refuses a
+sidecar; the lost artifact's exact cause is unknown. T072 narrowly addresses the
+known interrupted-progress staging seam with unchanged resource/safety rules.
+No new normal snapshot trial or native/scientific activation is claimed.
+
 T067 has completed normal source/master publication with45 required steps and
 two actual locked builds on each exact head; its first actual normal scheduled
 snapshot and subsequent45-step CI qualify. T069's offline diagnostics pass both
