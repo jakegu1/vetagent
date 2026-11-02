@@ -1462,6 +1462,57 @@ def test_a3_usage_frozen_inputs_and_query_budget():
           and [s for s, _ in result["seen"]] == ["P1"] and result["artifact"] is None)
 
 
+def test_t074_missing_numeric_aggregates_are_malformed():
+    """NC3: absent numeric evidence must never become observed zero or gate input."""
+    cases = (("N01", "Q1", "calls", None), ("N02", "Q1", "clients", ""),
+             ("N03", "Q2", "n", None), ("N04", "Q3", "n", ""),
+             ("N05", "Q4", "n", None), ("N06", "Q5", "n", ""),
+             ("N07", "Q6", "n", None), ("N08", "Q11", "n", ""))
+    for name, slot, field, missing in cases:
+        case = _t074_case(("legacy-v1",), True)
+        case["replies"][slot]["data"][0][field] = missing
+        result = _t074_main(case)
+        _t074_show("NC3-%s" % name, result)
+        print("[T074 NC3 witness %s] affected=%s field=%s gate_calls=%d" %
+              (name, slot, field, len(result["gates"])))
+        text = result["stdout"]
+        check("T074 NC3 %s missing numeric returns partial1" % name, result["value"] == 1)
+        section = re.search(r"(?m)^[^\n]*\[%s\]: [^\n]+\n" % slot, text)
+        body = ""
+        if section:
+            following = re.search(r"(?m)^[^\n]*\[Q\d+\]: ", text[section.end():])
+            end = section.end() + following.start() if following else len(text)
+            body = text[section.start():end]
+        check("T074 NC3 %s affected section is malformed with counts unknown" % name,
+              "[%s]: malformed;" % slot in body and "counts are unknown, not zero" in body
+              and "Observed empty" not in body)
+        expected = ["Q1"] if slot == "Q1" else _t074_expected_slots(slot != "Q3")
+        check("T074 NC3 %s preserves exact query slots" % name,
+              [s for s, _ in result["seen"]] == expected)
+        check("T074 NC3 %s preserves applicable historical gate boundary" % name,
+              len(result["gates"]) == (0 if slot in ("Q1", "Q3", "Q4") else 1))
+        if slot != "Q1":
+            check("T074 NC3 %s retains valid neighboring tool evidence" % name,
+                  "[Q7]: observed;" in text and "assess_token_risk" in text)
+        else:
+            check("T074 NC3 %s does not manufacture observed empty" % name,
+                  "Observed empty event result" not in text)
+        if slot == "Q5":
+            check("T074 NC3 %s never claims missing floor evidence discarded nothing" % name,
+                  "nothing was set aside" not in body.lower() and "could not determine" in body.lower())
+    for name, zero in (("Z01", 0), ("Z02", "0")):
+        case = _t074_case(("legacy-v1",), True)
+        case["replies"]["Q5"]["data"][0]["n"] = zero
+        result = _t074_main(case)
+        _t074_show("NC3-%s" % name, result)
+        print("[T074 NC3 witness %s] affected=Q5 field=n gate_calls=%d" % (name, len(result["gates"])))
+        check("T074 NC3 %s true zero remains observed and successful" % name,
+              result["value"] == 0 and "[Q5]: observed;" in result["stdout"]
+              and "Nothing was set aside" in result["stdout"])
+        check("T074 NC3 %s true zero preserves slots and legacy inputs" % name,
+              [s for s, _ in result["seen"]] == _t074_expected_slots(True) and len(result["gates"]) == 1)
+
+
 def main():
     print("=" * 68)
     print("Usage gate: does the counting rule count the right thing?")
