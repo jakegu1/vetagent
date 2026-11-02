@@ -308,3 +308,58 @@ execution or full-provider/dialect qualification is claimed. Before any later
 source fix, this exact NC2 correction and its actual RED must be reviewed by
 the lead. All previous full/heavy, collection and source-domain holds remain.
 
+### 2026-11-03: NC3, missing numeric aggregates are not observed zero
+
+Independent source review reproduces one material defect in the first focused
+candidate: _count admits null and empty strings as0. Complete-key, schema-qualified
+rows can therefore be labeled observed, reported empty or passed to the historical
+rule without numeric evidence. The previous focused passes and eight independent
+boundary originals remain retained; they do not qualify this candidate for release.
+
+Permit one additional automatic acceptance function in tests/test_usage_gate.py:
+test_t074_missing_numeric_aggregates_are_malformed. Add this test alone in a
+T-074: named change (NC3 missing aggregate witnesses) commit before its source fix.
+Reuse the unchanged _t074_case, _t074_main and _t074_show helpers; do not edit any
+existing test/helper/assertion/fixture/runner, including the accepted NC1 aliases
+and NC2. No new helper is needed. Start each case with the existing valid legacy
+eligible fixture and change only the numeric field below in its first query row:
+
+| Case | Query | Field | Deliberately missing numeric value |
+| --- | --- | --- | --- |
+| N01 | Q1 | calls | null |
+| N02 | Q1 | clients | empty string |
+| N03 | Q2 | n | null |
+| N04 | Q3 | n | empty string |
+| N05 | Q4 | n | null |
+| N06 | Q5 | n | empty string |
+| N07 | Q6 | n | null |
+| N08 | Q11 | n | empty string |
+
+Each actual main must complete without an exception or forbidden effect, return1,
+and identify the affected query's own section as malformed with unavailable counts,
+not just contain an unrelated global unavailable word. Q1 stops after one query.
+Q3 skips Q4 and cannot enter gate_verdict; Q4 cannot enter gate_verdict. Other
+applicable slots retain their original order and valid neighbors stay visible.
+Q5 must not say that nothing was set aside when its numeric evidence is missing.
+Do not print fabricated zero counts or a normal empty result for these fields.
+
+Include two true-zero controls using the same fixture with Q5.n set to numeric0
+and string0: both remain observed valid zero with native0 and unchanged slots.
+The existing valid-empty, explicit-zero and valid numeric fixtures remain exact.
+These are fixed witnesses for the single missing-value class, not a new caller
+rule, threshold, provider request or expanded malformed-input research project.
+
+The minimum source correction is confined to the new interactive _count validator:
+reject null and empty numeric strings into the existing ValueError/malformed path;
+preserve genuine zero and existing valid numeric representations. Keep negative,
+nonfinite, type and missing-key refusals. Do not change shared frozen helpers,
+production behavior, SQL, query budgets, output fields, caps or the caller rule.
+Commit the source fix separately, with its actual new RED premise. If a broader
+change is necessary, stop with that concrete conflict instead of expanding scope.
+
+The correction executor may proceed from a meaningful new-test RED to the exact
+minimal fix and a single candidate GREEN within the separately issued finite
+correction plan. Prior intents, original limits, passes, failures, snapshots and
+role-specific review budgets are not reset or overwritten. New focused authority
+must be explicit in that plan; it does not grant full/heavy/CI or publication.
+
