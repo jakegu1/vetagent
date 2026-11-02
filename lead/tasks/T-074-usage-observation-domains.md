@@ -272,3 +272,39 @@ their old values and assertions stay. New U01-U20 fixtures exercise actual futur
 ordered query() calls and native returns with stubbed replies, not merely search for strings.
 These are acceptance requirements. None was executed in this design revision.
 
+## Amendments
+
+### NC2: capped report evidence must explicitly return partial1
+
+The first tests-only stage leaves all original assertions intact and produces
+meaningful parent failures. Its four existing U20 cap fixtures check warning
+text and ordered query slots but omit the required native return value. This
+would let a future implementation describe incomplete evidence while returning
+success. The original first RED remains retained; it is not rerun or relabeled.
+
+Permit exactly one new assertion in test_a3_usage_reconciliation_and_tail,
+inside the existing for slot, bound loop after name = "U20-%s" % slot and
+_t074_show(name, result), before the existing cap-warning check:
+
+```python
+check("T074 %s returns partial1 for capped evidence" % name,
+      result["value"] == 1, str(result["value"]))
+```
+
+Do not add or change a fixture, input, vector, helper, old check, order or runner.
+The assertion applies to the existing Q2/Q3/Q4/Q8 cap cases. Their saved actual
+parent traces return0, which supports a meaningful RED premise; it is not an
+execution of this added assertion. Commit this change alone with the exact
+T-074: named change (NC2 cap partial exit) prefix and retain one new actual parent
+RED in a separate evidence directory. Count it against the original first-stage
+focused limit; do not reset that ledger or replace its first result.
+
+The lead separately accepts the proposed Q1-Q11 SQL for implementation after
+independent static review, preserving their exact templates and stated deltas.
+Q6 cohort classification is scoped to the valid canonical labels produced by
+the existing writer; synthetic noncanonical labels do not establish historical
+incidence or authorize changing the frozen caller normalization. No new SQL
+execution or full-provider/dialect qualification is claimed. Before any later
+source fix, this exact NC2 correction and its actual RED must be reviewed by
+the lead. All previous full/heavy, collection and source-domain holds remain.
+
