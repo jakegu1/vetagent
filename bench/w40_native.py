@@ -896,10 +896,7 @@ def retired_observation(directory, *, request, permit, identity, configuration=N
         if has_headers:
             fail("invalid_evidence")
         return None, None
-    for path in directory.iterdir():
-        cap = ATTEMPT_SIDECARS.get(path.name)
-        if cap is None or not path.is_file() or path.is_symlink() or path.stat().st_size > cap:
-            fail("invalid_evidence")
+    attempt_sidecars(directory, "invalid_evidence")
     def value(name):
         return parse(read(directory / name, ROW_CAP), ROW_CAP)
     config = value("request.json")
@@ -1379,6 +1376,17 @@ ATTEMPT_SIDECARS.update({"body.bin": BODY_CAP + 1, "metadata-reserve.bin": ROW_C
 ROOT_SIDECARS = {"context.json": PACKET_CAP, "engine-answer.json": BODY_CAP, "cache-history.json": PACKET_CAP}
 
 
+def attempt_sidecars(directory, error):
+    """Bound committed and opaque staging entries together, without interpreting staging."""
+    paths = list(directory.iterdir())
+    if len(paths) > len(ATTEMPT_SIDECARS):
+        fail(error)
+    for path in paths:
+        cap = ROW_CAP if path.name == "progress.json.pending" else ATTEMPT_SIDECARS.get(path.name)
+        if cap is None or not path.is_file() or path.is_symlink() or path.stat().st_size > cap:
+            fail(error)
+
+
 def evidence_inventory(journal, private, events=None):
     """Bound every native artifact, including explicit absence, before accepting a packet."""
     private = private_tree(private)
@@ -1442,13 +1450,15 @@ def evidence_inventory(journal, private, events=None):
         if intent.get("attempt") != number or intent.get("role") not in ("reserve", "ohlcv", "oracle", "engine") or intent.get("host") not in GAPS:
             fail("evidence_mismatch")
         directory = attempt_dir / ("%02d" % number)
-        if not directory.is_dir() or directory.is_symlink() or any(p.name not in ATTEMPT_SIDECARS for p in directory.iterdir()):
+        if not directory.is_dir() or directory.is_symlink():
             fail("evidence_mismatch")
+        attempt_sidecars(directory, "evidence_mismatch")
         references, values, raws = {}, {}, {}
         for name, cap in ATTEMPT_SIDECARS.items():
             references[name], raw = reference(directory / name, cap)
             raws[name] = raw
             values[name] = parse(raw, cap) if raw is not None and name.endswith(".json") else None
+        references["progress.json.pending"], _ = reference(directory / "progress.json.pending", ROW_CAP)
         metadata = values["metadata.json"]
         if metadata is not None:
             expected_request = validate_request(metadata.get("url"), role=intent["role"], token=base["token"], chain=base["chain"],
