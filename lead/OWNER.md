@@ -10,10 +10,10 @@
 T067 has completed normal source/master publication with45 required steps and
 two actual locked builds on each exact head; its first actual normal scheduled
 snapshot and subsequent45-step CI qualify. T069's offline diagnostics pass both
-author and independent actual45 checks; final review/integration/release remain.
-T070 now implements the local fail-closed response-routing example. T071's
-corrected candidate completes the required result-vector tests and passes the
-unchanged tests-first checker; its registered46-step full gates remain pending.
+author and independent actual45 checks. T070's local response example passes both
+actual45 gates, functional12/12 and privacy review. T071's registered source passes
+author-recovery and independent actual46 gates, functional12/12 and ordinary
+boundary review. All three sources are accepted; integration and publication remain.
 The original failed candidate/history is retained. T068's
 price candidates remain unpublished: an
 initially missed frozen native engine contract rejects that source change.

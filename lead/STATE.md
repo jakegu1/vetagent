@@ -27,8 +27,8 @@ the completed actual study closure does not repair that separate unsupported cas
 |---|---|---|---|
 | T-067 / W7 | published e3ec46a; first actual normal scheduled trial qualified | lead | Done; retain original failures and completed finite followup |
 | T-069 / offline diagnostics | exact source accepted atf85102f; author/independent actual45, functional12/12 and privacy none | lead | Integrate with qualified dependent work and verify actual release |
-| T-070 / response policy example | implementation on acceptedf85102f base; named new-test correction authorized | lead / executor | Finish bounded offline example and focused evidence, then request assigned complete gates |
-| T-071 / source identity | corrected registered source7043083; functional code review finds no required change, complete46 gates pending | lead / reviewer | Qualify exact46 operator/runtime and run actual author/independent quiet gates; preserve rejected original history |
+| T-070 / response policy example | source4d272c0 accepted; author and independent actual45/native0, functional12/12 and privacy none | lead | Qualify the integrated candidate and normal publication |
+| T-071 / source identity | registered source7043083 accepted; author recovery and independent actual46/native0, functional12/12 and boundary none | lead | Qualify the integrated candidate; preserve rejected history and first failed author attempt |
 | T-068 / market correctness | dependency-held, unpublished partial candidate | lead | Resolve production/research source-version contract separately; do not change frozen pins or skip tests |
 | T-047 / W40 | held, genuine mandatory security verdict incomplete | lead / required reviewer | Preserve candidate and existing qualified handoff; no replay through another AI |
 | T-049 / T-050 | dependency-held drafts | lead | Bind accepted integrated archive/runtime APIs before implementation |
@@ -71,6 +71,16 @@ actual full-base CONTRACT HOLDS. Root registers one additional test command at
 7043083: all original45 and all other workflow bytes remain exact; actual count46.
 The registered source baseline uses one new compressed blob. No old45 receipt
 substitutes for this source's required actual46 evidence.
+
+The current T070 source now has its own author and independent actual45/native0
+executions, complete preservation and final functional12/12/privacy-none review.
+The earlier stale-count44/45 and named JSON-test failures remain retained.
+The registered T071 source now has author-recovery and independent actual46/native0
+executions, complete preservation and functional12/12/boundary-none review. Its
+original author45/46/ref-drift failure stays failed. The second author attempt is
+explicitly bounded and does not reset the original attempt's budget. Historical
+layers stay not_evaluated/unqualified. Both sources are accepted for integration;
+integrated checks and normal publication remain separate mandatory stages.
 
 T069's author actual45/source/preservation evidence is accepted for source handoff.
 Its extra controller-to-executor digest did not match; cause remains unknown and

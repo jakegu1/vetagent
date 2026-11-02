@@ -1,7 +1,7 @@
 ---
 id: T-070
 title: Demonstrate fail-closed response routing for HTTP and MCP without sending requests
-status: in_progress
+status: in_review
 level: 2
 size: S
 base: f85102f9eae392ea3510bce7dfaddaf68b45e741
