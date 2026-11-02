@@ -90,17 +90,17 @@ def test_connecting_is_not_using():
     # Shaped like the real Analytics Engine rows.
     rows = [
         # A crawler: many requests, never a tool. This is 96% of real traffic.
-        {"client": "sentineloracle", "tool": "", "n": 1259, "days": 14},
-        {"client": "mcpbeat", "tool": "", "n": 813, "days": 14},
-        {"client": "rootz-mcp-registry-prober", "tool": "", "n": 6, "days": 3},
+        {"storage_schema": "legacy-v1", "client": "sentineloracle", "tool": "", "n": 1259, "days": 14},
+        {"storage_schema": "legacy-v1", "client": "mcpbeat", "tool": "", "n": 813, "days": 14},
+        {"storage_schema": "legacy-v1", "client": "rootz-mcp-registry-prober", "tool": "", "n": 6, "days": 3},
         # An auth probe is not tool use either.
-        {"client": "io.verifymcp", "tool": "__verifymcp_auth_probe_367ac",
+        {"storage_schema": "legacy-v1", "client": "io.verifymcp", "tool": "__verifymcp_auth_probe_367ac",
          "n": 1, "days": 1},
         # Our own tooling, which must never count however it behaves.
-        {"client": "vetagent-bench", "tool": "assess_token_risk", "n": 576, "days": 2},
-        {"client": "claude-code", "tool": "assess_token_risk", "n": 40, "days": 5},
+        {"storage_schema": "legacy-v1", "client": "vetagent-bench", "tool": "assess_token_risk", "n": 576, "days": 2},
+        {"storage_schema": "legacy-v1", "client": "claude-code", "tool": "assess_token_risk", "n": 40, "days": 5},
         # The thing the gate exists to detect.
-        {"client": "somebodys-trading-bot", "tool": "assess_token_risk",
+        {"storage_schema": "legacy-v1", "client": "somebodys-trading-bot", "tool": "assess_token_risk",
          "n": 7, "days": 3},
     ]
 
