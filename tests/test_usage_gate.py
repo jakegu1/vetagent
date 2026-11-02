@@ -888,7 +888,9 @@ def _a1_cli(args):
         "socket.socket=refused", "socket.create_connection=refused",
         "subprocess.run=refused", "subprocess.Popen=refused",
         "urllib.request.urlopen=refused", "urllib.request.OpenerDirector.open=refused",
-        "sys.argv=sys.argv[1:]", "runpy.run_path(sys.argv[0],run_name='__main__')"])
+        "sys.argv=sys.argv[1:]", "from pathlib import Path",
+        "sys.path.insert(0,str(Path(sys.argv[0]).parent))",
+        "runpy.run_path(sys.argv[0],run_name='__main__')"])
     env = dict(os.environ, PYTHONIOENCODING="utf-8", CLOUDFLARE_API_TOKEN="T069-TOKEN-PRIVATE",
                CLOUDFLARE_ACCOUNT_ID="T069-ACCOUNT-PRIVATE", GITHUB_TOKEN="T069-GH-PRIVATE")
     return subprocess.run([sys.executable, "-B", "-c", bootstrap,
