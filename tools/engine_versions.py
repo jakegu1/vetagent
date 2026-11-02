@@ -526,8 +526,12 @@ def _scope_path(scope=None):
 def _quarantine_scope(scope, operation_id, reason):
     marker = scope / "quarantine.json"
     if not os.path.lexists(marker):
-        _write_json(marker, {"schema": "validation-quarantine-v1", "operation_id": operation_id,
-            "reason": reason, "recovery_required": True, "automatic_clear_allowed": False}, exclusive=True)
+        try:
+            _write_json(marker, {"schema": "validation-quarantine-v1", "operation_id": operation_id,
+                "reason": reason, "recovery_required": True, "automatic_clear_allowed": False}, exclusive=True)
+        except (OSError, VersionError):
+            # The existing unfinished state/lock still refuses admission if publication fails.
+            raise VersionError("validation_quarantined") from None
 
 
 def _admission_state(scope):
@@ -842,6 +846,7 @@ def _launch_test_child(view, runner, expected_ids, seconds, operation, selector=
             pipe.close()
             state["ended"] = True
     try:
+        operation["launch_attempted"] = True
         process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             cwd=view, env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1", PYTHONIOENCODING="utf-8"))
         _write_json(path / "child-process.json", {"pid": process.pid, "argv": command}, exclusive=True)
@@ -862,6 +867,7 @@ def _launch_test_child(view, runner, expected_ids, seconds, operation, selector=
     except BaseException:
         interrupted = True
     actual_exit = process.poll() if process is not None else None
+    operation["child_exit_code"] = actual_exit
     if actual_exit is not None:
         for thread in threads:
             thread.join(timeout=1)
@@ -874,7 +880,7 @@ def _launch_test_child(view, runner, expected_ids, seconds, operation, selector=
         if report.get("runtime") is not None:
             require(report["runtime"].get("test_process_pid") == process.pid
                 and report["runtime"].get("validation_operation_id") == operation["id"], "child_protocol_invalid")
-    except (VersionError, KeyError, TypeError):
+    except (VersionError, KeyError, TypeError, AttributeError):
         report = {}
     observation = dict(report)
     observation.update(child_exit_code=actual_exit, timed_out=timed_out, interrupted=interrupted,
@@ -892,10 +898,10 @@ def _launch_test_child(view, runner, expected_ids, seconds, operation, selector=
         observation[field + "_recorded_bytes"] = len(raw)
     if not report or any(thread.is_alive() for thread in threads):
         observation["outer_lifecycle"] = {"final_observed": False, "uncertain": True}
-    _write_json(path / "observation.json", observation, exclusive=True, cap=STREAM_CAP)
     if _uncertain(observation):
         quarantine_operation(operation, "outer_lifecycle_uncertain")
-    else:
+    _write_json(path / "observation.json", observation, exclusive=True, cap=STREAM_CAP)
+    if not _uncertain(observation) and not operation.get("dispatch_managed"):
         _finish_operation(operation)
     return observation
 
@@ -924,6 +930,7 @@ def _dispatch(contract_id, profile_id, runner, *, adapter=False, scope=None):
             original_runner=None if adapter else runner,
             command_argv=["python", "tools/engine_versions.py", operation_name, contract_id, profile_id, runner])
         operation = begin_validation_operation(scope)
+        operation["dispatch_managed"] = True
         objects = read_objects(selected)
         if adapter:
             bodies, identity = adapter_sources(selected, objects)
@@ -942,7 +949,9 @@ def _dispatch(contract_id, profile_id, runner, *, adapter=False, scope=None):
             verify_view(view, selected)
         result["source_fixture"] = _layer("passed", evidence=[seal])
         result["context_manifest_sha256"] = seal
+        operation["launch_attempted"] = True
         observed = _launch_test_child(view, selected_runner, expected, seconds, operation, selector=selector)
+        operation["child_exit_code"] = observed.get("child_exit_code")
         result[key] = {"status": "failed", "child_exit_code": observed.get("child_exit_code"),
             "executed_test_ids": observed.get("executed_test_ids", []),
             "executed_test_ids_sha256": sha(encoded(observed.get("executed_test_ids", []))),
@@ -983,21 +992,35 @@ def _dispatch(contract_id, profile_id, runner, *, adapter=False, scope=None):
             result["reason"] = reason
         else:
             result["reason"] = None if qualified else "test_failed"
-            _finish_operation(operation)
+        validate_dispatch_receipt(result)
         _write_json(operation["path"] / "receipt.json", result, exclusive=True)
+        _finish_operation(operation)
+        return result
     except VersionError as error:
         result.update(reason=error.code, invocation_status="refused", wrapper_exit_code=2, test_execution_qualified=False)
         if error.code in {"source_mismatch", "unsafe_source_view"} and result["source_fixture"]["status"] == "passed":
             result["source_fixture"] = _layer("failed", error.code)
             result["loaded_runtime"] = _layer(reason="source_mismatch")
-        if operation and not os.path.lexists(operation["scope"] / "quarantine.json"):
+        if operation and not operation.get("launch_attempted"):
             _finish_operation(operation)
-    except (OSError, ValueError, TypeError, KeyError):
+    except (OSError, ValueError, TypeError, KeyError, AttributeError):
         result.update(reason="child_protocol_invalid", invocation_status="failed", wrapper_exit_code=2,
                       test_execution_qualified=False)
-        if operation:
+    if operation and operation.get("launch_attempted"):
+        # Generic evidence failure cannot establish retirement, even with a known top exit.
+        result.update(invocation_status="failed", wrapper_exit_code=2, test_execution_qualified=False)
+        result[key] = {"status": "failed", "child_exit_code": operation.get("child_exit_code"),
+            "executed_test_ids": [], "executed_test_ids_sha256": sha(encoded([])),
+            "stdout_sha256": None, "stderr_sha256": None, "dynamic_counters": None}
+        try:
             quarantine_operation(operation, "child_protocol_invalid")
-    return validate_dispatch_receipt(result)
+        except (OSError, VersionError):
+            pass  # Keep the initial running state: admission still refuses it.
+        try:
+            _write_json(operation["path"] / "failure.json", result, exclusive=True)
+        except (OSError, VersionError):
+            pass  # Retain the selected view and all successfully recorded partial evidence.
+    return result
 
 
 def legacy_test(contract_id, profile_id, runner, *, scope=None):
