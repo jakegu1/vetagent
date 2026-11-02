@@ -430,7 +430,7 @@ def test_the_evidence_base_is_never_silent():
         got = usage.unattributable_calls("acct", "tok", "INTERVAL '14' DAY")
         check("an empty answer returns 0, not None", got == 0, repr(got))
 
-        usage.query = lambda *a, **k: {"data": [{"n": 260}]}
+        usage.query = lambda *a, **k: {"data": [{"storage_schema": "legacy-v1", "n": 260}]}
         got = usage.unattributable_calls("acct", "tok", "INTERVAL '14' DAY")
         check("a real count comes back as itself", got == 260, repr(got))
     finally:
