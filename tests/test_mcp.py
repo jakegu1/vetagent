@@ -1405,8 +1405,12 @@ def test_a2_policy_real_cli():
     boundary = _a2_cli(at_limit, ["--transport", "http"])
     check("T070 byte cap admits its exact valid boundary", boundary.returncode == 0
           and json.loads(boundary.stdout) == _a2_expected("continue_evaluation", "checks_ran_without_fatal_signal"))
+    valid_non_object = _a2_cli(b"[" * 32 + b"]" * 32, ["--transport", "http"])
+    check("T070 valid JSON non-object yields envelope abstention", valid_non_object.returncode == 0
+          and json.loads(valid_non_object.stdout) == _a2_expected("abstain", "invalid_envelope")
+          and valid_non_object.stderr == b"")
     invalids = [b"", b"{bad", b"\xff", b'{"risk_level":"low","risk_level":"high"}',
-                b'{"risk_level":"low","unused":{"x":1,"x":2}}', b"[" * 1100 + b"]" * 1100,
+                b'{"risk_level":"low","unused":{"x":1,"x":2}}', b"[" * 1100,
                 at_limit + b" ", b'{"risk_level":"low","risk_score":NaN}']
     for raw in invalids:
         run = _a2_cli(raw, ["--transport", "http"])
