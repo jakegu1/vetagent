@@ -1,8 +1,27 @@
 # Lead state
 
-Last updated: 2026-11-02 by Codex. This is the current baton, not a release log.
+Last updated: 2026-11-03 by Codex. This is the current baton, not a release log.
 
 ## Current source, science boundary and engineering work
+
+The corrective batch is code-published and qualified at9b83558. Root's actual46,
+source push CI41498770842 and master CI41502061176 pass every required command,
+upstream/backfill and two real locked builds each. Raw records are preserved;
+live unobserved probes remain explicit, not all-vendor coverage. No Worker upload
+is required. First natural snapshot qualification is still pending under the
+new finite read-only followup; the initial actual check waits for a first schedule.
+Do not repeat completed code-stage gates or restore old completed followups.
+
+T073 design is accepted after independent functional11/12 and bounded provenance
+review, with root A1 resolving its observation-contract finding. Formal NC3/NC4
+preserve every old test obligation and add the separate current-adapter context.
+Complete historical V1 and actual current-production duties remain disjoint.
+Deeper unrecorded process exits stay unknown; real outer retirement uncertainty
+quarantines successor heavy work. Source implementation and a new actual47 gate
+are not yet accepted. Root must pin the new operator before any full execution.
+Successor pushes/publication wait for the preceding natural trial qualification.
+
+## Earlier source-handoff checkpoints
 
 The T072 corrective sourcec2db55b is accepted after independent functional12/12,
 focused ordinary data-integrity review with no material finding, and separate
@@ -44,10 +63,11 @@ the completed actual study closure does not repair that separate unsupported cas
 | Task | Stage | Owner | Next action |
 |---|---|---|---|
 | T-067 / W7 | published e3ec46a; first actual normal scheduled trial qualified | lead | Done; retain original failures and completed finite followup |
-| T-069 / offline diagnostics | exact source accepted atf85102f; author/independent actual45, functional12/12 and privacy none | lead | Integrate with qualified dependent work and verify actual release |
-| T-070 / response policy example | source4d272c0 accepted; author and independent actual45/native0, functional12/12 and privacy none | lead | Qualify the integrated candidate and normal publication |
-| T-071 / source identity | registered source7043083 accepted; author recovery and independent actual46/native0, functional12/12 and boundary none | lead | Qualify the integrated candidate; preserve rejected history and first failed author attempt |
-| T-072 / interrupted progress staging | exactc2 source accepted; author/independent actual46, functional12/12, ordinary data review none | lead | Verify integrated46, new normal exact-head CI/builds and first natural snapshot; retain old failures |
+| T-069 / offline diagnostics | code-published9b83558 after exact source and integrated/CI gates | lead | Retain old failures and await shared natural trial |
+| T-070 / response policy example | code-published9b83558 after exact source and integrated/CI gates | lead | Retain old failures and await shared natural trial |
+| T-071 / source identity | code-published9b83558; historical qualification remains false | lead | Dispatch implementation T073; retain rejected history and shared trial |
+| T-072 / interrupted progress staging | code-published9b83558 after author/independent/integrated46 and normal CI | lead | Read-only first natural snapshot proof; retain all failures |
+| T-073 / explicit test domains | ready; independent design accepted with NC3/NC4/A1 | lead / executor | Tests-first implementation and focused checks, then root47 registration/reviews/operator; no full or push yet |
 | T-068 / market correctness | dependency-held, unpublished partial candidate | lead | Resolve production/research source-version contract separately; do not change frozen pins or skip tests |
 | T-047 / W40 | held, genuine mandatory security verdict incomplete | lead / required reviewer | Preserve candidate and existing qualified handoff; no replay through another AI |
 | T-049 / T-050 | dependency-held drafts | lead | Bind accepted integrated archive/runtime APIs before implementation |

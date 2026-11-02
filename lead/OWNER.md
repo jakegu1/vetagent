@@ -3,9 +3,20 @@
 > This page holds only what the lead needs from you. The project's own dashboard, with its
 > deadlines and gates, is `docs/OWNER.md` (generated). Messages to you are in Chinese; files
 > here are English because the repository is English-only. Maintained by the project lead (AI).
-> Last updated: 2026-11-02 (Codex)
+> Last updated: 2026-11-03 (Codex)
 
 ## Status in one line
+
+The corrective code batch is qualified and published at9b83558. Actual integrated
+46 and both normal CI runs pass all required tests, upstream/backfill and two
+real locked builds each. First natural snapshot verification remains pending;
+its finite read-only followup is active. Unobserved upstream probes stay explicit.
+T073's next design is independently accepted, including named test-context and
+truthful descendant-observation decisions. Implementation is next; actual47 and
+operator readiness still need their own evidence. No new Owner decision is needed
+for this scoped technical step. Held T047 dependencies and old science do not change.
+
+## Earlier checkpoints retained
 
 The bounded T072 correction now passes exact-source author/independent actual46,
 functional12/12 and ordinary data-integrity review. Its current integration keeps
