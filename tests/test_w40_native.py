@@ -1407,6 +1407,30 @@ class InterruptedProgressStagingTests(unittest.TestCase):
                 with self.assertRaises(n.NativeError):
                     call()
             self.assertEqual(self._snapshot(f.private), before)
+        with self.subTest(refusal="hardlinked_staging"), self._case() as f, self._offline(n):
+            pending = f.directory / "progress.json.pending"
+            pending.write_bytes(b"retained staging")
+            self.assertEqual(self._observe(f), (f.invocation, f.headers))
+            n.evidence_inventory(f.journal, f.private)
+            self.assertEqual(pending.stat().st_nlink, 1)
+            target = f.root / "staging-target.bin"
+            target.write_bytes(pending.read_bytes())
+            self.assertEqual(target.stat().st_dev, f.directory.stat().st_dev)
+            pending.unlink()
+            pending.hardlink_to(target)
+            self.assertTrue(pending.is_file())
+            self.assertFalse(pending.is_symlink())
+            self.assertTrue(pending.samefile(target))
+            self.assertEqual((pending.stat().st_nlink, target.stat().st_nlink), (2, 2))
+            before = self._snapshot(f.root)
+            for reader, call, error in (
+                    ("retired", lambda: self._observe(f), "invalid_evidence"),
+                    ("inventory", lambda: n.evidence_inventory(f.journal, f.private), "evidence_mismatch")):
+                with self.subTest(reader=reader), self.assertRaisesRegex(n.NativeError, "^" + error + "$"):
+                    call()
+                self.assertEqual(self._snapshot(f.root), before)
+                self.assertTrue(pending.samefile(target))
+                self.assertEqual((pending.stat().st_nlink, target.stat().st_nlink), (2, 2))
         with tempfile.TemporaryDirectory() as temp, self._offline(n):
             tree = Path(temp) / "private"
             attempt = tree / "attempts/01"
