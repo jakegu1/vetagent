@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- lead: accept exact parallel sources and retain integration gates
-- lead: name the T070 generated-scorecard dependency
-- T-070: regenerate the scorecard evidence after added MCP assertions
-- lead: advance parallel examples and registered source review
-- T-070: route assessment responses without executing actions
-- T-070: acceptance test fix (valid JSON yields envelope abstention)
-- T-071: register the complete source identity acceptance suite
-- T-070: acceptance tests
+- lead: accept T-072 exact-source reviews and retained failures
+- T-072: refuse aliased staging with unreliable link metadata
+- T-072: named change (B staging hardlink refusal)
+- lead: require unaliased staging after independent data finding
+- T-072: retain opaque progress staging within original limits
+- T-072: named change (A missing-commit fixture contract)
+- lead: name T072 new-fixture consistency correction
+- T-072: acceptance tests
 
-_34 more not shown (42 commits in total)._
+_43 more not shown (51 commits in total)._
 
 ## What I got wrong
 

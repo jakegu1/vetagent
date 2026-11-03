@@ -90,17 +90,17 @@ def test_connecting_is_not_using():
     # Shaped like the real Analytics Engine rows.
     rows = [
         # A crawler: many requests, never a tool. This is 96% of real traffic.
-        {"client": "sentineloracle", "tool": "", "n": 1259, "days": 14},
-        {"client": "mcpbeat", "tool": "", "n": 813, "days": 14},
-        {"client": "rootz-mcp-registry-prober", "tool": "", "n": 6, "days": 3},
+        {"storage_schema": "legacy-v1", "client": "sentineloracle", "tool": "", "n": 1259, "days": 14},
+        {"storage_schema": "legacy-v1", "client": "mcpbeat", "tool": "", "n": 813, "days": 14},
+        {"storage_schema": "legacy-v1", "client": "rootz-mcp-registry-prober", "tool": "", "n": 6, "days": 3},
         # An auth probe is not tool use either.
-        {"client": "io.verifymcp", "tool": "__verifymcp_auth_probe_367ac",
+        {"storage_schema": "legacy-v1", "client": "io.verifymcp", "tool": "__verifymcp_auth_probe_367ac",
          "n": 1, "days": 1},
         # Our own tooling, which must never count however it behaves.
-        {"client": "vetagent-bench", "tool": "assess_token_risk", "n": 576, "days": 2},
-        {"client": "claude-code", "tool": "assess_token_risk", "n": 40, "days": 5},
+        {"storage_schema": "legacy-v1", "client": "vetagent-bench", "tool": "assess_token_risk", "n": 576, "days": 2},
+        {"storage_schema": "legacy-v1", "client": "claude-code", "tool": "assess_token_risk", "n": 40, "days": 5},
         # The thing the gate exists to detect.
-        {"client": "somebodys-trading-bot", "tool": "assess_token_risk",
+        {"storage_schema": "legacy-v1", "client": "somebodys-trading-bot", "tool": "assess_token_risk",
          "n": 7, "days": 3},
     ]
 
@@ -430,7 +430,7 @@ def test_the_evidence_base_is_never_silent():
         got = usage.unattributable_calls("acct", "tok", "INTERVAL '14' DAY")
         check("an empty answer returns 0, not None", got == 0, repr(got))
 
-        usage.query = lambda *a, **k: {"data": [{"n": 260}]}
+        usage.query = lambda *a, **k: {"data": [{"storage_schema": "legacy-v1", "n": 260}]}
         got = usage.unattributable_calls("acct", "tok", "INTERVAL '14' DAY")
         check("a real count comes back as itself", got == 260, repr(got))
     finally:
@@ -1091,6 +1091,426 @@ def test_a1_telemetry_cli_preserves_files():
             run = _a1_cli(["--input", bad, "--output", out])
             check("T069 duplicate/deep/nonfinite/oversize/malformed input refuses safely", run.returncode != 0
                   and "Traceback" not in run.stderr + run.stdout and "one" not in run.stderr + run.stdout)
+
+
+# T-074 additive tests; original functions/helpers/assertions/runner remain exact.
+_T074_PROJECTION = "if(blob7 = '', 'legacy-v1', if(blob7 = 'calls-v2-io', 'calls-v2-io', 'unsupported'))"
+_T074_PRIVATE = "T074-PRIVATE-PROVIDER"
+_T074_FROZEN_HASHES = {
+    "is_self": "249a352b8dbbb3b9553cbbec979988ae20a03d7d37a47267f27f3e4fed605b6b",
+    "AMBIGUOUS_CLIENTS": "aa505d468679d0e0e4c9f312914596c98c5887d7abaebe5e7791792da68b8ab4",
+    "OWNER_COUNTRIES": "21228d8350478bc473953e8c61008e303f8b37615e4302583655b52c4a7cff0c",
+    "ATTRIBUTION_FIXED": "73825f877dfb44da50f898165f868a9b1fc79e8d989f19bc2e3239440fd36b86",
+    "gate_window": "5d70dba113f84879fc3df358263412e43182c47877c888627838d9d52bbcb56f",
+    "GATE_FROZEN": "00c799ab1361fcb980e3ff8fd48815747b5226ad0828868bd3a7e3d33bdf67df",
+    "RULE_TEXT": "4e8d241c8a0f60643ec04a2c68d5b885afd5f274af21500e1d240a940e8f451d",
+    "gate_verdict": "9d0b809264938afaa5669fc7c90242c1665679867dc82cdaacf11a36973a260e",
+    "PRODUCTION_WINDOW_DAYS": "d83e50045f741b793b0dc1a0268d6e67faf86f6ff42acc03b8ec820f9d9c77db",
+    "PRODUCTION_EXCLUDED_CLIENTS": "1497999afa08adcab8c1ac4f9931b18b86dd59a666d3071f9af13dc117478eb9",
+    "production_verdicts": "3d80cb724f5c12cf4f4afc4383d74042ca9735204a6990c8b4eb0746178d3109",
+}
+
+
+def _t074_slot(sql):
+    text = " ".join(sql.lower().split())
+    if " as calls" in text:
+        return "Q1"
+    if "count(distinct todate(timestamp))" in text:
+        return "Q3"
+    if "tohour(timestamp)" in text:
+        return "Q4"
+    if "timestamp < todatetime(" in text:
+        return "Q5"
+    column = re.search(r"\b(blob[23456]) as k\b", text)
+    if column:
+        return {"blob2": "Q7", "blob4": "Q8", "blob5": "Q9",
+                "blob3": "Q10", "blob6": "Q11"}[column.group(1)]
+    if " as client" in text and " as country" in text:
+        return "Q2"
+    if " as why" in text:
+        return "P2" if "= 'unknown'" in text else "P3"
+    if " as verdict" in text:
+        return "P1"
+    if "sum(_sample_interval)" in text and "not startswith(" in text:
+        return "Q6"
+    raise RuntimeError("T074_UNEXPECTED_QUERY_SHAPE")
+
+
+def _t074_case(domains, eligible=False):
+    legacy = "legacy-v1" in domains
+    client = "t074-example-agent"
+    replies = {"Q%d" % i: {"data": []} for i in range(1, 12)}
+    replies["Q1"]["data"] = [dict(storage_schema=s, calls=8, errors=1, clients=1, countries=1)
+                              for s in domains]
+    if legacy:
+        replies["Q2"]["data"] = [dict(storage_schema="legacy-v1", client=client,
+                                         country="US", n=6)]
+        replies["Q5"]["data"] = [dict(storage_schema="legacy-v1", n=0)]
+    if legacy and eligible:
+        replies["Q3"]["data"] = [dict(storage_schema="legacy-v1", client=client,
+            tool="assess_token_risk", n=6, days=2)]
+        replies["Q4"]["data"] = [dict(storage_schema="legacy-v1", client=client,
+            verdict=v, country="US", method="http", day=d, hour=h, n=3)
+            for v, d, h in (("low", "2026-10-28", 3), ("high", "2026-10-29", 4))]
+    for schema in domains:
+        group = "legacy_named_nonself" if schema == "legacy-v1" else (
+            "v2" if schema == "calls-v2-io" else "unsupported")
+        replies["Q6"]["data"].append(dict(storage_schema=schema, attribution_group=group,
+                                            n=6 if schema == "legacy-v1" else 7))
+        for slot, value in (("Q7", "assess_token_risk"),
+                            ("Q8", client if schema == "legacy-v1" else "vetagent-other"),
+                            ("Q9", "US" if schema == "legacy-v1" else "??"),
+                            ("Q10", "low"), ("Q11", "")):
+            replies[slot]["data"].append(dict(storage_schema=schema, k=value, n=3))
+    return {"domains": tuple(domains), "eligible": legacy and eligible, "replies": replies}
+
+
+def _t074_main(case, credentials=True, production=False):
+    import contextlib
+    import copy
+    import io
+    import socket
+    import subprocess
+    import tempfile
+    import time
+    import urllib.request
+    from unittest.mock import patch
+    seen, gates, effects = [], [], []
+    stdout, stderr = io.StringIO(), io.StringIO()
+    original_gate = usage.gate_verdict
+    fake_env = ({"CLOUDFLARE_ACCOUNT_ID": "T074-DUMMY-ACCOUNT",
+                 "CLOUDFLARE_API_TOKEN": "T074-DUMMY-TOKEN"} if credentials else {})
+    argv = ["usage.py", "--days", "14"]
+    target = None
+    if production:
+        target = os.path.join(tempfile.mkdtemp(prefix="t074-mode-"), "verdicts.json")
+        argv = ["usage.py", "--write-verdicts", target]
+
+    def query(sql, account, token):
+        if account != "T074-DUMMY-ACCOUNT" or token != "T074-DUMMY-TOKEN":
+            raise RuntimeError("T074_CREDENTIAL_BOUNDARY")
+        slot = _t074_slot(sql)
+        seen.append((slot, sql))
+        if slot not in case["replies"]:
+            raise RuntimeError("T074_UNEXPECTED_QUERY_SLOT")
+        return copy.deepcopy(case["replies"][slot])
+
+    def gate(tools, prof):
+        gates.append(copy.deepcopy((tools, prof)))
+        return original_gate(tools, prof)
+
+    def forbidden(*args, **kwargs):
+        effects.append("forbidden_effect")
+        raise RuntimeError("T074_UNMOCKED_EFFECT")
+
+    value, escaped = None, None
+    with contextlib.ExitStack() as stack:
+        for obj, name, replacement in ((usage, "query", query), (usage, "gate_verdict", gate),
+                (usage.os, "environ", fake_env), (sys, "argv", argv),
+                (socket, "socket", forbidden), (socket, "create_connection", forbidden),
+                (urllib.request, "urlopen", forbidden), (urllib.request.OpenerDirector, "open", forbidden),
+                (subprocess, "run", forbidden), (subprocess, "Popen", forbidden), (time, "sleep", forbidden)):
+            stack.enter_context(patch.object(obj, name, replacement))
+        stack.enter_context(contextlib.redirect_stdout(stdout))
+        stack.enter_context(contextlib.redirect_stderr(stderr))
+        try:
+            value = usage.main()
+        except Exception as exc:
+            escaped = type(exc).__name__
+    artifact = None
+    if target and os.path.exists(target):
+        import json
+        with open(target, encoding="utf-8") as handle:
+            artifact = json.load(handle)
+    return {"value": value, "exception": escaped, "stdout": stdout.getvalue(),
+            "stderr": stderr.getvalue(), "seen": seen, "gates": gates,
+            "effects": effects, "artifact": artifact}
+
+
+def _t074_show(name, result):
+    print("\n[T074 %s] main_return=%s exception=%s query_slots=%s" %
+          (name, result["value"], result["exception"], [slot for slot, _ in result["seen"]]))
+    print(result["stdout"], end="")
+    if result["stderr"]:
+        print(result["stderr"], end="")
+    check("T074 %s uses real main without harness/import exceptions" % name,
+          result["exception"] is None, str(result["exception"]))
+    check("T074 %s makes no unmocked network/process/sleep call" % name,
+          result["effects"] == [], str(result["effects"]))
+
+
+def _t074_no_current_decision(name, result):
+    text = result["stdout"].lower()
+    check("T074 %s has no current strategy/adoption directive" % name,
+          not re.search(r"->\s*(?:no|yes).*strategy|no new features|experiment c only|distribution problem", text),
+          text[-220:])
+    check("T074 %s does not claim no attributable/current external callers" % name,
+          "no. no attributable client" not in text and "no external callers" not in text,
+          text[-220:])
+
+
+def _t074_expected_slots(eligible):
+    return ["Q1", "Q2", "Q3"] + (["Q4"] if eligible else []) + [
+        "Q5", "Q6", "Q7", "Q8", "Q9", "Q10", "Q11"]
+
+
+def test_a3_usage_summary_and_early_returns():
+    cases = []
+    empty = _t074_case(())
+    cases.append(("U07-empty", empty, 0))
+    zero = _t074_case(("calls-v2-io",))
+    zero["replies"]["Q1"] = {"data": [dict(storage_schema="calls-v2-io", calls=0,
+                                              errors=0, clients=0, countries=0)]}
+    cases.append(("U07-qualified-zero", zero, 0))
+    failed = _t074_case(())
+    failed["replies"]["Q1"] = {"errors": [_T074_PRIVATE]}
+    cases.append(("U08-failed", failed, 1))
+    missing = _t074_case(("legacy-v1",))
+    del missing["replies"]["Q1"]["data"][0]["storage_schema"]
+    cases.append(("U09-missing-marker", missing, 1))
+    for name, case, expected in cases:
+        result = _t074_main(case)
+        _t074_show(name, result)
+        check("T074 %s preserves exact primary return/query budget" % name,
+              result["value"] == expected and [s for s, _ in result["seen"]] == ["Q1"], str(result["value"]))
+        check("T074 %s emits no raw provider diagnostic/probe" % name,
+              _T074_PRIVATE not in result["stdout"] + result["stderr"]
+              and "curl " not in result["stdout"].lower()
+              and "send one call" not in result["stdout"].lower())
+        check("T074 %s does not evaluate a missing legacy domain" % name, not result["gates"])
+        _t074_no_current_decision(name, result)
+    result = _t074_main(empty, credentials=False)
+    _t074_show("credentials", result)
+    check("T074 missing credentials returns2 without a query", result["value"] == 2 and not result["seen"])
+
+
+def test_a3_usage_main_domain_matrix():
+    inputs = (("U01", ("legacy-v1",), True), ("U02", ("legacy-v1",), False),
+              ("U03", ("calls-v2-io",), False), ("U04-handshake-only", ("calls-v2-io",), False),
+              ("U05", ("legacy-v1", "calls-v2-io"), True),
+              ("U06", ("legacy-v1", "calls-v2-io"), False),
+              ("U10", ("unsupported",), False),
+              ("U11", ("legacy-v1", "calls-v2-io", "unsupported"), True))
+    for name, domains, eligible in inputs:
+        case = _t074_case(domains, eligible)
+        if name == "U04-handshake-only":
+            case["replies"]["Q6"] = {"data": []}
+            case["replies"]["Q7"] = {"data": []}
+        result = _t074_main(case)
+        _t074_show(name, result)
+        expected_exit = 1 if "unsupported" in domains else 0
+        check("T074 %s follows exact existing query order/native-value policy" % name,
+              result["value"] == expected_exit and [s for s, _ in result["seen"]] == _t074_expected_slots(eligible))
+        text = result["stdout"].lower()
+        for schema in domains:
+            word = "v2" if schema == "calls-v2-io" else schema.split("-")[0]
+            check("T074 %s retains %s presence before filtering" % (name, schema), word in text)
+        if domains != ("legacy-v1",):
+            cardinality = [line for line in text.splitlines() if re.search(
+                r"unique\s+(?:clients|countries)|raw totals:.*clients", line)]
+            check("T074 %s has no all-version identity/country cardinality" % name,
+                  all("legacy" in line for line in cardinality), str(cardinality))
+            check("T074 %s explicitly marks current identity unavailable" % name,
+                  any(any(word in line for word in ("identity", "caller", "client"))
+                      and any(word in line for word in ("not_recorded", "not recorded", "unavailable",
+                              "not comparable", "not_comparable", "not evaluated")) for line in text.splitlines()))
+            check("T074 %s does not promise new rows carry countries" % name,
+                  "rows from today carry a country" not in text)
+        if eligible:
+            check("T074 %s reaches the original rule only for legacy" % name,
+                  len(result["gates"]) == 1 and "legacy" in text)
+            if result["gates"]:
+                tools, prof = result["gates"][0]
+                check("T074 %s preserves exact legacy caller inputs" % name,
+                      tools == [("t074-example-agent", {"n": 6, "days": 2,
+                          "tools": {"assess_token_risk"}, "ambiguous": False})]
+                      and prof == {"t074-example-agent": {"verdicts": {"low": 3, "high": 3},
+                          "hours": {3, 4}, "days": {"2026-10-28", "2026-10-29"},
+                          "countries": {"US"}, "country_n": {"US": 6}, "methods": {"http": 6}, "n": 6}})
+        elif "legacy-v1" not in domains:
+            check("T074 %s has no fabricated empty-legacy gate result" % name, not result["gates"])
+        _t074_no_current_decision(name, result)
+
+
+def test_a3_usage_secondary_states():
+    faults = [("U12", "Q3", "failed"), ("U13", "Q4", "failed"),
+              ("U14", "Q2", "failed"), ("U15", "Q5", "failed"), ("U16", "Q6", "failed")]
+    faults += [("U17", "Q%d" % i, "failed") for i in range(7, 12)]
+    faults += [("U18", "Q%d" % i, "missing") for i in range(2, 12)]
+    for label, slot, kind in faults:
+        name = "%s-%s-%s" % (label, slot, kind)
+        case = _t074_case(("legacy-v1", "calls-v2-io"), True)
+        if kind == "failed":
+            case["replies"][slot] = {"errors": [_T074_PRIVATE]}
+        else:
+            del case["replies"][slot]["data"][0]["storage_schema"]
+        result = _t074_main(case)
+        _t074_show(name, result)
+        check("T074 %s returns partial1 without adding requests" % name,
+              result["value"] == 1 and [s for s, _ in result["seen"]] == _t074_expected_slots(slot != "Q3"))
+        text = result["stdout"].lower()
+        check("T074 %s names failed/malformed/unavailable rather than empty" % name,
+              any(word in text for word in ("failed", "malformed", "unavailable", "could not", "missing")))
+        check("T074 %s retains known neighboring evidence and v2 presence" % name,
+              "assess_token_risk" in text and "v2" in text)
+        check("T074 %s never reflects provider text" % name,
+              _T074_PRIVATE not in result["stdout"] + result["stderr"])
+        if slot in ("Q3", "Q4"):
+            check("T074 %s never passes failed caller/profile data as empty" % name, not result["gates"])
+        _t074_no_current_decision(name, result)
+
+
+def test_a3_usage_reconciliation_and_tail():
+    case = _t074_case(("legacy-v1", "calls-v2-io", "unsupported"), True)
+    case["replies"]["Q6"]["data"] = [
+        dict(storage_schema="legacy-v1", attribution_group="legacy_named_nonself", n=8),
+        dict(storage_schema="legacy-v1", attribution_group="legacy_self", n=2),
+        dict(storage_schema="legacy-v1", attribution_group="legacy_no_client", n=1),
+        dict(storage_schema="calls-v2-io", attribution_group="v2", n=7),
+        dict(storage_schema="unsupported", attribution_group="unsupported", n=4)]
+    result = _t074_main(case)
+    _t074_show("U19", result)
+    text = result["stdout"].lower()
+    check("T074 U19 separates no-client/v2/unsupported and unexplained residual",
+          any(word in text for word in ("no_client", "no-client", "no client"))
+          and "v2" in text and "unsupported" in text
+          and any(word in text for word in ("residual", "unexplained", "unresolved", "inconsistent")))
+    check("T074 U19 never assigns every gap to self", "these belong to clients filtered out as ours" not in text
+          and "expected to hold only vetagent" not in text)
+    _t074_no_current_decision("U19", result)
+    for slot, bound in (("Q2", 500), ("Q3", 200), ("Q4", 1000), ("Q8", 8)):
+        cap = _t074_case(("legacy-v1",), True)
+        if slot == "Q2":
+            cap["replies"][slot]["data"] = [dict(storage_schema="legacy-v1",
+                client="fixture-cap-%03d" % i, country="US", n=1) for i in range(bound)]
+        elif slot == "Q3":
+            cap["replies"][slot]["data"] = [dict(storage_schema="legacy-v1",
+                client="fixture-cap-%03d" % i, tool="assess_token_risk", n=1, days=2) for i in range(bound)]
+            cap["replies"]["Q4"] = {"data": []}
+        elif slot == "Q4":
+            cap["replies"][slot]["data"] = [dict(storage_schema="legacy-v1", client="t074-example-agent",
+                verdict=("low", "medium", "high", "unknown")[i % 4], country="US", method="http",
+                day="2026-10-%02d" % (20 + i // 96), hour=(i // 4) % 24, n=1) for i in range(bound)]
+        else:
+            cap["replies"][slot]["data"] = [dict(storage_schema="legacy-v1",
+                k="fixture-cap-%03d" % i, n=1) for i in range(bound)]
+        result = _t074_main(cap)
+        name = "U20-%s" % slot
+        _t074_show(name, result)
+        check("T074 %s returns partial1 for capped evidence" % name,
+              result["value"] == 1, str(result["value"]))
+        check("T074 %s states cap/limited coverage" % name,
+              any(word in result["stdout"].lower() for word in ("capped", "truncated", "limited", "incomplete")))
+        check("T074 %s keeps the original slot budget" % name,
+              [s for s, _ in result["seen"]] == _t074_expected_slots(True))
+        _t074_no_current_decision(name, result)
+
+
+def test_a3_usage_frozen_inputs_and_query_budget():
+    import ast
+    import hashlib
+    source = open(os.path.join(ROOT, "bench", "usage.py"), encoding="utf-8").read()
+    actual = {}
+    for node in ast.parse(source).body:
+        names = [node.name] if isinstance(node, ast.FunctionDef) else [
+            target.id for target in getattr(node, "targets", []) if isinstance(target, ast.Name)]
+        for name in names:
+            if name in _T074_FROZEN_HASHES:
+                actual[name] = hashlib.sha256(ast.get_source_segment(source, node).encode("utf-8")).hexdigest()
+    for name, expected in _T074_FROZEN_HASHES.items():
+        check("T074 protected source %s is byte-exact" % name, actual.get(name) == expected)
+    case = _t074_case(("legacy-v1", "calls-v2-io"), True)
+    result = _t074_main(case)
+    _t074_show("SQL-budget", result)
+    for slot, sql in result["seen"]:
+        normalized = " ".join(sql.lower().split())
+        check("T074 %s projects the root-fixed schema expression" % slot,
+              " ".join(_T074_PROJECTION.lower().split()) + " as storage_schema" in normalized)
+        check("T074 %s groups the projected domain" % slot,
+              "group by storage_schema" in normalized)
+        if slot in ("Q2", "Q3", "Q4"):
+            where = normalized.split(" where ", 1)[1].split(" group by ", 1)[0]
+            check("T074 %s restricts legacy before ranking" % slot, "blob7 = ''" in where)
+        if slot in ("Q3", "Q4", "Q6"):
+            check("T074 %s keeps literal attribution floor and weights" % slot,
+                  "2026-09-07 12:35:00" in sql and "sum(_sample_interval)" in normalized)
+        if slot == "Q5":
+            check("T074 Q5 retains the complement and weights", "timestamp < todatetime('2026-09-07 12:35:00')" in normalized
+                  and "sum(_sample_interval)" in normalized)
+        limit = {"Q2": 500, "Q3": 200, "Q4": 1000, "Q7": 8, "Q8": 8, "Q9": 8, "Q10": 8, "Q11": 8}.get(slot)
+        if limit:
+            check("T074 %s retains original limit" % slot, "limit %d" % limit in normalized)
+    production = {"replies": {
+        "P1": {"data": [dict(verdict=v, n=n) for v, n in (("low", 7), ("medium", 5), ("high", 2), ("unknown", 4))]},
+        "P2": {"data": [dict(why="coverage|liquidity:no pair", n=4)]},
+        "P3": {"data": [dict(why="driver=honeypot", n=2)]}}}
+    result = _t074_main(production, production=True)
+    _t074_show("production", result)
+    check("T074 production is original3 query/native-value policy", result["value"] == 0
+          and [s for s, _ in result["seen"]] == ["P1", "P2", "P3"])
+    check("T074 production keeps synthetic weighted counts and only CI exclusion", result["artifact"] is not None
+          and result["artifact"]["counts"] == {"low": 7, "medium": 5, "high": 2, "unknown": 4}
+          and result["artifact"]["excluded_clients"] == ["vetagent-ci-smoke"])
+    for _, sql in result["seen"]:
+        check("T074 production SQL remains seven-day assessment/onlyCI with no domain filter",
+              "INTERVAL '7' DAY" in sql and "assess_token_risk" in sql and "vetagent-ci-smoke" in sql
+              and "sum(_sample_interval)" in sql and "blob7" not in sql and "vetagent-other" not in sql)
+    production["replies"]["P1"] = {"errors": [_T074_PRIVATE]}
+    result = _t074_main(production, production=True)
+    _t074_show("production-primary-failure", result)
+    check("T074 failed production query remains1/read-only with no artifact", result["value"] == 1
+          and [s for s, _ in result["seen"]] == ["P1"] and result["artifact"] is None)
+
+
+def test_t074_missing_numeric_aggregates_are_malformed():
+    """NC3: absent numeric evidence must never become observed zero or gate input."""
+    cases = (("N01", "Q1", "calls", None), ("N02", "Q1", "clients", ""),
+             ("N03", "Q2", "n", None), ("N04", "Q3", "n", ""),
+             ("N05", "Q4", "n", None), ("N06", "Q5", "n", ""),
+             ("N07", "Q6", "n", None), ("N08", "Q11", "n", ""))
+    for name, slot, field, missing in cases:
+        case = _t074_case(("legacy-v1",), True)
+        case["replies"][slot]["data"][0][field] = missing
+        result = _t074_main(case)
+        _t074_show("NC3-%s" % name, result)
+        print("[T074 NC3 witness %s] affected=%s field=%s gate_calls=%d" %
+              (name, slot, field, len(result["gates"])))
+        text = result["stdout"]
+        check("T074 NC3 %s missing numeric returns partial1" % name, result["value"] == 1)
+        section = re.search(r"(?m)^[^\n]*\[%s\]: [^\n]+\n" % slot, text)
+        body = ""
+        if section:
+            following = re.search(r"(?m)^[^\n]*\[Q\d+\]: ", text[section.end():])
+            end = section.end() + following.start() if following else len(text)
+            body = text[section.start():end]
+        check("T074 NC3 %s affected section is malformed with counts unknown" % name,
+              "[%s]: malformed;" % slot in body and "counts are unknown, not zero" in body
+              and "Observed empty" not in body)
+        expected = ["Q1"] if slot == "Q1" else _t074_expected_slots(slot != "Q3")
+        check("T074 NC3 %s preserves exact query slots" % name,
+              [s for s, _ in result["seen"]] == expected)
+        check("T074 NC3 %s preserves applicable historical gate boundary" % name,
+              len(result["gates"]) == (0 if slot in ("Q1", "Q3", "Q4") else 1))
+        if slot != "Q1":
+            check("T074 NC3 %s retains valid neighboring tool evidence" % name,
+                  "[Q7]: observed;" in text and "assess_token_risk" in text)
+        else:
+            check("T074 NC3 %s does not manufacture observed empty" % name,
+                  "Observed empty event result" not in text)
+        if slot == "Q5":
+            check("T074 NC3 %s never claims missing floor evidence discarded nothing" % name,
+                  "nothing was set aside" not in body.lower() and "could not determine" in body.lower())
+    for name, zero in (("Z01", 0), ("Z02", "0")):
+        case = _t074_case(("legacy-v1",), True)
+        case["replies"]["Q5"]["data"][0]["n"] = zero
+        result = _t074_main(case)
+        _t074_show("NC3-%s" % name, result)
+        print("[T074 NC3 witness %s] affected=Q5 field=n gate_calls=%d" % (name, len(result["gates"])))
+        check("T074 NC3 %s true zero remains observed and successful" % name,
+              result["value"] == 0 and "[Q5]: observed;" in result["stdout"]
+              and "Nothing was set aside" in result["stdout"])
+        check("T074 NC3 %s true zero preserves slots and legacy inputs" % name,
+              [s for s, _ in result["seen"]] == _t074_expected_slots(True) and len(result["gates"]) == 1)
 
 
 def main():
