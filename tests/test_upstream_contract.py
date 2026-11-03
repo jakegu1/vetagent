@@ -298,7 +298,7 @@ def _print_probe_diagnostics():
 
 
 def fetch(source, url, record=True, *, probe):
-    """A usable body, or None with the reason recorded (unless `record` is False).
+    """A usable body, or None; unknown chain attempts still count as blindness.
 
     `record=False` is for a probe whose *failure is the measurement*. Asking honeypot.is
     about Arbitrum returns `{"code":400,"error":"Invalid chain"}`, and that 400 is the
@@ -309,7 +309,9 @@ def fetch(source, url, record=True, *, probe):
     was answering perfectly. Found 2026-09-20, after those same four 400s had already been
     misread once, as bursty throttling, and a call-gap change made on that reading. An
     expected negative read as an outage: the error this file exists to stop, in the file
-    itself.
+    itself. Only a confirmed negative is excluded: a chain-only `record=False`
+    probe with no usable body or exact negative evidence is unknown, not unsupported.
+    Its own diagnostic attempts determine blindness; a recovered usable body wins.
 
     This is the whole reason the CI job no longer needs `continue-on-error`. A third
     party being down and a third party changing a field are different events, and a test
@@ -359,7 +361,11 @@ def fetch(source, url, record=True, *, probe):
         _probe_diagnostic_payload()
         if usable:
             return body
-    if record:
+    chain_unknown = (not record and source == "honeypot.is" and probe.startswith("chains-")
+                     and not any(row["reason"] == "invalid_chain" for row in diagnostic["attempts"]))
+    if chain_unknown:
+        diagnostic["counts_for_blindness"] = True
+    if record or chain_unknown:
         _UNOBSERVED.append((source, "native transport failure" if native_exit != 0 else
                             "HTTP %s" % code if code != "200" else
                             "Vendor rejected body" if reason == "vendor_rejected" else
@@ -866,33 +872,37 @@ def test_simulator_chain_coverage():
         "avalanche": (43114, "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7"),
     }
 
-    answers, arrived = {}, 0
+    answers = {}
     for index, (name, (cid, addr)) in enumerate(PROBE.items()):
-        # record=False: a 400 here is the answer, not a failure to get one.
+        # Exclude observed negatives, but retain an unobserved chain as unknown.
         body = fetch("honeypot.is",
                      "https://api.honeypot.is/v2/IsHoneypot?address=%s&chainID=%d"
                      % (addr, cid), record=False, probe="chains-%02d" % (index + 1))
         if body is not None:
-            arrived += 1
-        answers[name] = bool(body and "honeypotResult" in body)
+            answers[name] = "honeypotResult" in body
+            check("%s chain response has honeypotResult" % name, answers[name],
+                  "usable chain response is missing honeypotResult")
+        else:
+            diagnostic = next((row for row in _PROBE_DIAGNOSTICS
+                if row["source"] == "honeypot.is" and row["probe"] == "chains-%02d" % (index + 1)), {})
+            answers[name] = (False if any(row["reason"] == "invalid_chain"
+                for row in diagnostic.get("attempts", ())) else None)
         time.sleep(2.0)
 
-    # None of the seven answered: the service is down, not seven chains dropped at once.
-    # Some answered and some did not is the informative case, and it is asserted below --
-    # that difference is the whole reason this job can fail the build again.
-    if not arrived:
-        print("  BLIND honeypot.is answered none of %d chain probes; nothing asserted"
-              % len(PROBE))
-        return
-
-    reachable = [n for n, ok in answers.items() if ok]
+    # Only observed evidence decides support. Unknown fixed probes cannot vote false;
+    # a believed name outside the fixed roster is not in this unknown subset.
+    unknown = {name for name, supported in answers.items() if supported is None}
+    if unknown:
+        print("  BLIND chain probes: %s; support unknown, static IDs still checked"
+              % ", ".join(sorted(unknown)))
+    reachable = [n for n, ok in answers.items() if ok is True]
     check("at least the three we rely on answer",
-          all(answers.get(n) for n in ("ethereum", "bsc", "base")),
+          all(n in answers and answers[n] is not False for n in ("ethereum", "bsc", "base")),
           str(answers))
 
     believed = set(risk._SIMULATOR_CHAIN_IDS)
     actual = set(reachable)
-    check("nothing we rely on has been dropped", believed <= actual,
+    check("nothing we rely on has been dropped", believed <= (actual | unknown),
           "we believe %s, it answers %s" % (sorted(believed), sorted(actual)))
     check("nothing new is being refused for no reason", actual <= believed,
           "it now also answers %s -- add it to _SIMULATOR_CHAIN_IDS"
