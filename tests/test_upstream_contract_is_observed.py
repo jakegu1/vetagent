@@ -899,9 +899,14 @@ def test_freeze_acceptance_uses_the_existing_offline_registration():
     check("the observed guard remains registered exactly once",
           workflow.count("run: python tests/test_upstream_contract_is_observed.py") == 1)
     check("the discovered runner sees every new freeze case",
-          sum(name.startswith("test_") for name in globals()) == 13
+          sum(name.startswith("test_") for name in globals()) == 17
           and callable(globals().get(
-              "test_upstream_refusal_diagnostics_survive_the_real_monitor_and_status_handoff")))
+              "test_upstream_refusal_diagnostics_survive_the_real_monitor_and_status_handoff"))
+          and all(callable(globals().get(name)) for name in (
+              "test_chain_probe_observations_do_not_turn_missing_answers_into_unsupported",
+              "test_chain_probe_observed_negatives_and_schema_changes_remain_hard_failures",
+              "test_chain_probe_attempt_recovery_keeps_the_fixed_schedule",
+              "test_chain_probe_diagnostics_preserve_truth_through_status")))
 
 
 # T-076 fixed synthetic chain observations; expectations are frozen before execution.
