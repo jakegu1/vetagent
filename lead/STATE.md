@@ -1,3 +1,18 @@
+# Current: T075 approved maintained regression responsibility (2026-11-03)
+
+The explicit Owner scope and independent design are adopted in T-075. Its initial
+executor phase is tests-only preparation; a literal Root adoption SHA is required
+as contract base. No old full failure is promoted, quarantine cleared or new
+native/clock/full slot granted. Workflow registration stays Root-owned.
+The recovered B source begins at bb6; explained checkout newline differences
+retain separate raw and canonical identities. Historical post-failure gaps remain.
+The current A T074 local source and integrated gates are qualified; its prior
+9b natural schedule41540262716/following46CI41541592418 handoff now qualifies.
+T074 has no new source/master CI or publication yet. T047/T049/T050 remain held.
+Earlier checkpoints below preserve their original stage boundaries.
+
+---
+
 # Lead state
 
 Last updated: 2026-11-03 by Codex. This is the current baton, not a release log.

@@ -73,3 +73,5 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-071 | Qualify explicit historical source identity without changing production | 3 | M | none | code-published9b83558; no historical execution claim; original failures retained; T073 next |
 | T-072 | Retain bounded interrupted progress publication without trusting staging | 3 | M | T-071 source acceptance | code-published9b83558; actual46 and both exact CI accepted; natural trial pending |
 | T-073 | Dispatch complete historical tests and retain contemporary adapter regressions | 3 | M | T-071, T-072, ADR0003 | ready; NC3/NC4/A1 and independent design accepted; tests-first implementation next |
+
+| T-075 | Complete maintained adapter regressions on fixed V1 dependencies | 3 | M | T-071, T-072, ADR0003 | ready; Owner scope approved, design accepted; initial tests-only phase, no heavy admission or publication |

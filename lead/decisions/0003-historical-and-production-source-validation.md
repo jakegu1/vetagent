@@ -64,3 +64,38 @@ by separate unchanged-witness repairs and current production acceptance.
 Rollback is by normal commits with evidence retained. After production repairs,
 restore the accepted production parent before removing historical dispatch; do not
 rewrite history or make the original source guard accept arbitrary versions.
+
+
+## Accepted 2026-11-03 amendment: maintained adapter regression responsibility
+
+Adoption state: accepted by Root under explicit Owner scope approval.
+The earlier ADR and all historical status and evidence remain preserved.
+
+The Owner approved the maintained-adapter acceptance responsibility on2026-11-03.
+For future releases, the maintained adapter must run the complete unchanged
+original13 plus staging3 and the unchanged original clock3 against the fixed V1
+dependency tuple. Historical original11 source/runtime/profile and historical
+record/interpreter meanings remain strict and independent. Old legacy native and
+clock execution entry points explicitly refuse, while historical dataset and
+current dataset responsibilities remain unchanged. The sole evolving production
+risk engine retains its own real current regressions; original native still
+rejects a genuinely changed V2 risk source. No positive V2 native compatibility is
+asserted.
+
+This replaces the earlier per-release original-adapter native/clock execution
+responsibility. It is neither an expected failure nor a skipped old assertion.
+Original native13/clock3/staging3 and original17 source tests remain protected;
+all old bytes, failures, unknowns and catalog entries remain. The failed author47
+is not promoted or retried by this amendment.
+
+Adopt exactly the original accepted B12 packet and its R2 NC6-D precedence. The
+unique maintained validator is validate_maintained_receipt; both the saved spy
+reference and patch target migrate to that attribute, with all8 modes/inputs/
+helpers/assertions intact. Preserve the old validator bodies.
+
+Scope approval and managed checkout recovery do not clear either QA quarantine.
+Independent incident-bound retirement/admission qualification, new operator
+readiness and separately issued serialized slots remain prerequisites to heavy
+execution. No price repair, held safety work, merge, CI or publication follows
+automatically from this amendment.
+

@@ -1,3 +1,16 @@
+# Current Owner checkpoint (2026-11-03)
+
+The Owner approved the maintained-adapter regression responsibility. T075 is
+adopted and starts with tests-only preparation before bounded source work.
+There is no further Owner decision for this exact scope. Complete independent
+source review, incident-specific admission and actual gates remain mandatory.
+The price repair is not complete. T074 is locally qualified and its prior normal
+trial dependency is satisfied; its new release remains unqualified.
+T047/T049/T050 and original inconclusive science remain unchanged.
+Older pending-scope paragraphs below are historical checkpoints.
+
+---
+
 # VetAgent · Owner dashboard (lead workflow)
 
 > This page holds only what the lead needs from you. The project's own dashboard, with its
