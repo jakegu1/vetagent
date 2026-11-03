@@ -1,5 +1,18 @@
 # VetAgent · Owner dashboard (lead workflow)
 
+## Current checkpoint: observation repair passed separate source gates
+
+T076 has passed independent source review and both complete source validation
+runs. It is integrated locally; verification of the merged source, ordinary
+feature/master CI and a natural snapshot handoff remain pending.
+
+The maintained-regression line has a separately reviewed registration correction,
+with its full native/clock gate and production price repair still pending.
+Earlier failures, unknown postrun dimensions and scientific uncertainty remain.
+T047/T049/T050 stay held. No additional Owner decision is pending for this repair.
+
+Earlier checkpoint text below retains its original stage.
+
 
 ## Current checkpoint: independent maintained-adapter tests and monitor correction
 

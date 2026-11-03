@@ -1,7 +1,7 @@
 ---
 id: T-076
 title: Keep unobserved simulator chain probes out of unsupported votes
-status: ready
+status: in_progress
 design_status: adopted
 level: 2
 size: S

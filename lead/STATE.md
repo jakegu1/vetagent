@@ -1,5 +1,24 @@
 # Lead state
 
+## Current checkpoint: observation repair passed separate source gates
+
+T076's deterministic source checks, independent source review and separate
+author and independent complete offline suites pass. The reviewed change keeps
+unobserved chain probes distinct from confirmed unsupported responses without
+changing requests, thresholds, support lists or diagnostic versions.
+
+The change is integrated locally with current scheduled evidence preserved.
+Post-integration verification, ordinary feature/master CI and a subsequent
+natural snapshot handoff remain pending. The earlier failed feature CI remains
+failed. No current release qualification is implied by the source checks.
+
+The separate maintained-regression line includes a reviewed registration guard
+correction. Its current full native/clock gate and production price repair remain
+pending. The original failed scopes and unknown postrun dimensions remain.
+T047/T049/T050 stay held; earlier scientific conclusions are unchanged.
+
+Earlier checkpoint text below retains its original stage.
+
 
 ## Current checkpoint: independent maintained-adapter tests and monitor correction
 
