@@ -904,6 +904,308 @@ def test_freeze_acceptance_uses_the_existing_offline_registration():
               "test_upstream_refusal_diagnostics_survive_the_real_monitor_and_status_handoff")))
 
 
+# T-076 fixed synthetic chain observations; expectations are frozen before execution.
+# Row: id, seven scripted sequences, believed-ID overrides, observation codes,
+# failure labels, native exit, status, source counts, consumed attempts, requests,
+# sleep counts (2s,3s,20s). S/N/U/A mean supported/negative/unknown/schema absence.
+_CHAIN_OBSERVATION_CASES = (
+    ('A00-healthy', ('S', 'S', 'S', 'NNN', 'NNN', 'NNN', 'NNN'), {}, 'SSSNNNN', (), 0, 'green', (7, 3, 0, 7), (1, 1, 1, 3, 3, 3, 3), 15, (7, 8, 0)),
+    ('A01-base-transport', ('S', 'S', 'UUU', 'NNN', 'NNN', 'NNN', 'NNN'), {}, 'SSUNNNN', (), 0, 'blind', (7, 2, 1, 6), (1, 1, 3, 3, 3, 3, 3), 17, (7, 10, 0)),
+    ('A02-base-and-arbitrum-unobserved', ('S', 'S', 'UUU', 'UUU', 'NNN', 'NNN', 'NNN'), {}, 'SSUUNNN', (), 0, 'blind', (7, 2, 2, 5), (1, 1, 3, 3, 3, 3, 3), 17, (7, 10, 0)),
+    ('A03-all-unobserved', ('UUU', 'UUU', 'UUU', 'UUU', 'UUU', 'UUU', 'UUU'), {}, 'UUUUUUU', (), 0, 'blind', (7, 0, 7, 0), (3, 3, 3, 3, 3, 3, 3), 21, (7, 14, 0)),
+    ('A04-unsupported-position-unobserved', ('S', 'S', 'S', 'UUU', 'NNN', 'NNN', 'NNN'), {}, 'SSSUNNN', (), 0, 'blind', (7, 3, 1, 6), (1, 1, 1, 3, 3, 3, 3), 15, (7, 8, 0)),
+    ('A05-base-R', ('S', 'S', 'RRR', 'NNN', 'NNN', 'NNN', 'NNN'), {}, 'SSUNNNN', (), 0, 'blind', (7, 2, 1, 6), (1, 1, 3, 3, 3, 3, 3), 17, (7, 8, 2)),
+    ('A06-base-V', ('S', 'S', 'VVV', 'NNN', 'NNN', 'NNN', 'NNN'), {}, 'SSUNNNN', (), 0, 'blind', (7, 2, 1, 6), (1, 1, 3, 3, 3, 3, 3), 17, (7, 10, 0)),
+    ('A07-base-M', ('S', 'S', 'MMM', 'NNN', 'NNN', 'NNN', 'NNN'), {}, 'SSUNNNN', (), 0, 'blind', (7, 2, 1, 6), (1, 1, 3, 3, 3, 3, 3), 17, (7, 10, 0)),
+    ('A08-base-E', ('S', 'S', 'EEE', 'NNN', 'NNN', 'NNN', 'NNN'), {}, 'SSUNNNN', (), 0, 'blind', (7, 2, 1, 6), (1, 1, 3, 3, 3, 3, 3), 17, (7, 10, 0)),
+    ('A09-base-P', ('S', 'S', 'PPP', 'NNN', 'NNN', 'NNN', 'NNN'), {}, 'SSUNNNN', (), 0, 'blind', (7, 2, 1, 6), (1, 1, 3, 3, 3, 3, 3), 17, (7, 10, 0)),
+    ('A10-base-I', ('S', 'S', 'III', 'NNN', 'NNN', 'NNN', 'NNN'), {}, 'SSUNNNN', (), 0, 'blind', (7, 2, 1, 6), (1, 1, 3, 3, 3, 3, 3), 17, (7, 10, 0)),
+    ('A11-base-O', ('S', 'S', 'OOO', 'NNN', 'NNN', 'NNN', 'NNN'), {}, 'SSUNNNN', (), 0, 'blind', (7, 2, 1, 6), (1, 1, 3, 3, 3, 3, 3), 17, (7, 10, 0)),
+    ('B00-required-confirmed-negative', ('S', 'S', 'NNN', 'NNN', 'NNN', 'NNN', 'NNN'), {}, 'SSNNNNN', ('at least the three we rely on answer', 'nothing we rely on has been dropped'), 1, 'red', (7, 2, 0, 7), (1, 1, 3, 3, 3, 3, 3), 17, (7, 10, 0)),
+    ('B01-all-confirmed-negative', ('NNN', 'NNN', 'NNN', 'NNN', 'NNN', 'NNN', 'NNN'), {}, 'NNNNNNN', ('at least the three we rely on answer', 'nothing we rely on has been dropped'), 1, 'red', (7, 0, 0, 7), (3, 3, 3, 3, 3, 3, 3), 21, (7, 14, 0)),
+    ('B02-new-supported-chain', ('S', 'S', 'S', 'S', 'NNN', 'NNN', 'NNN'), {}, 'SSSSNNN', ('nothing new is being refused for no reason',), 1, 'red', (7, 4, 0, 7), (1, 1, 1, 1, 3, 3, 3), 13, (7, 6, 0)),
+    ('B03-required-observed-schema-absence', ('S', 'S', 'A', 'NNN', 'NNN', 'NNN', 'NNN'), {}, 'SSANNNN', ('at least the three we rely on answer', 'nothing we rely on has been dropped', 'base chain response has honeypotResult'), 1, 'red', (7, 3, 0, 7), (1, 1, 1, 3, 3, 3, 3), 15, (7, 8, 0)),
+    ('B04-nonrequired-observed-schema-absence', ('S', 'S', 'S', 'A', 'NNN', 'NNN', 'NNN'), {}, 'SSSANNN', ('arbitrum chain response has honeypotResult',), 1, 'red', (7, 4, 0, 7), (1, 1, 1, 1, 3, 3, 3), 13, (7, 6, 0)),
+    ('B05-wrong-static-id-healthy', ('S', 'S', 'S', 'NNN', 'NNN', 'NNN', 'NNN'), {'base': 0}, 'SSSNNNN', ('base maps to chain id 8453',), 1, 'red', (7, 3, 0, 7), (1, 1, 1, 3, 3, 3, 3), 15, (7, 8, 0)),
+    ('B06-wrong-static-id-all-unobserved', ('UUU', 'UUU', 'UUU', 'UUU', 'UUU', 'UUU', 'UUU'), {'base': 0}, 'UUUUUUU', ('base maps to chain id 8453',), 1, 'red', (7, 0, 7, 0), (3, 3, 3, 3, 3, 3, 3), 21, (7, 14, 0)),
+    ('B07-confirmed-negative-with-neighbor-outage', ('S', 'S', 'NNN', 'UUU', 'NNN', 'NNN', 'NNN'), {}, 'SSNUNNN', ('at least the three we rely on answer', 'nothing we rely on has been dropped'), 1, 'red', (7, 2, 1, 6), (1, 1, 3, 3, 3, 3, 3), 17, (7, 10, 0)),
+    ('B08-believed-chain-outside-fixed-probe-roster', ('S', 'S', 'S', 'NNN', 'NNN', 'NNN', 'NNN'), {'unprobed_test_chain': 777}, 'SSSNNNN', ('nothing we rely on has been dropped',), 1, 'red', (7, 3, 0, 7), (1, 1, 1, 3, 3, 3, 3), 15, (7, 8, 0)),
+    ('C00-negative-transport-transport', ('S', 'S', 'NUU', 'NNN', 'NNN', 'NNN', 'NNN'), {}, 'SSNNNNN', ('at least the three we rely on answer', 'nothing we rely on has been dropped'), 1, 'red', (7, 2, 0, 7), (1, 1, 3, 3, 3, 3, 3), 17, (7, 10, 0)),
+    ('C01-transport-negative-transport', ('S', 'S', 'UNU', 'NNN', 'NNN', 'NNN', 'NNN'), {}, 'SSNNNNN', ('at least the three we rely on answer', 'nothing we rely on has been dropped'), 1, 'red', (7, 2, 0, 7), (1, 1, 3, 3, 3, 3, 3), 17, (7, 10, 0)),
+    ('C02-transport-transport-negative', ('S', 'S', 'UUN', 'NNN', 'NNN', 'NNN', 'NNN'), {}, 'SSNNNNN', ('at least the three we rely on answer', 'nothing we rely on has been dropped'), 1, 'red', (7, 2, 0, 7), (1, 1, 3, 3, 3, 3, 3), 17, (7, 10, 0)),
+    ('C03-recovered-positive', ('S', 'S', 'UUS', 'NNN', 'NNN', 'NNN', 'NNN'), {}, 'SSSNNNN', (), 0, 'green', (7, 3, 0, 7), (1, 1, 3, 3, 3, 3, 3), 17, (7, 10, 0)),
+    ('C04-negative-recovered-positive', ('S', 'S', 'NUS', 'NNN', 'NNN', 'NNN', 'NNN'), {}, 'SSSNNNN', (), 0, 'green', (7, 3, 0, 7), (1, 1, 3, 3, 3, 3, 3), 17, (7, 10, 0)),
+    ('C05-existing-positive-early-return', ('S', 'S', 'NSU', 'NNN', 'NNN', 'NNN', 'NNN'), {}, 'SSSNNNN', (), 0, 'green', (7, 3, 0, 7), (1, 1, 2, 3, 3, 3, 3), 16, (7, 9, 0)),
+    ('C06-rate-limit-recovered-positive', ('S', 'S', 'RS', 'NNN', 'NNN', 'NNN', 'NNN'), {}, 'SSSNNNN', (), 0, 'green', (7, 3, 0, 7), (1, 1, 2, 3, 3, 3, 3), 16, (7, 8, 1)),
+    ('D00-v1-healthy-handoff', ('S', 'S', 'S', 'NNN', 'NNN', 'NNN', 'NNN'), {}, 'SSSNNNN', (), 0, 'green', (7, 3, 0, 7), (1, 1, 1, 3, 3, 3, 3), 15, (7, 8, 0)),
+    ('D01-v1-unknown-handoff', ('S', 'S', 'UUU', 'NNN', 'NNN', 'NNN', 'NNN'), {}, 'SSUNNNN', (), 0, 'blind', (7, 2, 1, 6), (1, 1, 3, 3, 3, 3, 3), 17, (7, 10, 0)),
+    ('D02-v1-all-unknown-persistence', ('UUU', 'UUU', 'UUU', 'UUU', 'UUU', 'UUU', 'UUU'), {}, 'UUUUUUU', (), 0, 'blind', (7, 0, 7, 0), (3, 3, 3, 3, 3, 3, 3), 21, (7, 14, 0)),
+    ('D03-v1-red-before-blind', ('S', 'S', 'NNN', 'UUU', 'NNN', 'NNN', 'NNN'), {}, 'SSNUNNN', ('at least the three we rely on answer', 'nothing we rely on has been dropped'), 1, 'red', (7, 2, 1, 6), (1, 1, 3, 3, 3, 3, 3), 17, (7, 10, 0)),
+)
+_CHAIN_OBSERVATION_ORDER = (
+    ("ethereum", 1, "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
+    ("bsc", 56, "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c"),
+    ("base", 8453, "0x4200000000000000000000000000000000000006"),
+    ("arbitrum", 42161, "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"),
+    ("polygon", 137, "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"),
+    ("optimism", 10, "0x4200000000000000000000000000000000000006"),
+    ("avalanche", 43114, "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7"),
+)
+
+
+def _chain_observation_scenario(case):
+    """One actual main/fetch/chain/status invocation, fixed inputs, fatal real effects.
+
+    All observations below come from the actual returned body or diagnostic row.
+    Independent literal expectations are the Root-adopted case table, not main output.
+    """
+    import copy
+    import importlib.util
+    import socket
+    import subprocess
+    import tempfile
+    import types
+    import urllib.request
+    from unittest import mock
+
+    (name, scripts, overrides, observation_codes, expected_failures, expected_exit,
+     expected_status, expected_counts, consumed, request_count, sleep_counts) = case
+    assert len(scripts) == len(consumed) == len(observation_codes) == 7
+    assert all(1 <= len(seq) <= 3 and 1 <= n <= len(seq) for seq, n in zip(scripts, consumed))
+    refs = tuple("chains-%02d" % i for i in range(1, 8))
+    urls = {"https://api.honeypot.is/v2/IsHoneypot?address=%s&chainID=%d" % (address, cid): ref
+            for ref, (_chain, cid, address) in zip(refs, _CHAIN_OBSERVATION_ORDER)}
+    reasons = {"S": "ok", "A": "ok", "N": "invalid_chain", "U": "transport_failed",
+               "R": "rate_limited", "V": "vendor_rejected", "M": "malformed_body",
+               "E": "empty_body", "P": "transport_failed", "I": "transport_failed", "O": "transport_failed"}
+    codes = {"S": "200", "A": "200", "N": "400", "U": "000", "R": "429", "V": "400",
+             "M": "200", "E": "200", "P": "200", "I": "400", "O": "no response"}
+    native = {"S": 0, "A": 0, "N": 0, "U": 28, "R": 0, "V": 0,
+              "M": 0, "E": 0, "P": 23, "I": 28, "O": None}
+    private = "CHAIN_PRIVATE_ERROR request-input secret https://private.invalid/"
+    positive = {"honeypotResult": {"isHoneypot": False}}
+    negative = {"code": 400, "error": "Invalid chain"}
+    bodies = {"S": positive, "A": {"schema_fixture": True}, "N": negative, "I": negative,
+              "U": "", "R": {"error": private}, "V": {"error": private},
+              "M": "{malformed", "E": "", "P": positive}
+    requests, sleeps, events, effects, unobserved_events = [], [], [], [], []
+    attempts, observations, active = {}, {}, {"probe": None}
+    stdout, reader_output = io.StringIO(), io.StringIO()
+    source_path = os.path.join(HERE, "test_upstream_contract.py")
+    protected = (source_path, os.path.join(HERE, "upstream_baseline.json"), STATUS,
+                 os.path.join(ROOT, "src", "risk.py"), os.path.join(ROOT, "tools", "upstream_fields.py"),
+                 os.path.join(ROOT, ".github", "workflows", "test.yml"))
+    before = {}
+    for path in protected:
+        with open(path, "rb") as handle:
+            before[path] = handle.read()
+    saved_path = list(sys.path)
+    result, escaped, module, payload, readable = None, None, None, {}, False
+    persistence = {}
+    legacy = {"date": "2020-01-01", "status": "blind", "failures": [],
+              "unobserved_sources": ["rugcheck"], "unobserved_probes": 4,
+              "collapsed_paths": [], "history": [{"date": "2020-01-01", "status": "blind",
+              "unobserved_sources": ["rugcheck"], "collapsed_paths": []}]}
+
+    def fatal(*args, **kwargs):
+        effects.append("unexpected_network_or_process")
+        raise AssertionError("chain acceptance refused an unexpected effect")
+
+    def fake_run(command, **kwargs):
+        prefix = ["curl", "-s", "-m", "30", "-A", "vetagent-contract-test", "-w", "\n%{http_code}"]
+        if (not isinstance(command, list) or command[:-1] != prefix or command[-1] not in urls
+                or kwargs != {"capture_output": True, "encoding": "utf-8", "errors": "replace"}):
+            return fatal()
+        ref = urls[command[-1]]
+        index = attempts.get(ref, 0)
+        seq = scripts[refs.index(ref)]
+        if ref != active["probe"] or index >= len(seq) or index >= 3:
+            return fatal()
+        attempts[ref] = index + 1
+        requests.append((ref, index + 1))
+        events.append(("request", ref, index + 1))
+        kind = seq[index]
+        if kind == "O":
+            raise OSError("synthetic transport refusal")
+        body = bodies[kind]
+        text = body if isinstance(body, str) else json.dumps(body)
+        return types.SimpleNamespace(stdout=text + "\n" + codes[kind],
+                                     stderr=private, returncode=native[kind])
+
+    def fake_sleep(seconds):
+        sleeps.append(seconds)
+        events.append(("sleep", seconds))
+
+    class UnobservedTrace(list):
+        def append(self, row):
+            unobserved_events.append(active["probe"])
+            super().append(row)
+
+    try:
+        with tempfile.TemporaryDirectory(prefix="chain-observation-") as directory:
+            status_path = os.path.join(directory, "status.json")
+            with open(status_path, "w", encoding="utf-8") as handle:
+                json.dump(legacy, handle)
+            with contextlib.ExitStack() as stack:
+                for obj, attr, replacement in ((subprocess, "run", fatal), (subprocess, "Popen", fatal),
+                        (socket.socket, "connect", fatal), (socket.socket, "connect_ex", fatal),
+                        (socket, "create_connection", fatal), (urllib.request, "urlopen", fatal),
+                        (urllib.request.OpenerDirector, "open", fatal)):
+                    stack.enter_context(mock.patch.object(obj, attr, replacement))
+                stack.enter_context(contextlib.redirect_stdout(stdout))
+                spec = importlib.util.spec_from_file_location("chain_observation_" + name.replace("-", "_"), source_path)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                original_fetch = module.fetch
+
+                def observed_fetch(source, url, record=True, *, probe):
+                    active["probe"] = probe
+                    body = original_fetch(source, url, record=record, probe=probe)
+                    row = next((r for r in module._PROBE_DIAGNOSTICS if r["source"] == source and r["probe"] == probe), {})
+                    observations[probe] = ("supported" if body is not None and "honeypotResult" in body else
+                        "observed_schema_absence" if body is not None else "confirmed_unsupported"
+                        if any(a["reason"] == "invalid_chain" for a in row.get("attempts", ())) else "unknown")
+                    return body
+
+                believed = dict(module.risk._SIMULATOR_CHAIN_IDS)
+                believed.update(overrides)
+                stack.enter_context(mock.patch.object(module.risk, "_SIMULATOR_CHAIN_IDS", believed))
+                stack.enter_context(mock.patch.object(module, "fetch", observed_fetch))
+                stack.enter_context(mock.patch.object(module, "_UNOBSERVED", UnobservedTrace()))
+                stack.enter_context(mock.patch.object(module.subprocess, "run", fake_run))
+                stack.enter_context(mock.patch.object(module.time, "sleep", fake_sleep))
+                stack.enter_context(mock.patch.object(module, "_owner_rpc_open", fatal))
+                stack.enter_context(mock.patch.object(sys, "argv", ["contract", "--status-json", status_path]))
+                for function in list(vars(module)):
+                    if function.startswith("test_") and function != "test_simulator_chain_coverage":
+                        stack.enter_context(mock.patch.object(module, function, lambda: None))
+                try:
+                    result = module.main()
+                except Exception as exc:
+                    escaped = type(exc).__name__
+                if os.path.exists(status_path):
+                    with open(status_path, encoding="utf-8") as handle:
+                        payload = json.load(handle)
+                with mock.patch.dict(globals(), STATUS=status_path):
+                    readable = _load() == payload
+                if name == "D02-v1-all-unknown-persistence":
+                    today = datetime.date.fromisoformat(payload["date"])
+                    for days in (5, 6):
+                        replay = copy.deepcopy(payload)
+                        current = payload["history"][-1]
+                        replay["history"] = copy.deepcopy(legacy["history"]) + [
+                            dict(current, date=(today - datetime.timedelta(days=i)).isoformat())
+                            for i in reversed(range(days))]
+                        with open(status_path, "w", encoding="utf-8") as handle:
+                            json.dump(replay, handle)
+                        with mock.patch.dict(globals(), STATUS=status_path, _FAILURES=[], _PASSED=0):
+                            with contextlib.redirect_stdout(reader_output):
+                                test_no_upstream_has_been_unobserved_for_a_week()
+                            persistence[days] = [label for label, _ in _FAILURES]
+                        with mock.patch.dict(globals(), STATUS=status_path):
+                            readable = readable and _load() == replay
+    except Exception as exc:
+        escaped = type(exc).__name__
+    finally:
+        sys.path[:] = saved_path
+    protected_exact = True
+    for path, original in before.items():
+        with open(path, "rb") as handle:
+            protected_exact = protected_exact and handle.read() == original
+    diagnostic = payload.get("probe_diagnostics") or {}
+    rows = diagnostic.get("probes") or []
+    failures = [label for label, _ in getattr(module, "_FAILURES", ())]
+    expected_observations = dict(zip(refs, ({"S": "supported", "N": "confirmed_unsupported",
+        "U": "unknown", "A": "observed_schema_absence"}[code] for code in observation_codes)))
+    expected_unknown = [ref for ref, kind in expected_observations.items() if kind == "unknown"]
+    expected_events, expected_attempts = [], []
+    for ref, seq, count in zip(refs, scripts, consumed):
+        actual_seq = seq[:count]
+        expected_attempts.append([{"http_status": codes[kind], "transport_exit": native[kind],
+                                  "usable_body": kind in ("S", "A"), "reason": reasons[kind]} for kind in actual_seq])
+        for index in range(count):
+            if index:
+                expected_events.append(("sleep", 20.0 if codes[seq[index-1]] == "429" else 3.0))
+            expected_events.append(("request", ref, index + 1))
+        expected_events.append(("sleep", 2.0))
+    public = json.dumps(diagnostic) + stdout.getvalue()
+    check("T076 %s actual main completes without harness exception" % name, escaped is None, str(escaped))
+    check("T076 %s uses only fixed stub transport and preserves original bytes" % name,
+          not effects and protected_exact)
+    check("T076 %s keeps the exact fixed request and sleep trace" % name,
+          events == expected_events and len(requests) == request_count
+          and tuple(sleeps.count(value) for value in (2.0, 3.0, 20.0)) == sleep_counts)
+    check("T076 %s diagnostic rows retain version1 and seven fixed purposes" % name,
+          set(diagnostic) == {"version", "probes", "source_counts"}
+          and diagnostic.get("version") == 1 and len(rows) == 7
+          and [(r.get("source"), r.get("probe")) for r in rows] == [("honeypot.is", ref) for ref in refs]
+          and all(set(row) == {"source", "probe", "counts_for_blindness", "attempts"} for row in rows))
+    check("T076 %s preserves all attempt enums and native/HTTP evidence" % name,
+          [row.get("attempts") for row in rows] == expected_attempts)
+    check("T076 %s distinguishes observed positive negative unknown and schema absence" % name,
+          observations == expected_observations)
+    check("T076 %s unknown probes are counted once and never falsely excluded" % name,
+          unobserved_events == expected_unknown
+          and [row.get("counts_for_blindness") for row in rows] == [ref in expected_unknown for ref in refs]
+          and payload.get("unobserved_probes") == len(expected_unknown)
+          and payload.get("unobserved_sources") == (["honeypot.is"] if expected_unknown else []))
+    check("T076 %s retains the frozen source counts and native/status priority" % name,
+          diagnostic.get("source_counts") == {"honeypot.is": dict(zip(
+              ("probes", "usable", "blind", "blindness_excluded"), expected_counts))}
+          and result == expected_exit and payload.get("status") == expected_status)
+    check("T076 %s preserves every deciding hard failure family" % name,
+          sorted(failures) == sorted(expected_failures), repr(failures))
+    check("T076 %s roundtrips through the real status reader and legacy history" % name,
+          readable and payload.get("history", [])[:1] == legacy["history"]
+          and all("probe_diagnostics" not in row for row in payload.get("history", [])))
+    check("T076 %s diagnostics stay bounded and contain no request/body/error text" % name,
+          not any(value in public for value in (private, "CHAIN_PRIVATE_ERROR", "request-input", "secret", "https://"))
+          and not any(address in public for _chain, _cid, address in _CHAIN_OBSERVATION_ORDER)
+          and getattr(module, "_MAX_DIAGNOSTIC_PROBES", None) == 49
+          and getattr(module, "_MAX_DIAGNOSTIC_BYTES", None) == 65536
+          and bool(rows) and all(1 <= len(row.get("attempts", ())) <= 3 for row in rows)
+          and len((json.dumps(diagnostic, indent=1, sort_keys=True) + "\n").encode()) <= 65536)
+    return {"name": name, "observations": observations, "failures": failures, "persistence": persistence,
+            "result": result, "status": payload.get("status"), "request_count": len(requests)}
+
+
+def test_chain_probe_observations_do_not_turn_missing_answers_into_unsupported():
+    """Twelve frozen maps keep transport/refusal gaps outside unsupported votes."""
+    for case in _CHAIN_OBSERVATION_CASES[:12]:
+        receipt = _chain_observation_scenario(case)
+        check("T076 %s missing answers create no false reliance failure" % case[0], not receipt["failures"])
+
+
+def test_chain_probe_observed_negatives_and_schema_changes_remain_hard_failures():
+    """Nine maps retain real negatives, schema loss, wrong IDs and dropped coverage."""
+    for case in _CHAIN_OBSERVATION_CASES[12:21]:
+        receipt = _chain_observation_scenario(case)
+        check("T076 %s remains a hard contract failure" % case[0],
+              receipt["result"] == 1 and receipt["status"] == "red" and bool(receipt["failures"]))
+
+
+def test_chain_probe_attempt_recovery_keeps_the_fixed_schedule():
+    """Seven ordered attempt maps distinguish a negative from a recovered positive."""
+    for case in _CHAIN_OBSERVATION_CASES[21:28]:
+        receipt = _chain_observation_scenario(case)
+        check("T076 %s actual fetch return wins over earlier failed attempts" % case[0],
+              receipt["observations"].get("chains-03") == ("confirmed_unsupported" if case[0] in (
+                  "C00-negative-transport-transport", "C01-transport-negative-transport",
+                  "C02-transport-transport-negative") else "supported"))
+
+
+def test_chain_probe_diagnostics_preserve_truth_through_status():
+    """Four fixed replays retain version1 status, legacy history and persistence."""
+    for case in _CHAIN_OBSERVATION_CASES[28:32]:
+        receipt = _chain_observation_scenario(case)
+        if case[0] == "D02-v1-all-unknown-persistence":
+            label = "honeypot.is has been observed within the last 5 recorded days"
+            check("T076 five blind days remain below the existing persistence failure",
+                  receipt["persistence"].get(5) == [])
+            check("T076 six blind days trigger the unchanged source-day persistence guard",
+                  receipt["persistence"].get(6) == [label])
+
+
 def main():
     print("=" * 68)
     print("Upstream contract monitor is still monitoring")
