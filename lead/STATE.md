@@ -1,5 +1,25 @@
 # Lead state
 
+
+## Current checkpoint: independent maintained-adapter tests and monitor correction
+
+The Owner approved the maintained-adapter responsibility split. T075 has an
+isolated source candidate with meaningful parent reds and independently passing
+new acceptance tests. Historical/native execution, predecessor admission, full
+validation and final source acceptance remain unqualified. Original failed scopes
+and unrecorded descendant exits remain unchanged. No new Owner decision is pending.
+
+T074 is locally qualified and integrated, but its ordinary feature CI failed in
+the live upstream monitor. Master publication remains held. Saved transport
+timeouts were incorrectly counted as unsupported chains. T076 is ready for a
+bounded offline correction preserving observed negative/schema/ID failures,
+diagnostic version, request schedule, fixed support list and existing thresholds.
+The preceding release natural snapshot is independently qualified and its finite
+followup is closed. Do not repeat completed trial or old research operations.
+T047/T049/T050 and the old scientific uncertainty remain unchanged.
+
+Earlier checkpoint text below describes its original stage and is retained.
+
 Last updated: 2026-11-03 by Codex. This is the current baton, not a release log.
 
 ## Current source, science boundary and engineering work

@@ -74,3 +74,5 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-072 | Retain bounded interrupted progress publication without trusting staging | 3 | M | T-071 source acceptance | code-published9b83558; actual46 and both exact CI accepted; natural trial pending |
 | T-073 | Dispatch complete historical tests and retain contemporary adapter regressions | 3 | M | T-071, T-072, ADR0003 | author actual47 failed at38; corrected source reviewed; failed scope retained, new responsibility decision pending |
 | T-074 | Scope usage reports to observed storage domains | 3 | M | T-069, T-072 | ready; independently reviewed design; first phase tests and exact SQL only, no collection/full |
+
+| T-076 | Keep unobserved simulator chain probes out of unsupported votes | 2 | S | T-074 code basis | ready; bounded offline tests first, retained failed CI, no supplier or threshold change |
