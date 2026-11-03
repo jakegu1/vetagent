@@ -461,18 +461,28 @@ class B12DispatchAcceptance(unittest.TestCase):
                     self.assertNotEqual(refused["wrapper_exit_code"], 0)
                     self.assertEqual(refused["legacy_tests"]["status"], "not_run")
                 child.assert_not_called()
+            with patch.object(m, "begin_validation_operation", side_effect=AssertionError("ineligible operation")) as admission, \
+                    patch.object(m, "_launch_test_child", side_effect=AssertionError("ineligible child")) as child:
+                for runner in ("tests/test_w40_native.py", "tests/test_w40_native_clock.py"):
+                    refused = m.legacy_test(CONTRACT, "git-lf", runner, scope=scope)
+                    self.assertEqual(refused["reason"], "legacy_native_execution_unqualified")
+                    self.assertEqual(refused["wrapper_exit_code"], 2)
+                    self.assertEqual(refused["legacy_tests"]["status"], "not_run")
+                admission.assert_not_called()
+                child.assert_not_called()
             seen = []
             def child(view, runner, ids, seconds, operation, selector=None):
                 seen.append((runner, list(ids), seconds, selector))
                 return self.observation(ids)
             with patch.object(m, "_launch_test_child", side_effect=child):
-                for runner, count, seconds in (("tests/test_w40_native.py", 13, 900),
-                                               ("tests/test_w40_native_clock.py", 3, 180)):
-                    completed = m.legacy_test(CONTRACT, "git-lf", runner, scope=scope)
+                for runner, selector, count, seconds in (("tests/test_w40_native.py", "native-all16", 16, 900),
+                                                         ("tests/test_w40_native_clock.py", "clock-all3", 3, 180)):
+                    completed = m.maintained_test(CONTRACT, "git-lf", selector, scope=scope)
                     self.assertEqual(completed["wrapper_exit_code"], 0)
                     self.assertEqual(len(seen[-1][1]), count)
                     self.assertEqual(seen[-1][2:], (seconds, None))
-                    self.assertEqual(completed["original_runner"], runner)
+                    self.assertEqual(completed["maintained_runner"], runner)
+                    self.assertEqual(completed["domain"], "maintained_adapter_on_fixed_v1_dependencies")
                     self.assertTrue(completed["test_execution_qualified"])
             self.assertEqual(len(seen), 2)  # Unit spies; no complete native/clock execution.
 
