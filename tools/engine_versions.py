@@ -31,6 +31,7 @@ REASONS |= {"unknown_runner", "unknown_test_context", "test_failed", "test_timeo
             "test_interrupted", "test_output_limit", "test_execution_unobserved",
             "test_ids_mismatch", "child_protocol_invalid", "validation_quarantined", "operation_limit"}
 
+REASONS.add("legacy_native_execution_unqualified")
 
 class VersionError(Exception):
     def __init__(self, code):
@@ -1041,8 +1042,321 @@ def _dispatch(contract_id, profile_id, runner, *, adapter=False, scope=None):
     return result
 
 
+# Maintained execution has its own closed context and receipt domain.
+MAINTAINED_RUNNERS = {"native-all16": ("tests/test_w40_native.py", 16, 900),
+                      "clock-all3": ("tests/test_w40_native_clock.py", 3, 180)}
+MAINTAINED_DOMAIN = "maintained_adapter_on_fixed_v1_dependencies"
+MAINTAINED_IDS_SHA256 = {"native-all16": "bf5a5ec99635d00e8b331396850d3a1c5e6a9c4e0e9d3cc7cdcabd3e9ab3d3af",
+                         "clock-all3": RUNNER_IDS_SHA256["tests/test_w40_native_clock.py"]}
+
+
+def maintained_context_sources(selected, objects, selector):
+    """Compose exactly native9 or clock8, without importing a source member."""
+    selected = _selection(selected)
+    require(selected["profile_id"] == "git-lf", "unknown_profile")
+    require(type(selector) is str and selector in MAINTAINED_RUNNERS, "unknown_test_context")
+    fixed = _profile_bodies(selected, objects)
+    paths = CURRENT_MEMBERS if selector == "native-all16" else ("bench/w40_native.py",)
+    support = ".github/workflows/test.yml" if selector == "native-all16" else "tests/test_w40_native_clock.py"
+    head = _git_bytes("rev-parse", "HEAD^{commit}").decode("ascii").strip()
+    tree = _git_bytes("rev-parse", head + "^{tree}").decode("ascii").strip()
+    listing = _git_bytes("ls-tree", "-z", head, "--", *paths)
+    current, metadata = {}, []
+    require(listing.endswith(b"\0"), "source_mismatch")
+    for entry in listing.split(b"\0")[:-1]:
+        fields, name = entry.decode("ascii").split("\t")
+        mode, kind, blob = fields.split()
+        require(name in paths and name not in current and mode == "100644" and kind == "blob", "source_mismatch")
+        require(0 < int(_git_bytes("cat-file", "-s", blob)) <= FILE_CAP, "source_mismatch")
+        raw = _git_bytes("cat-file", "blob", blob)
+        physical = _read_file(ROOT / name, FILE_CAP)
+        require(physical.replace(b"\r\n", b"\n") == raw, "source_mismatch")
+        require(hashlib.sha1(("blob %d\0" % len(raw)).encode("ascii") + raw).hexdigest() == blob, "source_mismatch")
+        current[name] = raw
+        metadata.append({"path": name, "mode": mode, "blob": blob, "canonical_sha256": sha(raw),
+                         "raw_sha256": sha(physical), "raw_bytes": len(physical)})
+    require(set(current) == set(paths), "source_mismatch")
+    bodies = {name: fixed[name] for name in DEPENDENCIES}
+    bodies[support] = fixed[support]
+    bodies.update(current)
+    require(len(bodies) == (9 if selector == "native-all16" else 8)
+        and len(bodies) <= MEMBER_CAP and sum(map(len, bodies.values())) <= TOTAL_CAP
+        and all(len(raw) <= FILE_CAP for raw in bodies.values()), "source_mismatch")
+    runner, count, _ = MAINTAINED_RUNNERS[selector]
+    ids = _test_ids(bodies[runner])
+    require(len(ids) == count and sha(encoded(ids)) == MAINTAINED_IDS_SHA256[selector], "test_ids_mismatch")
+    registry = selected["registry"]
+    def fixed_identity(names):
+        return {"contract_id": registry["contract_id"], "engine_source_commit": registry["engine_source_commit"],
+            "source_tree": registry["source_tree"], "profile": "git-lf", "registry_sha256": REGISTRY_SHA256,
+            "members": [row for row in registry["members"] if row["path"] in names]}
+    identity = {"dependency_identity": fixed_identity(DEPENDENCIES), "support_identity": fixed_identity((support,)),
+        "current_adapter_identity": {"candidate_commit": head, "candidate_tree": tree, "members": metadata}}
+    require(_git_bytes("rev-parse", "HEAD^{commit}").decode("ascii").strip() == head, "source_mismatch")
+    return bodies, identity
+
+
+def _maintained_receipt(profile_id=None):
+    return {"schema": "engine-maintained-adapter-execution-v1", "operation": "maintained-test",
+        "domain": MAINTAINED_DOMAIN, "invocation_status": "refused", "contract_id": None, "role": None,
+        "engine_source_commit": None, "source_tree": None,
+        "requested_profile": "git-lf" if profile_id == "git-lf" else None, "selected_profile": None,
+        "selector": None, "maintained_runner": None, "command_argv": ["python", "tools/engine_versions.py", "maintained-test"],
+        "context_source": _layer(), "maintained_loaded_runtime": _layer(),
+        "historical_record_tuple": _layer(reason="historical_record_not_supplied"),
+        "historical_interpreter": _layer(reason="historical_interpreter_not_examined"),
+        "maintained_tests": {"status": "not_run", "executed_test_ids_sha256": None, "stdout_sha256": None,
+            "stderr_sha256": None, "child_exit_code": None},
+        "test_execution_qualified": False, "historical_execution_qualified": False,
+        "original_v1_fixture_qualified_by_maintained_result": False, "current_production_behavior_qualified": False,
+        "v2_historical_native_positive_compatibility": "unsupported", "descendant_observations_complete": False,
+        "descendant_observations": [{"command": None, "exit_code": None, "state": "not_recorded", "observation_source": "not_recorded"}],
+        "wrapper_exit_code": 2, "reason": None}
+
+
+def _maintained_receipt_members(value, registry):
+    """Validate named immutable identities, not the authenticity of an execution."""
+    error = "invalid_result_layers"
+    selector = value["selector"]
+    paths = CURRENT_MEMBERS if selector == "native-all16" else ("bench/w40_native.py",)
+    support = ".github/workflows/test.yml" if selector == "native-all16" else "tests/test_w40_native_clock.py"
+    for key, names in (("dependency_identity", DEPENDENCIES), ("support_identity", (support,))):
+        expected = {"contract_id": registry["contract_id"], "engine_source_commit": registry["engine_source_commit"],
+            "source_tree": registry["source_tree"], "profile": "git-lf", "registry_sha256": REGISTRY_SHA256,
+            "members": [row for row in registry["members"] if row["path"] in names]}
+        require(type(value[key]) is dict and value[key] == expected, error)
+    current = value["current_adapter_identity"]
+    require(type(current) is dict and set(current) == {"candidate_commit", "candidate_tree", "members"}
+        and _digest(current["candidate_commit"], 40) and _digest(current["candidate_tree"], 40), error)
+    require(_git_bytes("rev-parse", current["candidate_commit"] + "^{tree}").decode("ascii").strip()
+        == current["candidate_tree"], error)
+    listing = _git_bytes("ls-tree", "-z", current["candidate_commit"], "--", *paths)
+    actual = {}
+    require(listing.endswith(b"\0"), error)
+    for entry in listing.split(b"\0")[:-1]:
+        fields, name = entry.decode("ascii").split("\t")
+        mode, kind, blob = fields.split()
+        require(name in paths and name not in actual and mode == "100644" and kind == "blob", error)
+        actual[name] = blob
+    require(set(actual) == set(paths), error)
+    members = current["members"]
+    require(type(members) is list and len(members) == len(paths), error)
+    fixed = read_objects(select(registry, registry["contract_id"], "git-lf"))
+    bodies = {name: fixed[name] for name in (*DEPENDENCIES, support)}
+    seen = set()
+    for member in members:
+        require(type(member) is dict and set(member) == {"path", "mode", "blob", "canonical_sha256", "raw_sha256", "raw_bytes"}, error)
+        name = member["path"]
+        require(type(name) is str and name in paths and name not in seen and member["mode"] == "100644"
+            and _digest(member["blob"], 40) and member["blob"] == actual[name]
+            and _digest(member["canonical_sha256"]) and _digest(member["raw_sha256"])
+            and type(member["raw_bytes"]) is int and 0 < member["raw_bytes"] <= FILE_CAP, error)
+        require(0 < int(_git_bytes("cat-file", "-s", member["blob"])) <= FILE_CAP, error)
+        raw = _git_bytes("cat-file", "blob", member["blob"])
+        require(sha(raw) == member["canonical_sha256"] and len(raw) <= member["raw_bytes"] <= 2 * len(raw), error)
+        if len(raw) == member["raw_bytes"]:
+            require(member["raw_sha256"] == member["canonical_sha256"], error)
+        seen.add(name)
+        bodies[name] = raw
+    require(len(bodies) == (9 if selector == "native-all16" else 8)
+        and sum(map(len, bodies.values())) <= TOTAL_CAP, error)
+    runner, count, _ = MAINTAINED_RUNNERS[selector]
+    ids = _test_ids(bodies[runner])
+    require(len(ids) == count and sha(encoded(ids)) == MAINTAINED_IDS_SHA256[selector], "test_ids_mismatch")
+    return sha(encoded({name: sha(raw) for name, raw in bodies.items()})), ids
+
+
+def validate_maintained_receipt(value):
+    """Separate closed domain; never widen the historical or staging validators."""
+    error = "invalid_result_layers"
+    try:
+        require(type(value) is dict and len(encoded(value)) <= RESULT_CAP, error)
+        required = set(_maintained_receipt())
+        optional = {"dependency_identity", "support_identity", "current_adapter_identity",
+                    "context_manifest_sha256", "direct_observations_evidence_sha256"}
+        require(required <= set(value) <= required | optional, error)
+        require(value["schema"] == "engine-maintained-adapter-execution-v1" and value["operation"] == "maintained-test"
+            and value["domain"] == MAINTAINED_DOMAIN, error)
+        require(all(value[key] is False for key in ("historical_execution_qualified", "current_production_behavior_qualified",
+            "original_v1_fixture_qualified_by_maintained_result", "descendant_observations_complete")), error)
+        require(value["v2_historical_native_positive_compatibility"] == "unsupported"
+            and value["descendant_observations"] == _maintained_receipt()["descendant_observations"], error)
+        _validate_result_layers(dict(value, source_fixture=value["context_source"], loaded_runtime=value["maintained_loaded_runtime"]))
+        require(type(value["test_execution_qualified"]) is bool and type(value["wrapper_exit_code"]) is int
+            and 0 <= value["wrapper_exit_code"] <= 255, error)
+        require(value["reason"] is None or type(value["reason"]) is str and value["reason"] in REASONS, error)
+        registry = load_registry()
+        profile, selector = value["selected_profile"], value["selector"]
+        require(value["requested_profile"] is None or value["requested_profile"] == "git-lf", error)
+        expected_ids, expected_seal = None, None
+        if profile is None:
+            require(all(value[key] is None for key in ("contract_id", "role", "engine_source_commit", "source_tree", "selector", "maintained_runner"))
+                and value["command_argv"] == ["python", "tools/engine_versions.py", "maintained-test"]
+                and value["context_source"]["status"] != "passed" and not optional & set(value), error)
+        else:
+            require(type(profile) is str and profile == value["requested_profile"] == "git-lf"
+                and type(selector) is str and selector in MAINTAINED_RUNNERS
+                and value["contract_id"] == registry["contract_id"] and value["role"] == MAINTAINED_DOMAIN
+                and value["engine_source_commit"] == registry["engine_source_commit"] and value["source_tree"] == registry["source_tree"]
+                and value["maintained_runner"] == MAINTAINED_RUNNERS[selector][0]
+                and value["command_argv"] == ["python", "tools/engine_versions.py", "maintained-test", registry["contract_id"], profile, selector], error)
+            identity_keys = {"dependency_identity", "support_identity", "current_adapter_identity"}
+            if identity_keys & set(value) or value["context_source"]["status"] == "passed":
+                require(identity_keys <= set(value), error)
+                expected_seal, expected_ids = _maintained_receipt_members(value, registry)
+        if "context_manifest_sha256" in value:
+            require(_digest(value["context_manifest_sha256"]) and value["context_manifest_sha256"] == expected_seal, error)
+        if value["context_source"]["status"] == "passed":
+            require(value.get("context_manifest_sha256") == expected_seal
+                and value["context_source"]["evidence_sha256"] == [expected_seal], error)
+        if "direct_observations_evidence_sha256" in value:
+            require(_digest(value["direct_observations_evidence_sha256"]), error)
+        test = value["maintained_tests"]
+        base = _maintained_receipt()["maintained_tests"]
+        require(type(test) is dict and type(test.get("status")) is str and test["status"] in {"passed", "failed", "not_run"}, error)
+        if test["status"] == "not_run":
+            require(test == base, error)
+        else:
+            require(profile is not None and set(test) == set(base) | {"executed_test_ids", "dynamic_counters"}, error)
+            ids = test["executed_test_ids"]
+            require(type(ids) is list and len(ids) <= 64 and all(type(item) is str for item in ids)
+                and ids == sorted(set(ids)) and test["executed_test_ids_sha256"] == sha(encoded(ids)), "test_ids_mismatch")
+            require(test["child_exit_code"] is None or type(test["child_exit_code"]) is int, error)
+            require(all(test[key] is None or _digest(test[key]) for key in ("stdout_sha256", "stderr_sha256"))
+                and test["dynamic_counters"] is None, error)
+        if value["test_execution_qualified"]:
+            require(profile is not None and value["invocation_status"] == "completed" and value["reason"] is None
+                and value["wrapper_exit_code"] == 0 and test["status"] == "passed"
+                and type(test["child_exit_code"]) is int and test["child_exit_code"] == 0
+                and value["context_source"]["status"] == value["maintained_loaded_runtime"]["status"] == "passed"
+                and _digest(value.get("direct_observations_evidence_sha256"))
+                and all(_digest(test[key]) for key in ("stdout_sha256", "stderr_sha256")), error)
+            require(expected_ids is not None and test["executed_test_ids"] == expected_ids, "test_ids_mismatch")
+        else:
+            require(type(value["invocation_status"]) is str and value["invocation_status"] in {"refused", "failed"}
+                and value["reason"] is not None and value["wrapper_exit_code"] != 0 and test["status"] != "passed", error)
+        return value
+    except VersionError:
+        raise
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, IndexError, RecursionError, OverflowError):
+        raise VersionError("invalid_result_layers") from None
+
+
+def maintained_test(contract_id, profile_id, selector, *, scope=None):
+    result = _maintained_receipt(profile_id)
+    operation = None
+    phase = "selection_and_admission"
+    try:
+        selected = select(load_registry(), contract_id, profile_id)
+        require(profile_id == "git-lf", "unknown_profile")
+        require(type(selector) is str and selector in MAINTAINED_RUNNERS, "unknown_test_context")
+        runner, count, seconds = MAINTAINED_RUNNERS[selector]
+        result.update(contract_id=contract_id, requested_profile=profile_id, selected_profile=profile_id,
+            role=MAINTAINED_DOMAIN, selector=selector, maintained_runner=runner,
+            engine_source_commit=selected["registry"]["engine_source_commit"], source_tree=selected["registry"]["source_tree"],
+            command_argv=["python", "tools/engine_versions.py", "maintained-test", contract_id, profile_id, selector])
+        operation = begin_validation_operation(scope)
+        operation["dispatch_managed"] = True
+        phase = "source_materialization"
+        bodies, identity = maintained_context_sources(selected, read_objects(selected), selector)
+        result.update(identity)
+        expected = _test_ids(bodies[runner])
+        require(len(expected) == count and sha(encoded(expected)) == MAINTAINED_IDS_SHA256[selector], "test_ids_mismatch")
+        view = _materialize_test_view(operation, bodies)
+        seal = _view_seal(view, bodies)
+        result["context_source"] = _layer("passed", evidence=[seal])
+        result["context_manifest_sha256"] = seal
+        phase = "child_observation"
+        operation["launch_attempted"] = True
+        observed = _launch_test_child(view, runner, expected, seconds, operation, selector=None)
+        operation["child_exit_code"] = observed.get("child_exit_code")
+        phase = "postlaunch_source_check"
+        result["maintained_tests"] = {"status": "failed", "child_exit_code": observed.get("child_exit_code"),
+            "executed_test_ids": observed.get("executed_test_ids", []),
+            "executed_test_ids_sha256": sha(encoded(observed.get("executed_test_ids", []))),
+            "stdout_sha256": observed.get("stdout_sha256"), "stderr_sha256": observed.get("stderr_sha256"),
+            "dynamic_counters": observed.get("dynamic_counters")}
+        _view_seal(view, bodies)
+        _, after_identity = maintained_context_sources(selected, read_objects(selected), selector)
+        require(after_identity == identity, "source_mismatch")
+        result["direct_observations_evidence_sha256"] = sha(encoded(observed.get("descendant_observations", [])))
+        runtime = observed.get("runtime")
+        if runtime and runtime.get("predicates") == {"code_manifest": True, "engine_bindings": True}:
+            result["maintained_loaded_runtime"] = _layer("passed", evidence=[sha(encoded(runtime))])
+        else:
+            result["maintained_loaded_runtime"] = _layer("failed", "runtime_mismatch")
+        qualified = test_execution_qualified(observed, expected)
+        actual = observed.get("child_exit_code")
+        result["maintained_tests"]["status"] = "passed" if qualified else "failed"
+        result.update(test_execution_qualified=qualified, invocation_status="completed" if qualified else "failed",
+            wrapper_exit_code=0 if qualified else actual if type(actual) is int and 1 <= actual <= 255 else 2)
+        if _uncertain(observed):
+            reason = "test_timeout" if observed.get("timed_out") else "test_output_limit" if observed.get("overflow") else "test_interrupted"
+            quarantine_operation(operation, reason)
+            result["reason"] = reason
+        else:
+            result["reason"] = None if qualified else "test_failed"
+        phase = "receipt_validation"
+        validate_maintained_receipt(result)
+        phase = "receipt_publication"
+        _write_json(operation["path"] / "receipt.json", result, exclusive=True)
+        phase = "operation_completion"
+        _finish_operation(operation)
+        return result
+    except VersionError as error:
+        result.update(reason=error.code, invocation_status="refused", wrapper_exit_code=2, test_execution_qualified=False)
+        if error.code in {"source_mismatch", "unsafe_source_view"}:
+            result["context_source"] = _layer("failed", error.code)
+            result["maintained_loaded_runtime"] = _layer(reason="source_mismatch")
+        if operation and not operation.get("launch_attempted"):
+            _finish_operation(operation)
+    except (OSError, ValueError, TypeError, KeyError, AttributeError):
+        result.update(reason="child_protocol_invalid", invocation_status="failed", wrapper_exit_code=2,
+                      test_execution_qualified=False)
+    if operation and operation.get("launch_attempted"):
+        # Evidence failure cannot establish retirement, even with a known top exit.
+        result.update(invocation_status="failed", wrapper_exit_code=2, test_execution_qualified=False)
+        result["maintained_tests"] = {"status": "failed", "child_exit_code": operation.get("child_exit_code"),
+            "executed_test_ids": [], "executed_test_ids_sha256": sha(encoded([])),
+            "stdout_sha256": None, "stderr_sha256": None, "dynamic_counters": None}
+        try:
+            _view_seal(view, bodies)
+            _, after_identity = maintained_context_sources(selected, read_objects(selected), selector)
+            require(after_identity == identity, "source_mismatch")
+        except (OSError, ValueError, TypeError, KeyError, AttributeError, VersionError):
+            result["context_source"] = _layer("failed", "source_mismatch")
+            result["maintained_loaded_runtime"] = _layer(reason="source_mismatch")
+        try:
+            quarantine_operation(operation, "child_protocol_invalid")
+        except (OSError, VersionError):
+            pass  # Keep the initial running state: admission still refuses it.
+        try:
+            _write_json(operation["path"] / "failure-stage.json", {"schema": "validation-evidence-failure-v1",
+                "operation_id": operation["id"], "phase": phase, "reason": result["reason"],
+                "actual_child_exit_code": operation.get("child_exit_code"), "wrapper_exit_code": 2}, exclusive=True)
+            _write_json(operation["path"] / "failure.json", result, exclusive=True)
+        except (OSError, VersionError):
+            pass  # Retain the view and all successfully recorded partial evidence.
+    return result
+
+
 def legacy_test(contract_id, profile_id, runner, *, scope=None):
-    return _dispatch(contract_id, profile_id, runner, scope=scope)
+    if runner not in ("tests/test_w40_native.py", "tests/test_w40_native_clock.py"):
+        return _dispatch(contract_id, profile_id, runner, scope=scope)
+    result = _receipt(None, profile_id)
+    result.update(operation="legacy-test", command_argv=["python", "tools/engine_versions.py", "legacy-test"],
+        test_execution_qualified=False, descendant_observations_complete=False,
+        descendant_observations=[{"command": None, "exit_code": None, "state": "not_recorded", "observation_source": "not_recorded"}])
+    try:
+        selected = select(load_registry(), contract_id, profile_id)
+        registry = selected["registry"]
+        result.update(contract_id=contract_id, requested_profile=profile_id, selected_profile=profile_id,
+            role="historical_v1", engine_source_commit=registry["engine_source_commit"], source_tree=registry["source_tree"],
+            original_runner=runner, command_argv=["python", "tools/engine_versions.py", "legacy-test", contract_id, profile_id, runner])
+        result["reason"] = "legacy_native_execution_unqualified"
+    except VersionError as error:
+        result["reason"] = error.code
+    return validate_dispatch_receipt(result)
 
 
 def adapter_test(contract_id, profile_id, selector, *, scope=None):
@@ -1202,18 +1516,19 @@ def workflow_dispatch_contract(text):
     spec = importlib.util.spec_from_file_location("engine_workflow_parser", ROOT / ".github/scripts/offline_suite.py")
     parser = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(parser)
-    base = _git_bytes("cat-file", "blob", WORKFLOW_BASE + ":.github/workflows/test.yml").decode("utf-8")
+    base = _git_bytes("cat-file", "blob", "bb6e1b2cc5e602e94f0560c37dbc3bd79674edab:.github/workflows/test.yml").decode("utf-8")
     old, unknown = parser.steps_from_workflow(base)
-    require(not unknown and len(old) == 46, "source_mismatch")
+    require(not unknown and len(old) == 47, "source_mismatch")
     original = [command for _, command in old]
-    expected = []
-    for command in original:
-        if command in ("python tests/test_w40_native.py", "python tests/test_w40_native_clock.py"):
-            expected.append("python tools/engine_versions.py legacy-test w40-v1-e3ec46a git-lf " + command.split()[-1])
-            if command == "python tests/test_w40_native.py":
-                expected.append("python tools/engine_versions.py adapter-test w40-v1-e3ec46a git-lf " + ADAPTER_CLASS)
-        else:
-            expected.append(command)
+    replacements = {
+        "python tools/engine_versions.py legacy-test w40-v1-e3ec46a git-lf tests/test_w40_native.py":
+            "python tools/engine_versions.py maintained-test w40-v1-e3ec46a git-lf native-all16",
+        "python tools/engine_versions.py adapter-test w40-v1-e3ec46a git-lf InterruptedProgressStagingTests":
+            "python tools/engine_versions.py verify-source w40-v1-e3ec46a git-lf",
+        "python tools/engine_versions.py legacy-test w40-v1-e3ec46a git-lf tests/test_w40_native_clock.py":
+            "python tools/engine_versions.py maintained-test w40-v1-e3ec46a git-lf clock-all3"}
+    require(all(original.count(command) == 1 for command in replacements), "source_mismatch")
+    expected = [replacements.get(command, command) for command in original]
     actual, refused = parser.steps_from_workflow(text)
     commands = [command for _, command in actual]
     status = "registered" if not refused and commands == expected else "registration_pending" if not refused and commands == original else "invalid"
@@ -1225,7 +1540,8 @@ def main(arguments=None):
     if arguments in ([], ["--help"]):
         print("usage: engine_versions.py verify-source <contract-id> <profile-id>\n"
               "       engine_versions.py legacy-test <contract-id> <profile-id> <original-runner>\n"
-              "       engine_versions.py adapter-test <contract-id> git-lf InterruptedProgressStagingTests")
+              "       engine_versions.py adapter-test <contract-id> git-lf InterruptedProgressStagingTests\n"
+              "       engine_versions.py maintained-test <contract-id> git-lf <native-all16|clock-all3>")
         return 0
     if len(arguments) == 3 and arguments[0] == "verify-source":
         result = verify_source(arguments[1], arguments[2])
@@ -1233,13 +1549,21 @@ def main(arguments=None):
         result = legacy_test(*arguments[1:])
     elif len(arguments) == 4 and arguments[0] == "adapter-test":
         result = adapter_test(*arguments[1:])
+    elif len(arguments) == 4 and arguments[0] == "maintained-test":
+        result = maintained_test(*arguments[1:])
+    elif arguments[0] == "maintained-test":
+        result = maintained_test(None, None, None)
+        result["reason"] = "invalid_arguments"
     elif arguments[0] in {"legacy-test", "adapter-test"}:
         result = _dispatch(None, None, None, adapter=arguments[0] == "adapter-test")
         result["reason"] = "invalid_arguments"
     else:
         result = _receipt(None, None)
         result["reason"] = "invalid_arguments" if arguments[0] == "verify-source" else "unsupported_command"
-    result = validate_dispatch_receipt(result) if result.get("operation") in {"legacy-test", "adapter-test"} else _checked_result(result)
+    if result.get("operation") == "maintained-test":
+        result = validate_maintained_receipt(result)
+    else:
+        result = validate_dispatch_receipt(result) if result.get("operation") in {"legacy-test", "adapter-test"} else _checked_result(result)
     sys.stdout.buffer.write(encoded(result) + b"\n")
     return result["wrapper_exit_code"]
 

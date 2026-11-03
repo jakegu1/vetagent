@@ -13,17 +13,24 @@ python tools/engine_versions.py legacy-test w40-v1-e3ec46a git-lf tests/test_w40
 python tools/engine_versions.py legacy-test w40-v1-e3ec46a git-lf tests/test_w40_native_clock.py
 python tools/engine_versions.py legacy-test w40-v1-e3ec46a git-lf tests/test_dataset_replayable.py
 python tools/engine_versions.py adapter-test w40-v1-e3ec46a git-lf InterruptedProgressStagingTests
+python tools/engine_versions.py maintained-test w40-v1-e3ec46a git-lf native-all16
+python tools/engine_versions.py maintained-test w40-v1-e3ec46a git-lf clock-all3
 ```
 
 The profile is mandatory. Default/help performs no verification. Missing/unknown contract
 or profile refuses; host OS, checkout line endings and failures cannot select another
 profile. Collect, recover, report, study, pilot and scheduler are unsupported commands.
 No arbitrary test/source path, executable, commit, old record or interpreter input exists.
-Only the three original runners above are accepted by legacy-test. Both explicit historical
-profiles are supported; configured historical dispatch uses git-lf. Adapter-test accepts
-only the literal class and git-lf. Workflow registration remains root-owned: the helper
-reports registration_pending for the unchanged46-command workflow and registered only
-for the exact reviewed47 commands. A focused pass is not an actual47 execution.
+Legacy native and clock execution now refuses with legacy_native_execution_unqualified,
+wrapper2 and not_run, before allocating an operation or child, through both CLI and
+legacy_test. Unknown grammar keeps its original fixed refusal. Historical dataset execution
+and both historical source profiles remain supported. Existing legacy native/clock receipts
+remain readable; metadata reader acceptance does not reopen their execution eligibility.
+Adapter-test still accepts only the literal staging class and git-lf. Maintained-test accepts
+only native-all16 or clock-all3 with git-lf. Workflow registration stays root-owned: only the
+exact new47 command inventory is registered; the pinned previous47 is registration_pending.
+The older46 inventory is not a valid new-registration alternative. A focused pass is not an
+actual47 execution.
 
 ## Source and execution checks
 
@@ -63,7 +70,7 @@ identical bytes alone do not make a production-role request eligible for this fi
 
 ## Receipt scope
 
-Every verification/refusal receipt uses `engine-version-qualification-v1`. Invocation
+Historical source verification and legacy refusals use `engine-version-qualification-v1`. Invocation
 status describes this request only. Contract/source identity, explicit requested/selected
 profile, fixed command vector, actual wrapper exit and four separate result layers remain
 visible. Unknown caller strings are not echoed: unrecognized profile/contract values use
@@ -86,10 +93,11 @@ is `unsupported`. No fixture/runtime success promotes either historical layer.
 
 ## Test responsibilities and holds
 
-The historical dispatch runs the complete old native GET/RPC/cache/context and datetime contracts
-in V1, while the current dataset runner remains current and the entire historical dataset
-version runs once within the version suite. The workflow guard checks today's exact commands.
-Those native tests are V1-only;
+Maintained dispatch preserves the original native GET/RPC/cache/context and datetime test
+obligations on the actual maintained adapter with fixed V1 dependencies. The current dataset
+runner stays current and the entire historical dataset version runs once within the version
+suite. The workflow guard checks the exact new commands. Fixed dependencies do not qualify
+the evolving production engine;
 current production risk/MCP/HTTP/benchmark/numeric regressions retain their distinct duties.
 Repaired V2 must still be rejected by the original native source predicates. Rejection is
 a negative guarantee and not positive V2 native execution evidence.
@@ -202,3 +210,43 @@ unavailable and unexamined or inconclusive layers retain their separate meanings
 This exported-artifact check does not prove actual execution: original raw reports,
 source views, runtime predicates and actual process/operation identity remain required.
 Missing deep telemetry stays null/not_recorded even for an A1-valid passing execution.
+
+## Maintained native regression domain
+
+Maintained execution uses a separate closed source recipe. Native-all16 combines the six
+fixed original V1 dependencies, the actual candidate native adapter and native-test file,
+and the original workflow support blob: nine members. Clock-all3 combines those same six
+dependencies, the actual candidate native adapter, and the original clock-test support blob:
+eight members. The workflow support blob exists only for an unchanged original assertion;
+it cannot certify current workflow registration. The original eleven-member catalog and
+the existing eight-member staging diagnostic remain unchanged. No common superset is used.
+
+Candidate commit/tree/mode/blob/canonical/physical-raw identities are read locally and checked
+before and after execution, including the postlaunch evidence-failure path. Both commands
+run their complete unmodified __main__ harness with no class filter: original13 plus staging3
+for native, and the original3 clock cases. Exact fixed ID digests, native900s/clock180s bounds
+and every existing source, stream, operation and process limit remain enforced. The same
+actual bounded test child checks original code_manifest and engine_bindings with the fixed
+V1 risk dependency; production regressions continue to use the sole current src/risk.py.
+
+The schema is engine-maintained-adapter-execution-v1, with domain and role
+maintained_adapter_on_fixed_v1_dependencies, a fixed selector and maintained_runner.
+It records separate context_source, maintained_loaded_runtime and maintained_tests layers,
+plus fixed dependency/support and actual candidate identity. A source-view seal is distinct
+from runtime evidence. Both the dispatcher before publication/completion and the CLI call
+the same validate_maintained_receipt attribute. Historical/staging guards are unchanged and
+reject this domain. Maintained validation rejects historical, staging and production
+relabels, malformed identity membership, copied evidence and guessed execution outcomes.
+
+original_v1_fixture_qualified_by_maintained_result, historical_execution_qualified and
+current_production_behavior_qualified remain false; positive V2 historical-native
+compatibility remains unsupported. Known child exits remain separate from wrapper exits.
+Missing deep telemetry stays null/not_recorded and incomplete, including otherwise valid
+execution. Synthetic metadata reader fixtures and spy results are unit data, never actual
+legacy execution evidence. Reader acceptance alone cannot authenticate any execution.
+
+The new workflow inventory changes only the previous47 ordinals38/39/40 to maintained native,
+explicit historical git-lf verify-source, and maintained clock. The other44 commands and
+their order stay fixed; staging3 remains available as a diagnostic and is already in native16.
+Root registers the real workflow separately. Source readiness or a new receipt/domain does
+not retire an old failed operation, clear quarantine, grant admission, or qualify full47.
