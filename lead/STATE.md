@@ -4,6 +4,17 @@ Last updated: 2026-11-03 by Codex. This is the current baton, not a release log.
 
 ## Current source, science boundary and engineering work
 
+T074's corrected usage consumer is accepted at1af984f after independent source
+review and separate author and independent actual46/native0 runs. Both complete
+roles preserve the source, primary checkout, all shared refs and inherited flags;
+their actual exits and bounded power records are qualified and owners retired.
+Missing numeric aggregates remain malformed instead of becoming observed zero.
+The new writer and codec stay parked, and the existing adoption rule is unchanged.
+Normal integration retains the latest scheduled evidence. Integrated checks,
+new exact-head CI and publication are still pending. The preceding9b release's
+first natural snapshot remains under its original finite read-only followup.
+The older T074 preparation paragraphs below are historical checkpoints.
+
 T073's corrected source passes focused source review, but its sole actual47
 author attempt fails at command38, the original frozen native13 cancellation
 test. The first37 commands exit0 and nine commands do not start. Twelve original

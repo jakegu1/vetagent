@@ -7,6 +7,14 @@
 
 ## Status in one line
 
+T074's corrected usage consumer passes independent source review and two
+separate actual46/native0 source gates, including complete preservation and
+bounded power readback. It is locally integrated with current scheduled evidence;
+integrated checks, exact-head CI and publication remain pending. The previous
+release's first natural snapshot has its original finite followup. The new B
+maintained-adapter responsibility decision is still pending. T047 dependencies
+remain held. Earlier checkpoints below retain their original stage boundaries.
+
 T073's sole actual47 author gate fails at38 in original frozen native13; the
 failed execution, unrun tail and incomplete postrun preservation remain exact.
 Saved fixed-QA owned-retirement evidence is independently resolved, but no new
