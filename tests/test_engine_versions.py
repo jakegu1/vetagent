@@ -517,10 +517,10 @@ class B12DispatchAcceptance(unittest.TestCase):
                 seen.append(runner)
                 return self.observation(ids, 7)
             with patch.object(m, "_launch_test_child", side_effect=failure):
-                receipt = m.legacy_test(CONTRACT, "git-lf", "tests/test_w40_native.py", scope=scope)
-            self.assertEqual(receipt["legacy_tests"]["child_exit_code"], 7)
+                receipt = m.maintained_test(CONTRACT, "git-lf", "native-all16", scope=scope)
+            self.assertEqual(receipt["maintained_tests"]["child_exit_code"], 7)
             self.assertEqual(receipt["wrapper_exit_code"], 7)
-            self.assertEqual(receipt["legacy_tests"]["status"], "failed")
+            self.assertEqual(receipt["maintained_tests"]["status"], "failed")
             self.assertEqual(seen, ["tests/test_w40_native.py"])
 
     def test_whole_historical_dataset_dispatches_once(self):
