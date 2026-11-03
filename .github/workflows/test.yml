@@ -224,13 +224,13 @@ jobs:
         run: python tests/test_dataset_replayable.py
 
       - name: Native paired acquisition is bounded private and recoverable offline
-        run: python tools/engine_versions.py legacy-test w40-v1-e3ec46a git-lf tests/test_w40_native.py
+        run: python tools/engine_versions.py maintained-test w40-v1-e3ec46a git-lf native-all16
 
       - name: Current adapter data regressions keep explicit source identity
-        run: python tools/engine_versions.py adapter-test w40-v1-e3ec46a git-lf InterruptedProgressStagingTests
+        run: python tools/engine_versions.py verify-source w40-v1-e3ec46a git-lf
 
       - name: Native acquisition preserves the real engine datetime contract
-        run: python tools/engine_versions.py legacy-test w40-v1-e3ec46a git-lf tests/test_w40_native_clock.py
+        run: python tools/engine_versions.py maintained-test w40-v1-e3ec46a git-lf clock-all3
 
       # DECISIONS E30. The upstream contract test goes quiet rather than red when a third
       # party does not answer -- correct, and it means a week of silence prints the same
