@@ -20,6 +20,7 @@ one unguarded -- the file whose entire point is enforcement was the file with no
 Run:  python tests/test_decisions_enforcement.py
 """
 
+import importlib.util
 import io
 import os
 import re
@@ -73,6 +74,71 @@ def cited_test_names(text):
     return out
 
 
+def _registered_workflow_test_files(ci, files):
+    """Read executable command registrations without running the registered files."""
+    registered, errors = set(), []
+    inventory = set(files)
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "_registration_workflow_parser", os.path.join(ROOT, ".github", "scripts", "offline_suite.py"))
+        if spec is None or spec.loader is None:
+            return registered, ["workflow_parser_unavailable"]
+        parser = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(parser)
+        if parser.STRAY_BREAK.search(ci):
+            return registered, ["workflow_stray_line_break"]
+        parser.JOB = "test"
+        parsed = parser.steps_from_workflow(ci)
+        if parsed is None:
+            return registered, ["missing_test_job"]
+        steps, refused = parsed
+        if refused:
+            errors.append("refused_test_job_syntax")
+        if not steps:
+            errors.append("empty_test_job")
+        maintained = {
+            ("python", "tools/engine_versions.py", "maintained-test", "w40-v1-e3ec46a", "git-lf", "native-all16"): "test_w40_native.py",
+            ("python", "tools/engine_versions.py", "maintained-test", "w40-v1-e3ec46a", "git-lf", "clock-all3"): "test_w40_native_clock.py",
+        }
+        def register(name):
+            if name not in inventory:
+                errors.append("registered_target_missing:" + name)
+            else:
+                registered.add(name)
+        for _, command in steps:
+            if not isinstance(command, str) or not command.startswith("python ") or parser.SHELL_OPERATOR.search(command):
+                errors.append("invalid_test_command")
+                continue
+            argv = tuple(command.split())
+            target = maintained.get(argv)
+            if target is not None:
+                register(target)
+            elif len(argv) >= 2 and argv[1].startswith("tests/"):
+                name = argv[1][len("tests/"):]
+                if not (name.startswith("test_") and name.endswith(".py") and "/" not in name and "\\" not in name):
+                    continue
+                if name == "test_upstream_contract.py":
+                    continue  # This live-only suite is registered in its fixed job below.
+                if name in ("test_w40_native.py", "test_w40_native_clock.py") and len(argv) != 2:
+                    continue
+                register(name)
+        parser.JOB = "upstream-contract"
+        upstream = parser.steps_from_workflow(ci)
+        if upstream is not None:
+            live_steps, refused = upstream
+            if refused:
+                errors.append("refused_upstream_job_syntax")
+            for _, command in live_steps:
+                if not isinstance(command, str) or not command.startswith("python ") or parser.SHELL_OPERATOR.search(command):
+                    errors.append("invalid_upstream_command")
+                    continue
+                if tuple(command.split()) == ("python", "tests/test_upstream_contract.py"):
+                    register("test_upstream_contract.py")
+        return registered, errors
+    except (OSError, UnicodeError, ValueError, TypeError, AttributeError, KeyError, SyntaxError):
+        return set(), ["workflow_parser_unavailable_or_invalid"]
+
+
 def test_every_test_file_runs_in_ci():
     """A guard CI never invokes is a guard nobody will ever see fail.
 
@@ -93,8 +159,10 @@ def test_every_test_file_runs_in_ci():
         ci = f.read()
     files = sorted(fn for fn in os.listdir(TESTS_DIR)
                    if fn.startswith("test_") and fn.endswith(".py"))
-    orphans = [fn for fn in files if fn not in ci]
+    registered, registration_errors = _registered_workflow_test_files(ci, files)
+    orphans = [fn for fn in files if fn not in registered]
     check("no test file is missing from the workflow", not orphans, str(orphans))
+    check("workflow registration commands are valid", not registration_errors, str(registration_errors))
 
 
 def test_every_named_test_exists():
