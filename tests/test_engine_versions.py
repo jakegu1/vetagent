@@ -431,14 +431,15 @@ class B12DispatchAcceptance(unittest.TestCase):
         return view
 
     def planned_workflow(self):
-        text = (ROOT / ".github/workflows/test.yml").read_text(encoding="utf-8")
-        if "run: python tests/test_w40_native.py" in text:
-            text = text.replace("        run: python tests/test_w40_native.py",
-                "        run: python tools/engine_versions.py legacy-test w40-v1-e3ec46a git-lf tests/test_w40_native.py\n"
-                "\n      - name: Current adapter data regression\n"
-                "        run: python tools/engine_versions.py adapter-test w40-v1-e3ec46a git-lf InterruptedProgressStagingTests", 1)
-            text = text.replace("        run: python tests/test_w40_native_clock.py",
-                "        run: python tools/engine_versions.py legacy-test w40-v1-e3ec46a git-lf tests/test_w40_native_clock.py", 1)
+        text = subprocess.check_output(["git", "show",
+            "bb6e1b2cc5e602e94f0560c37dbc3bd79674edab:.github/workflows/test.yml"], cwd=ROOT).decode("utf-8")
+        replacements = (
+            ("legacy-test " + CONTRACT + " git-lf tests/test_w40_native.py", "maintained-test " + CONTRACT + " git-lf native-all16"),
+            ("adapter-test " + CONTRACT + " git-lf InterruptedProgressStagingTests", "verify-source " + CONTRACT + " git-lf"),
+            ("legacy-test " + CONTRACT + " git-lf tests/test_w40_native_clock.py", "maintained-test " + CONTRACT + " git-lf clock-all3"))
+        for before, after in replacements:
+            self.assertEqual(text.count(before), 1)
+            text = text.replace(before, after, 1)
         return text
 
     def test_legacy_dispatch_whitelist_and_exact_argv(self):
@@ -549,12 +550,19 @@ class B12DispatchAcceptance(unittest.TestCase):
         self.assertIn("python tests/test_backfill.py --offline", good["commands"])
         actual = m.workflow_dispatch_contract((ROOT / ".github/workflows/test.yml").read_text(encoding="utf-8"))
         self.assertIn(actual["status"], ("registered", "registration_pending"))
-        self.assertEqual(actual["actual_count"], 47 if actual["status"] == "registered" else 46)
-        legacy = "python tools/engine_versions.py legacy-test w40-v1-e3ec46a git-lf tests/test_w40_native.py"
-        adapter = "python tools/engine_versions.py adapter-test w40-v1-e3ec46a git-lf InterruptedProgressStagingTests"
+        self.assertEqual(actual["actual_count"], 47)
+        legacy = "python tools/engine_versions.py maintained-test w40-v1-e3ec46a git-lf native-all16"
+        adapter = "python tools/engine_versions.py maintained-test w40-v1-e3ec46a git-lf clock-all3"
+        verification = "python tools/engine_versions.py verify-source w40-v1-e3ec46a git-lf"
+        old = subprocess.check_output(["git", "show",
+            "bb6e1b2cc5e602e94f0560c37dbc3bd79674edab:.github/workflows/test.yml"], cwd=ROOT).decode("utf-8")
+        pending = m.workflow_dispatch_contract(old)
+        self.assertEqual(pending["status"], "registration_pending")
+        self.assertEqual(sum(a == b for a, b in zip(pending["commands"], good["commands"])), 44)
         for mutated in (planned.replace("run: " + legacy, "# run: " + legacy, 1),
                         planned.replace(legacy, "python -c pass", 1),
                         planned.replace(adapter, adapter + " extra", 1),
+                        planned.replace(verification, verification + " extra", 1),
                         planned.replace("python tests/test_backfill.py --offline", "python tests/test_backfill.py", 1)):
             self.assertEqual(m.workflow_dispatch_contract(mutated)["status"], "invalid")
 
