@@ -743,7 +743,7 @@ class B12ReviewRegressionAcceptance(unittest.TestCase):
                             raise m.VersionError("child_protocol_invalid")
                         raise OSError("synthetic receipt publication failure")
                     return original_write(path, value, **kwargs)
-                original_validator = m.validate_dispatch_receipt
+                original_validator = m.validate_maintained_receipt
                 def validate(value):
                     if mode == "receipt_protocol" and seen:
                         raise m.VersionError("child_protocol_invalid")
@@ -752,9 +752,9 @@ class B12ReviewRegressionAcceptance(unittest.TestCase):
                 escaped = None
                 with patch.object(m, "_launch_test_child", side_effect=launch), \
                         patch.object(m, "_write_json", side_effect=write), \
-                        patch.object(m, "validate_dispatch_receipt", side_effect=validate):
+                        patch.object(m, "validate_maintained_receipt", side_effect=validate):
                     try:
-                        result = m.legacy_test(CONTRACT, "git-lf", "tests/test_w40_native.py", scope=scope)
+                        result = m.maintained_test(CONTRACT, "git-lf", "native-all16", scope=scope)
                     except Exception as error:
                         escaped = error
                     admitted = False
@@ -783,8 +783,8 @@ class B12ReviewRegressionAcceptance(unittest.TestCase):
                     if result is not None:
                         self.assertNotEqual(result["wrapper_exit_code"], 0)
                         self.assertFalse(result["test_execution_qualified"])
-                        self.assertEqual(result["legacy_tests"]["child_exit_code"], 0)
-                        self.assertEqual(result["legacy_tests"]["status"], "failed")
+                        self.assertEqual(result["maintained_tests"]["child_exit_code"], 0)
+                        self.assertEqual(result["maintained_tests"]["status"], "failed")
 
     def test_finished_operation_state_requires_exact_identity(self):
         modes = ("valid", "foreign_id", "missing_id", "integer_id", "null_id", "list_id",
