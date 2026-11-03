@@ -617,3 +617,30 @@ and preservation evidence before any test execution. Root then issues a finite
 focused execution plan for meaningful RED, named changes and minimum source work.
 This source-work boundary does not grant a historical/native/clock/full execution
 slot and does not clear any incident or quarantine.
+
+
+## Amendment 2026-11-03: ATF1 binary stdout capture
+
+The independent static test-plan review found one fixture/API mismatch before
+any parent RED execution. The new MaintainedAdapterAcceptance._cli redirects
+stdout to io.StringIO, but the unchanged parent main writes sys.stdout.buffer.
+An AttributeError here would be a harness error, not missing-feature evidence.
+
+Authorize exactly one separate commit titled
+`T-075: acceptance test fix (ATF1 binary stdout capture)`.
+Only the new MaintainedAdapterAcceptance._cli helper changes: remove its local
+contextlib import, replace io.StringIO with io.BytesIO, and replace the redirect
+with patch.object(m.sys, "stdout", types.SimpleNamespace(buffer=output)).
+The existing m.main call, JSON parsing, return-code equality assertion and return
+remain exact. Every test method/input/assertion, all other helpers, the isolated
+seven-method selection, guards, caps and old27 content remain byte-exact.
+Do not change the product main or rewrite the first tests-only commit.
+
+This is a fixture-only correction to let the tests reach their original feature
+assertions. Reseal the exact corrected block/head and recheck this sole bar before
+Root authorizes one finite semantic parent RED. This amendment grants no test,
+SourceAPI/native/clock/dataset/full, source implementation, workflow or publication
+execution. It grants no scope/owner/slot and clears no incident or quarantine.
+Formal tests-first base remains af3f5ea75554719d88fba33921e7324c1fc989d2.
+The original test-only handoff and its live pre-amendment task binding remain
+historical evidence; their original bytes are preserved, not rewritten to pass.
