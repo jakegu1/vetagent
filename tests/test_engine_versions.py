@@ -845,6 +845,29 @@ class B12ReviewRegressionAcceptance(unittest.TestCase):
                 if mode != "missing_file":
                     self.assertEqual(path.read_bytes(), raw)
 
+    def synthetic_legacy_reader_fixture(self, m, runner, profile="git-lf"):
+        # Synthetic closed reader data only; this is never actual legacy execution evidence.
+        registry = m.load_registry()
+        selected = m.select(registry, CONTRACT, profile)
+        objects = m.read_objects(selected)
+        ids = m._test_ids(objects[runner])
+        seal = m.sha(m.encoded({row["path"]: registry["profiles"][profile]["raw_sha256"][index]
+            for index, row in enumerate(registry["members"])}))
+        value = m._receipt(None, profile)
+        value.update(operation="legacy-test", contract_id=CONTRACT, role="historical_v1", engine_source_commit=COMMIT,
+            source_tree=TREE, selected_profile=profile, original_runner=runner,
+            command_argv=["python", "tools/engine_versions.py", "legacy-test", CONTRACT, profile, runner],
+            invocation_status="completed", reason=None, wrapper_exit_code=0, test_execution_qualified=True,
+            descendant_observations_complete=False, descendant_observations=[{"command": None, "exit_code": None,
+                "state": "not_recorded", "observation_source": "not_recorded"}], context_manifest_sha256=seal,
+            source_fixture=m._layer("passed", evidence=[seal]),
+            loaded_runtime=m._layer("passed", evidence=[m.sha(b"synthetic closed reader runtime")]),
+            direct_observations_evidence_sha256=m.sha(b"synthetic closed reader observation"))
+        value["legacy_tests"] = {"status": "passed", "child_exit_code": 0, "executed_test_ids": ids,
+            "executed_test_ids_sha256": m.sha(m.encoded(ids)), "stdout_sha256": m.sha(b"synthetic reader stdout"),
+            "stderr_sha256": m.sha(b""), "dynamic_counters": None}
+        return value
+
     def test_dispatch_receipt_cannot_cross_source_and_case_domains(self):
         m = self.subject()
         receipts = {}
@@ -859,11 +882,14 @@ class B12ReviewRegressionAcceptance(unittest.TestCase):
                 for name, runner, count in (("native", "tests/test_w40_native.py", 13),
                                              ("clock", "tests/test_w40_native_clock.py", 3),
                                              ("dataset", "tests/test_dataset_replayable.py", 9)):
-                    value = m.legacy_test(CONTRACT, "git-lf", runner, scope=scope)
+                    value = (m.legacy_test(CONTRACT, "git-lf", runner, scope=scope) if runner == "tests/test_dataset_replayable.py"
+                             else self.synthetic_legacy_reader_fixture(m, runner))
                     self.assertEqual(len(value["legacy_tests"]["executed_test_ids"]), count)
                     receipts[name] = value
-                receipts["crlf"] = m.legacy_test(CONTRACT, "observed-windows-crlf", "tests/test_w40_native.py", scope=scope)
+                receipts["crlf"] = self.synthetic_legacy_reader_fixture(m, "tests/test_w40_native.py", "observed-windows-crlf")
                 receipts["adapter"] = m.adapter_test(CONTRACT, "git-lf", "InterruptedProgressStagingTests", scope=scope)
+                maintained = {selector: m.maintained_test(CONTRACT, "git-lf", selector, scope=scope)
+                              for selector in ("native-all16", "clock-all3")}
             for name, value in receipts.items():
                 with self.subTest(valid=name):
                     self.assertTrue(value["test_execution_qualified"])
@@ -954,6 +980,96 @@ class B12ReviewRegressionAcceptance(unittest.TestCase):
         refused("positive dataset with failed dynamic cases", value)
         for value in (None, [], {"schema": "NC5_UNKNOWN_CALLER"}):
             refused("nonreceipt", value)
+
+        def maintained_refused(label, value):
+            with self.subTest(maintained_refused=label):
+                caught = None
+                try:
+                    m.validate_maintained_receipt(value)
+                except Exception as error:
+                    caught = error
+                self.assertIsInstance(caught, m.VersionError, "invalid maintained artifact admitted or escaped with an uncontrolled exception")
+                self.assertNotIn("NC5_UNKNOWN_CALLER", str(caught))
+        for selector, good in maintained.items():
+            with self.subTest(maintained_valid=selector):
+                self.assertTrue(good["test_execution_qualified"])
+                self.assertEqual(len(good["maintained_tests"]["executed_test_ids"]), 16 if selector == "native-all16" else 3)
+                self.assertEqual(len(good["dependency_identity"]["members"]), 6)
+                self.assertEqual(len(good["support_identity"]["members"]), 1)
+                self.assertEqual(len(good["current_adapter_identity"]["members"]), 2 if selector == "native-all16" else 1)
+                candidate = copy.deepcopy(good)
+                self.assertIs(m.validate_maintained_receipt(candidate), candidate)
+                self.assertFalse(good["descendant_observations_complete"])
+            for field, replacement in (("schema", "engine-adapter-regression-v1"), ("domain", "historical_v1"),
+                    ("role", "production_v2"), ("selector", "InterruptedProgressStagingTests"),
+                    ("maintained_runner", "tests/not_allowed.py"), ("selected_profile", "observed-windows-crlf"),
+                    ("historical_execution_qualified", True), ("original_v1_fixture_qualified_by_maintained_result", True),
+                    ("current_production_behavior_qualified", True), ("v2_historical_native_positive_compatibility", "supported"),
+                    ("wrapper_exit_code", True), ("test_execution_qualified", 1), ("unexpected", "NC5_UNKNOWN_CALLER")):
+                value = copy.deepcopy(good)
+                value[field] = replacement
+                maintained_refused(selector + " " + field, value)
+            for domain in ("dependency_identity", "support_identity", "current_adapter_identity"):
+                for fault in ("nonobject", "missing", "duplicate", "foreign_path", "wrong_type", "bad_blob", "bad_hash", "extra"):
+                    value = copy.deepcopy(good)
+                    identity = value[domain]
+                    if fault == "nonobject":
+                        value[domain] = []
+                    elif fault == "missing":
+                        identity["members"].pop()
+                    elif fault == "duplicate":
+                        identity["members"].append(copy.deepcopy(identity["members"][0]))
+                    elif fault == "foreign_path":
+                        identity["members"][0]["path"] = "NC5_UNKNOWN_CALLER"
+                    elif fault == "wrong_type":
+                        identity["members"] = [None]
+                    elif fault == "bad_blob":
+                        identity["members"][0]["blob"] = "z" * 40
+                    elif fault == "bad_hash":
+                        identity["members"][0]["canonical_sha256"] = "3" * 64
+                    else:
+                        identity["extra"] = True
+                    maintained_refused(selector + " " + domain + " " + fault, value)
+            for ids in (["arbitrary.test"], list(m.ADAPTER_IDS), ["bad"] * 3, [{"bad": True}]):
+                value = copy.deepcopy(good)
+                value["maintained_tests"]["executed_test_ids"] = ids
+                value["maintained_tests"]["executed_test_ids_sha256"] = m.sha(m.encoded(ids))
+                maintained_refused(selector + " wrong IDs " + str(ids)[:24], value)
+            for field, replacement in (("executed_test_ids_sha256", "x" * 64), ("stdout_sha256", None),
+                    ("stderr_sha256", "2" * 63), ("child_exit_code", True), ("status", "not_run"),
+                    ("dynamic_counters", {"passed": 1, "failed": 0, "not_checked": 0})):
+                value = copy.deepcopy(good)
+                value["maintained_tests"][field] = replacement
+                maintained_refused(selector + " test " + field, value)
+            for field, replacement in (("candidate_commit", True), ("candidate_tree", "g" * 40)):
+                value = copy.deepcopy(good)
+                value["current_adapter_identity"][field] = replacement
+                maintained_refused(selector + " " + field, value)
+            for field, replacement in (("raw_bytes", True), ("mode", "100755"), ("raw_sha256", "g" * 64)):
+                value = copy.deepcopy(good)
+                value["current_adapter_identity"]["members"][0][field] = replacement
+                maintained_refused(selector + " candidate " + field, value)
+            legacy_name = "native" if selector == "native-all16" else "clock"
+            for old_name in (legacy_name, "adapter"):
+                value = copy.deepcopy(receipts[old_name])
+                value["source_fixture"] = copy.deepcopy(good["context_source"])
+                value["loaded_runtime"] = copy.deepcopy(good["maintained_loaded_runtime"])
+                value["context_manifest_sha256"] = good["context_manifest_sha256"]
+                key = "adapter_tests" if old_name == "adapter" else "legacy_tests"
+                value[key] = copy.deepcopy(good["maintained_tests"])
+                if old_name == "adapter":
+                    value["dependency_identity"] = copy.deepcopy(good["dependency_identity"])
+                    value["current_adapter_identity"] = copy.deepcopy(good["current_adapter_identity"])
+                refused(selector + " relabeled as " + old_name, value)
+                value = copy.deepcopy(good)
+                old = receipts[old_name]
+                value["context_source"] = copy.deepcopy(old["source_fixture"])
+                value["maintained_loaded_runtime"] = copy.deepcopy(old["loaded_runtime"])
+                value["context_manifest_sha256"] = old["context_manifest_sha256"]
+                value["maintained_tests"] = copy.deepcopy(old[key])
+                maintained_refused(old_name + " relabeled as " + selector, value)
+        for value in (None, [], {"schema": "NC5_UNKNOWN_CALLER"}):
+            maintained_refused("nonreceipt", value)
 
 
 class MaintainedAdapterAcceptance(unittest.TestCase):
