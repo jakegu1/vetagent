@@ -1,5 +1,22 @@
 # Current Owner checkpoint (2026-11-03)
 
+## Current checkpoint: registration instrument correction after failed source gate
+
+The maintained adapter has independent metadata acceptance and exact workflow
+registration, but its first complete source gate failed at the test-registration
+guard before native/clock execution. The old guard reads filename substrings and
+does not recognize the approved selectors. The failure, unstarted tail, spent
+attempt and unqualified postrun capture remain. Fixed-QA completion has only its
+separately accepted trusted-harness evidence grade, with no general containment.
+
+T077 is ready for tests-first correction of that one registration instrument.
+It preserves every suite obligation, parser/API and actual workflow command.
+No new Owner decision, actual full, retry, source admission or quarantine
+clearance is implied. The upstream observation repair is reviewed separately
+and remains pending complete validation. T047 dependencies stay held.
+
+Earlier checkpoint text below retains its original stage.
+
 The Owner approved the maintained-adapter regression responsibility. T075 is
 adopted and starts with tests-only preparation before bounded source work.
 There is no further Owner decision for this exact scope. Complete independent

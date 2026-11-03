@@ -75,3 +75,5 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-073 | Dispatch complete historical tests and retain contemporary adapter regressions | 3 | M | T-071, T-072, ADR0003 | ready; NC3/NC4/A1 and independent design accepted; tests-first implementation next |
 
 | T-075 | Complete maintained adapter regressions on fixed V1 dependencies | 3 | M | T-071, T-072, ADR0003 | ready; Owner scope approved, design accepted; initial tests-only phase, no heavy admission or publication |
+
+| T-077 | Register complete maintained suites from executable workflow commands | 3 | S | T-075 approved split | ready; source registration instrument repair, no full or retry authority |
