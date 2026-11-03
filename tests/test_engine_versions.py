@@ -980,10 +980,9 @@ class MaintainedAdapterAcceptance(unittest.TestCase):
         return function
 
     def _cli(self, m, arguments):
-        import contextlib
         import io
-        output = io.StringIO()
-        with contextlib.redirect_stdout(output):
+        output = io.BytesIO()
+        with patch.object(m.sys, "stdout", types.SimpleNamespace(buffer=output)):
             code = m.main(arguments)
         value = json.loads(output.getvalue())
         self.assertEqual(code, value["wrapper_exit_code"])
