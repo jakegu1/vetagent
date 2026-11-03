@@ -938,5 +938,421 @@ class B12ReviewRegressionAcceptance(unittest.TestCase):
             refused("nonreceipt", value)
 
 
+class MaintainedAdapterAcceptance(unittest.TestCase):
+    """T-075: synthetic metadata/spies only; no native, risk, dataset or test child."""
+
+    def subject(self):
+        import builtins
+        original_import = builtins.__import__
+        original_spec = importlib.util.spec_from_file_location
+        original_popen = subprocess.Popen
+        blocked = {"w40_native", "w40_evidence", "risk", "labels", "goplus_quota_probe",
+                   "test_w40_native", "test_w40_native_clock", "test_dataset_replayable"}
+        def imports(name, *args, **kwargs):
+            if blocked.intersection(name.split(".")):
+                raise AssertionError("metadata test forbids native/dependency imports")
+            return original_import(name, *args, **kwargs)
+        def specs(name, location, *args, **kwargs):
+            allowed = {HELPER.resolve(), (ROOT / ".github/scripts/offline_suite.py").resolve()}
+            if Path(location).resolve() not in allowed:
+                raise AssertionError("metadata test forbids another project module")
+            return original_spec(name, location, *args, **kwargs)
+        def processes(command, *args, **kwargs):
+            if (not isinstance(command, (list, tuple)) or not command
+                    or Path(str(command[0])).name.lower() not in {"git", "git.exe"}
+                    or not any(word in command for word in ("cat-file", "ls-tree", "rev-parse"))):
+                raise AssertionError("metadata test permits only fixed read-only Git children")
+            return original_popen(command, *args, **kwargs)
+        for target, name, replacement in ((builtins, "__import__", imports),
+                (importlib.util, "spec_from_file_location", specs), (subprocess, "Popen", processes)):
+            guard = patch.object(target, name, side_effect=replacement)
+            guard.start()
+            self.addCleanup(guard.stop)
+        m = EngineVersionAcceptance.subject(self)
+        guard = patch.object(m, "verify_runtime", side_effect=AssertionError("no separate runtime child in metadata tests"))
+        guard.start()
+        self.addCleanup(guard.stop)
+        return m
+
+    def _required(self, m, name):
+        function = getattr(m, name, None)
+        self.assertTrue(callable(function), "T-075 required closed interface is absent: " + name)
+        return function
+
+    def _cli(self, m, arguments):
+        import contextlib
+        import io
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            code = m.main(arguments)
+        value = json.loads(output.getvalue())
+        self.assertEqual(code, value["wrapper_exit_code"])
+        return value
+
+    def _paths(self, m, selector):
+        paths = {path for path, _ in MEMBERS[:6]} | {"bench/w40_native.py"}
+        paths |= ({"tests/test_w40_native.py", ".github/workflows/test.yml"}
+                  if selector == "native-all16" else {"tests/test_w40_native_clock.py"})
+        return paths
+
+    def _ids(self, raw):
+        import ast
+        found = []
+        for node in ast.parse(raw).body:
+            if isinstance(node, ast.ClassDef):
+                found.extend(node.name + "." + item.name for item in node.body
+                             if isinstance(item, ast.FunctionDef) and item.name.startswith("test_"))
+            elif isinstance(node, ast.FunctionDef) and node.name.startswith("test_"):
+                found.append(node.name)
+        return sorted(found)
+
+    def _observation(self, ids, exit_code):
+        value = B12DispatchAcceptance.observation(self, ids, exit_code)
+        if exit_code is None:
+            value["outer_lifecycle"] = {"final_observed": False, "uncertain": True}
+        return value
+
+    def _metadata_run(self, m, selector, exit_code=0, transform=None, fault=None):
+        execute = self._required(m, "maintained_test")
+        original_validator = self._required(m, "validate_maintained_receipt")
+        original_write = m._write_json
+        seen, validators = [], []
+        with tempfile.TemporaryDirectory(prefix="maintained-metadata-") as directory:
+            scope = Path(directory) / "synthetic-scope"
+            (scope / "operations").mkdir(parents=True)
+            identity = "7" * 32
+            operation = {"scope": scope, "path": scope / "operations" / identity, "id": identity}
+            def begin(requested=None, **kwargs):
+                requested = kwargs.pop("scope", requested)
+                self.assertFalse(kwargs)
+                self.assertEqual(Path(requested), scope)
+                m.validation_admission(scope)
+                operation["path"].mkdir()
+                (operation["path"] / "state.json").write_bytes(encoded({"status": "running", "operation_id": identity}))
+                return operation
+            def child(view, runner, ids, seconds, actual_operation, selector=None):
+                self.assertIs(actual_operation, operation)
+                self.assertIsNone(selector, "maintained execution must run the complete original __main__")
+                paths = sorted(p.relative_to(view).as_posix() for p in view.rglob("*") if p.is_file() and p.name != ".git")
+                seen.append({"runner": runner, "ids": list(ids), "seconds": seconds, "paths": paths})
+                value = self._observation(ids, exit_code)
+                value["runtime"].update(test_process_pid=740075, validation_operation_id=identity)
+                if transform is not None:
+                    transform(value)
+                return value
+            def validate(value):
+                validators.append(value.get("operation"))
+                if fault == "receipt_protocol":
+                    raise m.VersionError("child_protocol_invalid")
+                return original_validator(value)
+            def write(path, value, **kwargs):
+                if path.name == "receipt.json" and fault in {"receipt_publish", "marker_write"}:
+                    raise m.VersionError("child_protocol_invalid")
+                if path.name == "quarantine.json" and fault == "marker_write":
+                    raise OSError("synthetic marker publication failure")
+                return original_write(path, value, **kwargs)
+            with patch.object(m, "begin_validation_operation", side_effect=begin), \
+                    patch.object(m, "_launch_test_child", side_effect=child), \
+                    patch.object(m, "validate_maintained_receipt", side_effect=validate), \
+                    patch.object(m, "_write_json", side_effect=write):
+                result = execute(CONTRACT, "git-lf", selector, scope=scope)
+                admitted, admission_error = False, None
+                try:
+                    m.validation_admission(scope)
+                    admitted = True
+                except Exception as error:
+                    admission_error = type(error).__name__
+                state = json.loads((operation["path"] / "state.json").read_bytes())
+                marker = scope / "quarantine.json"
+                marker_before = marker.read_bytes() if marker.exists() else None
+                if not admitted:
+                    with self.assertRaises(m.VersionError):
+                        m.validation_admission(scope)
+                    self.assertEqual(marker.read_bytes() if marker.exists() else None, marker_before)
+            return result, {"launches": seen, "validator_calls": validators, "admitted": admitted,
+                            "admission_error": admission_error, "state": state,
+                            "retained_source": (operation["path"] / "source/bench/w40_native.py").is_file()}
+
+    def _legacy_metadata(self, m, child_exit=1):
+        # Synthetic reader input only. This is never claimed as actual historical execution.
+        registry = m.load_registry()
+        paths = [r["path"] for r in registry["members"]]
+        seal = m.sha(m.encoded(dict(zip(paths, registry["profiles"]["git-lf"]["raw_sha256"]))))
+        ids = self._ids(m.read_objects(m.select(registry, CONTRACT, "git-lf"))["tests/test_w40_native.py"])
+        value = m._receipt(None, "git-lf")
+        value.update(operation="legacy-test", contract_id=CONTRACT, role="historical_v1", engine_source_commit=COMMIT,
+            source_tree=TREE, selected_profile="git-lf", original_runner="tests/test_w40_native.py",
+            command_argv=["python", "tools/engine_versions.py", "legacy-test", CONTRACT, "git-lf", "tests/test_w40_native.py"],
+            invocation_status="failed", reason="test_interrupted", wrapper_exit_code=2, test_execution_qualified=False,
+            descendant_observations_complete=False, descendant_observations=[{"command": None, "exit_code": None,
+                "state": "not_recorded", "observation_source": "not_recorded"}], context_manifest_sha256=seal,
+            source_fixture=m._layer("passed", evidence=[seal]),
+            loaded_runtime=m._layer("passed", evidence=[m.sha(b"synthetic runtime reader metadata")]))
+        value["legacy_tests"] = {"status": "failed", "child_exit_code": child_exit, "executed_test_ids": ids,
+            "executed_test_ids_sha256": m.sha(m.encoded(ids)), "stdout_sha256": m.sha(b""),
+            "stderr_sha256": m.sha(b"synthetic failure"), "dynamic_counters": None}
+        return value
+
+    def test_maintained_selectors_and_legacy_execution_eligibility(self):
+        m = self.subject()
+        with patch.object(m, "begin_validation_operation", side_effect=m.VersionError("validation_quarantined")), \
+                patch.object(m, "validation_admission", side_effect=m.VersionError("validation_quarantined")), \
+                patch.object(m, "_scope_path", side_effect=AssertionError("implicit scope forbidden")), \
+                patch.object(m, "_launch_test_child", side_effect=AssertionError("child forbidden")):
+            recognized = self._cli(m, ["maintained-test", CONTRACT, "git-lf", "native-all16"])
+        self.assertEqual(recognized["operation"], "maintained-test")
+        self.assertEqual(recognized["schema"], "engine-maintained-adapter-execution-v1")
+        execute = self._required(m, "maintained_test")
+        for contract, profile, selector in (("UNIT_UNKNOWN", "git-lf", "native-all16"),
+                (CONTRACT, "UNIT_UNKNOWN", "native-all16"), (CONTRACT, "observed-windows-crlf", "native-all16"),
+                (CONTRACT, "git-lf", "NativeAcceptance"), (CONTRACT, "git-lf", "../native-all16"),
+                (CONTRACT, "git-lf", "native-all16 extra")):
+            with self.subTest(selector=selector, profile=profile), \
+                    patch.object(m, "begin_validation_operation", side_effect=AssertionError("invalid admission")) as admission, \
+                    patch.object(m, "_scope_path", side_effect=AssertionError("implicit scope forbidden")):
+                refused = execute(contract, profile, selector)
+                self.assertNotEqual(refused["wrapper_exit_code"], 0)
+                self.assertEqual(refused["maintained_tests"]["status"], "not_run")
+                self.assertNotIn("UNIT_UNKNOWN", m.encoded(refused).decode())
+                admission.assert_not_called()
+        for runner in ("tests/test_w40_native.py", "tests/test_w40_native_clock.py"):
+            with self.subTest(legacy=runner), \
+                    patch.object(m, "begin_validation_operation", side_effect=m.VersionError("validation_quarantined")) as admission, \
+                    patch.object(m, "_scope_path", side_effect=AssertionError("implicit scope forbidden")), \
+                    patch.object(m, "_launch_test_child", side_effect=AssertionError("legacy child forbidden")) as child:
+                for value in (m.legacy_test(CONTRACT, "git-lf", runner),
+                              self._cli(m, ["legacy-test", CONTRACT, "git-lf", runner])):
+                    self.assertEqual(value["reason"], "legacy_native_execution_unqualified")
+                    self.assertEqual(value["wrapper_exit_code"], 2)
+                    self.assertEqual(value["legacy_tests"]["status"], "not_run")
+                admission.assert_not_called()
+                child.assert_not_called()
+
+    def test_native9_and_clock8_source_closure_and_actual_candidate_identity(self):
+        m = self.subject()
+        build = self._required(m, "maintained_context_sources")
+        selected = m.select(m.load_registry(), CONTRACT, "git-lf")
+        objects = m.read_objects(selected)
+        head = m._git_bytes("rev-parse", "HEAD^{commit}").decode().strip()
+        for selector, count in (("native-all16", 9), ("clock-all3", 8)):
+            with self.subTest(selector=selector):
+                bodies, identity = build(selected, objects, selector)
+                self.assertEqual(set(bodies), self._paths(m, selector))
+                self.assertEqual(len(bodies), count)
+                fixed_paths = {path for path, _ in MEMBERS[:6]}
+                for path in fixed_paths:
+                    self.assertEqual(bodies[path], objects[path])
+                support = ".github/workflows/test.yml" if selector == "native-all16" else "tests/test_w40_native_clock.py"
+                self.assertEqual(bodies[support], objects[support])
+                self.assertEqual(bodies["bench/w40_native.py"], m._git_bytes("cat-file", "blob", head + ":bench/w40_native.py"))
+                current = identity["current_adapter_identity"]
+                self.assertEqual(current["candidate_commit"], head)
+                expected_current = {"bench/w40_native.py", "tests/test_w40_native.py"} if selector == "native-all16" else {"bench/w40_native.py"}
+                self.assertEqual({r["path"] for r in current["members"]}, expected_current)
+                self.assertEqual({r["path"] for r in identity["dependency_identity"]["members"]}, fixed_paths)
+                self.assertEqual({r["path"] for r in identity["support_identity"]["members"]}, {support})
+                for r in current["members"]:
+                    physical = (ROOT / r["path"]).read_bytes()
+                    self.assertEqual(r["raw_sha256"], m.sha(physical))
+                    self.assertEqual(r["canonical_sha256"], m.sha(physical.replace(b"\r\n", b"\n")))
+                    self.assertEqual(bodies[r["path"]], physical.replace(b"\r\n", b"\n"))
+                with self.assertRaises(m.VersionError):
+                    m._profile_bodies(selected, bodies)
+        for fault in ("missing", "changed", "extra"):
+            bad = dict(objects)
+            if fault == "missing":
+                bad.pop("src/risk.py")
+            elif fault == "changed":
+                bad["src/risk.py"] += b"\n# synthetic changed fixed dependency\n"
+            else:
+                bad["../extra.py"] = b"pass\n"
+            with self.subTest(fault=fault), self.assertRaises(m.VersionError):
+                build(selected, bad, "native-all16")
+        with self.assertRaises(m.VersionError):
+            build(m.select(m.load_registry(), CONTRACT, "observed-windows-crlf"), objects, "native-all16")
+        original_metadata = m._metadata
+        def alias(path):
+            if path == ROOT / "bench/w40_native.py":
+                return types.SimpleNamespace(st_mode=stat.S_IFLNK | 0o777, st_file_attributes=0x400)
+            return original_metadata(path)
+        with patch.object(m, "_metadata", side_effect=alias), self.assertRaises(m.VersionError):
+            build(selected, objects, "native-all16")
+
+    def test_maintained_original13_staging3_clock3_ids_and_real_exit_separation(self):
+        m = self.subject()
+        self._required(m, "maintained_test")
+        def missing(value):
+            value["executed_test_ids"].pop()
+        def wrong_runtime(value):
+            value["runtime"]["predicates"]["engine_bindings"] = False
+        cases = (("native-all16", 0, None), ("clock-all3", 0, None), ("native-all16", 7, None),
+                 ("clock-all3", 7, None), ("native-all16", -9, None), ("native-all16", None, None),
+                 ("native-all16", 0, missing), ("native-all16", 0, wrong_runtime))
+        for selector, exit_code, transform in cases:
+            with self.subTest(selector=selector, exit=exit_code, fault=transform is not None):
+                result, evidence = self._metadata_run(m, selector, exit_code, transform)
+                self.assertEqual(len(evidence["launches"]), 1)
+                actual = evidence["launches"][0]
+                runner = "tests/test_w40_native.py" if selector == "native-all16" else "tests/test_w40_native_clock.py"
+                expected = self._ids((ROOT / runner).read_bytes())
+                self.assertEqual(actual["ids"], expected)
+                self.assertEqual(len(actual["ids"]), 16 if selector == "native-all16" else 3)
+                self.assertEqual(actual["runner"], runner)
+                self.assertEqual(actual["seconds"], 900 if selector == "native-all16" else 180)
+                self.assertEqual(set(actual["paths"]), self._paths(m, selector))
+                self.assertEqual(result["maintained_tests"]["child_exit_code"], exit_code)
+                qualified = exit_code == 0 and transform is None
+                self.assertIs(result["test_execution_qualified"], qualified)
+                self.assertEqual(result["maintained_tests"]["status"], "passed" if qualified else "failed")
+                self.assertEqual(result["wrapper_exit_code"] == 0, qualified)
+                if exit_code == 7:
+                    self.assertEqual(result["wrapper_exit_code"], 7)
+                self.assertFalse(result["descendant_observations_complete"])
+                self.assertIsNone(result["descendant_observations"][-1]["exit_code"])
+                if exit_code is None:
+                    self.assertFalse(evidence["admitted"])
+
+    def test_maintained_receipts_cannot_qualify_historical_or_production_domains(self):
+        m = self.subject()
+        validate = self._required(m, "validate_maintained_receipt")
+        for selector in ("native-all16", "clock-all3"):
+            good, _ = self._metadata_run(m, selector)
+            self.assertIs(validate(good), good)
+            self.assertEqual(good["schema"], "engine-maintained-adapter-execution-v1")
+            self.assertEqual(good["domain"], "maintained_adapter_on_fixed_v1_dependencies")
+            self.assertNotIn("source_fixture", good)
+            self.assertEqual(good["context_source"]["status"], "passed")
+            self.assertEqual(good["maintained_loaded_runtime"]["status"], "passed")
+            for field in ("historical_execution_qualified", "current_production_behavior_qualified",
+                          "original_v1_fixture_qualified_by_maintained_result"):
+                self.assertIs(good[field], False)
+                bad = copy.deepcopy(good)
+                bad[field] = True
+                with self.subTest(field=field), self.assertRaises(m.VersionError):
+                    validate(bad)
+            for field, value in (("domain", "historical_v1"), ("role", "production_v2"),
+                    ("v2_historical_native_positive_compatibility", "supported"), ("wrapper_exit_code", True),
+                    ("context_manifest_sha256", "0" * 64), ("unexpected", "UNIT_UNKNOWN")):
+                bad = copy.deepcopy(good)
+                bad[field] = value
+                with self.subTest(field=field), self.assertRaises(m.VersionError):
+                    validate(bad)
+            for identity in ("dependency_identity", "support_identity", "current_adapter_identity"):
+                bad = copy.deepcopy(good)
+                bad[identity]["members"].append(copy.deepcopy(bad[identity]["members"][0]))
+                with self.subTest(duplicate=identity), self.assertRaises(m.VersionError):
+                    validate(bad)
+            for fault in ("missing_id", "self_hashed_ids", "boolean_exit", "copied_runtime"):
+                bad = copy.deepcopy(good)
+                if fault in {"missing_id", "self_hashed_ids"}:
+                    ids = bad["maintained_tests"]["executed_test_ids"]
+                    ids.pop() if fault == "missing_id" else ids.__setitem__(0, "arbitrary.test")
+                    bad["maintained_tests"]["executed_test_ids_sha256"] = m.sha(m.encoded(ids))
+                elif fault == "boolean_exit":
+                    bad["maintained_tests"]["child_exit_code"] = True
+                else:
+                    bad["maintained_loaded_runtime"] = copy.deepcopy(bad["context_source"])
+                with self.subTest(fault=fault), self.assertRaises(m.VersionError):
+                    validate(bad)
+            for operation, schema, domain in (("legacy-test", "engine-version-qualification-v1", "historical_v1"),
+                    ("adapter-test", "engine-adapter-regression-v1", "current_adapter_on_v1_dependencies")):
+                bad = self._legacy_metadata(m, 0)
+                bad.update(operation=operation, schema=schema, domain=domain)
+                bad.update(invocation_status="completed", reason=None, wrapper_exit_code=0, test_execution_qualified=True)
+                bad["source_fixture"] = copy.deepcopy(good["context_source"])
+                bad["loaded_runtime"] = copy.deepcopy(good["maintained_loaded_runtime"])
+                bad["context_manifest_sha256"] = good["context_manifest_sha256"]
+                bad["direct_observations_evidence_sha256"] = m.sha(m.encoded(good["descendant_observations"]))
+                if operation == "legacy-test":
+                    bad.pop("domain")
+                    runner = "tests/test_w40_native.py" if selector == "native-all16" else "tests/test_w40_native_clock.py"
+                    bad["original_runner"] = runner
+                    bad["command_argv"] = ["python", "tools/engine_versions.py", operation, CONTRACT, "git-lf", runner]
+                    bad["legacy_tests"] = copy.deepcopy(good["maintained_tests"])
+                else:
+                    bad.update(role=domain, original_runner=None,
+                        original_v1_fixture_qualified_by_adapter_result=False, current_production_behavior_qualified=False)
+                    bad["command_argv"] = ["python", "tools/engine_versions.py", operation, CONTRACT, "git-lf", "InterruptedProgressStagingTests"]
+                    bad["legacy_tests"] = m._receipt(None, None)["legacy_tests"]
+                    bad["adapter_tests"] = copy.deepcopy(good["maintained_tests"])
+                    bad["dependency_identity"] = copy.deepcopy(good["dependency_identity"])
+                    bad["current_adapter_identity"] = copy.deepcopy(good["current_adapter_identity"])
+                with self.subTest(relabel=operation), self.assertRaises(m.VersionError):
+                    m.validate_dispatch_receipt(bad)
+                with self.assertRaises(m.VersionError):
+                    validate(bad)
+
+    def test_historical_workflow_fixture_cannot_qualify_current47_dispatch(self):
+        m = self.subject()
+        old = m._git_bytes("cat-file", "blob", "bb6e1b2cc5e602e94f0560c37dbc3bd79674edab:.github/workflows/test.yml").decode()
+        pending = m.workflow_dispatch_contract(old)
+        self.assertEqual(pending["status"], "registration_pending")
+        replacements = (
+            ("legacy-test " + CONTRACT + " git-lf tests/test_w40_native.py", "maintained-test " + CONTRACT + " git-lf native-all16"),
+            ("adapter-test " + CONTRACT + " git-lf InterruptedProgressStagingTests", "verify-source " + CONTRACT + " git-lf"),
+            ("legacy-test " + CONTRACT + " git-lf tests/test_w40_native_clock.py", "maintained-test " + CONTRACT + " git-lf clock-all3"))
+        current = old
+        for before, after in replacements:
+            self.assertEqual(current.count(before), 1)
+            current = current.replace(before, after, 1)
+        registered = m.workflow_dispatch_contract(current)
+        self.assertEqual(registered["status"], "registered")
+        self.assertEqual(registered["actual_count"], 47)
+        self.assertEqual(sum(a == b for a, b in zip(pending["commands"], registered["commands"])), 44)
+        historical = m._git_bytes("cat-file", "blob", COMMIT + ":.github/workflows/test.yml").decode()
+        self.assertNotEqual(m.workflow_dispatch_contract(historical)["status"], "registered")
+        command = "python tools/engine_versions.py maintained-test " + CONTRACT + " git-lf native-all16"
+        for bad in (current.replace("run: " + command, "# run: " + command, 1),
+                    current.replace(command, "python -c pass", 1), current.replace(command, command + " extra", 1),
+                    current.replace("python tests/test_backfill.py --offline", "python tests/test_backfill.py", 1)):
+            self.assertEqual(m.workflow_dispatch_contract(bad)["status"], "invalid")
+
+    def test_maintained_failure_and_quarantine_admission_remain_closed(self):
+        m = self.subject()
+        self._required(m, "maintained_test")
+        for fault in ("uncertain", "receipt_protocol", "receipt_publish", "marker_write"):
+            with self.subTest(fault=fault):
+                result, evidence = self._metadata_run(m, "native-all16", None if fault == "uncertain" else 0,
+                                                      fault=None if fault == "uncertain" else fault)
+                self.assertEqual(len(evidence["launches"]), 1)
+                self.assertTrue(evidence["retained_source"])
+                self.assertFalse(result["test_execution_qualified"])
+                self.assertNotEqual(result["wrapper_exit_code"], 0)
+                self.assertEqual(result["maintained_tests"]["child_exit_code"], None if fault == "uncertain" else 0)
+                self.assertFalse(evidence["admitted"])
+                self.assertEqual(evidence["admission_error"], "VersionError")
+                self.assertNotEqual(evidence["state"]["status"], "finished")
+                if fault == "receipt_protocol":
+                    self.assertTrue(evidence["validator_calls"], "the actual unique maintained guard was not intercepted")
+
+    def test_legacy_receipt_reader_preserves_failed_and_unknown_states(self):
+        m = self.subject()
+        for child_exit in (1, 0, None):
+            value = self._legacy_metadata(m, child_exit)
+            for name, status, reason in (("historical_record_tuple", "unknown", "historical_record_unknown"),
+                    ("historical_interpreter", "unavailable", "historical_interpreter_unavailable")):
+                value[name] = m._layer(status, reason)
+            before = m.encoded(value)
+            self.assertIs(m.validate_dispatch_receipt(value), value)
+            self.assertEqual(m.encoded(value), before)
+            self.assertEqual(value["legacy_tests"]["status"], "failed")
+            self.assertEqual(value["legacy_tests"]["child_exit_code"], child_exit)
+            self.assertIs(value["test_execution_qualified"], False)
+            self.assertIs(value["historical_execution_qualified"], False)
+            promoted = copy.deepcopy(value)
+            promoted["historical_execution_qualified"] = True
+            with self.assertRaises(m.VersionError):
+                m.validate_dispatch_receipt(promoted)
+        with patch.object(m, "begin_validation_operation", side_effect=m.VersionError("validation_quarantined")) as admission, \
+                patch.object(m, "_scope_path", side_effect=AssertionError("implicit scope forbidden")), \
+                patch.object(m, "_launch_test_child", side_effect=AssertionError("reader reopened legacy execution")):
+            refused = m.legacy_test(CONTRACT, "git-lf", "tests/test_w40_native.py")
+            self.assertEqual(refused["reason"], "legacy_native_execution_unqualified")
+            admission.assert_not_called()
+        validate = self._required(m, "validate_maintained_receipt")
+        with self.assertRaises(m.VersionError):
+            validate(self._legacy_metadata(m))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
