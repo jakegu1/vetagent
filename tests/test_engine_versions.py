@@ -685,6 +685,48 @@ class B12DispatchAcceptance(unittest.TestCase):
                 path.write_bytes(original)
             m.verify_view(view, selected)
 
+    def test_actual_current_risk_is_refused_by_original_native_source(self):
+        m = self.subject()
+        production = (ROOT / "src/risk.py").read_bytes()
+        for profile in ("git-lf", "observed-windows-crlf"):
+            with self.subTest(profile=profile):
+                selected = m.select(m.load_registry(), CONTRACT, profile)
+                with m.source_view(selected, m.read_objects(selected)) as view, \
+                        patch.dict(sys.modules), \
+                        patch.object(sys, "path", [str(Path(view) / "bench"), str(Path(view) / "src"), *sys.path]):
+                    sys.modules.pop("w40_evidence", None)
+                    spec = importlib.util.spec_from_file_location(
+                        "t068_original_native", Path(view) / "bench/w40_native.py")
+                    native = importlib.util.module_from_spec(spec)
+                    sys.modules[spec.name] = native
+                    spec.loader.exec_module(native)
+                    self.assertEqual(Path(native.__file__).resolve(), (Path(view) / "bench/w40_native.py").resolve())
+                    self.assertEqual(Path(native.core.__file__).resolve(), (Path(view) / "bench/w40_evidence.py").resolve())
+                    baseline = native.code_manifest()
+                    self.assertIsInstance(baseline, dict)
+                    path = Path(view) / "src/risk.py"
+                    original = path.read_bytes()
+                    refused = False
+                    try:
+                        path.write_bytes(production)
+                        try:
+                            native.code_manifest()
+                        except native.NativeError as error:
+                            self.assertEqual(str(error), "source_drift")
+                            refused = True
+                        self.assertTrue(refused, "actual current production risk was not refused with source_drift")
+                    finally:
+                        path.write_bytes(original)
+                        self.assertEqual(path.read_bytes(), original)
+                        m.verify_view(view, selected)
+                        self.assertEqual(native.code_manifest(), baseline)
+                        print(json.dumps({"profile": profile, "original_positive_control": True,
+                            "actual_current_risk_sha256": hashlib.sha256(production).hexdigest(),
+                            "actual_current_source_refused": refused,
+                            "original_view_restored_and_verified": True}), flush=True)
+
+
+
 
 class B12ReviewRegressionAcceptance(unittest.TestCase):
     """NC5: bounded review regressions; spies never start an OS process."""
