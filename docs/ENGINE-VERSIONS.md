@@ -9,13 +9,28 @@ an old plan, run a native collector, or change the sole production engine in `sr
 ```
 python tools/engine_versions.py verify-source w40-v1-e3ec46a git-lf
 python tools/engine_versions.py verify-source w40-v1-e3ec46a observed-windows-crlf
+python tools/engine_versions.py legacy-test w40-v1-e3ec46a git-lf tests/test_w40_native.py
+python tools/engine_versions.py legacy-test w40-v1-e3ec46a git-lf tests/test_w40_native_clock.py
+python tools/engine_versions.py legacy-test w40-v1-e3ec46a git-lf tests/test_dataset_replayable.py
+python tools/engine_versions.py adapter-test w40-v1-e3ec46a git-lf InterruptedProgressStagingTests
+python tools/engine_versions.py maintained-test w40-v1-e3ec46a git-lf native-all16
+python tools/engine_versions.py maintained-test w40-v1-e3ec46a git-lf clock-all3
 ```
 
 The profile is mandatory. Default/help performs no verification. Missing/unknown contract
 or profile refuses; host OS, checkout line endings and failures cannot select another
-profile. `legacy-test`, collect, recover, report, study, pilot and scheduler are unsupported.
+profile. Collect, recover, report, study, pilot and scheduler are unsupported commands.
 No arbitrary test/source path, executable, commit, old record or interpreter input exists.
-Future historical-test dispatch is a separate task; existing workflow commands are unchanged.
+Legacy native and clock execution now refuses with legacy_native_execution_unqualified,
+wrapper2 and not_run, before allocating an operation or child, through both CLI and
+legacy_test. Unknown grammar keeps its original fixed refusal. Historical dataset execution
+and both historical source profiles remain supported. Existing legacy native/clock receipts
+remain readable; metadata reader acceptance does not reopen their execution eligibility.
+Adapter-test still accepts only the literal staging class and git-lf. Maintained-test accepts
+only native-all16 or clock-all3 with git-lf. Workflow registration stays root-owned: only the
+exact new47 command inventory is registered; the pinned previous47 is registration_pending.
+The older46 inventory is not a valid new-registration alternative. A focused pass is not an
+actual47 execution.
 
 ## Source and execution checks
 
@@ -43,7 +58,7 @@ A fresh child uses `-I -S -B`: no parent module state, PYTHONPATH, site packages
 It checks the actual loaded original native/core/risk paths, original `code_manifest()`
 and `engine_bindings()` (code filenames, compiled functions, defaults, closures and RPC
 roots). Socket and descendant-process actions are refused in this verification child.
-No engine assessment, acquisition or native test runner executes. Its interpreter hash,
+No engine assessment, acquisition or native test runner executes in verify-source. Its interpreter hash,
 version/cache tag, source manifest and predicate evidence are recorded as a digest.
 
 The child also validates an original synthetic empty-source core plan without changing its
@@ -55,7 +70,7 @@ identical bytes alone do not make a production-role request eligible for this fi
 
 ## Receipt scope
 
-Every verification/refusal receipt uses `engine-version-qualification-v1`. Invocation
+Historical source verification and legacy refusals use `engine-version-qualification-v1`. Invocation
 status describes this request only. Contract/source identity, explicit requested/selected
 profile, fixed command vector, actual wrapper exit and four separate result layers remain
 visible. Unknown caller strings are not echoed: unrecognized profile/contract values use
@@ -72,18 +87,80 @@ categories, not private host paths or arbitrary exception prose.
 Historical layers stay `not_evaluated` with fixed reasons and empty evidence. Missing source
 objects/runtime may be `unavailable`; examined mismatches are `failed`, unexamined dimensions
 are not fabricated failures. `historical_execution_qualified` is always false. Legacy tests
-are `not_run`, and positive production-V2 compatibility with the historical native adapter
+are `not_run` for verify-source/refusal; a legacy-test receipt separately records the actual
+original test execution and child exit. Positive production-V2 compatibility with the historical native adapter
 is `unsupported`. No fixture/runtime success promotes either historical layer.
 
 ## Test responsibilities and holds
 
-This slice preserves the existing native commands and all old assertions. A later explicit
-dispatch task must run the complete old native GET/RPC/cache/context and datetime contracts
-in V1, retain the current dataset runner plus the entire historical dataset version, and
-independently verify today's actual command/child execution. Those native tests are V1-only;
+Maintained dispatch preserves the original native GET/RPC/cache/context and datetime test
+obligations on the actual maintained adapter with fixed V1 dependencies. The current dataset
+runner stays current and the entire historical dataset version runs once within the version
+suite. The workflow guard checks the exact new commands. Fixed dependencies do not qualify
+the evolving production engine;
 current production risk/MCP/HTTP/benchmark/numeric regressions retain their distinct duties.
 Repaired V2 must still be rejected by the original native source predicates. Rejection is
 a negative guarantee and not positive V2 native execution evidence.
+
+## Contemporary adapter and actual child evidence
+
+The separate eight-member adapter context combines six fixed V1 dependency blobs with the
+actual candidate's current native adapter and unchanged current native-test file. It does
+not modify the closed eleven-member registry. Current HEAD/tree/blob/canonical/physical-raw
+origins are recorded and rechecked; current members are not pinned forever to an older fix.
+The only selected class runs all three current staging regressions. Its source-fixture pass
+refers solely to this composed context, not original-V1 membership or production behavior.
+The receipt schema is engine-adapter-regression-v1, with domain
+current_adapter_on_v1_dependencies and explicit false historical/original-V1/production
+qualification fields. Positive V2 historical-native compatibility remains unsupported.
+
+A different fixed test child uses the same isolated interpreter flags, checks original
+code_manifest and engine_bindings in that actual test process, then runs the unchanged
+original __main__ harness. It observes exact top-level test IDs; nested calls to another
+test function remain separately recorded internal calls. Dataset pass/fail/not-checked
+counters remain the original dynamic values. No whole native/clock positive is embedded
+in version-suite unit tests; those units use controlled small children/spies.
+
+Actual observed command representations are preserved in private evidence: Windows command
+line strings are not guessed into POSIX argv. Direct Popen.poll values are their actual
+values, including negative/signal exits. Deeper unexported commands/exits are null with
+not_recorded state. Original lifecycle assertions remain labelled original harness evidence;
+they never become independent exit0 telemetry. descendant_observations_complete is false
+even when test_execution_qualified is true. Neither implies complete-tree retirement.
+
+The new outer child bounds are native900s, clock180s and dataset/adapter120s; each recorded
+raw stream is at most1MiB and each public receipt128KiB. Private metadata is bounded by1MiB,
+256 direct/audit/nested observations and65 top-level ID entries; dropped observations are
+explicit and an unobserved direct owner fails closed. A validation scope holds at most16
+operations. These bounds do not change original fixture/process/source/scientific limits.
+Original output hashes describe a complete stream only when its completeness flag is true;
+otherwise they bind only the retained prefix. All operation views and partial evidence are
+retained, including on failed or uncertain executions.
+
+## Quarantine admission interface
+
+The root47 operator must pin one dedicated external non-Git directory in
+VETAGENT_VALIDATION_SCOPE and inherit it into every nested version-suite/dispatcher child.
+Without it, the dispatcher uses a persistent external TEMP scope keyed by workspace path.
+The private scope contains operations, atomic state/intent/observation records and an
+immutable quarantine.json marker. TEMP, CI/GHA, actual interpreter and commands are recorded.
+CI/GHA are never cleared by the dispatcher. Unit-negative fixtures have their own explicit
+private scopes; they cannot clear the real operation's quarantine.
+
+Before EVERY successor command, the root operator calls
+`validation_admission(scope)` from this helper. It must refuse admission on a quarantine,
+unfinished operation, corrupt state or unknown admission owner. A nested dataset timeout
+therefore blocks a later native command even if an ordinary local runner would keep going
+after a nonzero test. Calling the ordinary runner without this independently reviewed
+operator does not satisfy the new full-gate contract.
+
+Timeout/interruption/overflow, incomplete output or missing/uncertain final ownership
+observation persist quarantine before returning. Top-child exit, waiting, a new demand or
+changing a ledger cannot clear it. There is no automatic clear, process-tree killer or
+recovery API. Root must separately qualify incident-bound owned-child retirement before
+allowing a later heavy operation. Do not change scope to bypass an unresolved real incident.
+The root operator's actual admission/notification propagation, including nested failures,
+requires independent small-fixture readiness before any full47 slot is granted.
 
 An internal pure guard checks all four result layers before returning a verification and
 again before emitting a CLI receipt. It rejects historical promotion, a passed runtime
@@ -99,3 +176,77 @@ adopted or replaced. Original research sources, windows, rules, labels, threshol
 failed/unknown states and closed conclusions remain unchanged. Prices and the old partial
 T068 candidate are outside this source-identity slice. Any future operational adopter,
 production repair or release needs its own assigned contract and actual acceptance.
+
+## Review corrections: admission and exported execution receipts
+
+A dispatched operation remains running until source rechecks, execution-domain receipt
+validation and receipt publication succeed. Uncertainty is recorded before optional
+observation publication. A postlaunch capacity, protocol or write failure quarantines the
+operation; if quarantine publication itself fails, the unchanged unfinished state still
+refuses admission. The retained failure receipt reports failed execution, preserving an
+actually observed top-child exit independently of the nonzero wrapper exit. Neither a
+generic exception nor a known top-child exit establishes complete descendant retirement.
+A bounded private failure-stage.json records the failure phase and both exit fields;
+missing child observation remains null and never becomes a guessed numeric exit.
+
+Admission accepts only an exact two-key finished-state object whose string operation_id
+matches its canonical lowercase hexadecimal directory. Missing, copied, malformed,
+unexpected-key, aliased or unfinished state refuses admission without rewriting that
+evidence. Enumeration stops at the existing sixteen-operation bound. No migration or
+quarantine-clear interface exists.
+
+The separate execution-domain guard preserves the original four-layer source guard.
+Legacy execution receipts bind the fixed contract, commit, tree, profile, runner, exact
+sorted top-level ID count/digest and eleven-member raw-profile context seal. The ID
+digests are derived from the pinned original runner blobs, not supplied by the caller.
+Adapter receipts bind their own three IDs, six exact dependency records and two members
+of their named candidate Git commit/tree; they retain an eight-member context seal.
+Their candidate is not permanently pinned to an earlier adapter revision. An adapter
+receipt cannot qualify the original fixture, historical execution or production V2.
+
+Malformed types, duplicate membership, unknown fields and contradictory status/exit
+claims produce bounded VersionError codes. Known-absent historical layers stay
+unavailable and unexamined or inconclusive layers retain their separate meanings.
+This exported-artifact check does not prove actual execution: original raw reports,
+source views, runtime predicates and actual process/operation identity remain required.
+Missing deep telemetry stays null/not_recorded even for an A1-valid passing execution.
+
+## Maintained native regression domain
+
+Maintained execution uses a separate closed source recipe. Native-all16 combines the six
+fixed original V1 dependencies, the actual candidate native adapter and native-test file,
+and the original workflow support blob: nine members. Clock-all3 combines those same six
+dependencies, the actual candidate native adapter, and the original clock-test support blob:
+eight members. The workflow support blob exists only for an unchanged original assertion;
+it cannot certify current workflow registration. The original eleven-member catalog and
+the existing eight-member staging diagnostic remain unchanged. No common superset is used.
+
+Candidate commit/tree/mode/blob/canonical/physical-raw identities are read locally and checked
+before and after execution, including the postlaunch evidence-failure path. Both commands
+run their complete unmodified __main__ harness with no class filter: original13 plus staging3
+for native, and the original3 clock cases. Exact fixed ID digests, native900s/clock180s bounds
+and every existing source, stream, operation and process limit remain enforced. The same
+actual bounded test child checks original code_manifest and engine_bindings with the fixed
+V1 risk dependency; production regressions continue to use the sole current src/risk.py.
+
+The schema is engine-maintained-adapter-execution-v1, with domain and role
+maintained_adapter_on_fixed_v1_dependencies, a fixed selector and maintained_runner.
+It records separate context_source, maintained_loaded_runtime and maintained_tests layers,
+plus fixed dependency/support and actual candidate identity. A source-view seal is distinct
+from runtime evidence. Both the dispatcher before publication/completion and the CLI call
+the same validate_maintained_receipt attribute. Historical/staging guards are unchanged and
+reject this domain. Maintained validation rejects historical, staging and production
+relabels, malformed identity membership, copied evidence and guessed execution outcomes.
+
+original_v1_fixture_qualified_by_maintained_result, historical_execution_qualified and
+current_production_behavior_qualified remain false; positive V2 historical-native
+compatibility remains unsupported. Known child exits remain separate from wrapper exits.
+Missing deep telemetry stays null/not_recorded and incomplete, including otherwise valid
+execution. Synthetic metadata reader fixtures and spy results are unit data, never actual
+legacy execution evidence. Reader acceptance alone cannot authenticate any execution.
+
+The new workflow inventory changes only the previous47 ordinals38/39/40 to maintained native,
+explicit historical git-lf verify-source, and maintained clock. The other44 commands and
+their order stay fixed; staging3 remains available as a diagnostic and is already in native16.
+Root registers the real workflow separately. Source readiness or a new receipt/domain does
+not retire an old failed operation, clear quarantine, grant admission, or qualify full47.

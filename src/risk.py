@@ -1407,7 +1407,7 @@ def _canonical_chain(hint):
 _PRICE_DISAGREEMENT_FACTOR = 100.0
 
 
-def _unranked_price_conflict(scope):
+def _unranked_price_conflict(scope, target=None):
     """(low, high) when rank cannot help us and the pools contradict each other.
 
     `_CHAIN_RANK` holds 20 chains and everything else ties at rank 9, so when every
@@ -1441,8 +1441,11 @@ def _unranked_price_conflict(scope):
         return None                      # rank had something to say; it said it
     if len({(p.get("chainId") or "").lower() for p in scope}) < 2:
         return None                      # one chain is not an ambiguity
-    prices = [_market_number(p.get("priceUsd")) for p in scope
-              if (_market_number(p.get("priceUsd")) or 0) > 0 and _reported_liquidity(p)]
+    prices = []
+    for pair in scope:
+        price = _price_of_target(pair, target)
+        if price is not None and price > 0 and _reported_liquidity(pair):
+            prices.append(price)
     if len(prices) < 2:
         return None
     lo, hi = min(prices), max(prices)
@@ -1492,6 +1495,11 @@ def _drop_price_outliers(candidates, target):
     if len(priced) < _MIN_POOLS_FOR_CONSENSUS:
         return candidates
     med = statistics.median([v for v, _ in priced])
+    if not math.isfinite(med) and len(priced) % 2 == 0:
+        # Keep ordinary median rounding; recover only an overflowed finite midpoint.
+        values = sorted(v for v, _ in priced)
+        middle = len(values) // 2
+        med = values[middle - 1] / 2 + values[middle] / 2
     if _market_number(med) is None or med <= 0:
         return candidates
     kept = [p for v, p in priced
@@ -4177,7 +4185,8 @@ async def assess(address, chain_hint=None, verbose=False):
         best = _pick_best(pairs, chain_hint=chain_hint, target=address)
         # Judged over the pools we actually chose from. A fork pool rank already excluded
         # is not a disagreement, it is a pool we refused.
-        conflict = _unranked_price_conflict(_home_scope(pairs, chain_hint, address))
+        conflict = _unranked_price_conflict(_home_scope(pairs, chain_hint, address),
+                                           target=address)
         if best is not None and conflict:
             lo, hi = conflict
             evidence["price_disagreement"] = {"low_usd": _sig_round(lo),

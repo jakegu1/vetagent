@@ -76,3 +76,7 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-074 | Scope usage reports to observed storage domains | 3 | M | T-069, T-072 | ready; independently reviewed design; first phase tests and exact SQL only, no collection/full |
 
 | T-076 | Keep unobserved simulator chain probes out of unsupported votes | 2 | S | T-074 code basis | in progress; source review and both full source gates pass, integrated verification and ordinary release CI pending |
+
+| T-075 | Complete maintained adapter regressions on fixed V1 dependencies | 3 | M | T-071, T-072, ADR0003 | ready; Owner scope approved, design accepted; initial tests-only phase, no heavy admission or publication |
+
+| T-077 | Register complete maintained suites from executable workflow commands | 3 | S | T-075 approved split | ready; source registration instrument repair, no full or retry authority |

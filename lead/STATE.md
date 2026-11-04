@@ -1,3 +1,35 @@
+# Current: T075 approved maintained regression responsibility (2026-11-03)
+
+## Current checkpoint: registration instrument correction after failed source gate
+
+The maintained adapter has independent metadata acceptance and exact workflow
+registration, but its first complete source gate failed at the test-registration
+guard before native/clock execution. The old guard reads filename substrings and
+does not recognize the approved selectors. The failure, unstarted tail, spent
+attempt and unqualified postrun capture remain. Fixed-QA completion has only its
+separately accepted trusted-harness evidence grade, with no general containment.
+
+T077 is ready for tests-first correction of that one registration instrument.
+It preserves every suite obligation, parser/API and actual workflow command.
+No new Owner decision, actual full, retry, source admission or quarantine
+clearance is implied. The upstream observation repair is reviewed separately
+and remains pending complete validation. T047 dependencies stay held.
+
+Earlier checkpoint text below retains its original stage.
+
+The explicit Owner scope and independent design are adopted in T-075. Its initial
+executor phase is tests-only preparation; a literal Root adoption SHA is required
+as contract base. No old full failure is promoted, quarantine cleared or new
+native/clock/full slot granted. Workflow registration stays Root-owned.
+The recovered B source begins at bb6; explained checkout newline differences
+retain separate raw and canonical identities. Historical post-failure gaps remain.
+The current A T074 local source and integrated gates are qualified; its prior
+9b natural schedule41540262716/following46CI41541592418 handoff now qualifies.
+T074 has no new source/master CI or publication yet. T047/T049/T050 remain held.
+Earlier checkpoints below preserve their original stage boundaries.
+
+---
+
 # Lead state
 
 ## Current checkpoint: observation repair passed separate source gates

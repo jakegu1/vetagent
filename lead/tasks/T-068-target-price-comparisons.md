@@ -1,14 +1,31 @@
 ---
 id: T-068
 title: Compare target-token prices without losing finite consensus
-status: draft
+status: ready
 level: 3
 size: M
-depends_on: [T-021, T-065, T-066]
+depends_on: [T-021, T-065, T-066, T-075, T-077]
 backlog: existing finite market-input and selected-pool correctness
 ---
 
-## Current disposition: dependency-held
+## Current disposition: ready on the qualified maintained base
+
+The Owner approved historical/production version separation and maintained
+adapter regression responsibilities. Source3976cea now has qualified author
+and independent complete47 executions, with current native/clock coverage and
+preservation. The original failed attempts remain failed. This resolves the
+implementation dependency; neither a production price improvement nor a public
+release is asserted. Keep the original version registry, historical bytes and
+negative native source contract unchanged.
+
+Implement both demonstrated price findings directly on this qualified base.
+Batch the maintained adapter and price fixes into one product release. Use the
+existing test entry points, scoped source admission and CI; do not add a new
+per-version execution controller or replay old failed roles. Final integration
+must normally preserve current production and bot data, then run every command
+declared by that exact merged workflow. No old budget is reset.
+
+## Preserved dependency history
 
 The initial conflict search missed the deployed native adapter's FROZEN engine
 contract and its existing test. This is a lead scope error. Its unchanged
@@ -21,7 +38,8 @@ test or introduce an alternate production path to avoid that contract.
 Before returning to ready, separately resolve the production/research source
 version contract with explicit scope, acceptance, preserved historical sources
 and applicable independent qualification. T047/T049/T050 remain isolated. The
-original plan below is historical intent, not authorization to cross this hold.
+earlier hold is preserved as history. The adopted criteria below authorize only
+the now-qualified version boundary and the two ordinary price corrections.
 
 ## Context, benefit, cost and stop
 
@@ -42,8 +60,9 @@ Stop after these demonstrated seams. Historical real incidence is unmeasured.
 
 - src/risk.py: only unranked target-price conflict and finite consensus midpoint.
 - tests/test_finite_price_conflict.py: additive acceptance functions/helpers only.
-- tests/test_finite_market_measurements.py: additive acceptance functions only if
-  its existing test harness is a better fit for the median seam.
+- tests/test_engine_versions.py: one additive actual-current-production source
+  refusal witness in the existing B12DispatchAcceptance class; no old test or
+  helper changes and no inherited duplicate execution of existing test classes.
 - Lead-owned task/index/state/review metadata is separate.
 
 No old acceptance/helper edits; no workflow, dependency, upstream, score-band,
@@ -81,16 +100,32 @@ fill, benchmark rebuild/enrollment or published measurement changes.
    commit per finding and a commit message describing its red. Freeze old tests
    and new acceptance after that commit; unexpected conflicts mean BLOCKED.
    Fresh functional and adversarial review, meaningful removed-target/overflow
-   mutants, independent full configured45 and root full gates are mandatory.
+   mutants, independent full configured checks and root full gates are mandatory.
+   The qualified starting inventory is47; final integration preserves every
+   declared command of its exact workflow, including legitimate upstream adds.
    Retain all raw failure/success evidence with shared compressed source baseline
    manifests instead of permanent whole-tree backups. No CI flags are cleared.
+7. The actual current production risk source must be refused by the unchanged
+   original native source predicate with source_drift on both registered raw
+   profiles. Verify the original positive control first and restore its exact
+   bytes afterward. Do not substitute an appended marker, CLI role ineligibility
+   or a mocked validator for the actual production source. This adds no Vendor
+   request, acquisition or native execution allowance and asserts no positive
+   V2/native compatibility. Retain the original synthetic-change refusal test.
 
 ## Conflict search and evidence
 
 The initial incomplete conflict search covered tests/callers for _unranked_price_conflict, _price_of_target,
 _drop_price_outliers, statistics.median, price_disagreement, _PRICE_DISAGREEMENT_FACTOR,
 _MAX_PRICE_DEVIATION, _MIN_POOLS_FOR_CONSENSUS and both registered numeric runners.
-Named existing-test changes: NONE. Existing finite market, finite price conflict
+Named existing-test changes: additive methods only; all old bodies stay frozen.
+Reuse the182-line acceptance block from tests-only9e2101a without modification:
+seven tests and three helpers, exact patch SHA256
+5bcc913b341359a355208d389fbe039524531a8774f93ea43dda83dfd300d0e9.
+Its parent finite-price source matches the qualified current base after LF
+normalization. Reproduce meaningful reds on the dispatched parent; the old
+partial orientation implementation is not reused. Add the actual-source witness
+separately as specified above. Existing finite market, finite price conflict
 and Unicode underflow runners pass3814,1973 and2242 assertions respectively.
 The existing deepest-pool consensus and narrow two-chain guards remain exact.
 

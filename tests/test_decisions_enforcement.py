@@ -20,10 +20,16 @@ one unguarded -- the file whose entire point is enforcement was the file with no
 Run:  python tests/test_decisions_enforcement.py
 """
 
+import importlib.util
 import io
 import os
 import re
 import sys
+
+import contextlib
+import subprocess
+import tempfile
+from unittest.mock import patch
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 DECISIONS = os.path.join(ROOT, "docs", "DECISIONS.md")
@@ -68,6 +74,71 @@ def cited_test_names(text):
     return out
 
 
+def _registered_workflow_test_files(ci, files):
+    """Read executable command registrations without running the registered files."""
+    registered, errors = set(), []
+    inventory = set(files)
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "_registration_workflow_parser", os.path.join(ROOT, ".github", "scripts", "offline_suite.py"))
+        if spec is None or spec.loader is None:
+            return registered, ["workflow_parser_unavailable"]
+        parser = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(parser)
+        if parser.STRAY_BREAK.search(ci):
+            return registered, ["workflow_stray_line_break"]
+        parser.JOB = "test"
+        parsed = parser.steps_from_workflow(ci)
+        if parsed is None:
+            return registered, ["missing_test_job"]
+        steps, refused = parsed
+        if refused:
+            errors.append("refused_test_job_syntax")
+        if not steps:
+            errors.append("empty_test_job")
+        maintained = {
+            ("python", "tools/engine_versions.py", "maintained-test", "w40-v1-e3ec46a", "git-lf", "native-all16"): "test_w40_native.py",
+            ("python", "tools/engine_versions.py", "maintained-test", "w40-v1-e3ec46a", "git-lf", "clock-all3"): "test_w40_native_clock.py",
+        }
+        def register(name):
+            if name not in inventory:
+                errors.append("registered_target_missing:" + name)
+            else:
+                registered.add(name)
+        for _, command in steps:
+            if not isinstance(command, str) or not command.startswith("python ") or parser.SHELL_OPERATOR.search(command):
+                errors.append("invalid_test_command")
+                continue
+            argv = tuple(command.split())
+            target = maintained.get(argv)
+            if target is not None:
+                register(target)
+            elif len(argv) >= 2 and argv[1].startswith("tests/"):
+                name = argv[1][len("tests/"):]
+                if not (name.startswith("test_") and name.endswith(".py") and "/" not in name and "\\" not in name):
+                    continue
+                if name == "test_upstream_contract.py":
+                    continue  # This live-only suite is registered in its fixed job below.
+                if name in ("test_w40_native.py", "test_w40_native_clock.py") and len(argv) != 2:
+                    continue
+                register(name)
+        parser.JOB = "upstream-contract"
+        upstream = parser.steps_from_workflow(ci)
+        if upstream is not None:
+            live_steps, refused = upstream
+            if refused:
+                errors.append("refused_upstream_job_syntax")
+            for _, command in live_steps:
+                if not isinstance(command, str) or not command.startswith("python ") or parser.SHELL_OPERATOR.search(command):
+                    errors.append("invalid_upstream_command")
+                    continue
+                if tuple(command.split()) == ("python", "tests/test_upstream_contract.py"):
+                    register("test_upstream_contract.py")
+        return registered, errors
+    except (OSError, UnicodeError, ValueError, TypeError, AttributeError, KeyError, SyntaxError):
+        return set(), ["workflow_parser_unavailable_or_invalid"]
+
+
 def test_every_test_file_runs_in_ci():
     """A guard CI never invokes is a guard nobody will ever see fail.
 
@@ -88,8 +159,10 @@ def test_every_test_file_runs_in_ci():
         ci = f.read()
     files = sorted(fn for fn in os.listdir(TESTS_DIR)
                    if fn.startswith("test_") and fn.endswith(".py"))
-    orphans = [fn for fn in files if fn not in ci]
+    registered, registration_errors = _registered_workflow_test_files(ci, files)
+    orphans = [fn for fn in files if fn not in registered]
     check("no test file is missing from the workflow", not orphans, str(orphans))
+    check("workflow registration commands are valid", not registration_errors, str(registration_errors))
 
 
 def test_every_named_test_exists():
@@ -168,6 +241,206 @@ def test_no_test_function_is_unreachable_by_its_own_runner():
               "hand-listed runner is missing %s -- switch to the discovery idiom"
               % ", ".join(missing))
     check("test files with test functions were found", checked >= 15, str(checked))
+
+
+def _registration_fixture_checks(case):
+    """Call the real registration guard with inert, external fixture data only."""
+    source_root = os.path.realpath(ROOT)
+    parser_path = os.path.join(source_root, ".github", "scripts", "offline_suite.py")
+    with open(parser_path, "rb") as source:
+        parser_bytes = source.read()
+    parent = os.path.realpath(tempfile.gettempdir())
+    try:
+        inside_source = os.path.commonpath((source_root, parent)) == source_root
+    except ValueError:
+        inside_source = False  # Different Windows drives cannot share a parent.
+    if inside_source:
+        raise AssertionError("registration fixtures require external temporary storage")
+    cursor = parent
+    while True:
+        if os.path.lexists(os.path.join(cursor, ".git")):
+            raise AssertionError("registration fixture TEMP must be outside a Git checkout")
+        above = os.path.dirname(cursor)
+        if above == cursor:
+            break
+        cursor = above
+    commands = {
+        "native": "python tools/engine_versions.py maintained-test w40-v1-e3ec46a git-lf native-all16",
+        "clock": "python tools/engine_versions.py maintained-test w40-v1-e3ec46a git-lf clock-all3",
+        "verify_source": "python tools/engine_versions.py verify-source w40-v1-e3ec46a git-lf",
+        "offline_backfill": "python tests/test_backfill.py --offline",
+        "live_upstream": "python tests/test_upstream_contract.py",
+    }
+    observed = []
+    def capture(label, condition, detail=""):
+        observed.append((label, bool(condition), str(detail)))
+    def forbidden(*args, **kwargs):
+        raise AssertionError("registration fixtures cannot execute commands or recurse into main")
+    with tempfile.TemporaryDirectory(prefix="registration-fixture-", dir=parent) as directory:
+        tests = os.path.join(directory, "tests")
+        scripts = os.path.join(directory, ".github", "scripts")
+        workflows = os.path.join(directory, ".github", "workflows")
+        tools = os.path.join(directory, "tools")
+        for path in (tests, scripts, workflows, tools):
+            os.makedirs(path)
+        stub = b'raise AssertionError("registration fixture body must never execute")\n'
+        for name in tuple(case["test_files"]) + ("inert.py",):
+            if os.path.basename(name) != name or not name.endswith(".py"):
+                raise AssertionError("fixture inventory must contain local Python basenames")
+            with open(os.path.join(tests, name), "xb") as target:
+                target.write(stub)
+        with open(os.path.join(tools, "engine_versions.py"), "xb") as target:
+            target.write(b'raise AssertionError("registration must never import SourceAPI")\n')
+        with open(os.path.join(scripts, "offline_suite.py"), "xb") as target:
+            target.write(parser_bytes)
+        lines = ["name: inert registration fixture"]
+        lines.extend("# " + comment for comment in case.get("comment_only", ()))
+        lines.append("jobs:")
+        jobs = [] if case.get("omit_test_job") else [("test", case.get("test_job_commands", ()))]
+        jobs.extend(case.get("other_jobs", {}).items())
+        for job, values in jobs:
+            lines.extend(("  " + job + ":", "    steps:"))
+            for index, value in enumerate(values):
+                label = case.get("step_label", "inert fixture step") if job == "test" and index == 0 else "inert fixture step"
+                lines.append("      - name: " + label)
+                value = commands.get(value, value)
+                if case.get("workflow_shape") and job == "test" and index == 0:
+                    lines.extend(("        run: >", "          " + value))
+                else:
+                    lines.append("        run:" + (" " + value if value is not None else ""))
+        text = "\n".join(lines) + "\n"
+        if "stray_break_codepoint" in case:
+            text += "# fixture comment" + chr(case["stray_break_codepoint"]) + "still one YAML comment\n"
+        with open(os.path.join(workflows, "test.yml"), "x", encoding="utf-8", newline="\n") as target:
+            target.write(text)
+        with patch.dict(globals(), {"ROOT": directory, "TESTS_DIR": tests,
+                                   "check": capture, "main": forbidden,
+                                   "_FAILURES": [], "_PASSED": 0}), \
+                patch.object(subprocess, "Popen", side_effect=forbidden), \
+                patch.object(os, "system", side_effect=forbidden), \
+                patch.object(os, "popen", side_effect=forbidden), \
+                contextlib.redirect_stdout(io.StringIO()):
+            test_every_test_file_runs_in_ci()
+        with open(os.path.join(scripts, "offline_suite.py"), "rb") as source:
+            if source.read() != parser_bytes:
+                raise AssertionError("the copied parser must stay byte-exact")
+    case_id = case["id"]
+    workflow = [item for item in observed if item[0] == "the workflow exists"]
+    orphan = [item for item in observed if item[0] == "no test file is missing from the workflow"]
+    errors = [item for item in observed if not item[1] and item[0] not in
+              {"the workflow exists", "no test file is missing from the workflow"}]
+    check(case_id + ": actual guard workflow check", len(workflow) == 1 and workflow[0][1])
+    check(case_id + ": overall registration outcome",
+          bool(observed) and all(item[1] for item in observed) == case["expected_accept"])
+    expected_orphans = sorted(case["expected_orphans"])
+    check(case_id + ": exact orphan finding",
+          len(orphan) == 1 and orphan[0][1] == (not expected_orphans)
+          and orphan[0][2] == str(expected_orphans),
+          "expected %s; observed %s" % (expected_orphans, [(item[1], item[2]) for item in orphan]))
+    if case.get("expected_registration_error"):
+        missing = case.get("missing_file")
+        check(case_id + ": explicit registration error",
+              bool(errors) and (missing is None or any(missing in item[2] for item in errors)),
+              "expected explicit registration error" + (" for " + missing if missing else ""))
+
+
+def test_registration_direct_and_maintained_commands():
+    cases = (
+        {"id": "P01", "test_files": ["test_w40_native.py"], "test_job_commands": ["native"],
+         "expected_accept": True, "expected_orphans": []},
+        {"id": "P02", "test_files": ["test_w40_native_clock.py"], "test_job_commands": ["clock"],
+         "expected_accept": True, "expected_orphans": []},
+        {"id": "P03", "test_files": ["test_w40_native.py", "test_w40_native_clock.py"],
+         "test_job_commands": ["native", "verify_source", "clock"], "expected_accept": True, "expected_orphans": []},
+        {"id": "P04", "test_files": ["test_w40_native.py", "test_w40_native_clock.py"],
+         "test_job_commands": ["python tests/test_w40_native.py", "python tests/test_w40_native_clock.py"],
+         "expected_accept": True, "expected_orphans": []},
+        {"id": "P05", "test_files": ["test_backfill.py", "test_unit_direct.py"],
+         "test_job_commands": ["offline_backfill", "python tests/test_unit_direct.py --unit"],
+         "expected_accept": True, "expected_orphans": []},
+        {"id": "P06", "test_files": ["test_unit_direct.py", "test_upstream_contract.py"],
+         "test_job_commands": ["python tests/test_unit_direct.py"], "other_jobs": {"upstream-contract": ["live_upstream"]},
+         "expected_accept": True, "expected_orphans": []},
+    )
+    for case in cases:
+        _registration_fixture_checks(case)
+
+
+def test_registration_rejects_textual_wiring():
+    cases = (
+        {"id": "N01", "test_files": ["test_w40_native.py", "test_w40_native_clock.py"],
+         "test_job_commands": ["python -c pass"], "comment_only": ["test_w40_native.py", "test_w40_native_clock.py"],
+         "expected_accept": False, "expected_orphans": ["test_w40_native.py", "test_w40_native_clock.py"]},
+        {"id": "N02", "test_files": ["test_w40_native.py", "test_w40_native_clock.py"],
+         "test_job_commands": ["python -c pass"], "other_jobs": {"build": ["native", "clock"]},
+         "expected_accept": False, "expected_orphans": ["test_w40_native.py", "test_w40_native_clock.py"]},
+        {"id": "N03", "test_files": ["test_w40_native.py"],
+         "test_job_commands": ["python -c \"print('tests/test_w40_native.py')\""],
+         "expected_accept": False, "expected_orphans": ["test_w40_native.py"]},
+        {"id": "N04", "test_files": ["test_w40_native.py", "test_w40_native_clock.py"],
+         "test_job_commands": ["python -c pass"], "step_label": "test_w40_native.py test_w40_native_clock.py",
+         "expected_accept": False, "expected_orphans": ["test_w40_native.py", "test_w40_native_clock.py"]},
+        {"id": "N05", "test_files": ["test_w40_native.py"], "test_job_commands": [None],
+         "step_label": "tests/test_w40_native.py", "expected_accept": False, "expected_orphans": ["test_w40_native.py"]},
+        {"id": "N06", "test_files": ["test_w40_native.py"], "omit_test_job": True,
+         "comment_only": ["tests/test_w40_native.py"], "other_jobs": {"build": ["native"]},
+         "expected_accept": False, "expected_orphans": ["test_w40_native.py"], "expected_registration_error": True},
+    )
+    for case in cases:
+        _registration_fixture_checks(case)
+
+
+def test_registration_rejects_unqualified_selectors():
+    cases = (
+        {"id": "N07", "test_files": ["test_w40_native.py"],
+         "test_job_commands": ["python tools/engine_versions.py maintained-test UNIT_UNKNOWN git-lf native-all16"],
+         "comment_only": ["test_w40_native.py"], "expected_accept": False, "expected_orphans": ["test_w40_native.py"]},
+        {"id": "N08", "test_files": ["test_w40_native.py"],
+         "test_job_commands": ["python tools/engine_versions.py maintained-test w40-v1-e3ec46a observed-windows-crlf native-all16"],
+         "comment_only": ["test_w40_native.py"], "expected_accept": False, "expected_orphans": ["test_w40_native.py"]},
+        {"id": "N09", "test_files": ["test_w40_native.py"],
+         "test_job_commands": ["python tools/engine_versions.py maintained-test w40-v1-e3ec46a git-lf native-all13"],
+         "comment_only": ["test_w40_native.py"], "expected_accept": False, "expected_orphans": ["test_w40_native.py"]},
+        {"id": "N10", "test_files": ["test_w40_native.py", "test_w40_native_clock.py"],
+         "test_job_commands": ["python tools/engine_versions.py maintained-test w40-v1-e3ec46a git-lf native-all16 extra",
+                               "python tools/engine_versions.py maintained-test w40-v1-e3ec46a git-lf clock-all3 extra"],
+         "comment_only": ["test_w40_native.py", "test_w40_native_clock.py"], "expected_accept": False,
+         "expected_orphans": ["test_w40_native.py", "test_w40_native_clock.py"]},
+        {"id": "N11", "test_files": ["test_w40_native.py"],
+         "test_job_commands": ["python tests/test_w40_native.py NativeAcceptance",
+                               "python tools/engine_versions.py adapter-test w40-v1-e3ec46a git-lf InterruptedProgressStagingTests"],
+         "expected_accept": False, "expected_orphans": ["test_w40_native.py"]},
+        {"id": "N12", "test_files": ["test_w40_native.py", "test_w40_native_clock.py"],
+         "test_job_commands": ["python tools/engine_versions.py legacy-test w40-v1-e3ec46a git-lf tests/test_w40_native.py",
+                               "python tools/engine_versions.py legacy-test w40-v1-e3ec46a git-lf tests/test_w40_native_clock.py", "verify_source"],
+         "expected_accept": False, "expected_orphans": ["test_w40_native.py", "test_w40_native_clock.py"]},
+    )
+    for case in cases:
+        _registration_fixture_checks(case)
+
+
+def test_registration_parser_and_inventory_fail_closed():
+    cases = (
+        {"id": "N13", "test_files": ["test_w40_native.py"], "test_job_commands": ["native"],
+         "workflow_shape": "folded run: > containing valid native command", "comment_only": ["test_w40_native.py"],
+         "expected_accept": False, "expected_orphans": ["test_w40_native.py"], "expected_registration_error": True},
+        {"id": "N14", "test_files": ["test_w40_native.py", "test_w40_native_clock.py"],
+         "test_job_commands": ["python tests/test_w40_native.py && python tests/test_w40_native_clock.py"],
+         "expected_accept": False, "expected_orphans": ["test_w40_native.py", "test_w40_native_clock.py"], "expected_registration_error": True},
+        {"id": "N15", "test_files": ["test_w40_native.py"], "test_job_commands": ["native"],
+         "comment_only": ["test_w40_native.py"], "stray_break_codepoint": 8232,
+         "expected_accept": False, "expected_orphans": ["test_w40_native.py"], "expected_registration_error": True},
+        {"id": "N16", "test_files": ["test_w40_native_clock.py"], "test_job_commands": ["native", "clock"],
+         "comment_only": ["test_w40_native_clock.py"], "missing_file": "test_w40_native.py",
+         "expected_accept": False, "expected_orphans": [], "expected_registration_error": True},
+        {"id": "N17", "test_files": ["test_w40_native.py", "test_w40_native_clock.py", "test_unit_orphan.py"],
+         "test_job_commands": ["native", "clock"], "expected_accept": False, "expected_orphans": ["test_unit_orphan.py"]},
+        {"id": "N18", "test_files": ["test_unit_direct.py", "test_upstream_contract.py"],
+         "test_job_commands": ["python tests/test_unit_direct.py"], "other_jobs": {"build": ["live_upstream"]},
+         "expected_accept": False, "expected_orphans": ["test_upstream_contract.py"]},
+    )
+    for case in cases:
+        _registration_fixture_checks(case)
 
 
 def main():
