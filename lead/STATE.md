@@ -1,5 +1,13 @@
 # Current: target-price repairs passed complete source validation (2026-11-04)
 
+The first integrated candidate's feature CI41754320496 fails at step9 in the
+new actual-source witness's strict fixture-restoration check on Linux, with two
+profile errors. Subsequent tests and builds are unexecuted. Production893fdd3
+is unchanged. Keep this red and its raw logs; no unchanged-source CI rerun.
+T068 NC1 defines a small prospective bytecode-policy regression and conditional
+scoped fixture correction. New independent review and corrected-head gates are
+required; no validation controller, cap reset or guard weakening is authorized.
+
 T068 corrects target-token orientation in the existing price-conflict check and
 finite even-median overflow in pool selection. Its tests-first commit08cd9d1 has
 meaningful parent failures, followed by separate finding commits781978a and

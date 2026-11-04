@@ -10,6 +10,27 @@ backlog: existing finite market-input and selected-pool correctness
 
 ## Current disposition: source accepted; final release gates pending
 
+### NC1: actual-source witness must preserve the bytecode policy
+
+The first candidate's Linux CI fails in the new actual-source witness's strict
+view-restoration check on both raw profiles. The guard remains correct and must
+not ignore unexpected directories. Source and merged Windows47 results remain
+their original evidence; later Linux steps and builds were not executed.
+
+Add one same-class regression that calls the actual-source witness with
+sys.dont_write_bytecode explicitly False and True, checking the caller's policy
+is preserved. Commit this additive test first and retain its meaningful parent
+red. If it confirms fixture-import bytecode contamination, the only named change
+to the frozen witness is a scoped patch of sys.dont_write_bytecode to True while
+loading the immutable fixture. Preserve every original positive control, actual
+source refusal, raw profile, restoration and strict view check. Do not change CI
+environment flags, the fixture guard, production code, thresholds or old sources.
+
+Use a fresh ordinary review for this small fixture correction, then one actual
+complete corrected-head gate before new exact-head CI. Keep the existing cap16
+and all six finished scoped operations; do not reset the prior roles or rerun
+the failed unchanged candidate. No new validation controller is required.
+
 Tests-only08cd9d1 precedes both fixes. The parent preserves1973 old passing
 price assertions while exposing558 new price failures and the actual-source
 refusal witness on both raw profiles. Commits781978a and3c11019 resolve the
