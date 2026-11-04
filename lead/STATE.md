@@ -1,5 +1,16 @@
 # Current: target-price repairs passed complete source validation (2026-11-04)
 
+T068/NC1 is code-published atc7dfb28 after accepted independent review, complete47
+source checks and both exact-head CI runs with two real locked builds each.
+The normal deployment's first upload failed on an API502. One bounded recovery
+uploaded the reviewed source and passed the earlier production smoke paths,
+but its flood check did not observe429 across multiple edge locations. This is
+an unqualified enforcement observation, not proof of a broken or working limit.
+T078 fixes the existing canary's connection/locality seam with a meaningful
+loopback red, preserving the limiter and every real acceptance predicate.
+No further unchanged-source redeployment is authorized. Natural-trial acceptance
+remains pending; the production price source and old failures stay unchanged.
+
 The first integrated candidate's feature CI41754320496 fails at step9 in the
 new actual-source witness's strict fixture-restoration check on Linux, with two
 profile errors. Subsequent tests and builds are unexecuted. Production893fdd3

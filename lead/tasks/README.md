@@ -80,3 +80,5 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-075 | Complete maintained adapter regressions on fixed V1 dependencies | 3 | M | T-071, T-072, ADR0003 | source qualified3976cea with author and independent47; batched T-068 release gates pending |
 
 | T-077 | Register complete maintained suites from executable workflow commands | 3 | S | T-075 approved split | source qualified3976cea with original failure retained; batched T-068 release gates pending |
+
+| T-078 | Exercise the existing rate limiter through a reusable canary connection | 3 | S | T-068 | ready; original flood is unqualified across locations, keep real429 predicate and all deployment gates |
