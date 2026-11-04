@@ -210,28 +210,74 @@ jobs:
 
           echo ""
           echo "--- a flooding caller must get 429 (the limiter fails open when unbound) ---"
-          # _limit_state fails open, so a broken counter would serve everyone silently. This
-          # is the check that makes "open" visible -- and it went red on the first deploy,
-          # when Cloudflare's rate-limit binding answered success on all of 313 calls. Invalid addresses on
-          # purpose: they are rejected before any upstream request, so the flood costs the
-          # shared upstream budget nothing.
-          # 125, not 75 (W48): the window is a fixed 60 s, so 75 calls in ~25 s could straddle a
-          # minute boundary as 30/49 and never reach 61 in either -- 3 red deploys of 17 with a
-          # working counter. At the measured pace 125 calls cross at most one boundary, so one
-          # window must pass 61. Each call's colo (cf-ray suffix) is printed, because one of the
-          # three failures ran inside a single minute and a data-centre split would explain it.
-          got429=0
-          colos=""
+          # Invalid input and the existing self tag exercise counting without provider calls.
+          # The minute-boundary argument requires one location; reuse encourages, but does not
+          # guarantee, that locality. Only an observed Worker429/limited qualifies this attempt.
+          if timeout 55s bash --noprofile --norc -s -- $CI_TAG <<'RATECANARY'
+          set -euo pipefail
+          endpoint=https://vetagent.dev/mcp
+          args=(--http1.1 --rate 4/s --silent --show-error --fail-early --max-time 30
+                --request POST "$@" --header 'Content-Type: application/json'
+                --data '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"assess_token_risk","arguments":{"address":"not-an-address"}}}'
+                --write-out '%{http_code}|%header{x-vetagent-ratelimit}|%header{cf-ray}|%{num_connects}\n')
           for i in $(seq 1 125); do
-            out=$(curl -sS $CI_TAG -o /dev/null -w '%{http_code} %header{cf-ray}' --max-time 30 -X POST \
-              https://vetagent.dev/mcp -H 'Content-Type: application/json' \
-              -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"assess_token_risk","arguments":{"address":"not-an-address"}}}')
-            code=${out%% *}
-            colos="$colos ${out##*-}"
-            if [ "$code" = "429" ]; then got429=1; echo "429 after $i calls"; break; fi
+            # curl associates one output destination with each URL, not just the first.
+            args+=(--output /dev/null "$endpoint")
           done
-          echo "colos:$(echo $colos | tr ' ' '\n' | sort | uniq -c | tr '\n' ' ')"
-          test "$got429" = "1"
+          set +e
+          curl "${args[@]}" 2>/dev/null | {
+            declare -A status_counts=() state_counts=() location_counts=()
+            seen=0
+            limited=0
+            invalid=0
+            connections=0
+            while IFS='|' read -r code state ray fresh extra; do
+              seen=$((seen + 1))
+              fresh=${fresh%$'\r'}
+              if [[ ! $code =~ ^[0-9]{3}$ ]]; then code=invalid; invalid=1; fi
+              case "$state" in
+                ok|limited) state_kind=$state ;;
+                open:*) state_kind=open ;;
+                '') state_kind=missing ;;
+                *) state_kind=invalid ;;
+              esac
+              status_counts[$code]=$((${status_counts[$code]:-0} + 1))
+              state_counts[$state_kind]=$((${state_counts[$state_kind]:-0} + 1))
+              if [[ ${#ray} -le 64 && $ray =~ ^[[:xdigit:]]{16,32}-([A-Z]{3})$ ]]; then
+                location=${BASH_REMATCH[1]}
+              else
+                location=missing
+                invalid=1
+              fi
+              location_counts[$location]=$((${location_counts[$location]:-0} + 1))
+              case "$fresh" in 0|1) connections=$((connections + fresh)) ;; *) invalid=1 ;; esac
+              case "$code:$state" in
+                200:ok) ;;
+                429:limited) limited=$((limited + 1)) ;;
+                *) invalid=1 ;;
+              esac
+              if [[ -n $extra || $seen -gt 125 || $connections -gt 125 ]]; then invalid=1; fi
+            done
+            printf 'rate-canary requests=%d connections=%d limited=%d invalid=%d' "$seen" "$connections" "$limited" "$invalid"
+            for key in "${!status_counts[@]}"; do printf ' status_%s=%d' "$key" "${status_counts[$key]}"; done
+            for key in "${!state_counts[@]}"; do printf ' state_%s=%d' "$key" "${state_counts[$key]}"; done
+            for key in "${!location_counts[@]}"; do printf ' location_%s=%d' "$key" "${location_counts[$key]}"; done
+            printf '\n'
+            [[ $seen -eq 125 && $limited -gt 0 && $invalid -eq 0 ]]
+          }
+          pipeline_codes=("${PIPESTATUS[@]}")
+          set -e
+          if (( pipeline_codes[0] != 0 || pipeline_codes[1] != 0 )); then
+            echo 'rate-canary failed: transport, incomplete results or no qualified enforcement'
+            exit 1
+          fi
+          RATECANARY
+          then
+            :
+          else
+            echo 'rate-canary failed: incomplete or unqualified attempt'
+            exit 1
+          fi
 
       # Tell search engines the pages exist. GEO baseline 2026-09-15: site:vetagent.dev
       # returned nothing, and nothing had ever told an engine about the site. IndexNow is

@@ -887,15 +887,16 @@ def _post(body, limiter=None, path="/mcp", method="POST", ip="203.0.113.7"):
 
 
 def test_the_deploy_flood_cannot_fail_on_a_minute_boundary():
-    """W48. The limiter counts per 60-second window, so a flood that crosses a minute boundary
-    splits its calls between two windows. 75 calls in 22-28 seconds could split as 30/49 and
-    never reach 61 in either: the check went red on 3 of 17 deploys with a working counter
-    (2026-09-18 ops review, modelled at 8-26% per deploy). 125 calls fit inside one boundary
-    at the measured pace and guarantee one window past 61. One of the three failures ran
-    inside a single minute, which the boundary cannot explain, so each call's Cloudflare colo
-    (the cf-ray suffix) is printed: a split across data centres would show there.
+    """W48 / T078 NC1: the minute-boundary argument assumes one caller in one location.
+    Within that location,125 calls in less than60 seconds cross at most one boundary
+    and force one window past60. It does not hold when fresh connections split by colo.
+    The original75-call check could split as30/49 and failed on3 of17 deploys with a
+    working counter (2026-09-18 review); one failure inside a minute also needed the
+    location dimension. Connection reuse and bounded location aggregates are tested
+    separately; only a real429/limited response proves observed enforcement, not a
+    precise or worldwide quota. These two assertions retain the count and cf-ray seam.
     """
-    print("\n[deploy] the flood check fails only when the limiter does")
+    print("\n[deploy] count/window bound assumes a single caller and location")
     wf = io.open(os.path.join(ROOT, ".github", "workflows", "deploy.yml"), encoding="utf-8").read()
     step = wf[wf.index("a flooding caller must get 429"):]
     step = step[:step.index("- name:")]
