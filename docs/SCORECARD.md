@@ -4,11 +4,11 @@
 > It moves with every commit, so `git diff` tells you what the change was worth.
 
 
-## Total: **48 / 100**
+## Total: **45 / 100**
 
 | Dimension | Score | Max |
 |---|---|---|
-| Correctness | 19.0 ⚠️ | 30 |
+| Correctness | 16.5 ⚠️ | 30 |
 | Coverage | 10.8 | 20 |
 | Credibility | 13.5 | 20 |
 | Distribution | 4.2 ⚠️ | 15 |
@@ -31,8 +31,8 @@
 | Correctness | false positive rate (healthy rated high) | 5.0 | 5 | 1.9% |
 | Correctness | false-block rate (liquid healthy rated medium or high) | 2.0 | 5 | 13.0% (20 of 154) |
 | Correctness | unknown rate (benchmark, cached upstreams) | 2.0 | 5 | 20.7% |
-| Correctness | unknown rate (production, served answers) | — | 5 | not measured (55 answers in the window, need 100) |
-| Correctness | production guards observed live | 5.0 | 5 | 429 after 61 calls; batch of 11 -> HTTP 400; service 9576fc4 on 2026-11-03 |
+| Correctness | unknown rate (production, served answers) | — | 5 | not measured (50 answers in the window, need 100) |
+| Correctness | production guards observed live | 2.5 | 5 | 429 after none of 75 calls; batch of 11 -> HTTP 400; service e1b6e8c on 2026-11-04 |
 | Coverage | risk dimensions covered, per advertised chain | 10.8 | 20 | 39 / 72 chain-dimension cells |
 | Credibility | recall is measurable | 10.0 | 10 | dead samples: 30 (need ≥20) |
 | Credibility | days of snapshots | 3.5 | 10 | 63 of 180 days |
@@ -103,7 +103,7 @@ with false positives and false blocks <2%, unknown <5% in the benchmark and in p
 outcome data, the benchmark methodology cited as a standard by peers, the default
 choice at every agent entry point, and paying users who would complain if it disappeared.
 
-**The current 48 is not a failure** — it says precisely that the
+**The current 45 is not a failure** — it says precisely that the
 engineering is decent, proof and demand are both still zero, and writing more code
 cannot solve those last two.
 
