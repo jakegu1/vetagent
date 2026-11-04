@@ -1,4 +1,19 @@
-# Current Owner checkpoint (2026-11-03)
+# Current Owner checkpoint (2026-11-04)
+
+The two target-price defects now pass independent review and the complete47
+source gate. Their tests distinguish target/quote orientation and finite median
+overflow without changing risk bands, thresholds or data-source coverage.
+The maintained-adapter prerequisite is qualified and is batched with these
+product fixes for one release. Final merged-source checks, exact-head CI and
+deployment remain pending; no broad accuracy or customer benefit is asserted.
+
+The preceding observation repair and its first natural snapshot handoff are
+complete. No new Owner decision is needed for this scope. T047/T049/T050 remain
+isolated, earlier failures stay visible and prior science stays inconclusive.
+
+Earlier checkpoint text below records its original stage.
+
+# Previous Owner checkpoint (2026-11-03)
 
 ## Current checkpoint: registration instrument correction after failed source gate
 

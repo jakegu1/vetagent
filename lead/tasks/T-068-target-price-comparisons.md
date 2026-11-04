@@ -1,14 +1,27 @@
 ---
 id: T-068
 title: Compare target-token prices without losing finite consensus
-status: ready
+status: in_review
 level: 3
 size: M
 depends_on: [T-021, T-065, T-066, T-075, T-077]
 backlog: existing finite market-input and selected-pool correctness
 ---
 
-## Current disposition: ready on the qualified maintained base
+## Current disposition: source accepted; final release gates pending
+
+Tests-only08cd9d1 precedes both fixes. The parent preserves1973 old passing
+price assertions while exposing558 new price failures and the actual-source
+refusal witness on both raw profiles. Commits781978a and3c11019 resolve the
+two findings; the final price runner passes5317 assertions. Fresh functional
+and adverse reviews accept the code, and all47 configured source steps pass,
+including the maintained native/clock suites and Unicode regression entry.
+The latest scheduled raw evidence is preserved through ordinary integration.
+Final merged-source, exact-head CI and deployment gates remain pending.
+These results do not establish production accuracy, demand or native/V2
+positive compatibility. Earlier failed attempts and dependency history remain.
+
+## Qualified maintained base
 
 The Owner approved historical/production version separation and maintained
 adapter regression responsibilities. Source3976cea now has qualified author

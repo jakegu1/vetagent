@@ -67,16 +67,16 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-065 | Preserve writable snapshot pages and truthful confirmation availability | 3 | M | T-061, T-062, T-063, T-064 | done; published6fe4440, exact source/master45 and two builds, first existing normal run40942209360 and following45-step bot CI qualified |
 | T-066 | Measure packed Git storage in linked worktrees without false zero readings | 3 | S | T-065 | done; published56baead, actual source/master45 and two locked builds each qualified |
 | T-067 | Preserve writable sellability observations and explicit payload failures | 3 | M | T-062, T-065, T-066 | done; published e3ec46a, actual source/master45 and two locked builds; first normal schedule41339266312/following45-step CI qualified |
-| T-068 | Compare target-token prices without losing finite consensus | 3 | M | T-021, T-065, T-066 | dependency-held draft; initial search missed frozen native engine contract, partial candidate/reds isolated |
+| T-068 | Compare target-token prices without losing finite consensus | 3 | M | T-021, T-065, T-066, T-075, T-077 | in review; tests-first source3c11019 and independent complete47 accepted, final integrated release gates pending |
 | T-069 | Describe bounded offline telemetry availability without inventing missing dimensions | 3 | M | T-064, T-067 | code-published9b83558; exact source/integrated/CI accepted; shared natural trial pending |
 | T-070 | Demonstrate fail-closed HTTP and MCP response routing without sending requests | 2 | S | T-069 source acceptance | code-published9b83558; exact source/integrated/CI accepted; shared natural trial pending |
 | T-071 | Qualify explicit historical source identity without changing production | 3 | M | none | code-published9b83558; no historical execution claim; original failures retained; T073 next |
 | T-072 | Retain bounded interrupted progress publication without trusting staging | 3 | M | T-071 source acceptance | code-published9b83558; actual46 and both exact CI accepted; natural trial pending |
-| T-073 | Dispatch complete historical tests and retain contemporary adapter regressions | 3 | M | T-071, T-072, ADR0003 | author actual47 failed at38; corrected source reviewed; failed scope retained, new responsibility decision pending |
-| T-074 | Scope usage reports to observed storage domains | 3 | M | T-069, T-072 | ready; independently reviewed design; first phase tests and exact SQL only, no collection/full |
+| T-073 | Dispatch complete historical tests and retain contemporary adapter regressions | 3 | M | T-071, T-072, ADR0003 | superseded by Owner-approved T-075 maintained responsibility; original failed47 and source history retained |
+| T-074 | Scope usage reports to observed storage domains | 3 | M | T-069, T-072 | done through observation repair893fdd3 and qualified natural schedule41713202863/following46 CI |
 
-| T-076 | Keep unobserved simulator chain probes out of unsupported votes | 2 | S | T-074 code basis | in progress; source review and both full source gates pass, integrated verification and ordinary release CI pending |
+| T-076 | Keep unobserved simulator chain probes out of unsupported votes | 2 | S | T-074 code basis | done; published893fdd3, actual source/master CI and first natural snapshot handoff qualified |
 
-| T-075 | Complete maintained adapter regressions on fixed V1 dependencies | 3 | M | T-071, T-072, ADR0003 | ready; Owner scope approved, design accepted; initial tests-only phase, no heavy admission or publication |
+| T-075 | Complete maintained adapter regressions on fixed V1 dependencies | 3 | M | T-071, T-072, ADR0003 | source qualified3976cea with author and independent47; batched T-068 release gates pending |
 
-| T-077 | Register complete maintained suites from executable workflow commands | 3 | S | T-075 approved split | ready; source registration instrument repair, no full or retry authority |
+| T-077 | Register complete maintained suites from executable workflow commands | 3 | S | T-075 approved split | source qualified3976cea with original failure retained; batched T-068 release gates pending |

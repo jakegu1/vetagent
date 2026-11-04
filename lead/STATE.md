@@ -1,4 +1,27 @@
-# Current: T075 approved maintained regression responsibility (2026-11-03)
+# Current: target-price repairs passed complete source validation (2026-11-04)
+
+T068 corrects target-token orientation in the existing price-conflict check and
+finite even-median overflow in pool selection. Its tests-first commit08cd9d1 has
+meaningful parent failures, followed by separate finding commits781978a and
+3c11019. Fresh functional and ordinary adverse reviews accept the bounded fix;
+the complete current47 source gate passes, including maintained native/clock
+and current production regressions. This is deterministic regression evidence,
+not a new benchmark, customer outcome or positive native/V2 compatibility claim.
+
+T075/T077's maintained-source prerequisite is qualified. The approved split keeps
+the original historical source predicate and every old test obligation intact.
+The maintained adapter and price fixes are integrated together with the latest
+scheduled evidence. Merged-source validation, exact-head source/master CI and
+normal deployment remain pending. Earlier failures and unknown dimensions stay.
+
+T076's published893fdd3 and first natural snapshot41713202863 with following
+CI41714916840 are independently qualified. Its finite followup is closed; do not
+repeat that completed trial. T047/T049/T050 remain held and all three previous
+scientific readouts remain inconclusive. No new Owner decision is required.
+
+Earlier checkpoint text below records its original stage.
+
+# Previous: T075 approved maintained regression responsibility (2026-11-03)
 
 ## Current checkpoint: registration instrument correction after failed source gate
 
