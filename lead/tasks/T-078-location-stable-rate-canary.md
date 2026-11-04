@@ -1,12 +1,22 @@
 ---
 id: T-078
 title: Exercise the existing rate limiter through a reusable canary connection
-status: ready
+status: in_review
 level: 3
 size: S
 depends_on: [T-068]
 backlog: existing deployment and observation reliability
 ---
+
+## Reviewed implementation; final gates pending
+
+Tests-only21aa839 preserves the old194 checks and reproduces11 failures on the
+original flood block. Correction50e7263 reuses one connection and requires the
+counter's limited header with a real429. Author gates pass232 and596 checks;
+the independent functional reviewer reproduces232. Both fresh reviews accept
+the scoped implementation. Complete merged47, exact-head CI, normal deployment
+and the first natural snapshot handoff remain pending. No global quota or
+production enforcement is asserted from the loopback models.
 
 ## Context and goal
 

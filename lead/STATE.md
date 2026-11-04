@@ -1,4 +1,19 @@
-# Current: target-price repairs passed complete source validation (2026-11-04)
+# Current: canary correction reviewed; final merged gates pending (2026-11-04)
+
+T078 has a meaningful tests-first failure on the old workflow and a minimal
+connection-reuse correction. Fresh functional review reproduces232 passing
+checks; ordinary adverse review reports none. The unchanged limiter, thresholds,
+production source and historical evidence remain intact. Only the existing
+deployment canary and its tests change. One complete merged47 gate, new exact-head
+CI and the normal deployment remain mandatory. A first natural snapshot trial is
+not yet issued. Earlier failed runs retain their original results.
+
+T068's two price corrections are uploaded at the reviewed source, but deployment
+acceptance remains held by the old multi-location flood observation. No further
+unchanged-source rerun is planned. T047/T049/T050 remain held; the three closed
+studies remain inconclusive. No customer or accuracy improvement is inferred.
+
+# Previous: target-price repairs passed complete source validation (2026-11-04)
 
 T068/NC1 is code-published atc7dfb28 after accepted independent review, complete47
 source checks and both exact-head CI runs with two real locked builds each.
