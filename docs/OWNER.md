@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- lead: accept T-072 exact-source reviews and retained failures
-- T-072: refuse aliased staging with unreliable link metadata
-- T-072: named change (B staging hardlink refusal)
-- lead: require unaliased staging after independent data finding
-- T-072: retain opaque progress staging within original limits
-- T-072: named change (A missing-commit fixture contract)
-- lead: name T072 new-fixture consistency correction
-- T-072: acceptance tests
+- lead: record verified T076 source and pending publication
+- T-076: keep unobserved chain probes out of unsupported votes
+- T-076: named change (NC1 offline registration)
+- T-076: acceptance tests
+- lead: adopt T076 observation correction and record maintained-adapter approval
+- lead: record verified T074 source and pending integration
+- T-074: reject missing numeric aggregates instead of observed zero
+- T-074: named change (NC3 missing aggregate witnesses)
 
-_43 more not shown (51 commits in total)._
+_63 more not shown (71 commits in total)._
 
 ## What I got wrong
 
