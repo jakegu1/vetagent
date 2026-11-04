@@ -725,6 +725,41 @@ class B12DispatchAcceptance(unittest.TestCase):
                             "actual_current_source_refused": refused,
                             "original_view_restored_and_verified": True}), flush=True)
 
+    def test_actual_current_risk_witness_preserves_bytecode_policy(self):
+        caller_policy = sys.dont_write_bytecode
+        subject = self.subject()
+        original_cleanup = tempfile.TemporaryDirectory.cleanup
+
+        def record_cleanup(directory):
+            root = Path(directory.name)
+            try:
+                if root.name.startswith("engine-source-") and root.is_dir():
+                    caches = sorted(path for path in root.rglob("__pycache__") if path.is_dir())
+                    files = [{"path": path.relative_to(root).as_posix(), "bytes": path.stat().st_size,
+                              "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+                             for cache in caches for path in sorted(cache.iterdir()) if path.is_file()]
+                    print(json.dumps({"fixture_pre_cleanup_bytecode_policy": sys.dont_write_bytecode,
+                        "actual_extra_directories": [path.relative_to(root).as_posix() for path in caches],
+                        "actual_bytecode_files": files}), flush=True)
+            finally:
+                original_cleanup(directory)
+
+        with patch.object(self, "subject", return_value=subject), \
+                patch.object(tempfile.TemporaryDirectory, "cleanup", record_cleanup):
+            for policy in (False, True):
+                with self.subTest(dont_write_bytecode=policy):
+                    with patch.object(sys, "dont_write_bytecode", policy):
+                        try:
+                            self.test_actual_current_risk_is_refused_by_original_native_source()
+                        finally:
+                            self.assertIs(sys.dont_write_bytecode, policy)
+                            print(json.dumps({"caller_bytecode_policy": policy,
+                                "caller_policy_preserved": sys.dont_write_bytecode is policy}), flush=True)
+                    self.assertIs(sys.dont_write_bytecode, caller_policy)
+        self.assertIs(sys.dont_write_bytecode, caller_policy)
+
+
+
 
 
 
