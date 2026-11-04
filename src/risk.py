@@ -1495,6 +1495,11 @@ def _drop_price_outliers(candidates, target):
     if len(priced) < _MIN_POOLS_FOR_CONSENSUS:
         return candidates
     med = statistics.median([v for v, _ in priced])
+    if not math.isfinite(med) and len(priced) % 2 == 0:
+        # Keep ordinary median rounding; recover only an overflowed finite midpoint.
+        values = sorted(v for v, _ in priced)
+        middle = len(values) // 2
+        med = values[middle - 1] / 2 + values[middle] / 2
     if _market_number(med) is None or med <= 0:
         return candidates
     kept = [p for v, p in priced
