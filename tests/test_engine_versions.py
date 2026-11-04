@@ -692,6 +692,7 @@ class B12DispatchAcceptance(unittest.TestCase):
             with self.subTest(profile=profile):
                 selected = m.select(m.load_registry(), CONTRACT, profile)
                 with m.source_view(selected, m.read_objects(selected)) as view, \
+                        patch.object(sys, "dont_write_bytecode", True), \
                         patch.dict(sys.modules), \
                         patch.object(sys, "path", [str(Path(view) / "bench"), str(Path(view) / "src"), *sys.path]):
                     sys.modules.pop("w40_evidence", None)
