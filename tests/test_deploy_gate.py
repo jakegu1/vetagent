@@ -38,6 +38,12 @@ import stat
 import subprocess
 import sys
 import tempfile
+import http.server
+import json
+import socket
+import socketserver
+import threading
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -1005,6 +1011,190 @@ def test_node_properties_are_refused_at_their_origin():
           and not unknown and not refusals(workflow))
 
 
+def _t078_flood_block():
+    lines = read(DEPLOY_YML).splitlines()
+    starts = [i for i, line in enumerate(lines)
+              if 'echo "--- a flooding caller must get 429' in line]
+    assert len(starts) == 1
+    start = starts[0]
+    indent = _indent(lines[start])
+    end = start + 1
+    while end < len(lines) and (not lines[end].strip() or _indent(lines[end]) >= indent):
+        end += 1
+    return "\n".join(line[indent:] if line.strip() else "" for line in lines[start:end]) + "\n"
+
+
+@contextlib.contextmanager
+def _t078_location_counter(mode, start):
+    lock = threading.Lock()
+    state = {"connections": 0, "requests": 0, "http11": 0, "bad_requests": 0,
+             "handler_errors": 0, "statuses": {}, "states": {}, "locations": {}, "windows": {}}
+    sockets, workers = set(), set()
+    payload = (b'{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":'
+               b'"assess_token_risk","arguments":{"address":"not-an-address"}}}')
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+
+        def setup(self):
+            super().setup()
+            self.connection.settimeout(2)
+            self.connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            with lock:
+                state["connections"] += 1
+                self.location = ("ATL", "DFW", "LAX")[(state["connections"] - 1) % 3]
+
+        def log_message(self, *args):
+            pass
+
+        def do_POST(self):
+            length = int(self.headers.get("Content-Length", "0"))
+            body = self.rfile.read(length) if 0 <= length <= 512 else b""
+            with lock:
+                state["requests"] += 1
+                number = state["requests"]
+                state["http11"] += self.request_version == "HTTP/1.1"
+                state["bad_requests"] += not (self.path == "/mcp" and body == payload
+                    and self.headers.get("x-mcp-client") == "vetagent-ci-smoke"
+                    and self.headers.get("Content-Type") == "application/json")
+                # A virtual production clock: four sequential requests per second,60-second windows.
+                window = int((start + (number - 1) / 4.0) // 60)
+                key = (self.location, window)
+                state["windows"][key] = state["windows"].get(key, 0) + 1
+                state["locations"][self.location] = state["locations"].get(self.location, 0) + 1
+                count = state["windows"][key]
+            if mode == "transport":
+                self.close_connection = True
+                self.connection.shutdown(socket.SHUT_RDWR)
+                return
+            code, answer = (429, "limited") if count > 60 else (200, "ok")
+            if mode == "never-limited":
+                code, answer = 200, "ok"
+            elif mode.startswith("429-"):
+                code, answer = 429, {"429-missing": None, "429-ok": "ok", "429-open": "open:no-answer"}[mode]
+            elif mode == "unexpected-status":
+                code, answer = 503, "ok"
+            if number > 125:
+                code, answer = 503, "ok"
+            with lock:
+                state["statuses"][str(code)] = state["statuses"].get(str(code), 0) + 1
+                label = answer if answer is not None else "missing"
+                state["states"][label] = state["states"].get(label, 0) + 1
+            response = b"T078_PRIVATE_BODY"
+            self.send_response(code)
+            self.send_header("Content-Length", str(len(response)))
+            self.send_header("cf-ray", "0000000000000000-" + self.location)
+            if answer is not None:
+                self.send_header("x-vetagent-ratelimit", answer)
+            self.end_headers()
+            self.wfile.write(response)
+
+    class Server(http.server.ThreadingHTTPServer):
+        daemon_threads = True
+
+        def server_bind(self):
+            socketserver.TCPServer.server_bind(self)
+            self.server_name, self.server_port = "owned-loopback", self.server_address[1]
+
+        def process_request_thread(self, request, client_address):
+            worker = threading.current_thread()
+            with lock:
+                sockets.add(request)
+                workers.add(worker)
+            try:
+                super().process_request_thread(request, client_address)
+            finally:
+                with lock:
+                    sockets.discard(request)
+                    workers.discard(worker)
+
+        def handle_error(self, request, client_address):
+            with lock:
+                state["handler_errors"] += 1
+
+    server = Server(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": .02})
+    thread.start()
+    try:
+        yield server, state
+    finally:
+        server.shutdown()
+        with lock:
+            active = list(sockets)
+        for connection in active:
+            try:
+                connection.shutdown(socket.SHUT_RDWR)
+                connection.close()
+            except OSError:
+                pass
+        server.server_close()
+        thread.join(timeout=2)
+        deadline = time.monotonic() + 2
+        while workers and time.monotonic() < deadline:
+            time.sleep(.01)
+        state["owned_server_stopped"] = not thread.is_alive() and not workers
+
+
+def _t078_actual_flood(mode, start=0):
+    block = _t078_flood_block()
+    assert block.count("https://vetagent.dev/mcp") == 1
+    # Parent lacks these two future literals. Record0 there, exact1 when the correction exists.
+    rate_matches = block.count("--rate 4/s")
+    assert rate_matches in (0, 1)
+    block = block.replace("--rate 4/s", "--rate 80/s")
+    deadlines = list(re.finditer(r"\btimeout ([0-9]+(?:\.[0-9]+)?)s\b", block))
+    assert len(deadlines) in (0, 1)
+    if deadlines:
+        value = float(deadlines[0].group(1))
+        assert 0 < value < 60
+        original = deadlines[0].group(0)
+        assert block.count(original) == 1
+        block = block.replace(original, "timeout %gs" % (value / 20), 1)
+    bash = shutil.which("bash")
+    if os.name == "nt":
+        bash = os.path.join(os.path.dirname(os.path.dirname(shutil.which("git"))), "bin", "bash.exe")
+    assert bash and os.path.isfile(bash)
+    with _t078_location_counter(mode, start) as (server, state):
+        endpoint = "http://127.0.0.1:%d/mcp" % server.server_port
+        actual = block.replace("https://vetagent.dev/mcp", endpoint, 1)
+        script = 'CI_TAG="-H x-mcp-client:vetagent-ci-smoke"\n' + actual
+        env = dict(os.environ, NO_PROXY="127.0.0.1", no_proxy="127.0.0.1")
+        result = subprocess.run([bash, "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", script],
+                                env=env, capture_output=True, timeout=20)
+    windows = [{"location": key[0], "window": key[1], "requests": count}
+               for key, count in sorted(state.pop("windows").items())]
+    summary = dict(state, windows=windows, mode=mode, virtual_start=start, actual_exit=result.returncode,
+                   named_rate_substitutions=rate_matches, named_deadline_substitutions=len(deadlines))
+    print("  T078 " + json.dumps(summary, sort_keys=True))
+    check(mode + " owns and retires its loopback server", state["owned_server_stopped"])
+    check(mode + " uses only the fixed invalid request/self tag, without extra requests",
+          state["bad_requests"] == 0 and 0 < state["requests"] <= 125)
+    output = result.stdout + result.stderr
+    check(mode + " canary output does not expose body, full ray or peer address",
+          all(marker not in output for marker in (b"T078_PRIVATE_BODY", b"0000000000000000", b"127.0.0.1")))
+    return result, summary
+
+
+def test_rate_canary_uses_real_reused_http11_location_window_counter():
+    for start in (0, 58):
+        result, observed = _t078_actual_flood("healthy", start)
+        check("healthy location-local counter passes actual flood block, including a window boundary",
+              result.returncode == 0, json.dumps(observed, sort_keys=True))
+        check("one reusable HTTP1.1 connection carries the bounded125 calls",
+              observed["connections"] == 1 and observed["requests"] == observed["http11"] == 125)
+        check("success contains a real counter429 and limited state",
+              observed["statuses"].get("429", 0) > 0 and observed["states"].get("limited", 0) > 0)
+        check("production pace and whole deadline each have one named bounded test acceleration",
+              observed["named_rate_substitutions"] == observed["named_deadline_substitutions"] == 1)
+
+
+def test_rate_canary_refuses_nonlimiting_misleading_and_transport_results():
+    for mode in ("never-limited", "429-missing", "429-ok", "429-open", "unexpected-status", "transport"):
+        result, observed = _t078_actual_flood(mode, 58)
+        check(mode + " cannot qualify rate enforcement", result.returncode != 0,
+              json.dumps(observed, sort_keys=True))
+
+
 def main():
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -1019,6 +1209,8 @@ def main():
     test_the_deploy_is_gated()
     test_the_deploy_keeps_no_second_list()
     test_node_properties_are_refused_at_their_origin()
+    test_rate_canary_uses_real_reused_http11_location_window_counter()
+    test_rate_canary_refuses_nonlimiting_misleading_and_transport_results()
     print("\n" + "=" * 68)
     print("%d passed, %d failed" % (_PASSED, len(_FAILS)))
     if _FAILS:
