@@ -149,7 +149,7 @@ problem looked like before it was fixed.
 - T-068: adopt bytecode-policy witness correction after Linux CI red
 - lead: record qualified target-price source and pending release gates
 
-_101 more not shown (109 commits in total)._
+_92 more not shown (100 commits in total)._
 
 ## What I got wrong
 
