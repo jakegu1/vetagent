@@ -90,3 +90,17 @@ data, wrong-chain reads, failure becoming observed absence, and usable liquidity
 incorrectly satisfying a missing critical sell check. Existing invariants and
 explicit negative tests cover these without a new validation controller. Preserve
 all evidence with the existing compressed retention method, not full-tree copies.
+
+## Named test correction (2026-11-08, before complete source validation)
+
+The newly added test_t083_recovered_market_does_not_replace_missing_sellability
+uses the unchanged ds_weth fixture, whose 30 pairs trigger the pre-existing
+_complete_home_chain lookup at _DS_TOKENS_CAP=30. Its offline route table omitted
+that request, so the network-denial guard correctly rejected the fixture.
+Root verified the fixture count and actual loader branch. In a separate named
+tests-only correction commit, add the synthetic HTTP200 empty-list response for
+the exact Ethereum token-pairs/v1 home URL and change only that new test's request
+sequence expectation from [ds,search,sell] to [ds,home,search,sell]. Preserve its
+market recovery, unknown verdict, missing sellability, age, confidence and no-sleep
+assertions, all original tests/fixtures and the earlier red. This repairs a test
+input seam, not product behavior or the acceptance bar. No other named change.
