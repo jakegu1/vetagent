@@ -83,10 +83,16 @@ These commands are fully local and need no token address or credentials:
 ```sh
 echo '{"risk_level":"medium"}' | python -B examples/assessment_policy.py --transport http
 echo '{"result":{"structuredContent":{"risk_level":"unknown","unknown_kind":"infrastructure","next_action":"retry","retry_after_seconds":30}}}' | python -B examples/assessment_policy.py --transport mcp
+echo '{"risk_level":"low"}' | python -B examples/assessment_policy.py --transport http --http-status 429
 ```
 
-For a real integration, pass the actual HTTP status to `route_http(payload, http_status=200)`
-or `route_mcp(envelope, http_status=200)`; the local CLI uses the default status. A present HTTP
+The last example abstains because the transport status is not 200, even though the fixture body
+claims low risk. The optional `--http-status` works for both HTTP and MCP; it accepts exactly
+three ASCII decimal digits from 100 through 599. Its default 200 is a local fixture convenience.
+Real integrations must supply the actual HTTP status through this option or the existing
+`route_http(payload, http_status=200)` / `route_mcp(envelope, http_status=200)` Python parameter.
+Every non-200 status abstains; the example does not infer retry advice from transport failures.
+A present HTTP
 payload error or MCP top-level error wins even when null. MCP uses only `structuredContent`,
 requires dictionary result/content, and accepts a present `isError` only when exactly false.
 It never parses text content as a fallback or handles a batch envelope as a single response.
