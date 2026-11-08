@@ -6846,6 +6846,7 @@ def test_t083_recovered_market_does_not_replace_missing_sellability():
     ds = _T083_DS + address
     hp = "https://api.honeypot.is/v2/IsHoneypot?address=" + address + "&chainID=1"
     routes = {ds: ("ds", 200, _T083_ERROR), hp: ("sell", 429, _T083_ERROR),
+              "https://api.dexscreener.com/token-pairs/v1/ethereum/" + address: ("home", 200, []),
               "https://api.dexscreener.com/latest/dex/search?q=WETH": ("search", 200, {"pairs": []}),
               _t083_market_url("eth", address): ("gt", 404, {})}
     result, calls, _, sleeps, _ = run(_t083_mcp(
@@ -6857,7 +6858,7 @@ def test_t083_recovered_market_does_not_replace_missing_sellability():
           and result.get("confidence") in ("low", "medium")
           and result.get("evidence_max_age_seconds") == 300
           and any(gap["dimension"] == "sellability" for gap in evidence.get("data_gaps", []))
-          and calls == ["ds", "search", "sell"] and not sleeps,
+          and calls == ["ds", "home", "search", "sell"] and not sleeps,
           str((bool(evidence.get("best_pair")), result.get("risk_level"),
                result.get("evidence_max_age_seconds"), calls)))
 
