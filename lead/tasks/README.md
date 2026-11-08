@@ -67,7 +67,7 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-065 | Preserve writable snapshot pages and truthful confirmation availability | 3 | M | T-061, T-062, T-063, T-064 | done; published6fe4440, exact source/master45 and two builds, first existing normal run40942209360 and following45-step bot CI qualified |
 | T-066 | Measure packed Git storage in linked worktrees without false zero readings | 3 | S | T-065 | done; published56baead, actual source/master45 and two locked builds each qualified |
 | T-067 | Preserve writable sellability observations and explicit payload failures | 3 | M | T-062, T-065, T-066 | done; published e3ec46a, actual source/master45 and two locked builds; first normal schedule41339266312/following45-step CI qualified |
-| T-068 | Compare target-token prices without losing finite consensus | 3 | M | T-021, T-065, T-066, T-075, T-077 | reviewed price source uploaded; code gates qualified, deployment acceptance waits for corrected T-078 canary |
+| T-068 | Compare target-token prices without losing finite consensus | 3 | M | T-021, T-065, T-066, T-075, T-077 | done; source/deploy qualified at588d14b, first natural snapshot handoff qualified by preserved-original supplement |
 | T-069 | Describe bounded offline telemetry availability without inventing missing dimensions | 3 | M | T-064, T-067 | code-published9b83558; exact source/integrated/CI accepted; shared natural trial pending |
 | T-070 | Demonstrate fail-closed HTTP and MCP response routing without sending requests | 2 | S | T-069 source acceptance | code-published9b83558; exact source/integrated/CI accepted; shared natural trial pending |
 | T-071 | Qualify explicit historical source identity without changing production | 3 | M | none | code-published9b83558; no historical execution claim; original failures retained; T073 next |
@@ -81,4 +81,7 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 
 | T-077 | Register complete maintained suites from executable workflow commands | 3 | S | T-075 approved split | source qualified3976cea with original failure retained; batched T-068 release gates pending |
 
-| T-078 | Exercise the existing rate limiter through a reusable canary connection | 3 | S | T-068 | source reviewed; meaningful parent red and independent232 pass, final merged47/CI/deploy pending |
+| T-078 | Exercise the existing rate limiter through a reusable canary connection | 3 | S | T-068 | done; complete47 and actual CI/locked builds/deploy, first natural snapshot handoff qualified; original failures retained |
+
+| T-082 | Preserve explicitly supplied HTTP status in the offline policy CLI | 1 | S | none | in progress; tests-first source and independent review |
+| T-083 | Preserve recognized hints and eligible cached market evidence | 3 | M | none | in progress; bounded tests-first upstream fixes, existing cache limits unchanged |

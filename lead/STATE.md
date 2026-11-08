@@ -1,4 +1,29 @@
-# Current: canary correction reviewed; final merged gates pending (2026-11-04)
+# Current: product availability and integration handoffs (2026-11-08)
+
+T068/T078 code, normal deployment and the first natural snapshot handoff are
+qualified. The original log-reader refusal remains historical; separately
+authorized offline repair and one comparison read established the final handoff.
+Do not rerun those completed release or study operations. The three old studies
+remain inconclusive. Latest fetched master bac5679 adds scheduled evidence and
+generated reports without changing production, examples, tests or workflows.
+
+The next bounded batch is T082 (actual HTTP status in the local response-policy
+CLI) and T083 (recognized chain aliases and eligible stale-cache fallback).
+They address reproduced input/response seams, without changing risk thresholds,
+weights, retry budgets or cache ages. A and B own disjoint file scopes; Root
+coordinates independent review, serialized complete gates and normal release.
+No new generic assurance framework or full repository evidence copies.
+
+T047 is not a prerequisite for this product batch. This does not retrospectively
+qualify its old candidate or alter independent research contracts. Actual customer
+outcomes and production incidence of these two availability defects remain
+unmeasured. No score or false-block improvement is asserted from synthetic tests.
+
+Next: finish source tests-first work, fresh reviews and complete checks; integrate
+with latest scheduled evidence only after acceptance. No new Owner decision is
+needed for these technical slices.
+
+# Previous: canary correction reviewed; final merged gates pending (2026-11-04)
 
 T078 has a meaningful tests-first failure on the old workflow and a minimal
 connection-reuse correction. Fresh functional review reproduces232 passing

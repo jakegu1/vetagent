@@ -1,4 +1,16 @@
-# Current Owner checkpoint (2026-11-04)
+# Current Owner checkpoint (2026-11-08)
+
+The preceding price/canary release and its natural snapshot handoff are complete.
+This batch addresses two reproduced upstream availability seams and one local
+integration handoff: accepted chain aliases must reach the intended fallback,
+error envelopes must retain the existing bounded cache behavior, and a CLI user
+must be able to supply the actual HTTP status. No risk threshold changes.
+
+Independent review and complete validation precede publication. Existing runners
+and compressed evidence retention are reused. Customer effect and live incidence
+remain unmeasured. This batch has no T047 dependency and needs no new Owner action.
+
+# Previous Owner checkpoint (2026-11-04)
 
 The two target-price defects now pass independent review and the complete47
 source gate. Their tests distinguish target/quote orientation and finite median
