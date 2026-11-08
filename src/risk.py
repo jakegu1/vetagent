@@ -4059,7 +4059,7 @@ async def _load_pairs(address, chain_hint):
     if home_unreadable and _GT_NETWORK.get(want):
         networks.append(_GT_NETWORK[want])
     if chain_hint and not networks:
-        n = _GT_NETWORK.get(chain_hint.strip().lower())
+        n = _GT_NETWORK.get(_canonical_chain(chain_hint))
         if n:
             networks.append(n)
     if not networks:
