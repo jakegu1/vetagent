@@ -84,9 +84,20 @@ def _nonfinite(value):
     raise ValueError("nonfinite_json")
 
 
+def _http_status(value):
+    if len(value) != 3 or any(char < "0" or char > "9" for char in value):
+        raise argparse.ArgumentTypeError("invalid_http_status")
+    status = int(value)
+    if not 100 <= status <= 599:
+        raise argparse.ArgumentTypeError("invalid_http_status")
+    return status
+
+
 def main(argv=None):
     parser = _Parser(prog="assessment_policy", description=__doc__, allow_abbrev=False)
     parser.add_argument("--transport", required=True, choices=("http", "mcp"))
+    parser.add_argument("--http-status", type=_http_status, default=200, metavar="STATUS",
+                        help="Actual three-digit HTTP status; defaults to 200 for local fixtures")
     args = parser.parse_args(argv)
     try:
         raw = sys.stdin.buffer.read(BYTE_CAP + 1)
@@ -96,7 +107,8 @@ def main(argv=None):
     except (OSError, ValueError, TypeError, RecursionError, OverflowError, UnicodeError):
         _emit({"error": "input_refused"})
         return 1
-    result = route_http(payload) if args.transport == "http" else route_mcp(payload)
+    result = (route_http(payload, args.http_status) if args.transport == "http"
+              else route_mcp(payload, args.http_status))
     _emit(result)
     # A valid abstention is a policy result, not a command failure.
     return 0
