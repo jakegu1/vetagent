@@ -6689,6 +6689,180 @@ def test_provisional_gap_wording_preserves_current_solana_contracts():
         risk._BENCH_NOW.reset(clock)
 
 
+_T083_ADDRESS = "0x0000000000000000000000000000000000001010"
+_T083_GT = "https://api.geckoterminal.com/api/v2/networks/"
+_T083_DS = "https://api.dexscreener.com/latest/dex/tokens/"
+_T083_ERROR = {"status": {"error_code": 429, "error_message": "private upstream error marker"}}
+
+
+def _t083_market_url(network, address=_T083_ADDRESS):
+    return _T083_GT + network + "/tokens/" + address + "/pools"
+
+
+async def _t083_mcp(tool, arguments, routes, cached=None):
+    """Run the real reader and MCP tool with an in-memory transport and cache."""
+    import subprocess
+    from types import SimpleNamespace
+    import mcp_server
+
+    class UnexpectedIO(BaseException):
+        pass
+
+    def deny(*args, **kwargs):
+        raise UnexpectedIO("T083 unexpected offline I/O")
+
+    calls, writes, sleeps = [], [], []
+    cached = cached or {}
+
+    async def fetch(url, **kwargs):
+        if url not in routes:
+            deny()
+        label, status, body = routes[url]
+        calls.append(label)
+
+        async def text():
+            return json.dumps(body)
+
+        return SimpleNamespace(status=status, text=text)
+
+    async def cache_get(url):
+        return cached.get(url, (None, None))
+
+    async def cache_put(url, data, **kwargs):
+        writes.append((routes[url][0], risk._is_error_body(data)))
+
+    async def sleep(delay):
+        sleeps.append(delay)
+
+    async def owner_unreadable(*args):
+        return None
+
+    with patch.object(socket.socket, "connect", deny), \
+            patch.object(socket.socket, "connect_ex", deny), \
+            patch.object(socket, "getaddrinfo", deny), \
+            patch.object(subprocess, "Popen", deny), \
+            patch.object(risk, "cf_fetch", fetch), \
+            patch.object(risk, "_fetch_json", _ORIGINAL_FETCH_JSON), \
+            patch.object(risk, "_cache_get", cache_get), \
+            patch.object(risk, "_cache_put", cache_put), \
+            patch.object(risk, "_owner_powers", owner_unreadable), \
+            patch.object(risk.asyncio, "sleep", sleep), \
+            patch.dict(risk._ONCHAIN, {"key": ""}):
+        answer = await mcp_server.handle_mcp_request({
+            "jsonrpc": "2.0", "id": 83, "method": "tools/call",
+            "params": {"name": tool, "arguments": arguments},
+        })
+        details = risk._failure_detail("dexscreener", "geckoterminal", "honeypot.is")
+    result = answer.get("result") or {}
+    check("T083 MCP result is structured and omits the upstream error text",
+          not result.get("isError") and isinstance(result.get("structuredContent"), dict)
+          and _T083_ERROR["status"]["error_message"] not in json.dumps(answer))
+    return result.get("structuredContent") or {}, calls, writes, sleeps, details
+
+
+def test_t083_recognized_chain_hint_reaches_fallback():
+    print("\n[T083] canonical and alias fallbacks use the same network")
+    gt_bsc = {"data": [{"attributes": {"name": "Synthetic / WBNB",
+                                       "base_token_price_usd": "2", "reserve_in_usd": "100000"},
+                        "relationships": {"base_token": {"data": {"id": "bsc_" + _T083_ADDRESS}},
+                                          "quote_token": {"data": {"id": "bsc_0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c"}}}}]}
+    routes = {_T083_DS + _T083_ADDRESS: ("ds", 200, {"pairs": []}),
+              _t083_market_url("eth"): ("eth", 429, _T083_ERROR),
+              _t083_market_url("bsc"): ("bsc", 200, gt_bsc)}
+    for hint in ("bsc", "bnb"):
+        result, calls, writes, sleeps, _ = run(_t083_mcp(
+            "get_token_liquidity", {"address": _T083_ADDRESS, "chain_hint": hint}, routes))
+        check("T083 %s selects BSC directly" % hint,
+              result.get("status") == "ok" and result.get("best_pair_chain") == "bsc"
+              and calls == ["ds", "bsc"] and writes == [("ds", False), ("bsc", False)] and not sleeps,
+              str((result.get("status"), calls)))
+
+    nets = ("eth", "base", "bsc", "polygon_pos", "arbitrum", "optimism", "avax")
+    routes.update({_t083_market_url(net): (net, 404, {}) for net in nets})
+    spellings = {"eth": ("ethereum", " ETH ", "mainnet", "erc20"),
+                 "bsc": ("bnb", "binance", "binance-smart-chain"),
+                 "arbitrum": ("arbitrum", "arbitrum_one", "arb"),
+                 "optimism": ("optimism", " OP "),
+                 "polygon_pos": ("polygon", "polygon_pos", " Matic "),
+                 "avax": ("avalanche", "avax")}
+    for expected, hints in spellings.items():
+        for hint in hints:
+            result, calls, _, _, _ = run(_t083_mcp(
+                "get_token_liquidity", {"address": _T083_ADDRESS, "chain_hint": hint}, routes))
+            check("T083 %s queries only %s" % (hint, expected),
+                  result.get("status") == "not_found" and calls == ["ds", expected], str(calls))
+    for hint in (None, "unrecognized"):
+        result, calls, _, _, _ = run(_t083_mcp(
+            "get_token_liquidity", {"address": _T083_ADDRESS, "chain_hint": hint}, routes))
+        check("T083 absent or unrecognized hint retains discovery order",
+              result.get("status") == "not_found" and calls == ["ds", *nets[:4]], str(calls))
+
+    address = WETH.lower()
+    fork = dict(_load("ds_weth.json")["pairs"][0], chainId="pulsechain")
+    routes = {_T083_DS + address: ("ds", 200, {"pairs": [fork]}),
+              "https://api.dexscreener.com/token-pairs/v1/ethereum/" + address: ("home", 429, _T083_ERROR),
+              _t083_market_url("eth", address): ("eth", 404, {})}
+    result, calls, _, _, _ = run(_t083_mcp(
+        "get_token_liquidity", {"address": address, "chain_hint": "bnb"}, routes))
+    check("T083 observed fork's home takes precedence over the alias",
+          result.get("status") == "unavailable" and calls == ["ds", "home", "eth"], str(calls))
+
+
+def test_t083_error_envelope_preserves_bounded_cache_policy():
+    print("\n[T083] error envelope and transport refusal share cache policy")
+    url = _t083_market_url("polygon_pos")
+    pool = _load("gt_matic_polygon.json")
+    ds = _T083_DS + _T083_ADDRESS
+    args = {"address": _T083_ADDRESS, "chain_hint": "polygon"}
+    cases = [
+        ("transport refusal", 429, _T083_ERROR, 300, "ok", 300, 1, "geckoterminal 429"),
+        ("body refusal", 200, _T083_ERROR, 300, "ok", 300, 1, "geckoterminal error body 429"),
+        ("last eligible second", 200, _T083_ERROR, 900, "ok", 900, 1, "geckoterminal error body 429"),
+        ("first expired second", 200, _T083_ERROR, 901, "unavailable", None, 1, "geckoterminal error body 429"),
+        ("missing cache", 200, _T083_ERROR, None, "unavailable", None, 1, "geckoterminal error body 429"),
+        ("fresh cache", 200, _T083_ERROR, 60, "ok", None, 0, ""),
+        ("observed 404", 404, {}, 300, "not_found", None, 1, ""),
+        ("valid success", 200, pool, None, "ok", None, 1, ""),
+        ("other recognized error", 200, {"status": {"error_code": 503}}, 300, "ok", 300, 1,
+         "geckoterminal error body 503"),
+    ]
+    for name, status, body, age, expected, stale_age, visits, failure in cases:
+        routes = {ds: ("ds", 200, {"pairs": []}), url: ("gt", status, body)}
+        cached = {url: (pool, age)} if age is not None else {}
+        result, calls, writes, sleeps, detail = run(_t083_mcp("get_token_liquidity", args, routes, cached))
+        stale = [{"source": "api.geckoterminal.com", "age_seconds": stale_age}] if stale_age else None
+        expected_writes = [("ds", False), ("gt", False)] if name == "valid success" else [("ds", False)]
+        check("T083 " + name + " preserves status and original cache age",
+              result.get("status") == expected and result.get("served_stale") == stale,
+              str((result.get("status"), result.get("served_stale"))))
+        check("T083 " + name + " preserves calls, failure provenance and cache writes",
+              calls == ["ds"] + ["gt"] * visits and not sleeps and writes == expected_writes and detail == failure,
+              str((calls, len(writes), len(sleeps), detail == failure)))
+
+
+def test_t083_recovered_market_does_not_replace_missing_sellability():
+    print("\n[T083] recovered market data preserves the critical sellability gap")
+    address = WETH.lower()
+    ds = _T083_DS + address
+    hp = "https://api.honeypot.is/v2/IsHoneypot?address=" + address + "&chainID=1"
+    routes = {ds: ("ds", 200, _T083_ERROR), hp: ("sell", 429, _T083_ERROR),
+              "https://api.dexscreener.com/token-pairs/v1/ethereum/" + address: ("home", 200, []),
+              "https://api.dexscreener.com/latest/dex/search?q=WETH": ("search", 200, {"pairs": []}),
+              _t083_market_url("eth", address): ("gt", 404, {})}
+    result, calls, _, sleeps, _ = run(_t083_mcp(
+        "assess_token_risk", {"address": address, "chain_hint": "ethereum"},
+        routes, {ds: (_load("ds_weth.json"), 300)}))
+    evidence = result.get("evidence") or {}
+    check("T083 recovered pool and disclosed age do not satisfy sellability",
+          evidence.get("best_pair") and result.get("risk_level") == "unknown"
+          and result.get("confidence") in ("low", "medium")
+          and result.get("evidence_max_age_seconds") == 300
+          and any(gap["dimension"] == "sellability" for gap in evidence.get("data_gaps", []))
+          and calls == ["ds", "home", "search", "sell"] and not sleeps,
+          str((bool(evidence.get("best_pair")), result.get("risk_level"),
+               result.get("evidence_max_age_seconds"), calls)))
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
