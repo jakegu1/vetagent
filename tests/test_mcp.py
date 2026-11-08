@@ -1422,6 +1422,56 @@ def test_a2_policy_real_cli():
           ("examples/assessment_policy.py", "--transport http", "--transport mcp", "checked_at", "evidence_max_age_seconds")))
 
 
+# T-082 acceptance contract: the real CLI must preserve transport status.
+def test_a4_cli_http_status_handoff():
+    module = _a2_module()
+    if module is None:
+        return
+    payloads = ({"risk_level": "low", "unused": "T082-PRIVATE-BODY"},
+                {"risk_level": "unknown", "unknown_kind": "infrastructure",
+                 "next_action": "retry", "retry_after_seconds": 30})
+    for transport, route in (("http", module.route_http), ("mcp", module.route_mcp)):
+        for payload in payloads:
+            value = payload if transport == "http" else _a2_envelope(payload)
+            raw = json.dumps(value).encode("utf-8")
+            default = _a2_cli(raw, ["--transport", transport])
+            check("T082 default CLI status remains compatible", default.returncode == 0
+                  and json.loads(default.stdout) == _a2_call(route, value, 200)
+                  and default.stderr == b"")
+            for status in (100, 200, 201, 204, 400, 429, 503, 599):
+                run = _a2_cli(raw, ["--transport", transport, "--http-status", str(status)])
+                expected = _a2_call(route, value, status)
+                check("T082 actual CLI carries status to existing %s router %d" % (transport, status),
+                      run.returncode == 0 and json.loads(run.stdout) == expected and run.stderr == b"")
+                check("T082 status routing reveals no body or environment values",
+                      b"T082-PRIVATE" not in run.stdout + run.stderr
+                      and b"T070-PRIVATE" not in run.stdout + run.stderr)
+                if status != 200:
+                    check("T082 non-200 transport never grants continuation or retry",
+                          run.returncode == 0 and json.loads(run.stdout)
+                          == _a2_expected("abstain", "invalid_envelope"))
+    for raw in (b'{"risk_level":"low","risk_level":"high"}', b" " * (1024 * 1024 + 1)):
+        run = _a2_cli(raw, ["--transport", "http", "--http-status", "200"])
+        check("T082 explicit status preserves duplicate and byte-cap refusal",
+              run.returncode != 0 and json.loads(run.stdout) == {"error": "input_refused"}
+              and run.stderr == b"")
+
+
+def test_a4_cli_http_status_invalid_arguments():
+    invalid = ("", "99", "099", "600", "999", "0200", "2000", "+200", "-200",
+               "200.0", "2e2", "0xC8", " 200", "200 ", "True", "T082-PRIVATE-STATUS",
+               "\u0662\u0660\u0660", "\uff12\uff10\uff10")
+    for transport in ("http", "mcp"):
+        for status in (*invalid, None):
+            args = ["--transport", transport, "--http-status"]
+            if status is not None:
+                args.append(status)
+            run = _a2_cli(b'{"risk_level":"low","unused":"T082-PRIVATE-BODY"}', args)
+            check("T082 malformed or missing status fails with a fixed private-safe diagnostic",
+                  run.returncode != 0 and json.loads(run.stdout) == {"error": "arguments_refused"}
+                  and run.stderr == b"")
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
