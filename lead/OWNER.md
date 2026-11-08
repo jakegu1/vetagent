@@ -6,7 +6,8 @@ integration handoff: accepted chain aliases must reach the intended fallback,
 error envelopes must retain the existing bounded cache behavior, and a CLI user
 must be able to supply the actual HTTP status. No risk threshold changes.
 
-Independent review and complete validation precede publication. Existing runners
+Independent source reviews and complete47 validation now pass on the assembled
+candidate. Exact-head CI and deployment still precede publication acceptance. Existing runners
 and compressed evidence retention are reused. Customer effect and live incidence
 remain unmeasured. This batch has no T047 dependency and needs no new Owner action.
 

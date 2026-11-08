@@ -83,5 +83,5 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 
 | T-078 | Exercise the existing rate limiter through a reusable canary connection | 3 | S | T-068 | done; complete47 and actual CI/locked builds/deploy, first natural snapshot handoff qualified; original failures retained |
 
-| T-082 | Preserve explicitly supplied HTTP status in the offline policy CLI | 1 | S | none | in progress; tests-first source and independent review |
-| T-083 | Preserve recognized hints and eligible cached market evidence | 3 | M | none | in progress; bounded tests-first upstream fixes, existing cache limits unchanged |
+| T-082 | Preserve explicitly supplied HTTP status in the offline policy CLI | 1 | S | none | source accepted; independent12/12 and assembled916d161 complete47; normal CI/release pending |
+| T-083 | Preserve recognized hints and eligible cached market evidence | 3 | M | none | source accepted; independent12/12, adverse none and assembled916d161 complete47; normal CI/release pending |

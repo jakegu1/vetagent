@@ -1,5 +1,15 @@
 # Current: product availability and integration handoffs (2026-11-08)
 
+Source acceptance is complete: the assembled916d161 candidate passed all47
+configured checks under an independent reviewer, with unchanged tracked bytes.
+T082 functional review is12/12; T083 functional review is12/12 and its separate
+ordinary adverse review found no defect. The old A full45/47 failure remains:
+the author checkout had expired snapshot inputs and unregenerated test counts.
+Latest bot originals and the generated count update were incorporated before the
+successful candidate run. This acceptance applies to that candidate, not the old
+failed author head. Normal exact-head CI/locked builds and deployment are the next
+release stage; no customer, production-incidence or accuracy gain is asserted.
+
 T068/T078 code, normal deployment and the first natural snapshot handoff are
 qualified. The original log-reader refusal remains historical; separately
 authorized offline repair and one comparison read established the final handoff.
@@ -19,9 +29,8 @@ qualify its old candidate or alter independent research contracts. Actual custom
 outcomes and production incidence of these two availability defects remain
 unmeasured. No score or false-block improvement is asserted from synthetic tests.
 
-Next: finish source tests-first work, fresh reviews and complete checks; integrate
-with latest scheduled evidence only after acceptance. No new Owner decision is
-needed for these technical slices.
+Next: verify normal exact-head feature/master CI, locked builds and deployment.
+No new Owner decision is needed for these technical slices.
 
 # Previous: canary correction reviewed; final merged gates pending (2026-11-04)
 
