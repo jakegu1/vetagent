@@ -478,7 +478,7 @@ async def _fetch_json(url, retries=2, timeout=8, mark_missing=False, headers=Non
                     if _is_error_body(data):
                         _note_failure(url, "error body %s"
                                       % ((data.get("status") or {}).get("error_code")))
-                        return None
+                        break  # Preserve the same stale-cache fallback as a transport refusal.
                     await _cache_put(url, data)
                     return data
         except Exception as e:  # timeout, network, parse error: all count as a failed fetch
