@@ -149,7 +149,7 @@ problem looked like before it was fixed.
 - T-083: acceptance tests
 - lead: start bounded product availability and integration batch
 
-_69 more not shown (77 commits in total)._
+_34 more not shown (42 commits in total)._
 
 ## What I got wrong
 
