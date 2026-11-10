@@ -64,3 +64,15 @@ chains, namesakes, one-sided evidence, missing/invalid fields and a truly bad
 sell result. Preserve the default where the cross-pool comparison is not
 supported by observations.
 
+
+## Amendments
+
+2026-11-10: The tests-first 100% sell-tax case remains red after changing only
+the market rank: using the new pool's trades can downgrade the adverse result.
+Keep the original depth winner as the simulator retry and honeypot comparison
+pool when the representative venue changes. Any honeypot comparison evidence
+on that path must identify its pool separately. Add a named test in
+`test_t084_weth_fallback_main_pool_through_mcp` for the unchanged retry target
+after a failed simulation and for the comparison pool on a positive flag.
+This preserves the existing adjudication policy, instead of introducing a
+WETH-specific tax or score rule.
