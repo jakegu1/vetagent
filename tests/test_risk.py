@@ -7135,6 +7135,20 @@ def test_t085_archived_fallback_activity_through_mcp():
                   and bad["evidence"]["best_pair"]["pair_address"] == winner
                   and bad["evidence"]["honeypot"]["sell_tax"] == 100 and calls == expected,
                   str(bad.get("risk_level")))
+
+            control = copy.deepcopy(sample["data"])
+            control[0]["attributes"]["reserve_in_usd"] = "200000000"
+            routes[_t083_market_url(chain, address)] = ("gt", 200, {"data": control})
+            for label, failed, siphoned in (("failed holder sells", 100, 0), ("siphoning", 0, 1)):
+                holders = {"holders": 100, "failed": failed, "siphoned": siphoned}
+                routes[sell_url] = ("sell", 200, dict(clean, holderAnalysis=holders))
+                conflicting, calls, _, _, _ = run(_t083_mcp("assess_token_risk", verbose, routes))
+                recorded = conflicting["evidence"]
+                check("T085 " + label + " cannot lower risk through market replacement",
+                      conflicting.get("risk_level") != "low" and calls == expected
+                      and recorded["best_pair"]["pair_address"] == winner
+                      and recorded["honeypot"].get("holder_analysis") == holders,
+                      str(conflicting.get("risk_level")))
         finally:
             risk._BENCH_NOW.reset(clock)
 
@@ -7159,10 +7173,13 @@ def test_t085_fallback_activity_requires_extreme_disagreement():
               select([winner, rival]) == (rival, winner))
         for label, first, other in (
             ("unknown winner sellers", modified(winner, traders={}), rival),
+            ("zero sellers with completed sells", modified(winner, traders={"h24": {"sellers": 0}}), rival),
             ("active winner", modified(winner, txns={"h24": {"sells": 50}},
                                        traders={"h24": {"sellers": 2}}), rival),
             ("older winner", modified(winner, pairCreatedAt="2026-09-24T00:00:00Z"), rival),
             ("unknown winner age", modified(winner, pairCreatedAt=None), rival),
+            ("future winner creation", modified(winner, pairCreatedAt="2026-09-30T00:00:00Z"), rival),
+            ("invalid numeric winner age", modified(winner, pairCreatedAt=10**400), rival),
             ("winner reserve checkable",
              modified(winner, liquidity={"usd": 9e9, "base": 5e9, "quote": 4e9}), rival),
             ("primary winner", modified(winner, dexId="uniswap"), rival),
@@ -7170,15 +7187,23 @@ def test_t085_fallback_activity_requires_extreme_disagreement():
             ("similar activity", modified(winner, volume={"h24": 10_000}), rival),
             ("young rival", winner, modified(rival, pairCreatedAt="2026-09-05T00:00:00Z")),
             ("undated rival", winner, modified(rival, pairCreatedAt=None)),
+            ("invalid text rival age", winner, modified(rival, pairCreatedAt="\u00b2")),
+            ("negative rival creation", winner, modified(rival, pairCreatedAt=-1)),
             ("thin rival", winner, modified(rival, liquidity={"usd": 49_999})),
             ("low volume rival", winner, modified(rival, volume={"h24": 49_999})),
             ("few rival sells", winner, modified(rival, txns={"h24": {"sells": 19}},
                                                 traders={"h24": {"sellers": 10}})),
+            ("equal sell counts", modified(winner, txns={"h24": {"sells": 3037}}), rival),
             ("few rival sellers", winner, modified(rival, traders={"h24": {"sellers": 9}})),
             ("impossible rival sellers", winner, modified(rival, traders={"h24": {"sellers": 3038}})),
             ("inconsistent price", winner, modified(rival, priceUsd="0.25")),
         ):
-            check("T085 " + label + " leaves the original market", select([other, first]) == (first, first))
+            try:
+                selection = select([other, first])
+            except (ValueError, OverflowError) as exc:
+                selection = str(exc)
+            check("T085 " + label + " leaves the original market", selection == (first, first),
+                  repr(selection) if isinstance(selection, str) else "")
 
         wrong_network = copy.deepcopy(sample["data"][1])
         wrong_network["id"] = wrong_network["id"].replace("arbitrum_", "eth_")
