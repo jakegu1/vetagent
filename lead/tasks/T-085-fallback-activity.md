@@ -87,3 +87,9 @@ Named change in `test_t085_fallback_activity_requires_extreme_disagreement`:
 check volume priority and the depth tiebreak among multiple established rivals.
 A reported zero volume with nonzero sells cannot establish a weak leader.
 Retain the observed zero-volume, zero-sell case, which appears in the archive.
+
+When a GeckoTerminal row supplies both a direct and a derivable USD quote
+price, the new comparison requires them to agree within the same 1.05 ratio.
+Missing supplementary quote evidence still permits the observed price path.
+Named change in `test_t085_fallback_activity_requires_extreme_disagreement`:
+raw quote conflicts on either pool must leave the original venue selected.
