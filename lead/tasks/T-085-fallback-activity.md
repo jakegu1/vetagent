@@ -82,3 +82,8 @@ for the existing market-substitution gate. Preserve the original venue and
 the holder evidence without changing the risk adjudication policy. Named
 change in `test_t085_archived_fallback_activity_through_mcp`: add a separate
 contradictory simulator response to the BSC replay.
+
+Named change in `test_t085_fallback_activity_requires_extreme_disagreement`:
+check volume priority and the depth tiebreak among multiple established rivals.
+A reported zero volume with nonzero sells cannot establish a weak leader.
+Retain the observed zero-volume, zero-sell case, which appears in the archive.
