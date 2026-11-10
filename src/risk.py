@@ -4258,7 +4258,7 @@ def _clean_sell_observed(raw, evidence, data_gaps, address, chain):
     low = (risk == "very_low" and level == 0
            or risk == "low" and level is not None and level.is_integer() and 1 <= level <= 19)
     if (not isinstance(raw, dict) or raw.get("simulationError")
-            or (raw.get("summary") or {}).get("flags") or not low
+            or (raw.get("summary") or {}).get("flags") or hp.get("holder_analysis") or not low
             or hp.get("simulation_success") is not True or hp.get("is_honeypot") is not False
             or any(_market_number(hp.get(k)) != 0 for k in ("buy_tax", "sell_tax", "transfer_tax"))
             or any(g["dimension"] == "sellability" for g in data_gaps)):
