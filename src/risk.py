@@ -1630,7 +1630,7 @@ def _representative_anchor_pool(best, candidates, pairs, target):
     volume, sells = h24(best, "volume"), h24(best, "txns", "sells")
     if price is None or volume is None or sells is None:
         return best
-    age = _age_days(best.get("pairCreatedAt"), allow_clock_skew=False)
+    age = _age_days(best.get("pairCreatedAt"), allow_clock_skew=False, malformed_as_missing=True)
     sellers = h24(best, "traders", "sellers")
     thin_activity = (age is not None and age < 3 and best.quote_price_consistent
                      and sellers == min(1, sells)
@@ -1665,7 +1665,7 @@ def _representative_anchor_pool(best, candidates, pairs, target):
         if not counterparty:
             continue
         candidate_depth = _pair_liquidity(pair)
-        candidate_age = _age_days(pair.get("pairCreatedAt"))
+        candidate_age = _age_days(pair.get("pairCreatedAt"), malformed_as_missing=True)
         if candidate_depth < _LIVE_POOL_USD or candidate_age is None:
             continue
         p = _price_of_target(pair, target)
@@ -1748,12 +1748,13 @@ def _pair_created_ms(value):
     if isinstance(value, bool):
         return None
     if isinstance(value, (int, float)):
-        v = _market_number(value)
-        return None if v is None else (v if v > 1e11 else v * 1000)
+        v = float(value)
+        return v if v > 1e11 else v * 1000  # seconds -> milliseconds
     if isinstance(value, str):
         s = value.strip()
         if s.isdigit():
-            return _pair_created_ms(_market_number(s))
+            v = float(s)
+            return v if v > 1e11 else v * 1000
         try:
             dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
             if dt.tzinfo is None:
@@ -1770,9 +1771,16 @@ def _pair_created_ms(value):
 _MAX_CLOCK_SKEW_DAYS = 2.0
 
 
-def _age_days(created_value, now=None, *, allow_clock_skew=True):
-    ms = _pair_created_ms(created_value)
-    if ms is None or ms <= 0:
+def _age_days(created_value, now=None, *, allow_clock_skew=True, malformed_as_missing=False):
+    try:
+        ms = _pair_created_ms(created_value)
+    except (ValueError, OverflowError):
+        if malformed_as_missing:
+            return None
+        raise
+    # Market comparison can decline malformed age without losing the pool. Discovery
+    # uses the default so a malformed row still rejects the entire listing under T028.
+    if ms is None or (malformed_as_missing and (not math.isfinite(ms) or ms <= 0)):
         return None
     now = now or _clock_now()
     days = (now.timestamp() * 1000 - ms) / 86400000.0
@@ -1956,7 +1964,7 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
                                                  _ascii_safe(best.get("chainId"), 24)),
             "cross_chain"))
 
-    age = _age_days(best.get("pairCreatedAt"))
+    age = _age_days(best.get("pairCreatedAt"), malformed_as_missing=isinstance(best, _GeckoPool))
     if age is not None:
         evidence["pair_age_days"] = age
         if age < 3:
