@@ -1,0 +1,154 @@
+{
+  "arbitrum_usdc": {
+    "collection_time": "2026-09-29T19:26:34.508532+00:00",
+    "address": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+    "data": [
+      {
+        "id": "arbitrum_0x1da38441b5118c500d84c04c89a66177b7bc2ab9",
+        "attributes": {
+          "address": "0x1da38441b5118c500d84c04c89a66177b7bc2ab9",
+          "name": "ZXOUSDC / USDC 0.01%",
+          "pool_created_at": "2026-09-28T20:46:12Z",
+          "reserve_in_usd": "9148034699.9101",
+          "base_token_price_usd": "1.00206275960253",
+          "base_token_price_quote_token": "1.0011031969",
+          "quote_token_price_usd": null,
+          "volume_usd": {
+            "h24": "0.4007429382"
+          },
+          "transactions": {
+            "h24": {
+              "sells": 1,
+              "buys": 2,
+              "sellers": 1,
+              "buyers": 1
+            }
+          }
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "arbitrum_0x1babe35eb60b5bdd4e4299ebdc6d511e29f0e906"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "arbitrum_0xaf88d065e77c8cc2239327c5edb3a432268e5831"
+            }
+          }
+        }
+      },
+      {
+        "id": "arbitrum_0x9ffca51d23ac7f7df82da414865ef1055e5afcc3",
+        "attributes": {
+          "address": "0x9ffca51d23ac7f7df82da414865ef1055e5afcc3",
+          "name": "ARB / USDC 0.05%",
+          "pool_created_at": "2023-08-11T02:43:53Z",
+          "reserve_in_usd": "61571.6435",
+          "base_token_price_usd": "0.207090241977566",
+          "base_token_price_quote_token": "0.2070267876",
+          "quote_token_price_usd": null,
+          "volume_usd": {
+            "h24": "375393.319809138"
+          },
+          "transactions": {
+            "h24": {
+              "sells": 3037,
+              "buys": 2990,
+              "sellers": 230,
+              "buyers": 208
+            }
+          }
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "arbitrum_0x912ce59144191c1204e64559fe8253a0e49e6548"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "arbitrum_0xaf88d065e77c8cc2239327c5edb3a432268e5831"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "bsc_usdt": {
+    "collection_time": "2026-10-16T07:15:05.343107+00:00",
+    "address": "0x55d398326f99059ff775485246999027b3197955",
+    "data": [
+      {
+        "id": "bsc_0xa144168ad757ad855df60ac8e71cdeddce888415",
+        "attributes": {
+          "address": "0xa144168ad757ad855df60ac8e71cdeddce888415",
+          "name": "AVAX / USDT 0.05%",
+          "pool_created_at": "2026-10-16T07:03:05Z",
+          "reserve_in_usd": "7189866169.5663",
+          "base_token_price_usd": "10.0516522758988",
+          "base_token_price_quote_token": "10.0934046391",
+          "quote_token_price_usd": null,
+          "volume_usd": {
+            "h24": "1056.3174253836"
+          },
+          "transactions": {
+            "h24": {
+              "sells": 7,
+              "buys": 1,
+              "sellers": 1,
+              "buyers": 1
+            }
+          }
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "bsc_0x22984590a6b04bb04f61c29c31ab1d48862a37e6"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "bsc_0x55d398326f99059ff775485246999027b3197955"
+            }
+          }
+        }
+      },
+      {
+        "id": "bsc_0xc7bb4cf4c51fd655ea0368255929f1a42ba1a67e1e8805c54e81d61dc28f3f74",
+        "attributes": {
+          "address": "0xc7bb4cf4c51fd655ea0368255929f1a42ba1a67e1e8805c54e81d61dc28f3f74",
+          "name": "CNPY / USDT 0.007%",
+          "pool_created_at": "2026-09-05T21:39:16Z",
+          "reserve_in_usd": "1422124.3062",
+          "base_token_price_usd": "0.266345389222059",
+          "base_token_price_quote_token": "0.2655932374",
+          "quote_token_price_usd": null,
+          "volume_usd": {
+            "h24": "36718730.3019892"
+          },
+          "transactions": {
+            "h24": {
+              "sells": 54995,
+              "buys": 51775,
+              "sellers": 2921,
+              "buyers": 2919
+            }
+          }
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "bsc_0xc69b16cf18cea1e5d0bb6a1a9db802097790ddd2"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "bsc_0x55d398326f99059ff775485246999027b3197955"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

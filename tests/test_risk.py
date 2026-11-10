@@ -7080,6 +7080,127 @@ def test_t084_raw_fallback_identity():
               str((pair["pair_address"], pair["liquidity_usd"], liquidity["liquidity_usd"])))
 
 
+def test_t085_archived_fallback_activity_through_mcp():
+    print("\n[T085] archived fallback selection and independent sell evidence")
+    samples = _load("gt_fallback_activity.json")
+    for name, chain, depth in (("arbitrum_usdc", "arbitrum", 61_571.6),
+                               ("bsc_usdt", "bsc", 1_422_120)):
+        sample = samples[name]
+        address = sample["address"]
+        inputs = {"address": address, "chain_hint": chain}
+        routes = {_T083_DS + address: ("ds", 200, {"pairs": []}),
+                  _t083_market_url(chain, address): ("gt", 200, {"data": sample["data"]})}
+        clock = risk._BENCH_NOW.set(datetime.datetime.fromisoformat(sample["collection_time"]))
+        try:
+            liquid, calls, _, sleeps, _ = run(_t083_mcp("get_token_liquidity", inputs, routes))
+            check("T085 " + name + " uses the established pool estimate",
+                  liquid.get("liquidity_usd") == depth
+                  and liquid.get("liquidity_reserve_check") == "not_checkable"
+                  and calls == ["ds", "gt"] and not sleeps, str(liquid))
+
+            winner = sample["data"][0]["attributes"]["address"]
+            sell_url = "https://api.honeypot.is/v2/IsHoneypot?address=" + address
+            if chain == "bsc":
+                sell_url += "&chainID=56"
+            routes[sell_url] = ("sell", 404, {})
+            expected = ["ds", "gt", "sell"]
+            verbose = dict(inputs, verbose=True)
+            missing, calls, _, _, _ = run(_t083_mcp("assess_token_risk", verbose, routes))
+            check("T085 " + name + " keeps unknown and original evidence without a sell result",
+                  missing.get("risk_level") == "unknown" and calls == expected
+                  and missing["evidence"]["best_pair"]["pair_address"] == winner
+                  and any(g["dimension"] == "sellability"
+                          for g in missing["evidence"]["data_gaps"]), str(calls))
+            if chain != "bsc":
+                continue
+
+            clean = dict(_T084_HP, token={"address": address}, chain={"id": 56})
+            routes[sell_url] = ("sell", 200, clean)
+            result, calls, _, sleeps, _ = run(_t083_mcp("assess_token_risk", verbose, routes))
+            evidence = result["evidence"]
+            check("T085 synthetic clean sell enables established-pool evidence",
+                  evidence.get("pair_age_days") == 40
+                  and evidence["best_pair"]["liquidity_usd"] == depth
+                  and evidence["best_pair"]["sells_24h"] == 54_995
+                  and evidence.get("liquidity_reserve_check") == "not_checkable"
+                  and sig_categories(result).get("freshness") == "ok"
+                  and calls == expected and not sleeps, str(evidence.get("best_pair")))
+
+            routes[sell_url] = ("sell", 200, dict(clean, honeypotResult={"isHoneypot": True},
+                                summary={"risk": "honeypot", "riskLevel": 100},
+                                simulationResult={"buyTax": 0, "sellTax": 100, "transferTax": 0}))
+            bad, calls, _, _, _ = run(_t083_mcp("assess_token_risk", verbose, routes))
+            check("T085 adverse sell evidence stays high and keeps the original venue",
+                  bad.get("risk_level") == "high"
+                  and bad["evidence"]["best_pair"]["pair_address"] == winner
+                  and bad["evidence"]["honeypot"]["sell_tax"] == 100 and calls == expected,
+                  str(bad.get("risk_level")))
+        finally:
+            risk._BENCH_NOW.reset(clock)
+
+
+def test_t085_fallback_activity_requires_extreme_disagreement():
+    print("\n[T085] both age and activity must support the exception")
+    sample = _load("gt_fallback_activity.json")["arbitrum_usdc"]
+    target, network = sample["address"], "arbitrum"
+    winner, rival = (risk._gt_to_pair(row, target, network) for row in sample["data"])
+
+    def modified(pair, **updates):
+        variant = copy.copy(pair)
+        variant.update(updates)
+        return variant
+
+    def select(pairs):
+        return risk._pick_markets(pairs, network, target)
+
+    clock = risk._BENCH_NOW.set(datetime.datetime.fromisoformat(sample["collection_time"]))
+    try:
+        check("T085 new thinly traded leader keeps its role as original depth winner",
+              select([winner, rival]) == (rival, winner))
+        for label, first, other in (
+            ("unknown winner sellers", modified(winner, traders={}), rival),
+            ("active winner", modified(winner, txns={"h24": {"sells": 50}},
+                                       traders={"h24": {"sellers": 2}}), rival),
+            ("older winner", modified(winner, pairCreatedAt="2026-09-24T00:00:00Z"), rival),
+            ("unknown winner age", modified(winner, pairCreatedAt=None), rival),
+            ("winner reserve checkable",
+             modified(winner, liquidity={"usd": 9e9, "base": 5e9, "quote": 4e9}), rival),
+            ("primary winner", modified(winner, dexId="uniswap"), rival),
+            ("similar depth", modified(winner, liquidity={"usd": 5_000_000}), rival),
+            ("similar activity", modified(winner, volume={"h24": 10_000}), rival),
+            ("young rival", winner, modified(rival, pairCreatedAt="2026-09-05T00:00:00Z")),
+            ("undated rival", winner, modified(rival, pairCreatedAt=None)),
+            ("thin rival", winner, modified(rival, liquidity={"usd": 49_999})),
+            ("low volume rival", winner, modified(rival, volume={"h24": 49_999})),
+            ("few rival sells", winner, modified(rival, txns={"h24": {"sells": 19}},
+                                                traders={"h24": {"sellers": 10}})),
+            ("few rival sellers", winner, modified(rival, traders={"h24": {"sellers": 9}})),
+            ("impossible rival sellers", winner, modified(rival, traders={"h24": {"sellers": 3038}})),
+            ("inconsistent price", winner, modified(rival, priceUsd="0.25")),
+        ):
+            check("T085 " + label + " leaves the original market", select([other, first]) == (first, first))
+
+        wrong_network = copy.deepcopy(sample["data"][1])
+        wrong_network["id"] = wrong_network["id"].replace("arbitrum_", "eth_")
+        invalid = risk._gt_to_pair(wrong_network, target, network)
+        check("T085 wrong raw network or duplicate pool ID cannot promote a rival",
+              select([winner, invalid]) == (winner, winner)
+              and select([winner, rival, copy.copy(rival)]) == (winner, winner))
+
+        trusted = copy.deepcopy(sample["data"][1])
+        pool = "0x" + "1" * 40
+        trusted["id"] = network + "_" + pool
+        trusted["attributes"].update(address=pool, volume_usd={"h24": "1000"},
+                                     reserve_in_usd="10000")
+        trusted["relationships"]["base_token"]["data"]["id"] = (
+            network + "_0x82af49447d8a07e3bd95bd0d56f35241523fbab1")
+        two_anchor = risk._gt_to_pair(trusted, target, network)
+        check("T085 the existing two-anchor preference stays first",
+              select([rival, winner, two_anchor]) == (two_anchor, winner))
+    finally:
+        risk._BENCH_NOW.reset(clock)
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
