@@ -117,3 +117,11 @@ a consistent observed low or very-low Honeypot.is summary using the provider's
 documented risk-level ranges and no summary flags. These are input checks for
 the new substitution, not changes to assessment bands or simulator policy.
 Add the named cases to the raw-fallback and clean-simulation tests.
+
+The full upstream-field contract gate showed the provenance marker was treated
+as a DexScreener response path. Keep local normalization metadata separate from
+the provider mapping, and leave the frozen upstream contract unchanged. The
+comparison controls must keep trusted local metadata while changing individual
+fields. Also keep the previous assessment if the raw summary supplies nonempty
+flags in an invalid format. Both test adjustments are named in the existing
+T-084 comparison and MCP tests; no frozen gate or threshold is changed.
