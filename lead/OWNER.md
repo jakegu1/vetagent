@@ -1,3 +1,13 @@
+# Current Owner checkpoint (2026-11-10)
+
+The unchecked fallback market correction passed independent functional and
+adverse review and the full offline suite on the accepted task head. It is
+integrated locally. In the fixed-clock WETH replay the fallback chose the
+corroborated market and retained the unchecked reserve disclosure.
+
+The integrated offline gate, normal CI, deployment and production replay are
+pending.
+
 # Current Owner checkpoint (2026-11-08)
 
 The preceding price/canary release and its natural snapshot handoff are complete.

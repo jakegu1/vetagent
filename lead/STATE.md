@@ -1,3 +1,14 @@
+# T084 local integration (2026-11-10)
+
+T084 is integrated locally in 28e9249 from the accepted task head cb3ef29.
+Independent functional and adverse reviews accepted the corrected source.
+All 47 configured offline steps passed on the task head. The fixed-clock
+WETH replay selected the corroborated fallback market while retaining the
+reserve qualification and existing request paths.
+
+Root will run the complete offline gate on the integrated head, then verify
+normal exact-head CI, deployment and a tagged production replay.
+
 # Current: product availability and integration handoffs (2026-11-08)
 
 Source acceptance is complete: the assembled916d161 candidate passed all47

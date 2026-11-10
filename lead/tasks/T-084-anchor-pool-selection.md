@@ -1,7 +1,7 @@
 ---
 id: T-084
 title: Select a representative anchor market on reserve-less fallback
-status: ready
+status: source-accepted
 level: 3
 size: S
 base: 88fbbdc222680bc6cfe987b51a14fe81aef6a028
@@ -125,3 +125,10 @@ comparison controls must keep trusted local metadata while changing individual
 fields. Also keep the previous assessment if the raw summary supplies nonempty
 flags in an invalid format. Both test adjustments are named in the existing
 T-084 comparison and MCP tests; no frozen gate or threshold is changed.
+
+## Integration
+
+The accepted task head `cb3ef29` passed all 47 configured offline steps after
+independent functional and adverse review. Local merge `28e9249` preserves
+that source and its tests. The integrated gate, normal CI, deployment and
+tagged production replay remain pending.
