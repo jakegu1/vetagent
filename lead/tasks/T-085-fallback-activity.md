@@ -62,3 +62,16 @@ a rival can manufacture trading activity. Use valid same-chain identities,
 comparable target prices, elapsed time and both activity readings to limit
 the ranking exception. A supplier estimate and an activity count establish
 neither reserves nor sellability. Keep the existing fail-closed risk path.
+
+## Amendments
+
+Independent review reproduced malformed upstream ages returning an MCP error,
+negative ages acting as established pools, and future creation or contradictory
+leader seller counts qualifying the new comparison. A zero distinct-seller
+count must agree with a zero sell count. A future timestamp can still trigger
+the existing freshness warning within clock skew, but cannot support the new
+replacement. Reject invalid creation values without throwing. The established
+alternative also keeps the existing requirement to exceed the leader's sell
+count, so a high observed sell count on the leader remains a reason to abstain.
+Named change in `test_t085_fallback_activity_requires_extreme_disagreement`:
+add these cases without changing the first-commit expectations.
