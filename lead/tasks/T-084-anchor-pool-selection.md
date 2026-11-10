@@ -67,7 +67,7 @@ supported by observations.
 
 ## Amendments
 
-2026-11-10: The tests-first 100% sell-tax case remains red after changing only
+2026-11-10: The tests-first fully confiscatory sell-tax case remains red after changing only
 the market rank: using the new pool's trades can downgrade the adverse result.
 Keep the original depth winner as the simulator retry and honeypot comparison
 pool when the representative venue changes. Any honeypot comparison evidence
@@ -76,3 +76,29 @@ on that path must identify its pool separately. Add a named test in
 after a failed simulation and for the comparison pool on a positive flag.
 This preserves the existing adjudication policy, instead of introducing a
 WETH-specific tax or score rule.
+
+2026-11-10 independent review: require consistent raw GeckoTerminal chain and
+identity evidence on both venues before applying the exception. Limit the new
+comparison to EVM token addresses. The pool resource id and both relationship
+ids must name the queried network, the token addresses and pool id must be
+valid, and a separately reported pool address must agree with its resource id.
+Reject reused pool IDs for the comparison. Keep previous ranking on these
+unqualified inputs. Add a named regression in `test_t084_raw_fallback_identity`
+that drives both MCP tools with wrong-network, malformed and duplicate rows.
+
+Independent adverse review also found a dust-reserve challenger could outrank
+a still-funded venue on historical volume, an undated pool could remove
+observed age, and a fully confiscatory simulated sell tax with an inconsistent false
+honeypot boolean could fall from high to medium after dropping the original
+market's age points. Require a challenger to meet the existing USD 5,000
+live-market floor and have an observed creation time. For assessment, apply
+the representative substitution only after an observed clean sell simulation:
+successful and not flagged, with observed zero taxes, no critical sellability
+gap and no adverse upstream risk signal. For all other assessment results,
+keep the original market evidence and signals. This supersedes the prior
+conditional comparison-pool output field; the two tools may show different
+market evidence when the assessment is unverified or adverse. Keep retry,
+adjudication and other signals on the original market. Add named assertions in
+`test_t084_raw_fallback_identity` and
+`test_t084_weth_fallback_main_pool_through_mcp` for these observed cases.
+
