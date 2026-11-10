@@ -1630,7 +1630,7 @@ def _representative_anchor_pool(best, candidates, pairs, target):
         return best
     age = _age_days(best.get("pairCreatedAt"), allow_clock_skew=False)
     sellers = h24(best, "traders", "sellers")
-    thin_activity = age is not None and age < 3 and sellers is not None and sellers <= min(1, sells)
+    thin_activity = age is not None and age < 3 and sellers == min(1, sells)
     depth = _pair_liquidity(best)
 
     ids, duplicates = set(), set()
