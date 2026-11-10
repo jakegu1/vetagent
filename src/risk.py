@@ -1628,7 +1628,7 @@ def _representative_anchor_pool(best, candidates, pairs, target):
     volume, sells = h24(best, "volume"), h24(best, "txns", "sells")
     if price is None or volume is None or sells is None:
         return best
-    age = _age_days(best.get("pairCreatedAt"))
+    age = _age_days(best.get("pairCreatedAt"), allow_clock_skew=False)
     sellers = h24(best, "traders", "sellers")
     thin_activity = age is not None and age < 3 and sellers is not None and sellers <= min(1, sells)
     depth = _pair_liquidity(best)
@@ -1743,13 +1743,12 @@ def _pair_created_ms(value):
     if isinstance(value, bool):
         return None
     if isinstance(value, (int, float)):
-        v = float(value)
-        return v if v > 1e11 else v * 1000  # seconds -> milliseconds
+        v = _market_number(value)
+        return None if v is None else (v if v > 1e11 else v * 1000)
     if isinstance(value, str):
         s = value.strip()
         if s.isdigit():
-            v = float(s)
-            return v if v > 1e11 else v * 1000
+            return _pair_created_ms(_market_number(s))
         try:
             dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
             if dt.tzinfo is None:
@@ -1766,9 +1765,9 @@ def _pair_created_ms(value):
 _MAX_CLOCK_SKEW_DAYS = 2.0
 
 
-def _age_days(created_value, now=None):
+def _age_days(created_value, now=None, *, allow_clock_skew=True):
     ms = _pair_created_ms(created_value)
-    if ms is None:
+    if ms is None or ms <= 0:
         return None
     now = now or _clock_now()
     days = (now.timestamp() * 1000 - ms) / 86400000.0
@@ -1781,7 +1780,7 @@ def _age_days(created_value, now=None):
     # Far enough ahead and skew stops being a credible explanation; that is a bad value,
     # and a bad value is a gap rather than an age.
     if days < 0:
-        return 0 if days > -_MAX_CLOCK_SKEW_DAYS else None
+        return 0 if allow_clock_skew and days > -_MAX_CLOCK_SKEW_DAYS else None
     return int(days)
 
 
