@@ -7213,6 +7213,13 @@ def test_t085_fallback_activity_requires_extreme_disagreement():
               select([winner, invalid]) == (winner, winner)
               and select([winner, rival, copy.copy(rival)]) == (winner, winner))
 
+        for index, label in enumerate(("leader", "rival")):
+            conflict = copy.deepcopy(sample["data"])
+            conflict[index]["attributes"]["quote_token_price_usd"] = "0.01"
+            pools = [risk._gt_to_pair(row, target, network) for row in conflict]
+            check("T085 contradictory direct USD quote on " + label + " prevents replacement",
+                  select(pools) == (pools[0], pools[0]))
+
         quiet = modified(winner, volume={"h24": 0}, txns={"h24": {"sells": 0}},
                          traders={"h24": {"sellers": 0}})
         check("T085 observed zero trades and volume can qualify a weak leader",
