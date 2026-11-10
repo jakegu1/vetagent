@@ -7185,6 +7185,7 @@ def test_t085_fallback_activity_requires_extreme_disagreement():
             ("primary winner", modified(winner, dexId="uniswap"), rival),
             ("similar depth", modified(winner, liquidity={"usd": 5_000_000}), rival),
             ("similar activity", modified(winner, volume={"h24": 10_000}), rival),
+            ("zero volume with completed sells", modified(winner, volume={"h24": 0}), rival),
             ("young rival", winner, modified(rival, pairCreatedAt="2026-09-05T00:00:00Z")),
             ("undated rival", winner, modified(rival, pairCreatedAt=None)),
             ("invalid text rival age", winner, modified(rival, pairCreatedAt="\u00b2")),
@@ -7211,6 +7212,23 @@ def test_t085_fallback_activity_requires_extreme_disagreement():
         check("T085 wrong raw network or duplicate pool ID cannot promote a rival",
               select([winner, invalid]) == (winner, winner)
               and select([winner, rival, copy.copy(rival)]) == (winner, winner))
+
+        quiet = modified(winner, volume={"h24": 0}, txns={"h24": {"sells": 0}},
+                         traders={"h24": {"sellers": 0}})
+        check("T085 observed zero trades and volume can qualify a weak leader",
+              select([quiet, rival]) == (rival, quiet))
+
+        competing = copy.deepcopy(sample["data"][1])
+        pool = "0x" + "2" * 40
+        competing["id"] = network + "_" + pool
+        competing["attributes"].update(address=pool, volume_usd={"h24": "200000"},
+                                       reserve_in_usd="200000")
+        deeper = risk._gt_to_pair(competing, target, network)
+        tied_volume = modified(deeper, volume=rival["volume"])
+        check("T085 higher volume outranks more depth among established rivals",
+              select([winner, deeper, rival]) == (rival, winner))
+        check("T085 depth breaks an established venue volume tie",
+              select([winner, rival, tied_volume]) == (tied_volume, winner))
 
         trusted = copy.deepcopy(sample["data"][1])
         pool = "0x" + "1" * 40
