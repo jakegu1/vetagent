@@ -4,11 +4,11 @@
 > It moves with every commit, so `git diff` tells you what the change was worth.
 
 
-## Total: **45 / 100**
+## Total: **40 / 100**
 
 | Dimension | Score | Max |
 |---|---|---|
-| Correctness | 16.5 ⚠️ | 30 |
+| Correctness | 11.5 ⚠️ | 30 |
 | Coverage | 10.8 | 20 |
 | Credibility | 13.8 | 20 |
 | Distribution | 4.2 ⚠️ | 15 |
@@ -27,7 +27,7 @@
 
 | Dimension | Item | Score | Max | Evidence |
 |---|---|---|---|---|
-| Correctness | tests all green | 5.0 | 5 | test_risk.py 1566 passed, 0 failed All passed; test_mcp.py 1728 passed, 0 failed All passed; test_http_telemetry.py 597 passed, 0 failed All passed |
+| Correctness | tests all green | 0.0 | 5 | test_risk.py 1613 passed, 0 failed All passed; test_mcp.py failed; test_http_telemetry.py 597 passed, 0 failed All passed |
 | Correctness | false positive rate (healthy rated high) | 5.0 | 5 | 1.9% |
 | Correctness | false-block rate (liquid healthy rated medium or high) | 2.0 | 5 | 13.0% (20 of 154) |
 | Correctness | unknown rate (benchmark, cached upstreams) | 2.0 | 5 | 20.7% |
@@ -103,7 +103,7 @@ with false positives and false blocks <2%, unknown <5% in the benchmark and in p
 outcome data, the benchmark methodology cited as a standard by peers, the default
 choice at every agent entry point, and paying users who would complain if it disappeared.
 
-**The current 45 is not a failure** — it says precisely that the
+**The current 40 is not a failure** — it says precisely that the
 engineering is decent, proof and demand are both still zero, and writing more code
 cannot solve those last two.
 
