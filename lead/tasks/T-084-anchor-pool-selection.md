@@ -102,3 +102,9 @@ adjudication and other signals on the original market. Add named assertions in
 `test_t084_raw_fallback_identity` and
 `test_t084_weth_fallback_main_pool_through_mcp` for these observed cases.
 
+
+A reused ID includes a valid network-qualified resource ID or a valid
+attribute address in any fetched row, even if that row is filtered from the
+target's candidate set or its two IDs disagree. Count one occurrence per
+row and preserve default ranking where an identity conflict touches a proposed
+comparison. The same named raw-fallback test covers these extra duplicate shapes.
