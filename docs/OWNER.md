@@ -80,12 +80,12 @@ gantt
 ### Is the archive still collecting?
 
 ```text
-█████████████████████   2026-10-20 -> 2026-11-09
+█████████████████████   2026-10-21 -> 2026-11-10
 ```
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**68 days, no gaps.** Newest is 2026-11-09, yesterday.
+**69 days, no gaps.** Newest is 2026-11-10, today.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- lead: record T-084 local integration
+- T-084: regenerate final verification counts
 - T-084: isolate local GeckoTerminal provenance from provider fields
 - T-084: named change (preserve comparison metadata in controls)
 - T-084: preserve the frozen provider fields contract
 - T-084: regenerate correction log and regression count
 - T-084: reject conflicting provider and simulator evidence for replacement
 - T-084: named change (reject contradictory simulation evidence)
-- T-084: require internally consistent observed simulator evidence
-- T-084: named change (verify duplicates outside the candidate set)
 
-_33 more not shown (41 commits in total)._
+_34 more not shown (42 commits in total)._
 
 ## What I got wrong
 
