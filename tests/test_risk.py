@@ -6906,6 +6906,20 @@ def test_t084_weth_fallback_main_pool_through_mcp():
               and liquid.get("liquidity_reserve_check") == "not_checkable"
               and calls == ["ds", "gt"] and not sleeps, str(liquid))
 
+        for contradictory in (
+            {"token": {"address": MATIC}},
+            {"chain": {"id": "56"}},
+            {"pair": {"chainId": 56}},
+            {"simulationError": "SELL_FAILED"},
+            {"summary": {"risk": "honeypot", "riskLevel": 100}},
+            {"summary": {"risk": "low", "riskLevel": 100}},
+        ):
+            routes[sell_url] = ("sell", 200, dict(_T084_HP, **contradictory))
+            conflict, calls, _, _, _ = run(_t083_mcp("assess_token_risk", inputs, routes))
+            check("T084 contradictory simulation cannot qualify a market substitution",
+                  conflict["evidence"]["best_pair"]["liquidity_usd"] == 635_049_000
+                  and calls == ["ds", "gt", "search", "sell"], str(contradictory))
+
         routes[sell_url] = ("sell", 404, {})
         missing, calls, _, _, _ = run(_t083_mcp("assess_token_risk", inputs, routes))
         check("T084 a stronger market cannot supply missing sellability",
@@ -7004,7 +7018,8 @@ def test_t084_raw_fallback_identity():
     cases = ("foreign pool", "foreign token", "malformed winner token",
              "missing pool id", "missing winner id", "duplicate pool id",
              "conflicting pool id", "thin rival", "unknown rival age",
-             "duplicate resource filtered by address", "duplicate row off target")
+             "duplicate resource filtered by address", "duplicate row off target",
+             "invalid explicit pool address")
     for case in cases:
         winner = copy.deepcopy(pool_rows[_T084_LEEPH_POOL])
         rival = copy.deepcopy(pool_rows[_T084_USDC_POOL])
@@ -7033,6 +7048,8 @@ def test_t084_raw_fallback_identity():
             rival["attributes"]["reserve_in_usd"] = "1"
         elif case == "unknown rival age":
             rival["attributes"].pop("pool_created_at")
+        elif case == "invalid explicit pool address":
+            rival["attributes"]["address"] = False
         elif case.startswith("duplicate"):
             duplicate = copy.deepcopy(rival)
             duplicate["attributes"]["reserve_in_usd"] = "10000000"
