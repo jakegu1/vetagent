@@ -75,3 +75,10 @@ alternative also keeps the existing requirement to exceed the leader's sell
 count, so a high observed sell count on the leader remains a reason to abstain.
 Named change in `test_t085_fallback_activity_requires_extreme_disagreement`:
 add these cases without changing the first-commit expectations.
+
+Adverse review reproduced a successful fresh-address simulation accompanied
+by failed holder sells. Treat recorded holder failures or siphoning as adverse
+for the existing market-substitution gate. Preserve the original venue and
+the holder evidence without changing the risk adjudication policy. Named
+change in `test_t085_archived_fallback_activity_through_mcp`: add a separate
+contradictory simulator response to the BSC replay.
