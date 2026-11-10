@@ -1583,16 +1583,18 @@ def _home_scope(pairs, chain_hint=None, target=None):
 
 
 _LIVE_POOL_USD = 5_000
+_ESTABLISHED_VENUE_PRICE_RATIO = 1.05
 
 
 class _GeckoPool(dict):
     """Normalized pool fields plus local provenance, never vendor dictionary keys."""
-    __slots__ = ("evm_identity", "resource_pool")
+    __slots__ = ("evm_identity", "resource_pool", "quote_price_consistent")
 
-    def __init__(self, fields, evm_identity, resource_pool):
+    def __init__(self, fields, evm_identity, resource_pool, quote_price_consistent):
         super().__init__(fields)
         self.evm_identity = evm_identity
         self.resource_pool = resource_pool
+        self.quote_price_consistent = quote_price_consistent
 
 
 def _representative_anchor_pool(best, candidates, pairs, target):
@@ -1630,7 +1632,8 @@ def _representative_anchor_pool(best, candidates, pairs, target):
         return best
     age = _age_days(best.get("pairCreatedAt"), allow_clock_skew=False)
     sellers = h24(best, "traders", "sellers")
-    thin_activity = (age is not None and age < 3 and sellers == min(1, sells)
+    thin_activity = (age is not None and age < 3 and best.quote_price_consistent
+                     and sellers == min(1, sells)
                      and (volume > 0 or sells == 0))
     depth = _pair_liquidity(best)
 
@@ -1679,7 +1682,8 @@ def _representative_anchor_pool(best, candidates, pairs, target):
             anchor_venues.append((v, candidate_depth, pair))
         # A non-anchor counterparty needs stronger corroboration: estimated depth
         # and reported activity must point sharply in opposite directions.
-        elif (thin_activity and candidate_age >= 30 and price_ratio <= 1.05
+        elif (thin_activity and pair.quote_price_consistent and candidate_age >= 30
+              and price_ratio <= _ESTABLISHED_VENUE_PRICE_RATIO
               and min(v, candidate_depth) >= 50_000 and s >= 20 and distinct >= 10
               and depth >= 100 * candidate_depth and v >= 100 * volume):
             established_venues.append((v, candidate_depth, pair))
@@ -1841,6 +1845,15 @@ def _gt_to_pair(p, address, network):
                       and all(_rel_id(side) == network + "_" + token and _EVM_RE.fullmatch(token) is not None
                               for side, token in (("base_token", base_addr),
                                                   ("quote_token", quote_addr))))
+    quote_consistent = True
+    if valid_identity:
+        quote_usd = _market_number(a.get("quote_token_price_usd"))
+        quote_units = _market_number(a.get("base_token_price_quote_token"))
+        base_usd = _market_number(price)
+        if quote_usd is not None and quote_units and base_usd:
+            implied = base_usd / quote_units
+            low, high = sorted((implied, quote_usd))
+            quote_consistent = low > 0 and high / low <= _ESTABLISHED_VENUE_PRICE_RATIO
     return _GeckoPool({
         "dexId": "geckoterminal",
         "pairAddress": pool_address,
@@ -1887,7 +1900,7 @@ def _gt_to_pair(p, address, network):
         "baseToken": {"address": base_addr, "symbol": base_sym},
         "quoteToken": {"address": quote_addr, "symbol": quote_sym},
         "priceNative": a.get("base_token_price_quote_token"),
-    }, valid_identity, resource_pool)
+    }, valid_identity, resource_pool, quote_consistent)
 
 
 # ---------------------------------------------------------------- building signals
