@@ -97,6 +97,15 @@ EXTRA_ACTIONS = []
 # claim, which is itself a thing that can turn out to be false.
 CORRECTION_WINDOW = 14
 CORRECTIONS = [
+    ("2026-11-10",
+     "The Ethereum WETH assessment treated the largest unchecked fallback reserve "
+     "estimate as its main market and used that pool's age to drive the risk rating.",
+     "The selected LEEPH/WETH pool had very little WETH at a nearby pinned Ethereum "
+     "block. A different WETH/USDC venue had substantial reserves and trading. "
+     "The upstream estimate and the identity of the representative market are separate.",
+     "A test-marked integration call, public provider responses, pinned token balances "
+     "and a same-input offline MCP replay isolated the selection error. The correction "
+     "is tested locally; deployment and overall error rates are separate questions."),
     ("2026-10-26",
      "The first current-check summary called an expired correction-log record an "
      "expired opportunity record.",

@@ -85,3 +85,5 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 
 | T-082 | Preserve explicitly supplied HTTP status in the offline policy CLI | 1 | S | none | source accepted; independent12/12 and assembled916d161 complete47; normal CI/release pending |
 | T-083 | Preserve recognized hints and eligible cached market evidence | 3 | M | none | source accepted; independent12/12, adverse none and assembled916d161 complete47; normal CI/release pending |
+
+| T-084 | Select a representative anchor market on reserve-less fallback | 3 | S | T-026, T-030, T-083 | ready |

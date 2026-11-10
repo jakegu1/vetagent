@@ -1582,13 +1582,97 @@ def _home_scope(pairs, chain_hint=None, target=None):
     return tier
 
 
-def _pick_best(pairs, chain_hint=None, target=None):
-    """Pick a pool defensively: target chain first -> must contain the target address
-    -> sane price -> deepest liquidity.
+_LIVE_POOL_USD = 5_000
 
-    Picking on liquidity alone lands on a mispriced pool on a fork chain
-    (USDC resolves to a pulsechain pool quoting $0.00097).
-    """
+
+class _GeckoPool(dict):
+    """Normalized pool fields plus local provenance, never vendor dictionary keys."""
+    __slots__ = ("evm_identity", "resource_pool")
+
+    def __init__(self, fields, evm_identity, resource_pool):
+        super().__init__(fields)
+        self.evm_identity = evm_identity
+        self.resource_pool = resource_pool
+
+
+def _representative_anchor_pool(best, candidates, pairs, target):
+    """Break an unchecked fallback depth lead with corroborated anchor activity."""
+    chain = (best.get("chainId") or "").lower()
+    anchors = _ANCHORS.get(chain, ())
+    if (best.get("dexId") != "geckoterminal" or target not in anchors
+            or not isinstance(best, _GeckoPool) or not best.evm_identity
+            or _independent_depth_cap(best) is not _NOT_CHECKABLE):
+        return best
+
+    def other_side(pair):
+        base = ((pair.get("baseToken") or {}).get("address") or "").lower()
+        quote = ((pair.get("quoteToken") or {}).get("address") or "").lower()
+        if base == target and quote != target:
+            return quote
+        if quote == target and base != target:
+            return base
+        return ""
+
+    def h24(pair, field, key=None):
+        outer = pair.get(field)
+        inner = outer.get("h24") if isinstance(outer, dict) else None
+        if key is None:
+            return _market_number(inner)
+        count = _market_number(inner.get(key)) if isinstance(inner, dict) else None
+        return count if count is not None and count.is_integer() else None
+
+    other = other_side(best)
+    if not other or other in anchors:
+        return best
+    price = _price_of_target(best, target)
+    volume, sells = h24(best, "volume"), h24(best, "txns", "sells")
+    if price is None or volume is None or sells is None:
+        return best
+
+    ids, duplicates = set(), set()
+    for pair in pairs:
+        if (not isinstance(pair, _GeckoPool)
+                or (pair.get("chainId") or "").lower() != chain):
+            continue
+        # Even a row that does not contain the target can disagree about an ID.
+        row_ids = {pool.lower() for value in (pair.get("pairAddress"), pair.resource_pool)
+                   if (pool := _validated_pool_id(value))}
+        duplicates.update(row_ids & ids)
+        ids.update(row_ids)
+    if best["pairAddress"].lower() in duplicates:
+        return best
+
+    # A WETH quote can price an enormous supply of its counterparty without
+    # meaningfully funding it. The fallback does not tell us the reserve split.
+    # Prefer another anchor on a comparably priced venue where we can observe
+    # strictly more volume and sells. This ranks venues; it verifies no reserves.
+    stronger = []
+    for pair in candidates:
+        if ((pair.get("chainId") or "").lower() != chain
+                or pair.get("dexId") != "geckoterminal"
+                or not isinstance(pair, _GeckoPool) or not pair.evm_identity
+                or other_side(pair) not in anchors
+                or pair["pairAddress"].lower() in duplicates
+                or _pair_liquidity(pair) < _LIVE_POOL_USD
+                or _age_days(pair.get("pairCreatedAt")) is None):
+            continue
+        p = _price_of_target(pair, target)
+        if p is None or max(p, price) / min(p, price) > _PRICE_DISAGREEMENT_FACTOR:
+            continue
+        v, s = h24(pair, "volume"), h24(pair, "txns", "sells")
+        distinct = h24(pair, "traders", "sellers")
+        if v is not None and v > volume and s is not None and s > sells and 0 < (distinct or 0) <= s:
+            stronger.append((v, _pair_liquidity(pair), pair))
+    return max(stronger, key=lambda entry: entry[:2])[2] if stronger else best
+
+
+def _pick_best(pairs, chain_hint=None, target=None):
+    """The representative market shown to the caller."""
+    return _pick_markets(pairs, chain_hint, target)[0]
+
+
+def _pick_markets(pairs, chain_hint=None, target=None):
+    """Return (representative market, original depth winner) on the target chain."""
     target_l = (target or "").lower()
 
     def _valid(p):
@@ -1613,20 +1697,18 @@ def _pick_best(pairs, chain_hint=None, target=None):
         price = p.get("priceUsd")
         return True if price in (None, "") else (_market_number(price) or 0) > 0
 
-    def _is_target(p):
-        bt = ((p.get("baseToken") or {}).get("address") or "").lower()
-        qt = ((p.get("quoteToken") or {}).get("address") or "").lower()
-        return (bt == target_l or qt == target_l) if target_l else True
-
     if not pairs:
-        return None
+        return None, None
 
-    pool = [p for p in _home_scope(pairs, chain_hint, target) if _valid(p)]
+    scoped = _home_scope(pairs, chain_hint, target)
+    pool = [p for p in scoped if _valid(p)]
     if not pool:
-        return None      # the token's own chain has nothing usable; say so, do not roam
+        return None, None  # the token's own chain has nothing usable; do not roam
     # Depth still decides the winner -- but only among pools the rest of this token's
     # market does not flatly contradict.
-    return max(_drop_price_outliers(pool, target), key=_pair_liquidity)
+    candidates = _drop_price_outliers(pool, target)
+    best = max(candidates, key=_pair_liquidity)
+    return _representative_anchor_pool(best, candidates, pairs, target_l), best
 
 
 def _pair_created_ms(value):
@@ -1702,8 +1784,11 @@ def _gt_to_pair(p, address, network):
     a = p.get("attributes") or {}
     rel = p.get("relationships") or {}
 
+    def _rel_id(side):
+        return str((((rel.get(side) or {}).get("data")) or {}).get("id") or "")
+
     def _rel_addr(side):
-        rid = str((((rel.get(side) or {}).get("data")) or {}).get("id") or "")
+        rid = _rel_id(side)
         # "<network>_<address>", and the network can contain an underscore
         # ("polygon_pos"); an address never does.
         return rid.rsplit("_", 1)[-1] if "_" in rid else ""
@@ -1723,11 +1808,22 @@ def _gt_to_pair(p, address, network):
         # Preserve invalid-present provenance for candidate qualification. A bad
         # primary price cannot be recast as a genuinely missing optional price.
         price = raw_price
-    return {
+    # Keep the legacy normalized fields for default ranking. The new anchor
+    # comparison also needs the network and identity that the raw row actually named.
+    resource = str(p.get("id") or "")
+    resource_net, _, resource_pool = resource.rpartition("_")
+    pool_address = a.get("address") or (resource.rsplit("_", 1)[-1] or None)
+    resource_pool = _validated_pool_id(resource_pool) if resource_net == network else None
+    advertised = a.get("address", resource_pool)
+    valid_identity = (_looks_evm(address) and resource_pool is not None
+                      and _validated_pool_id(advertised) is not None
+                      and advertised.lower() == resource_pool.lower()
+                      and all(_rel_id(side) == network + "_" + token and _EVM_RE.fullmatch(token) is not None
+                              for side, token in (("base_token", base_addr),
+                                                  ("quote_token", quote_addr))))
+    return _GeckoPool({
         "dexId": "geckoterminal",
-        # GeckoTerminal pool ids look like "eth_0xabc..."; the address is the tail.
-        "pairAddress": (a.get("address")
-                        or (str(p.get("id") or "").rsplit("_", 1)[-1] or None)),
+        "pairAddress": pool_address,
         "chainId": _GT_TO_CHAIN.get(network, network),
         # None, not 0.0, when GeckoTerminal did not state a reserve -- see
         # _reported_liquidity. A missing number must not arrive downstream as a measured
@@ -1771,7 +1867,7 @@ def _gt_to_pair(p, address, network):
         "baseToken": {"address": base_addr, "symbol": base_sym},
         "quoteToken": {"address": quote_addr, "symbol": quote_sym},
         "priceNative": a.get("base_token_price_quote_token"),
-    }
+    }, valid_identity, resource_pool)
 
 
 # ---------------------------------------------------------------- building signals
@@ -1779,8 +1875,7 @@ def _gt_to_pair(p, address, network):
 def _liquidity_signals(best, pairs, signals, evidence, target=None):
     liq = _pair_liquidity(best)
     vol = _market_number((best.get("volume") or {}).get("h24"))
-    # Buy/sell counts come free in the same response and are the only direct evidence we
-    # have about whether people can actually get out. _honeypot_signals reads them back.
+    # Buy/sell counts belong to the pool that reported them.
     txns = ((best.get("txns") or {}).get("h24") or {})
     evidence["best_pair"] = {
         "dex": best.get("dexId"), "chain": best.get("chainId"),
@@ -1798,7 +1893,8 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
         "volume_24h_usd": _market_round(vol), "pair_created_at": best.get("pairCreatedAt"),
         "buys_24h": _market_number(txns.get("buys")), "sells_24h": _market_number(txns.get("sells")),
     }
-    if liq < 5000:
+
+    if liq < _LIVE_POOL_USD:
         signals.append(_sig("critical", "Very low liquidity",
                             "Main pair holds only $%s. High rug and slippage risk." % format(liq, ",.0f"),
                             "liquidity"))
@@ -1933,7 +2029,7 @@ async def _impersonation_signals(address, pairs, signals, evidence,
     # _pick_best, which applies the chain-canonicality and price sanity checks. Taking a
     # raw max over pairs measured a different quantity from the one the verdict is based
     # on, and the two can disagree.
-    ours = _pick_best(pairs, chain_hint=chain_hint, target=address)
+    _, ours = _pick_markets(pairs, chain_hint=chain_hint, target=address)
     mine = _reported_liquidity(ours) if ours is not None else None
     if mine is None or mine <= 0:
         return  # we cannot size our own side, so we cannot say anything is dwarfing it
@@ -2916,7 +3012,7 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
         # An attacker wants `low` or `medium`, and `unknown` denies both; `high` on our
         # own outage would only smear the token.
         sellers = _market_number(bp.get("sellers_24h"))
-        pool_alive = (_market_number(bp.get("liquidity_usd")) or 0) >= 5_000
+        pool_alive = (_market_number(bp.get("liquidity_usd")) or 0) >= _LIVE_POOL_USD
         sells_work = (pool_alive and sells is not None and buys is not None
                       and sells >= 20 and sells >= 0.15 * (buys + 1))
         band = _holder_share_band(ha, flags, sim_ok, sim)
@@ -4134,12 +4230,38 @@ _SLIM_EVIDENCE_KEYS = (
 )
 
 
+def _clean_sell_observed(raw, evidence, data_gaps, address, chain):
+    """Require consistent positive simulation evidence before substituting a market."""
+    hp = evidence.get("honeypot") or {}
+    level = _market_number(hp.get("upstream_risk_level"))
+    risk = hp.get("upstream_risk")
+    # Honeypot.is summary ranges: https://docs.honeypot.is/ishoneypot#summary
+    low = (risk == "very_low" and level == 0
+           or risk == "low" and level is not None and level.is_integer() and 1 <= level <= 19)
+    if (not isinstance(raw, dict) or raw.get("simulationError")
+            or (raw.get("summary") or {}).get("flags") or not low
+            or hp.get("simulation_success") is not True or hp.get("is_honeypot") is not False
+            or any(_market_number(hp.get(k)) != 0 for k in ("buy_tax", "sell_tax", "transfer_tax"))
+            or any(g["dimension"] == "sellability" for g in data_gaps)):
+        return False
+    chain_id = str(_SIMULATOR_CHAIN_IDS[chain])
+    for field, key, expected in (("token", "address", address.lower()),
+                                 ("chain", "id", chain_id), ("pair", "chainId", chain_id)):
+        if field not in raw:
+            continue
+        item = raw[field]
+        if not isinstance(item, dict) or (key in item and str(item[key]).lower() != expected):
+            return False
+    return True
+
+
 async def assess(address, chain_hint=None, verbose=False):
     """The core call: a token's risk profile. Fail closed, address validated up front."""
     address = validate_address(address)
     _begin_request()            # per-request; drained into evidence at the end
     signals, evidence, data_gaps = [], {}, []
     pool_id = None
+    promotion = None
 
     # Which chain this answer is about, recorded before anything is concluded from it.
     #
@@ -4182,7 +4304,7 @@ async def assess(address, chain_hint=None, verbose=False):
                             "no_liquidity"))
     else:
         evidence["liquidity_source"] = source
-        best = _pick_best(pairs, chain_hint=chain_hint, target=address)
+        best, depth_best = _pick_markets(pairs, chain_hint=chain_hint, target=address)
         # Judged over the pools we actually chose from. A fork pool rank already excluded
         # is not a disagreement, it is a pool we refused.
         conflict = _unranked_price_conflict(_home_scope(pairs, chain_hint, address),
@@ -4267,7 +4389,16 @@ async def assess(address, chain_hint=None, verbose=False):
                                     "Pairs exist but none could be costed.",
                                     "no_liquidity"))
         else:
-            pool_id = _liquidity_signals(best, pairs, signals, evidence, target=address)
+            if best is depth_best:
+                pool_id = _liquidity_signals(best, pairs, signals, evidence, target=address)
+            else:
+                # Run the existing risk checks against the original market. Only
+                # a clean observed sale can qualify a replacement for scoring.
+                market = {}
+                start = len(signals)
+                pool_id = _liquidity_signals(depth_best, pairs, signals, market, target=address)
+                evidence.update(market)
+                promotion = (best, tuple(market), slice(start, len(signals)))
             await _impersonation_signals(address, pairs, signals, evidence,
                                          chain_hint=chain_hint)
 
@@ -4387,6 +4518,14 @@ async def assess(address, chain_hint=None, verbose=False):
         _rugcheck_signals(
             await _fetch_json("https://api.rugcheck.xyz/v1/tokens/%s/report" % address),
             signals, evidence, data_gaps)
+
+    if promotion is not None and _clean_sell_observed(hp, evidence, data_gaps, address, hp_chain):
+        candidate, market_keys, market_signals = promotion
+        for key in market_keys:
+            evidence.pop(key, None)
+        new_signals = []
+        _liquidity_signals(candidate, pairs, new_signals, evidence, target=address)
+        signals[market_signals] = new_signals
 
     # If any upstream was down and we answered from cache, say so. Serving stale data
     # is defensible; serving it silently is not.
