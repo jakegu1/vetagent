@@ -7149,6 +7149,22 @@ def test_t085_archived_fallback_activity_through_mcp():
                       and recorded["best_pair"]["pair_address"] == winner
                       and recorded["honeypot"].get("holder_analysis") == holders,
                       str(conflicting.get("risk_level")))
+
+            invalid_time = copy.deepcopy(sample["data"])
+            invalid_time[0]["attributes"]["pool_created_at"] = json.loads("-1e309")
+            routes[_t083_market_url(chain, address)] = ("gt", 200, {"data": invalid_time})
+            routes[sell_url] = ("sell", 404, {})
+            result, calls, _, _, _ = run(_t083_mcp("assess_token_risk", verbose, routes))
+            try:
+                json.dumps(result, allow_nan=False)
+                strict_json = True
+            except ValueError:
+                strict_json = False
+            evidence = result["evidence"]
+            check("T085 invalid creation time is null in structured assessment",
+                  strict_json and evidence["best_pair"]["pair_created_at"] is None
+                  and evidence["best_pair"]["pair_address"] == winner
+                  and result.get("risk_level") == "unknown" and calls == expected)
         finally:
             risk._BENCH_NOW.reset(clock)
 
