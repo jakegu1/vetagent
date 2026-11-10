@@ -6910,6 +6910,7 @@ def test_t084_weth_fallback_main_pool_through_mcp():
         missing, calls, _, _, _ = run(_t083_mcp("assess_token_risk", inputs, routes))
         check("T084 a stronger market cannot supply missing sellability",
               missing.get("risk_level") == "unknown"
+              and missing["evidence"]["best_pair"]["liquidity_usd"] == 635_049_000
               and any(g["dimension"] == "sellability" for g in missing["evidence"]["data_gaps"])
               and calls == ["ds", "gt", "search", "sell"], str(missing.get("risk_level")))
 
@@ -6921,7 +6922,7 @@ def test_t084_weth_fallback_main_pool_through_mcp():
         check("T084 measured 100% sell tax stays high even on an active market",
               restricted.get("risk_level") == "high"
               and restricted["evidence"]["honeypot"]["sell_tax"] == 100
-              and restricted["evidence"]["honeypot"]["market_comparison_pair"] == _T084_LEEPH_POOL
+              and restricted["evidence"]["best_pair"]["liquidity_usd"] == 635_049_000
               and calls == ["ds", "gt", "search", "sell"], str(restricted.get("signals")))
 
         routes[sell_url] = ("sell", 200, {"simulationSuccess": False, "simulationError": "BUY_FAILED"})
@@ -6930,6 +6931,22 @@ def test_t084_weth_fallback_main_pool_through_mcp():
         check("T084 changing the main market leaves the existing sell retry on the original pool",
               failure.get("risk_level") == "unknown"
               and calls == ["ds", "gt", "search", "sell", "original_pool_retry"], str(calls))
+        contradictory = dict(bad, honeypotResult={"isHoneypot": False},
+                             summary={"risk": "low", "riskLevel": 1})
+        routes[sell_url] = ("sell", 200, contradictory)
+        both = [copy.deepcopy(row) for row in gt["data"]
+                if row["attributes"]["address"] in (_T084_LEEPH_POOL, _T084_USDC_POOL)]
+        for row in both:
+            row["attributes"]["volume_usd"]["h24"] = (
+                "10000" if row["attributes"]["address"] == _T084_LEEPH_POOL else "1000000")
+        routes[_t083_market_url("eth", address)] = ("gt", 200, {"data": both})
+        taxed, calls, _, _, _ = run(_t083_mcp(
+            "assess_token_risk", dict(inputs, verbose=True), routes))
+        check("T084 a false honeypot boolean cannot use replacement to weaken observed 100% tax",
+              taxed.get("risk_level") == "high" and taxed.get("risk_score") == 74
+              and taxed["evidence"]["best_pair"]["pair_address"] == _T084_LEEPH_POOL
+              and taxed["evidence"]["honeypot"]["sell_tax"] == 100
+              and calls == ["ds", "gt", "search", "sell"], str(taxed.get("signals")))
     finally:
         risk._BENCH_NOW.reset(clock)
 
@@ -6977,6 +6994,56 @@ def test_t084_comparison_requires_observed_eligible_alternative():
     nonanchor_rival = dict(rival, baseToken={"address": leeph})
     check("T084 a non-anchor query does not use the exception",
           select([winner, nonanchor_rival], leeph) == _T084_LEEPH_POOL)
+
+
+def test_t084_raw_fallback_identity():
+    print("\n[T084] raw fallback IDs must agree before switching venues")
+    address = WETH.lower()
+    pool_rows = {p["attributes"]["address"]: p
+                 for p in _load("gt_weth_anchor_pools.json")["data"]}
+    cases = ("foreign pool", "foreign token", "malformed winner token",
+             "missing pool id", "missing winner id", "duplicate pool id",
+             "conflicting pool id", "thin rival", "unknown rival age")
+    for case in cases:
+        winner = copy.deepcopy(pool_rows[_T084_LEEPH_POOL])
+        rival = copy.deepcopy(pool_rows[_T084_USDC_POOL])
+        if case == "foreign pool":
+            rival["id"] = rival["id"].replace("eth_", "base_")
+            for relation in rival["relationships"].values():
+                relation["data"]["id"] = relation["data"]["id"].replace("eth_", "base_")
+        elif case == "foreign token":
+            quote = rival["relationships"]["quote_token"]["data"]
+            quote["id"] = quote["id"].replace("eth_", "base_")
+        elif case == "malformed winner token":
+            winner["relationships"]["base_token"]["data"]["id"] = "eth_not-an-address"
+        elif case == "missing pool id":
+            rival.pop("id")
+            rival["attributes"].pop("address")
+        elif case == "missing winner id":
+            winner.pop("id")
+            winner["attributes"].pop("address")
+        elif case == "duplicate pool id":
+            rival["id"] = winner["id"]
+            rival["attributes"]["address"] = winner["attributes"]["address"]
+        elif case == "conflicting pool id":
+            rival["id"] = winner["id"]
+        elif case == "thin rival":
+            rival["attributes"]["reserve_in_usd"] = "1"
+        elif case == "unknown rival age":
+            rival["attributes"].pop("pool_created_at")
+        routes = {_T083_DS + address: ("ds", 200, {"pairs": []}),
+                  _t083_market_url("eth", address): ("gt", 200, {"data": [winner, rival]}),
+                  "https://api.dexscreener.com/latest/dex/search?q=WETH": ("search", 200, {"pairs": []}),
+                  "https://api.honeypot.is/v2/IsHoneypot?address=" + address + "&chainID=1":
+                  ("sell", 200, _T084_HP)}
+        args = {"address": address, "chain_hint": "ethereum"}
+        assessed, _, _, _, _ = run(_t083_mcp("assess_token_risk", dict(args, verbose=True), routes))
+        liquidity, _, _, _, _ = run(_t083_mcp("get_token_liquidity", args, routes))
+        pair = assessed["evidence"]["best_pair"]
+        check("T084 " + case + " cannot promote rival data in either MCP tool",
+              pair["pair_address"] == ("" if case == "missing winner id" else _T084_LEEPH_POOL)
+              and pair["liquidity_usd"] == liquidity["liquidity_usd"] == 635_049_000,
+              str((pair["pair_address"], pair["liquidity_usd"], liquidity["liquidity_usd"])))
 
 
 def main():
