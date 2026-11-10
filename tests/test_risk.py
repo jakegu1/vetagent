@@ -7003,10 +7003,12 @@ def test_t084_raw_fallback_identity():
                  for p in _load("gt_weth_anchor_pools.json")["data"]}
     cases = ("foreign pool", "foreign token", "malformed winner token",
              "missing pool id", "missing winner id", "duplicate pool id",
-             "conflicting pool id", "thin rival", "unknown rival age")
+             "conflicting pool id", "thin rival", "unknown rival age",
+             "duplicate resource filtered by address", "duplicate row off target")
     for case in cases:
         winner = copy.deepcopy(pool_rows[_T084_LEEPH_POOL])
         rival = copy.deepcopy(pool_rows[_T084_USDC_POOL])
+        extra = []
         if case == "foreign pool":
             rival["id"] = rival["id"].replace("eth_", "base_")
             for relation in rival["relationships"].values():
@@ -7031,8 +7033,17 @@ def test_t084_raw_fallback_identity():
             rival["attributes"]["reserve_in_usd"] = "1"
         elif case == "unknown rival age":
             rival["attributes"].pop("pool_created_at")
+        elif case.startswith("duplicate"):
+            duplicate = copy.deepcopy(rival)
+            duplicate["attributes"]["reserve_in_usd"] = "10000000"
+            if case == "duplicate resource filtered by address":
+                duplicate["attributes"]["address"] = "0xe0554a476a092703abdb3ef35c80e0d76d32939f"
+            else:
+                duplicate["relationships"]["base_token"]["data"]["id"] = (
+                    "eth_0x2260fac5e5542a773aa44fbcfedf7c193bc2c599")
+            extra.append(duplicate)
         routes = {_T083_DS + address: ("ds", 200, {"pairs": []}),
-                  _t083_market_url("eth", address): ("gt", 200, {"data": [winner, rival]}),
+                  _t083_market_url("eth", address): ("gt", 200, {"data": [winner, rival] + extra}),
                   "https://api.dexscreener.com/latest/dex/search?q=WETH": ("search", 200, {"pairs": []}),
                   "https://api.honeypot.is/v2/IsHoneypot?address=" + address + "&chainID=1":
                   ("sell", 200, _T084_HP)}
