@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- T-084: isolate local GeckoTerminal provenance from provider fields
+- T-084: named change (preserve comparison metadata in controls)
+- T-084: preserve the frozen provider fields contract
+- T-084: regenerate correction log and regression count
 - T-084: reject conflicting provider and simulator evidence for replacement
 - T-084: named change (reject contradictory simulation evidence)
 - T-084: require internally consistent observed simulator evidence
 - T-084: named change (verify duplicates outside the candidate set)
-- T-084: account for reused IDs on rejected source rows
-- T-084: record the reproduced WETH market attribution error
-- T-084: validate fallback identities and gate score changes on observed clean sells
-- T-084: named change (raw venue identity and adverse-result regressions)
 
-_29 more not shown (37 commits in total)._
+_33 more not shown (41 commits in total)._
 
 ## What I got wrong
 
