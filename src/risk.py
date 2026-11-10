@@ -1916,6 +1916,11 @@ def _gt_to_pair(p, address, network):
 def _liquidity_signals(best, pairs, signals, evidence, target=None):
     liq = _pair_liquidity(best)
     vol = _market_number((best.get("volume") or {}).get("h24"))
+    created = best.get("pairCreatedAt")
+    fallback = isinstance(best, _GeckoPool)
+    age = _age_days(created, malformed_as_missing=fallback)
+    if fallback and age is None:
+        created = None
     # Buy/sell counts belong to the pool that reported them.
     txns = ((best.get("txns") or {}).get("h24") or {})
     evidence["best_pair"] = {
@@ -1931,7 +1936,7 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
         # engine error.
         "pair_address": _ascii_safe(best.get("pairAddress") or best.get("pool_id"), 48),
         "sellers_24h": _market_number(((best.get("traders") or {}).get("h24") or {}).get("sellers")),
-        "volume_24h_usd": _market_round(vol), "pair_created_at": best.get("pairCreatedAt"),
+        "volume_24h_usd": _market_round(vol), "pair_created_at": created,
         "buys_24h": _market_number(txns.get("buys")), "sells_24h": _market_number(txns.get("sells")),
     }
 
@@ -1964,7 +1969,6 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
                                                  _ascii_safe(best.get("chainId"), 24)),
             "cross_chain"))
 
-    age = _age_days(best.get("pairCreatedAt"), malformed_as_missing=isinstance(best, _GeckoPool))
     if age is not None:
         evidence["pair_age_days"] = age
         if age < 3:
