@@ -87,3 +87,4 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-083 | Preserve recognized hints and eligible cached market evidence | 3 | M | none | source accepted; independent12/12, adverse none and assembled916d161 complete47; normal CI/release pending |
 
 | T-084 | Select a representative anchor market on reserve-less fallback | 3 | S | T-026, T-030, T-083 | source accepted at cb3ef29 and integrated locally at 28e9249. Integrated checks and normal release pending |
+| T-085 | Choose an established venue when fallback depth and activity conflict | 3 | S | T-084 | ready; offline source qualification only |
