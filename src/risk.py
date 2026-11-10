@@ -1586,7 +1586,7 @@ _LIVE_POOL_USD = 5_000
 _GT_EVM_IDENTITY = object()
 
 
-def _representative_anchor_pool(best, candidates, scoped, target):
+def _representative_anchor_pool(best, candidates, pairs, target):
     """Break an unchecked fallback depth lead with corroborated anchor activity."""
     chain = (best.get("chainId") or "").lower()
     anchors = _ANCHORS.get(chain, ())
@@ -1621,14 +1621,15 @@ def _representative_anchor_pool(best, candidates, scoped, target):
         return best
 
     ids, duplicates = set(), set()
-    for pair in scoped:
-        pool_id = _validated_pool_id(pair.get("pairAddress"))
-        if (pair.get("dexId") == "geckoterminal" and pool_id
-                and (pair.get("chainId") or "").lower() == chain):
-            pool_id = pool_id.lower()
-            if pool_id in ids:
-                duplicates.add(pool_id)
-            ids.add(pool_id)
+    for pair in pairs:
+        if (pair.get("dexId") != "geckoterminal"
+                or (pair.get("chainId") or "").lower() != chain):
+            continue
+        # Even a row that does not contain the target can disagree about an ID.
+        row_ids = {pool.lower() for value in (pair.get("pairAddress"), pair.get("_gt_resource_pool"))
+                   if (pool := _validated_pool_id(value))}
+        duplicates.update(row_ids & ids)
+        ids.update(row_ids)
     if best["pairAddress"].lower() in duplicates:
         return best
 
@@ -1698,7 +1699,7 @@ def _pick_markets(pairs, chain_hint=None, target=None):
     # market does not flatly contradict.
     candidates = _drop_price_outliers(pool, target)
     best = max(candidates, key=_pair_liquidity)
-    return _representative_anchor_pool(best, candidates, scoped, target_l), best
+    return _representative_anchor_pool(best, candidates, pairs, target_l), best
 
 
 def _pair_created_ms(value):
@@ -1803,15 +1804,18 @@ def _gt_to_pair(p, address, network):
     resource = str(p.get("id") or "")
     resource_net, _, resource_pool = resource.rpartition("_")
     pool_address = a.get("address") or (resource.rsplit("_", 1)[-1] or None)
-    valid_identity = (_looks_evm(address) and resource_net == network
-                      and _validated_pool_id(pool_address) is not None
-                      and pool_address.lower() == resource_pool.lower()
+    resource_pool = _validated_pool_id(resource_pool) if resource_net == network else None
+    advertised = a.get("address", resource_pool)
+    valid_identity = (_looks_evm(address) and resource_pool is not None
+                      and _validated_pool_id(advertised) is not None
+                      and advertised.lower() == resource_pool.lower()
                       and all(_rel_id(side) == network + "_" + token and _EVM_RE.fullmatch(token) is not None
                               for side, token in (("base_token", base_addr),
                                                   ("quote_token", quote_addr))))
     return {
         "dexId": "geckoterminal",
         "_gt_evm_identity": _GT_EVM_IDENTITY if valid_identity else None,
+        "_gt_resource_pool": resource_pool,
         "pairAddress": pool_address,
         "chainId": _GT_TO_CHAIN.get(network, network),
         # None, not 0.0, when GeckoTerminal did not state a reserve -- see
@@ -4219,13 +4223,28 @@ _SLIM_EVIDENCE_KEYS = (
 )
 
 
-def _clean_sell_observed(evidence, signals, data_gaps):
+def _clean_sell_observed(raw, evidence, data_gaps, address, chain):
+    """Require consistent positive simulation evidence before substituting a market."""
     hp = evidence.get("honeypot") or {}
-    return (hp.get("simulation_success") is True and hp.get("is_honeypot") is False
-            and all(_market_number(hp.get(k)) == 0 for k in ("buy_tax", "sell_tax", "transfer_tax"))
-            and not any(g["dimension"] == "sellability" for g in data_gaps)
-            and not any(s["category"] == "upstream_risk"
-                        and s["severity"] in ("warn", "critical", "fatal") for s in signals))
+    level = _market_number(hp.get("upstream_risk_level"))
+    risk = hp.get("upstream_risk")
+    # Honeypot.is summary ranges: https://docs.honeypot.is/ishoneypot#summary
+    low = (risk == "very_low" and level == 0
+           or risk == "low" and level is not None and level.is_integer() and 1 <= level <= 19)
+    if (not isinstance(raw, dict) or raw.get("simulationError") or hp.get("flags") or not low
+            or hp.get("simulation_success") is not True or hp.get("is_honeypot") is not False
+            or any(_market_number(hp.get(k)) != 0 for k in ("buy_tax", "sell_tax", "transfer_tax"))
+            or any(g["dimension"] == "sellability" for g in data_gaps)):
+        return False
+    chain_id = str(_SIMULATOR_CHAIN_IDS[chain])
+    for field, key, expected in (("token", "address", address.lower()),
+                                 ("chain", "id", chain_id), ("pair", "chainId", chain_id)):
+        if field not in raw:
+            continue
+        item = raw[field]
+        if not isinstance(item, dict) or (key in item and str(item[key]).lower() != expected):
+            return False
+    return True
 
 
 async def assess(address, chain_hint=None, verbose=False):
@@ -4492,7 +4511,7 @@ async def assess(address, chain_hint=None, verbose=False):
             await _fetch_json("https://api.rugcheck.xyz/v1/tokens/%s/report" % address),
             signals, evidence, data_gaps)
 
-    if promotion is not None and _clean_sell_observed(evidence, signals, data_gaps):
+    if promotion is not None and _clean_sell_observed(hp, evidence, data_gaps, address, hp_chain):
         candidate, market_keys, market_signals = promotion
         for key in market_keys:
             evidence.pop(key, None)
