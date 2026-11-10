@@ -108,3 +108,12 @@ attribute address in any fetched row, even if that row is filtered from the
 target's candidate set or its two IDs disagree. Count one occurrence per
 row and preserve default ranking where an identity conflict touches a proposed
 comparison. The same named raw-fallback test covers these extra duplicate shapes.
+
+2026-11-10 final provenance clarification: an explicitly invalid advertised
+pool address is not the same as a missing optional field. A clean simulation
+cannot contradict its own token, chain, error, or vendor risk classification.
+When such identity fields are present they must agree with the query. Require
+a consistent observed low or very-low Honeypot.is summary using the provider's
+documented risk-level ranges and no summary flags. These are input checks for
+the new substitution, not changes to assessment bands or simulator policy.
+Add the named cases to the raw-fallback and clean-simulation tests.
