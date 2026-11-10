@@ -6863,6 +6863,114 @@ def test_t083_recovered_market_does_not_replace_missing_sellability():
                result.get("evidence_max_age_seconds"), calls)))
 
 
+_T084_LEEPH_POOL = "0x7380e4a66f89e9fd4db32e6c6e9934130123ae66"
+_T084_USDC_POOL = "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
+_T084_HP = {"simulationSuccess": True, "honeypotResult": {"isHoneypot": False},
+            "simulationResult": {"buyTax": 0, "sellTax": 0, "transferTax": 0},
+            "summary": {"risk": "low", "riskLevel": 1},
+            "contractCode": {"openSource": True, "isProxy": False}}
+
+
+def test_t084_weth_fallback_main_pool_through_mcp():
+    print("\n[T084] public WETH fallback keeps both MCP tools on the representative pool")
+    address = WETH.lower()
+    inputs = {"address": address, "chain_hint": "ethereum"}
+    gt = _load("gt_weth_anchor_pools.json")
+    routes = {_T083_DS + address: ("ds", 200, {"pairs": []}),
+              _t083_market_url("eth", address): ("gt", 200, gt),
+              "https://api.dexscreener.com/latest/dex/search?q=WETH": ("search", 200, {"pairs": []})}
+    sell_url = "https://api.honeypot.is/v2/IsHoneypot?address=" + address + "&chainID=1"
+    routes[sell_url] = ("sell", 200, _T084_HP)
+    clock = risk._BENCH_NOW.set(datetime.datetime(2026, 11, 10, 6, 52, 18,
+                                                tzinfo=datetime.timezone.utc))
+    try:
+        answer, calls, _, sleeps, _ = run(_t083_mcp(
+            "assess_token_risk", dict(inputs, verbose=True), routes))
+        evidence = answer["evidence"]
+        pool = evidence["best_pair"]
+        check("T084 WETH/USDC fields come from the selected fallback pool",
+              pool["pair_address"] == _T084_USDC_POOL
+              and pool["sells_24h"] == 3086 and pool["liquidity_usd"] == 80_442_500
+              and evidence["pair_age_days"] == 1776, str(pool))
+        check("T084 unrelated pair freshness no longer drives the WETH verdict",
+              answer["risk_level"] == "low" and answer["risk_score"] == 0
+              and sig_categories(answer).get("freshness") == "ok"
+              and evidence["honeypot"]["simulation_success"] is True,
+              str((answer["risk_level"], answer["risk_score"], answer["signals"])))
+        check("T084 assessment retains the reserve caveat without more requests",
+              evidence.get("liquidity_reserve_check") == "not_checkable"
+              and calls == ["ds", "gt", "search", "sell"] and not sleeps, str(calls))
+        liquid, calls, _, sleeps, _ = run(_t083_mcp("get_token_liquidity", inputs, routes))
+        check("T084 liquidity shows the same unchecked WETH/USDC depth",
+              liquid.get("liquidity_usd") == 80_442_500
+              and liquid.get("liquidity_reserve_check") == "not_checkable"
+              and calls == ["ds", "gt"] and not sleeps, str(liquid))
+
+        routes[sell_url] = ("sell", 404, {})
+        missing, calls, _, _, _ = run(_t083_mcp("assess_token_risk", inputs, routes))
+        check("T084 a stronger market cannot supply missing sellability",
+              missing.get("risk_level") == "unknown"
+              and any(g["dimension"] == "sellability" for g in missing["evidence"]["data_gaps"])
+              and calls == ["ds", "gt", "search", "sell"], str(missing.get("risk_level")))
+
+        bad = dict(_T084_HP, honeypotResult={"isHoneypot": True},
+                   simulationResult={"buyTax": 0, "sellTax": 100, "transferTax": 0},
+                   summary={"risk": "honeypot", "riskLevel": 100})
+        routes[sell_url] = ("sell", 200, bad)
+        restricted, calls, _, _, _ = run(_t083_mcp("assess_token_risk", inputs, routes))
+        check("T084 measured 100% sell tax stays high even on an active market",
+              restricted.get("risk_level") == "high"
+              and restricted["evidence"]["honeypot"]["sell_tax"] == 100
+              and calls == ["ds", "gt", "search", "sell"], str(restricted.get("signals")))
+    finally:
+        risk._BENCH_NOW.reset(clock)
+
+
+def test_t084_comparison_requires_observed_eligible_alternative():
+    print("\n[T084] an unverified depth winner is replaced only on corroborating evidence")
+    address = WETH.lower()
+    raw = _load("gt_weth_anchor_pools.json")["data"]
+    pairs = {p["pairAddress"]: p for p in (risk._gt_to_pair(r, address, "eth") for r in raw)}
+    winner, rival = pairs[_T084_LEEPH_POOL], pairs[_T084_USDC_POOL]
+
+    def select(pools, target=address):
+        best = risk._pick_best(pools, "ethereum", target)
+        return (best or {}).get("pairAddress")
+
+    check("T084 cross-side price comparison accepts the same WETH price",
+          select([winner, rival], WETH) == _T084_USDC_POOL)
+    control = [
+        ("depth winner alone", winner, None),
+        ("DexScreener primary", dict(winner, dexId="uniswap"), rival),
+        ("known reserves on depth winner",
+         dict(winner, liquidity={"usd": 6e8, "base": 300_000, "quote": 200_000}), rival),
+        ("winner already pairs two anchors", dict(winner, baseToken={"address": USDC}), rival),
+        ("winner counterparty missing", dict(winner, baseToken={}), rival),
+        ("winner volume absent", dict(winner, volume={}), rival),
+        ("winner sells invalid", dict(winner, txns={"h24": {"sells": "nan"}}), rival),
+        ("winner price unobserved", dict(winner, priceUsd=None), rival),
+        ("wrong chain", winner, dict(rival, chainId="base")),
+        ("unrelated", winner, dict(rival, baseToken={"address": USDC})),
+        ("same asset", winner, dict(rival, quoteToken={"address": address})),
+        ("fake USDC", winner, dict(rival, quoteToken={"address": ALIGN, "symbol": "USDC"})),
+        ("one-sided corroboration", winner, dict(rival, txns={"h24": {"sells": 1}})),
+        ("missing volume", winner, dict(rival, volume=None)),
+        ("fractional sells", winner, dict(rival, txns={"h24": {"sells": 3086.5}})),
+        ("unknown distinct sellers", winner, dict(rival, traders={})),
+        ("sellers exceed sell count", winner, dict(rival, traders={"h24": {"sellers": 4000}})),
+        ("unpriced rival", winner, dict(rival, priceUsd=None)),
+        ("divergent rival price", winner, dict(rival, priceUsd="1000000")),
+    ]
+    for label, best, other in control:
+        selected = select([best] if other is None else [other, best])
+        check("T084 " + label + " leaves the depth winner", selected == _T084_LEEPH_POOL,
+              str(selected))
+    leeph = winner["baseToken"]["address"]
+    nonanchor_rival = dict(rival, baseToken={"address": leeph})
+    check("T084 a non-anchor query does not use the exception",
+          select([winner, nonanchor_rival], leeph) == _T084_LEEPH_POOL)
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)

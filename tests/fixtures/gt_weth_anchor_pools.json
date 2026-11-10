@@ -1,0 +1,121 @@
+{
+  "data": [
+    {
+      "id": "eth_0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
+      "attributes": {
+        "address": "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
+        "name": "WETH / USDC 0.05%",
+        "pool_created_at": "2021-12-29T12:35:14Z",
+        "base_token_price_usd": "2116.53",
+        "base_token_price_quote_token": "2114.766006793",
+        "reserve_in_usd": "80442490.1897",
+        "transactions": {
+          "h24": {
+            "buys": 3546,
+            "sells": 3086,
+            "buyers": 1343,
+            "sellers": 1347
+          }
+        },
+        "volume_usd": {
+          "h24": "193282588.58345"
+        },
+        "price_change_percentage": {
+          "h24": "0.16"
+        }
+      },
+      "relationships": {
+        "base_token": {
+          "data": {
+            "id": "eth_0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+            "type": "token"
+          }
+        },
+        "quote_token": {
+          "data": {
+            "id": "eth_0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+            "type": "token"
+          }
+        }
+      }
+    },
+    {
+      "id": "eth_0xe0554a476a092703abdb3ef35c80e0d76d32939f",
+      "attributes": {
+        "address": "0xe0554a476a092703abdb3ef35c80e0d76d32939f",
+        "name": "USDC / WETH 0.01%",
+        "pool_created_at": "2021-12-30T20:32:10Z",
+        "base_token_price_usd": "1.0001217705",
+        "base_token_price_quote_token": "0.000472393085",
+        "reserve_in_usd": "10345331.2597",
+        "transactions": {
+          "h24": {
+            "buys": 8778,
+            "sells": 7554,
+            "buyers": 2768,
+            "sellers": 2949
+          }
+        },
+        "volume_usd": {
+          "h24": "45320790.3442013"
+        },
+        "price_change_percentage": {
+          "h24": "0.14"
+        }
+      },
+      "relationships": {
+        "base_token": {
+          "data": {
+            "id": "eth_0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+            "type": "token"
+          }
+        },
+        "quote_token": {
+          "data": {
+            "id": "eth_0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+            "type": "token"
+          }
+        }
+      }
+    },
+    {
+      "id": "eth_0x7380e4a66f89e9fd4db32e6c6e9934130123ae66",
+      "attributes": {
+        "address": "0x7380e4a66f89e9fd4db32e6c6e9934130123ae66",
+        "name": "LEEPH / WETH 0.01%",
+        "pool_created_at": "2026-11-10T00:23:11Z",
+        "base_token_price_usd": "2123.3255143199",
+        "base_token_price_quote_token": "1.0002403134",
+        "reserve_in_usd": "635048616.0888",
+        "transactions": {
+          "h24": {
+            "buys": 1,
+            "sells": 1,
+            "buyers": 1,
+            "sellers": 1
+          }
+        },
+        "volume_usd": {
+          "h24": "422675.384390463"
+        },
+        "price_change_percentage": {
+          "h24": "0.11"
+        }
+      },
+      "relationships": {
+        "base_token": {
+          "data": {
+            "id": "eth_0x0e07157ca643841fb04523047db7f56461540511",
+            "type": "token"
+          }
+        },
+        "quote_token": {
+          "data": {
+            "id": "eth_0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+            "type": "token"
+          }
+        }
+      }
+    }
+  ]
+}
