@@ -93,3 +93,10 @@ price, the new comparison requires them to agree within the same 1.05 ratio.
 Missing supplementary quote evidence still permits the observed price path.
 Named change in `test_t085_fallback_activity_requires_extreme_disagreement`:
 raw quote conflicts on either pool must leave the original venue selected.
+
+The discovery listing still rejects malformed rows atomically under T-028.
+Market assessment may retain a venue with an unreadable creation time, but
+must emit null for that time so the MCP response remains strict JSON. Named
+change in `test_t085_archived_fallback_activity_through_mcp`: replay a
+nonfinite timestamp with missing sellability and require valid JSON and the
+original venue.
