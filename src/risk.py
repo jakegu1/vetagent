@@ -1583,7 +1583,16 @@ def _home_scope(pairs, chain_hint=None, target=None):
 
 
 _LIVE_POOL_USD = 5_000
-_GT_EVM_IDENTITY = object()
+
+
+class _GeckoPool(dict):
+    """Normalized pool fields plus local provenance, never vendor dictionary keys."""
+    __slots__ = ("evm_identity", "resource_pool")
+
+    def __init__(self, fields, evm_identity, resource_pool):
+        super().__init__(fields)
+        self.evm_identity = evm_identity
+        self.resource_pool = resource_pool
 
 
 def _representative_anchor_pool(best, candidates, pairs, target):
@@ -1591,7 +1600,7 @@ def _representative_anchor_pool(best, candidates, pairs, target):
     chain = (best.get("chainId") or "").lower()
     anchors = _ANCHORS.get(chain, ())
     if (best.get("dexId") != "geckoterminal" or target not in anchors
-            or best.get("_gt_evm_identity") is not _GT_EVM_IDENTITY
+            or not isinstance(best, _GeckoPool) or not best.evm_identity
             or _independent_depth_cap(best) is not _NOT_CHECKABLE):
         return best
 
@@ -1622,11 +1631,11 @@ def _representative_anchor_pool(best, candidates, pairs, target):
 
     ids, duplicates = set(), set()
     for pair in pairs:
-        if (pair.get("dexId") != "geckoterminal"
+        if (not isinstance(pair, _GeckoPool)
                 or (pair.get("chainId") or "").lower() != chain):
             continue
         # Even a row that does not contain the target can disagree about an ID.
-        row_ids = {pool.lower() for value in (pair.get("pairAddress"), pair.get("_gt_resource_pool"))
+        row_ids = {pool.lower() for value in (pair.get("pairAddress"), pair.resource_pool)
                    if (pool := _validated_pool_id(value))}
         duplicates.update(row_ids & ids)
         ids.update(row_ids)
@@ -1641,7 +1650,7 @@ def _representative_anchor_pool(best, candidates, pairs, target):
     for pair in candidates:
         if ((pair.get("chainId") or "").lower() != chain
                 or pair.get("dexId") != "geckoterminal"
-                or pair.get("_gt_evm_identity") is not _GT_EVM_IDENTITY
+                or not isinstance(pair, _GeckoPool) or not pair.evm_identity
                 or other_side(pair) not in anchors
                 or pair["pairAddress"].lower() in duplicates
                 or _pair_liquidity(pair) < _LIVE_POOL_USD
@@ -1812,10 +1821,8 @@ def _gt_to_pair(p, address, network):
                       and all(_rel_id(side) == network + "_" + token and _EVM_RE.fullmatch(token) is not None
                               for side, token in (("base_token", base_addr),
                                                   ("quote_token", quote_addr))))
-    return {
+    return _GeckoPool({
         "dexId": "geckoterminal",
-        "_gt_evm_identity": _GT_EVM_IDENTITY if valid_identity else None,
-        "_gt_resource_pool": resource_pool,
         "pairAddress": pool_address,
         "chainId": _GT_TO_CHAIN.get(network, network),
         # None, not 0.0, when GeckoTerminal did not state a reserve -- see
@@ -1860,7 +1867,7 @@ def _gt_to_pair(p, address, network):
         "baseToken": {"address": base_addr, "symbol": base_sym},
         "quoteToken": {"address": quote_addr, "symbol": quote_sym},
         "priceNative": a.get("base_token_price_quote_token"),
-    }
+    }, valid_identity, resource_pool)
 
 
 # ---------------------------------------------------------------- building signals
@@ -4231,7 +4238,8 @@ def _clean_sell_observed(raw, evidence, data_gaps, address, chain):
     # Honeypot.is summary ranges: https://docs.honeypot.is/ishoneypot#summary
     low = (risk == "very_low" and level == 0
            or risk == "low" and level is not None and level.is_integer() and 1 <= level <= 19)
-    if (not isinstance(raw, dict) or raw.get("simulationError") or hp.get("flags") or not low
+    if (not isinstance(raw, dict) or raw.get("simulationError")
+            or (raw.get("summary") or {}).get("flags") or not low
             or hp.get("simulation_success") is not True or hp.get("is_honeypot") is not False
             or any(_market_number(hp.get(k)) != 0 for k in ("buy_tax", "sell_tax", "transfer_tax"))
             or any(g["dimension"] == "sellability" for g in data_gaps)):
