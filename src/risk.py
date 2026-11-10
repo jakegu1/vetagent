@@ -1582,13 +1582,65 @@ def _home_scope(pairs, chain_hint=None, target=None):
     return tier
 
 
-def _pick_best(pairs, chain_hint=None, target=None):
-    """Pick a pool defensively: target chain first -> must contain the target address
-    -> sane price -> deepest liquidity.
+def _representative_anchor_pool(best, candidates, target):
+    """Break an unchecked fallback depth lead with corroborated anchor activity."""
+    chain = (best.get("chainId") or "").lower()
+    anchors = _ANCHORS.get(chain, ())
+    if (best.get("dexId") != "geckoterminal" or target not in anchors
+            or _independent_depth_cap(best) is not _NOT_CHECKABLE):
+        return best
 
-    Picking on liquidity alone lands on a mispriced pool on a fork chain
-    (USDC resolves to a pulsechain pool quoting $0.00097).
-    """
+    def other_side(pair):
+        base = ((pair.get("baseToken") or {}).get("address") or "").lower()
+        quote = ((pair.get("quoteToken") or {}).get("address") or "").lower()
+        if base == target and quote != target:
+            return quote
+        if quote == target and base != target:
+            return base
+        return ""
+
+    def h24(pair, field, key=None):
+        outer = pair.get(field)
+        inner = outer.get("h24") if isinstance(outer, dict) else None
+        if key is None:
+            return _market_number(inner)
+        count = _market_number(inner.get(key)) if isinstance(inner, dict) else None
+        return count if count is not None and count.is_integer() else None
+
+    other = other_side(best)
+    if not other or other in anchors:
+        return best
+    price = _price_of_target(best, target)
+    volume, sells = h24(best, "volume"), h24(best, "txns", "sells")
+    if price is None or volume is None or sells is None:
+        return best
+
+    # A WETH quote can price an enormous supply of its counterparty without
+    # meaningfully funding it. The fallback does not tell us the reserve split.
+    # Prefer another anchor on a comparably priced venue where we can observe
+    # strictly more volume and sells. This ranks venues; it verifies no reserves.
+    stronger = []
+    for pair in candidates:
+        if ((pair.get("chainId") or "").lower() != chain
+                or pair.get("dexId") != "geckoterminal" or other_side(pair) not in anchors):
+            continue
+        p = _price_of_target(pair, target)
+        if p is None or max(p, price) / min(p, price) > _PRICE_DISAGREEMENT_FACTOR:
+            continue
+        v, s = h24(pair, "volume"), h24(pair, "txns", "sells")
+        distinct = h24(pair, "traders", "sellers")
+        if v is not None and v > volume and s is not None and s > sells and 0 < (distinct or 0) <= s:
+            stronger.append((v, _pair_liquidity(pair), pair))
+    return max(stronger, key=lambda entry: entry[:2])[2] if stronger else best
+
+
+def _pick_best(pairs, chain_hint=None, target=None):
+    """The representative market shown to the caller."""
+    return _pick_markets(pairs, chain_hint, target)[0]
+
+
+def _pick_markets(pairs, chain_hint=None, target=None):
+    """Return (representative market, original depth winner) on the target chain."""
     target_l = (target or "").lower()
 
     def _valid(p):
@@ -1613,20 +1665,17 @@ def _pick_best(pairs, chain_hint=None, target=None):
         price = p.get("priceUsd")
         return True if price in (None, "") else (_market_number(price) or 0) > 0
 
-    def _is_target(p):
-        bt = ((p.get("baseToken") or {}).get("address") or "").lower()
-        qt = ((p.get("quoteToken") or {}).get("address") or "").lower()
-        return (bt == target_l or qt == target_l) if target_l else True
-
     if not pairs:
-        return None
+        return None, None
 
     pool = [p for p in _home_scope(pairs, chain_hint, target) if _valid(p)]
     if not pool:
-        return None      # the token's own chain has nothing usable; say so, do not roam
+        return None, None  # the token's own chain has nothing usable; do not roam
     # Depth still decides the winner -- but only among pools the rest of this token's
     # market does not flatly contradict.
-    return max(_drop_price_outliers(pool, target), key=_pair_liquidity)
+    candidates = _drop_price_outliers(pool, target)
+    best = max(candidates, key=_pair_liquidity)
+    return _representative_anchor_pool(best, candidates, target_l), best
 
 
 def _pair_created_ms(value):
@@ -1776,13 +1825,10 @@ def _gt_to_pair(p, address, network):
 
 # ---------------------------------------------------------------- building signals
 
-def _liquidity_signals(best, pairs, signals, evidence, target=None):
-    liq = _pair_liquidity(best)
-    vol = _market_number((best.get("volume") or {}).get("h24"))
-    # Buy/sell counts come free in the same response and are the only direct evidence we
-    # have about whether people can actually get out. _honeypot_signals reads them back.
+def _pool_evidence(best, liq, vol, target):
+    # Buy/sell counts belong to the pool that reported them.
     txns = ((best.get("txns") or {}).get("h24") or {})
-    evidence["best_pair"] = {
+    return {
         "dex": best.get("dexId"), "chain": best.get("chainId"),
         "liquidity_usd": _sig_round(liq),
         # The price of the token asked about, not of whichever side the pool lists first.
@@ -1798,6 +1844,12 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
         "volume_24h_usd": _market_round(vol), "pair_created_at": best.get("pairCreatedAt"),
         "buys_24h": _market_number(txns.get("buys")), "sells_24h": _market_number(txns.get("sells")),
     }
+
+
+def _liquidity_signals(best, pairs, signals, evidence, target=None):
+    liq = _pair_liquidity(best)
+    vol = _market_number((best.get("volume") or {}).get("h24"))
+    evidence["best_pair"] = _pool_evidence(best, liq, vol, target)
     if liq < 5000:
         signals.append(_sig("critical", "Very low liquidity",
                             "Main pair holds only $%s. High rug and slippage risk." % format(liq, ",.0f"),
@@ -2726,7 +2778,7 @@ async def _distinct_sellers(hp, evidence, pool_id=None):
         bp["sellers_24h"] = _market_number(sellers)
 
 
-def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
+def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None, market_pair=None):
     """Read honeypot.is.
 
     The old code read isHoneypot out of simulationResult — a key upstream does not
@@ -2875,7 +2927,9 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None):
         # chain showing that thousands of people just did. The verdict is downgraded
         # rather than dropped: something is wrong with this token, we just know it is not
         # that nobody can exit.
-        bp = evidence.get("best_pair") or {}
+        bp = market_pair if market_pair is not None else (evidence.get("best_pair") or {})
+        if market_pair is not None:
+            evidence["honeypot"]["market_comparison_pair"] = bp.get("pair_address")
         sells = _market_number(bp.get("sells_24h"))
         buys = _market_number(bp.get("buys_24h"))
         # The pool also has to still be there. One token in the benchmark showed 458
@@ -4140,6 +4194,7 @@ async def assess(address, chain_hint=None, verbose=False):
     _begin_request()            # per-request; drained into evidence at the end
     signals, evidence, data_gaps = [], {}, []
     pool_id = None
+    sell_market = None
 
     # Which chain this answer is about, recorded before anything is concluded from it.
     #
@@ -4182,7 +4237,7 @@ async def assess(address, chain_hint=None, verbose=False):
                             "no_liquidity"))
     else:
         evidence["liquidity_source"] = source
-        best = _pick_best(pairs, chain_hint=chain_hint, target=address)
+        best, depth_best = _pick_markets(pairs, chain_hint=chain_hint, target=address)
         # Judged over the pools we actually chose from. A fork pool rank already excluded
         # is not a disagreement, it is a pool we refused.
         conflict = _unranked_price_conflict(_home_scope(pairs, chain_hint, address),
@@ -4268,6 +4323,13 @@ async def assess(address, chain_hint=None, verbose=False):
                                     "no_liquidity"))
         else:
             pool_id = _liquidity_signals(best, pairs, signals, evidence, target=address)
+            if best is not depth_best and _looks_evm(address):
+                # A better market description must not redirect a simulator retry or
+                # introduce new evidence for overturning a positive honeypot finding.
+                pool_id = depth_best.get("pairAddress") or depth_best.get("pool_id")
+                depth_vol = _market_number((depth_best.get("volume") or {}).get("h24"))
+                sell_market = _pool_evidence(depth_best, _pair_liquidity(depth_best),
+                                             depth_vol, address)
             await _impersonation_signals(address, pairs, signals, evidence,
                                          chain_hint=chain_hint)
 
@@ -4356,8 +4418,9 @@ async def assess(address, chain_hint=None, verbose=False):
                 hp = retry
                 replaced = True
 
-        await _distinct_sellers(hp, evidence, pool_id=pool_id)
-        _honeypot_signals(hp, signals, evidence, data_gaps, chain=hp_chain)
+        sell_evidence = evidence if sell_market is None else {"best_pair": sell_market}
+        await _distinct_sellers(hp, sell_evidence, pool_id=pool_id)
+        _honeypot_signals(hp, signals, evidence, data_gaps, chain=hp_chain, market_pair=sell_market)
         if unsettled_claim and replaced:
             # Before W31 this answer was a fatal honeypot; W31 read it as a failed
             # simulation and let the retry replace it, which could end at `low`. Neither:
