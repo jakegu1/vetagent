@@ -1628,6 +1628,10 @@ def _representative_anchor_pool(best, candidates, pairs, target):
     volume, sells = h24(best, "volume"), h24(best, "txns", "sells")
     if price is None or volume is None or sells is None:
         return best
+    age = _age_days(best.get("pairCreatedAt"))
+    sellers = h24(best, "traders", "sellers")
+    thin_activity = age is not None and age < 3 and sellers is not None and sellers <= min(1, sells)
+    depth = _pair_liquidity(best)
 
     ids, duplicates = set(), set()
     for pair in pairs:
@@ -1646,23 +1650,39 @@ def _representative_anchor_pool(best, candidates, pairs, target):
     # meaningfully funding it. The fallback does not tell us the reserve split.
     # Prefer another anchor on a comparably priced venue where we can observe
     # strictly more volume and sells. This ranks venues; it verifies no reserves.
-    stronger = []
+    anchor_venues, established_venues = [], []
     for pair in candidates:
         if ((pair.get("chainId") or "").lower() != chain
                 or pair.get("dexId") != "geckoterminal"
                 or not isinstance(pair, _GeckoPool) or not pair.evm_identity
-                or other_side(pair) not in anchors
-                or pair["pairAddress"].lower() in duplicates
-                or _pair_liquidity(pair) < _LIVE_POOL_USD
-                or _age_days(pair.get("pairCreatedAt")) is None):
+                or pair["pairAddress"].lower() in duplicates):
+            continue
+        counterparty = other_side(pair)
+        if not counterparty:
+            continue
+        candidate_depth = _pair_liquidity(pair)
+        candidate_age = _age_days(pair.get("pairCreatedAt"))
+        if candidate_depth < _LIVE_POOL_USD or candidate_age is None:
             continue
         p = _price_of_target(pair, target)
-        if p is None or max(p, price) / min(p, price) > _PRICE_DISAGREEMENT_FACTOR:
+        if p is None:
+            continue
+        price_ratio = max(p, price) / min(p, price)
+        if price_ratio > _PRICE_DISAGREEMENT_FACTOR:
             continue
         v, s = h24(pair, "volume"), h24(pair, "txns", "sells")
         distinct = h24(pair, "traders", "sellers")
-        if v is not None and v > volume and s is not None and s > sells and 0 < (distinct or 0) <= s:
-            stronger.append((v, _pair_liquidity(pair), pair))
+        if v is None or v <= volume or s is None or s <= sells or not 0 < (distinct or 0) <= s:
+            continue
+        if counterparty in anchors:
+            anchor_venues.append((v, candidate_depth, pair))
+        # A non-anchor counterparty needs stronger corroboration: estimated depth
+        # and reported activity must point sharply in opposite directions.
+        elif (thin_activity and candidate_age >= 30 and price_ratio <= 1.05
+              and min(v, candidate_depth) >= 50_000 and s >= 20 and distinct >= 10
+              and depth >= 100 * candidate_depth and v >= 100 * volume):
+            established_venues.append((v, candidate_depth, pair))
+    stronger = anchor_venues or established_venues
     return max(stronger, key=lambda entry: entry[:2])[2] if stronger else best
 
 
