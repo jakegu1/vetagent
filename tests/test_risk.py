@@ -6913,6 +6913,7 @@ def test_t084_weth_fallback_main_pool_through_mcp():
             {"simulationError": "SELL_FAILED"},
             {"summary": {"risk": "honeypot", "riskLevel": 100}},
             {"summary": {"risk": "low", "riskLevel": 100}},
+            {"summary": {"risk": "low", "riskLevel": 1, "flags": ["high_fail_rate"]}},
         ):
             routes[sell_url] = ("sell", 200, dict(_T084_HP, **contradictory))
             conflict, calls, _, _, _ = run(_t083_mcp("assess_token_risk", inputs, routes))
@@ -6972,6 +6973,11 @@ def test_t084_comparison_requires_observed_eligible_alternative():
     pairs = {p["pairAddress"]: p for p in (risk._gt_to_pair(r, address, "eth") for r in raw)}
     winner, rival = pairs[_T084_LEEPH_POOL], pairs[_T084_USDC_POOL]
 
+    def variant(pair, **fields):
+        modified = copy.copy(pair)
+        modified.update(fields)
+        return modified
+
     def select(pools, target=address):
         best = risk._pick_best(pools, "ethereum", target)
         return (best or {}).get("pairAddress")
@@ -6980,32 +6986,32 @@ def test_t084_comparison_requires_observed_eligible_alternative():
           select([winner, rival], WETH) == _T084_USDC_POOL)
     control = [
         ("depth winner alone", winner, None),
-        ("DexScreener primary", dict(winner, dexId="uniswap"), rival),
+        ("DexScreener primary", variant(winner, dexId="uniswap"), rival),
         ("known reserves on depth winner",
-         dict(winner, liquidity={"usd": 6e8, "base": 300_000, "quote": 200_000}), rival),
-        ("winner already pairs two anchors", dict(winner, baseToken={"address": USDC}), rival),
-        ("winner counterparty missing", dict(winner, baseToken={}), rival),
-        ("winner volume absent", dict(winner, volume={}), rival),
-        ("winner sells invalid", dict(winner, txns={"h24": {"sells": "nan"}}), rival),
-        ("winner price unobserved", dict(winner, priceUsd=None), rival),
-        ("wrong chain", winner, dict(rival, chainId="base")),
-        ("unrelated", winner, dict(rival, baseToken={"address": USDC})),
-        ("same asset", winner, dict(rival, quoteToken={"address": address})),
-        ("fake USDC", winner, dict(rival, quoteToken={"address": ALIGN, "symbol": "USDC"})),
-        ("one-sided corroboration", winner, dict(rival, txns={"h24": {"sells": 1}})),
-        ("missing volume", winner, dict(rival, volume=None)),
-        ("fractional sells", winner, dict(rival, txns={"h24": {"sells": 3086.5}})),
-        ("unknown distinct sellers", winner, dict(rival, traders={})),
-        ("sellers exceed sell count", winner, dict(rival, traders={"h24": {"sellers": 4000}})),
-        ("unpriced rival", winner, dict(rival, priceUsd=None)),
-        ("divergent rival price", winner, dict(rival, priceUsd="1000000")),
+         variant(winner, liquidity={"usd": 6e8, "base": 300_000, "quote": 200_000}), rival),
+        ("winner already pairs two anchors", variant(winner, baseToken={"address": USDC}), rival),
+        ("winner counterparty missing", variant(winner, baseToken={}), rival),
+        ("winner volume absent", variant(winner, volume={}), rival),
+        ("winner sells invalid", variant(winner, txns={"h24": {"sells": "nan"}}), rival),
+        ("winner price unobserved", variant(winner, priceUsd=None), rival),
+        ("wrong chain", winner, variant(rival, chainId="base")),
+        ("unrelated", winner, variant(rival, baseToken={"address": USDC})),
+        ("same asset", winner, variant(rival, quoteToken={"address": address})),
+        ("fake USDC", winner, variant(rival, quoteToken={"address": ALIGN, "symbol": "USDC"})),
+        ("one-sided corroboration", winner, variant(rival, txns={"h24": {"sells": 1}})),
+        ("missing volume", winner, variant(rival, volume=None)),
+        ("fractional sells", winner, variant(rival, txns={"h24": {"sells": 3086.5}})),
+        ("unknown distinct sellers", winner, variant(rival, traders={})),
+        ("sellers exceed sell count", winner, variant(rival, traders={"h24": {"sellers": 4000}})),
+        ("unpriced rival", winner, variant(rival, priceUsd=None)),
+        ("divergent rival price", winner, variant(rival, priceUsd="1000000")),
     ]
     for label, best, other in control:
         selected = select([best] if other is None else [other, best])
         check("T084 " + label + " leaves the depth winner", selected == _T084_LEEPH_POOL,
               str(selected))
     leeph = winner["baseToken"]["address"]
-    nonanchor_rival = dict(rival, baseToken={"address": leeph})
+    nonanchor_rival = variant(rival, baseToken={"address": leeph})
     check("T084 a non-anchor query does not use the exception",
           select([winner, nonanchor_rival], leeph) == _T084_LEEPH_POOL)
 
