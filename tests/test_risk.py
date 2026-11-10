@@ -6921,7 +6921,15 @@ def test_t084_weth_fallback_main_pool_through_mcp():
         check("T084 measured 100% sell tax stays high even on an active market",
               restricted.get("risk_level") == "high"
               and restricted["evidence"]["honeypot"]["sell_tax"] == 100
+              and restricted["evidence"]["honeypot"]["market_comparison_pair"] == _T084_LEEPH_POOL
               and calls == ["ds", "gt", "search", "sell"], str(restricted.get("signals")))
+
+        routes[sell_url] = ("sell", 200, {"simulationSuccess": False, "simulationError": "BUY_FAILED"})
+        routes[sell_url + "&pair=" + _T084_LEEPH_POOL] = ("original_pool_retry", 404, {})
+        failure, calls, _, _, _ = run(_t083_mcp("assess_token_risk", inputs, routes))
+        check("T084 changing the main market leaves the existing sell retry on the original pool",
+              failure.get("risk_level") == "unknown"
+              and calls == ["ds", "gt", "search", "sell", "original_pool_retry"], str(calls))
     finally:
         risk._BENCH_NOW.reset(clock)
 
