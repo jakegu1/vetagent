@@ -1350,6 +1350,12 @@ def test_t087_market_evidence_at_both_entry_points():
         data = foreign["relationships"][side]["data"]
         data["id"] = data["id"].replace("eth_", "bsc_")
     no_relationships = dict(rows[0], relationships={})
+    composite_namespace = copy.deepcopy(rows[0])
+    for side in ("base_token", "quote_token"):
+        data = composite_namespace["relationships"][side]["data"]
+        data["id"] = data["id"].replace("eth_", "eth_bsc_")
+    invalid_ticker = copy.deepcopy(market)
+    invalid_ticker["baseToken"]["symbol"] = "WETH\ud800"
     ds = "https://api.dexscreener.com/latest/dex/tokens/" + address
     gt = "https://api.geckoterminal.com/api/v2/networks/eth/tokens/" + address + "/pools"
     sell = "https://api.honeypot.is/v2/IsHoneypot?address=" + address + "&chainID=1"
@@ -1367,6 +1373,9 @@ def test_t087_market_evidence_at_both_entry_points():
                 ("missing fallback list", {"pairs": []}, {"meta": {}}, "unavailable", "unknown", 404),
                 ("wrong fallback list type", {"pairs": []}, {"data": {}}, "unavailable", "unknown", 404),
                 ("wrong network", {"pairs": []}, {"data": [foreign]}, "unavailable", "unknown", 200),
+                ("composite network", {"pairs": []}, {"data": [composite_namespace]},
+                 "unavailable", "unknown", 200),
+                ("invalid namesake ticker", {"pairs": [invalid_ticker, market]}, {}, "ok", "low", 200),
                 ("no fallback relationships", {"pairs": []}, {"data": [no_relationships]},
                  "unavailable", "unknown", 200),
                 ("mixed fallback", {"pairs": []}, {"data": [None, foreign] + rows}, "ok", "low", 200),
@@ -1383,6 +1392,33 @@ def test_t087_market_evidence_at_both_entry_points():
                               if tool == "assess_token_risk" else result.get("status") == market_status
                               and (market_status != "ok" or 0 < result.get("liquidity_usd", 0) < 10**10)),
                           str((result.get("status"), result.get("risk_level"), calls)))
+
+            fork_copy = dict(market, chainId="pulsechain")
+            routes = {ds: ("primary", 200, {"pairs": [fork_copy]}),
+                      "https://api.dexscreener.com/token-pairs/v1/ethereum/" + address: ("home", 200, [market]),
+                      sell: ("sell", 200, clean), search: ("ticker", 200, {"pairs": []})}
+            result, calls, _ = await _evidence_endpoint(surface, "get_token_liquidity", address, "ethereum", routes)
+            check("T087 %s a fork cannot shadow a same-address home pool" % surface,
+                  result.get("best_pair_chain") == "ethereum" and calls == ["primary", "home"], str(result))
+
+            flagged = dict(clean, honeypotResult={"isHoneypot": True},
+                           holderAnalysis={"holders": 1555, "failed": 1},
+                           summary={"risk": "honeypot", "riskLevel": 100})
+            pool = market["pairAddress"]
+            detail_url = "https://api.geckoterminal.com/api/v2/networks/eth/pools/" + pool
+            detail = {"id": "eth_" + pool,
+                      "attributes": {"transactions": {"h24": {"sellers": 1000}}}}
+            for label, body, expected in (
+                ("matching detail", {"data": detail}, "low"),
+                ("wrong detail", {"data": dict(detail, id="eth_0x" + "a" * 40)}, "unknown"),
+                ("malformed detail", {"data": [detail]}, "unknown"),
+            ):
+                routes = {ds: ("primary", 200, {"pairs": [market]}), sell: ("sell", 200, flagged),
+                          search: ("ticker", 200, {"pairs": []}), detail_url: ("detail", 200, body)}
+                result, calls, status = await _evidence_endpoint(surface, "assess_token_risk", address, "ethereum", routes)
+                check("T087 %s %s cannot supply foreign seller evidence" % (surface, label),
+                      status == 200 and result.get("risk_level") == expected and calls[-1] == "detail",
+                      str((result.get("risk_level"), calls)))
 
     asyncio.run(run())
 

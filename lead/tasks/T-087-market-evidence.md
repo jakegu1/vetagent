@@ -30,3 +30,9 @@ success envelopes that resemble absence.
 Named fixture change: give the synthetic GeckoTerminal venue in
 test_the_override_can_fire_on_the_geckoterminal_path explicit Ethereum token
 relationships. Keep all trade-count and honeypot adjudication assertions.
+
+Named review coverage: test exact fallback namespaces, wrong-chain duplicates
+in home completion, an unencodable namesake ticker, and wrong or malformed
+pool-detail replies on the distinct-seller lookup. The older T-084 malformed
+winner control now expects the surviving valid pool, since the malformed
+winner is removed before ranking. Preserve all other T-084 expectations.

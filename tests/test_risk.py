@@ -7086,6 +7086,12 @@ def test_t084_raw_fallback_identity():
         assessed, _, _, _, _ = run(_t083_mcp("assess_token_risk", dict(args, verbose=True), routes))
         liquidity, _, _, _, _ = run(_t083_mcp("get_token_liquidity", args, routes))
         pair = assessed["evidence"]["best_pair"]
+        if case == "malformed winner token":
+            check("T087 invalid winner cannot suppress the surviving valid pool",
+                  pair["pair_address"] == _T084_USDC_POOL
+                  and pair["liquidity_usd"] == liquidity["liquidity_usd"] == 80_442_500,
+                  str(pair))
+            continue
         check("T084 " + case + " cannot promote rival data in either MCP tool",
               pair["pair_address"] == ("" if case == "missing winner id" else _T084_LEEPH_POOL)
               and pair["liquidity_usd"] == liquidity["liquidity_usd"] == 635_049_000,
