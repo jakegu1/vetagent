@@ -1266,8 +1266,10 @@ def test_t086_sell_evidence_at_both_entry_points():
         "siphoned holders": dict(clean, holderAnalysis={"holders": 100, "failed": 0, "siphoned": 1}),
         "all holders fail": dict(clean, holderAnalysis={"holders": 10, "failed": 10}),
         "partial holder evidence": dict(clean, holderAnalysis={"siphoned": 1}),
+        "empty holder evidence": dict(clean, holderAnalysis={}),
         "malformed result container": dict(clean, simulationResult=[0]),
     }
+    market = dict(market, traders={"h24": {"sellers": 500}})
     async def call(surface, initial, retry, fallback=False):
         routes = {ds: ("market", 200, {"pairs": [] if fallback else [market]}),
                   gt: ("fallback", 200, _evidence_fixture("gt_weth_anchor_pools.json")),
@@ -1305,6 +1307,25 @@ def test_t086_sell_evidence_at_both_entry_points():
             check("T086 %s conflicting holder observations remain visible" % surface,
                   holder_result.get("evidence", {}).get("honeypot", {}).get("holder_analysis", {})
                   .get("siphoned") == 1)
+            contested = dict(clean, honeypotResult={"isHoneypot": True},
+                             summary={"risk": "honeypot", "riskLevel": 100},
+                             holderAnalysis={"holders": 1555, "failed": 1})
+            for label, broken in (("missing taxes", dict(contested, simulationResult=None)),
+                                  ("reported failure", dict(contested, simulationError="SELL_FAILED"))):
+                first, _, _ = await call(surface, broken, clean)
+                second, _, _ = await call(surface, failed, broken)
+                check("T086 %s incomplete flagged evidence cannot release or replace (%s)" % (surface, label),
+                      first.get("risk_level") != "low" and second.get("risk_level") == "unknown"
+                      and any("BUY_FAILED" in g["reason"] for g in second.get("evidence", {}).get("data_gaps", [])))
+            complete, _, _ = await call(surface, failed, contested)
+            check("T086 %s complete matching evidence still allows a contested release" % surface,
+                  complete.get("risk_level") == "low")
+            adverse = dict(contested, summary={"flags": "malformed"},
+                           holderAnalysis={"holders": 100, "failed": 60})
+            result, _, _ = await call(surface, adverse, clean)
+            check("T086 %s invalid optional metadata preserves the matching fatal holder evidence" % surface,
+                  result.get("risk_level") == "high"
+                  and result.get("evidence", {}).get("honeypot", {}).get("holder_analysis", {}).get("failed") == 60)
 
     asyncio.run(run())
 
