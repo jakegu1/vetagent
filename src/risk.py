@@ -143,7 +143,8 @@ _ANCHORS = {
         "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",  # USDT
     )),
 }
-_ANCHORS = {chain: frozenset(a.lower() for a in addrs) for chain, addrs in _ANCHORS.items()}
+_ANCHORS = {chain: frozenset(a if chain == "solana" else a.lower() for a in addrs)
+            for chain, addrs in _ANCHORS.items()}
 
 
 def _num(x):
@@ -1255,8 +1256,8 @@ def _independent_depth_cap(pair):
     anchors = _ANCHORS.get(chain)
     if anchors is None:
         return _NOT_CHECKABLE
-    base_addr = ((pair.get("baseToken") or {}).get("address") or "").lower()
-    quote_addr = ((pair.get("quoteToken") or {}).get("address") or "").lower()
+    base_addr = _market_address_key((pair.get("baseToken") or {}).get("address") or "")
+    quote_addr = _market_address_key((pair.get("quoteToken") or {}).get("address") or "")
     base_is, quote_is = base_addr in anchors, quote_addr in anchors
     liq = pair.get("liquidity") or {}
     if liq.get("base") in (None, "") or liq.get("quote") in (None, ""):
@@ -1932,7 +1933,12 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
     if age is None:
         created = None
     # Buy/sell counts belong to the pool that reported them.
-    txns = ((best.get("txns") or {}).get("h24") or {})
+    transactions = best.get("txns")
+    txns = transactions.get("h24") if isinstance(transactions, dict) else None
+    txns = txns if isinstance(txns, dict) else {}
+    traders = best.get("traders")
+    h24_traders = traders.get("h24") if isinstance(traders, dict) else None
+    sellers = h24_traders.get("sellers") if isinstance(h24_traders, dict) else None
     evidence["best_pair"] = {
         "dex": best.get("dexId"), "chain": best.get("chainId"),
         "liquidity_usd": _sig_round(liq),
@@ -1945,7 +1951,7 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
         # 16% of the set those are different pools, with the disagreement booked as
         # engine error.
         "pair_address": _ascii_safe(best.get("pairAddress") or best.get("pool_id"), 48),
-        "sellers_24h": _market_number(((best.get("traders") or {}).get("h24") or {}).get("sellers")),
+        "sellers_24h": _market_number(sellers),
         "volume_24h_usd": _market_round(vol), "pair_created_at": created,
         "buys_24h": _market_number(txns.get("buys")), "sells_24h": _market_number(txns.get("sells")),
     }
@@ -2092,8 +2098,11 @@ async def _impersonation_signals(address, pairs, signals, evidence,
         return  # we cannot size our own side, so we cannot say anything is dwarfing it
     home = (ours.get("chainId") or "").lower()
 
-    found = await _fetch_json(
-        "https://api.dexscreener.com/latest/dex/search?q=%s" % _urlq(symbol))
+    try:
+        query = _urlq(symbol)
+    except UnicodeError:
+        return
+    found = await _fetch_json("https://api.dexscreener.com/latest/dex/search?q=%s" % query)
     if not isinstance(found, dict):
         return  # no claim either way; absence of the check is not evidence of safety
 
@@ -2830,11 +2839,6 @@ def _holder_phrase(ha):
     return " (%s)" % "; ".join(parts)
 
 
-def _sim_object(hp, name):
-    value = hp.get(name)
-    return value if isinstance(value, dict) else {}
-
-
 def _sim_never_ran(hp):
     """An answer that reports a result for a simulation that never reached the token.
 
@@ -2853,19 +2857,22 @@ def _sim_never_ran(hp):
     """
     if not isinstance(hp, dict):
         return False
-    gas = str(_sim_object(hp, "simulationResult").get("buyGas"))
-    reason = str(_sim_object(hp, "honeypotResult").get("honeypotReason") or "")
+    sim = hp.get("simulationResult")
+    result = hp.get("honeypotResult")
+    gas = str(sim.get("buyGas")) if isinstance(sim, dict) else ""
+    reason = str(result.get("honeypotReason") or "") if isinstance(result, dict) else ""
     return hp.get("router") == "" and gas == "0" and "does not contain code" in reason
 
 
-async def _distinct_sellers(hp, evidence, pool_id=None):
+async def _distinct_sellers(hp, evidence, pool_id=None, address=None):
     """Fill in the picked pool's distinct-seller count, when a honeypot verdict is contested.
 
     Only then: a simulator saying honeypot is the one case where the count decides
     anything, and it is rare, so the extra GeckoTerminal request is paid by the few
     tokens that need it rather than by every call against a rate-limited upstream.
     """
-    if not isinstance(hp, dict) or _sim_object(hp, "honeypotResult").get("isHoneypot") is not True:
+    result = hp.get("honeypotResult") if isinstance(hp, dict) else None
+    if not isinstance(result, dict) or result.get("isHoneypot") is not True:
         return
     bp = evidence.get("best_pair") or {}
     if bp.get("sellers_24h") is not None:
@@ -2874,17 +2881,32 @@ async def _distinct_sellers(hp, evidence, pool_id=None):
     pool = _validated_pool_id(pool_id if pool_id is not None else bp.get("pair_address"))
     if not net or not pool:
         return
-    gt = None
     for url, headers, _name in _onchain_sources("networks/%s/pools/%s" % (net, _urlq(pool))):
         gt = await _fetch_json(url, headers=headers)
-        if isinstance(gt, dict):
-            break
-    if not isinstance(gt, dict):
-        return
-    attrs = ((gt.get("data") or {}).get("attributes") or {})
-    sellers = ((attrs.get("transactions") or {}).get("h24") or {}).get("sellers")
-    if sellers is not None:
-        bp["sellers_24h"] = _market_number(sellers)
+        data = gt.get("data") if isinstance(gt, dict) else None
+        if not isinstance(data, dict):
+            continue
+        attrs = data.get("attributes")
+        if not isinstance(attrs, dict) or not _seller_detail_matches(data, attrs, net, pool, address):
+            continue
+        txns = attrs.get("transactions")
+        h24 = txns.get("h24") if isinstance(txns, dict) else None
+        sellers = _market_number(h24.get("sellers")) if isinstance(h24, dict) else None
+        if sellers is not None and sellers.is_integer():
+            bp["sellers_24h"] = sellers
+            return
+
+
+def _seller_detail_matches(data, attrs, network, pool, address):
+    """Check any advertised identity on the response to a pool-scoped request."""
+    for row, field, expected in ((data, "id", network + "_" + pool), (attrs, "address", pool)):
+        if field in row and (not isinstance(row[field], str) or row[field].lower() != expected.lower()):
+            return False
+    for name, relationships in data.items():
+        if name == "relationships" and address:
+            tokens = _gecko_relationship_tokens(relationships, network)
+            return tokens is not None and _market_address_key(address) in tokens
+    return True
 
 
 def _sell_evidence_issue(hp, address, chain, pool=None):
@@ -2915,22 +2937,23 @@ def _sell_evidence_issue(hp, address, chain, pool=None):
                                       (venue_info, "address"))):
         return "response identifies another pool"
 
-    summary = _sim_object(hp, "summary")
-    flags = summary.get("flags")
     if (any(hp.get(field) is not None and not isinstance(hp[field], dict)
             for field in ("simulationResult", "honeypotResult", "summary", "contractCode", "holderAnalysis"))
-            or ("risk" in summary and not isinstance(summary["risk"], str))
-            or (hp.get("simulationError") is not None and not isinstance(hp["simulationError"], str))
+            or (hp.get("simulationError") is not None and not isinstance(hp["simulationError"], str))):
+        return "invalid simulator metadata"
+    summary = hp.get("summary") or {}
+    flags = summary.get("flags")
+    if (("risk" in summary and not isinstance(summary["risk"], str))
             or (flags is not None and (not isinstance(flags, list)
                 or any(not isinstance(flag, dict) or not isinstance(flag.get("flag"), str)
                        for flag in flags)))):
         return "invalid simulator metadata"
-    flag = _sim_object(hp, "honeypotResult").get("isHoneypot")
+    is_honeypot = (hp.get("honeypotResult") or {}).get("isHoneypot")
     if _sim_never_ran(hp):
         return None
-    if flag is not False and flag is not True:
+    if is_honeypot is not False and is_honeypot is not True:
         return "missing simulation evidence"
-    sim = _sim_object(hp, "simulationResult")
+    sim = hp.get("simulationResult") or {}
     if (hp.get("simulationSuccess") is not True
             or any(_market_number(sim.get(key)) is None for key in ("buyTax", "sellTax"))
             or (sim.get("transferTax") is not None and _market_number(sim["transferTax"]) is None)):
@@ -2940,7 +2963,7 @@ def _sell_evidence_issue(hp, address, chain, pool=None):
     holder = _holder_analysis(hp)
     if "holderAnalysis" in hp and holder is None:
         return "missing holder sell evidence"
-    if flag is True:
+    if is_honeypot is True:
         return None
     risk = summary.get("risk", "").lower()
     level = _market_number(summary.get("riskLevel"))
@@ -3053,11 +3076,15 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None, issue=None):
                             "The sell-simulation service did not respond, so we could not confirm this token can be sold.", "sellability"))
         return
 
-    summary = _sim_object(hp, "summary")
+    summary = hp.get("summary")
+    summary = summary if isinstance(summary, dict) else {}
     sim_ok = hp.get("simulationSuccess")
-    hp_result = _sim_object(hp, "honeypotResult")
-    sim = _sim_object(hp, "simulationResult")
-    contract = _sim_object(hp, "contractCode")
+    hp_result = hp.get("honeypotResult")
+    hp_result = hp_result if isinstance(hp_result, dict) else {}
+    sim = hp.get("simulationResult")
+    sim = sim if isinstance(sim, dict) else {}
+    contract = hp.get("contractCode")
+    contract = contract if isinstance(contract, dict) else {}
     is_hp = hp_result.get("isHoneypot")
     is_hp = is_hp if isinstance(is_hp, bool) else None
     if _sim_never_ran(hp):
@@ -4247,28 +4274,43 @@ _DS_TOKENS_CAP = 30
 _FORK_OF = {"pulsechain": "ethereum"}
 
 
+def _dex_market_pair_usable(pair, address, chain):
+    if (not isinstance(pair, dict) or not isinstance(pair.get("chainId"), str)
+            or not pair["chainId"] or (chain and pair["chainId"].lower() != chain)
+            or (address and not _pair_has_token(pair, address))):
+        return False
+    if (_looks_solana(address) and pair["chainId"].lower() != "solana"
+            or _looks_evm(address) and pair["chainId"].lower() == "solana"):
+        return False
+    return (all(pair.get(key) is None or isinstance(pair[key], dict)
+                for key in ("baseToken", "quoteToken", "liquidity", "traders", "volume", "priceChange"))
+            and all(isinstance((pair.get(key) or {}).get("address") or "", str)
+                    for key in ("baseToken", "quoteToken"))
+            and (pair.get("pairAddress") is None or isinstance(pair["pairAddress"], str)))
+
+
 def _dex_market_rows(rows, address=None, chain=None):
     if not isinstance(rows, list):
         return None
-    usable = []
-    for pair in rows:
-        if (not isinstance(pair, dict) or not isinstance(pair.get("chainId"), str)
-                or not pair["chainId"] or (chain and pair["chainId"].lower() != chain)
-                or (address and not _pair_has_token(pair, address))):
-            continue
-        if (any(pair.get(key) is not None and not isinstance(pair[key], dict)
-                for key in ("baseToken", "quoteToken", "liquidity", "traders", "volume", "priceChange"))
-                or not isinstance((pair.get("traders") or {}).get("h24") or {}, dict)
-                or any(not isinstance((pair.get(key) or {}).get("address") or "", str)
-                       for key in ("baseToken", "quoteToken"))
-                or (pair.get("pairAddress") is not None and not isinstance(pair["pairAddress"], str))):
-            continue
-        txns = pair.get("txns")
-        if txns is not None and (not isinstance(txns, dict)
-                                 or not isinstance(txns.get("h24") or {}, dict)):
-            pair = dict(pair, txns={})
-        usable.append(pair)
+    usable = [pair for pair in rows if _dex_market_pair_usable(pair, address, chain)]
     return usable if usable or not rows else None
+
+
+def _gecko_relationship_tokens(relationships, network):
+    tokens = []
+    valid_token = _looks_solana if network == "solana" else _looks_evm
+    try:
+        for side in ("base_token", "quote_token"):
+            ref = relationships[side]["data"]["id"]
+            if not isinstance(ref, str):
+                return None
+            net, _, token = ref.rpartition("_")
+            if net != network or not valid_token(token):
+                return None
+            tokens.append(_market_address_key(token))
+    except (KeyError, TypeError):
+        return None
+    return tokens
 
 
 def _fallback_market_rows(rows, address, network):
@@ -4289,11 +4331,10 @@ def _fallback_market_rows(rows, address, network):
         seen_ids.update(ids)
         if resource_net and resource_net != network:
             continue
+        tokens = _gecko_relationship_tokens(raw.get("relationships"), network)
+        if not tokens or _market_address_key(address) not in tokens:
+            continue
         try:
-            refs = [raw["relationships"][side]["data"]["id"] for side in ("base_token", "quote_token")]
-            if any(not isinstance(ref, str) or not ref.startswith(network + "_")
-                   or not ref[len(network) + 1:] for ref in refs):
-                continue
             pair = _gt_to_pair(raw, address, network)
         except (KeyError, TypeError, AttributeError, ValueError, OverflowError):
             continue
@@ -4336,13 +4377,13 @@ async def _complete_home_chain(pairs, address, chain_hint, saturated=False):
             return pairs, False, ""
     listed = await _fetch_json("https://api.dexscreener.com/token-pairs/v1/%s/%s"
                                % (want, address))
-    listed = _dex_market_rows(listed, address, want)
-    if listed is not None:
-        seen = {(p.get("pairAddress") or "").lower() for p in pairs if isinstance(p, dict)}
-        extra = [p for p in listed if isinstance(p, dict)
-                 and (p.get("chainId") or "").lower() == want
-                 and (p.get("pairAddress") or "").lower() not in seen]
-        return pairs + extra, False, want
+    if isinstance(listed, list):
+        valid = [p for p in listed if _dex_market_pair_usable(p, address, want)]
+        if valid or not listed:
+            seen = {(p.get("pairAddress") or "").lower() for p in pairs
+                    if (p.get("chainId") or "").lower() == want}
+            extra = [p for p in valid if (p.get("pairAddress") or "").lower() not in seen]
+            return pairs + extra, False, want
     on_home = any((p.get("chainId") or "").lower() == want for p in pairs
                   if isinstance(p, dict))
     return pairs, not on_home, want
@@ -4692,8 +4733,9 @@ async def assess(address, chain_hint=None, verbose=False):
         # A first answer that never ran but still says honeypot is retried like any failed
         # simulation -- and remembered, because a clean trade on our pool does not settle
         # a claim about the pool the simulator picked (W46).
+        first_flag = hp.get("honeypotResult") if isinstance(hp, dict) else None
         unsettled_claim = (supported and not unusable and _sim_never_ran(hp)
-                           and _sim_object(hp, "honeypotResult").get("isHoneypot") is True)
+                           and isinstance(first_flag, dict) and first_flag.get("isHoneypot") is True)
         replaced = False
         if (supported and not unusable and _sim_failed(hp) and hp_pair is not None and len(hp_pair) == 42):
             retry = await _fetch_json("%s&pair=%s" % (hp_url, hp_pair),
@@ -4709,7 +4751,7 @@ async def assess(address, chain_hint=None, verbose=False):
             _sell_evidence_gap(signals, data_gaps, issue)
         else:
             if supported:
-                await _distinct_sellers(hp, evidence, pool_id=pool_id)
+                await _distinct_sellers(hp, evidence, pool_id=pool_id, address=address)
             _honeypot_signals(hp, signals, evidence, data_gaps, chain=hp_chain, issue=issue)
         if unsettled_claim and replaced:
             # Before W31 this answer was a fatal honeypot; W31 read it as a failed
