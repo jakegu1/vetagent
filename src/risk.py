@@ -2819,6 +2819,11 @@ def _holder_phrase(ha):
     return " (%s)" % "; ".join(parts)
 
 
+def _sim_object(hp, name):
+    value = hp.get(name)
+    return value if isinstance(value, dict) else {}
+
+
 def _sim_never_ran(hp):
     """An answer that reports a result for a simulation that never reached the token.
 
@@ -2837,8 +2842,8 @@ def _sim_never_ran(hp):
     """
     if not isinstance(hp, dict):
         return False
-    gas = str((hp.get("simulationResult") or {}).get("buyGas"))
-    reason = str((hp.get("honeypotResult") or {}).get("honeypotReason") or "")
+    gas = str(_sim_object(hp, "simulationResult").get("buyGas"))
+    reason = str(_sim_object(hp, "honeypotResult").get("honeypotReason") or "")
     return hp.get("router") == "" and gas == "0" and "does not contain code" in reason
 
 
@@ -2849,7 +2854,7 @@ async def _distinct_sellers(hp, evidence, pool_id=None):
     anything, and it is rare, so the extra GeckoTerminal request is paid by the few
     tokens that need it rather than by every call against a rate-limited upstream.
     """
-    if not isinstance(hp, dict) or (hp.get("honeypotResult") or {}).get("isHoneypot") is not True:
+    if not isinstance(hp, dict) or _sim_object(hp, "honeypotResult").get("isHoneypot") is not True:
         return
     bp = evidence.get("best_pair") or {}
     if bp.get("sellers_24h") is not None:
@@ -2876,9 +2881,7 @@ def _sell_evidence_issue(hp, address, chain, pool=None):
     if hp is None or hp is NO_DATA or (chain and chain not in _SIMULATOR_CHAINS):
         return None
     if not isinstance(hp, dict) or any(field in hp and not isinstance(hp[field], dict)
-                                       for field in ("token", "chain", "pair")) or any(
-            hp.get(field) is not None and not isinstance(hp[field], dict)
-            for field in ("simulationResult", "honeypotResult", "summary", "contractCode", "holderAnalysis")):
+                                       for field in ("token", "chain", "pair")):
         return "invalid response structure"
 
     token, network, venue = (hp.get(field) or {} for field in ("token", "chain", "pair"))
@@ -2891,46 +2894,52 @@ def _sell_evidence_issue(hp, address, chain, pool=None):
     venue_info = venue.get("pair", {})
     if not isinstance(venue_info, dict):
         return "invalid response structure"
-    if ("token0" in venue_info and "token1" in venue_info
-            and address.lower() not in (str(venue_info["token0"]).lower(),
-                                        str(venue_info["token1"]).lower())):
+    sides = [venue_info[key] for key in ("token0", "token1") if key in venue_info]
+    if any(not isinstance(side, str) or not _looks_evm(side) for side in sides):
+        return "invalid response structure"
+    if len(sides) == 2 and address.lower() not in {side.lower() for side in sides}:
         return "response identifies another token or chain"
     if pool and any(key in item and str(item[key]).lower() != pool.lower()
                     for item, key in ((hp, "pairAddress"), (venue, "address"),
                                       (venue_info, "address"))):
         return "response identifies another pool"
 
-    summary = hp.get("summary") or {}
+    summary = _sim_object(hp, "summary")
     flags = summary.get("flags")
-    if (("risk" in summary and not isinstance(summary["risk"], str))
+    if (any(hp.get(field) is not None and not isinstance(hp[field], dict)
+            for field in ("simulationResult", "honeypotResult", "summary", "contractCode", "holderAnalysis"))
+            or ("risk" in summary and not isinstance(summary["risk"], str))
             or (hp.get("simulationError") is not None and not isinstance(hp["simulationError"], str))
             or (flags is not None and (not isinstance(flags, list)
                 or any(not isinstance(flag, dict) or not isinstance(flag.get("flag"), str)
                        for flag in flags)))):
-        return "invalid response structure"
-    flag = (hp.get("honeypotResult") or {}).get("isHoneypot")
-    if _sim_never_ran(hp) or flag is True:
+        return "invalid simulator metadata"
+    flag = _sim_object(hp, "honeypotResult").get("isHoneypot")
+    if _sim_never_ran(hp):
         return None
-    if flag is not False:
+    if flag is not False and flag is not True:
         return "missing simulation evidence"
-    sim = hp.get("simulationResult") or {}
+    sim = _sim_object(hp, "simulationResult")
     if (hp.get("simulationSuccess") is not True
             or any(_market_number(sim.get(key)) is None for key in ("buyTax", "sellTax"))
             or (sim.get("transferTax") is not None and _market_number(sim["transferTax"]) is None)):
         return "missing simulation evidence"
     if hp.get("simulationError"):
         return "simulation success conflicts with a reported error"
+    holder = _holder_analysis(hp)
+    if "holderAnalysis" in hp and holder is None:
+        return "missing holder sell evidence"
+    if flag is True:
+        return None
     risk = summary.get("risk", "").lower()
     level = _market_number(summary.get("riskLevel"))
     if (risk == "honeypot" or level == 100 or ("riskLevel" in summary and level is None)
             or (level is not None and (risk == "low" and not 1 <= level <= 19
                                       or risk == "very_low" and level != 0))):
         return "simulation conflicts with the upstream risk summary"
-    holder = _holder_analysis(hp)
-    if hp.get("holderAnalysis") and holder is None:
-        return "missing holder sell evidence"
-    if holder and (holder["siphoned"] or 0 < holder["holders"] == holder["failed"]
-                   or _holder_share_band(holder, (), True, sim) == "fatal"):
+    if (any("siphon" in flag["flag"].lower() for flag in (flags or ()))
+            or holder and (holder["siphoned"] or 0 < holder["holders"] == holder["failed"]
+                           or _holder_share_band(holder, (), True, sim) == "fatal")):
         return "simulation conflicts with holder sell evidence"
     return None
 
@@ -3033,10 +3042,11 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None, issue=None):
                             "The sell-simulation service did not respond, so we could not confirm this token can be sold.", "sellability"))
         return
 
-    summary = hp.get("summary") or {}
+    summary = _sim_object(hp, "summary")
     sim_ok = hp.get("simulationSuccess")
-    hp_result = hp.get("honeypotResult") or {}
-    sim = hp.get("simulationResult") or {}
+    hp_result = _sim_object(hp, "honeypotResult")
+    sim = _sim_object(hp, "simulationResult")
+    contract = _sim_object(hp, "contractCode")
     is_hp = hp_result.get("isHoneypot")
     is_hp = is_hp if isinstance(is_hp, bool) else None
     if _sim_never_ran(hp):
@@ -3049,20 +3059,24 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None, issue=None):
         hp = dict(hp, simulationError=hp.get("simulationError")
                   or "no router for this pool: %s" % _ascii_safe(
                       hp_result.get("honeypotReason") or "nothing executed", 80))
-    flags = [f.get("flag") for f in (summary.get("flags") or []) if isinstance(f, dict)]
+    reported_flags = summary.get("flags")
+    flags = [f["flag"] for f in (reported_flags if isinstance(reported_flags, list) else [])
+             if isinstance(f, dict) and isinstance(f.get("flag"), str)]
+    reported_risk = summary.get("risk") if isinstance(summary.get("risk"), str) else None
+    simulation_error = hp.get("simulationError") if isinstance(hp.get("simulationError"), str) else None
 
     evidence["honeypot"] = {
         "is_honeypot": is_hp,
         "simulation_success": sim_ok if isinstance(sim_ok, bool) else None,
-        "simulation_error": hp.get("simulationError"),
-        "upstream_risk": summary.get("risk"),
+        "simulation_error": simulation_error,
+        "upstream_risk": reported_risk,
         "upstream_risk_level": summary.get("riskLevel") if _market_number(summary.get("riskLevel")) is not None else None,
         "flags": flags,
         "buy_tax": sim.get("buyTax") if _market_number(sim.get("buyTax")) is not None else None,
         "sell_tax": sim.get("sellTax") if _market_number(sim.get("sellTax")) is not None else None,
         "transfer_tax": sim.get("transferTax") if _market_number(sim.get("transferTax")) is not None else None,
-        "open_source": (hp.get("contractCode") or {}).get("openSource"),
-        "is_proxy": (hp.get("contractCode") or {}).get("isProxy"),
+        "open_source": contract.get("openSource"),
+        "is_proxy": contract.get("isProxy"),
         "holders": (hp.get("token") or {}).get("totalHolders"),
     }
     ha = _holder_analysis(hp)
@@ -3074,6 +3088,8 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None, issue=None):
     flagged_by = _holder_phrase(ha)
 
     if is_hp is True:
+        if issue:
+            _sell_evidence_gap(signals, data_gaps, issue)
         # Before relaying a honeypot verdict, check it against what the chain shows.
         #
         # A honeypot means sells fail. Measured: honeypot.is returned isHoneypot=true,
@@ -3173,7 +3189,7 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None, issue=None):
                 % flagged_by, "honeypot"))
         elif sells_work and sellers is None:
             pass                    # contested and unsettled: recorded just above
-        elif sells_work and band == "release":
+        elif sells_work and band == "release" and not issue:
             # W44: few failures among many tested holders, and the chain independently shows
             # real exits from many addresses. honeypot.is flags on a count of about four
             # failures whatever the sample; this is that count on a large sample, not the
@@ -3211,7 +3227,7 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None, issue=None):
         else:
             # "Simulation confirms it" is true only when the simulation is what failed.
             # When the fresh-address trade passed, the flag is the holder test's.
-            sim_sell_failed = sim_ok is not True or _num(sim.get("sellTax")) >= 50
+            sim_sell_failed = not issue and (sim_ok is not True or _num(sim.get("sellTax")) >= 50)
             signals.append(_sig(
                 "fatal", "Honeypot",
                 "Simulation confirms it: you can buy, you cannot sell." if sim_sell_failed
@@ -3231,7 +3247,7 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None, issue=None):
         #
         # The fail-closed regression test for this case went red the moment I tried it,
         # which is exactly what it is for.
-        err = hp.get("simulationError") or "unknown reason"
+        err = simulation_error or "unknown reason"
         data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
                           "reason": _gap(_ABOUT_TOKEN, "simulation failed: %s" % err)})
         # warn, not critical -- and the same severity as an unresponsive upstream a few
@@ -3279,7 +3295,7 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None, issue=None):
                                 "honeypot"))
 
     # Upstream aggregate verdict (previously thrown away entirely)
-    up = (summary.get("risk") or "").lower()
+    up = (reported_risk or "").lower()
     flag_txt = "; ".join(flags) if flags else "none"
     level_txt = summary.get("riskLevel")
     if up == "very_high":
@@ -3295,7 +3311,7 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None, issue=None):
         signals.append(_sig("ok", "Upstream scanner rates this low risk",
                             "honeypot.is riskLevel=%s" % level_txt, "upstream_risk"))
 
-    if (hp.get("contractCode") or {}).get("openSource") is False:
+    if contract.get("openSource") is False:
         signals.append(_sig("warn", "Contract is closed source",
                             "Source is not published, so hidden logic (minting, blacklists, adjustable tax) cannot be ruled out.", "contract"))
 
@@ -4603,7 +4619,7 @@ async def assess(address, chain_hint=None, verbose=False):
         # simulation -- and remembered, because a clean trade on our pool does not settle
         # a claim about the pool the simulator picked (W46).
         unsettled_claim = (supported and not unusable and _sim_never_ran(hp)
-                           and (hp.get("honeypotResult") or {}).get("isHoneypot") is True)
+                           and _sim_object(hp, "honeypotResult").get("isHoneypot") is True)
         replaced = False
         if (supported and not unusable and _sim_failed(hp) and hp_pair is not None and len(hp_pair) == 42):
             retry = await _fetch_json("%s&pair=%s" % (hp_url, hp_pair),
