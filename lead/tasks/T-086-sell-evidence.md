@@ -38,3 +38,8 @@ reusing simulator mechanics with a synthetic subject. Preserve assertions in
 the retry, holder-share, contested seller, pool-ID, tiny-price, freshness,
 namesake, keyed fallback, clean-score, outage, and reserve disclosure cases.
 The dedicated Worker regressions retain explicit identity fields.
+
+The Worker cases also cover explicit null identity, contradictory pool token
+sides, and an advertised but incomplete holder analysis. Explicit malformed
+metadata cannot supply the same confidence as an older response that omitted
+optional identity metadata entirely.

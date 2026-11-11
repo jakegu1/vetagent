@@ -1256,12 +1256,16 @@ def test_t086_sell_evidence_at_both_entry_points():
         "wrong token": dict(clean, token={"address": "0x" + "a" * 40}),
         "wrong chain": dict(clean, chain={"id": 56}),
         "wrong pair chain": dict(clean, pair={"chainId": 56}),
+        "null identity": dict(clean, token=None),
+        "wrong venue tokens": dict(clean, pair={"chainId": 1, "pair": {
+            "token0": "0x" + "a" * 40, "token1": "0x" + "b" * 40}}),
         "no simulation result": dict(clean, simulationResult=None),
         "bad tax": dict(clean, simulationResult={"buyTax": 0, "sellTax": "n/a"}),
         "missing success": {k: v for k, v in clean.items() if k != "simulationSuccess"},
         "success with error": dict(clean, simulationError="SELL_FAILED"),
         "siphoned holders": dict(clean, holderAnalysis={"holders": 100, "failed": 0, "siphoned": 1}),
         "all holders fail": dict(clean, holderAnalysis={"holders": 10, "failed": 10}),
+        "partial holder evidence": dict(clean, holderAnalysis={"siphoned": 1}),
         "malformed result container": dict(clean, simulationResult=[0]),
     }
     async def call(surface, initial, retry, fallback=False):
