@@ -3960,7 +3960,9 @@ def test_the_override_can_fire_on_the_geckoterminal_path():
         "pool_created_at": "2024-01-01T00:00:00Z",
         "volume_usd": {"h24": "180000"},
         "transactions": {"h24": {"buys": 40, "sells": 900,
-                                 "buyers": 35, "sellers": 640}}}}]}
+                                 "buyers": 35, "sellers": 640}}},
+        "relationships": {"base_token": {"data": {"id": "eth_" + WETH}},
+                          "quote_token": {"data": {"id": "eth_0x" + "a" * 40}}}}]}
     hp = json.loads(json.dumps(_unscoped_simulator_fixture()))
     hp.setdefault("honeypotResult", {})["isHoneypot"] = True
     # A share W44 does not release (36 of 400, upper bound about 12%), so this still tests

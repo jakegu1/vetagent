@@ -26,3 +26,7 @@ The discovery listing has a separate contract. Preserve reserved balance
 qualification, canonical chain ranking, request limits and known empty semantics.
 Threats include wrong token listings, wrong-network relationships and invalid
 success envelopes that resemble absence.
+
+Named fixture change: give the synthetic GeckoTerminal venue in
+test_the_override_can_fire_on_the_geckoterminal_path explicit Ethereum token
+relationships. Keep all trade-count and honeypot adjudication assertions.
