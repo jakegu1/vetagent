@@ -1198,13 +1198,13 @@ def _price_of_target(pair, target):
     price = _market_number(pair.get("priceUsd"))
     if price is None or price <= 0:
         return None
-    t = (target or "").lower()
+    t = _market_address_key(target or "")
     if not t:
         return price
-    base = ((pair.get("baseToken") or {}).get("address") or "").lower()
+    base = _market_address_key((pair.get("baseToken") or {}).get("address") or "")
     if base == t or not t:
         return price
-    quote = ((pair.get("quoteToken") or {}).get("address") or "").lower()
+    quote = _market_address_key((pair.get("quoteToken") or {}).get("address") or "")
     if quote != t:
         return price          # neither side matches; caller's scoping decides
     native = _market_number(pair.get("priceNative"))
@@ -1511,6 +1511,22 @@ def _drop_price_outliers(candidates, target):
     return (kept + unpriced) or candidates
 
 
+def _market_address_key(address):
+    if not isinstance(address, str):
+        return ""
+    return address.lower() if _looks_evm(address) else address
+
+
+def _pair_has_token(pair, target):
+    target_key = _market_address_key(target)
+    for side in ("baseToken", "quoteToken"):
+        token = pair.get(side)
+        address = token.get("address") if isinstance(token, dict) else None
+        if isinstance(address, str) and _market_address_key(address) == target_key:
+            return True
+    return False
+
+
 def _home_scope(pairs, chain_hint=None, target=None):
     """The pools on the chain this token actually belongs to.
 
@@ -1531,17 +1547,12 @@ def _home_scope(pairs, chain_hint=None, target=None):
     escaped the verdict -- silenced by a pool the engine had already decided it would not
     price the token from. Two halves of one decision, described twice and drifting.
     """
-    target_l = (target or "").lower()
-
-    def _is_target(p):
-        bt = ((p.get("baseToken") or {}).get("address") or "").lower()
-        qt = ((p.get("quoteToken") or {}).get("address") or "").lower()
-        return (bt == target_l or qt == target_l) if target_l else True
-
     if not pairs:
         return []
     hint = _canonical_chain(chain_hint)
-    home = [p for p in pairs if _is_target(p)] or list(pairs)
+    home = [p for p in pairs if _pair_has_token(p, target)] if target else pairs
+    if not home:
+        return []
     on_hint = [p for p in home if hint and (p.get("chainId") or "").lower() == hint]
     if on_hint:
         return on_hint
@@ -1917,9 +1928,8 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
     liq = _pair_liquidity(best)
     vol = _market_number((best.get("volume") or {}).get("h24"))
     created = best.get("pairCreatedAt")
-    fallback = isinstance(best, _GeckoPool)
-    age = _age_days(created, malformed_as_missing=fallback)
-    if fallback and age is None:
+    age = _age_days(created, malformed_as_missing=True)
+    if age is None:
         created = None
     # Buy/sell counts belong to the pool that reported them.
     txns = ((best.get("txns") or {}).get("h24") or {})
@@ -2062,10 +2072,12 @@ async def _impersonation_signals(address, pairs, signals, evidence,
     bridged, and any token that is itself the largest under its ticker.
     """
     symbol = ""
+    target_key = _market_address_key(address)
     for p in pairs:
         base = p.get("baseToken") or {}
-        if (base.get("address") or "").lower() == address.lower():
-            symbol = (base.get("symbol") or "").strip()
+        if _market_address_key(base.get("address") or "") == target_key:
+            value = base.get("symbol")
+            symbol = value.strip() if isinstance(value, str) else ""
             break
     if not symbol or len(symbol) < 2:
         return
@@ -2082,7 +2094,7 @@ async def _impersonation_signals(address, pairs, signals, evidence,
 
     found = await _fetch_json(
         "https://api.dexscreener.com/latest/dex/search?q=%s" % _urlq(symbol))
-    if found is None:
+    if not isinstance(found, dict):
         return  # no claim either way; absence of the check is not evidence of safety
 
     # Rivals are graded on the same chain only, and on the same evidence standard.
@@ -2105,14 +2117,13 @@ async def _impersonation_signals(address, pairs, signals, evidence,
     # foreign venues with this data, and a check that cannot tell them apart is one that
     # cries wolf on the canonical asset.
     by_addr = {}
-    for p in (found.get("pairs") or []):
+    for p in _dex_market_rows(found.get("pairs"), chain=home) or ():
         base = p.get("baseToken") or {}
-        addr = (base.get("address") or "").lower()
-        if not addr or addr == address.lower():
+        addr = _market_address_key(base.get("address") or "")
+        if not addr or addr == target_key:
             continue
-        if (base.get("symbol") or "").strip().lower() != symbol.lower():
-            continue
-        if (p.get("chainId") or "").lower() != home:
+        rival_symbol = base.get("symbol")
+        if not isinstance(rival_symbol, str) or rival_symbol.strip().lower() != symbol.lower():
             continue
         by_addr.setdefault(addr, []).append(p)
 
@@ -4236,7 +4247,66 @@ _DS_TOKENS_CAP = 30
 _FORK_OF = {"pulsechain": "ethereum"}
 
 
-async def _complete_home_chain(pairs, address, chain_hint):
+def _dex_market_rows(rows, address=None, chain=None):
+    if not isinstance(rows, list):
+        return None
+    usable = []
+    for pair in rows:
+        if (not isinstance(pair, dict) or not isinstance(pair.get("chainId"), str)
+                or not pair["chainId"] or (chain and pair["chainId"].lower() != chain)
+                or (address and not _pair_has_token(pair, address))):
+            continue
+        if (any(pair.get(key) is not None and not isinstance(pair[key], dict)
+                for key in ("baseToken", "quoteToken", "liquidity", "traders", "volume", "priceChange"))
+                or not isinstance((pair.get("traders") or {}).get("h24") or {}, dict)
+                or any(not isinstance((pair.get(key) or {}).get("address") or "", str)
+                       for key in ("baseToken", "quoteToken"))
+                or (pair.get("pairAddress") is not None and not isinstance(pair["pairAddress"], str))):
+            continue
+        txns = pair.get("txns")
+        if txns is not None and (not isinstance(txns, dict)
+                                 or not isinstance(txns.get("h24") or {}, dict)):
+            pair = dict(pair, txns={})
+        usable.append(pair)
+    return usable if usable or not rows else None
+
+
+def _fallback_market_rows(rows, address, network):
+    if not isinstance(rows, list):
+        return None
+    usable, seen_ids, duplicates = [], set(), set()
+    for raw in rows:
+        if not isinstance(raw, dict):
+            continue
+        attributes = raw.get("attributes")
+        if not isinstance(attributes, dict):
+            continue
+        resource = raw.get("id")
+        resource_net, _, pool_id = resource.rpartition("_") if isinstance(resource, str) else ("", "", "")
+        ids = {pool.lower() for value in (attributes.get("address"), pool_id if resource_net == network else None)
+               if (pool := _validated_pool_id(value))}
+        duplicates.update(ids & seen_ids)
+        seen_ids.update(ids)
+        if resource_net and resource_net != network:
+            continue
+        try:
+            refs = [raw["relationships"][side]["data"]["id"] for side in ("base_token", "quote_token")]
+            if any(not isinstance(ref, str) or not ref.startswith(network + "_")
+                   or not ref[len(network) + 1:] for ref in refs):
+                continue
+            pair = _gt_to_pair(raw, address, network)
+        except (KeyError, TypeError, AttributeError, ValueError, OverflowError):
+            continue
+        if _pair_has_token(pair, address):
+            usable.append(pair)
+    for pair in usable:
+        if any(pool.lower() in duplicates for value in (pair.resource_pool, pair.get("pairAddress"))
+               if (pool := _validated_pool_id(value))):
+            pair.evm_identity = False
+    return usable if usable or not rows else None
+
+
+async def _complete_home_chain(pairs, address, chain_hint, saturated=False):
     """Make sure the token's own chain is in the answer. Returns (pairs, home_unreadable, want).
 
     DexScreener's token answer is a capped sample, and for the most-asked tokens the sample
@@ -4255,7 +4325,6 @@ async def _complete_home_chain(pairs, address, chain_hint):
         return pairs, False, ""
     scope = _home_scope(pairs, chain_hint, address)
     scope_chain = ((scope[0].get("chainId") or "").lower() if scope else "")
-    saturated = len(pairs) >= _DS_TOKENS_CAP
     if scope_chain in _CHAIN_RANK:
         if not saturated:
             return pairs, False, ""
@@ -4267,7 +4336,8 @@ async def _complete_home_chain(pairs, address, chain_hint):
             return pairs, False, ""
     listed = await _fetch_json("https://api.dexscreener.com/token-pairs/v1/%s/%s"
                                % (want, address))
-    if isinstance(listed, list):
+    listed = _dex_market_rows(listed, address, want)
+    if listed is not None:
         seen = {(p.get("pairAddress") or "").lower() for p in pairs if isinstance(p, dict)}
         extra = [p for p in listed if isinstance(p, dict)
                  and (p.get("chainId") or "").lower() == want
@@ -4287,14 +4357,16 @@ async def _load_pairs(address, chain_hint):
     """
     ds = await _fetch_json("https://api.dexscreener.com/latest/dex/tokens/%s" % address)
     home_unreadable, want = False, ""
-    if ds is not None:
-        pairs = ds.get("pairs") or []
-        if pairs:
-            pairs, home_unreadable, want = await _complete_home_chain(pairs, address, chain_hint)
+    primary = None
+    if isinstance(ds, dict) and "pairs" in ds:
+        rows = ds["pairs"] if ds["pairs"] is not None else []
+        primary = _dex_market_rows(rows, address)
+        if primary:
+            pairs, home_unreadable, want = await _complete_home_chain(
+                primary, address, chain_hint, saturated=len(rows) >= _DS_TOKENS_CAP)
             if not home_unreadable:
                 return pairs, "dexscreener"
-            # What we hold are copies on a fork, and the token's own chain could not be
-            # read. Ask the market fallback about the home chain; never judge the copy.
+            # The token's home chain could not be read. Try its market fallback.
     # Fallback: GeckoTerminal. Network comes from chain_hint; eth is no longer hardcoded.
     networks = []
     if home_unreadable and _GT_NETWORK.get(want):
@@ -4333,14 +4405,16 @@ async def _load_pairs(address, chain_hint):
                 if _failure_detail(name) in ("%s 429" % name, "%s error body 429" % name):
                     refused.add(name)
                 continue
+            pools = _fallback_market_rows(gt.get("data") if isinstance(gt, dict) else None, address, net)
+            if pools is None:
+                continue
             answered = True
-            pools = gt.get("data") or []
             if pools:
-                return [_gt_to_pair(p, address, net) for p in pools], name
+                return pools, name
             break               # an answer, and it was empty: the next source is the same data
         if not answered:
             unanswered.append(net)
-    if ds is None or home_unreadable:
+    if primary is None or home_unreadable:
         # The fetch failed, or the only pools we saw are fork copies and the token's own
         # chain could not be read: not "there really are no pools".
         return None, None
