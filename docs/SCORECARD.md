@@ -10,7 +10,7 @@
 |---|---|---|
 | Correctness | 16.5 ⚠️ | 30 |
 | Coverage | 10.8 | 20 |
-| Credibility | 13.8 | 20 |
+| Credibility | 13.9 | 20 |
 | Distribution | 4.2 ⚠️ | 15 |
 | Demand | 0.0 | 15 |
 
@@ -31,11 +31,11 @@
 | Correctness | false positive rate (healthy rated high) | 5.0 | 5 | 1.9% |
 | Correctness | false-block rate (liquid healthy rated medium or high) | 2.0 | 5 | 13.0% (20 of 154) |
 | Correctness | unknown rate (benchmark, cached upstreams) | 2.0 | 5 | 20.7% |
-| Correctness | unknown rate (production, served answers) | — | 5 | not measured (33 answers in the window, need 100) |
-| Correctness | production guards observed live | 2.5 | 5 | 429 after none of 75 calls; batch of 11 -> HTTP 400; service a39851f on 2026-11-09 |
+| Correctness | unknown rate (production, served answers) | — | 5 | not measured (30 answers in the window, need 100) |
+| Correctness | production guards observed live | 2.5 | 5 | 429 after none of 75 calls; batch of 11 -> HTTP 400; service e43dd6f on 2026-11-10 |
 | Coverage | risk dimensions covered, per advertised chain | 10.8 | 20 | 39 / 72 chain-dimension cells |
 | Credibility | recall is measurable | 10.0 | 10 | dead samples: 30 (need ≥20) |
-| Credibility | days of snapshots | 3.8 | 10 | 68 of 180 days |
+| Credibility | days of snapshots | 3.9 | 10 | 70 of 180 days |
 | Distribution | channels listed on | 4.2 | 10 | 5 / 12 |
 | Distribution | external callers | — | 5 | not measured (needs CLOUDFLARE_API_TOKEN, see bench/usage.py) |
 | Demand | paying users | 0.0 | 10 | 0 |
