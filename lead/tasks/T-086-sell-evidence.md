@@ -32,3 +32,9 @@ fixtures must actually describe the requested token, chain and retry venue
 in tests that expect a successful check. No new upstream or retry schedule.
 Threats include wrong-asset caches, contradictory vendor evidence, partial
 success payloads and a retry that returns the default venue instead.
+
+Named fixture updates remove the archived subject only from tests deliberately
+reusing simulator mechanics with a synthetic subject. Preserve assertions in
+the retry, holder-share, contested seller, pool-ID, tiny-price, freshness,
+namesake, keyed fallback, clean-score, outage, and reserve disclosure cases.
+The dedicated Worker regressions retain explicit identity fields.

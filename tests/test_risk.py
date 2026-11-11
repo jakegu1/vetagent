@@ -43,6 +43,16 @@ def _load(name):
         return json.load(f)
 
 
+def _unscoped_simulator_fixture(name="hp_matic.json"):
+    """Reuse simulation mechanics for synthetic subjects, without the archived identity."""
+    response = _load(name)
+    for field in ("chain", "pair", "pairAddress"):
+        response.pop(field, None)
+    if isinstance(response.get("token"), dict):
+        response["token"].pop("address", None)
+    return response
+
+
 def install_stub(routes, default=None):
     """Swap risk._fetch_json for a lookup table so nothing hits the network.
 
@@ -905,7 +915,7 @@ def test_the_recommendation_says_what_we_actually_found():
 
     def assess_with(powers_info):
         install_stub([("dex/tokens", clean_pair()), ("dex/search", {"pairs": []}),
-                      ("honeypot.is", _load("hp_matic.json"))])
+                      ("honeypot.is", _unscoped_simulator_fixture())])
         real = risk._owner_powers
 
         async def _fake(address, chain):
@@ -994,11 +1004,11 @@ def test_the_simulator_gets_a_second_chance_on_our_pool():
         risk._fetch_json = _stub
         return run(risk.assess(WETH, chain_hint="ethereum"))
 
-    ok = json.loads(json.dumps(_load("hp_matic.json")))
+    ok = json.loads(json.dumps(_unscoped_simulator_fixture()))
     ok["simulationSuccess"] = True
     ok.pop("simulationError", None)
 
-    failed = json.loads(json.dumps(_load("hp_matic.json")))
+    failed = json.loads(json.dumps(_unscoped_simulator_fixture()))
     failed["simulationSuccess"] = False
     failed["simulationError"] = 'execution reverted: "revert: HP: BUY_FAILED"'
 
@@ -1035,7 +1045,7 @@ def test_the_simulator_gets_a_second_chance_on_our_pool():
     # not contain code". All 54 such answers in bench/cache are `&pair=` retries, and 8
     # benchmark tokens (TRAC, MAI, COLLECT among them) were rated honeypots on one. The
     # simulator never reached the token; that is a failed simulation, not a verdict.
-    noroute = _load("hp_noroute_retry.json")
+    noroute = _unscoped_simulator_fixture("hp_noroute_retry.json")
     r5 = run_with(failed, noroute)
     hp_sigs = [s for s in r5["signals"] if s["category"] == "honeypot"]
     check("a retry that never ran does not replace the real failure",
@@ -2142,7 +2152,7 @@ def test_impersonation_is_comparative_not_absolute():
         # stub has to answer them separately or the search sees our own pair back.
         install_stub([("dex/tokens", market(mine, rival, 0)),
                       ("dex/search", market(mine, rival, rivals)),
-                      ("honeypot.is", _load("hp_matic.json"))])
+                      ("honeypot.is", _unscoped_simulator_fixture())])
         return run(risk.assess(WETH, chain_hint="ethereum"))
 
     # Dwarfed by 8000x: this is not the token the name refers to.
@@ -2179,7 +2189,7 @@ def test_impersonation_is_comparative_not_absolute():
     # Search unreachable: no claim either way. Not finding the check is not evidence.
     install_stub([("dex/tokens", market(3_394, 27_144_100, 0)),
                   ("dex/search", None),
-                  ("honeypot.is", _load("hp_matic.json"))])
+                  ("honeypot.is", _unscoped_simulator_fixture())])
     r4 = run(risk.assess(WETH, chain_hint="ethereum"))
     check("an unreachable search invents nothing",
           not [x for x in r4["signals"] if x["category"] == "impersonation"],
@@ -2223,7 +2233,7 @@ def test_a_tiny_price_is_still_a_price():
             "pairCreatedAt": 1589841515000}]}
 
     install_stub([("dex/tokens", token_at("0.000000000000000000000005458", 293.65)),
-                  ("honeypot.is", _load("hp_matic.json"))])
+                  ("honeypot.is", _unscoped_simulator_fixture())])
     r = run(risk.assess(WETH, chain_hint="ethereum"))
     check("a token priced 5.5e-24 is assessed, not refused",
           r["risk_level"] != "unknown", r["risk_level"])
@@ -2232,7 +2242,7 @@ def test_a_tiny_price_is_still_a_price():
 
     # Zero is still not a price. That is the case a floor was ever for.
     install_stub([("dex/tokens", token_at("0", 293.65)),
-                  ("honeypot.is", _load("hp_matic.json"))])
+                  ("honeypot.is", _unscoped_simulator_fixture())])
     r0 = run(risk.assess(WETH, chain_hint="ethereum"))
     check("a price of exactly zero is still not usable",
           _liq_of(r0) == 0.0, str(_liq_of(r0)))
@@ -2377,7 +2387,7 @@ def test_impersonation_only_compares_within_one_chain():
 
     install_stub([("dex/tokens", {"pairs": [ours]}),
                   ("dex/search", {"pairs": [ours, foreign_giant]}),
-                  ("honeypot.is", _load("hp_matic.json"))])
+                  ("honeypot.is", _unscoped_simulator_fixture())])
     r = run(risk.assess(WETH, chain_hint="ethereum"))
     check("a giant on another chain raises nothing",
           not [x for x in r["signals"] if x["category"] == "impersonation"],
@@ -2388,7 +2398,7 @@ def test_impersonation_only_compares_within_one_chain():
     # The genuine case still fires: a much larger namesake on our own chain.
     install_stub([("dex/tokens", {"pairs": [pair("ethereum", WETH, 4_275.0)]}),
                   ("dex/search", {"pairs": [pair("ethereum", WETH, 4_275.0), home_giant]}),
-                  ("honeypot.is", _load("hp_matic.json"))])
+                  ("honeypot.is", _unscoped_simulator_fixture())])
     r2 = run(risk.assess(WETH, chain_hint="ethereum"))
     imp = [x for x in r2["signals"] if x["category"] == "impersonation"]
     check("a much larger namesake on the same chain still fires",
@@ -2687,7 +2697,7 @@ def test_a_honeypot_flag_is_read_by_its_holder_share():
 
     def hp_with(failed, holders, flags=("medium_fail_rate",), siphoned=0, taxes=(0, 0, 0),
                 sim_ok=True):
-        hp = json.loads(json.dumps(_load("hp_matic.json")))
+        hp = json.loads(json.dumps(_unscoped_simulator_fixture()))
         hp["simulationSuccess"] = sim_ok
         hp["simulationResult"] = dict(hp.get("simulationResult") or {}, buyTax=taxes[0],
                                       sellTax=taxes[1], transferTax=taxes[2])
@@ -2858,7 +2868,7 @@ def test_overturning_a_honeypot_verdict_needs_distinct_sellers():
             pair["traders"] = {"h24": {"buyers": buys, "sellers": sellers}}
         return {"pairs": [pair]}
 
-    hp = json.loads(json.dumps(_load("hp_matic.json")))
+    hp = json.loads(json.dumps(_unscoped_simulator_fixture()))
     hp.setdefault("honeypotResult", {})["isHoneypot"] = True
     # A share W44 does not release (36 of 400, upper bound about 12%), so this still tests
     # what it was written for: the chain can downgrade a flag, never clear it.
@@ -2935,7 +2945,7 @@ def test_a_seller_count_nobody_took_cannot_overturn_a_honeypot():
         "liquidity": {"usd": 60_000}, "volume": {"h24": 60_000},
         "txns": {"h24": {"buys": 100, "sells": 20}},
         "pairCreatedAt": 1589841515000}]}
-    hp = json.loads(json.dumps(_load("hp_matic.json")))
+    hp = json.loads(json.dumps(_unscoped_simulator_fixture()))
     hp.setdefault("honeypotResult", {})["isHoneypot"] = True
     # A share W44 does not release (36 of 400, upper bound about 12%), so this still tests
     # what it was written for: the chain can downgrade a flag, never clear it.
@@ -3335,19 +3345,19 @@ def test_what_an_outage_answer_promises_is_what_the_retry_returns():
     cases = [
         ("EVM, no hint: the simulator asked with no chain",
          WETH, None,
-         down + [("chainID=", _load("hp_matic.json")), ("honeypot.is", risk.NO_DATA)],
-         [("dexscreener", _load("ds_weth.json")), ("chainID=", _load("hp_matic.json")),
+         down + [("chainID=", _unscoped_simulator_fixture()), ("honeypot.is", risk.NO_DATA)],
+         [("dexscreener", _load("ds_weth.json")), ("chainID=", _unscoped_simulator_fixture()),
           ("honeypot.is", risk.NO_DATA)]),
         ("EVM, hint ethereum: no pool of ours for the second chance",
          WETH, "ethereum",
-         down + [("&pair=", _load("hp_matic.json")),
-                 ("honeypot.is", _load("hp_align_simfail.json"))],
-         [("dexscreener", _load("ds_weth.json")), ("&pair=", _load("hp_matic.json")),
-          ("honeypot.is", _load("hp_align_simfail.json"))]),
+         down + [("&pair=", _unscoped_simulator_fixture()),
+                 ("honeypot.is", _unscoped_simulator_fixture("hp_align_simfail.json"))],
+         [("dexscreener", _load("ds_weth.json")), ("&pair=", _unscoped_simulator_fixture()),
+          ("honeypot.is", _unscoped_simulator_fixture("hp_align_simfail.json"))]),
         ("EVM, hint polygon: the coverage gap the outage made",
          MATIC, "polygon",
-         down + [("honeypot.is", _load("hp_matic.json"))],
-         [("dexscreener", _load("ds_matic.json")), ("honeypot.is", _load("hp_matic.json"))]),
+         down + [("honeypot.is", _unscoped_simulator_fixture())],
+         [("dexscreener", _load("ds_matic.json")), ("honeypot.is", _unscoped_simulator_fixture())]),
         ("EVM, a token nothing lists once the market answers",
          MATIC, "ethereum",
          down + [("honeypot.is", risk.NO_DATA)],
@@ -3486,7 +3496,7 @@ def test_freshness_is_in_the_answer_not_only_the_evidence():
         if stale:
             risk._stale_hits().append(("https://api.dexscreener.com/latest/dex/tokens/x", 870))
         install_stub([("dex/tokens", _load("ds_weth.json")), ("dex/search", None),
-                      ("honeypot.is", _load("hp_matic.json"))])
+                      ("honeypot.is", _unscoped_simulator_fixture())])
         original = risk._begin_request
         risk._begin_request = lambda: None
         try:
@@ -3560,7 +3570,7 @@ def test_a_keyed_fallback_escapes_the_shared_egress_limit():
     try:
         risk.configure(types_ns(CG_DEMO_KEY=KEY))
         stub([("api.coingecko.com/api/v3/onchain/networks/eth/tokens/", _load("cg_weth_pools.json")),
-              ("honeypot.is", _load("hp_matic.json"))])
+              ("honeypot.is", _unscoped_simulator_fixture())])
         r = run(risk.assess(WETH, chain_hint="ethereum"))
         cg = [(u, h) for u, h in seen if "api.coingecko.com" in u]
         check("DexScreener failing sends the fallback to CoinGecko", bool(cg), str(seen[:3]))
@@ -3576,7 +3586,7 @@ def test_a_keyed_fallback_escapes_the_shared_egress_limit():
 
         # CoinGecko down too: keyless GeckoTerminal is still tried, and the gap names all three.
         seen.clear()
-        stub([("honeypot.is", _load("hp_matic.json"))])
+        stub([("honeypot.is", _unscoped_simulator_fixture())])
         r = run(risk.assess(WETH, chain_hint="ethereum"))
         order = [u.split("/")[2] for u, _ in seen if "honeypot" not in u]
         check("CoinGecko failing still falls back to keyless GeckoTerminal",
@@ -3595,7 +3605,7 @@ def test_a_keyed_fallback_escapes_the_shared_egress_limit():
         # No key: today's behaviour exactly -- CoinGecko is never contacted.
         risk.configure(types_ns())
         seen.clear()
-        stub([("honeypot.is", _load("hp_matic.json"))])
+        stub([("honeypot.is", _unscoped_simulator_fixture())])
         run(risk.assess(WETH, chain_hint="ethereum"))
         check("without a key CoinGecko is never called",
               not any("api.coingecko.com" in u for u, _ in seen), str([u for u, _ in seen]))
@@ -3951,7 +3961,7 @@ def test_the_override_can_fire_on_the_geckoterminal_path():
         "volume_usd": {"h24": "180000"},
         "transactions": {"h24": {"buys": 40, "sells": 900,
                                  "buyers": 35, "sellers": 640}}}}]}
-    hp = json.loads(json.dumps(_load("hp_matic.json")))
+    hp = json.loads(json.dumps(_unscoped_simulator_fixture()))
     hp.setdefault("honeypotResult", {})["isHoneypot"] = True
     # A share W44 does not release (36 of 400, upper bound about 12%), so this still tests
     # what it was written for: the chain can downgrade a flag, never clear it.
@@ -3976,7 +3986,7 @@ def test_clean_token_stays_low():
     print("\n[scoring] healthy token stays low")
     install_stub([
         ("dexscreener", _load("ds_weth.json")),
-        ("honeypot.is", _load("hp_matic.json")),  # clean: not a honeypot, no tax, low risk
+        ("honeypot.is", _unscoped_simulator_fixture()),  # clean: not a honeypot, no tax, low risk
     ])
     r = run(risk.assess(WETH, chain_hint="ethereum"))
     check("WETH should be low", r["risk_level"] == "low", "got %s (score=%s) %s"
@@ -5868,7 +5878,7 @@ def _pool_id_assessment(pool, sellers=30, failed=36, holders=400, honeypot=True,
         pair["pairAddress"] = pool
     if present_sellers is not None:
         pair["traders"] = {"h24": {"sellers": present_sellers}}
-    hp = json.loads(json.dumps(_load("hp_matic.json")))
+    hp = json.loads(json.dumps(_unscoped_simulator_fixture()))
     hp["honeypotResult"] = {"isHoneypot": honeypot, "honeypotReason": "HONEYPOT DETECTED"}
     if honeypot is True:
         hp["summary"] = {"risk": "honeypot", "riskLevel": 100,
@@ -6104,7 +6114,7 @@ def test_traded_pools_without_depth_do_not_escalate():
           declared is not None and declared == reasons[0], str(declared))
 
     # Neither a clean simulation nor a holder flag may turn the depth gap into safety.
-    hp_flagged = json.loads(json.dumps(_load("hp_matic.json")))
+    hp_flagged = json.loads(json.dumps(_unscoped_simulator_fixture()))
     hp_flagged["honeypotResult"] = {"isHoneypot": True}
     hp_flagged["holderAnalysis"] = {"holders": "3689", "successful": "3599", "failed": "90",
                                     "siphoned": "0", "averageTax": 0, "highestTax": 0}
@@ -6112,7 +6122,7 @@ def test_traded_pools_without_depth_do_not_escalate():
                              "flags": [{"flag": "medium_fail_rate",
                                         "description": "A high amount of users cannot sell their tokens.",
                                         "severity": "high", "severityIndex": 16}]}
-    for label, simulator, verdict in (("clean simulation", _load("hp_matic.json"), "unknown"),
+    for label, simulator, verdict in (("clean simulation", _unscoped_simulator_fixture(), "unknown"),
                                       ("holder flag", hp_flagged, "high")):
         install_stub([("dex/tokens", {"pairs": [pair("ethereum")]}),
                       ("dex/search", {"pairs": []}), ("geckoterminal", {"data": []}),
@@ -6316,7 +6326,7 @@ def _t030_local_market(pairs, source="dexscreener"):
 
     async def fetch(url, *args, **kwargs):
         if url.startswith("https://api.honeypot.is/v2/IsHoneypot?address="):
-            return _load("hp_matic.json")
+            return _unscoped_simulator_fixture()
         if url.startswith("https://api.dexscreener.com/latest/dex/search?q="):
             return {"pairs": []}
         return no_network()
