@@ -1267,6 +1267,8 @@ def test_t086_sell_evidence_at_both_entry_points():
         "all holders fail": dict(clean, holderAnalysis={"holders": 10, "failed": 10}),
         "partial holder evidence": dict(clean, holderAnalysis={"siphoned": 1}),
         "empty holder evidence": dict(clean, holderAnalysis={}),
+        "siphoning flag": dict(clean, summary={"risk": "low", "riskLevel": 1,
+                                                "flags": [{"flag": "medium_siphon_rate"}]}),
         "malformed result container": dict(clean, simulationResult=[0]),
     }
     market = dict(market, traders={"h24": {"sellers": 500}})
