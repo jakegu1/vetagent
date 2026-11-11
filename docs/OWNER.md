@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Connect R1: link directory records and protocol checks
+- Connect R1: guard the directory claim boundary
 - T-086/T-087: regenerate offline test counts
 - T-087: validate pool identity across market and seller sources
 - T-087: named change (chain and address family control)
 - T-086: named change (scope finite-market simulator fixtures)
 - T-087: named change (cross-source market identity regressions)
 - T-087: admit only owned market rows and explicit empty listings
-- T-087: named change (scope the synthetic fallback venue)
-- T-087: acceptance tests
 
-_61 more not shown (69 commits in total)._
+_63 more not shown (71 commits in total)._
 
 ## What I got wrong
 
