@@ -119,7 +119,7 @@ Rounded = parked by you. Hexagons are not work items -- they are what a row is w
 
 | | |
 |---|---|
-| Maturity score | 45 / 100 (`docs/SCORECARD.md`) |
+| Maturity score | 48 / 100 (`docs/SCORECARD.md`) |
 | Tokens measured | 576 |
 | False positives | 1.9% -- we called a healthy token dangerous |
 | Answers we refuse | 20.7% -- `unknown`, on purpose |
@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- lead: record T-084 local integration
-- T-084: regenerate final verification counts
-- T-084: isolate local GeckoTerminal provenance from provider fields
-- T-084: named change (preserve comparison metadata in controls)
-- T-084: preserve the frozen provider fields contract
-- T-084: regenerate correction log and regression count
-- T-084: reject conflicting provider and simulator evidence for replacement
-- T-084: named change (reject contradictory simulation evidence)
+- T-086/T-087: regenerate offline test counts
+- T-087: validate pool identity across market and seller sources
+- T-087: named change (chain and address family control)
+- T-086: named change (scope finite-market simulator fixtures)
+- T-087: named change (cross-source market identity regressions)
+- T-087: admit only owned market rows and explicit empty listings
+- T-087: named change (scope the synthetic fallback venue)
+- T-087: acceptance tests
 
-_22 more not shown (30 commits in total)._
+_61 more not shown (69 commits in total)._
 
 ## What I got wrong
 
