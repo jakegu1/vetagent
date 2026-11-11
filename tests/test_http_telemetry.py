@@ -1332,6 +1332,61 @@ def test_t086_sell_evidence_at_both_entry_points():
     asyncio.run(run())
 
 
+def test_t087_market_evidence_at_both_entry_points():
+    print("\n[T087] a market response must belong to the requested token")
+    import copy
+
+    address = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+    market = next(p for p in _evidence_fixture("ds_weth.json")["pairs"]
+                  if p["pairAddress"].lower() == "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640")
+    unrelated = copy.deepcopy(market)
+    for token in ("baseToken", "quoteToken"):
+        unrelated[token]["address"] = "0x" + "f" * 40
+    unrelated["liquidity"]["usd"] = 10**11
+    rows = _evidence_fixture("gt_weth_anchor_pools.json")["data"]
+    foreign = copy.deepcopy(rows[0])
+    foreign["id"] = foreign["id"].replace("eth_", "bsc_")
+    for side in ("base_token", "quote_token"):
+        data = foreign["relationships"][side]["data"]
+        data["id"] = data["id"].replace("eth_", "bsc_")
+    no_relationships = dict(rows[0], relationships={})
+    ds = "https://api.dexscreener.com/latest/dex/tokens/" + address
+    gt = "https://api.geckoterminal.com/api/v2/networks/eth/tokens/" + address + "/pools"
+    sell = "https://api.honeypot.is/v2/IsHoneypot?address=" + address + "&chainID=1"
+    search = "https://api.dexscreener.com/latest/dex/search?q=WETH"
+    clean = {"simulationSuccess": True, "honeypotResult": {"isHoneypot": False},
+             "simulationResult": {"buyTax": 0, "sellTax": 0, "transferTax": 0},
+             "summary": {"risk": "low", "riskLevel": 1}}
+    async def run():
+        for surface in ("MCP", "REST"):
+            for label, primary, fallback, market_status, risk_level, sell_status in (
+                ("genuine empty", {"pairs": None}, {"data": []}, "not_found", "high", 404),
+                ("primary has no list field", {}, {"data": []}, "unavailable", "unknown", 404),
+                ("unrelated primary", {"pairs": [unrelated]}, {"data": []}, "unavailable", "unknown", 200),
+                ("mixed primary", {"pairs": [None, unrelated, market]}, {}, "ok", "low", 200),
+                ("missing fallback list", {"pairs": []}, {"meta": {}}, "unavailable", "unknown", 404),
+                ("wrong fallback list type", {"pairs": []}, {"data": {}}, "unavailable", "unknown", 404),
+                ("wrong network", {"pairs": []}, {"data": [foreign]}, "unavailable", "unknown", 200),
+                ("no fallback relationships", {"pairs": []}, {"data": [no_relationships]},
+                 "unavailable", "unknown", 200),
+                ("mixed fallback", {"pairs": []}, {"data": [None, foreign] + rows}, "ok", "low", 200),
+                ("unrelated primary rescued", {"pairs": [unrelated]}, {"data": rows}, "ok", "low", 200),
+            ):
+                routes = {ds: ("primary", 200, primary), gt: ("fallback", 200, fallback),
+                          sell: ("sell", sell_status, clean if sell_status == 200 else {}),
+                          search: ("ticker", 200, {"pairs": []})}
+                for tool in ("assess_token_risk", "get_token_liquidity"):
+                    result, calls, status = await _evidence_endpoint(surface, tool, address, "ethereum", routes)
+                    check("T087 %s %s %s uses target evidence" % (surface, label, tool),
+                          status == 200 and ((result.get("risk_level") == risk_level
+                              and (market_status == "ok" or not result.get("evidence", {}).get("best_pair")))
+                              if tool == "assess_token_risk" else result.get("status") == market_status
+                              and (market_status != "ok" or 0 < result.get("liquidity_usd", 0) < 10**10)),
+                          str((result.get("status"), result.get("risk_level"), calls)))
+
+    asyncio.run(run())
+
+
 def main():
     print("=" * 68)
     print("HTTP telemetry: the interface the gate could not see")
