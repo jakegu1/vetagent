@@ -75,6 +75,13 @@ def offline(pairs, hp=None, address=TOKEN, gt=None, discovery=None, partial=Fals
             seller_reading=25):
     """Every allowed request has an explicit local answer; an unmatched URL is red."""
     simulator = fixture('hp_matic.json') if hp is None else hp
+    if isinstance(simulator, dict):
+        # These cases vary market measurements on synthetic subjects.
+        simulator = copy.deepcopy(simulator)
+        for field in ('chain', 'pair', 'pairAddress'):
+            simulator.pop(field, None)
+        if isinstance(simulator.get('token'), dict):
+            simulator['token'].pop('address', None)
     seen = []
     async def fetch(url, *args, **kwargs):
         seen.append(url)

@@ -38,6 +38,8 @@ reusing simulator mechanics with a synthetic subject. Preserve assertions in
 the retry, holder-share, contested seller, pool-ID, tiny-price, freshness,
 namesake, keyed fallback, clean-score, outage, and reserve disclosure cases.
 The dedicated Worker regressions retain explicit identity fields.
+The finite-market test adapter also uses the archived simulator body for
+synthetic subjects and drops its unrelated subject metadata.
 
 The Worker cases also cover explicit null identity, contradictory pool token
 sides, and an advertised but incomplete holder analysis. Explicit malformed
