@@ -88,3 +88,5 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 
 | T-084 | Select a representative anchor market on reserve-less fallback | 3 | S | T-026, T-030, T-083 | source accepted at cb3ef29 and integrated locally at 28e9249. Integrated checks and normal release pending |
 | T-085 | Choose an established venue when fallback depth and activity conflict | 3 | S | T-084 | ready; offline source qualification only |
+| T-086 | Validate sell evidence before assessment and retry substitution | 3 | S | T-085 | in progress |
+| T-087 | Require market ownership and distinguish invalid listings from empty markets | 3 | S | T-086 | ready |
