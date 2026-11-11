@@ -87,6 +87,12 @@
  .url{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
    padding:12px 15px;font-family:ui-monospace,Menlo,monospace;font-size:14px;
    color:var(--ok);word-break:break-all}
+ .listing-links{margin-top:18px;padding-top:14px;border-top:1px solid var(--line);font-size:13.5px;color:var(--dim)}
+ .listing-links p+p{margin-top:5px}
+ .listing-links strong{color:var(--txt);font-weight:600}
+ .listing-links a{display:inline-block;padding-block:3px;text-underline-offset:3px}
+ .listing-links .listing-note{font-size:12.5px;max-width:70ch;margin-top:7px}
+ .listing-links a:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:14px}
  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
  th{color:var(--dim);font-weight:600;font-size:12px;letter-spacing:.05em;text-transform:uppercase}
@@ -168,13 +174,18 @@
 }</code></pre>
   <h3>Plain HTTP, no MCP</h3>
   <pre><code>curl https://vetagent.dev/assess/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2?chain_hint=ethereum</code></pre>
-  <p style="color:var(--dim);font-size:13.5px;margin-top:14px">
-    Also listed in the
-    <a href="https://registry.modelcontextprotocol.io/">official MCP registry</a> as
-    <code>dev.vetagent/vetagent</code>, on
-    <a href="https://glama.ai/mcp/connectors/dev.vetagent/vetagent">Glama</a>, and on
-    <a href="https://smithery.ai/servers/jake-gu95/vetagent">Smithery</a> — same endpoint,
-    installable from any of them.</p>
+  <section class="listing-links" aria-label="Directory listings and protocol checks">
+    <p><strong>Find and connect:</strong>
+      <a href="https://registry.modelcontextprotocol.io/v0.1/servers/dev.vetagent%2Fvetagent/versions/latest">MCP Registry</a>,
+      <a href="https://glama.ai/mcp/connectors/dev.vetagent/vetagent">Glama</a>,
+      <a href="https://smithery.ai/servers/jake-gu95/vetagent">Smithery</a>.
+    </p>
+    <p><strong>Protocol checks:</strong>
+      <a href="https://sealkeeper.run/agents/vetagent.dev/vetagent-dev">SealKeeper</a>,
+      <a href="https://agent-tools.cloud/mcp/servers/dev-vetagent-vetagent-vetagent-dev">Agent Tools</a>.
+    </p>
+    <p class="listing-note">These links document listings and protocol checks. They do not validate token-risk results.</p>
+  </section>
 </div>
 
 <div class="panel" style="border-color:var(--accent-dim)">
