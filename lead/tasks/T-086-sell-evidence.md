@@ -43,3 +43,8 @@ The Worker cases also cover explicit null identity, contradictory pool token
 sides, and an advertised but incomplete holder analysis. Explicit malformed
 metadata cannot supply the same confidence as an older response that omitted
 optional identity metadata entirely.
+
+Review amendment: a matching adverse flag can still inform assessment when
+optional metadata is malformed, but releasing that flag and replacing a
+failed attempt both require complete, consistent simulation evidence. Add
+endpoint controls for malformed flagged responses and a validated release.
