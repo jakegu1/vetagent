@@ -325,6 +325,16 @@ class _LandingDemo(HTMLParser):
 
 # --------------------------------------------------------------------- tests
 
+def test_landing_directory_checks_keep_the_claim_boundary():
+    """Directory and protocol observations do not establish installation or risk results."""
+    page = flat(read("src/landing.html"))
+    boundary = ("these links document listings and protocol checks. "
+                "they do not validate token-risk results.")
+    check("directory checks keep the result disclaimer and omit the old installation claim",
+          boundary in page and "installable from any of them" not in page,
+          "the result disclaimer is missing or the installation claim is present")
+
+
 def test_first_landing_example_describes_a_failed_trade_simulation():
     """The approved label stays attached to the fixed saved example and default."""
     print("\n[advertising] the first landing example describes a failed simulation")
