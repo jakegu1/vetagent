@@ -1173,6 +1173,138 @@ def test_malformed_trade_containers_preserve_http_and_mcp_assessments():
         risk._ONCHAIN.update(saved[2])
 
 
+def _evidence_fixture(name):
+    import json
+    with open(os.path.join(ROOT, "tests", "fixtures", name), encoding="utf-8") as source:
+        return json.load(source)
+
+
+async def _evidence_endpoint(surface, tool, address, chain, routes):
+    """Drive the actual Worker endpoint with only the supplied upstream responses."""
+    import json
+    import socket
+    import subprocess
+    from datetime import datetime, timezone
+    from unittest.mock import patch
+
+    calls = []
+
+    def deny(*args, **kwargs):
+        raise AssertionError("unexpected I/O in evidence test")
+
+    async def fetch(url, **kwargs):
+        label, status, body = routes[url]
+        calls.append(label)
+
+        async def content():
+            return json.dumps(body, allow_nan=False)
+
+        return types.SimpleNamespace(status=status, text=content)
+
+    async def no_owner(*args, **kwargs):
+        return None
+
+    async def no_cache(*args, **kwargs):
+        return None, None
+
+    class MCPRequest(FakeRequest):
+        async def json(self):
+            return {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                    "params": {"name": tool, "arguments": {
+                        "address": address, "chain_hint": chain, "verbose": True}}}
+
+    if surface == "MCP":
+        request = MCPRequest("https://offline.invalid/mcp", method="POST")
+    else:
+        path = "assess" if tool == "assess_token_risk" else "liquidity"
+        request = FakeRequest("https://offline.invalid/%s/%s?chain=%s&verbose=true"
+                              % (path, address, chain))
+    pin = risk._BENCH_NOW.set(datetime(2026, 11, 10, tzinfo=timezone.utc))
+    try:
+        with patch.object(socket.socket, "connect", deny), patch.object(socket, "getaddrinfo", deny), \
+                patch.object(subprocess, "Popen", deny), patch.object(risk, "cf_fetch", fetch), \
+                patch.object(risk, "_cache_get", no_cache), patch.object(risk, "_cache_put", no_cache), \
+                patch.object(risk, "_owner_powers", no_owner), patch.object(entry, "_record"), \
+                patch.dict(risk._ONCHAIN, {"key": "", "unusable": False}):
+            response = await entry.Default().fetch(request)
+    finally:
+        risk._BENCH_NOW.reset(pin)
+    result = json.loads(response.body)
+    if surface == "MCP":
+        result = (result.get("result") or {}).get("structuredContent") or {}
+    return result, calls, response.status
+
+
+def test_t086_sell_evidence_at_both_entry_points():
+    print("\n[T086] explicit simulation evidence is required on both attempts")
+    address = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+    pool = "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
+    clean = {"token": {"address": address}, "chain": {"id": 1}, "pairAddress": pool,
+             "pair": {"chainId": 1, "pair": {"address": pool}},
+             "simulationSuccess": True, "honeypotResult": {"isHoneypot": False},
+             "simulationResult": {"buyTax": 0, "sellTax": 0, "transferTax": 0},
+             "summary": {"risk": "low", "riskLevel": 1}}
+    failed = {"simulationSuccess": False, "simulationError": "BUY_FAILED"}
+    market = next(p for p in _evidence_fixture("ds_weth.json")["pairs"]
+                  if p["pairAddress"].lower() == pool)
+    ds = "https://api.dexscreener.com/latest/dex/tokens/" + address
+    search = "https://api.dexscreener.com/latest/dex/search?q=WETH"
+    sell = "https://api.honeypot.is/v2/IsHoneypot?address=" + address + "&chainID=1"
+    retry_url = sell + "&pair=" + market["pairAddress"]
+    gt = "https://api.geckoterminal.com/api/v2/networks/eth/tokens/" + address + "/pools"
+    malformed = {
+        "wrong token": dict(clean, token={"address": "0x" + "a" * 40}),
+        "wrong chain": dict(clean, chain={"id": 56}),
+        "wrong pair chain": dict(clean, pair={"chainId": 56}),
+        "no simulation result": dict(clean, simulationResult=None),
+        "bad tax": dict(clean, simulationResult={"buyTax": 0, "sellTax": "n/a"}),
+        "missing success": {k: v for k, v in clean.items() if k != "simulationSuccess"},
+        "success with error": dict(clean, simulationError="SELL_FAILED"),
+        "siphoned holders": dict(clean, holderAnalysis={"holders": 100, "failed": 0, "siphoned": 1}),
+        "all holders fail": dict(clean, holderAnalysis={"holders": 10, "failed": 10}),
+        "malformed result container": dict(clean, simulationResult=[0]),
+    }
+    async def call(surface, initial, retry, fallback=False):
+        routes = {ds: ("market", 200, {"pairs": [] if fallback else [market]}),
+                  gt: ("fallback", 200, _evidence_fixture("gt_weth_anchor_pools.json")),
+                  search: ("ticker", 200, {"pairs": []}),
+                  sell: ("sell", 200, initial), retry_url: ("retry", 200, retry),
+                  sell + "&pair=0x7380e4a66f89e9fd4db32e6c6e9934130123ae66": ("retry", 200, retry)}
+        return await _evidence_endpoint(surface, "assess_token_risk", address, "ethereum", routes)
+
+    async def run():
+        for surface in ("MCP", "REST"):
+            for label, candidate in malformed.items():
+                for phase in ("initial", "retry"):
+                    initial, retry = (candidate, clean) if phase == "initial" else (failed, candidate)
+                    result, calls, status = await call(surface, initial, retry)
+                    ev = result.get("evidence") or {}
+                    messages = [s["name"] for s in result.get("signals", [])]
+                    check("T086 %s %s %s fails closed" % (surface, phase, label),
+                          status == 200 and result.get("risk_level") == "unknown"
+                          and any(g["dimension"] == "sellability" for g in ev.get("data_gaps", []))
+                          and "Buys and sells normally" not in messages
+                          and calls.count("retry") == (1 if phase == "retry" else 0))
+            wrong_pool = dict(clean, pairAddress="0x" + "c" * 40)
+            result, calls, _ = await call(surface, failed, wrong_pool)
+            check("T086 %s wrong retry venue cannot replace failure" % surface,
+                  result.get("risk_level") == "unknown" and calls[-1] == "retry"
+                  and any("BUY_FAILED" in g["reason"] for g in result.get("evidence", {}).get("data_gaps", [])))
+            result, calls, _ = await call(surface, failed, clean)
+            check("T086 %s matching retry supplies observed sell" % surface,
+                  result.get("risk_level") == "low" and calls[-1] == "retry")
+            result, _, _ = await call(surface, malformed["wrong token"], clean, fallback=True)
+            check("T086 %s fallback also records a sellability gap" % surface,
+                  result.get("risk_level") == "unknown"
+                  and result.get("evidence", {}).get("liquidity_reserve_check") == "not_checkable")
+            holder_result, _, _ = await call(surface, malformed["siphoned holders"], clean)
+            check("T086 %s conflicting holder observations remain visible" % surface,
+                  holder_result.get("evidence", {}).get("honeypot", {}).get("holder_analysis", {})
+                  .get("siphoned") == 1)
+
+    asyncio.run(run())
+
+
 def main():
     print("=" * 68)
     print("HTTP telemetry: the interface the gate could not see")
