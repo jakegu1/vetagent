@@ -1369,6 +1369,8 @@ def test_t087_market_evidence_at_both_entry_points():
                 ("genuine empty", {"pairs": None}, {"data": []}, "not_found", "high", 404),
                 ("primary has no list field", {}, {"data": []}, "unavailable", "unknown", 404),
                 ("unrelated primary", {"pairs": [unrelated]}, {"data": []}, "unavailable", "unknown", 200),
+                ("wrong address family", {"pairs": [dict(market, chainId="solana")]}, {"data": []},
+                 "unavailable", "unknown", 200),
                 ("mixed primary", {"pairs": [None, unrelated, market]}, {}, "ok", "low", 200),
                 ("missing fallback list", {"pairs": []}, {"meta": {}}, "unavailable", "unknown", 404),
                 ("wrong fallback list type", {"pairs": []}, {"data": {}}, "unavailable", "unknown", 404),
