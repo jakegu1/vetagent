@@ -1,3 +1,11 @@
+# T088 sellability archive diagnostics (2026-11-13)
+
+Independent review accepted source `6c07b76`. All 47 configured local checks and
+normal feature CI passed. Future sellability rows retain bounded final fetch
+metadata. Existing observations, the collection budget and risk decisions
+retain their original meaning. Root is responsible for the normal master CI
+handoff. The collector runs from master on the existing schedule.
+
 # T084 local integration (2026-11-10)
 
 T084 is integrated locally in 28e9249 from the accepted task head cb3ef29.

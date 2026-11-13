@@ -1,7 +1,7 @@
 ---
 id: T-088
 title: Retain the final sellability fetch diagnostics
-status: ready
+status: done
 level: 1
 size: S
 base: 2b14c3cf537ec7b5a07fea1903e88bef6ef343b5

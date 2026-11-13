@@ -1,3 +1,10 @@
+# Current Owner checkpoint (2026-11-13)
+
+The first post-release schedule saved 25 sellability observations. Ten ended in
+HTTP 404; their original response bodies were not retained. The archive
+diagnostic repair passed independent review, the full offline suite and normal
+feature CI. Root is completing the master CI handoff. This is a collector change.
+
 # Current Owner checkpoint (2026-11-10)
 
 The unchecked fallback market correction passed independent functional and
