@@ -417,10 +417,11 @@ def _sellability_fetch_diagnostics(diagnostics):
         return {}
     status, error, attempts = (diagnostics[key] for key in ("status", "error", "attempts"))
     # The fetcher defaults to two retries after the initial attempt.
-    errors = (None, "http", "timeout", "network", "request", "invalid_json", "empty_body",
+    errors = ("http", "timeout", "network", "request", "invalid_json", "empty_body",
               "budget_exhausted")
     if ((status is not None and (type(status) is not int or not 100 <= status <= 599))
-            or error not in errors or type(attempts) is not int or not 0 <= attempts <= 3):
+            or (error is not None and (type(error) is not str or error not in errors))
+            or type(attempts) is not int or not 0 <= attempts <= 3):
         return {}
     return {"fetch_diagnostics": {"status": status, "error": error, "attempts": attempts}}
 
@@ -632,8 +633,14 @@ def _write_sellability(sell, seen_at):
     if not sell:
         print("sellability: nothing to record")
         return 0
-    sell = [r if isinstance(r, dict) and _sellability_writable(r) else _sellability_failure(r)
-            for r in sell]
+    rows = []
+    for row in sell:
+        if isinstance(row, dict) and "fetch_diagnostics" in row:
+            row = dict(row)
+            row.update(_sellability_fetch_diagnostics(row.pop("fetch_diagnostics")))
+        rows.append(row if isinstance(row, dict) and _sellability_writable(row)
+                    else _sellability_failure(row))
+    sell = rows
     path = os.path.join(OUT_DIR, "sellability-%s.ndjson" % seen_at[:10])
     with io.open(path, "a", encoding="utf-8", newline="") as f:
         for r in sell:
