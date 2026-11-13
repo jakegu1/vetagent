@@ -4755,6 +4755,64 @@ def test_t067_received_null_diagnostics_preserve_failure_and_legacy_controls():
           and len(invalid["samples"]) == 2 and invalid["physical"] == ["null"])
 
 
+def test_t088_sellability_archive_keeps_bounded_fetch_diagnostics():
+    cases = [
+        (["404"], 404, "http", 1, "no_record", False),
+        (["429", "404"], 404, "http", 2, "no_record", False),
+        (["429"], 429, "http", 3, "unreachable", False),
+        (["timeout"], None, "timeout", 3, "unreachable", False),
+        (["invalid_json"], 200, "invalid_json", 3, "unreachable", False),
+        (["null"], 200, None, 1, "invalid_payload", False),
+        (["good"], 200, None, 1, "ok", True),
+    ]
+    for effects, status, error, attempts, outcome, answered in cases:
+        result = _t067_null_operations(effects)
+        row, = result["saved"]
+        check(str(effects) + " archives the final fetch status, category and attempt count",
+              row.get("fetch_diagnostics") == {"status": status, "error": error, "attempts": attempts},
+              str(row.get("fetch_diagnostics")))
+        check(str(effects) + " keeps outcome, answered and original archive bytes",
+              row["outcome"] == outcome and row["answered"] is answered
+              and result["prefix_exact"] and result["reader_bytes_exact"]
+              and result["inventory"]["kinds"]["sellability"]["malformed_rows"] == 0)
+    legacy = _t067_null_operations(["null"], legacy_none=True)
+    check("missing adapter diagnostics stay absent",
+          "fetch_diagnostics" not in legacy["saved"][0])
+
+
+def test_t088_sellability_failure_preserves_only_fixed_fetch_metadata():
+    import contextlib
+    import tempfile
+    from pathlib import Path
+    from unittest.mock import patch
+
+    batch = "2026-11-01T00:00:00Z"
+    status = {"status": 200, "error": None, "attempts": 1, "body": "fixture-body-marker"}
+    with tempfile.TemporaryDirectory() as tmp, patch.object(snapshot, "OUT_DIR", tmp):
+        with contextlib.redirect_stdout(io.StringIO()):
+            snapshot._write_sellability([
+                {"seen_at": batch, "sellTax": float("nan"), "fetch_diagnostics": status},
+                {"seen_at": batch, "sellTax": float("nan"), "fetch_diagnostics": {
+                    "status": True, "error": "fixture-error-marker", "attempts": 999}},
+                {"seen_at": batch, "outcome": "ok", "answered": True, "fetch_diagnostics": status},
+                {"seen_at": batch, "outcome": "unreachable", "answered": False,
+                 "fetch_diagnostics": {"status": 429, "error": "fixture-error-marker", "attempts": 3}},
+            ], batch)
+        raw = (Path(tmp) / "sellability-2026-11-01.ndjson").read_text(encoding="utf-8")
+        first, second, success, failure = map(json.loads, raw.splitlines())
+        check("writer failure keeps the valid fetch metadata and rejects body or free text",
+              first.get("fetch_diagnostics") == {"status": 200, "error": None, "attempts": 1}
+              and "fetch_diagnostics" not in second
+              and all(row["outcome"] == "invalid_payload" for row in (first, second))
+              and "fixture-" not in json.dumps((first, second)))
+        check("normal writer filters diagnostics without changing the observation",
+              success.get("fetch_diagnostics") == {"status": 200, "error": None, "attempts": 1}
+              and "fetch_diagnostics" not in failure
+              and success["outcome"] == "ok" and success["answered"] is True
+              and failure["outcome"] == "unreachable" and failure["answered"] is False
+              and "fixture-" not in raw)
+
+
 def main():
     print("=" * 68)
     print("Sellability archive: asking on the day, because later is too late")

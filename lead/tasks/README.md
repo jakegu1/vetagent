@@ -90,3 +90,4 @@ what to do; a spec is written when an item is started and names its W-id, if it 
 | T-085 | Choose an established venue when fallback depth and activity conflict | 3 | S | T-084 | ready; offline source qualification only |
 | T-086 | Validate sell evidence before assessment and retry substitution | 3 | S | T-085 | in progress |
 | T-087 | Require market ownership and distinguish invalid listings from empty markets | 3 | S | T-086 | ready |
+| T-088 | Retain the final sellability fetch diagnostics | 1 | S | none | source accepted at `6c07b76`; normal release checks pending |
