@@ -365,8 +365,8 @@ def _probed_already():
                 except ValueError:
                     continue
                 key = (o.get("chain"), str(o.get("token") or "").lower())
-                # An attempt that never reached honeypot.is is not evidence about the
-                # token and must not count against its budget.
+                # A lookup without an interpretable response does not consume the
+                # per-token observation allowance.
                 if o.get("outcome") != "unreachable":
                     attempts[key] = attempts.get(key, 0) + 1
                 elif key not in attempts:
@@ -412,6 +412,19 @@ def _sellability_writable(row):
     return True
 
 
+def _sellability_fetch_diagnostics(diagnostics):
+    if not isinstance(diagnostics, dict) or not {"status", "error", "attempts"} <= diagnostics.keys():
+        return {}
+    status, error, attempts = (diagnostics[key] for key in ("status", "error", "attempts"))
+    # The fetcher defaults to two retries after the initial attempt.
+    errors = (None, "http", "timeout", "network", "request", "invalid_json", "empty_body",
+              "budget_exhausted")
+    if ((status is not None and (type(status) is not int or not 100 <= status <= 599))
+            or error not in errors or type(attempts) is not int or not 0 <= attempts <= 3):
+        return {}
+    return {"fetch_diagnostics": {"status": status, "error": error, "attempts": attempts}}
+
+
 def _sellability_failure(row):
     """Retain a failed attempt without storing the offending response value."""
     failure = {}
@@ -421,6 +434,8 @@ def _sellability_failure(row):
             failure[key] = value if _sellability_writable(value) else None
     failure.update(answered=False, outcome="invalid_payload", schema=2,
                    diagnostics={"error": "invalid_payload"})
+    if isinstance(row, dict):
+        failure.update(_sellability_fetch_diagnostics(row.get("fetch_diagnostics")))
     return failure
 
 
@@ -468,11 +483,9 @@ def probe_sellability(rows, seen_at, limit):
     #     eth    2 ok,  0 no_record   100%
     #     bsc    0 ok, 48 no_record     0%
     #
-    # honeypot.is simply does not index new BSC tokens on this timescale. So 48 of 53
-    # requests bought nothing, and the two chains that answer every time were starved.
-    # Round-robin rather than dropping BSC or weighting by the measured rate: 53 samples
-    # is thin, coverage can change, and a fixed share bounds the waste at a third while
-    # leaving the door open. `_MAX_ATTEMPTS` already caps what any one token can burn.
+    # Those 48 BSC lookups returned 404 and yielded no sellability result. Round-robin
+    # preserves a share for each chain while coverage can change. `_MAX_ATTEMPTS` caps
+    # the observations made for one token.
     fresh.sort(key=lambda r: (_unsimulatable(r), _neg_time(r)))
     fresh = _round_robin_by_chain(fresh)
 
@@ -506,18 +519,8 @@ def probe_sellability(rows, seen_at, limit):
                          and type(fetch_diagnostics.get("attempts")) is int and fetch_diagnostics["attempts"] > 0)
         # A parsed JSON null is received data even though the adapter returns None.
         timing = _sellability_fetch_clock(clock_start, clock_end, NOT_FOUND if received_null else hp)
-        # `answered: false` merged four different facts into one boolean: honeypot.is has
-        # no record of this token, honeypot.is refused us, our request timed out, and the
-        # venue is one it structurally cannot read. Those mean opposite things -- the
-        # first is a fact about the TOKEN, the rest are facts about US -- and collapsing
-        # them is the exact defect this project keeps re-committing (E11: an observed
-        # absence is a finding, an unobserved dimension is a gap, and neither may
-        # impersonate the other).
-        #
-        # It matters here more than usual. A cohort assembled in 2027 from rows where
-        # `answered` is false cannot tell "honeypot.is had never indexed it" from "our
-        # runner was rate-limited", and the second is correlated with nothing while the
-        # first is correlated with being brand new -- which is the whole population.
+        # no_record denotes a 404 from this lookup. It provides neither a sell
+        # result nor the provider's reason for returning that status.
         missing = hp is NOT_FOUND
         if missing:
             hp = None
@@ -535,6 +538,7 @@ def probe_sellability(rows, seen_at, limit):
                                        "reserve_usd": r.get("reserve_usd"), "timing": timing})
         if not _sellability_writable(row):
             row = _sellability_failure(row)
+        row.update(_sellability_fetch_diagnostics(fetch_diagnostics))
         out.append(row)
     return out
 
