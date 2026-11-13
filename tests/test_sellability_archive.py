@@ -4794,13 +4794,23 @@ def test_t088_sellability_failure_preserves_only_fixed_fetch_metadata():
                 {"seen_at": batch, "sellTax": float("nan"), "fetch_diagnostics": status},
                 {"seen_at": batch, "sellTax": float("nan"), "fetch_diagnostics": {
                     "status": True, "error": "fixture-error-marker", "attempts": 999}},
+                {"seen_at": batch, "outcome": "ok", "answered": True, "fetch_diagnostics": status},
+                {"seen_at": batch, "outcome": "unreachable", "answered": False,
+                 "fetch_diagnostics": {"status": 429, "error": "fixture-error-marker", "attempts": 3}},
             ], batch)
         raw = (Path(tmp) / "sellability-2026-11-01.ndjson").read_text(encoding="utf-8")
-        first, second = map(json.loads, raw.splitlines())
+        first, second, success, failure = map(json.loads, raw.splitlines())
         check("writer failure keeps the valid fetch metadata and rejects body or free text",
               first.get("fetch_diagnostics") == {"status": 200, "error": None, "attempts": 1}
-              and second.get("fetch_diagnostics") is None and "fixture-" not in raw
-              and all(row["outcome"] == "invalid_payload" for row in (first, second)))
+              and "fetch_diagnostics" not in second
+              and all(row["outcome"] == "invalid_payload" for row in (first, second))
+              and "fixture-" not in json.dumps((first, second)))
+        check("normal writer filters diagnostics without changing the observation",
+              success.get("fetch_diagnostics") == {"status": 200, "error": None, "attempts": 1}
+              and "fetch_diagnostics" not in failure
+              and success["outcome"] == "ok" and success["answered"] is True
+              and failure["outcome"] == "unreachable" and failure["answered"] is False
+              and "fixture-" not in raw)
 
 
 def main():
