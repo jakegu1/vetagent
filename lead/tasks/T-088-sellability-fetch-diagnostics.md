@@ -26,3 +26,9 @@ Search found no existing assertion to change.
 3. Keep archive prefixes, timing, reader compatibility and attempt accounting.
    The two new tests must fail on the old source and pass on the fixed source.
    Run the configured offline checks and obtain an independent review.
+
+## Amendment
+
+Extend the writer test with JSON-writable input rows as well as invalid
+payloads. The final serialization boundary must apply the same field
+restrictions to both paths.
