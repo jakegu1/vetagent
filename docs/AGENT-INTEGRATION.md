@@ -72,6 +72,24 @@ Any MCP client (Cursor, opencode, custom agent) works the same way.
 `confidence` measures **how complete the input data was**, not how safe the token is.
 `evidence.data_gaps` lists exactly which checks could not run and why.
 
+### Passing discovery results to assessment
+
+Each usable `find_new_hot_pools` row includes `assessment_args`, containing exactly
+`address` and the canonical `chain_hint` of the selected discovery network. Pass this
+object unchanged as the arguments to `assess_token_risk`, preserving the chain even
+when the same address has a deeper pool elsewhere. For example, a synthetic Base row
+can supply:
+
+```json
+{"address": "0x1111111111111111111111111111111111111111", "chain_hint": "base"}
+```
+
+`assessment_args` is absent when the base token address is invalid or missing, or the
+selected network has no supported assessment chain. Do not guess from the pool name or
+ID, and do not silently fall back to an address-only assessment. Discovery itself makes
+no assessment call. Assessment concerns the token on that chain and may select a
+different primary pool; it does not certify the exact discovered pool or authorize a trade.
+
 ### Consuming permission evidence
 
 The `assess_token_risk` output schema in `tools/list` describes the optional

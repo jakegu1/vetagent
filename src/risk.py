@@ -5020,6 +5020,14 @@ async def new_pools(chain="solana", limit=10):
     # count now describes the array beside it, and scanned says what there was before
     # the cap, so neither number can stand in for the other.
     shown = list(merged.values())[:limit]
+    assessment_chain = _GT_TO_CHAIN.get(net, net)
+    if assessment_chain in _KNOWN_CHAINS:
+        for row in shown:
+            try:
+                address = validate_address(row["token_address"])
+            except ValueError:
+                continue
+            row["assessment_args"] = {"address": address, "chain_hint": assessment_chain}
     return _disclosed({"status": "partial" if sources_failed else "ok",
                        "chain": chain, "network": net, "count": len(shown),
                        "scanned": len(merged), "sources_ok": sources_ok,

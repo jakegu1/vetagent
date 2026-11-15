@@ -250,8 +250,10 @@ TOOLS = [
             "Scan a chain for the newest and most active trading pools, returning name, "
             "token_address, price, liquidity, 24h volume and pool age.\n"
             "Discovery only. New pools carry inherently high risk and appearing here is NOT "
-            "a safety endorsement — pass token_address straight to assess_token_risk for "
-            "anything you intend to act on."
+            "a safety endorsement. Pass assessment_args unchanged to assess_token_risk when "
+            "present; when absent, do not guess an address or chain. Assessment concerns the "
+            "token on that chain and may select a different primary pool. It does not certify "
+            "the exact discovered pool or authorize a trade."
         ),
         "inputSchema": {
             "type": "object",
@@ -266,8 +268,8 @@ TOOLS = [
         "outputSchema": {
             "type": "object",
             "description":
-                "Discovery only, never an endorsement. Call assess_token_risk on "
-                "token_address before saying anything about a pool's risk.",
+                "Discovery only, never an endorsement. Use assessment_args when present to "
+                "assess the token on its discovered chain; do not guess when it is absent.",
             "properties": {
                 "status": {
                     "type": "string",
@@ -328,10 +330,16 @@ TOOLS = [
                             "token_address": {
                                 "type": "string",
                                 "description":
-                                    "The base token. This is the field to hand to "
-                                    "assess_token_risk -- pool_id is not an address, and "
-                                    "passing it produced six empty answers before the "
-                                    "discovery-to-vetting seam was fixed.",
+                                    "The base token. Use assessment_args for assessment so its "
+                                    "chain is preserved; pool_id is not a token address.",
+                            },
+                            "assessment_args": {
+                                "type": "object",
+                                "description": "Ready arguments for assess_token_risk. Omitted when the "
+                                               "token address is invalid or the selected network is unsupported.",
+                                "properties": {"address": {"type": "string"}, "chain_hint": {"type": "string"}},
+                                "required": ["address", "chain_hint"],
+                                "additionalProperties": False,
                             },
                             "kind": {"type": "string", "enum": ["new", "trending"]},
                             "price_usd": {"type": ["number", "null"]},
