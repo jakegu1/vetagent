@@ -39,14 +39,23 @@ def _route(payload):
     return _decision("abstain", "retry_guidance_invalid")
 
 
-def route_http(payload, http_status=200):
+def _route_with_context(payload, retry_attempted):
+    if type(retry_attempted) is not bool:
+        return _decision("abstain", "invalid_retry_context")
+    result = _route(payload)
+    if retry_attempted and result["action"] == "retry":
+        return _decision("abstain", "retry_budget_exhausted")
+    return result
+
+
+def route_http(payload, http_status=200, *, retry_attempted=False):
     """Read only HTTP status/error/verdict/guidance; never retain response content."""
     if type(http_status) is not int or http_status != 200 or type(payload) is not dict or "error" in payload:
         return _decision("abstain", "invalid_envelope")
-    return _route(payload)
+    return _route_with_context(payload, retry_attempted)
 
 
-def route_mcp(envelope, http_status=200):
+def route_mcp(envelope, http_status=200, *, retry_attempted=False):
     """Use structuredContent only; any transport/top-level/tool error wins first."""
     if (type(http_status) is not int or http_status != 200
             or type(envelope) is not dict or "error" in envelope):
@@ -57,7 +66,7 @@ def route_mcp(envelope, http_status=200):
     payload = result.get("structuredContent")
     if type(payload) is not dict:
         return _decision("abstain", "invalid_envelope")
-    return _route(payload)
+    return _route_with_context(payload, retry_attempted)
 
 
 def _emit(value):
@@ -98,6 +107,8 @@ def main(argv=None):
     parser.add_argument("--transport", required=True, choices=("http", "mcp"))
     parser.add_argument("--http-status", type=_http_status, default=200, metavar="STATUS",
                         help="Actual three-digit HTTP status; defaults to 200 for local fixtures")
+    parser.add_argument("--retry-attempted", action="store_true",
+                        help="The caller already used its one permitted retry for this assessment")
     args = parser.parse_args(argv)
     try:
         raw = sys.stdin.buffer.read(BYTE_CAP + 1)
@@ -107,8 +118,8 @@ def main(argv=None):
     except (OSError, ValueError, TypeError, RecursionError, OverflowError, UnicodeError):
         _emit({"error": "input_refused"})
         return 1
-    result = (route_http(payload, args.http_status) if args.transport == "http"
-              else route_mcp(payload, args.http_status))
+    route = route_http if args.transport == "http" else route_mcp
+    result = route(payload, args.http_status, retry_attempted=args.retry_attempted)
     _emit(result)
     # A valid abstention is a policy result, not a command failure.
     return 0

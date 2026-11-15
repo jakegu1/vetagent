@@ -102,7 +102,26 @@ the delay is an exact non-boolean integer from 1 through 2147483647. Coverage un
 abstain. Missing kind or invalid/contradictory retry guidance also abstains, regardless of score.
 Only retry advice carries a delay; all other results carry null. No sleep or retry is executed.
 
-This adapter validates only consumed status, envelope, verdict and unknown-guidance fields.
+Retry at most once. The caller owns the attempt history: for a response received after that
+retry, pass `retry_attempted=True` to `route_http` or `route_mcp`, or use the CLI flag
+`--retry-attempted`. Another otherwise valid retry recommendation becomes `abstain` with
+reason `retry_budget_exhausted` and a null delay. A completed low, medium or high response
+keeps its ordinary action; coverage unknowns and invalid guidance keep their existing reasons.
+
+This command handles a second unknown response without making another request:
+
+```sh
+echo '{"risk_level":"unknown","unknown_kind":"infrastructure","next_action":"retry","retry_after_seconds":60}' | python -B examples/assessment_policy.py --transport http --http-status 200 --retry-attempted
+```
+
+The Python context is keyword-only and accepts exactly `True` or `False`; other values yield
+`abstain` with reason `invalid_retry_context`. Existing transport and envelope errors take
+priority. Omitting the context preserves existing behavior, including positional `http_status`.
+A `retry_attempted` field inside assessment JSON is ignored: only the caller argument or CLI
+flag supplies history. The adapter does not track attempts, store state, or perform retries.
+
+This adapter validates only consumed status, envelope, verdict, unknown-guidance fields and
+caller-supplied retry context.
 It does not validate the complete assessment schema: for example, a low response with a malformed
 unused score can still continue evaluation. `checked_at` and `evidence_max_age_seconds` remain
 response context; an integrator must apply its own pre-registered freshness/workflow policy.
