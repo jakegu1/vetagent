@@ -2100,6 +2100,153 @@ def test_expected_chain_cli_preserves_routing_and_private_errors():
               and missing.stderr == b"" and json.loads(missing.stdout) == {"error": "arguments_refused"})
 
 
+def _t090_route(interface, args, outcomes, key=None):
+    from urllib.parse import urlencode
+
+    with _t031_runtime(outcomes, key=key) as (runtime, state, env):
+        body = {"jsonrpc": "2.0", "id": 90, "method": "tools/call",
+                "params": {"name": "find_new_hot_pools", "arguments": args}}
+
+        class Request(runtime.FakeRequest):
+            async def json(self):
+                return body
+
+        request = Request("https://offline.invalid" + (
+            "/mcp" if interface == "mcp" else "/new-pools?" + urlencode(args)),
+            method="POST" if interface == "mcp" else "GET",
+            headers={"x-mcp-client": "vetagent-manual-probe"})
+        worker = runtime.entry.Default()
+        worker.env = env
+        response = asyncio.run(worker.fetch(request))
+        envelope = json.loads(response.body)
+    result = envelope.get("result", {}) if interface == "mcp" else envelope
+    data = result.get("structuredContent", {}) if interface == "mcp" else result
+    if interface == "mcp" and not result.get("isError"):
+        check("T090 MCP text agrees with structured content",
+              json.loads(result.get("content", [{}])[0].get("text", "null")) == data)
+    check("T090 route stays within local fixture networking", not state["blocked"] and not state["unexpected"])
+    return response.status, result, data, state
+
+
+def _t090_overlap():
+    return {("geckoterminal", "new"): _t031_reply({"data": [_t031_pool("1"), _t031_pool("2")]}),
+            ("geckoterminal", "trending"): _t031_reply(
+                {"data": [_t031_pool("2"), _t031_pool("2"), _t031_pool("3")]})}
+
+
+def test_t090_selected_listing_reaches_real_http_and_mcp_before_limit():
+    for interface in ("http", "mcp"):
+        args = {"chain": "ethereum", "limit": 2}
+        status, _, default, state = _t090_route(interface, args, _t090_overlap())
+        explicit = _t090_route(interface, dict(args, listing="mixed"), _t090_overlap())
+        check("T090 explicit mixed preserves the entire default answer and provider order",
+              status == explicit[0] == 200 and default == explicit[2]
+              and _t031_trace(state) == _t031_trace(explicit[3])
+              == [("geckoterminal", "new"), ("geckoterminal", "trending")]
+              and "listing" not in default)
+        default_ids = [row["pool_id"] for row in default.get("pools", [])]
+        check("T090 default retains the original new-first overlap result",
+              default_ids == ["eth_pool1", "eth_pool2"] and default.get("scanned") == 3)
+        for limit in (1, 2):
+            status, result, selected, state = _t090_route(
+                interface, dict(args, listing="trending", limit=limit), _t090_overlap())
+            ids = [row["pool_id"] for row in selected.get("pools", [])]
+            check("T090 selects original trending order before deduplication and limit",
+                  status == 200 and not result.get("isError") and ids == ["eth_pool2", "eth_pool3"][:limit]
+                  and selected.get("count") == limit and selected.get("scanned") == 2)
+            check("T090 selected scope is complete and does not request new",
+                  selected.get("listing") == "trending" and selected.get("status") == "ok"
+                  and selected.get("sources_ok") == ["trending"] and selected.get("sources_failed") == []
+                  and _t031_trace(state) == [("geckoterminal", "trending")])
+            check("T090 selected rows retain callable chain context",
+                  all(row.get("assessment_args") == {"address": row["token_address"], "chain_hint": "ethereum"}
+                      for row in selected.get("pools", [])) and len(ids) == limit)
+            if limit == 2:
+                trending = {"eth_pool2", "eth_pool3"}
+                check("T090 real identity membership improves one to two and unique zero to one",
+                      len(set(default_ids) & trending) == 1 and len(set(ids) & trending) == 2
+                      and "eth_pool3" not in default_ids and "eth_pool3" in ids)
+
+
+def test_t090_selected_empty_failure_and_provider_fallback_remain_distinct():
+    for interface in ("http", "mcp"):
+        args = {"chain": "ethereum", "listing": "trending", "limit": 2}
+        for label, reply in (("empty", _t031_reply({"data": []})),
+                             ("malformed", _t031_reply({"data": [{"id": "eth_bad", "attributes": []}]})),
+                             ("failed", _t031_reply({}, 429))):
+            outcomes = _t090_overlap()
+            outcomes[("geckoterminal", "trending")] = reply
+            status, result, data, state = _t090_route(interface, args, outcomes)
+            check("T090 selected source never substitutes healthy unrequested new",
+                  _t031_trace(state) == [("geckoterminal", "trending")])
+            if label == "empty":
+                check("T090 observed empty selected listing is a complete zero",
+                      status == 200 and not result.get("isError") and data.get("pools") == []
+                      and data.get("count") == data.get("scanned") == 0 and data.get("status") == "ok"
+                      and data.get("listing") == "trending" and data.get("sources_ok") == ["trending"]
+                      and data.get("sources_failed") == [])
+            else:
+                check("T090 unusable selected listing retains the existing error envelope",
+                      (status == 200 and result.get("isError") is True and "structuredContent" not in result
+                       and "GeckoTerminal request failed;" in result.get("content", [{}])[0].get("text", ""))
+                      if interface == "mcp" else status == 500 and data.get("error") == "internal_error"
+                      and data.get("detail", "").startswith("GeckoTerminal request failed;"))
+        outcomes = _t090_overlap()
+        outcomes[("coingecko", "trending")] = _t031_reply({}, 429)
+        status, result, data, state = _t090_route(interface, args, outcomes, key="t031-synthetic-header-only-credential")
+        check("T090 provider fallback stays within selected listing and retains its overlap",
+              status == 200 and not result.get("isError") and data.get("status") == "ok"
+              and [row["pool_id"] for row in data.get("pools", [])] == ["eth_pool2", "eth_pool3"]
+              and _t031_trace(state) == [("coingecko", "trending"), ("geckoterminal", "trending")])
+        _t031_private("T090 selected fallback: ", state, data)
+
+
+def test_t090_invalid_selection_is_refused_before_any_upstream():
+    for interface in ("http", "mcp"):
+        invalid = ["", "new", "Trending", " trending", "PRIVATE-LISTING" * 100]
+        if interface == "mcp":
+            invalid += [None, True, 1, [], {}]
+        for value in invalid:
+            status, result, data, state = _t090_route(
+                interface, {"chain": "ethereum", "listing": value}, _t090_overlap())
+            message = (result.get("content", [{}])[0].get("text", "") if interface == "mcp"
+                       else data.get("detail", ""))
+            check("T090 invalid listing uses bounded static transport refusal before upstream",
+                  not state["requests"] and "PRIVATE-LISTING" not in message
+                  and message.endswith("Invalid listing: expected mixed or trending")
+                  and len(message) < 100 and (status == 200 and result.get("isError") is True
+                      if interface == "mcp" else status == 400 and data.get("error") == "invalid_request"))
+    with _t031_runtime(_t090_overlap(), key=None) as (_, state, _):
+        try:
+            asyncio.run(risk.new_pools("ethereum", 2, "new"))
+            error = None
+        except Exception as exc:
+            error = exc
+    check("T090 engine also validates listing before its fetch boundary",
+          isinstance(error, ValueError) and str(error) == "Invalid listing: expected mixed or trending"
+          and not state["requests"])
+
+
+def test_t090_tools_list_exposes_selected_scope_without_changing_default_contract():
+    tools = call({"jsonrpc": "2.0", "id": 90, "method": "tools/list"})["result"]["tools"]
+    tool = next(item for item in tools if item["name"] == "find_new_hot_pools")
+    selection = tool["inputSchema"]["properties"].get("listing", {})
+    output = tool["outputSchema"]
+    check("T090 listing input is optional mixed or trending with compatible default",
+          selection.get("type") == "string" and selection.get("enum") == ["mixed", "trending"]
+          and selection.get("default") == "mixed" and "listing" not in tool["inputSchema"].get("required", []))
+    check("T090 selected response scope is optional and only emits trending",
+          output["properties"].get("listing", {}).get("enum") == ["trending"]
+          and "listing" not in output.get("required", []))
+    description = output["properties"]["status"]["description"].lower()
+    check("T090 status preserves both/one mixed meaning and explains selected completeness",
+          all(word in description for word in ("both", "one", "mixed", "trending", "selected")))
+    check("T090 discovery instructions recommend selection without claiming persistent funding",
+          "listing" in tool["description"] and "active" in tool["description"]
+          and "pool_age_days" in tool["description"] and "sustained funding" in tool["description"]
+          and "assessment_args" in tool["description"] and "chain_searched" in tool["description"])
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
