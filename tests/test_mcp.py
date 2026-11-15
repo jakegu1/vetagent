@@ -1003,6 +1003,7 @@ def test_t031_no_or_invalid_key_preserves_complete_parent_answer():
     expected = {"status": "ok", "chain": "ethereum", "network": "eth", "count": 1,
                 "scanned": 2, "sources_ok": ["new", "trending"], "sources_failed": [],
                 "pools": [{"kind": "new", "pool_id": "eth_pool1", "token_address": "0x" + "1" * 40,
+                           "assessment_args": {"address": "0x" + "1" * 40, "chain_hint": "ethereum"},
                            "name": "Pool 1", "price_usd": 1.25, "liquidity_usd": 100.0,
                            "volume_24h_usd": 20.0, "pool_age_days": 2}],
                 "checked_at": "2026-10-18T00:00:00Z"}
