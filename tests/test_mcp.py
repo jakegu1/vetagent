@@ -2172,7 +2172,7 @@ def test_t090_selected_empty_failure_and_provider_fallback_remain_distinct():
     for interface in ("http", "mcp"):
         args = {"chain": "ethereum", "listing": "trending", "limit": 2}
         for label, reply in (("empty", _t031_reply({"data": []})),
-                             ("malformed", _t031_reply({"data": [{"id": "eth_bad", "attributes": []}]})),
+                             ("malformed", _t031_reply({"data": [{"id": "eth_bad", "attributes": [1]}]})),
                              ("failed", _t031_reply({}, 429))):
             outcomes = _t090_overlap()
             outcomes[("geckoterminal", "trending")] = reply
