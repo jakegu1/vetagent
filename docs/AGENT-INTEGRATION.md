@@ -76,19 +76,34 @@ Any MCP client (Cursor, opencode, custom agent) works the same way.
 
 Each usable `find_new_hot_pools` row includes `assessment_args`, containing exactly
 `address` and the canonical `chain_hint` of the selected discovery network. Pass this
-object unchanged as the arguments to `assess_token_risk`, preserving the chain even
-when the same address has a deeper pool elsewhere. For example, a synthetic Base row
+object unchanged as the arguments to `assess_token_risk`, preserving the selected
+chain preference. The hint is not a strict chain lock: if the market source only sees
+another chain, the engine may report that observed chain. For example, a synthetic Base row
 can supply:
 
 ```json
 {"address": "0x1111111111111111111111111111111111111111", "chain_hint": "base"}
 ```
 
-`assessment_args` is absent when the base token address is invalid or missing, or the
-selected network has no supported assessment chain. Do not guess from the pool name or
+`assessment_args` is absent when the base token address is invalid, missing, or belongs
+to the wrong address family, or the selected network has no supported assessment chain. Do not guess from the pool name or
 ID, and do not silently fall back to an address-only assessment. Discovery itself makes
-no assessment call. Assessment concerns the token on that chain and may select a
+no assessment call. Before using the answer for the discovered target, require returned
+`evidence.chain_searched` to match `assessment_args.chain_hint`. Assessment may select a
 different primary pool; it does not certify the exact discovered pool or authorize a trade.
+
+After checking that the discovered row has `assessment_args`, use the existing local
+adapter to enforce the returned-chain check:
+
+```python
+from examples.assessment_policy import route_mcp
+
+args = discovered_row["assessment_args"]
+request = {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+           "params": {"name": "assess_token_risk", "arguments": args}}
+# Send request with your existing MCP transport and retain its actual status and envelope.
+advice = route_mcp(response_envelope, actual_http_status, expected_chain=args["chain_hint"])
+```
 
 ### Consuming permission evidence
 
@@ -186,6 +201,16 @@ flag supplies history. The adapter does not track attempts, store state, or perf
 
 This adapter validates only consumed status, envelope, verdict, unknown-guidance fields and
 caller-supplied retry context.
+When `expected_chain` is provided, it also requires an evidence object with a valid,
+exactly matching `chain_searched`. The keyword-only context accepts the canonical names
+`ethereum`, `bsc`, `base`, `polygon`, `arbitrum`, `optimism`, `avalanche` and `solana`.
+Aliases, case changes and other values abstain with `invalid_expected_chain`; missing or
+invalid observed context yields `chain_context_unavailable`, and a different supported
+chain yields `assessment_chain_mismatch`. These results never carry a retry delay.
+The CLI uses the same policy through `--expected-chain base`. Omitting the context (or
+passing `None` in Python) preserves existing routing. Existing transport/envelope errors
+take priority, and the caller-owned retry budget still applies to matching-chain responses.
+An `expected_chain` field in response JSON does not supply caller context.
 It does not validate the complete assessment schema: for example, a low response with a malformed
 unused score can still continue evaluation. `checked_at` and `evidence_max_age_seconds` remain
 response context; an integrator must apply its own pre-registered freshness/workflow policy.

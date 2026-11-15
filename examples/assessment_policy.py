@@ -1,7 +1,7 @@
 """Route an existing HTTP/MCP assessment response without performing any action.
 
 This is a limited policy example, not whole-schema validation or permission to
-place an order. Unused scores/evidence do not change the verdict-routing policy.
+place an order. Scores are unused; optional caller context checks the observed chain.
 """
 
 import argparse
@@ -10,6 +10,7 @@ import sys
 
 BYTE_CAP = 1024 * 1024
 _VERDICTS = ("high", "medium", "low", "unknown")
+_SUPPORTED_CHAINS = ("ethereum", "bsc", "base", "polygon", "arbitrum", "optimism", "avalanche", "solana")
 _ACTIONS = {"high": ("reject", "high_risk"),
             "medium": ("manual_review", "risk_requires_review"),
             "low": ("continue_evaluation", "checks_ran_without_fatal_signal")}
@@ -39,23 +40,32 @@ def _route(payload):
     return _decision("abstain", "retry_guidance_invalid")
 
 
-def _route_with_context(payload, retry_attempted):
+def _route_with_context(payload, retry_attempted, expected_chain=None):
     if type(retry_attempted) is not bool:
         return _decision("abstain", "invalid_retry_context")
+    if expected_chain is not None:
+        if type(expected_chain) is not str or expected_chain not in _SUPPORTED_CHAINS:
+            return _decision("abstain", "invalid_expected_chain")
+        evidence = payload.get("evidence")
+        observed = evidence.get("chain_searched") if type(evidence) is dict else None
+        if type(observed) is not str or observed not in _SUPPORTED_CHAINS:
+            return _decision("abstain", "chain_context_unavailable")
+        if observed != expected_chain:
+            return _decision("abstain", "assessment_chain_mismatch")
     result = _route(payload)
     if retry_attempted and result["action"] == "retry":
         return _decision("abstain", "retry_budget_exhausted")
     return result
 
 
-def route_http(payload, http_status=200, *, retry_attempted=False):
-    """Read only HTTP status/error/verdict/guidance; never retain response content."""
+def route_http(payload, http_status=200, *, retry_attempted=False, expected_chain=None):
+    """Read routing fields and optional chain context; never retain response content."""
     if type(http_status) is not int or http_status != 200 or type(payload) is not dict or "error" in payload:
         return _decision("abstain", "invalid_envelope")
-    return _route_with_context(payload, retry_attempted)
+    return _route_with_context(payload, retry_attempted, expected_chain)
 
 
-def route_mcp(envelope, http_status=200, *, retry_attempted=False):
+def route_mcp(envelope, http_status=200, *, retry_attempted=False, expected_chain=None):
     """Use structuredContent only; any transport/top-level/tool error wins first."""
     if (type(http_status) is not int or http_status != 200
             or type(envelope) is not dict or "error" in envelope):
@@ -66,7 +76,7 @@ def route_mcp(envelope, http_status=200, *, retry_attempted=False):
     payload = result.get("structuredContent")
     if type(payload) is not dict:
         return _decision("abstain", "invalid_envelope")
-    return _route_with_context(payload, retry_attempted)
+    return _route_with_context(payload, retry_attempted, expected_chain)
 
 
 def _emit(value):
@@ -109,6 +119,8 @@ def main(argv=None):
                         help="Actual three-digit HTTP status; defaults to 200 for local fixtures")
     parser.add_argument("--retry-attempted", action="store_true",
                         help="The caller already used its one permitted retry for this assessment")
+    parser.add_argument("--expected-chain", default=None, metavar="CHAIN",
+                        help="Require the response to identify this supported canonical chain")
     args = parser.parse_args(argv)
     try:
         raw = sys.stdin.buffer.read(BYTE_CAP + 1)
@@ -119,7 +131,7 @@ def main(argv=None):
         _emit({"error": "input_refused"})
         return 1
     route = route_http if args.transport == "http" else route_mcp
-    result = route(payload, args.http_status, retry_attempted=args.retry_attempted)
+    result = route(payload, args.http_status, retry_attempted=args.retry_attempted, expected_chain=args.expected_chain)
     _emit(result)
     # A valid abstention is a policy result, not a command failure.
     return 0
