@@ -2247,6 +2247,27 @@ def test_t090_tools_list_exposes_selected_scope_without_changing_default_contrac
           and "assessment_args" in tool["description"] and "chain_searched" in tool["description"])
 
 
+def test_t090_duplicate_http_selection_is_refused_before_upstream():
+    from urllib.parse import urlencode
+
+    for first, second in (("", "trending"), ("trending", ""),
+                          ("PRIVATE-DUPLICATE", "trending"), ("trending", "PRIVATE-DUPLICATE"),
+                          ("mixed", "trending"), ("trending", "mixed"),
+                          ("trending", "trending"), ("mixed", "mixed")):
+        with _t031_runtime(_t090_overlap(), key=None) as (runtime, state, env):
+            query = urlencode([("chain", "ethereum"), ("listing", first), ("listing", second)])
+            request = runtime.FakeRequest("https://offline.invalid/new-pools?" + query,
+                                          headers={"x-mcp-client": "vetagent-manual-probe"})
+            worker = runtime.entry.Default()
+            worker.env = env
+            response = asyncio.run(worker.fetch(request))
+            answer = json.loads(response.body)
+        check("T090 duplicate selection is a static HTTP refusal with zero upstream calls",
+              response.status == 400 and answer == {
+                  "error": "invalid_request", "detail": "Invalid listing: expected mixed or trending"}
+              and not state["requests"] and not state["blocked"] and not state["unexpected"])
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
