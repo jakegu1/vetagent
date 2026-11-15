@@ -865,6 +865,186 @@ def test_selector_rejects_a_signature_it_cannot_compute():
             check("%r is refused" % bad, True)
 
 
+def _permission_scan_cases():
+    mint_role = selector("MINTER_ROLE()")
+    mint = selector("mint(address,uint256)")
+    transfer_mode = selector("MODE_TRANSFER_RESTRICTED()")
+    control = selector("totalSupply()")
+    trailer = "a16563" + mint
+    return (
+        ("role getter", "0x63" + mint_role + "00", {"can mint new supply": [mint_role]}),
+        ("mode getter", "0x63" + transfer_mode + "00", {"can pause transfers": [transfer_mode]}),
+        ("duplicate and multiple matches", "0x63" + mint_role.upper() + "63" + mint +
+         "63" + mint_role + "00", {"can mint new supply": sorted([mint, mint_role])}),
+        ("metadata and PUSH32", "0x7f63" + mint + "00" * 27 + "63" + control +
+         "00" + trailer + "%04x" % (len(trailer) // 2), {}),
+        ("proxy match", "0x635c60da1b63" + mint_role + "00", {"can mint new supply": [mint_role]}),
+    )
+
+
+def test_permission_evidence_matches_only_dispatched_selectors():
+    print("\n[permission evidence] traceable selector matches")
+    for label, code, expected in _permission_scan_cases():
+        result = risk._powers_from_code(code)
+        check(label + " preserves the existing category result",
+              result["powers"] == sorted(expected) and result["scan_is_incomplete"] is True)
+        check(label + " exposes deterministic exact matches and unchecked authority",
+              result.get("matched_selectors") == expected
+              and list((result.get("matched_selectors") or {}).keys()) == sorted(expected)
+              and result.get("evidence_basis") == "bytecode_selector_match"
+              and result.get("current_authority") == "not_checked")
+        check(label + " retains proxy and found-none semantics",
+              result["is_proxy"] == (label == "proxy match")
+              and result["found_none"] == (label == "metadata and PUSH32"))
+    check("pure empty code keeps its historical return", risk._powers_from_code("0x") is None)
+
+
+def test_permission_evidence_describes_indicators_and_unresolved_proxies():
+    print("\n[permission evidence] caller wording and legacy input")
+    for label, code, expected in _permission_scan_cases():
+        info = risk._powers_from_code(code)
+        legacy = {k: v for k, v in info.items()
+                  if k not in {"matched_selectors", "evidence_basis", "current_authority"}}
+        for supplied in (info, legacy):
+            signals, evidence = [], {}
+            original = json.dumps(supplied)
+            risk._owner_power_signal(supplied, signals, evidence)
+            signal = " ".join(s["name"] + " " + s["message"] for s in signals).lower()
+            recommendation = risk._low_recommendation(evidence).lower()
+            check(label + " preserves caller input and keeps the signal informational",
+                  json.dumps(supplied) == original and signals[0]["severity"] == "info"
+                  and signals[0]["category"] == "contract")
+            check(label + " avoids claims of current control, activation or past use",
+                  all(phrase not in text for text in (signal, recommendation)
+                      for phrase in ("owner holds powers", "this contract can:", "none was switched on",
+                                     "has been used against you", "whoever holds the keys")))
+            if label == "proxy match":
+                check("proxy permissions remain unresolved with a match",
+                      all("proxy" in text and "implementation" in text
+                          for text in (signal, recommendation)))
+            elif expected:
+                check(label + " tells both readers what was and was not examined",
+                      all("bytecode" in text and "not checked" in text
+                          and "authority" in text and "activation" in text
+                          for text in (signal, recommendation)))
+            else:
+                check("readable no-match states its scan limit",
+                      "found none" in recommendation and "nothing there" in recommendation)
+    failed, no_match = {"unavailable": "rpc 429"}, {"powers": [], "found_none": True}
+    check("legacy failure is distinct from no match",
+          "unreadable" in risk._low_recommendation({"owner_powers": failed}).lower()
+          and "found none" in risk._low_recommendation({"owner_powers": no_match}).lower())
+
+
+async def _permission_assessment(code_reply, *, verbose, mcp, sell_missing=False, legacy=False):
+    import copy
+    import socket
+    from types import SimpleNamespace
+    from unittest.mock import patch
+    import mcp_server
+
+    address = "0x" + "12" * 20
+    market = {"pairs": [{"chainId": "ethereum", "dexId": "uniswap",
+                        "baseToken": {"address": address, "symbol": "TKN"},
+                        "quoteToken": {"address": "0xq"}, "priceUsd": "1.0",
+                        "liquidity": {"usd": 900000}, "volume": {"h24": 400000},
+                        "txns": {"h24": {"buys": 900, "sells": 800}},
+                        "pairCreatedAt": 1589841515000}]}
+    with open(os.path.join(ROOT, "tests", "fixtures", "hp_matic.json"), encoding="utf-8") as stream:
+        sell = json.load(stream)
+    for key in ("chain", "pair", "pairAddress"):
+        sell.pop(key, None)
+    sell.get("token", {}).pop("address", None)
+    requests, cache = [], {}
+
+    def denied(*args, **kwargs):
+        raise AssertionError("unexpected network I/O")
+
+    async def fetch(url, **kwargs):
+        req = json.loads(kwargs["body"])
+        assert req["method"] == "eth_getCode" and req["params"] == [address, "latest"]
+        requests.append("bytecode")
+
+        async def body():
+            return json.dumps(code_reply)
+
+        return SimpleNamespace(status=200, text=body)
+
+    async def upstream(url, *args, **kwargs):
+        if "/dex/tokens/" in url:
+            requests.append("market")
+            return copy.deepcopy(market)
+        if "/dex/search" in url:
+            requests.append("search")
+            return {"pairs": []}
+        if "api.honeypot.is" in url:
+            requests.append("sell")
+            return None if sell_missing else copy.deepcopy(sell)
+        denied()
+
+    async def get(key):
+        return (cache[key], 0) if key in cache else (None, None)
+
+    async def put(key, data, ttl=None):
+        assert ttl == risk._BYTECODE_TTL_SECONDS
+        cache[key] = data
+
+    scan = risk._powers_from_code
+
+    def legacy_scan(code):
+        info = scan(code)
+        if info is None:
+            return None
+        return {k: v for k, v in info.items()
+                if k not in {"matched_selectors", "evidence_basis", "current_authority"}}
+
+    arguments = {"address": address, "chain_hint": "ethereum", "verbose": verbose}
+    with patch.object(socket.socket, "connect", denied), \
+            patch.object(socket, "getaddrinfo", denied), \
+            patch.object(risk, "cf_fetch", fetch), \
+            patch.object(risk, "_fetch_json", upstream), \
+            patch.object(risk, "_cache_get", get), \
+            patch.object(risk, "_cache_put", put), \
+            patch.object(risk, "_powers_from_code", legacy_scan if legacy else scan):
+        if mcp:
+            response = await mcp_server.handle_mcp_request({
+                "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                "params": {"name": "assess_token_risk", "arguments": arguments},
+            })
+            result = response["result"]["structuredContent"]
+            assert json.loads(response["result"]["content"][0]["text"]) == result
+        else:
+            result = await risk.assess(**arguments)
+        cached = await risk._owner_powers(address, "ethereum") if cache else None
+    return result, requests, cached
+
+
+def test_permission_evidence_reaches_assess_and_mcp_in_both_output_modes():
+    print("\n[permission evidence] assessment and MCP handoff")
+    role = selector("MINTER_ROLE()")
+    envelope = {"jsonrpc": "2.0", "id": 1, "result": "0x63" + role + "00"}
+    request_order = ["market", "search", "bytecode", "sell"]
+    for sell_missing in (False, True):
+        baseline, base_calls, _ = asyncio.run(_permission_assessment(
+            envelope, verbose=False, mcp=False, sell_missing=sell_missing, legacy=True))
+        check("fixture exercises a stable low or fail-closed unknown verdict",
+              baseline["risk_level"] == ("unknown" if sell_missing else "low"),
+              str(baseline["risk_level"]))
+        for verbose in (False, True):
+            for mcp in (False, True):
+                result, calls, cached = asyncio.run(_permission_assessment(
+                    envelope, verbose=verbose, mcp=mcp, sell_missing=sell_missing))
+                info = result["evidence"]["owner_powers"]
+                check("normal handoff exposes the same exact cached and fresh evidence",
+                      info == cached and info.get("evidence_basis") == "bytecode_selector_match"
+                      and info.get("current_authority") == "not_checked"
+                      and info.get("matched_selectors") == {"can mint new supply": [role]})
+                check("handoff preserves decision fields and the existing request order",
+                      all(result.get(k) == baseline.get(k)
+                          for k in ("risk_level", "risk_score", "confidence", "next_action"))
+                      and calls == base_calls == request_order, str(calls))
+
+
 def main():
     print("=" * 68)
     print("Owner-power disclosure")
