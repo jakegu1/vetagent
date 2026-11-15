@@ -104,8 +104,10 @@ assess_token_risk(address, chain_hint?, verbose?)
   scaled balances and interest-bearing balances. Every other extension the report
   carries is named in the answer with the reason it is not scored, so silence
   there means considered-and-dismissed rather than unread.
-  No holder concentration on any chain: on EVM it needs an oracle the benchmark
-  holds out, and on Solana the upstream stopped sending holders.
+  On Solana, holder concentration is reported only when RugCheck supplies a holder list;
+  missing lists remain a coverage gap. Identified liquidity-pool accounts are excluded
+  when matching identities are available; otherwise the reported share may include pools.
+  This check is unavailable on EVM.
 
 get_token_liquidity(address, chain_hint?)
   Price, 24h volume, pair count and chains for the primary trading pair.
@@ -163,9 +165,11 @@ Full method: https://github.com/jakegu1/vetagent/blob/master/bench/results.md
 
 Covers observable on-chain risk only. Not investment advice. Does not size
 positions. Cannot detect off-chain risk: team behaviour, social engineering,
-or a rug executed through governance. Does not yet check LP lock status, and has
-no holder concentration on any chain -- on EVM it needs an oracle the benchmark
-holds out, on Solana the upstream omits holders. Does not test sellability on
+or a rug executed through governance. Does not yet check LP lock status.
+On Solana, holder concentration is reported only when RugCheck supplies a holder list;
+missing lists remain a coverage gap. Identified liquidity-pool accounts are excluded
+when matching identities are available; otherwise the reported share may include pools.
+This check is unavailable on EVM. Does not test sellability on
 Solana, nor on polygon, arbitrum, optimism and avalanche: the sell simulator
 reaches three of the eight chains accepted as a chain_hint. Open gaps are listed
 in docs/SCORECARD.md.

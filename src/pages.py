@@ -143,7 +143,7 @@ made, and how old its oldest evidence is.</td></tr>
 <table>
 <tr><th>Check</th><th>Chains</th></tr>
 <tr><td>Buy/sell simulation (honeypot), buy/sell/transfer tax</td><td>Ethereum, BSC, Base</td></tr>
-<tr><td>Mint and freeze authority; the Token-2022 extension block &mdash; non-transferable, frozen-by-default, transfer fee (with its cap), permanent delegate, transfer hook, pausable, close authority, scaled balances, interest-bearing balances &mdash; with every other extension the report carries named in the answer beside the reason it is not scored. No sell test; holder concentration unavailable while the upstream omits holders</td><td>Solana</td></tr>
+<tr><td>Mint and freeze authority; the Token-2022 extension block &mdash; non-transferable, frozen-by-default, transfer fee (with its cap), permanent delegate, transfer hook, pausable, close authority, scaled balances, interest-bearing balances &mdash; with every other extension the report carries named in the answer beside the reason it is not scored. No sell test. On Solana, holder concentration is reported only when RugCheck supplies a holder list; missing lists remain a coverage gap. Identified liquidity-pool accounts are excluded when matching identities are available; otherwise the reported share may include pools. This check is unavailable on EVM.</td><td>Solana</td></tr>
 <tr><td>Liquidity depth &mdash; counted only for reserves held in independently priced assets,
 so a pool priced in its creator's own token cannot buy a <code>low</code></td><td>Ethereum, BSC,
 Base, Arbitrum, Optimism, Polygon, Avalanche, Solana; elsewhere the depth a pool states is used

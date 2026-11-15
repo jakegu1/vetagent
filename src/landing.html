@@ -282,10 +282,14 @@
   <h3>What does it <em>not</em> catch?</h3>
   <p style="color:var(--dim);font-size:14px">Anything off-chain: team behaviour, social
   engineering, a rug executed through governance, a project that simply dies. It also does not
-  yet check LP lock status, or holder concentration on any chain, and does not test sellability on
+  yet check LP lock status, and does not test sellability on
   Solana or on the four EVM chains the sell simulator does not reach — polygon, arbitrum, optimism
   and avalanche. All are listed as open gaps in the
   <a href="https://github.com/jakegu1/vetagent/blob/master/docs/SCORECARD.md">scorecard</a>.
+  On Solana, holder concentration is reported only when RugCheck supplies a holder list;
+  missing lists remain a coverage gap. Identified liquidity-pool accounts are excluded
+  when matching identities are available; otherwise the reported share may include pools.
+  This check is unavailable on EVM.
   <strong style="color:var(--txt)">Treat <code>low</code> as "no fatal signal in the checks that
   ran", never as "safe to buy".</strong></p>
 
