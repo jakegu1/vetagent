@@ -923,6 +923,8 @@ class Default(WorkerEntrypoint):
                 args = (query.get("chain", "solana"), query.get("limit", 10))
                 selections = [value for key, value in parse_qsl(parsed.query, keep_blank_values=True)
                               if key == "listing"]
+                if len(selections) > 1:
+                    raise ValueError("Invalid listing: expected mixed or trending")
                 result = (await risk.new_pools(*args, selections[-1]) if selections
                           else await risk.new_pools(*args))
                 return _json_response(self._record_http(
