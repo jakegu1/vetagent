@@ -1916,6 +1916,26 @@ def test_conditional_holder_disclosure_matches_existing_offline_observations():
           and any(s["category"] == "concentration" and s["severity"] == "ok" for s in signals))
 
 
+def test_discovery_assessment_args_require_the_selected_address_family():
+    solana = _load("ds_bonk.json")["pairs"][0]["baseToken"]["address"]
+    evm = "0x" + "1" * 40
+    for chain, address, compatible in (("base", evm, True), ("solana", solana, True),
+                                        ("base", solana, False), ("solana", evm, False)):
+        row = _t028_pool("1")
+        row["relationships"]["base_token"]["data"]["id"] = chain + "_" + address
+        with patch.dict(risk._ONCHAIN, {"key": None, "unusable": False}), \
+                _t028_runtime({"data": [row]}, {"data": []}) as (_, _, requests):
+            result = call({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {
+                "name": "find_new_hot_pools", "arguments": {"chain": chain, "limit": 1}}})["result"]["structuredContent"]
+        discovered = result["pools"][0]
+        check("ready arguments require a chain-compatible address family",
+              discovered.get("assessment_args") == {"address": address, "chain_hint": chain}
+              if compatible else "assessment_args" not in discovered)
+        check("address-family refusal preserves the observed row and request budget",
+              discovered["token_address"] == address and result["count"] == result["scanned"] == 1
+              and result["status"] == "ok" and [r[0] for r in requests] == ["new", "trending"])
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
