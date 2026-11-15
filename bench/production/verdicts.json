@@ -1,17 +1,17 @@
 {
- "window_start": "2026-11-07T13:47:16Z",
- "window_end": "2026-11-14T13:47:16Z",
+ "window_start": "2026-11-08T14:18:17Z",
+ "window_end": "2026-11-15T14:18:17Z",
  "counts": {
-  "low": 22,
-  "medium": 2,
+  "low": 16,
+  "medium": 3,
   "high": 1,
-  "unknown": 10
+  "unknown": 9
  },
  "excluded_clients": [
   "vetagent-ci-smoke"
  ],
  "unknown_why": {
-  "coverage|sellability:no record": 8,
+  "coverage|sellability:no record": 7,
   "coverage|liquidity:unpriced|sellability:no record": 2
  },
  "high_why": {
