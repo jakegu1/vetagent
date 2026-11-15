@@ -72,6 +72,52 @@ Any MCP client (Cursor, opencode, custom agent) works the same way.
 `confidence` measures **how complete the input data was**, not how safe the token is.
 `evidence.data_gaps` lists exactly which checks could not run and why.
 
+### Consuming permission evidence
+
+The `assess_token_risk` output schema in `tools/list` describes the optional
+`evidence.owner_powers` object. It can be absent, including on non-EVM assessments;
+other evidence remains available. Compact and verbose responses carry the same
+permission observations.
+
+A synthetic bytecode match can produce this object:
+
+```json
+{
+  "evidence_basis": "bytecode_selector_match",
+  "matched_selectors": {"can mint new supply": ["d5391393"]},
+  "current_authority": "not_checked",
+  "powers": ["can mint new supply"],
+  "found_none": false,
+  "scan_is_incomplete": true,
+  "is_proxy": false,
+  "selectors_dispatched": 1,
+  "bytecode_bytes": 6
+}
+```
+
+`d5391393` is the selector for `MINTER_ROLE()`, a role getter. The legacy label
+`can mint new supply` and the `bytecode_selector_match` basis describe code indicators,
+not verified callable actions or present control. `matched_selectors` maps existing
+labels to unique lowercase eight-hex selectors. `current_authority: "not_checked"`
+means authority, activation and reachability were not observed. Do not turn these
+labels into a claim that someone can currently exercise the named power.
+
+`found_none: true` means an incomplete scan found no mapped selector; it does not prove
+that permissions are absent. `is_proxy: true` flags a proxy-wrapper indicator, and any
+wrapper matches do not establish the implementation's permissions. The scanner does
+not follow that indicator to audit the implementation.
+
+A failed RPC observation instead produces, for example:
+
+```json
+{"unavailable": "rpc error response", "current_authority": "not_checked"}
+```
+
+This is a failed observation, not a completed no-match scan. Success fields can be
+absent; do not fill them with empty matches or infer a successful permission check.
+Continue to consume the returned verdict and signals; an informational signal can
+contribute to the existing score.
+
 ### Local response-routing example
 
 `examples/assessment_policy.py` consumes existing JSON and returns only `action`, `reason` and

@@ -41,6 +41,58 @@ _SIGNAL_SCHEMA = {
 
 _CHECKED_AT = {"type": "string", "description": "When this answer was made, ISO-8601 UTC."}
 
+_OWNER_POWERS_SCHEMA = {
+    "type": "object",
+    "description": "Optional, incomplete bytecode observations; not a current-permission audit.",
+    "properties": {
+        "evidence_basis": {
+            "type": "string", "enum": ["bytecode_selector_match"],
+            "description": "Matched selectors are code indicators, not verified callable actions "
+                           "or evidence of present control.",
+        },
+        "matched_selectors": {
+            "type": "object",
+            "description": "Existing capability labels mapped to the unique lowercase "
+                           "eight-hex selectors matched in the observed bytecode.",
+            "additionalProperties": {
+                "type": "array", "uniqueItems": True,
+                "items": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
+            },
+        },
+        "current_authority": {
+            "type": "string", "enum": ["not_checked"],
+            "description": "Authority, activation and reachability were not observed.",
+        },
+        "powers": {
+            "type": "array", "items": {"type": "string"},
+            "description": "Legacy capability labels for code indicators, not verified "
+                           "actions or current control.",
+        },
+        "found_none": {
+            "type": "boolean",
+            "description": "True means this incomplete scan found no mapped selector. "
+                           "It does not prove absence of permissions.",
+        },
+        "scan_is_incomplete": {
+            "type": "boolean", "description": "The bytecode scan does not cover every permission mechanism.",
+        },
+        "is_proxy": {
+            "type": "boolean",
+            "description": "Proxy-wrapper indicator; wrapper observations do not establish "
+                           "implementation permissions.",
+        },
+        "selectors_dispatched": {
+            "type": "integer", "minimum": 0,
+            "description": "Number of dispatch selectors recognized by the incomplete scan.",
+        },
+        "bytecode_bytes": {"type": "integer", "minimum": 0, "description": "Size of the observed bytecode."},
+        "unavailable": {
+            "type": "string",
+            "description": "Reason for a failed or unusable bytecode observation, not a completed no-match scan.",
+        },
+    },
+}
+
 _ASSESS_OUTPUT_SCHEMA = {
     "type": "object",
     "properties": {
@@ -58,7 +110,7 @@ _ASSESS_OUTPUT_SCHEMA = {
         },
         "signals": {"type": "array", "items": _SIGNAL_SCHEMA},
         "recommendation": {"type": "string"},
-        "evidence": {"type": "object"},
+        "evidence": {"type": "object", "properties": {"owner_powers": _OWNER_POWERS_SCHEMA}},
         "driver": {"type": ["object", "null"],
                    "description": "The signal that decided the verdict: {name, category}. "
                                   "null when nothing above ok fired."},
