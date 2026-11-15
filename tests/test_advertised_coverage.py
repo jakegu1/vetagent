@@ -475,6 +475,42 @@ def test_no_stale_exemptions():
               "%r is gone -- delete the exemption (%s)" % (phrase[:60], why))
 
 
+def test_conditional_holder_disclosure_is_precise_not_a_surface_whitelist():
+    conditional = ("On Solana, holder concentration is reported only when RugCheck supplies "
+                   "a holder list; missing lists remain a coverage gap.")
+    unsafe = [
+        conditional.replace("only when RugCheck supplies a holder list; missing lists remain a coverage gap", "for every token"),
+        conditional.replace("; missing lists remain a coverage gap", ""),
+        conditional.replace("On Solana", "On EVM"),
+        conditional.replace("On Solana", "On all chains"),
+        conditional + " Holder concentration is covered on every chain.",
+        conditional + " Buy/sell simulation is available on Solana.",
+        conditional + "</td><td>Holder concentration on EVM is covered.</td>",
+    ]
+    for rel in SURFACES:
+        for text, should_pass in [(conditional, True)] + [(x, False) for x in unsafe]:
+            violations = [(dim, sentence) for dim, sentence, chains in claims(text)
+                          if chains - covered_on(dim)[0] and not exempt(rel, sentence)]
+            check(rel + ": only the exact conditional observation is excused",
+                  bool(violations) is not should_pass, repr(text))
+    check("the conditional sentence is not an exemption on an unreviewed surface",
+          not exempt("unreviewed.md", conditional))
+
+
+def test_all_current_surfaces_disclose_conditional_holders_without_false_absence():
+    conditional = ("On Solana, holder concentration is reported only when RugCheck supplies "
+                   "a holder list; missing lists remain a coverage gap.")
+    old_claims = ("no holder concentration", "holder concentration on any chain",
+                  "upstream omits holders", "stopped sending holders", "report has carried no holders",
+                  "holder concentration unavailable while")
+    for rel in SURFACES:
+        text = flat(read(rel))
+        check(rel + ": exact conditional holder disclosure is present", flat(conditional) in text)
+        check(rel + ": no current absolute absence claim remains", not any(c in text for c in old_claims))
+        check(rel + ": LP identity limits and EVM unavailability remain explicit",
+              all(p in text for p in ("matching identities", "may include pools", "unavailable on evm")))
+
+
 def main():
     print("=" * 68)
     print("Advertised coverage: every capability noun maps to a scorecard row")

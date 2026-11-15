@@ -1889,6 +1889,33 @@ def test_discovery_assessment_args_preserve_real_mcp_chain_context():
           and result["risk_score"] == 3 and requests == ["market", "search", "rpc:bsc", "sell:bsc"])
 
 
+def test_conditional_holder_disclosure_matches_existing_offline_observations():
+    original_load = _load
+    for missing in (False, True):
+        report = original_load("rc_bonk.json")
+        if missing:
+            report["topHolders"], report["totalHolders"] = None, 0
+
+        def substituted(name):
+            return copy.deepcopy(report) if name == "rc_bonk.json" else original_load(name)
+
+        with patch.object(sys.modules[__name__], "_load", substituted):
+            result, requests = asyncio.run(_permission_contract_solana(False))
+        signals = [s for s in result["signals"] if s["category"] == "concentration"]
+        gaps = [g for g in result["evidence"].get("data_gaps", []) if g.get("dimension") == "concentration"]
+        check("holder disclosure follows the list, never inventing a missing observation",
+              not signals and bool(gaps) if missing else bool(signals) and not gaps)
+        check("Solana still has no sell simulation and stays unknown",
+              result["risk_level"] == "unknown" and result["next_action"] == "abstain"
+              and requests == ["market", "search", "rugcheck"])
+    signals, evidence, gaps = [], {}, []
+    risk._rugcheck_signals(original_load("rc_pump_pool_vault.json"), signals, evidence, gaps)
+    check("existing identified LP exclusion remains an observation, not a new capability",
+          evidence["rugcheck"]["top10_holder_pct"] == 100.0
+          and evidence["rugcheck"]["top10_outside_pools_pct"] == 0.07801
+          and any(s["category"] == "concentration" and s["severity"] == "ok" for s in signals))
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
