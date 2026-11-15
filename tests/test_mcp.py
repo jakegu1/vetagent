@@ -1606,6 +1606,143 @@ def test_bounded_retry_context_real_cli_handoff():
                   and bad_input.stderr == b"")
 
 
+def test_permission_contract_is_discoverable_without_requiring_an_observation():
+    print("\n[permission contract] optional evidence and observation limits")
+    tools = call({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})["result"]["tools"]
+    schema = next(t["outputSchema"] for t in tools if t["name"] == "assess_token_risk")
+    evidence = schema["properties"]["evidence"]
+    owner = evidence.get("properties", {}).get("owner_powers", {})
+    props = owner.get("properties", {})
+    expected = {"evidence_basis": "string", "matched_selectors": "object",
+                "current_authority": "string", "powers": "array", "found_none": "boolean",
+                "scan_is_incomplete": "boolean", "is_proxy": "boolean",
+                "selectors_dispatched": "integer", "bytecode_bytes": "integer",
+                "unavailable": "string"}
+    check("tools/list declares the existing owner evidence object", owner.get("type") == "object")
+    for field, kind in expected.items():
+        check("tools/list declares owner field " + field, props.get(field, {}).get("type") == kind)
+    check("assessment keeps its original required fields",
+          schema.get("required") == ["address", "risk_level", "risk_score", "confidence", "signals"])
+    check("owner evidence is optional and other evidence remains open",
+          "owner_powers" not in evidence.get("required", [])
+          and evidence.get("additionalProperties", True) is not False)
+    check("failed or absent observations need no success fields", not owner.get("required"))
+    selectors = props.get("matched_selectors", {}).get("additionalProperties", {})
+    check("selector labels are open and values are unique eight-hex strings",
+          selectors.get("type") == "array" and selectors.get("uniqueItems") is True
+          and selectors.get("items", {}).get("type") == "string"
+          and selectors.get("items", {}).get("pattern") == "^[0-9a-f]{8}$"
+          and "maxItems" not in selectors and "maxProperties" not in props.get("matched_selectors", {})
+          and "enum" not in props.get("matched_selectors", {}).get("propertyNames", {}))
+    check("legacy powers are strings", props.get("powers", {}).get("items") == {"type": "string"})
+    check("only the existing basis and unobserved authority are advertised",
+          props.get("evidence_basis", {}).get("enum") == ["bytecode_selector_match"]
+          and props.get("current_authority", {}).get("enum") == ["not_checked"])
+    for field, phrases in {
+        "evidence_basis": ("code indicators", "not verified callable", "present control"),
+        "powers": ("legacy", "not", "current"),
+        "current_authority": ("authority", "activation", "reachability", "not observed"),
+        "found_none": ("incomplete", "no mapped selector", "not prove"),
+        "is_proxy": ("wrapper", "implementation"),
+        "unavailable": ("failed", "not", "no-match"),
+    }.items():
+        description = props.get(field, {}).get("description", "").lower()
+        check("discovery explains the limits of " + field, all(p in description for p in phrases))
+
+
+async def _permission_contract_solana(verbose):
+    """Exercise the real non-EVM MCP path with the existing BONK snapshots."""
+    requests = []
+    market = _load("ds_bonk.json")
+    address = market["pairs"][0]["baseToken"]["address"]
+
+    def denied(*args, **kwargs):
+        raise AssertionError("permission contract fixtures forbid network access")
+
+    async def upstream(url, *args, **kwargs):
+        if "/dex/tokens/" in url:
+            requests.append("market")
+            return copy.deepcopy(market)
+        if "/dex/search" in url:
+            requests.append("search")
+            return {"pairs": []}
+        if "api.rugcheck.xyz" in url:
+            requests.append("rugcheck")
+            return _load("rc_bonk.json")
+        return denied()
+
+    with patch.object(socket.socket, "connect", denied), \
+            patch.object(socket, "getaddrinfo", denied), \
+            patch.object(risk, "cf_fetch", denied), \
+            patch.object(risk, "_fetch_json", upstream):
+        envelope = await mcp_server.handle_mcp_request({
+            "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+            "params": {"name": "assess_token_risk", "arguments": {
+                "address": address, "chain_hint": "solana", "verbose": verbose}},
+        })
+    result = envelope["result"]["structuredContent"]
+    assert json.loads(envelope["result"]["content"][0]["text"]) == result
+    return result, requests
+
+
+def test_permission_contract_matches_normal_mcp_assessment_handoff():
+    print("\n[permission contract] compact, verbose, failed and non-EVM handoff")
+    spec = importlib.util.spec_from_file_location(
+        "permission_contract_fixtures", os.path.join(os.path.dirname(__file__), "test_owner_powers.py"))
+    fixtures = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fixtures)
+    schema = next(t["outputSchema"] for t in call({
+        "jsonrpc": "2.0", "id": 1, "method": "tools/list"
+    })["result"]["tools"] if t["name"] == "assess_token_risk")
+    props = schema["properties"]["evidence"].get("properties", {}).get("owner_powers", {}).get("properties", {})
+    cases = [
+        ("match", {"result": "0x63d539139300"}),
+        ("no-match", {"result": "0x6318160ddd00"}),
+        ("proxy-match", {"result": "0x635c60da1b63d539139300"}),
+        ("unavailable", {"error": {"code": -32000, "message": "synthetic RPC failure"}}),
+    ]
+    clock = risk._BENCH_NOW.set(datetime(2026, 11, 15, tzinfo=timezone.utc))
+    try:
+        for name, reply in cases:
+            compact = None
+            for verbose in (False, True):
+                result, requests, _ = asyncio.run(fixtures._permission_assessment(reply, verbose=verbose, mcp=True))
+                owner = result["evidence"]["owner_powers"]
+                prefix = name + (" verbose: " if verbose else " compact: ")
+                check(prefix + "actual output fields are discoverable", set(owner) <= set(props))
+                check(prefix + "existing request budget is unchanged",
+                      requests == ["market", "search", "bytecode", "sell"])
+                check(prefix + "authority remains explicitly unobserved", owner.get("current_authority") == "not_checked")
+                check(prefix + "existing decision and informational score remain unchanged",
+                      result["risk_level"] == "low" and result["risk_score"] == (0 if name == "unavailable" else 3))
+                if name == "unavailable":
+                    check(prefix + "failure is not a completed empty match",
+                          owner == {"unavailable": "rpc error response", "current_authority": "not_checked"})
+                else:
+                    labels = {} if name == "no-match" else {"can mint new supply": ["d5391393"]}
+                    check(prefix + "legacy labels and selectors describe the same incomplete observation",
+                          owner["matched_selectors"] == labels and owner["powers"] == list(labels)
+                          and owner["evidence_basis"] == "bytecode_selector_match"
+                          and owner["found_none"] is (name == "no-match")
+                          and owner["scan_is_incomplete"] is True
+                          and owner["is_proxy"] is (name == "proxy-match")
+                          and type(owner["bytecode_bytes"]) is int
+                          and type(owner["selectors_dispatched"]) is int)
+                if verbose:
+                    check(prefix + "permission evidence agrees across output modes", owner == compact)
+                else:
+                    compact = owner
+        for verbose in (False, True):
+            result, requests = asyncio.run(_permission_contract_solana(verbose))
+            check("non-EVM assessment keeps absent owner evidence valid",
+                  "owner_powers" not in result["evidence"]
+                  and result["risk_level"] == "unknown" and result["next_action"] == "abstain")
+            check("non-EVM assessment keeps its existing request budget",
+                  requests == ["market", "search", "rugcheck"])
+    finally:
+        risk._BENCH_NOW.reset(clock)
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
