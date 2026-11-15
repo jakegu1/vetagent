@@ -644,10 +644,8 @@ def _low_recommendation(evidence):
         return base + ("Owner powers -- %s -- were not checked on this chain."
                        % _power_list())
 
-    if info.get("unavailable"):
-        return base + ("**Owner powers unchecked**: bytecode unreadable (%s). A gap on "
-                       "our side. Current authority and activation were not checked."
-                       % _ascii_safe(info.get("unavailable"), 24))
+    if "unavailable" in info:
+        return base + "Owner powers unchecked: bytecode unreadable or unusable."
 
     if info.get("is_proxy"):
         return base + _PROXY_PERMISSION_DISCLOSURE
@@ -2575,26 +2573,23 @@ async def _owner_powers(address, chain):
     key = "https://bytecode.vetagent.internal/%s/%s" % (chain, address.lower())
     cached, age = await _cache_get(key)
     if cached is not None and age is not None and age <= _BYTECODE_TTL_SECONDS:
-        return _powers_from_code(cached)
+        if not _is_hex_bytecode(cached):
+            return _owner_powers_unavailable("invalid cached bytecode")
+        return _powers_from_code(cached) or _owner_powers_unavailable("no usable bytecode")
 
     code, why = await _eth_get_code(rpc, address)
-    if code:
-        # Successes only. A cached failure turns one busy node into a permanent "we cannot
-        # read this contract" -- the rule _fetch_json already follows, for the same reason.
-        await _cache_put(key, code, ttl=_BYTECODE_TTL_SECONDS)
     if code is None:
-        # Say that the lookup failed rather than returning nothing.
-        #
-        # This is the only POST this Worker makes -- every other upstream call is a GET --
-        # and the runtime's fetch signature for a POST cannot be verified anywhere but in
-        # production. If it is wrong, the exception is caught and the feature does
-        # nothing, forever, while looking exactly like a contract we could not read.
-        #
-        # That is this project's oldest bug wearing a new hat: the honeypot check spent
-        # weeks reading a key upstream does not have, silently passing everything. So the
-        # failure is recorded where one live call can see it.
-        return {"unavailable": why}
-    return _powers_from_code(code)
+        return _owner_powers_unavailable(why)
+    info = _powers_from_code(code)
+    if info is None:
+        return _owner_powers_unavailable("no usable bytecode")
+    # Cache usable bytecode only. Empty or failed observations can be retried by a later call.
+    await _cache_put(key, code, ttl=_BYTECODE_TTL_SECONDS)
+    return info
+
+
+def _owner_powers_unavailable(reason):
+    return {"unavailable": reason, "current_authority": "not_checked"}
 
 
 def _powers_from_code(code):
@@ -2655,6 +2650,11 @@ def _powers_from_code(code):
     }
 
 
+def _is_hex_bytecode(value):
+    return (isinstance(value, str) and len(value) % 2 == 0
+            and re.fullmatch(r"0x[0-9a-fA-F]*", value) is not None)
+
+
 async def _eth_get_code(rpc, address):
     """One JSON-RPC eth_getCode. Returns (code, reason) -- code is None on any failure.
 
@@ -2679,13 +2679,23 @@ async def _eth_get_code(rpc, address):
         if resp.status != 200:
             return None, "rpc %d" % resp.status
         body = await asyncio.wait_for(resp.text(), timeout=6)
-        return (json.loads(body) or {}).get("result"), None
-    except TypeError as e:
-        # The signature is wrong for this runtime -- a deployment fault, not a chain one,
-        # and the single most likely way this feature dies quietly.
-        return None, "fetch signature: %s" % str(e)[:40]
-    except Exception as e:  # noqa: BLE001
-        return None, type(e).__name__
+        reply = json.loads(body)
+        if not isinstance(reply, dict):
+            return None, "invalid rpc response"
+        if "error" in reply:
+            return None, "rpc error response"
+        code = reply.get("result")
+        if not _is_hex_bytecode(code):
+            return None, "invalid rpc bytecode result"
+        return code, None
+    except TypeError:
+        return None, "invalid fetch response or signature"
+    except TimeoutError:
+        return None, "rpc timeout"
+    except ValueError:
+        return None, "invalid rpc response"
+    except Exception:  # noqa: BLE001
+        return None, "rpc request failed"
 
 
 _PROXY_PERMISSION_DISCLOSURE = (
