@@ -1472,6 +1472,140 @@ def test_a4_cli_http_status_invalid_arguments():
                   and run.stderr == b"")
 
 
+def _retry_context_call(route, payload, attempted, http_status=200):
+    try:
+        return _a2_call(route, payload, http_status, retry_attempted=attempted)
+    except TypeError:
+        check("retry context keyword is supported without an exception", False)
+        return None
+
+
+def test_bounded_retry_context_signature_and_positional_status():
+    import inspect
+    module = _a2_module()
+    for route, payload in ((module.route_http, {"risk_level": "low"}),
+                           (module.route_mcp, _a2_envelope({"risk_level": "low"}))):
+        params = inspect.signature(route).parameters
+        context = params.get("retry_attempted")
+        check("retry history is optional and keyword-only",
+              context is not None and context.kind == inspect.Parameter.KEYWORD_ONLY
+              and context.default is False)
+        for status in (200, 429):
+            original = _a2_call(route, payload, status)
+            check("positional HTTP status retains the existing result",
+                  original == (_a2_expected("continue_evaluation", "checks_ran_without_fatal_signal")
+                               if status == 200 else _a2_expected("abstain", "invalid_envelope")))
+            check("explicit false context preserves positional status behavior",
+                  _retry_context_call(route, payload, False, status) == original)
+        try:
+            _a2_call(route, payload, 200, True)
+        except TypeError:
+            check("retry context cannot be passed positionally", True)
+        else:
+            check("retry context cannot be passed positionally", False)
+
+
+def test_bounded_retry_context_only_changes_advised_retry():
+    import copy
+    module = _a2_module()
+    cases = [
+        ({"risk_level": "high"}, _a2_expected("reject", "high_risk")),
+        ({"risk_level": "medium"}, _a2_expected("manual_review", "risk_requires_review")),
+        ({"risk_level": "low"}, _a2_expected("continue_evaluation", "checks_ran_without_fatal_signal")),
+        ({"risk_level": "invalid"}, _a2_expected("abstain", "invalid_verdict")),
+        ({"risk_level": "unknown"}, _a2_expected("abstain", "unknown_kind_unavailable")),
+        ({"risk_level": "unknown", "unknown_kind": "coverage", "next_action": "retry",
+          "retry_after_seconds": 60}, _a2_expected("abstain", "coverage_requires_abstention")),
+    ]
+    for kind in ("infrastructure", "mixed"):
+        unknown = dict(risk_level="unknown", unknown_kind=kind, next_action="retry", retry_after_seconds=60)
+        cases.append((unknown, _a2_expected("retry", "infrastructure_retry_advised", 60)))
+        for change in ({"next_action": "abstain"}, {"retry_after_seconds": True},
+                       {"retry_after_seconds": None}):
+            cases.append((dict(unknown, **change), _a2_expected("abstain", "retry_guidance_invalid")))
+    for route, wrap in ((module.route_http, lambda value: value), (module.route_mcp, _a2_envelope)):
+        for payload, expected in cases:
+            for attempted in (False, True):
+                supplied = wrap(copy.deepcopy(payload))
+                saved = copy.deepcopy(supplied)
+                actual = _retry_context_call(route, supplied, attempted)
+                final = (_a2_expected("abstain", "retry_budget_exhausted")
+                         if attempted and expected["action"] == "retry" else expected)
+                check("only an already-advised retry can exhaust the caller budget", actual == final)
+                check("retry context leaves caller response data untouched", supplied == saved)
+                check("retry context returns only the existing three fields",
+                      isinstance(actual, dict) and set(actual) == {"action", "reason", "retry_after_seconds"})
+
+
+def test_bounded_retry_context_is_strict_caller_owned_and_error_subordinate():
+    module = _a2_module()
+    unknown = dict(risk_level="unknown", unknown_kind="infrastructure", next_action="retry",
+                   retry_after_seconds=60, unused="RETRY-PRIVATE-BODY")
+    for route, wrap in ((module.route_http, lambda value: value), (module.route_mcp, _a2_envelope)):
+        for bad in (0, 1, -1, 0.0, 1.0, "true", "false", "RETRY-PRIVATE-CONTEXT", None, [], {}):
+            result = _retry_context_call(route, wrap(dict(unknown)), bad)
+            check("non-boolean retry context fails closed with a fixed reason",
+                  result == _a2_expected("abstain", "invalid_retry_context"))
+            check("invalid context never echoes caller data", "RETRY-PRIVATE" not in json.dumps(result))
+            check("transport refusal precedes invalid retry context",
+                  _retry_context_call(route, wrap(dict(unknown)), bad, 429)
+                  == _a2_expected("abstain", "invalid_envelope"))
+        for claimed in (False, True, None, "RETRY-PRIVATE-HISTORY"):
+            payload = wrap(dict(unknown, retry_attempted=claimed))
+            check("payload cannot self-report an exhausted caller budget",
+                  _a2_call(route, payload) == _a2_expected("retry", "infrastructure_retry_advised", 60))
+            check("payload cannot override a caller's exhausted budget",
+                  _retry_context_call(route, payload, True)
+                  == _a2_expected("abstain", "retry_budget_exhausted"))
+        check("invalid context precedes verdict parsing inside a valid envelope",
+              _retry_context_call(route, wrap({"risk_level": "invalid"}), 1)
+              == _a2_expected("abstain", "invalid_retry_context"))
+    bad_http = (None, [], {"risk_level": "low", "error": None})
+    bad_mcp = (None, [], {"error": None, "result": {"structuredContent": unknown}},
+               {"result": {"isError": True, "structuredContent": unknown}},
+               {"result": {"structuredContent": []}})
+    for route, values in ((module.route_http, bad_http), (module.route_mcp, bad_mcp)):
+        for value in values:
+            for attempted in (False, True, "RETRY-PRIVATE-CONTEXT"):
+                check("all existing envelope errors beat retry context validation",
+                      _retry_context_call(route, value, attempted)
+                      == _a2_expected("abstain", "invalid_envelope"))
+
+
+def test_bounded_retry_context_real_cli_handoff():
+    retry = dict(risk_level="unknown", unknown_kind="mixed", next_action="retry", retry_after_seconds=60,
+                 retry_attempted=False, unused="RETRY-PRIVATE-INPUT")
+    for transport, wrap in (("http", lambda value: value), ("mcp", _a2_envelope)):
+        for payload, expected in (
+                (retry, _a2_expected("abstain", "retry_budget_exhausted")),
+                ({"risk_level": "low"}, _a2_expected("continue_evaluation", "checks_ran_without_fatal_signal")),
+                ({"risk_level": "medium"}, _a2_expected("manual_review", "risk_requires_review")),
+                ({"risk_level": "high"}, _a2_expected("reject", "high_risk"))):
+            raw = json.dumps(wrap(payload)).encode()
+            run = _a2_cli(raw, ["--transport", transport, "--http-status", "200", "--retry-attempted"])
+            check("actual CLI uses context without overriding a completed response",
+                  run.returncode == 0 and json.loads(run.stdout) == expected and run.stderr == b"")
+            check("context CLI keeps response and environment values private",
+                  b"RETRY-PRIVATE" not in run.stdout + run.stderr and b"T070-PRIVATE" not in run.stdout + run.stderr)
+        raw = json.dumps(wrap(retry)).encode()
+        first = _a2_cli(raw, ["--transport", transport])
+        check("omitting the CLI flag still allows the first advised retry",
+              first.returncode == 0 and json.loads(first.stdout)
+              == _a2_expected("retry", "infrastructure_retry_advised", 60))
+        refused = _a2_cli(raw, ["--transport", transport, "--retry-attempted", "--http-status", "429"])
+        check("new CLI flag still carries actual transport refusal first",
+              refused.returncode == 0 and json.loads(refused.stdout) == _a2_expected("abstain", "invalid_envelope"))
+        bad_arg = _a2_cli(raw, ["--transport", transport, "--retry-attempted=RETRY-PRIVATE-ARG"])
+        check("retry flag does not accept a value or echo malformed arguments",
+              bad_arg.returncode == 2 and json.loads(bad_arg.stdout) == {"error": "arguments_refused"}
+              and bad_arg.stderr == b"")
+        for malformed in (b"{", b'{"risk_level":"low","risk_level":"high"}'):
+            bad_input = _a2_cli(malformed, ["--transport", transport, "--retry-attempted"])
+            check("retry flag preserves fixed JSON input refusals",
+                  bad_input.returncode == 1 and json.loads(bad_input.stdout) == {"error": "input_refused"}
+                  and bad_input.stderr == b"")
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
