@@ -152,7 +152,21 @@ _HEADING_COLON = 60
 # the blacklist this file replaces -- that one checked nothing until someone remembered to
 # add it. Each entry must still match something, or `test_no_stale_exemptions` fails, so
 # an exemption cannot outlive the sentence it was written for.
+_CONDITIONAL_HOLDER_DISCLOSURE = (
+    "On Solana, holder concentration is reported only when RugCheck supplies a holder list; "
+    "missing lists remain a coverage gap.")
+
 REVIEWED_NOT_A_CLAIM = {
+    ("README.md", _CONDITIONAL_HOLDER_DISCLOSURE):
+        "a conditional observation, not universal chain coverage",
+    ("src/mcp_server.py", _CONDITIONAL_HOLDER_DISCLOSURE):
+        "a conditional observation, not universal chain coverage",
+    ("src/entry.py", _CONDITIONAL_HOLDER_DISCLOSURE):
+        "a conditional observation, not universal chain coverage",
+    ("src/landing.html", _CONDITIONAL_HOLDER_DISCLOSURE):
+        "a conditional observation, not universal chain coverage",
+    ("src/pages.py", _CONDITIONAL_HOLDER_DISCLOSURE):
+        "a conditional observation, not universal chain coverage",
     ("src/pages.py", "whether it can be sold (sellability)"):
         "the /unknown page naming which two checks are critical. It says what makes an "
         "answer unknown, not where the check runs, and the same page's table gives the "
@@ -279,6 +293,12 @@ def claims(text):
 def exempt(rel, sentence):
     for (where, phrase), _why in REVIEWED_NOT_A_CLAIM.items():
         if where == rel and flat(phrase) in flat(sentence):
+            if phrase == _CONDITIONAL_HOLDER_DISCLOSURE:
+                # Excuse only this exact observation, never another claim sharing its
+                # HTML row or sentence. All other vocabulary and coverage rules stand.
+                remainder = flat(sentence).replace(flat(phrase), "", 1)
+                if claims(remainder):
+                    continue
             return True
     return False
 
