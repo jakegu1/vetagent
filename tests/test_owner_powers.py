@@ -1045,6 +1045,85 @@ def test_permission_evidence_reaches_assess_and_mcp_in_both_output_modes():
                       and calls == base_calls == request_order, str(calls))
 
 
+def test_permission_evidence_classifies_rpc_failures_and_empty_bytecode():
+    print("\n[permission evidence] RPC failure, empty bytecode and absence")
+    message = "private rpc message https://rpc.invalid trace"
+    role = "0x63" + selector("MINTER_ROLE()") + "00"
+    cases = (
+        ("RPC error", {"jsonrpc": "2.0", "id": 1,
+                       "error": {"code": -32000, "message": message}}),
+        ("error plus code", {"jsonrpc": "2.0", "id": 1, "result": role,
+                             "error": {"code": -32000, "message": message}}),
+        ("missing result", {"jsonrpc": "2.0", "id": 1}),
+        ("null result", {"result": None}),
+        ("non-object envelope", [role]),
+        ("non-string result", {"result": 22}),
+        ("odd hexadecimal", {"result": "0x63d53913930"}),
+        ("non-hexadecimal", {"result": "0x63d5391393gg"}),
+        ("observed empty bytecode", {"result": "0x"}),
+    )
+    reasons = {}
+    for label, envelope in cases:
+        try:
+            result, calls, cached = asyncio.run(_permission_assessment(
+                envelope, verbose=False, mcp=True))
+        except KeyError as error:
+            if error.args != ("structuredContent",):
+                raise
+            check(label + " must remain a structured assessment, not a tool error", False)
+            continue
+        info = result["evidence"].get("owner_powers") or {}
+        reasons[label] = info.get("unavailable")
+        recommendation = result["recommendation"].lower()
+        check(label + " is unavailable, with no selector or authority observation",
+              isinstance(info.get("unavailable"), str) and 0 < len(info["unavailable"]) <= 60
+              and info.get("current_authority") == "not_checked"
+              and "matched_selectors" not in info and "found_none" not in info
+              and "evidence_basis" not in info)
+        check(label + " stays distinct from a no-match assessment and is never cached",
+              result["risk_level"] == "low" and "unreadable" in recommendation
+              and "found none" not in recommendation and "rpc.invalid" not in json.dumps(result)
+              and cached is None and calls == ["market", "search", "bytecode", "sell"])
+    check("an RPC error and a valid empty result have different fixed reasons",
+          reasons["RPC error"] != reasons["observed empty bytecode"])
+
+
+def test_permission_evidence_rpc_transport_failures_are_safe_and_bounded():
+    from types import SimpleNamespace
+    from unittest.mock import patch
+
+    print("\n[permission evidence] transport failure cannot relay private data")
+    marker = "https://rpc.invalid/private provider detail"
+    address = "0x" + "12" * 20
+
+    async def get_miss(key):
+        return None, None
+
+    async def fail_to_cache(*args, **kwargs):
+        raise AssertionError("cannot cache failed code")
+
+    async def timeout(*args, **kwargs):
+        raise TimeoutError(marker)
+
+    async def bad_signature(*args, **kwargs):
+        raise TypeError(marker)
+
+    async def throttle(*args, **kwargs):
+        return SimpleNamespace(status=429)
+
+    for fetch in (timeout, bad_signature, throttle):
+        with patch.object(risk, "cf_fetch", fetch), \
+                patch.object(risk, "_cache_get", get_miss), \
+                patch.object(risk, "_cache_put", fail_to_cache):
+            info = asyncio.run(risk._owner_powers(address, "ethereum"))
+            check("transport failure has an explicit non-echoing failure reason",
+                  bool(info.get("unavailable")) and info.get("current_authority") == "not_checked"
+                  and "rpc.invalid" not in json.dumps(info))
+            check("unsupported chain and non-EVM return the original absence",
+                  asyncio.run(risk._owner_powers(address, "unknown")) is None
+                  and asyncio.run(risk._owner_powers("non-evm", "ethereum")) is None)
+
+
 def main():
     print("=" * 68)
     print("Owner-power disclosure")
