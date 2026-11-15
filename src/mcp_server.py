@@ -56,7 +56,7 @@ _OWNER_POWERS_SCHEMA = {
                            "eight-hex selectors matched in the observed bytecode.",
             "additionalProperties": {
                 "type": "array", "uniqueItems": True,
-                "items": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
+                "items": {"type": "string", "pattern": "^[0-9a-f]{8}$", "maxLength": 8},
             },
         },
         "current_authority": {
