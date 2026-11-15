@@ -646,24 +646,23 @@ def _low_recommendation(evidence):
 
     if info.get("unavailable"):
         return base + ("**Owner powers unchecked**: bytecode unreadable (%s). A gap on "
-                       "our side, not a clean result."
+                       "our side. Current authority and activation were not checked."
                        % _ascii_safe(info.get("unavailable"), 24))
 
-    powers = [p for p in (info.get("powers") or []) if p]
-    if powers:
-        return base + ("**This contract can: %s.** None was switched on while we "
-                       "looked -- these are capabilities, not behaviour, which is why "
-                       "the verdict is low. Whoever holds the keys can change that."
-                       % ", ".join(_ascii_safe(p, 40) for p in powers))
-
     if info.get("is_proxy"):
-        return base + ("A proxy: its logic lives at another address, so owner powers "
-                       "are not readable here. Whoever can upgrade it can change the "
-                       "token's behaviour after you buy.")
+        return base + _PROXY_PERMISSION_DISCLOSURE
 
-    return base + ("A scan for functions that let an owner %s found none here. Read that "
+    disclosure = _matched_power_disclosure(info)
+    if disclosure:
+        return base + disclosure
+    if not info.get("found_none"):
+        return base + ("The bytecode scan did not establish a no-match result. "
+                       "Current authority and activation were not checked.")
+
+    return base + ("A scan for bytecode indicators of powers to %s found none here. Read that "
                    "as 'nothing found', not 'nothing there': measured against an "
-                   "independent oracle it catches %s%% of the powers that exist."
+                   "independent oracle it catches %s%% of the powers that exist. "
+                   "Current authority and activation were not checked."
                    % (_power_list(), _SCAN_RECALL_PCT))
 
 
@@ -2616,10 +2615,17 @@ def _powers_from_code(code):
     # Recall was identical on all four oracle flags both times, so this costs nothing --
     # and `dispatched` is computed anyway for `found_none` below, so it is also free.
     dispatched = _dispatched_selectors(body)
-    powers = sorted(name for name, sels in _OWNER_POWERS.items()
-                    if any(sel in dispatched for sel in sels))
+    matched = {}
+    for name, selectors in sorted(_OWNER_POWERS.items()):
+        hits = dispatched.intersection(selectors)
+        if hits:
+            matched[name] = sorted(hits)
+    powers = list(matched)
     return {
         "powers": powers,
+        "evidence_basis": "bytecode_selector_match",
+        "matched_selectors": matched,
+        "current_authority": "not_checked",
         # Still true at 50.0% out-of-sample pooled recall against the oracle's flags, and
         # more true than when this said 62.5% -- a hit is real,
         # a miss says nothing, and an empty list must not be read as a clean contract.
@@ -2682,41 +2688,46 @@ async def _eth_get_code(rpc, address):
         return None, type(e).__name__
 
 
+_PROXY_PERMISSION_DISCLOSURE = (
+    "Proxy bytecode was scanned. Implementation permissions remain unobserved. "
+    "Current authority and activation were not checked."
+)
+
+
+def _matched_power_disclosure(info):
+    categories = [p[4:] for p in (info.get("powers") or [])
+                  if isinstance(p, str) and p in _OWNER_POWERS]
+    if not categories:
+        return ""
+    return ("Bytecode contains selector indicators for powers to %s. "
+            "Current authority and activation were not checked." % ", ".join(categories))
+
+
 def _owner_power_signal(info, signals, evidence):
     """Record the powers as evidence and one info signal. Never changes the score."""
     if not info:
         return
     evidence["owner_powers"] = info
-    if info.get("unavailable"):
+    if "unavailable" in info:
         return          # recorded, not claimed: no signal either way
     if info.get("is_proxy"):
         signals.append(_sig(
-            "info", "Upgradeable contract: powers are not visible here",
-            "This is a proxy, so its logic lives at another address and what its owner "
-            "can do cannot be read from this bytecode. Absence of a warning below is not "
-            "evidence of absence.", "contract"))
+            "info", "Proxy contract: implementation powers are not visible here",
+            _PROXY_PERMISSION_DISCLOSURE, "contract"))
         return
-    if info.get("powers"):
+    disclosure = _matched_power_disclosure(info)
+    if disclosure:
         signals.append(_sig(
-            "info", "The owner holds powers that could close the exit later",
-            "This contract's code contains functions where the owner %s. None of them "
-            "has been used against you -- this is what the contract *can* do, not what it "
-            "has done, and it does not change the rating. Plenty of legitimate tokens "
-            "carry these." % ", ".join(info["powers"]), "contract"))
-    elif info.get("is_proxy"):
-        signals.append(_sig(
-            "info", "This contract's behaviour lives at another address",
-            "It is a proxy: calls are forwarded to an implementation contract, so a scan "
-            "of this address says nothing about what the token can do. Whoever can "
-            "upgrade the implementation can change its behaviour after you buy.",
-            "contract"))
+            "info", "Bytecode permission indicators",
+            disclosure, "contract"))
     elif info.get("found_none"):
         signals.append(_sig(
             "info", "No owner powers found, which is weaker than it sounds",
-            "The scan for functions that let an owner %s found none. It is known to find "
-            "%s%% of the ones that exist, because contracts name these functions in more "
-            "ways than a fixed list can hold. " % (_power_list(), _SCAN_RECALL_PCT) +
-            "Read this as 'nothing found', not 'nothing there'.", "contract"))
+            "The bytecode scan for powers to %s found no matching selectors. "
+            "It is known to find %s%% of the powers that exist. "
+            "Read this as 'nothing found', not 'nothing there'. "
+            "Current authority and activation were not checked."
+            % (_power_list(), _SCAN_RECALL_PCT), "contract"))
 
 
 def _sim_failed(hp):
