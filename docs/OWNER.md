@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- docs: regenerate scorecard after permission contract checks
-- fix: constrain advertised selectors to eight characters
-- fix: advertise optional permission evidence and its limits
-- test: require discoverable optional permission evidence
-- NEXT-20261115: regenerate MCP assertion count
-- NEXT-20261115: honor caller-owned one-retry context
-- NEXT-20261115: acceptance tests for caller-owned retry context
-- Permission evidence: classify bytecode RPC failure and empty results
+- T-090: regenerate count after duplicate query acceptance
+- T-090: refuse repeated discovery listing parameters
+- T-090: named change (duplicate selection acceptance)
+- T-090: regenerate the published test count
+- T-090: named change (malformed attributes fixture)
+- T-090: select trending discovery before the return limit
+- T-090: acceptance tests for explicit trending discovery
+- docs: regenerate scorecard after consumed-chain checks
 
-_71 more not shown (79 commits in total)._
+_90 more not shown (98 commits in total)._
 
 ## What I got wrong
 
