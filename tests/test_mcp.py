@@ -1743,6 +1743,151 @@ def test_permission_contract_matches_normal_mcp_assessment_handoff():
         risk._BENCH_NOW.reset(clock)
 
 
+def test_discovery_assessment_args_are_optional_and_described():
+    tools = call({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})["result"]["tools"]
+    tool = next(t for t in tools if t["name"] == "find_new_hot_pools")
+    row = tool["outputSchema"]["properties"]["pools"]["items"]
+    args = row["properties"].get("assessment_args", {})
+    check("discovery declares exactly the existing assessment arguments",
+          args.get("type") == "object" and set(args.get("properties", {})) == {"address", "chain_hint"}
+          and set(args.get("required", [])) == {"address", "chain_hint"}
+          and args.get("additionalProperties") is False)
+    check("ready arguments remain optional on a discovery row", "assessment_args" not in row.get("required", []))
+    description = tool["description"] + " " + args.get("description", "")
+    check("handoff instructions preserve context without certifying the discovered pool",
+          all(p in description for p in ("assessment_args", "absent", "different primary pool", "not guess")))
+
+
+def test_discovery_assessment_args_follow_only_supported_selected_networks():
+    cases = [("ethereum", "eth", "ethereum"), ("eth", "eth", "ethereum"),
+             ("binance", "bsc", "bsc"), ("bsc", "bsc", "bsc"),
+             ("matic", "polygon_pos", "polygon"), ("polygon_pos", "polygon_pos", "polygon"),
+             ("arbitrum_one", "arbitrum", "arbitrum"), ("optimism", "optimism", "optimism"),
+             ("avax", "avax", "avalanche"), ("base", "base", "base"),
+             ("solana", "solana", "solana"), ("mainnet", "mainnet", None),
+             ("bnb", "bnb", None), ("unlisted", "unlisted", None)]
+    solana = _load("ds_bonk.json")["pairs"][0]["baseToken"]["address"]
+    for chain, network, canonical in cases:
+        token = solana if chain == "solana" else "0x" + "A1" * 20
+        valid = _t028_pool("1")
+        valid["relationships"]["base_token"]["data"]["id"] = network + "_" + token
+        invalid = copy.deepcopy(valid)
+        invalid["id"] = "invalid"
+        invalid["relationships"]["base_token"]["data"]["id"] = network + "_bad"
+        absent = {"id": "absent", "attributes": {"name": token}}
+        with patch.dict(risk._ONCHAIN, {"key": None, "unusable": False}), \
+                _t028_runtime({"data": [valid, invalid, absent]}, {"data": [copy.deepcopy(valid)]}) as (_, _, seen):
+            envelope = call({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {
+                "name": "find_new_hot_pools", "arguments": {"chain": chain, "limit": 3}}})
+        result = envelope["result"]["structuredContent"]
+        rows = result["pools"]
+        expected = {"address": token if chain == "solana" else token.lower(), "chain_hint": canonical}
+        check(chain + ": only a known selected network produces callable arguments",
+              rows[0].get("assessment_args") == expected if canonical else "assessment_args" not in rows[0])
+        check(chain + ": invalid and missing addresses never get ready arguments",
+              all("assessment_args" not in row for row in rows[1:]))
+        check(chain + ": legacy rows, routing, deduplication and completeness stay intact",
+              result["network"] == network and result["chain"] == chain
+              and result["status"] == "ok" and result["count"] == result["scanned"] == 3
+              and rows[0]["token_address"] == token and rows[1]["token_address"] == "bad"
+              and rows[2]["token_address"] == ""
+              and [r["pool_id"] for r in rows] == [valid["id"], "invalid", "absent"]
+              and [s[0] for s in seen] == ["new", "trending"]
+              and all("/networks/" + network + "/" in s[1] for s in seen))
+
+
+async def _discovery_assessment_handoff():
+    address, requests = "0x" + "1" * 40, []
+    listing = _t028_pool("1")
+    listing["id"] = "base_discovered_pool"
+    listing["relationships"]["base_token"]["data"]["id"] = "base_" + address
+    pairs = [{"chainId": chain, "dexId": "uniswap", "pairAddress": "0x" + suffix * 40,
+              "baseToken": {"address": address, "symbol": "TKN"}, "quoteToken": {"address": "0xq"},
+              "priceUsd": "0.05", "liquidity": {"usd": depth}, "volume": {"h24": depth * 0.2},
+              "txns": {"h24": {"buys": 300, "sells": 280}}, "pairCreatedAt": 1589841515000}
+             for chain, depth, suffix in (("base", 345000, "a"), ("bsc", 364000, "b"))]
+
+    def denied(*args, **kwargs):
+        raise AssertionError("discovery handoff must remain offline")
+
+    async def fetch(url, *args, **kwargs):
+        if url.endswith(("/new_pools", "/trending_pools")):
+            requests.append(url.rsplit("/", 1)[-1])
+            return {"data": [copy.deepcopy(listing)]}
+        if "/dex/tokens/" in url:
+            requests.append("market")
+            return {"pairs": copy.deepcopy(pairs)}
+        if "/dex/search" in url:
+            requests.append("search")
+            return {"pairs": []}
+        if "api.honeypot.is" in url:
+            chain = "base" if url.endswith("chainID=8453") else "bsc" if url.endswith("chainID=56") else "unexpected"
+            requests.append("sell:" + chain)
+            # Existing snapshots supply mechanics, not identities for these synthetic deployments.
+            hp = _load("hp_retail_veryhigh.json" if chain == "base" else "hp_matic.json")
+            for key in ("chain", "pair", "pairAddress"):
+                hp.pop(key, None)
+            hp.get("token", {}).pop("address", None)
+            return hp
+        denied()
+
+    async def bytecode(url, **kwargs):
+        assert json.loads(kwargs["body"])["params"] == [address, "latest"]
+        requests.append("rpc:" + next(c for c, rpc in risk._CHAIN_RPC.items() if rpc == url))
+        async def text():
+            return '{"result":"0x6318160ddd00"}'
+        return SimpleNamespace(status=200, text=text)
+
+    async def cache_get(key):
+        return None, None
+
+    async def cache_put(*args, **kwargs):
+        pass
+
+    async def invoke(name, arguments):
+        envelope = await mcp_server.handle_mcp_request({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+            "params": {"name": name, "arguments": arguments}})
+        data = envelope["result"]["structuredContent"]
+        assert json.loads(envelope["result"]["content"][0]["text"]) == data
+        return data
+
+    with patch.object(socket.socket, "connect", denied), patch.object(socket, "getaddrinfo", denied), \
+            patch.object(risk, "_fetch_json", fetch), patch.object(risk, "cf_fetch", bytecode), \
+            patch.object(risk, "_cache_get", cache_get), patch.object(risk, "_cache_put", cache_put), \
+            patch.dict(risk._ONCHAIN, {"key": None, "unusable": False}):
+        discovery = await invoke("find_new_hot_pools", {"chain": "base", "limit": 1})
+        discovery_calls = requests[:]
+        args = discovery["pools"][0].get("assessment_args", {"address": address})
+        original_args = copy.deepcopy(args)
+        answers = []
+        # First pass forwards the object unchanged; verbose adds only the existing output option.
+        for arguments in (args, {**args, "verbose": True}, {"address": address}):
+            requests.clear()
+            answers.append((await invoke("assess_token_risk", arguments), requests[:]))
+        assert args == original_args
+    return discovery, discovery_calls, answers
+
+
+def test_discovery_assessment_args_preserve_real_mcp_chain_context():
+    discovery, calls, answers = asyncio.run(_discovery_assessment_handoff())
+    check("discovery does not assess or make extra requests", calls == ["new_pools", "trending_pools"])
+    for result, requests in answers[:2]:
+        check("ready handoff assesses the discovered Base deployment",
+              result["evidence"]["chain_searched"] == discovery["chain"] == "base"
+              and result["evidence"]["best_pair"]["chain"] == "base"
+              and result["risk_level"] == "medium" and result["risk_score"] == 58)
+        check("ready handoff sends actual bytecode and sell checks to Base",
+              requests == ["market", "search", "rpc:base", "sell:base"])
+    compact, verbose = answers[0][0], answers[1][0]
+    check("normal output modes retain the same decision and owner observations",
+          all(compact[k] == verbose[k] for k in ("risk_level", "risk_score", "signals"))
+          and compact["evidence"]["owner_powers"] == verbose["evidence"]["owner_powers"])
+    result, requests = answers[2]
+    check("existing unhinted calls still choose the deeper BSC deployment",
+          result["evidence"]["chain_searched"] == "bsc" and result["risk_level"] == "low"
+          and result["risk_score"] == 3 and requests == ["market", "search", "rpc:bsc", "sell:bsc"])
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
