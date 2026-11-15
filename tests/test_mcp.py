@@ -1936,6 +1936,170 @@ def test_discovery_assessment_args_require_the_selected_address_family():
               and result["status"] == "ok" and [r[0] for r in requests] == ["new", "trending"])
 
 
+def _expected_chain_call(route, payload, expected, status=200, attempted=False):
+    try:
+        return _a2_call(route, payload, status, expected_chain=expected, retry_attempted=attempted)
+    except TypeError:
+        return {"missing_expected_chain_support": True}
+
+
+def test_expected_chain_context_rejects_unverified_results_without_effects():
+    import inspect
+    module = _a2_module()
+    for route, wrap in ((module.route_http, lambda value: value), (module.route_mcp, _a2_envelope)):
+        parameter = inspect.signature(route).parameters.get("expected_chain")
+        check("expected chain is optional and keyword-only", parameter is not None
+              and parameter.kind == inspect.Parameter.KEYWORD_ONLY and parameter.default is None)
+        for chain in sorted(risk._KNOWN_CHAINS):
+            payload = {"risk_level": "low", "evidence": {"chain_searched": chain}}
+            check("every supported canonical chain can be verified",
+                  _expected_chain_call(route, wrap(payload), chain)
+                  == _a2_expected("continue_evaluation", "checks_ran_without_fatal_signal"))
+        for invalid in ("", "eth", "BASE", "private-chain", 0, True, [], {}):
+            payload = wrap({"risk_level": "low", "evidence": {"chain_searched": "base"}})
+            check("noncanonical expected context abstains with a fixed private-safe reason",
+                  _expected_chain_call(route, payload, invalid) == _a2_expected("abstain", "invalid_expected_chain"))
+            check("transport rejection wins over expected-chain validation",
+                  _expected_chain_call(route, payload, invalid, 429) == _a2_expected("abstain", "invalid_envelope"))
+        for evidence in (None, [], "private-evidence", {}, {"chain_searched": None},
+                         {"chain_searched": True}, {"chain_searched": []},
+                         {"chain_searched": "eth"}, {"chain_searched": "BASE"},
+                         {"chain_searched": "private-observation"}):
+            payload = {"risk_level": "low", "evidence": evidence}
+            check("missing or invalid observed chain is unavailable, never an implicit match",
+                  _expected_chain_call(route, wrap(payload), "base")
+                  == _a2_expected("abstain", "chain_context_unavailable"))
+        mismatch = {"risk_level": "low", "evidence": {"chain_searched": "bsc"}, "expected_chain": "bsc"}
+        check("a different observed chain cannot be used for the caller's target",
+              _expected_chain_call(route, wrap(mismatch), "base")
+              == _a2_expected("abstain", "assessment_chain_mismatch"))
+        for payload in ({"risk_level": "low"}, mismatch, {"risk_level": "high", "evidence": []}):
+            check("omitting expected context preserves prior behavior, ignoring payload history",
+                  _expected_chain_call(route, wrap(payload), None) == _a2_call(route, wrap(payload)))
+        unknown = {"risk_level": "unknown", "unknown_kind": "infrastructure", "next_action": "retry",
+                   "retry_after_seconds": 60, "evidence": {"chain_searched": "base"}}
+        check("matching context retains the first advised retry",
+              _expected_chain_call(route, wrap(unknown), "base")
+              == _a2_expected("retry", "infrastructure_retry_advised", 60))
+        check("matching context retains the caller-owned retry limit",
+              _expected_chain_call(route, wrap(unknown), "base", attempted=True)
+              == _a2_expected("abstain", "retry_budget_exhausted"))
+        unknown["evidence"]["chain_searched"] = "bsc"
+        check("a wrong-chain unknown cannot cause a retry",
+              _expected_chain_call(route, wrap(unknown), "base")
+              == _a2_expected("abstain", "assessment_chain_mismatch"))
+        check("invalid existing retry context keeps its reason",
+              _expected_chain_call(route, wrap(unknown), "base", attempted="bad")
+              == _a2_expected("abstain", "invalid_retry_context"))
+    for route, envelope in ((module.route_http, {"error": None, "risk_level": "low"}),
+                            (module.route_mcp, {"error": None}),
+                            (module.route_mcp, {"result": {"isError": True}})):
+        check("existing error envelopes take priority over both contexts",
+              _expected_chain_call(route, envelope, "private-context", attempted="bad")
+              == _a2_expected("abstain", "invalid_envelope"))
+
+
+async def _discovery_handoff_only_other_chain():
+    address, requests = "0x" + "1" * 40, []
+    row = _t028_pool("1")
+    row["relationships"]["base_token"]["data"]["id"] = "base_" + address
+    market = {"pairs": [{"chainId": "bsc", "dexId": "uniswap", "pairAddress": "0x" + "b" * 40,
+                        "baseToken": {"address": address, "symbol": "TKN"}, "quoteToken": {"address": "0xq"},
+                        "priceUsd": "0.05", "liquidity": {"usd": 364000}, "volume": {"h24": 72800},
+                        "txns": {"h24": {"buys": 300, "sells": 280}}, "pairCreatedAt": 1589841515000}]}
+
+    def denied(*args, **kwargs):
+        raise AssertionError("chain-context fixture forbids network access")
+
+    async def fetch(url, *args, **kwargs):
+        if url.endswith(("/new_pools", "/trending_pools")):
+            requests.append(url.rsplit("/", 1)[-1])
+            return {"data": [copy.deepcopy(row)]}
+        if "/dex/tokens/" in url:
+            requests.append("market:bsc-only")
+            return copy.deepcopy(market)
+        if "/dex/search" in url:
+            requests.append("search")
+            return {"pairs": []}
+        if "api.honeypot.is" in url:
+            assert url.endswith("chainID=56")
+            requests.append("sell:bsc")
+            hp = _load("hp_matic.json")
+            for key in ("chain", "pair", "pairAddress"):
+                hp.pop(key, None)
+            hp.get("token", {}).pop("address", None)
+            return hp
+        denied()
+
+    async def bytecode(url, **kwargs):
+        assert url == risk._CHAIN_RPC["bsc"] and json.loads(kwargs["body"])["params"] == [address, "latest"]
+        requests.append("rpc:bsc")
+        async def text():
+            return '{"result":"0x6318160ddd00"}'
+        return SimpleNamespace(status=200, text=text)
+
+    async def cache_get(key):
+        return None, None
+
+    async def cache_put(*args, **kwargs):
+        pass
+
+    async def invoke(name, arguments):
+        return await mcp_server.handle_mcp_request({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+            "params": {"name": name, "arguments": arguments}})
+
+    with patch.object(socket.socket, "connect", denied), patch.object(socket, "getaddrinfo", denied), \
+            patch.object(risk, "_fetch_json", fetch), patch.object(risk, "cf_fetch", bytecode), \
+            patch.object(risk, "_cache_get", cache_get), patch.object(risk, "_cache_put", cache_put), \
+            patch.dict(risk._ONCHAIN, {"key": None, "unusable": False}):
+        discovery = await invoke("find_new_hot_pools", {"chain": "base", "limit": 1})
+        args = discovery["result"]["structuredContent"]["pools"][0]["assessment_args"]
+        original = copy.deepcopy(args)
+        envelope = await invoke("assess_token_risk", args)
+        assert args == original
+    return args, envelope, requests
+
+
+def test_expected_chain_guard_consumes_real_mcp_handoffs():
+    module = _a2_module()
+    discovery, _, answers = asyncio.run(_discovery_assessment_handoff())
+    args = discovery["pools"][0]["assessment_args"]
+    for result, _ in answers[:2]:
+        check("normal compact and verbose Base responses retain manual review",
+              _expected_chain_call(module.route_mcp, _a2_envelope(result), args["chain_hint"])
+              == _a2_expected("manual_review", "risk_requires_review"))
+    args, envelope, requests = asyncio.run(_discovery_handoff_only_other_chain())
+    result = envelope["result"]["structuredContent"]
+    check("the existing soft hint may still observe only BSC",
+          args["chain_hint"] == "base" and result["evidence"]["chain_searched"] == "bsc"
+          and result["risk_level"] == "low" and requests == ["new_pools", "trending_pools", "market:bsc-only", "search", "rpc:bsc", "sell:bsc"])
+    check("the adapter refuses the different chain for the discovered target",
+          _expected_chain_call(module.route_mcp, envelope, args["chain_hint"])
+          == _a2_expected("abstain", "assessment_chain_mismatch"))
+    check("without caller context the old adapter behavior remains unchanged",
+          _a2_call(module.route_mcp, envelope) == _a2_expected("continue_evaluation", "checks_ran_without_fatal_signal"))
+
+
+def test_expected_chain_cli_preserves_routing_and_private_errors():
+    for transport, wrap in (("http", lambda value: value), ("mcp", _a2_envelope)):
+        for chain, reason in (("base", "checks_ran_without_fatal_signal"),
+                              ("bsc", "assessment_chain_mismatch"), (None, "chain_context_unavailable")):
+            payload = wrap({"risk_level": "low", "evidence": {"chain_searched": chain}})
+            proc = _a2_cli(json.dumps(payload).encode(), ["--transport", transport, "--expected-chain", "base"])
+            expected = _a2_expected("continue_evaluation" if chain == "base" else "abstain", reason)
+            check("CLI uses the same observed-chain policy", proc.returncode == 0 and proc.stderr == b""
+                  and json.loads(proc.stdout) == expected)
+        proc = _a2_cli(b'{"risk_level":"low"}', ["--transport", transport, "--expected-chain", "PRIVATE-EXPECTED-CHAIN"])
+        check("invalid CLI chain context has a fixed non-echoing policy result",
+              proc.returncode == 0 and proc.stderr == b"" and b"PRIVATE-EXPECTED" not in proc.stdout
+              and json.loads(proc.stdout) == _a2_expected("abstain", "invalid_expected_chain")
+              if transport == "http" else proc.returncode == 0 and proc.stderr == b""
+              and json.loads(proc.stdout) == _a2_expected("abstain", "invalid_envelope"))
+        missing = _a2_cli(b'{}', ["--transport", transport, "--expected-chain"])
+        check("a missing CLI chain value keeps the fixed argument refusal", missing.returncode == 2
+              and missing.stderr == b"" and json.loads(missing.stdout) == {"error": "arguments_refused"})
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
