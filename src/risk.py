@@ -5027,6 +5027,9 @@ async def new_pools(chain="solana", limit=10):
                 address = validate_address(row["token_address"])
             except ValueError:
                 continue
+            compatible = _looks_solana(address) if assessment_chain == "solana" else _looks_evm(address)
+            if not compatible:
+                continue
             row["assessment_args"] = {"address": address, "chain_hint": assessment_chain}
     return _disclosed({"status": "partial" if sources_failed else "ok",
                        "chain": chain, "network": net, "count": len(shown),
