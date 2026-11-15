@@ -80,12 +80,12 @@ gantt
 ### Is the archive still collecting?
 
 ```text
-█████████████████████   2026-10-25 -> 2026-11-14
+█████████████████████   2026-10-26 -> 2026-11-15
 ```
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**73 days, no gaps.** Newest is 2026-11-14, yesterday.
+**74 days, no gaps.** Newest is 2026-11-15, today.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- Permission evidence: classify bytecode RPC failure and empty results
+- Permission evidence: acceptance tests for bytecode RPC outcomes
+- Permission evidence: disclose selector provenance without claiming authority
+- Permission evidence: acceptance tests for selector provenance and wording
 - lead: record T-088 independent acceptance
 - T-088: enforce diagnostics bounds at serialization
 - T-088: named change (writer boundary coverage)
 - lead: specify the T-088 serialization boundary
-- lead: document the T-088 archive acceptance
-- T-088: retain bounded sellability fetch diagnostics
-- T-088: acceptance tests
-- Connect R1: link directory records and protocol checks
 
-_70 more not shown (78 commits in total)._
+_64 more not shown (72 commits in total)._
 
 ## What I got wrong
 
