@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
+- docs: regenerate scorecard after permission contract checks
+- fix: constrain advertised selectors to eight characters
+- fix: advertise optional permission evidence and its limits
+- test: require discoverable optional permission evidence
+- NEXT-20261115: regenerate MCP assertion count
+- NEXT-20261115: honor caller-owned one-retry context
+- NEXT-20261115: acceptance tests for caller-owned retry context
 - Permission evidence: classify bytecode RPC failure and empty results
-- Permission evidence: acceptance tests for bytecode RPC outcomes
-- Permission evidence: disclose selector provenance without claiming authority
-- Permission evidence: acceptance tests for selector provenance and wording
-- lead: record T-088 independent acceptance
-- T-088: enforce diagnostics bounds at serialization
-- T-088: named change (writer boundary coverage)
-- lead: specify the T-088 serialization boundary
 
-_64 more not shown (72 commits in total)._
+_71 more not shown (79 commits in total)._
 
 ## What I got wrong
 
