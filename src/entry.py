@@ -114,9 +114,15 @@ get_token_liquidity(address, chain_hint?)
   Check `status` first: ok | not_found | unpriced | drained | unavailable.
   `unpriced` means nobody costed the pools, not that liquidity is zero.
 
-find_new_hot_pools(chain?, limit?)
-  Newest and most active pools on a chain. Discovery only, never an
-  endorsement.
+find_new_hot_pools(chain?, limit?, listing?)
+  Default listing=mixed scans new then trending. For active-pool queries use
+  listing=trending (HTTP: /new-pools?chain=solana&limit=10&listing=trending).
+  This selects only the trending listing before the limit; listing:trending
+  names the response scope. An observed empty selected list is ok; a failed
+  selected listing is an error, never a fallback to new pools. Inspect
+  pool_age_days, current liquidity_usd and volume_24h_usd. Trending, age and
+  one liquidity observation do not establish sustained funding, exit
+  availability or safety. Discovery only, never an endorsement.
 
 ## The four verdicts
 
@@ -914,9 +920,13 @@ class Default(WorkerEntrypoint):
 
             if path == "/new-pools":
                 tool = "find_new_hot_pools"
+                args = (query.get("chain", "solana"), query.get("limit", 10))
+                selections = [value for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+                              if key == "listing"]
+                result = (await risk.new_pools(*args, selections[-1]) if selections
+                          else await risk.new_pools(*args))
                 return _json_response(self._record_http(
-                    request, "find_new_hot_pools", await risk.new_pools(
-                        query.get("chain", "solana"), query.get("limit", 10))))
+                    request, "find_new_hot_pools", result))
         except ValueError as e:
             self._record_http_error(request, tool)
             return _json_response({"error": "invalid_request", "detail": str(e)}, status=400)

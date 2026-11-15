@@ -251,6 +251,10 @@ TOOLS = [
         "description": (
             "Scan a chain for the newest and most active trading pools, returning name, "
             "token_address, price, liquidity, 24h volume and pool age.\n"
+            "For active-pool queries, use listing=trending to select only the original trending "
+            "listing before the limit. The default mixed view puts new pools first. Inspect "
+            "pool_age_days, current liquidity and volume; trending, age and one liquidity "
+            "observation do not establish sustained funding, exit availability or safety.\n"
             "Discovery only. New pools carry inherently high risk and appearing here is NOT "
             "a safety endorsement. Pass assessment_args unchanged to assess_token_risk when "
             "present; when absent, do not guess an address or chain. This preserves a chain "
@@ -265,6 +269,8 @@ TOOLS = [
                 "chain": {"type": "string", "default": "solana",
                           "description": "Chain name, e.g. solana / ethereum / base / bsc"},
                 "limit": {"type": "integer", "default": 10, "minimum": 1, "maximum": 50},
+                "listing": {"type": "string", "enum": ["mixed", "trending"], "default": "mixed",
+                            "description": "mixed scans new then trending; trending scans only that listing."},
             },
         },
         "annotations": {"readOnlyHint": True, "openWorldHint": True,
@@ -280,10 +286,13 @@ TOOLS = [
                     "type": "string",
                     "enum": ["ok", "partial"],
                     "description":
-                        "Completeness only: ok means both listings were observed; "
+                        "Completeness only, in the default mixed view: ok means both listings were observed; "
                         "partial means only one usable listing was observed. This is "
-                        "not a token risk verdict or a safety endorsement.",
+                        "not a token risk verdict or a safety endorsement. With listing=trending, "
+                        "ok means the selected listing was observed, including an empty list; new is not requested.",
                 },
+                "listing": {"type": "string", "enum": ["trending"],
+                            "description": "Present only for the explicitly selected trending scope; absent for mixed."},
                 "chain": {"type": "string"},
                 "network": {"type": "string",
                             "description": "The upstream's own name for the chain, "
@@ -307,13 +316,14 @@ TOOLS = [
                     "items": {"type": "string", "enum": ["new", "trending"]},
                     "description":
                         "Which of the two upstream listings answered. Both means a full "
-                        "scan.",
+                        "mixed scan. In trending mode only the selected trending listing is requested.",
                 },
                 "sources_failed": {
                     "type": "array",
                     "items": {"type": "string", "enum": ["new", "trending"]},
                     "description":
-                        "Which listings did NOT answer. A non-empty array means this is a "
+                        "Which requested listings did NOT answer. Unrequested listings are not failures. "
+                        "A non-empty array means this is a "
                         "PARTIAL scan: a smaller `scanned` here is a coverage gap, not a "
                         "quiet market. Treat it as missing information, not as absence.",
                 },
@@ -507,7 +517,10 @@ async def _call_tool(req_id, params):
         elif name == "get_token_liquidity":
             result = await risk.liquidity(args.get("address", ""), args.get("chain_hint"))
         elif name == "find_new_hot_pools":
-            result = await risk.new_pools(args.get("chain", "solana"), args.get("limit", 10))
+            if "listing" in args:
+                result = await risk.new_pools(args.get("chain", "solana"), args.get("limit", 10), args["listing"])
+            else:
+                result = await risk.new_pools(args.get("chain", "solana"), args.get("limit", 10))
         else:
             return _error(req_id, INVALID_PARAMS, "Unknown tool: %s" % name)
     except ValueError as e:

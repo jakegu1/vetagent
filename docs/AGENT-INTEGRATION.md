@@ -41,7 +41,7 @@ Any MCP client (Cursor, opencode, custom agent) works the same way.
 |---|---|
 | **`assess_token_risk(address, chain_hint?)`** | Core. Aggregates multi-chain liquidity / contract safety (honeypot or rug check) / pool freshness into a structured risk verdict + agent recommendation. |
 | **`get_token_liquidity(address)`** | Best-pair liquidity snapshot: price, 24h volume, cross-chain count. |
-| **`find_new_hot_pools(chain, limit)`** | Scan a chain (default `solana`) for newest/hottest new pools for new-token discovery + risk. |
+| **`find_new_hot_pools(chain, limit, listing)`** | Scan a chain (default `solana`); `listing` defaults to `mixed`, or select `trending` for active-pool discovery. |
 
 ### Example: `assess_token_risk`
 ```json
@@ -73,6 +73,22 @@ Any MCP client (Cursor, opencode, custom agent) works the same way.
 `evidence.data_gaps` lists exactly which checks could not run and why.
 
 ### Passing discovery results to assessment
+
+For active-pool queries, select the existing trending listing before applying the limit:
+
+```json
+{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"find_new_hot_pools","arguments":{"chain":"base","limit":10,"listing":"trending"}}}
+```
+
+HTTP uses the same option: `GET /new-pools?chain=base&limit=10&listing=trending`.
+Omitted or explicit `mixed` keeps the original new-first merged result and response fields.
+`trending` fetches only that listing and adds `listing: "trending"`; `scanned` counts its
+distinct pools before the limit. Its `ok` means that selected list was observed, including
+an empty list. A failed selected listing is an error, never a substitution with new pools.
+Mixed `ok` still means both listings answered; `partial` means only one did.
+Inspect `pool_age_days`, current `liquidity_usd` and `volume_24h_usd`; missing values are
+unknown. Trending, age and one liquidity observation do not establish sustained funding,
+exit availability or safety. Discovery adds no assessment or ranking.
 
 Each usable `find_new_hot_pools` row includes `assessment_args`, containing exactly
 `address` and the canonical `chain_hint` of the selected discovery network. Pass this

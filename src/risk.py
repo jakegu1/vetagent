@@ -4959,9 +4959,11 @@ def _parse_new_pool_listing(data, net, kind):
     return parsed
 
 
-async def new_pools(chain="solana", limit=10):
-    """Scan a chain for new and trending pools."""
+async def new_pools(chain="solana", limit=10, listing="mixed"):
+    """Scan both discovery listings by default, or only the selected trending listing."""
     _begin_request()
+    if not isinstance(listing, str) or listing not in ("mixed", "trending"):
+        raise ValueError("Invalid listing: expected mixed or trending")
     chain = (chain or "solana").strip().lower()
     net = _GT_NETWORK.get(chain, chain)
     if not re.match(r"^[a-z0-9_\-]{1,32}$", net):
@@ -4980,14 +4982,16 @@ async def new_pools(chain="solana", limit=10):
     # from "we only looked in one place". That is E11, in the field added hours earlier
     # to disclose a truncation. A disclosure needs its own disclosure.
     sources_ok, sources_failed = [], []
-    for kind, path in (("new", "new_pools"), ("trending", "trending_pools")):
+    sources = (("trending", "trending_pools"),) if listing == "trending" else (
+        ("new", "new_pools"), ("trending", "trending_pools"))
+    for kind, path in sources:
         for url, headers, _name in _onchain_sources("networks/%s/%s" % (net, path)):
             data = await _fetch_json(url, headers=headers)
             # Validate the whole response before accepting this provider. A malformed
             # later row must not leak into its fallback, and a valid empty list is
             # already an observation: provider redundancy adds no market coverage.
             try:
-                listing = _parse_new_pool_listing(data, net, kind)
+                parsed = _parse_new_pool_listing(data, net, kind)
             except (AttributeError, TypeError, ValueError, OverflowError):
                 continue
             break
@@ -4996,7 +5000,7 @@ async def new_pools(chain="solana", limit=10):
             continue  # neither provider supplied a usable listing
         sources_ok.append(kind)
         reachable = True
-        for pid, row in listing.items():
+        for pid, row in parsed.items():
             if pid not in merged:
                 merged[pid] = row
     if not reachable:
@@ -5031,7 +5035,10 @@ async def new_pools(chain="solana", limit=10):
             if not compatible:
                 continue
             row["assessment_args"] = {"address": address, "chain_hint": assessment_chain}
-    return _disclosed({"status": "partial" if sources_failed else "ok",
+    result = {"status": "partial" if sources_failed else "ok",
                        "chain": chain, "network": net, "count": len(shown),
                        "scanned": len(merged), "sources_ok": sources_ok,
-                       "sources_failed": sources_failed, "pools": shown})
+                       "sources_failed": sources_failed, "pools": shown}
+    if listing == "trending":
+        result["listing"] = "trending"
+    return _disclosed(result)
