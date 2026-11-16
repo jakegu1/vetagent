@@ -119,7 +119,7 @@ Rounded = parked by you. Hexagons are not work items -- they are what a row is w
 
 | | |
 |---|---|
-| Maturity score | 48 / 100 (`docs/SCORECARD.md`) |
+| Maturity score | 46 / 100 (`docs/SCORECARD.md`) |
 | Tokens measured | 576 |
 | False positives | 1.9% -- we called a healthy token dangerous |
 | Answers we refuse | 20.7% -- `unknown`, on purpose |
@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- T-090: regenerate count after duplicate query acceptance
-- T-090: refuse repeated discovery listing parameters
-- T-090: named change (duplicate selection acceptance)
-- T-090: regenerate the published test count
-- T-090: named change (malformed attributes fixture)
-- T-090: select trending discovery before the return limit
-- T-090: acceptance tests for explicit trending discovery
-- docs: regenerate scorecard after consumed-chain checks
+- T-091: clarify request-level cache residence boundary
+- T-091: regenerate published test counts
+- T-091: named change (transport fixture isolation)
+- T-091: named change (unsupported archived request expectation)
+- T-091: align the existing API table with cache residence semantics
+- T-091: skip simulator work for unambiguous unsupported chains
+- T-091: named change (unusable market chain conflict guard)
+- T-091: named change (unverified-reserve fixture)
 
-_90 more not shown (98 commits in total)._
+_100 more not shown (108 commits in total)._
 
 ## What I got wrong
 
