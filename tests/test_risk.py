@@ -7541,6 +7541,130 @@ def test_t091_conflicting_unusable_market_keeps_legacy_simulation_path():
                   all(("chainID=1" in url) if hint == "ethereum" else ("chainID=" not in url) for url in sells))
 
 
+def _t092_report(pool="0x" + "ab" * 20):
+    response = copy.deepcopy(_T084_HP)
+    response["chain"] = {"id": 1}
+    if pool is not None:
+        response["pairAddress"] = pool
+    return response
+
+
+def _t092_scope_scan(response, chain="ethereum", hint=None, pool=None, empty=False,
+                     reserves=False, verbose=True, hp_status=200):
+    with _t091_runtime(chain, hp_body=response, reserves=reserves, hp_status=hp_status) as state:
+        if pool is not None:
+            state["market"]["pairs"][0]["pairAddress"] = pool
+        if empty:
+            state["market"]["pairs"] = []
+        answer = run(risk.assess(state["address"], chain if hint is None else hint, verbose))
+    return answer, state
+
+
+def test_t092_reported_pool_aliases_and_chain_identity():
+    print("\n[T092] reported identities, not request assumptions, determine correspondence")
+    pool = "0x" + "ab" * 20
+    different = "0x" + "cd" * 20
+    base = _t092_report()
+    cases = [("same", base, "same", None),
+             ("different", _t092_report(different), "different", None),
+             ("missing pool", _t092_report(None), "unknown", "missing_pool"),
+             ("malformed pool", _t092_report("not-a-pool"), "unknown", "invalid_pool"),
+             ("32-byte source pool", _t092_report("0x" + "ab" * 32), "unknown", "invalid_pool")]
+    for alias in ("nested", "legacy"):
+        body = _t092_report(None)
+        body["pair"] = {"pair": {"address": pool}} if alias == "nested" else {"address": pool}
+        cases.append((alias, body, "same", None))
+    agreed = _t092_report("0x" + "AB" * 20)
+    agreed["pair"] = {"chainId": "1", "address": pool, "pair": {"address": pool}}
+    cases.append(("all aliases and EVM case agree", agreed, "same", None))
+    conflicted = copy.deepcopy(agreed)
+    conflicted["pair"]["pair"]["address"] = different
+    cases.append(("pool conflict", conflicted, "unknown", "pool_conflict"))
+    invalid_alias = copy.deepcopy(agreed)
+    invalid_alias["pair"]["address"] = 7
+    cases.append(("invalid legacy alias is not ignored", invalid_alias, "unknown", "invalid_pool"))
+    missing_chain = _t092_report()
+    missing_chain.pop("chain")
+    cases.append(("request chain is not a report", missing_chain, "unknown", "missing_chain"))
+    for value in (True, False, 1.0, "bad", None, [], {}):
+        body = _t092_report()
+        body["chain"] = {"id": value}
+        cases.append(("malformed chain " + repr(value), body, "unknown", "invalid_response"))
+    chain_conflict = copy.deepcopy(conflicted)
+    chain_conflict["pair"]["chainId"] = 8453
+    cases.append(("chain conflict precedes pool conflict", chain_conflict, "unknown", "chain_conflict"))
+    wrong_token = _t092_report()
+    wrong_token["token"] = {"address": "0x" + "99" * 20}
+    cases.append(("rejected token identity", wrong_token, "unknown", "invalid_response"))
+    bad_structure = _t092_report()
+    bad_structure["pair"] = []
+    cases.append(("rejected source structure", bad_structure, "unknown", "invalid_response"))
+    for label, body, relation, reason in cases:
+        answer, state = _t092_scope_scan(body)
+        evidence = answer["evidence"]
+        detail = evidence.get("pool_link_details") or {}
+        check("T092 " + label + " relation/reason",
+              evidence.get("pool_link") == relation and detail.get("reason") == reason,
+              str((evidence.get("pool_link"), detail)))
+        check("T092 " + label + " retains actual request context",
+              detail.get("requested_chain") == "ethereum" and detail.get("requested_pool") is None
+              and detail.get("policy_chain") == "ethereum" and detail.get("adopted_response") == "default")
+        if label in ("pool conflict", "malformed pool", "invalid legacy alias is not ignored", "32-byte source pool"):
+            check("T092 " + label + " reports no invented pool", detail.get("reported_pool") is None)
+        if label.startswith("malformed chain") or label.startswith("chain conflict"):
+            check("T092 " + label + " reports no invented chain", detail.get("reported_chain") is None)
+
+
+def test_t092_pool_identity_is_separate_from_simulation_success():
+    for label in ("failed trade", "missing tax", "missing holders", "conflicting verdict"):
+        body = _t092_report()
+        if label == "failed trade":
+            body.update(simulationSuccess=False, simulationError="execution reverted: HP: BUY_FAILED")
+        elif label == "missing tax":
+            body["simulationResult"].pop("buyTax")
+        elif label == "missing holders":
+            body["holderAnalysis"] = {"holders": "not-a-count"}
+        else:
+            body["summary"] = {"risk": "honeypot", "riskLevel": 100}
+        answer, _ = _t092_scope_scan(body)
+        check("T092 " + label + " does not erase known venue identity",
+              answer["evidence"].get("pool_link") == "same"
+              and (answer["evidence"].get("pool_link_details") or {}).get("reason") is None)
+
+
+def test_t092_full_identity_and_unknown_priority_preserve_old_paths():
+    full_a, full_b = "0x" + "ab" * 32, "0x" + "ab" * 31 + "cd"
+    rendered = full_a[:48] + "..."
+    for pool in (full_a, full_b):
+        answer, _ = _t092_scope_scan(_t092_report(full_a), pool=pool)
+        details = answer["evidence"].get("pool_link_details") or {}
+        check("T092 display collision cannot make a 32-byte reported venue valid",
+              answer["evidence"].get("pool_link") == "unknown" and details.get("reason") == "invalid_pool"
+              and details.get("market_pool") == rendered and full_a not in json.dumps(answer)
+              and full_b not in json.dumps(answer))
+    answer, _ = _t092_scope_scan(_t092_report(), pool=full_a)
+    check("T092 full 32-byte market differs from valid 20-byte venue",
+          answer["evidence"].get("pool_link") == "different")
+    for observed, hint in (("base", "arbitrum"), ("arbitrum", "ethereum")):
+        answer, state = _t092_scope_scan(_t092_report(), observed, hint, reserves=True, hp_status=503)
+        detail = answer["evidence"].get("pool_link_details") or {}
+        sells = [url for kind, url in state["requests"] if kind == "sell"]
+        check("T092 conflicting chain context precedes no market or simulation",
+              answer["evidence"].get("pool_link") == "unknown" and detail.get("reason") == "chain_conflict"
+              and detail.get("market_pool") is None and detail.get("policy_chain") == hint
+              and detail.get("requested_chain") == ("ethereum" if hint == "ethereum" else None))
+        check("T092 chain disclosure retains the old unknown and failed request budget",
+              answer["risk_level"] == "unknown" and len(sells) == 3 and state["sleeps"] == [0.3, 0.6]
+              and all(("chainID=1" in u) if hint == "ethereum" else "chainID=" not in u for u in sells))
+    answer, _ = _t092_scope_scan(_t092_report("bad"), empty=True)
+    check("T092 no market precedes invalid pool",
+          (answer["evidence"].get("pool_link_details") or {}).get("reason") == "no_market")
+    answer, _ = _t092_scope_scan(_t092_report(), hp_status=503)
+    check("T092 failed transport does not invent an adopted source",
+          (answer["evidence"].get("pool_link_details") or {}).get("reason") == "no_simulation"
+          and (answer["evidence"].get("pool_link_details") or {}).get("adopted_response") == "none")
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)

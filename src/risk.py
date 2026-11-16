@@ -4506,7 +4506,7 @@ _UNCONFIRMED = "unconfirmed"
 
 # evidence fields kept in slim mode
 _SLIM_EVIDENCE_KEYS = (
-    "best_pair", "chains", "pair_age_days", "turnover_24h", "honeypot",
+    "best_pair", "chains", "pair_age_days", "turnover_24h", "honeypot", "pool_link",
     # `confidence` is not here: it is a top-level field, and the copy in evidence was
     # 22 duplicate bytes on every call. Verbose still carries it.
     # `token2022` earns its bytes: it is the evidence behind signals up to `fatal`
@@ -4542,6 +4542,91 @@ def _clean_sell_observed(raw, evidence, data_gaps):
     return True
 
 
+def _reported_simulator_identity(response):
+    """Read declared venue identity without treating a request as an observation."""
+    body = response if isinstance(response, dict) else {}
+    chain, pair = body.get("chain", {}), body.get("pair", {})
+    structure_invalid = (response is not None and response is not NO_DATA and not isinstance(response, dict)
+                         or any(key in body and not isinstance(body[key], dict)
+                                for key in ("token", "chain", "pair")))
+    chain = chain if isinstance(chain, dict) else {}
+    pair = pair if isinstance(pair, dict) else {}
+    venue = pair.get("pair", {})
+    structure_invalid = structure_invalid or not isinstance(venue, dict)
+    venue = venue if isinstance(venue, dict) else {}
+    pools, invalid_pool = set(), False
+    for item, key in ((body, "pairAddress"), (venue, "address"), (pair, "address")):
+        if key in item:
+            value = item[key]
+            if not isinstance(value, str) or not _EVM_RE.fullmatch(value):
+                invalid_pool = True
+            else:
+                pools.add(value.lower())
+    chain_ids, invalid_chain = set(), False
+    for item, key in ((chain, "id"), (pair, "chainId")):
+        if key not in item:
+            continue
+        value = item[key]
+        if type(value) is int and value > 0:
+            chain_ids.add(value)
+        elif isinstance(value, str) and len(value) <= 20 and re.fullmatch(r"[0-9]+", value) and int(value) > 0:
+            chain_ids.add(int(value))
+        else:
+            invalid_chain = True
+    names = {value: name for name, value in _SIMULATOR_CHAIN_IDS.items()}
+    return {"pool": next(iter(pools)) if len(pools) == 1 and not invalid_pool else None,
+            "chain": names.get(next(iter(chain_ids))) if len(chain_ids) == 1 and not invalid_chain else None,
+            "chain_ids": chain_ids, "pool_conflict": len(pools) > 1,
+            "invalid_pool": invalid_pool, "invalid_response": structure_invalid or invalid_chain}
+
+
+def _pool_correspondence(market, response, address, searched_chain, policy_chain,
+                         requested_chain, requested_pool, adopted_response, retry):
+    """Compare full identities against the final display market; render only afterwards."""
+    reported = _reported_simulator_identity(response)
+    market_id = (market.get("pairAddress") or market.get("pool_id")) if market is not None else None
+    market_chain = _canonical_chain(market.get("chainId")) if market is not None else None
+    market_chain = market_chain if market_chain in _KNOWN_CHAINS else None
+    market_pool = _validated_pool_id(market_id)
+    if market_chain == "solana" and isinstance(market_id, str) and _looks_solana(market_id):
+        market_pool = market_id
+    contexts = {chain for chain in (market_chain, searched_chain, policy_chain, requested_chain, reported["chain"])
+                if chain in _KNOWN_CHAINS}
+    chain_ids = reported["chain_ids"] | {_SIMULATOR_CHAIN_IDS[chain] for chain in contexts
+                                         if chain in _SIMULATOR_CHAIN_IDS}
+    identity_issue = _sell_evidence_issue(response, address, policy_chain) in (
+        "invalid response structure", "response identifies another token or chain", "invalid simulator metadata")
+    reason = None
+    if len(contexts) > 1 or len(chain_ids) > 1:
+        reason = "chain_conflict"
+    elif reported["pool_conflict"]:
+        reason = "pool_conflict"
+    elif reported["invalid_response"] or identity_issue:
+        reason = "invalid_response"
+    elif market is None:
+        reason = "no_market"
+    elif response is None or response is NO_DATA or policy_chain and policy_chain not in _SIMULATOR_CHAINS:
+        reason = "no_simulation"
+    elif reported["invalid_pool"] or market_id is not None and market_pool is None:
+        reason = "invalid_pool"
+    elif reported["pool"] is None or market_pool is None:
+        reason = "missing_pool"
+    elif reported["chain"] is None or market_chain is None:
+        reason = "missing_chain"
+    relation = "unknown" if reason else "same" if market_pool.lower() == reported["pool"] else "different"
+    details = {"reason": reason, "market_pool": _ascii_safe(market_pool, 48) if market_pool else None,
+               "market_chain": market_chain, "adopted_response": adopted_response,
+               "policy_chain": policy_chain or None, "requested_chain": requested_chain,
+               "requested_pool": _ascii_safe(requested_pool, 48) if requested_pool else None,
+               "reported_chain": reported["chain"], "reported_pool": reported["pool"]}
+    if retry is not None:
+        identity = _reported_simulator_identity(retry["response"])
+        details["retry"] = {"requested_pool": _ascii_safe(retry["requested_pool"], 48),
+                            "reported_chain": identity["chain"], "reported_pool": identity["pool"],
+                            "accepted": retry["accepted"]}
+    return relation, details
+
+
 async def assess(address, chain_hint=None, verbose=False):
     """The core call: a token's risk profile. Fail closed, address validated up front."""
     address = validate_address(address)
@@ -4549,6 +4634,9 @@ async def assess(address, chain_hint=None, verbose=False):
     signals, evidence, data_gaps = [], {}, []
     pool_id = None
     promotion = None
+    displayed_market = None
+    hp, hp_chain, requested_chain, requested_pool, scope_retry = None, None, None, None, None
+    adopted_response = "none"
 
     # Which chain this answer is about, recorded before anything is concluded from it.
     #
@@ -4676,6 +4764,7 @@ async def assess(address, chain_hint=None, verbose=False):
                                     "Pairs exist but none could be costed.",
                                     "no_liquidity"))
         else:
+            displayed_market = depth_best
             if best is depth_best:
                 pool_id = _liquidity_signals(best, pairs, signals, evidence, target=address)
             else:
@@ -4741,6 +4830,9 @@ async def assess(address, chain_hint=None, verbose=False):
         skip_simulator = (evidence.get("chain_searched") == hp_chain
                           and hp_chain in ("arbitrum", "polygon", "optimism", "avalanche"))
         hp = None if skip_simulator else await _fetch_json(hp_url, mark_missing=True)
+        if not skip_simulator:
+            requested_chain = hp_chain if hp_chain in _SIMULATOR_CHAIN_IDS else None
+        adopted_response = "default" if isinstance(hp, dict) else "none"
 
         # Second chance on OUR pool, but only when the simulator's own choice failed.
         #
@@ -4778,12 +4870,15 @@ async def assess(address, chain_hint=None, verbose=False):
         if (supported and not unusable and _sim_failed(hp) and hp_pair is not None and len(hp_pair) == 42):
             retry = await _fetch_json("%s&pair=%s" % (hp_url, hp_pair),
                                       mark_missing=True)
+            scope_retry = {"requested_pool": hp_pair, "response": retry, "accepted": False}
             if (retry is not None and retry is not NO_DATA
                     and not _sell_evidence_issue(retry, address, hp_chain, hp_pair)
                     and not _sim_failed(retry)):
                 hp = retry
                 issue = None
                 replaced = True
+                requested_pool, adopted_response = hp_pair, "retry"
+                scope_retry["accepted"] = True
 
         if unusable:
             _sell_evidence_gap(signals, data_gaps, issue)
@@ -4823,11 +4918,19 @@ async def assess(address, chain_hint=None, verbose=False):
 
     if promotion is not None and _clean_sell_observed(hp, evidence, data_gaps):
         candidate, market_keys, market_signals = promotion
+        displayed_market = candidate
         for key in market_keys:
             evidence.pop(key, None)
         new_signals = []
         _liquidity_signals(candidate, pairs, new_signals, evidence, target=address)
         signals[market_signals] = new_signals
+
+    pool_scope, pool_link_details = _pool_correspondence(
+        displayed_market, hp, address, evidence.get("chain_searched"), hp_chain,
+        requested_chain, requested_pool, adopted_response, scope_retry)
+    evidence["pool_link"] = pool_scope
+    if verbose:
+        evidence["pool_link_details"] = pool_link_details
 
     # If any upstream was down and we answered from cache, say so. Serving stale data
     # is defensible; serving it silently is not.
@@ -4940,6 +5043,9 @@ async def liquidity(address, chain_hint=None):
         "chains": sorted({_ascii_safe(p.get("chainId"), 24)
                           for p in pairs if p.get("chainId")}),
     }
+    selected_id = best.get("pairAddress") or best.get("pool_id")
+    if selected_id:
+        payload["best_pair_address"] = _ascii_safe(selected_id, 48)
     reserve_check = _liquidity_reserve_check(best)
     if reserve_check is not None:
         payload["liquidity_reserve_check"] = reserve_check

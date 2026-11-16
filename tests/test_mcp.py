@@ -2338,6 +2338,215 @@ def test_t091_tools_list_defines_local_residence_not_live_observation_age():
           and "every source answered live" not in description)
 
 
+def _t092_market_cases():
+    import test_risk as fixtures
+    address = fixtures.WETH.lower()
+    a, b = fixtures._T084_USDC_POOL, fixtures._T084_LEEPH_POOL
+    sell = "https://api.honeypot.is/v2/IsHoneypot?address=" + address + "&chainID=1"
+    base = {fixtures._T083_DS + address: ("market", 200, {"pairs": []}),
+            fixtures._t083_market_url("eth", address): ("fallback", 200, fixtures._load("gt_weth_anchor_pools.json")),
+            "https://api.dexscreener.com/latest/dex/search?q=WETH": ("search", 200, {"pairs": []})}
+    cases = []
+    for name, pool, relation, reason in (("default same", a, "same", None),
+                                       ("default different", b, "different", None),
+                                       ("default missing", None, "unknown", "missing_pool")):
+        body = fixtures._t092_report(pool)
+        cases.append((name, dict(base, **{sell: ("default", 200, body)}), relation, reason, "default", a, pool))
+    for name, pool, relation, reason, adopted, final in (
+            ("retry matching", b, "different", None, "retry", a),
+            ("retry unreported", None, "unknown", "missing_pool", "retry", a),
+            ("retry rejected", a, "same", None, "default", b)):
+        first = fixtures._t092_report(b)
+        first.update(simulationSuccess=False, simulationError="execution reverted: HP: BUY_FAILED")
+        routes = dict(base, **{sell: ("default", 200, first),
+                      sell + "&pair=" + b: ("retry", 200, fixtures._t092_report(pool))})
+        cases.append((name, routes, relation, reason, adopted, final, pool))
+    return address, a, b, cases
+
+
+async def _t092_worker_request(interface, tool, args):
+    from urllib.parse import urlencode
+    import test_http_telemetry as runtime
+    body = {"jsonrpc": "2.0", "id": 92, "method": "tools/call",
+            "params": {"name": tool, "arguments": args}}
+
+    class Request(runtime.FakeRequest):
+        async def json(self):
+            return body
+
+    prefix = "/assess/" if tool == "assess_token_risk" else "/liquidity/"
+    url = "/mcp" if interface == "mcp" else prefix + args["address"] + "?" + urlencode(
+        {key: value for key, value in args.items() if key != "address"})
+    with patch.object(runtime.entry, "_record", lambda *args: None):
+        response = await runtime.entry.Default().fetch(Request(
+            "https://offline.invalid" + url, method="POST" if interface == "mcp" else "GET",
+            headers={"x-mcp-client": "vetagent-manual-probe"}))
+    envelope = json.loads(response.body)
+    answer = envelope.get("result", {}).get("structuredContent", {}) if interface == "mcp" else envelope
+    check("T092 actual Worker route succeeds", response.status == 200 and bool(answer))
+    if interface == "mcp":
+        check("T092 actual MCP text matches structured output",
+              json.loads(envelope["result"]["content"][0]["text"]) == answer)
+    return answer
+
+
+def _t092_public_market(interface, tool, arguments, routes, reader=risk._fetch_json):
+    import test_risk as fixtures
+    original_handle = mcp_server.handle_mcp_request
+
+    async def worker_route(payload):
+        with patch.object(mcp_server, "handle_mcp_request", original_handle):
+            answer = await _t092_worker_request(interface, tool, arguments)
+        return {"result": {"structuredContent": answer}}
+
+    with patch.object(mcp_server, "handle_mcp_request", worker_route), \
+            patch.object(fixtures, "_ORIGINAL_FETCH_JSON", reader):
+        return asyncio.run(fixtures._t083_mcp(tool, arguments, routes))
+
+
+def test_t092_final_market_and_adopted_simulator_cross_both_worker_routes():
+    address, a, b, cases = _t092_market_cases()
+    for name, routes, relation, reason, adopted, final, reported in cases:
+        for interface in ("http", "mcp"):
+            for verbose in (False, True):
+                answer, calls, _, sleeps, _ = _t092_public_market(interface, "assess_token_risk",
+                    {"address": address, "chain_hint": "ethereum", "verbose": verbose}, routes)
+                ev = answer["evidence"]
+                detail = ev.get("pool_link_details") or {}
+                tag = "T092 %s %s %s" % (name, interface, verbose)
+                check(tag + " relation follows final promotion and adopted response", ev.get("pool_link") == relation)
+                check(tag + " scope details and reasons are verbose only",
+                      ("pool_link_details" in ev) is verbose and "pool_scope_reason" not in ev)
+                check(tag + " original request trace and verdict survive",
+                      calls == ["market", "fallback", "search", "default"] + (["retry"] if name.startswith("retry") else [])
+                      and not sleeps and answer["risk_level"] == ("unknown" if name == "retry rejected" else "low"))
+                if verbose:
+                    check(tag + " final versus requested and reported identities remain separate",
+                          detail.get("reason") == reason and detail.get("market_pool") == final
+                          and detail.get("market_chain") == "ethereum" and detail.get("adopted_response") == adopted
+                          and detail.get("policy_chain") == "ethereum" and detail.get("requested_chain") == "ethereum"
+                          and detail.get("requested_pool") == (b if adopted == "retry" else None)
+                          and detail.get("reported_pool") == (b if name == "retry rejected" else reported)
+                          and detail.get("reported_chain") == "ethereum", str(detail))
+                    if name.startswith("retry"):
+                        check(tag + " attempted retry is not mistaken for adopted evidence",
+                              detail.get("retry") == {"requested_pool": b, "reported_pool": reported,
+                                                      "reported_chain": "ethereum", "accepted": adopted == "retry"}, str(detail))
+                    else:
+                        check(tag + " no fictitious retry", "retry" not in detail)
+                else:
+                    check(tag + " compact keeps original market address omission", "pair_address" not in ev["best_pair"])
+    routes = cases[0][1]
+    for interface in ("http", "mcp"):
+        answer, calls, _, sleeps, _ = _t092_public_market(interface, "get_token_liquidity",
+            {"address": address, "chain_hint": "ethereum"}, routes)
+        check("T092 liquidity identifies its own selected market without a simulation",
+              answer.get("best_pair_address") == a and answer.get("source") == "geckoterminal"
+              and answer.get("best_pair_chain") == "ethereum" and answer["status"] == "ok"
+              and "pool_link" not in answer and calls == ["market", "fallback"] and not sleeps)
+
+
+def test_t092_conflicted_unpriced_chain_routes_keep_unknown_and_calls(reader=risk._fetch_json):
+    import test_risk as fixtures
+    for observed, hint in (("base", "arbitrum"), ("arbitrum", "ethereum")):
+        for interface in ("http", "mcp"):
+            for verbose in (False, True):
+                with fixtures._t091_runtime(observed, reserves=True, hp_status=503, reader=reader) as state:
+                    answer = asyncio.run(_t092_worker_request(interface, "assess_token_risk",
+                        {"address": state["address"], "chain_hint": hint, "verbose": verbose}))
+                ev = answer["evidence"]
+                check("T092 conflicting unpriced chain remains unknown on the real route",
+                      answer["risk_level"] == "unknown" and ev.get("pool_link") == "unknown"
+                      and ev.get("chain_searched") == observed and "best_pair" not in ev)
+                check("T092 conflicting real route preserves requests and backoffs",
+                      len([u for kind, u in state["requests"] if kind == "sell"]) == 3
+                      and state["sleeps"] == [0.3, 0.6])
+                if verbose:
+                    detail = ev.get("pool_link_details") or {}
+                    check("T092 chain conflict is disclosed before missing market/simulator",
+                          detail.get("reason") == "chain_conflict" and detail.get("policy_chain") == hint
+                          and detail.get("requested_chain") == ("ethereum" if hint == "ethereum" else None))
+            with fixtures._t091_runtime(observed, reserves=True, reader=reader) as state:
+                answer = asyncio.run(_t092_worker_request(interface, "get_token_liquidity",
+                    {"address": state["address"], "chain_hint": hint}))
+            check("T092 unpriced liquidity invents no selected identity",
+                  answer["status"] == "unpriced" and "best_pair_address" not in answer
+                  and "pool_link" not in answer and not any(kind.startswith("sell") for kind, _ in state["requests"]))
+
+
+def test_t092_schema_declares_correspondence_and_liquidity_identity():
+    tools = call({"jsonrpc": "2.0", "id": 92, "method": "tools/list"})["result"]["tools"]
+    assess = next(t for t in tools if t["name"] == "assess_token_risk")["outputSchema"]
+    props = assess["properties"]["evidence"].get("properties", {})
+    check("T092 scope has exactly the three correspondence values",
+          props.get("pool_link", {}).get("enum") == ["same", "different", "unknown"])
+    details = props.get("pool_link_details", {}).get("properties", {})
+    required = {"reason", "market_pool", "market_chain", "adopted_response", "policy_chain",
+                "requested_chain", "requested_pool", "reported_chain", "reported_pool", "retry"}
+    check("T092 verbose details declare requested and reported facts separately", required <= set(details))
+    check("T092 source disclosure does not require successful simulation",
+          "simulation_success" not in props.get("pool_link_details", {}).get("required", []))
+    liquidity = next(t for t in tools if t["name"] == "get_token_liquidity")["outputSchema"]
+    check("T092 liquidity declares both old provenance and new optional display ID",
+          {"source", "best_pair_chain", "best_pair_dex", "best_pair_address"} <= set(liquidity["properties"])
+          and liquidity["required"] == ["address", "status"])
+
+
+def test_t092_source_pool_rejects_terminal_lf_in_every_alias():
+    import test_risk as fixtures
+    address, pool, _, cases = _t092_market_cases()
+    sell = "https://api.honeypot.is/v2/IsHoneypot?address=" + address + "&chainID=1"
+    for alias in ("top", "nested", "legacy", "mixed"):
+        body = fixtures._t092_report(None)
+        if alias in ("top", "mixed"):
+            body["pairAddress"] = pool + "\n"
+        if alias == "nested":
+            body["pair"] = {"pair": {"address": pool + "\n"}}
+        elif alias == "legacy":
+            body["pair"] = {"address": pool + "\n"}
+        elif alias == "mixed":
+            body["pair"] = {"address": pool}
+        routes = dict(cases[0][1], **{sell: ("default", 200, body)})
+        for interface in ("http", "mcp"):
+            for verbose in (False, True):
+                answer, calls, _, sleeps, _ = _t092_public_market(interface, "assess_token_risk",
+                    {"address": address, "chain_hint": "ethereum", "verbose": verbose}, routes)
+                ev = answer["evidence"]
+                tag = "T092 terminal LF %s %s %s" % (alias, interface, verbose)
+                check(tag + " is not an affirmative source identity", ev.get("pool_link") == "unknown")
+                check(tag + " leaves existing requests and score unchanged",
+                      calls == ["market", "fallback", "search", "default"] and not sleeps
+                      and answer["risk_level"] == "low" and answer["risk_score"] == 0)
+                if verbose:
+                    detail = ev.get("pool_link_details") or {}
+                    check(tag + " rejects instead of stripping or comparing the malformed declaration",
+                          detail.get("reason") == "invalid_pool" and detail.get("reported_pool") is None,
+                          str(detail))
+
+
+def test_t092_malformed_simulator_metadata_cannot_identify_correspondence():
+    import test_risk as fixtures
+    address, pool, _, cases = _t092_market_cases()
+    body = fixtures._t092_report(pool)
+    body["simulationResult"] = []
+    sell = "https://api.honeypot.is/v2/IsHoneypot?address=" + address + "&chainID=1"
+    routes = dict(cases[0][1], **{sell: ("default", 200, body)})
+    for interface in ("http", "mcp"):
+        for verbose in (False, True):
+            answer, calls, _, sleeps, _ = _t092_public_market(interface, "assess_token_risk",
+                {"address": address, "chain_hint": "ethereum", "verbose": verbose}, routes)
+            ev = answer["evidence"]
+            tag = "T092 malformed simulator metadata %s %s" % (interface, verbose)
+            check(tag + " cannot affirm source correspondence", ev.get("pool_link") == "unknown")
+            check(tag + " retains the old structural rejection and request path",
+                  answer["risk_level"] == "unknown"
+                  and any("invalid simulator metadata" in gap["reason"] for gap in ev["data_gaps"])
+                  and calls == ["market", "fallback", "search", "default"] and not sleeps)
+            if verbose:
+                check(tag + " reports the existing structural failure",
+                      ev.get("pool_link_details", {}).get("reason") == "invalid_response")
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)

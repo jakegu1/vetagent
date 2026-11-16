@@ -167,6 +167,41 @@ absent; do not fill them with empty matches or infer a successful permission che
 Continue to consume the returned verdict and signals; an informational signal can
 contribute to the existing score.
 
+### Market and simulation pool correspondence
+
+`evidence.pool_link` is `same`, `different`, or `unknown` in both assessment modes.
+It compares the final displayed market with the venue declared by the simulator response
+the engine retained. It does not assert a successful simulation, safety, or an exit for a
+particular wallet or amount. A failed simulation can still identify its venue; read
+`evidence.honeypot.simulation_success` separately.
+
+With `verbose=true`, `evidence.pool_link_details` distinguishes the market, the source's
+reported chain/pool, and the chain/pool actually sent in the request. `policy_chain` is the
+existing engine's validation and coverage context, not an observed chain. Missing facts
+are null. Unknown reasons describe missing, invalid or conflicting identity; they do not
+change the risk verdict or add a scoring gap. Chain conflicts take precedence over pool
+conflicts, rejected identity, missing market/simulation, and missing or invalid identifiers.
+
+The default simulator call lets its upstream choose a pool. A later explicit retry can ask
+for another pool, but that request does not prove the response identified it. `adopted_response`
+names the retained default or retry response; the optional `retry` object records a retry
+even when it was rejected. A rejected retry cannot replace the original response's identity.
+After a clean sale, the existing market logic may promote a different displayed pool: the
+correspondence compares against that final market, not the earlier depth winner. For example,
+a retry can report the requested pool while `pool_link` is `different` from the final market.
+
+Comparisons use complete validated identities before display truncation. EVM hex case does
+not distinguish identities; conflicting aliases or absent chain declarations never prove
+`same`, and requested/hinted identity does not fill a missing source declaration. Display
+IDs retain the 48-character limit plus an ellipsis. Equal truncated strings are not enough
+to establish exact identity across responses.
+
+`get_token_liquidity` adds `best_pair_address` only when an `ok` result has a selected pool
+ID. `source` is the data provider; `best_pair_dex` is the trading venue. This tool does not
+call a simulator or return a simulation correspondence. Its selection can differ from an
+assessment's conservative market when sell evidence is missing; compare the disclosed
+context without treating a liquidity snapshot as simulated exit depth.
+
 ### Local response-routing example
 
 `examples/assessment_policy.py` consumes existing JSON and returns only `action`, `reason` and

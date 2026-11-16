@@ -1,6 +1,6 @@
 {
- "engine_paths": 130,
- "measured_utc": "2026-10-11T12:04:32Z",
+ "engine_paths": 132,
+ "measured_utc": "2026-11-16T16:22:33Z",
  "rule": {
   "min_for_share": 8,
   "value_band": 0.4
@@ -438,6 +438,13 @@
   "honeypot.is": {
    "asked": 8,
    "paths": {
+    "chain": {
+     "key": 1.0,
+     "types": [
+      "dict"
+     ],
+     "value": 1.0
+    },
     "contractCode": {
      "key": 1.0,
      "types": [
@@ -505,6 +512,13 @@
       "bool"
      ],
      "value": 0.875
+    },
+    "pair": {
+     "key": 1.0,
+     "types": [
+      "dict"
+     ],
+     "value": 1.0
     },
     "router": {
      "key": 1.0,
