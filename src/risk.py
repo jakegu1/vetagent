@@ -4736,7 +4736,11 @@ async def assess(address, chain_hint=None, verbose=False):
         hp_url = "https://api.honeypot.is/v2/IsHoneypot?address=%s" % address
         if hp_chain in _SIMULATOR_CHAIN_IDS:
             hp_url += "&chainID=%d" % _SIMULATOR_CHAIN_IDS[hp_chain]
-        hp = await _fetch_json(hp_url, mark_missing=True)
+        # Skip only an unambiguous existing coverage gap. With no usable market,
+        # observed and simulator chains can disagree; keep that older path unchanged.
+        skip_simulator = (evidence.get("chain_searched") == hp_chain
+                          and hp_chain in ("arbitrum", "polygon", "optimism", "avalanche"))
+        hp = None if skip_simulator else await _fetch_json(hp_url, mark_missing=True)
 
         # Second chance on OUR pool, but only when the simulator's own choice failed.
         #
