@@ -4595,7 +4595,7 @@ def _pool_correspondence(market, response, address, searched_chain, policy_chain
     chain_ids = reported["chain_ids"] | {_SIMULATOR_CHAIN_IDS[chain] for chain in contexts
                                          if chain in _SIMULATOR_CHAIN_IDS}
     identity_issue = _sell_evidence_issue(response, address, policy_chain) in (
-        "invalid response structure", "response identifies another token or chain")
+        "invalid response structure", "response identifies another token or chain", "invalid simulator metadata")
     reason = None
     if len(contexts) > 1 or len(chain_ids) > 1:
         reason = "chain_conflict"
