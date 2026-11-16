@@ -2492,6 +2492,61 @@ def test_t092_schema_declares_correspondence_and_liquidity_identity():
           and liquidity["required"] == ["address", "status"])
 
 
+def test_t092_source_pool_rejects_terminal_lf_in_every_alias():
+    import test_risk as fixtures
+    address, pool, _, cases = _t092_market_cases()
+    sell = "https://api.honeypot.is/v2/IsHoneypot?address=" + address + "&chainID=1"
+    for alias in ("top", "nested", "legacy", "mixed"):
+        body = fixtures._t092_report(None)
+        if alias in ("top", "mixed"):
+            body["pairAddress"] = pool + "\n"
+        if alias == "nested":
+            body["pair"] = {"pair": {"address": pool + "\n"}}
+        elif alias == "legacy":
+            body["pair"] = {"address": pool + "\n"}
+        elif alias == "mixed":
+            body["pair"] = {"address": pool}
+        routes = dict(cases[0][1], **{sell: ("default", 200, body)})
+        for interface in ("http", "mcp"):
+            for verbose in (False, True):
+                answer, calls, _, sleeps, _ = _t092_public_market(interface, "assess_token_risk",
+                    {"address": address, "chain_hint": "ethereum", "verbose": verbose}, routes)
+                ev = answer["evidence"]
+                tag = "T092 terminal LF %s %s %s" % (alias, interface, verbose)
+                check(tag + " is not an affirmative source identity", ev.get("pool_link") == "unknown")
+                check(tag + " leaves existing requests and score unchanged",
+                      calls == ["market", "fallback", "search", "default"] and not sleeps
+                      and answer["risk_level"] == "low" and answer["risk_score"] == 0)
+                if verbose:
+                    detail = ev.get("pool_link_details") or {}
+                    check(tag + " rejects instead of stripping or comparing the malformed declaration",
+                          detail.get("reason") == "invalid_pool" and detail.get("reported_pool") is None,
+                          str(detail))
+
+
+def test_t092_malformed_simulator_metadata_cannot_identify_correspondence():
+    import test_risk as fixtures
+    address, pool, _, cases = _t092_market_cases()
+    body = fixtures._t092_report(pool)
+    body["simulationResult"] = []
+    sell = "https://api.honeypot.is/v2/IsHoneypot?address=" + address + "&chainID=1"
+    routes = dict(cases[0][1], **{sell: ("default", 200, body)})
+    for interface in ("http", "mcp"):
+        for verbose in (False, True):
+            answer, calls, _, sleeps, _ = _t092_public_market(interface, "assess_token_risk",
+                {"address": address, "chain_hint": "ethereum", "verbose": verbose}, routes)
+            ev = answer["evidence"]
+            tag = "T092 malformed simulator metadata %s %s" % (interface, verbose)
+            check(tag + " cannot affirm source correspondence", ev.get("pool_link") == "unknown")
+            check(tag + " retains the old structural rejection and request path",
+                  answer["risk_level"] == "unknown"
+                  and any("invalid simulator metadata" in gap["reason"] for gap in answer["data_gaps"])
+                  and calls == ["market", "fallback", "search", "default"] and not sleeps)
+            if verbose:
+                check(tag + " reports the existing structural failure",
+                      ev.get("pool_link_details", {}).get("reason") == "invalid_response")
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
