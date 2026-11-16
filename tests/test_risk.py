@@ -7121,7 +7121,7 @@ def test_t085_archived_fallback_activity_through_mcp():
             if chain == "bsc":
                 sell_url += "&chainID=56"
             routes[sell_url] = ("sell", 404, {})
-            expected = ["ds", "gt", "sell"]
+            expected = ["ds", "gt"] + (["sell"] if chain == "bsc" else [])
             verbose = dict(inputs, verbose=True)
             missing, calls, _, _, _ = run(_t083_mcp("assess_token_risk", verbose, routes))
             check("T085 " + name + " keeps unknown and original evidence without a sell result",
