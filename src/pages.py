@@ -137,9 +137,12 @@ Fresh cache reuse alone does not lower confidence.</td></tr>
 or a chain we do not cover). An answer can hold both, and then it says both and retries for the
 half that is ours.</td></tr>
 <tr><td><code>checked_at</code>, <code>evidence_max_age_seconds</code></td><td>When the answer was
-made, and the maximum local cache residence of reused JSON or usable bytecode evidence,
-rounded up to seconds. Bytecode may use a longer cache TTL. Zero does not prove that
-upstream observations are live, and this is not every market field's age or proof of
+made, and a request-level upper bound on local cache residence observed when JSON is returned
+from cache and usable cached bytecode is reused during the request. JSON later rejected or
+replaced still counts; this is not the
+precise age of only the finally adopted evidence. Positive fractions round up to seconds;
+negative clock skew counts as zero. Bytecode may use a longer cache TTL. Zero does not prove
+that upstream observations are live, and this is not every market field's age or proof of
 current executability.</td></tr>
 </table>
 

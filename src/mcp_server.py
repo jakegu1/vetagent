@@ -117,8 +117,12 @@ _ASSESS_OUTPUT_SCHEMA = {
         "checked_at": _CHECKED_AT,
         "evidence_max_age_seconds": {
             "type": "integer",
-            "description": "Maximum local cache residence of reused JSON and usable bytecode evidence, "
-                           "rounded up to whole seconds. Bytecode may use a longer cache TTL. "
+            "description": "Request-level upper bound on local cache residence observed when JSON is "
+                           "returned from cache and usable cached bytecode is reused during the request. "
+                           "JSON later rejected or replaced still "
+                           "counts; this is not the precise age of only the finally adopted evidence. "
+                           "Positive fractions round up to whole seconds; negative clock skew counts "
+                           "as zero. Bytecode may use a longer cache TTL. "
                            "Zero means no positive local cache residence was recorded; it does not "
                            "prove that upstream observations are live or currently executable."},
         "unknown_kind": {"type": "string", "enum": ["infrastructure", "coverage", "mixed"],
