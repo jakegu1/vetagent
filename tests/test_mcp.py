@@ -2412,11 +2412,11 @@ def test_t092_final_market_and_adopted_simulator_cross_both_worker_routes():
                 answer, calls, _, sleeps, _ = _t092_public_market(interface, "assess_token_risk",
                     {"address": address, "chain_hint": "ethereum", "verbose": verbose}, routes)
                 ev = answer["evidence"]
-                detail = ev.get("pool_scope_details") or {}
+                detail = ev.get("pool_link_details") or {}
                 tag = "T092 %s %s %s" % (name, interface, verbose)
-                check(tag + " relation follows final promotion and adopted response", ev.get("pool_scope") == relation)
+                check(tag + " relation follows final promotion and adopted response", ev.get("pool_link") == relation)
                 check(tag + " scope details and reasons are verbose only",
-                      ("pool_scope_details" in ev) is verbose and "pool_scope_reason" not in ev)
+                      ("pool_link_details" in ev) is verbose and "pool_scope_reason" not in ev)
                 check(tag + " original request trace and verdict survive",
                       calls == ["market", "fallback", "search", "default"] + (["retry"] if name.startswith("retry") else [])
                       and not sleeps and answer["risk_level"] == ("unknown" if name == "retry rejected" else "low"))
@@ -2443,7 +2443,7 @@ def test_t092_final_market_and_adopted_simulator_cross_both_worker_routes():
         check("T092 liquidity identifies its own selected market without a simulation",
               answer.get("best_pair_address") == a and answer.get("source") == "geckoterminal"
               and answer.get("best_pair_chain") == "ethereum" and answer["status"] == "ok"
-              and "pool_scope" not in answer and calls == ["market", "fallback"] and not sleeps)
+              and "pool_link" not in answer and calls == ["market", "fallback"] and not sleeps)
 
 
 def test_t092_conflicted_unpriced_chain_routes_keep_unknown_and_calls(reader=risk._fetch_json):
@@ -2456,13 +2456,13 @@ def test_t092_conflicted_unpriced_chain_routes_keep_unknown_and_calls(reader=ris
                         {"address": state["address"], "chain_hint": hint, "verbose": verbose}))
                 ev = answer["evidence"]
                 check("T092 conflicting unpriced chain remains unknown on the real route",
-                      answer["risk_level"] == "unknown" and ev.get("pool_scope") == "unknown"
+                      answer["risk_level"] == "unknown" and ev.get("pool_link") == "unknown"
                       and ev.get("chain_searched") == observed and "best_pair" not in ev)
                 check("T092 conflicting real route preserves requests and backoffs",
                       len([u for kind, u in state["requests"] if kind == "sell"]) == 3
                       and state["sleeps"] == [0.3, 0.6])
                 if verbose:
-                    detail = ev.get("pool_scope_details") or {}
+                    detail = ev.get("pool_link_details") or {}
                     check("T092 chain conflict is disclosed before missing market/simulator",
                           detail.get("reason") == "chain_conflict" and detail.get("policy_chain") == hint
                           and detail.get("requested_chain") == ("ethereum" if hint == "ethereum" else None))
@@ -2471,7 +2471,7 @@ def test_t092_conflicted_unpriced_chain_routes_keep_unknown_and_calls(reader=ris
                     {"address": state["address"], "chain_hint": hint}))
             check("T092 unpriced liquidity invents no selected identity",
                   answer["status"] == "unpriced" and "best_pair_address" not in answer
-                  and "pool_scope" not in answer and not any(kind.startswith("sell") for kind, _ in state["requests"]))
+                  and "pool_link" not in answer and not any(kind.startswith("sell") for kind, _ in state["requests"]))
 
 
 def test_t092_schema_declares_correspondence_and_liquidity_identity():
@@ -2479,13 +2479,13 @@ def test_t092_schema_declares_correspondence_and_liquidity_identity():
     assess = next(t for t in tools if t["name"] == "assess_token_risk")["outputSchema"]
     props = assess["properties"]["evidence"].get("properties", {})
     check("T092 scope has exactly the three correspondence values",
-          props.get("pool_scope", {}).get("enum") == ["same", "different", "unknown"])
-    details = props.get("pool_scope_details", {}).get("properties", {})
+          props.get("pool_link", {}).get("enum") == ["same", "different", "unknown"])
+    details = props.get("pool_link_details", {}).get("properties", {})
     required = {"reason", "market_pool", "market_chain", "adopted_response", "policy_chain",
                 "requested_chain", "requested_pool", "reported_chain", "reported_pool", "retry"}
     check("T092 verbose details declare requested and reported facts separately", required <= set(details))
     check("T092 source disclosure does not require successful simulation",
-          "simulation_success" not in props.get("pool_scope_details", {}).get("required", []))
+          "simulation_success" not in props.get("pool_link_details", {}).get("required", []))
     liquidity = next(t for t in tools if t["name"] == "get_token_liquidity")["outputSchema"]
     check("T092 liquidity declares both old provenance and new optional display ID",
           {"source", "best_pair_chain", "best_pair_dex", "best_pair_address"} <= set(liquidity["properties"])

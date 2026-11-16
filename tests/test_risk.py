@@ -7602,10 +7602,10 @@ def test_t092_reported_pool_aliases_and_chain_identity():
     for label, body, relation, reason in cases:
         answer, state = _t092_scope_scan(body)
         evidence = answer["evidence"]
-        detail = evidence.get("pool_scope_details") or {}
+        detail = evidence.get("pool_link_details") or {}
         check("T092 " + label + " relation/reason",
-              evidence.get("pool_scope") == relation and detail.get("reason") == reason,
-              str((evidence.get("pool_scope"), detail)))
+              evidence.get("pool_link") == relation and detail.get("reason") == reason,
+              str((evidence.get("pool_link"), detail)))
         check("T092 " + label + " retains actual request context",
               detail.get("requested_chain") == "ethereum" and detail.get("requested_pool") is None
               and detail.get("policy_chain") == "ethereum" and detail.get("adopted_response") == "default")
@@ -7628,8 +7628,8 @@ def test_t092_pool_identity_is_separate_from_simulation_success():
             body["summary"] = {"risk": "honeypot", "riskLevel": 100}
         answer, _ = _t092_scope_scan(body)
         check("T092 " + label + " does not erase known venue identity",
-              answer["evidence"].get("pool_scope") == "same"
-              and (answer["evidence"].get("pool_scope_details") or {}).get("reason") is None)
+              answer["evidence"].get("pool_link") == "same"
+              and (answer["evidence"].get("pool_link_details") or {}).get("reason") is None)
 
 
 def test_t092_full_identity_and_unknown_priority_preserve_old_paths():
@@ -7637,20 +7637,20 @@ def test_t092_full_identity_and_unknown_priority_preserve_old_paths():
     rendered = full_a[:48] + "..."
     for pool in (full_a, full_b):
         answer, _ = _t092_scope_scan(_t092_report(full_a), pool=pool)
-        details = answer["evidence"].get("pool_scope_details") or {}
+        details = answer["evidence"].get("pool_link_details") or {}
         check("T092 display collision cannot make a 32-byte reported venue valid",
-              answer["evidence"].get("pool_scope") == "unknown" and details.get("reason") == "invalid_pool"
+              answer["evidence"].get("pool_link") == "unknown" and details.get("reason") == "invalid_pool"
               and details.get("market_pool") == rendered and full_a not in json.dumps(answer)
               and full_b not in json.dumps(answer))
     answer, _ = _t092_scope_scan(_t092_report(), pool=full_a)
     check("T092 full 32-byte market differs from valid 20-byte venue",
-          answer["evidence"].get("pool_scope") == "different")
+          answer["evidence"].get("pool_link") == "different")
     for observed, hint in (("base", "arbitrum"), ("arbitrum", "ethereum")):
         answer, state = _t092_scope_scan(_t092_report(), observed, hint, reserves=True, hp_status=503)
-        detail = answer["evidence"].get("pool_scope_details") or {}
+        detail = answer["evidence"].get("pool_link_details") or {}
         sells = [url for kind, url in state["requests"] if kind == "sell"]
         check("T092 conflicting chain context precedes no market or simulation",
-              answer["evidence"].get("pool_scope") == "unknown" and detail.get("reason") == "chain_conflict"
+              answer["evidence"].get("pool_link") == "unknown" and detail.get("reason") == "chain_conflict"
               and detail.get("market_pool") is None and detail.get("policy_chain") == hint
               and detail.get("requested_chain") == ("ethereum" if hint == "ethereum" else None))
         check("T092 chain disclosure retains the old unknown and failed request budget",
@@ -7658,11 +7658,11 @@ def test_t092_full_identity_and_unknown_priority_preserve_old_paths():
               and all(("chainID=1" in u) if hint == "ethereum" else "chainID=" not in u for u in sells))
     answer, _ = _t092_scope_scan(_t092_report("bad"), empty=True)
     check("T092 no market precedes invalid pool",
-          (answer["evidence"].get("pool_scope_details") or {}).get("reason") == "no_market")
+          (answer["evidence"].get("pool_link_details") or {}).get("reason") == "no_market")
     answer, _ = _t092_scope_scan(_t092_report(), hp_status=503)
     check("T092 failed transport does not invent an adopted source",
-          (answer["evidence"].get("pool_scope_details") or {}).get("reason") == "no_simulation"
-          and (answer["evidence"].get("pool_scope_details") or {}).get("adopted_response") == "none")
+          (answer["evidence"].get("pool_link_details") or {}).get("reason") == "no_simulation"
+          and (answer["evidence"].get("pool_link_details") or {}).get("adopted_response") == "none")
 
 
 def main():
