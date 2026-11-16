@@ -130,13 +130,17 @@ light</a>.</td></tr>
 <tr><td><code>driver</code></td><td>The one signal that decided the verdict, by name and
 category. <code>null</code> when nothing above <code>ok</code> fired.</td></tr>
 <tr><td><code>confidence</code></td><td>How complete the input data was, not how safe the token
-is. An answer that leaned on cached data is at most <code>medium</code>.</td></tr>
+is. An answer using stale fallback after an upstream failure is at most <code>medium</code>.
+Fresh cache reuse alone does not lower confidence.</td></tr>
 <tr><td><code>unknown_kind</code>, <code>next_action</code></td><td>Only on
 <code>unknown</code>: whether to retry (our upstream failed) or abstain (a fact about the token,
 or a chain we do not cover). An answer can hold both, and then it says both and retries for the
 half that is ours.</td></tr>
 <tr><td><code>checked_at</code>, <code>evidence_max_age_seconds</code></td><td>When the answer was
-made, and how old its oldest evidence is.</td></tr>
+made, and the maximum local cache residence of reused JSON or usable bytecode evidence,
+rounded up to seconds. Bytecode may use a longer cache TTL. Zero does not prove that
+upstream observations are live, and this is not every market field's age or proof of
+current executability.</td></tr>
 </table>
 
 <h2>What it checks, and where</h2>
