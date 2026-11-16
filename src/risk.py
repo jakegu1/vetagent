@@ -227,6 +227,12 @@ _STALE_CAPS_CONFIDENCE = True
 # "served from cache, N seconds old" disclosure could be attached to the wrong token.
 # A context variable is per-task, and each request is its own task.
 _STALE_HITS = contextvars.ContextVar("vetagent_stale_hits")
+_CACHE_RESIDENCE = contextvars.ContextVar("vetagent_cache_residence", default=0)
+
+
+def _note_cache_residence(age):
+    """Record local reuse age without treating a fresh cache hit as an outage."""
+    _CACHE_RESIDENCE.set(max(_CACHE_RESIDENCE.get(), math.ceil(max(0, age))))
 
 
 def _stale_hits():
@@ -340,6 +346,7 @@ def _begin_request():
     """
     _STALE_HITS.set([])
     _FETCH_FAILURES.set([])
+    _CACHE_RESIDENCE.set(0)
 
 
 def _stale_disclosure():
@@ -440,6 +447,7 @@ async def _fetch_json(url, retries=2, timeout=8, mark_missing=False, headers=Non
     """
     cached, age = await _cache_get(url)
     if cached is not None and age is not None and age <= _FRESH_SECONDS:
+        _note_cache_residence(age)
         return cached
 
     for attempt in range(retries + 1):
@@ -488,6 +496,7 @@ async def _fetch_json(url, retries=2, timeout=8, mark_missing=False, headers=Non
             await asyncio.sleep(0.3 * (2 ** attempt))
 
     if cached is not None and age is not None and age <= _STALE_OK_SECONDS:
+        _note_cache_residence(age)
         hits = _stale_hits()
         if hits is not None:
             hits.append((url, int(age)))
@@ -2575,7 +2584,11 @@ async def _owner_powers(address, chain):
     if cached is not None and age is not None and age <= _BYTECODE_TTL_SECONDS:
         if not _is_hex_bytecode(cached):
             return _owner_powers_unavailable("invalid cached bytecode")
-        return _powers_from_code(cached) or _owner_powers_unavailable("no usable bytecode")
+        info = _powers_from_code(cached)
+        if not info:
+            return _owner_powers_unavailable("no usable bytecode")
+        _note_cache_residence(age)
+        return info
 
     code, why = await _eth_get_code(rpc, address)
     if code is None:
@@ -4827,11 +4840,12 @@ async def assess(address, chain_hint=None, verbose=False):
     # only in evidence. A low from fifteen-minute-old data read exactly like a live one:
     # same sentence, same confidence (2026-09-13 audit, reproduced offline).
     result["checked_at"] = _now_iso()
-    result["evidence_max_age_seconds"] = max((a for _, a in stale), default=0)
+    result["evidence_max_age_seconds"] = max(
+        _CACHE_RESIDENCE.get(), max((a for _, a in stale), default=0))
     if stale:
         result["recommendation"] += (" Some market data is up to %d seconds old because an "
                                      "upstream did not answer."
-                                     % result["evidence_max_age_seconds"])
+                                     % max(a for _, a in stale))
         if _STALE_CAPS_CONFIDENCE and result.get("confidence") == "high":
             result["confidence"] = "medium"
             result["evidence"]["confidence"] = "medium"   # the verbose copy must agree

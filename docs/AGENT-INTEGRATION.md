@@ -230,6 +230,14 @@ An `expected_chain` field in response JSON does not supply caller context.
 It does not validate the complete assessment schema: for example, a low response with a malformed
 unused score can still continue evaluation. `checked_at` and `evidence_max_age_seconds` remain
 response context; an integrator must apply its own pre-registered freshness/workflow policy.
+`checked_at` is when the answer was created. `evidence_max_age_seconds` is the maximum
+local cache residence observed when JSON or usable bytecode evidence was reused, rounded
+up to whole seconds; negative clock skew counts as zero. Bytecode can have a longer cache
+TTL than market responses. Zero means no positive local cache residence was recorded,
+not that every upstream observation is live. This is not the age of every market field,
+an indexer's observation or a block, and does not prove current executability. Fresh-cache
+reuse does not imply an outage; existing `served_stale` disclosures still identify fallback
+data used because an upstream did not answer.
 The example neither authenticates the response nor invents a freshness threshold or service goal.
 
 The CLI reads at most one MiB of UTF-8 JSON. Duplicate keys, nonstandard NaN/Infinity literals,

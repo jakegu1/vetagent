@@ -117,7 +117,10 @@ _ASSESS_OUTPUT_SCHEMA = {
         "checked_at": _CHECKED_AT,
         "evidence_max_age_seconds": {
             "type": "integer",
-            "description": "Age of the oldest evidence used; 0 when every source answered live."},
+            "description": "Maximum local cache residence of reused JSON and usable bytecode evidence, "
+                           "rounded up to whole seconds. Bytecode may use a longer cache TTL. "
+                           "Zero means no positive local cache residence was recorded; it does not "
+                           "prove that upstream observations are live or currently executable."},
         "unknown_kind": {"type": "string", "enum": ["infrastructure", "coverage", "mixed"],
                          "description": "Present only when risk_level is unknown."},
         "next_action": {"type": "string", "enum": ["retry", "abstain"]},
