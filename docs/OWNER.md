@@ -140,16 +140,16 @@ An audit traced the false blocks and the unknowns to honeypot.is and proposed re
 Every line is one commit, newest first. The full message says what the
 problem looked like before it was fixed.
 
-- T-091: clarify request-level cache residence boundary
-- T-091: regenerate published test counts
-- T-091: named change (transport fixture isolation)
-- T-091: named change (unsupported archived request expectation)
-- T-091: align the existing API table with cache residence semantics
-- T-091: skip simulator work for unambiguous unsupported chains
-- T-091: named change (unusable market chain conflict guard)
-- T-091: named change (unverified-reserve fixture)
+- T-092: regenerate repaired regression counts
+- T-092: named change (measured upstream baseline refresh)
+- T-092: reject structurally invalid simulator correspondence
+- T-092: named change (regression evidence lookup)
+- T-092: reject incomplete source pool identities
+- T-092: named change (source identity review regressions)
+- T-092: regenerate published test counts
+- T-092: disclose final market and reported simulator correspondence
 
-_100 more not shown (108 commits in total)._
+_110 more not shown (118 commits in total)._
 
 ## What I got wrong
 
