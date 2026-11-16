@@ -7287,7 +7287,7 @@ def test_t085_fallback_activity_requires_extreme_disagreement():
 
 @contextmanager
 def _t091_runtime(chain="ethereum", cached=None, market_status=200, hp_status=200,
-                  hp_body=None, reserves=False, owner=risk._owner_powers):
+                  hp_body=None, reserves=False, reader=_ORIGINAL_FETCH_JSON, owner=risk._owner_powers):
     """Existing local market/transport shapes, with the actual bytecode reader enabled."""
     from types import SimpleNamespace
 
@@ -7365,7 +7365,7 @@ def _t091_runtime(chain="ethereum", cached=None, market_status=200, hp_status=20
             patch.object(socket.socket, "connect_ex", loopback_only(socket.socket.connect_ex)), \
             patch.object(socket, "getaddrinfo", deny), \
             patch.object(risk, "cf_fetch", fetch), \
-            patch.object(risk, "_fetch_json", _ORIGINAL_FETCH_JSON), \
+            patch.object(risk, "_fetch_json", reader), \
             patch.object(risk, "_owner_powers", owner), \
             patch.object(risk, "_cache_get", cache_get), \
             patch.object(risk, "_cache_put", cache_put), \

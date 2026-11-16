@@ -2269,12 +2269,12 @@ def test_t090_duplicate_http_selection_is_refused_before_upstream():
 
 
 def _t091_public_assessment(interface, chain, hint, verbose, json_age=None, bytecode_age=None,
-                            hp_status=200):
+                            hp_status=200, reader=risk._fetch_json):
     from urllib.parse import urlencode
     import test_http_telemetry as runtime
     import test_risk as fixtures
 
-    with fixtures._t091_runtime(chain, hp_status=hp_status) as state:
+    with fixtures._t091_runtime(chain, hp_status=hp_status, reader=reader) as state:
         if json_age is not None:
             state["cache"]["market"] = (state["market"], json_age)
         if bytecode_age is not None:
