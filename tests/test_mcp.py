@@ -2268,6 +2268,76 @@ def test_t090_duplicate_http_selection_is_refused_before_upstream():
               and not state["requests"] and not state["blocked"] and not state["unexpected"])
 
 
+def _t091_public_assessment(interface, chain, hint, verbose, json_age=None, bytecode_age=None,
+                            hp_status=200):
+    from urllib.parse import urlencode
+    import test_http_telemetry as runtime
+    import test_risk as fixtures
+
+    with fixtures._t091_runtime(chain, hp_status=hp_status) as state:
+        if json_age is not None:
+            state["cache"]["market"] = (state["market"], json_age)
+        if bytecode_age is not None:
+            state["cache"]["bytecode"] = (state["code"], bytecode_age)
+        args = {"address": state["address"], "chain_hint": hint, "verbose": verbose}
+        body = {"jsonrpc": "2.0", "id": 91, "method": "tools/call",
+                "params": {"name": "assess_token_risk", "arguments": args}}
+
+        class Request(runtime.FakeRequest):
+            async def json(self):
+                return body
+
+        url = ("/mcp" if interface == "mcp" else "/assess/" + state["address"] + "?"
+               + urlencode({"chain_hint": hint, "verbose": verbose}))
+        request = Request("https://offline.invalid" + url, method="POST" if interface == "mcp" else "GET",
+                          headers={"x-mcp-client": "vetagent-manual-probe"})
+        with patch.object(runtime.entry, "_record", lambda *args: None):
+            response = asyncio.run(runtime.entry.Default().fetch(request))
+        envelope = json.loads(response.body)
+    result = envelope.get("result", {}) if interface == "mcp" else envelope
+    answer = result.get("structuredContent", {}) if interface == "mcp" else result
+    check("T091 normal public route returns an assessment", response.status == 200
+          and not result.get("isError") and "risk_level" in answer)
+    if interface == "mcp":
+        check("T091 MCP text and structured evidence agree",
+              json.loads(result.get("content", [{}])[0].get("text", "null")) == answer)
+    return answer, state
+
+
+def test_t091_cache_age_and_selected_chain_cross_real_http_and_mcp():
+    for interface in ("http", "mcp"):
+        for verbose in (False, True):
+            for json_age, bytecode_age, expected in ((0.25, None, 1), (59, None, 59),
+                                                     (60, 3600.25, 3601)):
+                answer, state = _t091_public_assessment(interface, "ethereum", "ethereum", verbose,
+                                                       json_age, bytecode_age)
+                check("T091 both transports and evidence modes report usable local cache residence",
+                      answer.get("evidence_max_age_seconds") == expected
+                      and "served_stale" not in answer["evidence"]
+                      and (bytecode_age is None or all(kind != "rpc" for kind, _ in state["requests"])))
+            answer, state = _t091_public_assessment(interface, "arbitrum", "ethereum", verbose,
+                                                   hp_status=503)
+            check("T091 selected unsupported chain is an unchanged abstention without simulator work",
+                  answer["evidence"]["chain_searched"] == "arbitrum" and answer["risk_level"] == "unknown"
+                  and answer.get("next_action") == "abstain" and not state["sleeps"]
+                  and all(not kind.startswith("sell") for kind, _ in state["requests"])
+                  and all(not kind.startswith("sell") for kind in state["cache_reads"]))
+            answer, state = _t091_public_assessment(interface, "base", "arbitrum", verbose)
+            sells = [url for kind, url in state["requests"] if kind == "sell"]
+            check("T091 an unsupported hint does not skip observed Base simulation",
+                  answer["evidence"]["chain_searched"] == "base" and len(sells) == 1
+                  and "chainID=8453" in sells[0])
+
+
+def test_t091_tools_list_defines_local_residence_not_live_observation_age():
+    tools = call({"jsonrpc": "2.0", "id": 91, "method": "tools/list"})["result"]["tools"]
+    tool = next(item for item in tools if item["name"] == "assess_token_risk")
+    description = tool["outputSchema"]["properties"]["evidence_max_age_seconds"]["description"].lower()
+    check("T091 existing age field explains local cache residence including bytecode",
+          all(word in description for word in ("local", "cache", "bytecode", "zero"))
+          and "every source answered live" not in description)
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)

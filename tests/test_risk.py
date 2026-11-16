@@ -7285,6 +7285,249 @@ def test_t085_fallback_activity_requires_extreme_disagreement():
         risk._BENCH_NOW.reset(clock)
 
 
+@contextmanager
+def _t091_runtime(chain="ethereum", cached=None, market_status=200, hp_status=200,
+                  hp_body=None, owner=risk._owner_powers):
+    """Existing local market/transport shapes, with the actual bytecode reader enabled."""
+    from types import SimpleNamespace
+
+    pair = _t030_pair(chain=chain)
+    pair["pairAddress"] = "0x" + "ab" * 20
+    address = pair["baseToken"]["address"]
+    market = {"pairs": [pair]}
+    code = "0x60006000"
+    hp = copy.deepcopy(_T084_HP if hp_body is None else hp_body)
+    state = {"requests": [], "cache_reads": [], "writes": [], "sleeps": [],
+             "cache": copy.deepcopy(cached or {}), "market": market, "code": code,
+             "address": address, "blocked": []}
+
+    class UnexpectedIO(BaseException):
+        pass
+
+    def deny(*args, **kwargs):
+        state["blocked"].append("unexpected external I/O")
+        raise UnexpectedIO("T091 requires offline fixtures")
+
+    def loopback_only(operation):
+        def connect(sock, endpoint):
+            if isinstance(endpoint, tuple) and endpoint[0] in ("127.0.0.1", "::1"):
+                return operation(sock, endpoint)
+            return deny()
+        return connect
+
+    def label(url):
+        if url.startswith("https://bytecode.vetagent.internal/"):
+            return "bytecode"
+        if "/latest/dex/tokens/" in url:
+            return "market"
+        if "honeypot.is" in url:
+            return "sell-retry" if "&pair=" in url else "sell"
+        if url in risk._CHAIN_RPC.values():
+            return "rpc"
+        if "/tokens/" in url and url.endswith("/pools"):
+            return "fallback"
+        if "/latest/dex/search" in url:
+            return "search"
+        return "seller-or-unexpected"
+
+    async def fetch(url, **kwargs):
+        kind = label(url)
+        state["requests"].append((kind, url))
+        if kind == "market":
+            status, body = market_status, market
+        elif kind in ("sell", "sell-retry"):
+            status, body = hp_status, hp
+        elif kind == "rpc":
+            status, body = 200, {"jsonrpc": "2.0", "id": 1, "result": code}
+        elif kind == "fallback":
+            status, body = 200, {"data": []}
+        elif kind == "search":
+            status, body = 200, {"pairs": []}
+        else:
+            return deny()
+
+        async def text():
+            return json.dumps(body)
+        return SimpleNamespace(status=status, text=text)
+
+    async def cache_get(url):
+        kind = label(url)
+        state["cache_reads"].append(kind)
+        return copy.deepcopy(state["cache"].get(kind, (None, None)))
+
+    async def cache_put(url, body, ttl=None):
+        state["writes"].append((label(url), ttl))
+
+    async def sleep(delay):
+        state["sleeps"].append(delay)
+
+    with patch.object(socket.socket, "connect", loopback_only(socket.socket.connect)), \
+            patch.object(socket.socket, "connect_ex", loopback_only(socket.socket.connect_ex)), \
+            patch.object(socket, "getaddrinfo", deny), \
+            patch.object(risk, "cf_fetch", fetch), \
+            patch.object(risk, "_fetch_json", _ORIGINAL_FETCH_JSON), \
+            patch.object(risk, "_owner_powers", owner), \
+            patch.object(risk, "_cache_get", cache_get), \
+            patch.object(risk, "_cache_put", cache_put), \
+            patch.object(risk.asyncio, "sleep", sleep), \
+            patch.object(risk, "_now_iso", lambda: "2026-11-16T00:00:00Z"), \
+            patch.object(risk, "_clock_now", lambda: datetime.datetime(2026, 11, 16, tzinfo=datetime.timezone.utc)), \
+            patch.dict(risk._ONCHAIN, {"key": ""}, clear=True):
+        yield state
+
+
+def _t091_scan(chain="ethereum", hint=None, verbose=False, **options):
+    with _t091_runtime(chain, **options) as state:
+        answer = run(risk.assess(state["address"], chain if hint is None else hint, verbose))
+    return answer, state
+
+
+def _t091_without_age(answer):
+    value = copy.deepcopy(answer)
+    value.pop("evidence_max_age_seconds", None)
+    return value
+
+
+def test_t091_fresh_json_cache_reports_local_age_without_stale_consequences():
+    control, state = _t091_scan()
+    market = state["market"]
+    for age, expected in ((-3.5, 0), (0, 0), (0.01, 1), (0.5, 1), (59, 59), (60, 60)):
+        answer, state = _t091_scan(cached={"market": (market, age)})
+        check("T091 reused fresh JSON reports nonnegative ceiling residence",
+              answer.get("evidence_max_age_seconds") == expected, str((age, answer.get("evidence_max_age_seconds"))))
+        check("T091 fresh reuse preserves the complete non-age answer and avoids refresh",
+              _t091_without_age(answer) == _t091_without_age(control)
+              and all(kind != "market" for kind, _ in state["requests"]) and not state["sleeps"])
+    refreshed, state = _t091_scan(cached={"market": (market, 61)})
+    check("T091 beyond fresh TTL refreshes and reports no reused positive residence",
+          refreshed == control and [kind for kind, _ in state["requests"]].count("market") == 1)
+
+
+def test_t091_usable_bytecode_cache_age_is_real_and_not_an_outage():
+    control, original = _t091_scan()
+    for age, expected in ((-1, 0), (0.1, 1), (3600.25, 3601), (86400, 86400)):
+        answer, state = _t091_scan(cached={"bytecode": (original["code"], age)})
+        check("T091 actual usable bytecode cache contributes its residence",
+              answer.get("evidence_max_age_seconds") == expected
+              and answer["evidence"].get("owner_powers") == control["evidence"].get("owner_powers")
+              and all(kind != "rpc" for kind, _ in state["requests"]), str(answer.get("evidence_max_age_seconds")))
+        check("T091 cached bytecode preserves every non-age field without stale wording",
+              _t091_without_age(answer) == _t091_without_age(control))
+    for code in ("not bytecode", "0x"):
+        answer, state = _t091_scan(cached={"bytecode": (code, 3600)})
+        check("T091 rejected cached bytecode is not recorded as reused evidence",
+              answer.get("evidence_max_age_seconds") == 0
+              and "unavailable" in answer["evidence"]["owner_powers"]
+              and all(kind != "rpc" for kind, _ in state["requests"]))
+    expired, state = _t091_scan(cached={"bytecode": (original["code"], 86400.1)})
+    check("T091 existing bytecode expiry and write TTL remain unchanged",
+          expired == control and ("bytecode", 86400) in state["writes"]
+          and [kind for kind, _ in state["requests"]].count("rpc") == 1)
+
+
+def test_t091_stale_maximum_keeps_e22_and_only_outage_age_in_its_sentence():
+    _, original = _t091_scan()
+    for age, expected in ((60.1, 61), (300, 300), (900, 900)):
+        answer, state = _t091_scan(cached={"market": (original["market"], age)}, market_status=429)
+        check("T091 genuine stale JSON records ceiling age and keeps its prior disclosure",
+              answer.get("evidence_max_age_seconds") == expected
+              and answer["evidence"].get("served_stale") == [{"source": "api.dexscreener.com", "age_seconds": int(age)}]
+              and answer["confidence"] != "high" and not state["sleeps"])
+    stale, _ = _t091_scan(cached={"market": (original["market"], 300)}, market_status=429)
+    mixed, _ = _t091_scan(cached={"market": (original["market"], 300),
+                                 "bytecode": (original["code"], 3600.25)}, market_status=429)
+    check("T091 longer bytecode residence changes only age, not the market-outage sentence",
+          mixed.get("evidence_max_age_seconds") == 3601
+          and _t091_without_age(mixed) == _t091_without_age(stale))
+    expired, _ = _t091_scan(cached={"market": (original["market"], 901)}, market_status=429)
+    check("T091 expired market data is not reused or described as zero liquidity",
+          expired["risk_level"] == "unknown" and expired.get("evidence_max_age_seconds") == 0
+          and "served_stale" not in expired["evidence"])
+
+
+def test_t091_request_age_resets_serially_and_stays_isolated_concurrently():
+    async def sequential(state):
+        state["cache"]["market"] = (state["market"], 59)
+        first = await risk.assess(state["address"], "ethereum")
+        state["cache"].clear()
+        second = await risk.assess(state["address"], "ethereum")
+        return first, second
+    with _t091_runtime() as state:
+        first, second = run(sequential(state))
+    check("T091 a second request in the same task resets earlier cache residence",
+          first.get("evidence_max_age_seconds") == 59 and second.get("evidence_max_age_seconds") == 0)
+
+    async def overlapping(state):
+        entered, release = asyncio.Event(), asyncio.Event()
+
+        async def cache_get(url):
+            if "/latest/dex/tokens/" not in url:
+                return None, None
+            if asyncio.current_task().get_name() == "older":
+                entered.set()
+                await release.wait()
+                return copy.deepcopy(state["market"]), 59
+            await entered.wait()
+            release.set()
+            return copy.deepcopy(state["market"]), 0.25
+
+        with patch.object(risk, "_cache_get", cache_get):
+            older = asyncio.create_task(risk.assess(state["address"], "ethereum"), name="older")
+            newer = asyncio.create_task(risk.assess(state["address"], "ethereum"), name="newer")
+            return await asyncio.gather(older, newer)
+    with _t091_runtime() as state:
+        older, newer = run(overlapping(state))
+    check("T091 overlapping real assessments keep distinct per-request maxima",
+          older.get("evidence_max_age_seconds") == 59 and newer.get("evidence_max_age_seconds") == 1)
+
+
+def test_t091_unsupported_simulation_does_no_fetch_cache_retry_or_seller_work():
+    for chain in ("arbitrum", "polygon", "optimism", "avalanche"):
+        control, _ = _t091_scan(chain, hp_status=404)
+        for status, body in ((200, _T084_HP), (404, {}), (429, {}), (503, {}),
+                             (200, dict(_T084_HP, chain={"id": "56"}))):
+            answer, state = _t091_scan(chain, hp_status=status, hp_body=body)
+            check("T091 unsupported chain retains its complete coverage verdict",
+                  answer == control and answer["risk_level"] == "unknown"
+                  and answer.get("unknown_kind") == "coverage" and answer.get("next_action") == "abstain")
+            check("T091 unsupported simulation has no fetch/cache/retry/seller or backoff",
+                  not any(kind.startswith("sell") for kind, _ in state["requests"])
+                  and not any(kind.startswith("sell") for kind in state["cache_reads"])
+                  and not state["sleeps"] and not state["blocked"], str((chain, status, state["requests"], state["sleeps"])))
+
+
+def test_t091_actual_supported_and_unknown_chains_keep_their_original_requests():
+    for chain in ("ethereum", "bsc", "base", "novel-chain"):
+        answer, state = _t091_scan(chain, hint="arbitrum" if chain in risk._SIMULATOR_CHAIN_IDS else chain,
+                                  hp_status=503)
+        requests = [url for kind, url in state["requests"] if kind == "sell"]
+        check("T091 observed supported or unknown chain keeps three transient-failure attempts",
+              len(requests) == 3 and state["sleeps"] == [0.3, 0.6]
+              and answer["evidence"]["chain_searched"] == chain, str((chain, state["requests"])))
+        if chain in risk._SIMULATOR_CHAIN_IDS:
+            check("T091 unsupported caller hint cannot suppress the selected supported chain",
+                  all("chainID=%d" % risk._SIMULATOR_CHAIN_IDS[chain] in url for url in requests))
+    _, state = _t091_scan("arbitrum", hint="ethereum")
+    check("T091 supported hint cannot force a simulator for an observed unsupported chain",
+          all(not kind.startswith("sell") for kind, _ in state["requests"]))
+
+
+def test_t091_ignored_simulator_staleness_does_not_remove_real_market_staleness():
+    _, original = _t091_scan("arbitrum")
+    for market_age in (None, 300):
+        cache = {"market": (original["market"], market_age)} if market_age else {}
+        options = {"market_status": 429 if market_age else 200}
+        control, _ = _t091_scan("arbitrum", cached=cache, hp_status=404, **options)
+        cache["sell"] = (_T084_HP, 650)
+        actual, state = _t091_scan("arbitrum", cached=cache, hp_status=429, **options)
+        check("T091 unrequested simulator cannot add age, signals, confidence or wording",
+              actual == control and actual.get("evidence_max_age_seconds") == (market_age or 0))
+        check("T091 genuine market staleness alone remains disclosed",
+              actual["evidence"].get("served_stale") == (
+                  [{"source": "api.dexscreener.com", "age_seconds": 300}] if market_age else None)
+              and "sell" not in state["cache_reads"])
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
