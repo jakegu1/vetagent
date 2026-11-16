@@ -2540,7 +2540,7 @@ def test_t092_malformed_simulator_metadata_cannot_identify_correspondence():
             check(tag + " cannot affirm source correspondence", ev.get("pool_link") == "unknown")
             check(tag + " retains the old structural rejection and request path",
                   answer["risk_level"] == "unknown"
-                  and any("invalid simulator metadata" in gap["reason"] for gap in answer["data_gaps"])
+                  and any("invalid simulator metadata" in gap["reason"] for gap in ev["data_gaps"])
                   and calls == ["market", "fallback", "search", "default"] and not sleeps)
             if verbose:
                 check(tag + " reports the existing structural failure",
