@@ -80,12 +80,12 @@ gantt
 ### Is the archive still collecting?
 
 ```text
-█████████████████████   2026-10-26 -> 2026-11-15
+█████████████████████   2026-10-27 -> 2026-11-16
 ```
 
 `█` a day collected &nbsp; `○` **a day missing, permanently** &nbsp; `·` before collection started.
 
-**74 days, no gaps.** Newest is 2026-11-15, yesterday.
+**75 days, no gaps.** Newest is 2026-11-16, today.
 
 The collector is scheduled four times a day and GitHub runs it late every time -- typically four to five hours -- so the newest mark being yesterday is normal and a hole is not.
 
