@@ -7287,11 +7287,11 @@ def test_t085_fallback_activity_requires_extreme_disagreement():
 
 @contextmanager
 def _t091_runtime(chain="ethereum", cached=None, market_status=200, hp_status=200,
-                  hp_body=None, owner=risk._owner_powers):
+                  hp_body=None, reserves=False, owner=risk._owner_powers):
     """Existing local market/transport shapes, with the actual bytecode reader enabled."""
     from types import SimpleNamespace
 
-    pair = _t030_pair(chain=chain, reserves=False)
+    pair = _t030_pair(chain=chain, reserves=reserves)
     pair["pairAddress"] = "0x" + "ab" * 20
     address = pair["baseToken"]["address"]
     market = {"pairs": [pair]}
@@ -7526,6 +7526,19 @@ def test_t091_ignored_simulator_staleness_does_not_remove_real_market_staleness(
               actual["evidence"].get("served_stale") == (
                   [{"source": "api.dexscreener.com", "age_seconds": 300}] if market_age else None)
               and "sell" not in state["cache_reads"])
+
+
+def test_t091_conflicting_unusable_market_keeps_legacy_simulation_path():
+    for observed, hint in (("base", "arbitrum"), ("arbitrum", "ethereum")):
+        for verbose in (False, True):
+            answer, state = _t091_scan(observed, hint=hint, verbose=verbose, reserves=True, hp_status=503)
+            sells = [url for kind, url in state["requests"] if kind == "sell"]
+            check("T091 unusable-market chain conflict keeps the original three attempts",
+                  answer["evidence"]["chain_searched"] == observed and "best_pair" not in answer["evidence"]
+                  and len(sells) == 3 and state["sleeps"] == [0.3, 0.6]
+                  and "sell" in state["cache_reads"])
+            check("T091 this optimization does not repair the older conflicting hint semantics",
+                  all(("chainID=1" in url) if hint == "ethereum" else ("chainID=" not in url) for url in sells))
 
 
 def main():
