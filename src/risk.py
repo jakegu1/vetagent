@@ -4558,7 +4558,7 @@ def _reported_simulator_identity(response):
     for item, key in ((body, "pairAddress"), (venue, "address"), (pair, "address")):
         if key in item:
             value = item[key]
-            if not isinstance(value, str) or not _looks_evm(value):
+            if not isinstance(value, str) or not _EVM_RE.fullmatch(value):
                 invalid_pool = True
             else:
                 pools.add(value.lower())
