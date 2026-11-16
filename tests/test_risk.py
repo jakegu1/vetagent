@@ -7291,7 +7291,7 @@ def _t091_runtime(chain="ethereum", cached=None, market_status=200, hp_status=20
     """Existing local market/transport shapes, with the actual bytecode reader enabled."""
     from types import SimpleNamespace
 
-    pair = _t030_pair(chain=chain)
+    pair = _t030_pair(chain=chain, reserves=False)
     pair["pairAddress"] = "0x" + "ab" * 20
     address = pair["baseToken"]["address"]
     market = {"pairs": [pair]}
