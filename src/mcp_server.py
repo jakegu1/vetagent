@@ -93,6 +93,40 @@ _OWNER_POWERS_SCHEMA = {
     },
 }
 
+_POOL_SCOPE_DETAILS_SCHEMA = {
+    "type": "object",
+    "description": "Verbose-only correspondence facts for the final displayed market and adopted "
+                   "simulator response. IDs are display strings, capped at 48 characters plus an "
+                   "ellipsis; truncated strings cannot establish exact cross-response identity.",
+    "properties": {
+        "reason": {"type": ["string", "null"],
+                   "enum": [None, "chain_conflict", "pool_conflict", "invalid_response", "no_market",
+                            "no_simulation", "invalid_pool", "missing_pool", "missing_chain"],
+                   "description": "Why correspondence is unknown; null for same or different."},
+        "market_pool": {"type": ["string", "null"], "description": "Final displayed market's pool display ID."},
+        "market_chain": {"type": ["string", "null"], "description": "Known chain of the final displayed market."},
+        "adopted_response": {"type": "string", "enum": ["default", "retry", "none"],
+                             "description": "Which simulator response the existing engine retained."},
+        "policy_chain": {"type": ["string", "null"],
+                         "description": "Existing engine validation/coverage context, not an observed chain."},
+        "requested_chain": {"type": ["string", "null"],
+                            "description": "Chain actually encoded in the simulator request, not a source observation."},
+        "requested_pool": {"type": ["string", "null"],
+                           "description": "Explicit pool request for the adopted response; never fills a missing report."},
+        "reported_chain": {"type": ["string", "null"],
+                           "description": "Known, consistent chain declared by the adopted response; null when unknown."},
+        "reported_pool": {"type": ["string", "null"],
+                          "description": "Valid, consistent 20-byte EVM venue declared by the adopted response."},
+        "retry": {"type": "object", "description": "Only present when a pool-scoped retry occurred.",
+                  "properties": {
+                      "requested_pool": {"type": ["string", "null"]},
+                      "reported_chain": {"type": ["string", "null"]},
+                      "reported_pool": {"type": ["string", "null"]},
+                      "accepted": {"type": "boolean", "description": "Whether the retry replaced the default response."},
+                  }},
+    },
+}
+
 _ASSESS_OUTPUT_SCHEMA = {
     "type": "object",
     "properties": {
@@ -110,7 +144,14 @@ _ASSESS_OUTPUT_SCHEMA = {
         },
         "signals": {"type": "array", "items": _SIGNAL_SCHEMA},
         "recommendation": {"type": "string"},
-        "evidence": {"type": "object", "properties": {"owner_powers": _OWNER_POWERS_SCHEMA}},
+        "evidence": {"type": "object", "properties": {
+            "owner_powers": _OWNER_POWERS_SCHEMA,
+            "pool_link": {"type": "string", "enum": ["same", "different", "unknown"],
+                           "description": "Correspondence between the final displayed market and the "
+                                          "source-reported venue of the adopted simulator response. "
+                                          "This is not simulation success, safety, or wallet/amount-specific executability."},
+            "pool_link_details": _POOL_SCOPE_DETAILS_SCHEMA,
+        }},
         "driver": {"type": ["object", "null"],
                    "description": "The signal that decided the verdict: {name, category}. "
                                   "null when nothing above ok fired."},
@@ -230,6 +271,14 @@ TOOLS = [
                            "enum": ["ok", "not_found", "unpriced", "drained",
                                     "unavailable"]},
                 "price_usd": {"type": ["number", "null"]},
+                "source": {"type": "string", "description": "Liquidity data provider, not the trading venue."},
+                "best_pair_chain": {"type": "string"},
+                "best_pair_dex": {"type": "string", "description": "Selected market's trading venue."},
+                "best_pair_address": {
+                    "type": "string",
+                    "description": "Optional selected-pool display ID on ok results, capped at 48 "
+                                   "characters plus an ellipsis. Truncated IDs cannot establish exact "
+                                   "cross-response identity. This tool does not run a sell simulation."},
                 "liquidity_usd": {"type": ["number", "null"]},
                 "liquidity_reserve_check": {
                     "type": "string", "enum": ["not_checkable"],
