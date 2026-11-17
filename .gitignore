@@ -18,7 +18,7 @@ python_modules/
 *.credential
 access.jsonl
 
-# Local credentials. HANDOFF.md records where the Cloudflare API token lives.
+# Local credentials.
 .dev.vars
 .dev.vars.*
 .git-credentials
@@ -57,3 +57,29 @@ bench/second_oracle*.json.partial
 
 # Owner-private strategy material: kept out of this public repository on purpose.
 docs/VetAgent_Product_Strategy_Evaluation.docx
+
+# Local agent instructions and internal project control are not public deliverables.
+/AGENTS.md
+/CLAUDE.md
+/.mcp.json
+/.claude/
+/.codex/
+/lead/*
+!/lead/checks.py
+/docs/OWNER.md
+/docs/STRATEGY.md
+/docs/OPPORTUNITIES.md
+/docs/HANDOFF.md
+/docs/AUDIT_BRIEF.md
+/docs/answers2.txt
+/docs/OPENAI_SUBMISSION.md
+/docs/BACKLOG.md
+/docs/ROUNDS.md
+/docs/agent-context.md
+/tools/owner.py
+/tools/rounds.py
+/tests/test_owner_page.py
+/tests/test_gates_get_reviewed.py
+/tests/test_experiment_d_deadline.py
+/tests/test_backlog.py
+/tests/test_rounds.py

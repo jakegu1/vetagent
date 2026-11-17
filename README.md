@@ -220,13 +220,13 @@ labeller first, or the accuracy numbers stop meaning anything.
 
 ## Where things are written down
 
-Four documents, one job each. If something is in two of them, one of them is wrong.
+Product and development references:
 
 | Document | Answers |
 |---|---|
 | `README.md` (this file) | What is this, how do I call it |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Why is it built this way, and **what enforces each rule** |
-| [`docs/STRATEGY.md`](docs/STRATEGY.md) | Who pays, what the moat is, when to shut it down |
+| [`DEVELOPMENT.md`](DEVELOPMENT.md) | Reproduce checks and preserve engineering invariants |
 
 Why a change was made lives in the commit message, which is immutable and attached
 to the diff. Why a line of code looks odd lives in a comment next to that line.

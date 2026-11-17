@@ -362,14 +362,6 @@ TARGETS = [
     ("src/landing.html", r"and (\d+) hold under a dollar", "adversarial_sub_dollar_n"),
     ("src/entry.py", r"False positives \(healthy tokens flagged high\) \.+ ([\d.]+)%", "fp_pct"),
     ("src/entry.py", r"Answers returned as unknown \.+ ([\d.]+)%", "unknown_pct"),
-    # The maturity total. docs/SCORECARD.md generates it, and then three documents
-    # hand-copied it and all three went stale together the moment two directory
-    # listings went live: the score moved 53 -> 56 and nothing noticed, including
-    # docs/OWNER.md, which is generated and simply had not been re-run. A number
-    # that three files copy is a number that needs a guard, generated or not.
-    # CLAUDE.md and AUDIT_BRIEF.md no longer copy it (2026-09-14): a daily bot moves the
-    # score now, and a hand-written copy would be stale by the next morning.
-    ("docs/OWNER.md", r"\| Maturity score \| (\d+) / 100", "maturity"),
 ]
 
 
@@ -915,28 +907,23 @@ def scan(write, rewritten=None):
 # A guard whose file list is a snapshot of the day it was written stops covering the
 # project the moment the project grows.
 LIVE_CLAIM_FILES = ("README.md", "src/landing.html", "src/entry.py", "src/pages.py",
-                    "docs/AUDIT_BRIEF.md", "docs/EXPERIMENT_C.md", "docs/SCORECARD.md",
-                    "docs/OPENAI_SUBMISSION.md", "docs/AGENT-INTEGRATION.md",
+                    "docs/EXPERIMENT_C.md", "docs/SCORECARD.md",
+                    "docs/AGENT-INTEGRATION.md",
                     "llms-install.md", "plugin/README.md",
-                    "plugin/skills/vet-token/SKILL.md",
-                    "CLAUDE.md")
+                    "plugin/skills/vet-token/SKILL.md")
 
-# Generated files. Their guard is regeneration, not a regex: tools/owner.py builds
-# docs/OWNER.md from figures() and tests/test_owner_page.py fails if the committed file
-# differs from what the generator produces, so a number in it cannot drift without a red
-# build. Writing a TARGETS pattern for each would be a second, weaker copy of that.
+# Generated files are checked by regeneration: test_published_numbers.py compares the
+# committed scorecard with bench/scorecard.py's output. A stale number fails the build.
 #
 # Named explicitly rather than left out, because the W21 coverage test asks whether every
 # surface a reader meets is covered by SOMETHING, and silence would have read as an
 # oversight -- which is exactly how five surfaces went unscanned in the first place.
-GENERATED_FILES = ("docs/OWNER.md", "docs/ROUNDS.md", "docs/SCORECARD.md")
+GENERATED_FILES = ("docs/SCORECARD.md",)
 
-# Logs are frozen ON PURPOSE and are excluded ON PURPOSE, not by oversight. ROUNDS.md is
-# generated from commit messages; DECISIONS, HANDOFF, BACKLOG, OPPORTUNITIES and STRATEGY
-# record what was believed and measured at a date, including numbers later withdrawn. A
-# guard that rewrote those would erase the corrections this project is built on.
-FROZEN_LOG_FILES = ("docs/ROUNDS.md", "docs/DECISIONS.md", "docs/HANDOFF.md",
-                    "docs/BACKLOG.md", "docs/OPPORTUNITIES.md", "docs/STRATEGY.md",
+# Dated technical decisions and research rules keep their original figures, including
+# corrections. Development instructions are not current accuracy claims. Rewriting
+# these as live benchmark claims would change what the historical evidence states.
+FROZEN_LOG_FILES = ("docs/DECISIONS.md", "DEVELOPMENT.md",
                     # W41's pre-registered rule and its dated runs: thresholds fixed before a
                     # run and results as measured that day. Rewriting them to a later
                     # benchmark would be the fitting the page exists to prevent.
@@ -1071,7 +1058,6 @@ def retracted(files, window=2):
 
 
 _EXEMPT_LINES = (
-    ("docs/AUDIT_BRIEF.md", "Rejected."),
     # Other vendors' published claims, quoted on our own landing page so that we are the
     # ones who already know the counterexamples. The page used to say "nobody else in
     # this category does", which is false and takes a commenter one minute to disprove.
@@ -1082,17 +1068,11 @@ _EXEMPT_LINES = (
     ("docs/EXPERIMENT_C.md", "sensitivity /"),
     ("docs/EXPERIMENT_C.md", "LP lock/burn detection fires on"),
     ("docs/SCORECARD.md", "What 100 looks like"),
-    # A dated incident number: 80% of one runaway workflow spend bought nothing on
-    # 2026-09-07. No source of truth to track, and it must not be rewritten by --write.
-    ("CLAUDE.md", "About 80% of the spend"),
     # An illustrative number inside an example sentence, not a measurement: the skill
     # tells an agent to quote a signal rather than a score, and "12% sell tax" is what
     # such a quote looks like. Scoped to the one line, because the file is otherwise
     # a live surface and its next number will be a real one.
     ("plugin/skills/vet-token/SKILL.md", "is actionable"),
-    # Measured once over 126 cached pools and stamped with its date in the text,
-    # because it cannot be recomputed: peak 7-day volume needs seven days per pool.
-    ("docs/OPENAI_SUBMISSION.md", "measured once on 2026-09-08"),
     # A dated one-off observation inside a docstring, not a published claim: the
     # error rate seen on the day _record_http_error was written. It explains why the
     # fix could not wait, and it is stamped with its date rather than tracked,

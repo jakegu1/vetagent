@@ -1,31 +1,9 @@
-"""Refuse any hand-run HTTP request to vetagent.dev that does not name itself.
+"""Reject untagged manual requests to the production service.
 
-WHY THIS EXISTS
-
-`src/entry.py:_record_call` files every request under `x-mcp-client`, falling back to the
-User-Agent. A bare curl therefore arrives as client `curl`, `curl` is in the usage gate's
-`AMBIGUOUS_CLIENTS`, and the gate then judges it by country -- and this machine egresses
-through Tokyo (`curl https://vetagent.dev/cdn-cgi/trace` returns `loc=JP`, `colo=NRT`)
-while `OWNER_COUNTRIES` is `{"CN"}`.
-
-So on 2026-09-11 the 2026-09-18 decision gate read **YES** -- "continue per the roadmap" --
-on 14 calls over 4 days from client `curl` in JP. Verifying W18 and W24 against production
-and checking a deploy is exactly that shape.
-
-THE GLOBAL NOTES ALREADY CARRIED THIS INCIDENT, once, in almost these words: "the usage gate
-says YES, we have an external caller / the caller was a verification request I had sent
-myself an hour earlier." It did not prevent the repeat. A note is advice, and advice has to
-be remembered at the moment it matters; this runs whether anyone remembers or not.
-
-`deploy.yml` tags its smoke tests `vetagent-ci-smoke`, the landing page sends
-`vetagent-landing-demo`, and `.mcp.json` now sends `vetagent-owner-editor`. Hand-run probes
-were the last untagged source, and they hit the endpoint more often than any of the others.
-
-WHAT IT DOES NOT DO
-
-It does not block anything reaching any other host, and it does not read or transmit the
-command anywhere. It denies one shape: an HTTP client, this project's production domain, no
-`x-mcp-client` header. Everything else exits silently.
+Internal requests must identify themselves with an x-mcp-client vetagent-* name
+so they cannot be mistaken for external usage. This reads a tool-hook JSON
+message on stdin; it makes no HTTP requests and changes no local settings.
+It leaves unrelated hosts and non-request commands alone.
 """
 
 import json

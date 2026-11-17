@@ -56,8 +56,6 @@ regenerate() {
     before=$(git diff --binary | md5sum)
     run_generator python bench/scorecard.py --write || { echo "::error::scorecard.py failed"; return 1; }
     run_generator python bench/publish_numbers.py --write || { echo "::error::publish_numbers.py failed"; return 1; }
-    run_generator python tools/owner.py --write || { echo "::error::owner.py failed"; return 1; }
-    run_generator python tools/rounds.py --write || { echo "::error::rounds.py failed"; return 1; }
     after=$(git diff --binary | md5sum)
     if [ "$before" = "$after" ]; then
       return 0

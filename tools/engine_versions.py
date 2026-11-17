@@ -1528,11 +1528,14 @@ def workflow_dispatch_contract(text):
         "python tools/engine_versions.py legacy-test w40-v1-e3ec46a git-lf tests/test_w40_native_clock.py":
             "python tools/engine_versions.py maintained-test w40-v1-e3ec46a git-lf clock-all3"}
     require(all(original.count(command) == 1 for command in replacements), "source_mismatch")
-    expected = [replacements.get(command, command) for command in original]
+    retired = {"python tests/test_%s.py" % name for name in (
+        "owner_page", "gates_get_reviewed", "experiment_d_deadline", "backlog", "rounds")}
+    require(all(original.count(command) == 1 for command in retired), "source_mismatch")
+    expected = [replacements.get(command, command) for command in original if command not in retired]
     actual, refused = parser.steps_from_workflow(text)
     commands = [command for _, command in actual]
     status = "registered" if not refused and commands == expected else "registration_pending" if not refused and commands == original else "invalid"
-    return {"status": status, "actual_count": len(commands), "expected_count": 47, "commands": commands}
+    return {"status": status, "actual_count": len(commands), "expected_count": len(expected), "commands": commands}
 
 
 def main(arguments=None):
