@@ -23,6 +23,7 @@ import json
 import math
 import os
 import re
+import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -148,8 +149,47 @@ def _pool(value):
     return value.lower() if isinstance(value, str) and re.fullmatch(r"0x(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})", value) else None
 
 
+def _rule_bytes():
+    """Keep the original raw rule identity when its management document is private."""
+    path = HERE.parent / "docs/BACKLOG.md"
+    if os.path.lexists(path):
+        return _read(path, RAW_CAP)
+    blob = "6ba4a388d88fe24b7231428574a74ba297de1666"
+    source = "e3ec46ad8e4c485243fe20a606ac263564d350f0:docs/BACKLOG.md"
+    environment = dict(os.environ, GIT_NO_LAZY_FETCH="1", GIT_TERMINAL_PROMPT="0",
+                       GIT_NO_REPLACE_OBJECTS="1")
+
+    def git(*arguments):
+        try:
+            result = subprocess.run(["git", *arguments], cwd=HERE.parent, env=environment,
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=5)
+        except (OSError, subprocess.SubprocessError):
+            _error("input_unavailable")
+        if result.returncode != 0:
+            _error("input_unavailable")
+        if len(result.stdout) > RAW_CAP:
+            _error("input_limit")
+        return result.stdout
+
+    if git("rev-parse", "--verify", source).strip() != blob.encode("ascii"):
+        _error("source_drift")
+    if git("cat-file", "-s", blob).strip() != b"81140":
+        _error("source_drift")
+    # Only Git's ordinary line-ending conversion may run; never an external filter.
+    attribute = git("check-attr", "filter", "--", "docs/BACKLOG.md").strip()
+    if attribute not in {b"docs/BACKLOG.md: filter: unspecified", b"docs/BACKLOG.md: filter: unset"}:
+        _error("source_drift")
+    raw = git("cat-file", "--filters", source)
+    if _sha(raw) not in {
+        "0f0febb99e8cb2a7c0b14fba1affcf689b7ba40fc18af641e6478f1d267b3e1a",
+        "00a9b1b71f6490e7bfaa1b4a997f5ef9f5101cc09113c603b92ccbec56215ea4",
+    }:
+        _error("source_drift")
+    return raw
+
+
 def _bindings():
-    return {"rule_sha256": _sha(_read(HERE.parent / "docs/BACKLOG.md", RAW_CAP)),
+    return {"rule_sha256": _sha(_rule_bytes()),
             "label_sha256": _sha(_read(HERE / "labels.py", RAW_CAP)),
             "engine_sha256": _sha(_read(HERE.parent / "src/risk.py", RAW_CAP))}
 
