@@ -859,7 +859,7 @@ def check_no_write_advice_when_only_entries_it_cannot_fix_are_left():
 def check_each_kind_of_entry_write_cannot_fix_gets_one_line_of_advice():
     print("\n[report] check mode with each kind of entry --write cannot fix: bench/production/"
           "verdicts.json absent, a figure row in docs/SCORECARD.md, a reworded sentence, and "
-          "docs/OWNER.md missing")
+          "src/landing.html missing")
     # Each kind, and what its line has to name: the measurement file the missing keys come from;
     # the TARGETS pattern to update if the sentence is not restored; nothing prescribed; and the
     # command that regenerates docs/SCORECARD.md in the form bench/scorecard.py prints now.
@@ -870,7 +870,7 @@ def check_each_kind_of_entry_write_cannot_fix_gets_one_line_of_advice():
         set_production_row(tmp, figure_row(verdicts(20, 200)))
         s = target("README.md", "adversarial_n")
         edit(tmp, s[0], lambda text: reword(s, text))
-        os.remove(os.path.join(tmp, "docs", "OWNER.md"))
+        os.remove(os.path.join(tmp, "src", "landing.html"))
         stale, err = scan_entries(write=False)
         check("scan() finds an entry of each kind, several of them not measured",
               err is None and kinds_of(stale) == set(k for k, _ in says)

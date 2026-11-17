@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import stat
 import subprocess
@@ -440,6 +441,9 @@ class B12DispatchAcceptance(unittest.TestCase):
         for before, after in replacements:
             self.assertEqual(text.count(before), 1)
             text = text.replace(before, after, 1)
+        for name in ("owner_page", "gates_get_reviewed", "experiment_d_deadline", "backlog", "rounds"):
+            text, count = re.subn(r"(?m)^      - name:[^\n]*\n        run: python tests/test_" + name + r"\.py\n", "", text)
+            self.assertEqual(count, 1)
         return text
 
     def test_legacy_dispatch_whitelist_and_exact_argv(self):
@@ -546,11 +550,11 @@ class B12DispatchAcceptance(unittest.TestCase):
         planned = self.planned_workflow()
         good = m.workflow_dispatch_contract(planned)
         self.assertEqual(good["status"], "registered")
-        self.assertEqual(good["actual_count"], 47)
+        self.assertEqual(good["actual_count"], 42)
         self.assertIn("python tests/test_backfill.py --offline", good["commands"])
         actual = m.workflow_dispatch_contract((ROOT / ".github/workflows/test.yml").read_text(encoding="utf-8"))
         self.assertIn(actual["status"], ("registered", "registration_pending"))
-        self.assertEqual(actual["actual_count"], 47)
+        self.assertEqual(actual["actual_count"], 42)
         legacy = "python tools/engine_versions.py maintained-test w40-v1-e3ec46a git-lf native-all16"
         adapter = "python tools/engine_versions.py maintained-test w40-v1-e3ec46a git-lf clock-all3"
         verification = "python tools/engine_versions.py verify-source w40-v1-e3ec46a git-lf"
@@ -558,7 +562,11 @@ class B12DispatchAcceptance(unittest.TestCase):
             "bb6e1b2cc5e602e94f0560c37dbc3bd79674edab:.github/workflows/test.yml"], cwd=ROOT).decode("utf-8")
         pending = m.workflow_dispatch_contract(old)
         self.assertEqual(pending["status"], "registration_pending")
-        self.assertEqual(sum(a == b for a, b in zip(pending["commands"], good["commands"])), 44)
+        retired = {"python tests/test_%s.py" % name for name in (
+            "owner_page", "gates_get_reviewed", "experiment_d_deadline", "backlog", "rounds")}
+        retained = [command for command in pending["commands"] if command not in retired]
+        self.assertEqual(pending["actual_count"], 47)
+        self.assertEqual(sum(a == b for a, b in zip(retained, good["commands"])), 39)
         for mutated in (planned.replace("run: " + legacy, "# run: " + legacy, 1),
                         planned.replace(legacy, "python -c pass", 1),
                         planned.replace(adapter, adapter + " extra", 1),
@@ -1506,10 +1514,17 @@ class MaintainedAdapterAcceptance(unittest.TestCase):
         for before, after in replacements:
             self.assertEqual(current.count(before), 1)
             current = current.replace(before, after, 1)
+        retired = {"python tests/test_%s.py" % name for name in (
+            "owner_page", "gates_get_reviewed", "experiment_d_deadline", "backlog", "rounds")}
+        for command in retired:
+            current, count = re.subn(r"(?m)^      - name:[^\n]*\n        run: " + re.escape(command) + r"\n", "", current)
+            self.assertEqual(count, 1)
         registered = m.workflow_dispatch_contract(current)
         self.assertEqual(registered["status"], "registered")
-        self.assertEqual(registered["actual_count"], 47)
-        self.assertEqual(sum(a == b for a, b in zip(pending["commands"], registered["commands"])), 44)
+        self.assertEqual(registered["actual_count"], 42)
+        retained = [command for command in pending["commands"] if command not in retired]
+        self.assertEqual(pending["actual_count"], 47)
+        self.assertEqual(sum(a == b for a, b in zip(retained, registered["commands"])), 39)
         historical = m._git_bytes("cat-file", "blob", COMMIT + ":.github/workflows/test.yml").decode()
         self.assertNotEqual(m.workflow_dispatch_contract(historical)["status"], "registered")
         command = "python tools/engine_versions.py maintained-test " + CONTRACT + " git-lf native-all16"

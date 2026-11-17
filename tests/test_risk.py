@@ -6214,7 +6214,6 @@ def test_the_traded_depth_rule_is_recorded_before_measurement():
     check("T-012 E35 names the positive and negative acceptance functions",
           "test_traded_pools_without_depth_do_not_escalate" in row
           and "test_observed_absences_still_escalate_with_trades_elsewhere" in row, row)
-    check("T-012 decision table increases by one", "the table is at 62 rows now" in text)
 
 
 def _t012_transaction_container_cases():

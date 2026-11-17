@@ -23,7 +23,7 @@ So this pins the whole seam, derived from the files rather than typed:
     on that trigger only the offline job runs -- no upstream budget spent five times a day;
   * every such workflow calls the one shared regeneration script, AFTER its data commit
     (the data is irreplaceable and must never share a commit that can conflict), with the
-    full history that tools/owner.py and tools/rounds.py read;
+    full history required by the immutable evidence fixtures;
   * that script runs every generator a test names as its remedy whose inputs a bot can
     move -- read from each generator's own source, so a new generator that reads the
     archive, or the production artifacts, or git history, is required automatically;
@@ -174,9 +174,9 @@ def test_every_pushing_workflow_regenerates_after_its_data():
         check("  and only after every data commit (lines %s < %s)"
               % ([i + 1 for i in data], regen[0] + 1),
               all(i < regen[0] for i in data))
-        check("  and with the full history owner.py and rounds.py read",
+        check("  and with the full history the evidence fixtures require",
               re.search(r"fetch-depth:\s*0\b", text) is not None,
-              "a depth-1 checkout makes tools/rounds.py write a log of one commit")
+              "a shallow checkout can omit immutable evidence objects")
         # The data commit itself must not carry the derived pages, or a conflict on a page
         # a human also regenerates would take the irreplaceable rows down with it.
         for i in data:
@@ -222,9 +222,8 @@ def test_the_shared_script_runs_every_generator_a_bot_can_stale():
     script = read(path)
     runs = set(re.findall(r"python ((?:bench|tools)/[a-z_]+\.py) --write", script))
     named, required, excluded = _required_generators()
-    check("the tests name at least the four page generators as remedies",
-          {"bench/publish_numbers.py", "bench/scorecard.py", "tools/owner.py",
-           "tools/rounds.py"} <= named, str(sorted(named)))
+    check("the tests name the retained public page generators as remedies",
+          {"bench/publish_numbers.py", "bench/scorecard.py"} <= named, str(sorted(named)))
     for gen in sorted(required):
         check("  it runs %s" % gen, gen in runs, "runs: %s" % sorted(runs))
     for gen, why in sorted(excluded.items()):
@@ -1535,8 +1534,7 @@ def test_failed_regeneration_preserves_generator_diagnostics():
     if not bash:
         not_run("failed-generator stdout/stderr in local regenerate mode", why)
         return
-    generators = ("bench/scorecard.py", "bench/publish_numbers.py",
-                  "tools/owner.py", "tools/rounds.py")
+    generators = ("bench/scorecard.py", "bench/publish_numbers.py")
     tree = tempfile.mkdtemp(prefix="regeneration-diagnostics-")
     try:
         harness = os.path.join(tree, "harness.sh")

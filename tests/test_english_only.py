@@ -19,6 +19,7 @@ Run:  python tests/test_english_only.py
 """
 
 import os
+import subprocess
 import sys
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
@@ -61,20 +62,17 @@ def is_cjk(ch):
 
 
 def walk():
-    for dirpath, dirnames, filenames in os.walk(ROOT):
-        rel_dir = os.path.normpath(os.path.relpath(dirpath, ROOT))
-        dirnames[:] = [d for d in dirnames
-                       if os.path.normpath(os.path.join(rel_dir, d)) not in EXEMPT_DIRS
-                       and d not in {"__pycache__", ".git", "node_modules"}]
-        if rel_dir in EXEMPT_DIRS:
+    # Include tracked files even if ignored, and new public files before staging.
+    # Ignored private instructions are local context, not repository publication.
+    result = subprocess.run(["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+                            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+    for item in sorted(set(result.stdout.decode("utf-8").split("\0")) - {""}):
+        rel = os.path.normpath(item)
+        if rel in EXEMPT_FILES or any(rel == d or rel.startswith(d + os.sep) for d in EXEMPT_DIRS):
             continue
-        for fn in filenames:
-            if not fn.endswith(TEXT_EXT) and fn not in TEXT_NAMES:
-                continue
-            rel = os.path.normpath(os.path.join(rel_dir, fn))
-            if rel in EXEMPT_FILES:
-                continue
-            yield rel, os.path.join(dirpath, fn)
+        name = os.path.basename(rel)
+        if name.endswith(TEXT_EXT) or name in TEXT_NAMES:
+            yield rel, os.path.join(ROOT, rel)
 
 
 def main():

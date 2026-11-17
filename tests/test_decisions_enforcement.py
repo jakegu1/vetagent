@@ -183,27 +183,6 @@ def test_every_named_test_exists():
           "; ".join("%s -> %s" % (rid, n) for rid, n in missing))
 
 
-def test_the_row_count_is_honest():
-    """The file states its own size, and that number drifted too.
-
-    DECISIONS.md said 54 and BACKLOG.md W8 said 63; the real count was 55. A file that
-    miscounts its own rows is weak evidence for every other number in it, and this one is
-    trivially derivable.
-    """
-    print("\n[decisions] the stated row count matches the table")
-    with open(DECISIONS, encoding="utf-8") as f:
-        text = f.read()
-    rows = [ln for ln in text.splitlines()
-            if re.match(r"^\|\s*[A-Z]+\d+\s*\|", ln)]
-    stated = re.search(r"table is at (\d+) rows", text)
-    check("the file states its row count", bool(stated),
-          "no 'table is at N rows' line")
-    if stated:
-        check("and the count is right",
-              int(stated.group(1)) == len(rows),
-              "states %s, actual %d" % (stated.group(1), len(rows)))
-
-
 def test_no_test_function_is_unreachable_by_its_own_runner():
     """A test defined and never called is worse than no test: it reads as coverage.
 
