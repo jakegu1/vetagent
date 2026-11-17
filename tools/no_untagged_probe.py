@@ -22,25 +22,21 @@ CLIENTS = (
 )
 
 # If the command STARTS with one of these it is reading text, not sending a request. The
-# case this exists for is real: CLAUDE.md now documents the tagged curl, so searching that
-# documentation would otherwise trip the guard on its own example.
+# documented curl examples must remain searchable without tripping the guard.
 TEXT_TOOLS = ("grep", "rg", "cat", "sed", "awk", "head", "tail", "less", "echo", "printf",
               "diff", "wc", "sort", "uniq", "git")
 
 REASON = (
     "Blocked: an HTTP request to %s with no `%s` header.\n"
     "\n"
-    "An untagged probe from this machine is recorded as client `curl` from country JP, and "
-    "the usage gate counts that as an external caller -- it is what made the 2026-09-18 "
-    "gate read YES on our own verification traffic on 2026-09-11.\n"
+    "Untagged manual probes can be mistaken for external usage by the usage gate.\n"
     "\n"
     "Add the header and run it again:\n"
     "  -H 'x-mcp-client: vetagent-manual-probe'\n"
     "\n"
     "Anything starting `vetagent-` is filtered out by `is_self()` in bench/usage.py, so a "
-    "tagged probe cannot reach the gate's evidence. If you genuinely need an untagged "
-    "request -- to reproduce what an outside caller sees -- say so and disable this hook "
-    "deliberately; do not work around it by renaming the header."
+    "tagged probe cannot reach the gate's evidence. Do not work around this guard by "
+    "renaming the header."
 ) % (DOMAIN, TAG)
 
 
