@@ -729,6 +729,70 @@ def test_w40_readout_keeps_original_calendar_bar_and_every_denominator():
         check("W40 zero denominators stay zero, without fabricated rates", report["enrolled"] == report["receipts"] == report["unasked"] == report["qualified_unsafe_observed"] == 0 and report["enrollment_complete"])
 
 
+def test_w40_rule_history_survives_public_document_removal():
+    import hashlib
+    import importlib
+    from pathlib import Path
+    import subprocess
+    import tempfile
+    from unittest.mock import patch
+    core = importlib.import_module("w40_evidence")
+    blob = "6ba4a388d88fe24b7231428574a74ba297de1666"
+    raw = subprocess.check_output(["git", "cat-file", "blob", blob], cwd=ROOT)
+    profiles = (
+        ("false", raw, "0f0febb99e8cb2a7c0b14fba1affcf689b7ba40fc18af641e6478f1d267b3e1a"),
+        ("true", raw.replace(b"\n", b"\r\n"),
+         "00a9b1b71f6490e7bfaa1b4a997f5ef9f5101cc09113c603b92ccbec56215ea4"),
+    )
+    with tempfile.TemporaryDirectory(prefix="publication-rules-") as temporary:
+        view = Path(temporary) / "view"
+        subprocess.run(["git", "clone", "--shared", "--no-checkout", "--quiet", ROOT, str(view)],
+                       check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        for child in ("bench", "src", "docs"):
+            (view / child).mkdir()
+        for rel in ("bench/labels.py", "src/risk.py"):
+            (view / rel).write_bytes(Path(ROOT, rel).read_bytes())
+        for autocrlf, body, expected in profiles:
+            subprocess.run(["git", "config", "core.autocrlf", autocrlf], cwd=view, check=True)
+            rule_file = view / "docs/BACKLOG.md"
+            rule_file.write_bytes(body)
+            check("T093 original rule profile has its fixed raw digest " + autocrlf,
+                  hashlib.sha256(body).hexdigest() == expected)
+            with patch.object(core, "HERE", view / "bench"):
+                original = core.plan("a" * 40, [])
+                rule_file.unlink()
+                try:
+                    after = core.plan("a" * 40, [])
+                    core._validate_plan(original)
+                except core.EvidenceError as error:
+                    check("T093 original rule identity and plan remain verifiable " + autocrlf,
+                          False, str(error))
+                else:
+                    check("T093 original rule identity and plan remain verifiable " + autocrlf,
+                          after == original and after["rule_sha256"] == expected)
+                check("T093 historical read does not republish the management file " + autocrlf,
+                      not rule_file.exists())
+        missing = Path(temporary) / "missing" / "bench"
+        missing.mkdir(parents=True)
+        with patch.object(core, "HERE", missing):
+            try:
+                core._bindings()
+            except core.EvidenceError:
+                check("T093 unavailable historical objects fail closed", True)
+            else:
+                check("T093 unavailable historical objects fail closed", False)
+        with patch.object(core, "HERE", view / "bench"), patch.object(
+                subprocess, "run", return_value=subprocess.CompletedProcess([], 0, b"corrupt", b"")):
+            try:
+                core._bindings()
+            except core.EvidenceError:
+                check("T093 an invalid object response cannot become rule evidence", True)
+            else:
+                check("T093 an invalid object response cannot become rule evidence", False)
+    check("T093 the W40 scientific rule is unchanged",
+          core.RULES == {"age_hours": 24, "reserve_usd": 5000, "days": 30, "unsafe_tokens": 18})
+
+
 def main():
     print("=" * 68)
     print("The frozen dataset can re-derive its own labels")

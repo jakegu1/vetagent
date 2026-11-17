@@ -215,6 +215,114 @@ def test_the_guard_actually_catches_the_thing():
           str(list(FORBIDDEN)[:1]))
 
 
+_PRIVATE_PUBLIC_PATHS = {
+    "AGENTS.md", "CLAUDE.md", ".mcp.json", "docs/OWNER.md", "docs/STRATEGY.md",
+    "docs/OPPORTUNITIES.md", "docs/HANDOFF.md", "docs/AUDIT_BRIEF.md",
+    "docs/answers2.txt", "docs/OPENAI_SUBMISSION.md", "docs/BACKLOG.md", "docs/ROUNDS.md",
+    "tools/owner.py", "tools/rounds.py", "tests/test_owner_page.py",
+    "tests/test_gates_get_reviewed.py", "tests/test_experiment_d_deadline.py",
+    "tests/test_backlog.py", "tests/test_rounds.py",
+}
+_PRIVATE_ORIGINAL_BLOBS = {
+    "bc45cb1ececc2e33cff6944f9426fd04f2ec7d09", "6dc7b15fda606cfa864e5dc7e1538b9214381caa",
+    "15dff02aa566acf2cca4ccc10248afd1c0f37d4c", "939f40e034a2faa3e6cde41b3a6d5b8ddbed8851",
+    "6ba4a388d88fe24b7231428574a74ba297de1666", "0bfde42821c6189968cd32b03f758e44018f48e1",
+    "4c5ac8f64a588f2f9c6605bc4f51afa3d504d0b1", "04b559f900516baa9881e9c20f8fca6c9fa75b67",
+    "c13302a607fe9225556b49ad96ca8c0908686aad", "38f6fb312b770709151aeb534362559805b2351d",
+    "f7df228789ad53fea8531c4b1e3abbd6d725bbbd", "ca444f0e99ed8a26894a4d3769d49f7685930c28",
+    "f37e0d8a056cd7004c21406de842779424995403", "dd531c0b9a93463b0905242209d59af1e274f66a",
+}
+
+
+def _private_public_path(path):
+    return (path in _PRIVATE_PUBLIC_PATHS or path.startswith((".claude/", ".codex/"))
+            or (path.startswith("lead/") and path != "lead/checks.py"))
+
+
+def test_publication_boundary_keeps_controls_but_not_management():
+    files = set(tracked_files())
+    forbidden = sorted(p for p in files if _private_public_path(p))
+    check("T093 no internal management or local agent configuration is tracked",
+          not forbidden, ", ".join(forbidden))
+    required = {"lead/checks.py", "docs/AGENT-INTEGRATION.md", "plugin/.mcp.json",
+                "plugin/README.md", "plugin/skills/vet-token/SKILL.md",
+                "tools/no_untagged_probe.py", "tests/test_probe_guard.py",
+                "tests/test_deploy_gate.py", "tests/test_decisions_enforcement.py"}
+    check("T093 public integration and safety entry points remain tracked",
+          required <= files, str(sorted(required - files)))
+    copies = []
+    for rel in sorted(files):
+        path = os.path.join(ROOT, rel)
+        if not os.path.isfile(path):
+            continue
+        with open(path, "rb") as handle:
+            raw = handle.read().replace(b"\r\n", b"\n")
+        blob = hashlib.sha1(b"blob " + str(len(raw)).encode("ascii") + b"\0" + raw).hexdigest()
+        if blob in _PRIVATE_ORIGINAL_BLOBS:
+            copies.append(rel)
+    check("T093 original management bodies were not republished under another filename",
+          not copies, ", ".join(copies))
+    check("T093 boundary distinguishes product plugin files from local settings",
+          _private_public_path(".claude/settings.json")
+          and _private_public_path("lead/tasks/example.md")
+          and not _private_public_path("plugin/.mcp.json")
+          and not _private_public_path("lead/checks.py"))
+
+
+def test_public_regeneration_does_not_recreate_management_pages():
+    import runpy
+    import tempfile
+    from pathlib import Path
+    support = runpy.run_path(os.path.join(ROOT, "tests/test_bot_commits_stay_green.py"))
+    bash, folders, why = support["_find_bash"]()
+    check("T093 regeneration uses an available native shell", bash is not None, why or "")
+    if bash is None:
+        return
+    environment = support["_no_git_vars"]()
+    environment["PATH"] = os.pathsep.join(folders + [environment.get("PATH", "")])
+    script = Path(ROOT, ".github/scripts/regenerate-derived.sh").read_bytes()
+    with tempfile.TemporaryDirectory(prefix="publication-regeneration-") as temporary:
+        folder = Path(temporary)
+        for child in ("bench", "tools", "docs"):
+            (folder / child).mkdir()
+        subprocess.run(["git", "init", "--quiet"], cwd=folder, check=True,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        (folder / "regenerate.sh").write_bytes(script)
+        for name in ("scorecard", "publish_numbers"):
+            (folder / "bench" / (name + ".py")).write_text("pass\n", encoding="utf-8")
+        for name, page in (("owner", "OWNER"), ("rounds", "ROUNDS")):
+            (folder / "tools" / (name + ".py")).write_text(
+                "from pathlib import Path\nPath('docs/%s.md').write_text('private marker')\n" % page,
+                encoding="utf-8")
+        result = subprocess.run([bash, "--noprofile", "--norc", "regenerate.sh", "regenerate"],
+                                cwd=folder, env=environment, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, timeout=30)
+        check("T093 ordinary regeneration still succeeds", result.returncode == 0)
+        check("T093 ordinary regeneration never invokes retired management generators",
+              not (folder / "docs/OWNER.md").exists() and not (folder / "docs/ROUNDS.md").exists())
+
+
+def test_current_public_markdown_links_have_public_targets():
+    from urllib.parse import unquote
+    import posixpath
+    files = set(tracked_files())
+    missing = []
+    for rel in sorted(p for p in files if p.endswith(".md") and not _private_public_path(p)):
+        with open(os.path.join(ROOT, rel), encoding="utf-8") as handle:
+            body = handle.read()
+        for target in re.findall(r"\[[^\]\n]*\]\(([^)\s]+)(?:\s+[^)]*)?\)", body):
+            target = unquote(target.strip("<>").split("#", 1)[0])
+            if not target or ":" in target or target.startswith("//"):
+                continue
+            resolved = posixpath.normpath(posixpath.join(posixpath.dirname(rel), target))
+            if (resolved not in files and not any(p.startswith(resolved.rstrip("/") + "/") for p in files)):
+                missing.append((rel, target))
+            elif _private_public_path(resolved):
+                missing.append((rel, target))
+    check("T093 current public Markdown links resolve to retained public content", not missing,
+          str(missing))
+
+
 def main():
     print("=" * 68)
     print("W13: private identifiers stay out of the public repository")

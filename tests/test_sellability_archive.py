@@ -4813,6 +4813,72 @@ def test_t088_sellability_failure_preserves_only_fixed_fetch_metadata():
               and "fixture-" not in raw)
 
 
+def _pool_archive_days():
+    """The original filename-only archive reader, independent of any management page."""
+    import datetime
+    folder = os.path.join(ROOT, "bench", "snapshots")
+    if not os.path.isdir(folder):
+        return [], []
+    days = sorted(f[len("pools-"):-len(".ndjson")] for f in os.listdir(folder)
+                  if f.startswith("pools-") and f.endswith(".ndjson"))
+    if not days:
+        return [], []
+    first = datetime.date(*[int(x) for x in days[0].split("-")])
+    last = datetime.date(*[int(x) for x in days[-1].split("-")])
+    have, missing, day = set(days), [], first
+    while day <= last:
+        if day.isoformat() not in have:
+            missing.append(day.isoformat())
+        day += datetime.timedelta(days=1)
+    return days, missing
+
+
+def test_pool_archive_continuity_and_freshness():
+    """Retain the original three collection checks when management pages move private."""
+    import datetime
+    days, missing = _pool_archive_days()
+    check("the archive has days in it at all", bool(days), "no pools-*.ndjson found")
+    if not days:
+        return
+    check("no day is missing between the first and the last", not missing,
+          "GONE FOREVER: %s" % ", ".join(missing))
+    last = datetime.date(*[int(x) for x in days[-1].split("-")])
+    age = (datetime.date.today() - last).days
+    check("the newest snapshot is not stale", age <= 2,
+          "newest is %s, %d days old -- the collector has stopped" % (days[-1], age))
+
+
+def test_pool_archive_guard_detects_empty_missing_and_stale_inputs():
+    import datetime
+    from pathlib import Path
+    import tempfile
+    from unittest.mock import patch
+
+    class FixedDate(datetime.date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 11, 17)
+
+    cases = (
+        ("empty", [], [False]),
+        ("missing", ["2026-11-15", "2026-11-17"], [True, False, True]),
+        ("stale", ["2026-11-13", "2026-11-14"], [True, True, False]),
+        ("two-day boundary", ["2026-11-14", "2026-11-15"], [True, True, True]),
+    )
+    for name, days, expected in cases:
+        with tempfile.TemporaryDirectory(prefix="archive-continuity-") as temporary:
+            folder = Path(temporary) / "bench/snapshots"
+            folder.mkdir(parents=True)
+            for day in days:
+                (folder / ("pools-" + day + ".ndjson")).write_bytes(b"")
+            observed = []
+            with patch.dict(globals(), {"ROOT": temporary,
+                    "check": lambda _name, ok, _detail="": observed.append(bool(ok))}), \
+                    patch.object(datetime, "date", FixedDate):
+                test_pool_archive_continuity_and_freshness()
+            check("T093 real archive guard detects " + name, observed == expected, str(observed))
+
+
 def main():
     print("=" * 68)
     print("Sellability archive: asking on the day, because later is too late")
