@@ -703,6 +703,8 @@ _CATEGORY_WEIGHT = {
     # must not enter the ablation column. Measured as `warn` before it was committed: it
     # carried three of 34 live Solana mints from `unknown` to a confident `high`.
     "coverage": 0.0,
+    # A market return is information, not evidence of contract safety.
+    "price_movement": 0.0,
 }
 
 # Dimensions whose absence is disqualifying: miss one and the answer must be unknown.
@@ -935,7 +937,7 @@ def _finalize(address, signals, evidence, data_gaps):
             "simulated. Every legitimate token clears at least one of those.",
             "no_liquidity"))
 
-    total = len(signals)
+    total = sum(s["category"] != "price_movement" for s in signals)
     has_liquidity = any(s["category"] in ("liquidity", "no_liquidity") for s in signals)
     # `drained` is sellability evidence for the purpose of confidence -- "there is nothing
     # to sell into" is the strongest sellability statement there is. It carries its own
@@ -2033,7 +2035,7 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
                 "Down %.0f%% in 24h. Reported, not scored: a falling price is not by "
                 "itself a safety finding, and this tool does not judge investments. "
                 "Check it against the liquidity and sell figures above."
-                % abs(change_24h), "lifecycle"))
+                % abs(change_24h), "price_movement"))
 
     if liq > 0:
         # Over the token's pools on this chain, not the one picked. Trading moves to the
