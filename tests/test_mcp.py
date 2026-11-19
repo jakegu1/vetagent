@@ -2134,6 +2134,53 @@ def _t090_overlap():
                 {"data": [_t031_pool("2"), _t031_pool("2"), _t031_pool("3")]})}
 
 
+def test_discovery_reports_disjoint_trade_counts_on_the_selected_pool():
+    limit = 2**53 - 1
+    def windows(last_buys, last_sells, six_buys, six_sells):
+        return {"h1": {"buys": last_buys, "sells": last_sells},
+                "h6": {"buys": six_buys, "sells": six_sells}}
+
+    readings = [
+        (windows(2, 3, 11, 13), {"trades_last_1h": 5, "trades_prior_5h": 19}),
+        (windows(0, 0, 0, 0), {"trades_last_1h": 0, "trades_prior_5h": 0}),
+        (windows(0, 0, limit, 0), {"trades_last_1h": 0, "trades_prior_5h": limit}),
+        (None, None), ([], None), ({"h1": {}, "h6": {"sells": 0}}, None),
+        (windows(2, 3, 1, 20), None), (windows(3, 2, 20, 1), None),
+        (windows(True, 0, 1, 0), None), (windows(0, -1, 0, 0), None),
+        (windows(0, 0, "8", 0), None), (windows(0, 0, 0, 1.5), None),
+        (windows(0, 0, limit + 1, 0), None), (windows(limit, 1, limit, 1), None),
+        (windows(0, 0, limit, 1), None),
+    ]
+    rows = []
+    for i, (reading, _) in enumerate(readings):
+        row = _t031_pool(str(i))
+        row["attributes"]["transactions"] = reading
+        rows.append(row)
+    args = {"chain": "ethereum", "limit": len(rows), "listing": "trending"}
+    outcomes = {("geckoterminal", "trending"): _t031_reply({"data": rows})}
+    for interface in ("mcp", "http"):
+        status, _, data, state = _t090_route(interface, args, outcomes)
+        pools = data.get("pools", [])
+        check("observing optional trade counts keeps every pool in provider order",
+              status == 200 and data.get("status") == "ok"
+              and [p["pool_id"] for p in pools] == [r["id"] for r in rows]
+              and _t031_trace(state) == [("geckoterminal", "trending")])
+        check("only consistent same-pool counts yield two exact disjoint windows",
+              [p.get("trade_activity") for p in pools] == [expected for _, expected in readings]
+              and all("trade_activity" not in p for p, (_, expected) in zip(pools, readings)
+                      if expected is None))
+
+    tools = call({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})["result"]["tools"]
+    schema = next(t for t in tools if t["name"] == "find_new_hot_pools")["outputSchema"]
+    item = schema["properties"]["pools"]["items"]
+    activity = item["properties"].get("trade_activity", {})
+    fields = {"trades_last_1h", "trades_prior_5h"}
+    check("tools/list declares both integer windows on an optional activity object",
+          "trade_activity" not in item["required"] and activity.get("type") == "object"
+          and set(activity.get("required", [])) == fields and all(
+              activity.get("properties", {}).get(k, {}).get("type") == "integer" for k in fields))
+
+
 def test_t090_selected_listing_reaches_real_http_and_mcp_before_limit():
     for interface in ("http", "mcp"):
         args = {"chain": "ethereum", "limit": 2}
