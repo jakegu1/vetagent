@@ -1,5 +1,5 @@
 {
- "engine_paths": 132,
+ "engine_paths": 136,
  "measured_utc": "2026-11-16T16:22:33Z",
  "rule": {
   "min_for_share": 8,
@@ -555,6 +555,16 @@
      ],
      "value": 0.875
     },
+    "simulationResult.maxSell": {
+     "key": 0.0,
+     "types": [],
+     "value": 0.0
+    },
+    "simulationResult.maxSell.tokenWei": {
+     "key": 0.0,
+     "types": [],
+     "value": 0.0
+    },
     "simulationResult.sellTax": {
      "key": 0.875,
      "types": [
@@ -622,6 +632,20 @@
      "key": 1.0,
      "types": [
       "int"
+     ],
+     "value": 1.0
+    },
+    "withToken": {
+     "key": 1.0,
+     "types": [
+      "dict"
+     ],
+     "value": 1.0
+    },
+    "withToken.address": {
+     "key": 1.0,
+     "types": [
+      "str"
      ],
      "value": 1.0
     }
