@@ -149,7 +149,10 @@ _ASSESS_OUTPUT_SCHEMA = {
             "pool_link": {"type": "string", "enum": ["same", "different", "unknown"],
                            "description": "Correspondence between the final displayed market and the "
                                           "source-reported venue of the adopted simulator response. "
-                                          "This is not simulation success, safety, or wallet/amount-specific executability."},
+                                          "same/different compare those identities; unknown means the comparison "
+                                          "could not be established. The discovered or alerted pool is not compared. "
+                                          "Even same does not establish simulation success, safety, or "
+                                          "wallet/amount-specific executability."},
             "pool_link_details": _POOL_SCOPE_DETAILS_SCHEMA,
             "max_sell": {
                 "type": "object",
@@ -227,6 +230,10 @@ TOOLS = [
             "'coverage' comes with 'abstain'. "
             "'confidence' measures how "
             "complete the input data was, not how safe the token is.\n"
+            "evidence.pool_link compares the final displayed market with the source-reported "
+            "pool of the adopted simulator response. same/different describe those identities; "
+            "unknown means the comparison could not be established. This does not compare a "
+            "discovered or alerted pool, and same does not establish a successful simulation.\n"
             "Reports observable on-chain risk only. Not financial advice, does not size "
             "positions, and cannot see off-chain risk such as team behaviour, social "
             "engineering, or a rug executed through governance. Treat 'low' as 'no fatal "
@@ -334,7 +341,10 @@ TOOLS = [
             "preference, not a strict chain lock: the engine may report another observed chain. "
             "Before using the result for this target, require evidence.chain_searched to match "
             "assessment_args.chain_hint. Assessment may select a different primary pool. It does not certify "
-            "the exact discovered pool or authorize a trade."
+            "the exact discovered pool or authorize a trade. evidence.pool_link compares the final "
+            "displayed market with the source-reported pool of the adopted simulator response, "
+            "not the discovered or alerted pool. same does not prove that the discovered pool "
+            "was simulated or that any simulation succeeded."
         ),
         "inputSchema": {
             "type": "object",
@@ -413,7 +423,15 @@ TOOLS = [
                     "items": {
                         "type": "object",
                         "properties": {
-                            "pool_id": {"type": "string"},
+                            "pool_id": {
+                                "type": "string",
+                                "description": "Valid 20-byte/32-byte EVM or Solana base58 pool IDs remain "
+                                               "complete, preserving case and any matching network prefix. "
+                                               "Other values retain escaped display text capped at 64 input "
+                                               "characters plus an ellipsis; they are not complete identities. "
+                                               "This identifies the discovered pool, not the assessment's "
+                                               "selected market or simulator venue.",
+                            },
                             "name": {"type": "string"},
                             "token_address": {
                                 "type": "string",

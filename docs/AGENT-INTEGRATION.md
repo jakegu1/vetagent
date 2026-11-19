@@ -115,6 +115,12 @@ Inspect `pool_age_days`, current `liquidity_usd` and `volume_24h_usd`; missing v
 unknown. Trending, age and one liquidity observation do not establish sustained funding,
 exit availability or safety. Discovery adds no assessment or ranking.
 
+For valid EVM pool addresses (20 bytes), EVM pool IDs (32 bytes), and Solana base58
+pool addresses, each row's `pool_id` retains the complete value, case and matching
+network prefix supplied by the listing. Other values keep the existing escaped
+display limit of 64 input characters plus an ellipsis; treat them as display text,
+not complete identities. A pool ID identifies the discovered pool, not its base token.
+
 Each usable `find_new_hot_pools` row includes `assessment_args`, containing exactly
 `address` and the canonical `chain_hint` of the selected discovery network. Pass this
 object unchanged as the arguments to `assess_token_risk`, preserving the selected
@@ -196,8 +202,12 @@ contribute to the existing score.
 
 `evidence.pool_link` is `same`, `different`, or `unknown` in both assessment modes.
 It compares the final displayed market with the venue declared by the simulator response
-the engine retained. It does not assert a successful simulation, safety, or an exit for a
-particular wallet or amount. A failed simulation can still identify its venue; read
+the engine retained. `same` means those chain/pool identities match; `different` means the
+comparable identities differ; `unknown` means the comparison could not be established.
+The discovered or alerted pool is not a comparison input. Even when `pool_link` is `same`,
+that discovered pool may differ from both the displayed market and the simulator's venue.
+It does not establish that the discovered pool was simulated, a successful simulation,
+safety, or an exit for a particular wallet or amount. A failed simulation can still identify its venue; read
 `evidence.honeypot.simulation_success` separately.
 
 With `verbose=true`, `evidence.pool_link_details` distinguishes the market, the source's
@@ -218,8 +228,9 @@ a retry can report the requested pool while `pool_link` is `different` from the 
 Comparisons use complete validated identities before display truncation. EVM hex case does
 not distinguish identities; conflicting aliases or absent chain declarations never prove
 `same`, and requested/hinted identity does not fill a missing source declaration. Display
-IDs retain the 48-character limit plus an ellipsis. Equal truncated strings are not enough
-to establish exact identity across responses.
+IDs for the assessment's market and request retain the 48-character limit plus an ellipsis.
+This limit does not apply to the valid complete discovery pool IDs described above.
+Equal truncated strings are not enough to establish exact identity across responses.
 
 `get_token_liquidity` adds `best_pair_address` only when an `ok` result has a selected pool
 ID. `source` is the data provider; `best_pair_dex` is the trading venue. This tool does not

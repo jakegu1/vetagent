@@ -5112,6 +5112,13 @@ def _pool_trade_activity(transactions):
     return {"trades_last_1h": last_hour, "trades_prior_5h": prior_five}
 
 
+def _discovery_pool_id(value, net):
+    """Preserve bounded complete identities; other input keeps the escaped display limit."""
+    if isinstance(value, str) and _validated_pool_id(value.removeprefix(net + "_")):
+        return value
+    return _ascii_safe(value, 64)
+
+
 def _parse_new_pool_listing(data, net, kind):
     """Parse one complete listing before any of its rows are merged."""
     if (not isinstance(data, dict) or _is_error_body(data)
@@ -5131,7 +5138,7 @@ def _parse_new_pool_listing(data, net, kind):
         if base_id.startswith(net + "_"):
             base_id = base_id[len(net) + 1:]
         parsed[pid] = {
-            "kind": kind, "pool_id": _ascii_safe(pid, 64),
+            "kind": kind, "pool_id": _discovery_pool_id(pid, net),
             "token_address": _ascii_safe(base_id, 64),
             "name": _ascii_safe(a.get("name"), 48),
             "price_usd": _market_round(a.get("base_token_price_usd")),
