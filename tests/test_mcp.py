@@ -2972,6 +2972,23 @@ def test_price_change_attribution_disclosure_does_not_count_as_safety_evidence()
                       and any(g["dimension"] == "sellability" for g in gaps))
 
 
+def test_price_change_attribution_disclosure_alone_remains_unknown():
+    import test_risk as fixtures
+    raw = fixtures._load("gt_weth_anchor_pools.json")["data"][0]
+    raw["attributes"]["price_change_percentage"]["h24"] = "-62"
+    pair = risk._gt_to_pair(raw, fixtures.WETH, "eth")
+    emitted = []
+    risk._liquidity_signals(pair, [pair], emitted, {}, target=fixtures.WETH)
+    price_only = [s for s in emitted if s["name"] == "Price is sharply down today"]
+    empty = risk._finalize(fixtures.WETH, [], {}, [])
+    answer = risk._finalize(fixtures.WETH, price_only, {}, [])
+    check("A real emitted price note is still visible without safety observations", len(price_only) == 1
+          and answer["signals"] == price_only)
+    stripped = copy.deepcopy(answer)
+    stripped["signals"] = []
+    check("A price note alone preserves the exact unknown empty-evidence response", stripped == empty)
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
