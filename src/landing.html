@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VetAgent — Pre-trade token risk check for AI agents</title>
-<meta name="description" content="An MCP server that checks a crypto token for honeypots and extraction taxes on Ethereum, BSC and Base, and for thin liquidity and same-ticker impersonation on all eight chains it accepts, before an AI agent buys it. Free, no auth, remote endpoint at https://vetagent.dev/mcp. Publishes its own measured false-positive rate.">
+<meta name="description" content="Check token risk across 8 chains. Sell simulations cover Ethereum, BSC and Base. No API key.">
 <link rel="canonical" href="https://vetagent.dev/">
 <meta property="og:title" content="VetAgent — Pre-trade token risk check for AI agents">
-<meta property="og:description" content="Your agent reads an address and buys. This is the brake. Honeypot simulation and extraction taxes on Ethereum, BSC and Base; liquidity depth and impersonation checks on all eight chains — over MCP, with a published, reproducible error rate.">
+<meta property="og:description" content="Check token risk across 8 chains. Sell simulations cover Ethereum, BSC and Base. No API key.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://vetagent.dev/">
 <meta property="og:site_name" content="VetAgent">
@@ -136,10 +136,11 @@
   <div class="brand"><span class="tag">MCP</span><strong style="color:var(--txt);font-size:16px">VetAgent</strong>
     <span>token risk intelligence</span></div>
   <h1>Your agent reads an address and buys.<br>This is the brake.</h1>
-  <p class="sub">A pre-trade safety check for AI agents. One call before buying, holding or
-  recommending a token — honeypot simulation and extraction taxes on Ethereum, BSC and Base,
-  liquidity depth and same-ticker impersonation on all eight chains —
-  and a verdict you can act on instead of forty fields to interpret.</p>
+  <p class="sub">Check a token address before acting on a pool alert. VetAgent reports liquidity
+  across eight chains. On Ethereum, BSC and Base, it reports available sell-simulation and tax
+  evidence and whether the simulation matches the displayed pool. On Solana it checks token
+  authorities and liquidity. An unavailable sell check is disclosed. Try one address over MCP
+  or HTTP without an API key.</p>
   <div class="pills">
     <span class="pill">Free · no API key</span>
     <span class="pill">Remote MCP · nothing to install</span>
@@ -184,19 +185,24 @@
   <div class="url">https://vetagent.dev/mcp</div>
   <h3>Claude Code</h3>
   <pre><code>claude mcp add --transport http vetagent https://vetagent.dev/mcp</code></pre>
-  <h3>Claude Desktop · Cursor · any MCP client</h3>
+  <h3>Claude Desktop</h3>
+  <p>Open <strong>Customize → Connectors</strong>, choose <strong>Add custom connector</strong>,
+    and enter <code>https://vetagent.dev/mcp</code>. Choose <strong>No sign in</strong> if asked.
+    Enable the connector in your conversation. Organization-managed workspaces may need an owner
+    to add it first. <a href="https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp">Claude's remote connector guide</a>.</p>
+  <h3>Cursor</h3>
+  <p>Add this to your project's <code>.cursor/mcp.json</code>, merging with existing servers:</p>
   <pre><code>{
   "mcpServers": {
-    "vetagent": { "type": "http", "url": "https://vetagent.dev/mcp" }
+    "vetagent": { "url": "https://vetagent.dev/mcp" }
   }
 }</code></pre>
-  <h3>Plain HTTP, no MCP</h3>
+  <h3>Plain HTTP</h3>
   <pre><code>curl https://vetagent.dev/assess/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2?chain_hint=ethereum</code></pre>
   <section class="listing-links" aria-label="Directory listings and protocol checks">
     <p><strong>Find and connect:</strong>
       <a href="https://registry.modelcontextprotocol.io/v0.1/servers/dev.vetagent%2Fvetagent/versions/latest">MCP Registry</a>,
-      <a href="https://glama.ai/mcp/connectors/dev.vetagent/vetagent">Glama</a>,
-      <a href="https://smithery.ai/servers/jake-gu95/vetagent">Smithery</a>.
+      <a href="https://glama.ai/mcp/connectors/dev.vetagent/vetagent">Glama</a>.
     </p>
     <p><strong>Protocol checks:</strong>
       <a href="https://sealkeeper.run/agents/vetagent.dev/vetagent-dev">SealKeeper</a>,

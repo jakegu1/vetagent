@@ -1,8 +1,8 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "dev.vetagent/vetagent",
-  "description": "Pre-trade safety check for AI agents: honeypot, tax, liquidity and rug risk before you buy.",
-  "version": "0.2.0",
+  "description": "Check token risk across 8 chains. Sell simulations cover Ethereum, BSC and Base. No API key.",
+  "version": "0.2.1",
   "repository": {
     "url": "https://github.com/jakegu1/vetagent",
     "source": "github"

@@ -296,9 +296,13 @@ def coverage_cells():
 CHANNELS = [
     # Live, verified 2026-09-08 by opening each listing.
     ("Official MCP Registry", True),            # dev.vetagent/vetagent
-    ("PulseMCP (auto-synced from registry)", True),
+    # Historical listing verified 2026-09-08; not currently verified on 2026-11-19.
+    # No permalink was recovered from search/history. This does not prove removal.
+    ("PulseMCP (auto-synced from registry)", False),
     ("Glama", True),                            # connector, "Ownership verified"
-    ("Smithery", True),                         # "Published Sep 7, 2026"
+    # Historical record: "Published Sep 7, 2026". Existing listing returned HTTP 404
+    # on 2026-11-19. Keep the channel in the denominator, but remove current credit.
+    ("Smithery", False),
     # Submitted and waiting. See docs/HANDOFF.md for the issue and PR numbers.
     ("mcp.so", False),                          # chatmcp/mcpso#3987
     # Live, verified 2026-09-09 by opening it: https://mcpservers.org/en/servers/vetagent-dev
@@ -593,9 +597,15 @@ def render(items, facts):
     A("| Channel | Listed |")
     A("|---|---|")
     for name, ok in CHANNELS:
-        A("| %s | %s |" % (name, cell(ok)))
-    A("\n`⬜` = not listed, and for six of these a submission is already open: **submitted "
-      "is not listed.** `➖ n/a` = the channel cannot apply to this product, on the "
+        status = cell(ok)
+        if name == "PulseMCP (auto-synced from registry)":
+            status += " historical listing; not currently verified (2026-11-19)"
+        elif name == "Smithery":
+            status += " existing listing returned HTTP 404 (2026-11-19)"
+        A("| %s | %s |" % (name, status))
+    A("\n`⬜` = no currently verified listing; an unverified historical listing is not "
+      "proof of removal. **Submitted is not listed.** These channels remain in the "
+      "denominator. `➖ n/a` = the channel cannot apply to this product, on the "
       "maintainer's own statement, so it leaves the denominator.")
 
     A("\n---\n")

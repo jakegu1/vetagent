@@ -12,23 +12,39 @@ and `2024-11-05`).
 
 ## Add it to a client
 
-Most clients take the same shape:
+### Claude Code
+
+```bash
+claude mcp add --transport http vetagent https://vetagent.dev/mcp
+```
+
+### Claude Desktop
+
+Open **Customize → Connectors**, choose **Add custom connector**, and enter
+`https://vetagent.dev/mcp`. Choose **No sign in** if asked, then enable the connector
+in your conversation. An organization owner may need to add it first in a managed
+workspace. See [Claude's remote connector guide](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
+
+### Cursor
+
+Add this to your project's `.cursor/mcp.json`, merging with existing servers:
 
 ```json
 {
   "mcpServers": {
     "vetagent": {
-      "type": "http",
       "url": "https://vetagent.dev/mcp"
     }
   }
 }
 ```
 
-Claude Code, one line:
+### Plain HTTP
+
+The same engine answers without an MCP client. Include the chain when you know it:
 
 ```bash
-claude mcp add --transport http vetagent https://vetagent.dev/mcp
+curl 'https://vetagent.dev/assess/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2?chain_hint=ethereum'
 ```
 
 ## Confirm it works

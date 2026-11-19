@@ -4,7 +4,12 @@ VetAgent is a **token risk intelligence MCP server** for AI agents. Before an ag
 
 > **`unknown` is a verdict, not an error.** It means a critical check could not run. It is **not** a low-risk result and must never be used to justify a trade. The server is fail-closed on purpose: an agent acting on a confident wrong answer is worse than one that reads "I could not tell".
 
-> ⚠️ Intelligence aid only. **Not investment advice.** Data comes from public on-chain/exchange sources. Liquidity figures are indicative (not true TAM of capital); honeypot check covers EVM only.
+> ⚠️ Intelligence aid only. **Not investment advice.** Data comes from public on-chain/exchange sources. Liquidity figures are indicative (not true TAM of capital); sell simulations cover Ethereum, BSC and Base.
+
+VetAgent reports liquidity across eight chains. On Ethereum, BSC and Base, it reports
+available sell-simulation and tax evidence and whether the simulation matches the
+displayed pool. On Solana it checks token authorities and liquidity. An unavailable
+sell check is disclosed.
 
 ---
 
@@ -18,20 +23,40 @@ Connect directly over MCP-over-HTTP to the endpoint:
 https://vetagent.dev/mcp
 ```
 
-### Claude Desktop / Claude Code config
-Add to your `claude_desktop_config.json` (or MCP config):
+### Claude Code
+
+```bash
+claude mcp add --transport http vetagent https://vetagent.dev/mcp
+```
+
+### Claude Desktop
+
+Open **Customize → Connectors**, choose **Add custom connector**, and enter
+`https://vetagent.dev/mcp`. Choose **No sign in** if asked, then enable the connector
+in your conversation. An organization owner may need to add it first in a managed
+workspace. See [Claude's remote connector guide](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
+
+### Cursor
+
+Add this to your project's `.cursor/mcp.json`, merging with existing servers:
+
 ```json
 {
   "mcpServers": {
     "vetagent": {
-      "type": "http",
       "url": "https://vetagent.dev/mcp"
     }
   }
 }
 ```
 
-Any MCP client (Cursor, opencode, custom agent) works the same way.
+### Plain HTTP
+
+The same engine answers without an MCP client. Include the chain when you know it:
+
+```bash
+curl 'https://vetagent.dev/assess/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2?chain_hint=ethereum'
+```
 
 ---
 

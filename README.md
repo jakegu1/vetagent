@@ -1,6 +1,5 @@
 # VetAgent
 
-[![smithery badge](https://smithery.ai/badge/jake-gu95/vetagent)](https://smithery.ai/servers/jake-gu95/vetagent)
 [![MCP registry](https://img.shields.io/badge/MCP%20registry-dev.vetagent%2Fvetagent-3FBFAA)](https://registry.modelcontextprotocol.io/)
 [![vetagent MCP connector – tool definition quality and endpoint health on Glama](https://glama.ai/mcp/connectors/dev.vetagent/vetagent/badges/score.svg)](https://glama.ai/mcp/connectors/dev.vetagent/vetagent)
 [![License: MIT](https://img.shields.io/badge/License-MIT-3FBFAA)](LICENSE)
@@ -8,6 +7,12 @@
 **A pre-trade safety check for AI agents.** Before an agent buys, holds, or recommends
 a token, it calls VetAgent and gets an actionable verdict — `low` / `medium` / `high` /
 `unknown` — plus the specific signals behind it, instead of a wall of numbers to interpret.
+
+Check a token address before acting on a pool alert. VetAgent reports liquidity across
+eight chains. On Ethereum, BSC and Base, it reports available sell-simulation and tax
+evidence and whether the simulation matches the displayed pool. On Solana it checks
+token authorities and liquidity. An unavailable sell check is disclosed. Try one
+address over MCP or HTTP without an API key.
 
 Remote MCP endpoint: **`https://vetagent.dev/mcp`** · Landing page: **https://vetagent.dev**
 Using it, or think it got a token wrong? **hello@vetagent.dev** — or open an issue.
@@ -34,35 +39,50 @@ Using it, or think it got a token wrong? **hello@vetagent.dev** — or open an i
 Nothing to install. It is a remote server: no package, no container, no API key, no
 signup. Add one URL.
 
-Claude Code:
+### Claude Code
 
 ```bash
 claude mcp add --transport http vetagent https://vetagent.dev/mcp
 ```
 
-Cline, Cursor, Claude Desktop, or any other MCP client — add to the MCP config:
+### Claude Desktop
+
+Open **Customize → Connectors**, choose **Add custom connector**, and enter
+`https://vetagent.dev/mcp`. Choose **No sign in** if asked, then enable the connector
+in your conversation. An organization owner may need to add it first in a managed
+workspace. See [Claude's remote connector guide](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
+
+### Cursor
+
+Add this to your project's `.cursor/mcp.json`, merging with existing servers:
 
 ```json
 {
   "mcpServers": {
     "vetagent": {
-      "type": "http",
       "url": "https://vetagent.dev/mcp"
     }
   }
 }
 ```
 
-Confirm it worked — three tools should come back:
+### Plain HTTP
+
+The same engine answers without an MCP client. Include the chain when you know it:
+
+```bash
+curl 'https://vetagent.dev/assess/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2?chain_hint=ethereum'
+```
+
+### Check the endpoint
+
+Three tools should come back:
 
 ```bash
 curl -s -X POST https://vetagent.dev/mcp \
   -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
-
-Not using MCP? The same engine answers over plain HTTP:
-`GET https://vetagent.dev/assess/<address>`
 
 See [`llms-install.md`](llms-install.md) for the version written for an agent doing the
 installing, and [`docs/AGENT-INTEGRATION.md`](docs/AGENT-INTEGRATION.md) for how to use
