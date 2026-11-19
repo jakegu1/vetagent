@@ -91,7 +91,7 @@ A risk tool that honestly says "I don't know" is useful. One that guesses is not
 |---|---|
 | `assess_token_risk(address, chain_hint?, verbose?)` | Full risk profile: liquidity depth, pair age and same-ticker impersonation on all eight chains; sellability simulation, taxes, contract permissions and upstream aggregate verdicts on Ethereum, BSC and Base; mint/freeze authority and Token-2022 extensions on Solana. On Solana, holder concentration is reported only when RugCheck supplies a holder list; missing lists remain a coverage gap. |
 | `get_token_liquidity(address, chain_hint?)` | Liquidity snapshot for the primary pair, with an explicit `status` so "upstream failed" is distinguishable from "no pools exist" |
-| `find_new_hot_pools(chain?, limit?, listing?)` | Default `mixed` scans new then trending. For active pools use `listing=trending`; inspect age, current liquidity and volume. These do not establish sustained funding, exit availability or safety. Discovery only — **not a safety endorsement** |
+| `find_new_hot_pools(chain?, limit?, listing?)` | Default `mixed` scans new then trending. For active pools use `listing=trending`. Optional `trade_activity` counts buys plus sells in the last hour and the preceding five hours for each pool. Inspect these counts alongside age, current liquidity and volume. These observations do not establish sustained funding, exit availability or safety. Discovery only — **not a safety endorsement** |
 
 Pass `chain_hint` whenever you know it. Ethereum forks such as PulseChain inherit
 contract addresses, so the same address exists on multiple chains with wildly

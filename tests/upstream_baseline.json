@@ -1,5 +1,5 @@
 {
- "engine_paths": 136,
+ "engine_paths": 142,
  "measured_utc": "2026-11-16T16:22:33Z",
  "rule": {
   "min_for_share": 8,
@@ -308,6 +308,27 @@
      ],
      "value": 0.875
     },
+    "data.[].attributes.transactions.h1": {
+     "key": 0.875,
+     "types": [
+      "dict"
+     ],
+     "value": 0.875
+    },
+    "data.[].attributes.transactions.h1.buys": {
+     "key": 0.875,
+     "types": [
+      "int"
+     ],
+     "value": 0.875
+    },
+    "data.[].attributes.transactions.h1.sells": {
+     "key": 0.875,
+     "types": [
+      "int"
+     ],
+     "value": 0.875
+    },
     "data.[].attributes.transactions.h24": {
      "key": 0.875,
      "types": [
@@ -339,6 +360,27 @@
      "value": 0.875
     },
     "data.[].attributes.transactions.h24.sells": {
+     "key": 0.875,
+     "types": [
+      "int"
+     ],
+     "value": 0.875
+    },
+    "data.[].attributes.transactions.h6": {
+     "key": 0.875,
+     "types": [
+      "dict"
+     ],
+     "value": 0.875
+    },
+    "data.[].attributes.transactions.h6.buys": {
+     "key": 0.875,
+     "types": [
+      "int"
+     ],
+     "value": 0.875
+    },
+    "data.[].attributes.transactions.h6.sells": {
      "key": 0.875,
      "types": [
       "int"

@@ -434,6 +434,17 @@ TOOLS = [
                             "price_usd": {"type": ["number", "null"]},
                             "liquidity_usd": {"type": ["number", "null"]},
                             "volume_24h_usd": {"type": ["number", "null"]},
+                            "trade_activity": {
+                                "type": "object",
+                                "description": "Buys plus sells for this pool in the last hour and the five hours "
+                                               "before it, as of the listing observation. Omitted when the provider's "
+                                               "counts are missing or inconsistent.",
+                                "properties": {
+                                    "trades_last_1h": {"type": "integer", "minimum": 0},
+                                    "trades_prior_5h": {"type": "integer", "minimum": 0},
+                                },
+                                "required": ["trades_last_1h", "trades_prior_5h"],
+                            },
                             "pool_age_days": {"type": ["integer", "null"]},
                         },
                         "required": ["pool_id", "name", "token_address", "kind"],

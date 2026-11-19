@@ -5079,6 +5079,28 @@ async def liquidity(address, chain_hint=None):
     return _disclosed(payload)
 
 
+def _pool_trade_activity(transactions):
+    """Split the provider's nested trade windows into disjoint counts for one pool."""
+    if not isinstance(transactions, dict):
+        return None
+    hour = transactions.get("h1")
+    six_hours = transactions.get("h6")
+    if not isinstance(hour, dict) or not isinstance(six_hours, dict):
+        return None
+    buys, sells = hour.get("buys"), hour.get("sells")
+    six_buys, six_sells = six_hours.get("buys"), six_hours.get("sells")
+    limit = 2**53 - 1  # Exact integer range for callers decoding JSON in JavaScript.
+    if not all(type(n) is int and 0 <= n <= limit for n in (buys, sells, six_buys, six_sells)):
+        return None
+    if six_buys < buys or six_sells < sells:
+        return None
+    last_hour = buys + sells
+    prior_five = (six_buys - buys) + (six_sells - sells)
+    if last_hour > limit or prior_five > limit:
+        return None
+    return {"trades_last_1h": last_hour, "trades_prior_5h": prior_five}
+
+
 def _parse_new_pool_listing(data, net, kind):
     """Parse one complete listing before any of its rows are merged."""
     if (not isinstance(data, dict) or _is_error_body(data)
@@ -5106,6 +5128,9 @@ def _parse_new_pool_listing(data, net, kind):
             "volume_24h_usd": _market_round((a.get("volume_usd") or {}).get("h24")),
             "pool_age_days": _age_days(a.get("pool_created_at")),
         }
+        activity = _pool_trade_activity(a.get("transactions"))
+        if activity is not None:
+            parsed[pid]["trade_activity"] = activity
     return parsed
 
 
