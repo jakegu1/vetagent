@@ -376,6 +376,17 @@ def test_registry_description_states_the_approved_chain_boundary():
           and server.get("remotes") == [{"type": "streamable-http", "url": "https://vetagent.dev/mcp"}])
 
 
+def test_copied_requests_and_client_confirmation_are_accurate():
+    landing = read("src/landing.html")
+    check("the landing HTTP URL is quoted for shells with query globbing",
+          re.search(r"curl ['\"]https://vetagent\.dev/assess/[^'\"\n]+\?chain_hint=[^'\"\n]+['\"]",
+                    landing) is not None)
+    install = read("llms-install.md").lower()
+    check("endpoint access alone is not a completed client installation",
+          "installation is done" not in install and "endpoint access" in install
+          and "your chosen client" in install and "tools appear" in install)
+
+
 def test_current_install_guides_use_client_specific_remote_paths():
     endpoint = "https://vetagent.dev/mcp"
     for path in ("src/landing.html", "src/pages.py", "README.md",
