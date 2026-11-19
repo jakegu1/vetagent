@@ -345,6 +345,64 @@ class _LandingDemo(HTMLParser):
 
 # --------------------------------------------------------------------- tests
 
+def test_current_channel_claims_preserve_history_and_denominator():
+    channels = dict(scorecard.CHANNELS)
+    check("Smithery has no current listing credit after the observed 404",
+          channels.get("Smithery") is False)
+    check("PulseMCP has no current credit while its listing cannot be verified",
+          channels.get("PulseMCP (auto-synced from registry)") is False)
+    check("unverified channels stay in the original denominator",
+          len(channels) == 13 and sum(v is not None for v in channels.values()) == 12)
+    check("only the three still-verified channels earn current credit",
+          {n for n, v in channels.items() if v} ==
+          {"Official MCP Registry", "Glama", "mcpservers.org"})
+    for path in ("README.md", "src/landing.html"):
+        check(path + ": no dead Smithery invitation or badge", "smithery.ai" not in read(path))
+    check("historical listing record remains dated, not erased",
+          "2026-09-08" in read("bench/scorecard.py") and
+          "Published Sep 7, 2026" in read("bench/scorecard.py"))
+    source = read("bench/scorecard.py")
+    check("current status distinguishes an observed 404 from unverified history",
+          "404" in source and "historical listing" in source and "not currently verified" in source)
+
+
+def test_registry_description_states_the_approved_chain_boundary():
+    server = json.loads(read("docs/server.json"))
+    approved = ("Check token risk across 8 chains. Sell simulations cover Ethereum, "
+                "BSC and Base. No API key.")
+    check("Registry uses the approved 92-character scope description",
+          server.get("description") == approved and len(approved) == 92)
+    check("Registry metadata gets a fresh version without changing its endpoint identity",
+          server.get("version") == "0.2.1" and server.get("name") == "dev.vetagent/vetagent"
+          and server.get("remotes") == [{"type": "streamable-http", "url": "https://vetagent.dev/mcp"}])
+
+
+def test_current_install_guides_use_client_specific_remote_paths():
+    endpoint = "https://vetagent.dev/mcp"
+    for path in ("src/landing.html", "README.md", "docs/AGENT-INTEGRATION.md", "llms-install.md"):
+        text = read(path)
+        sections = {}
+        for name in ("Claude Code", "Claude Desktop", "Cursor", "Plain HTTP"):
+            match = re.search(r"(?:<h3>|### )" + name +
+                              r"(?:</h3>|\n)(.*?)(?=<h3>|\n#{1,3} |\Z)", text, re.S)
+            sections[name] = match.group(1) if match else ""
+        check(path + ": Claude Code receives the HTTP command",
+              "claude mcp add --transport http vetagent " + endpoint in sections["Claude Code"])
+        desktop = sections["Claude Desktop"]
+        check(path + ": Desktop uses a custom connector, not remote JSON in its local config",
+              "Connectors" in desktop and "custom connector" in desktop and endpoint in desktop
+              and "mcpServers" not in desktop and "claude_desktop_config.json" not in text)
+        cursor = sections["Cursor"]
+        match = re.search(r'\{\s*"mcpServers".*?\n\}', cursor, re.S)
+        config = json.loads(match.group(0)) if match else {}
+        check(path + ": Cursor receives its own valid remote JSON and file location",
+              ".cursor/mcp.json" in cursor and
+              config.get("mcpServers", {}).get("vetagent") == {"url": endpoint})
+        check(path + ": plain HTTP includes the submitted network",
+              "https://vetagent.dev/assess/" in sections["Plain HTTP"] and
+              "chain_hint=" in sections["Plain HTTP"])
+
+
 def test_landing_directory_checks_keep_the_claim_boundary():
     """Directory and protocol observations do not establish installation or risk results."""
     page = flat(read("src/landing.html"))
