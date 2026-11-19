@@ -2720,6 +2720,40 @@ def test_t094_tools_list_explains_precise_quantity_and_simulation_scope():
                                                "unlimited", "guarantee", "uint256")))
 
 
+def test_t094_review_rejects_unbound_market_and_malformed_paired_identity():
+    """The first candidate let no_market hide source defects and accepted a bad paired identity."""
+    import test_risk as fixtures
+    address = fixtures._t030_pair(chain="ethereum", reserves=True)["baseToken"]["address"]
+    cases = (
+        ("bad pool without market", True, "ethereum", {"pairAddress": "malformed"}),
+        ("unsupported chain without market", True, None, {"chain": {"id": 137}}),
+        ("malformed paired object", False, "ethereum", {"withToken": ["bad"]}),
+        ("malformed paired address", False, "ethereum", {"withToken": {"address": []}}),
+    )
+    for name, empty, hint, update in cases:
+        for verbose in (False, True):
+            observations = []
+            for with_cap in (False, True):
+                body = fixtures._t092_report()
+                body.update(copy.deepcopy(update))  # token.address is deliberately undeclared.
+                if with_cap:
+                    body["simulationResult"]["maxSell"] = {"tokenWei": "996"}
+                args = {"address": address, "verbose": verbose}
+                if hint:
+                    args["chain_hint"] = hint
+                with fixtures._t091_runtime("ethereum", hp_body=body, reserves=True) as state:
+                    if empty:
+                        state["market"]["pairs"] = []
+                    with patch.object(risk, "_now_iso", lambda: "2026-11-19T00:00:00Z"):
+                        answer = asyncio.run(_t092_worker_request("mcp", "assess_token_risk", args))
+                observations.append((answer, state["requests"], state["sleeps"]))
+            check("T094 review %s/%s cannot attach the cap" % (name, verbose),
+                  "max_sell" not in observations[1][0]["evidence"])
+            stripped = copy.deepcopy(observations[1])
+            stripped[0]["evidence"].pop("max_sell", None)
+            check("T094 review changes no existing result or requests", stripped == observations[0])
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
