@@ -2128,6 +2128,62 @@ def _t090_route(interface, args, outcomes, key=None):
     return response.status, result, data, state
 
 
+def test_t099_complete_discovery_ids_cross_real_http_and_mcp():
+    """A discovered pool must remain distinguishable from another with the same prefix."""
+    solana = "Ab" * 22
+    for chain, network, token, ids in (
+            ("ethereum", "eth", "0x" + "1" * 40,
+             ["eth_0x" + "AB" * 32, "eth_0x" + "AB" * 31 + "AC",
+              "0x" + "CD" * 32, "eth_0x" + "EF" * 20, "0x" + "12" * 20]),
+            ("base", "base", "0x" + "2" * 40, ["base_0x" + "34" * 32]),
+            ("bsc", "bsc", "0x" + "3" * 40, ["bsc_0x" + "56" * 32]),
+            ("solana", "solana", solana, ["solana_" + solana, solana])):
+        rows = [_t028_pool("1") for _ in ids]
+        for row, pool_id in zip(rows, ids):
+            row["id"] = pool_id
+            row["relationships"]["base_token"]["data"]["id"] = network + "_" + token
+        outcomes = {("geckoterminal", kind): _t031_reply({"data": rows})
+                    for kind in ("new", "trending")}
+        for interface in ("http", "mcp"):
+            for listing in ("mixed", "trending"):
+                status, result, answer, state = _t090_route(
+                    interface, {"chain": chain, "listing": listing, "limit": 10}, outcomes)
+                check("T099 valid pool IDs survive the actual discovery response completely",
+                      status == 200 and not result.get("isError")
+                      and [row["pool_id"] for row in answer.get("pools", [])] == ids,
+                      "%s %s %s" % (chain, interface, listing))
+                check("T099 full IDs retain deduplication and token-only assessment arguments",
+                      answer.get("count") == answer.get("scanned") == len(ids)
+                      and all(row.get("assessment_args") == {"address": token, "chain_hint": chain}
+                              for row in answer.get("pools", [])))
+                check("T099 identity display adds no calls or changes listing scope",
+                      _t031_trace(state) == [("geckoterminal", kind) for kind in (
+                          ("new", "trending") if listing == "mixed" else ("trending",))])
+
+
+def test_t099_nonstandard_discovery_ids_keep_existing_bounds_and_escaping():
+    """A long or hostile value remains bounded display text, never a complete identity."""
+    examples = [("base_0x" + "f" * 1000, "base_0x" + "f" * 57 + "..."),
+                ("base_0x" + "A" * 64 + "\n", "base_0x" + "A" * 57 + "..."),
+                ("line\n\"\\|", "line\\u000a\\u0022\\u005c\\u007c"),
+                ("\u202e" * 1000, "\\u202e" * 64 + "..."),
+                ("solana_" + "\u0430" * 44, "solana_" + "\\u0430" * 44),
+                (17, "17")]
+    rows = [dict(_t028_pool("1"), id=pool_id) for pool_id, _ in examples]
+    rows.extend({"id": value} for value in (None, "", False, 0))
+    outcomes = {("geckoterminal", kind): _t031_reply({"data": rows})
+                for kind in ("new", "trending")}
+    for interface in ("http", "mcp"):
+        status, _, answer, _ = _t090_route(
+            interface, {"chain": "solana", "listing": "trending", "limit": 10}, outcomes)
+        check("T099 malformed strings and scalars keep exact bounded legacy rendering",
+              status == 200 and [row["pool_id"] for row in answer.get("pools", [])]
+              == [expected for _, expected in examples])
+        check("T099 missing and false IDs remain excluded without invented handoff arguments",
+              answer.get("count") == answer.get("scanned") == len(examples)
+              and all("assessment_args" not in row for row in answer.get("pools", [])))
+
+
 def _t090_overlap():
     return {("geckoterminal", "new"): _t031_reply({"data": [_t031_pool("1"), _t031_pool("2")]}),
             ("geckoterminal", "trending"): _t031_reply(
