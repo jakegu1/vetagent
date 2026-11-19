@@ -5114,7 +5114,7 @@ def _pool_trade_activity(transactions):
 
 def _discovery_pool_id(value, net):
     """Preserve bounded complete identities; other input keeps the escaped display limit."""
-    if isinstance(value, str) and _validated_pool_id(value.removeprefix(net + "_")):
+    if net != "solana" and isinstance(value, str) and _validated_pool_id(value.removeprefix(net + "_")):
         return value
     return _ascii_safe(value, 64)
 
