@@ -2164,6 +2164,7 @@ def test_t099_complete_discovery_ids_cross_real_http_and_mcp():
 def test_t099_nonstandard_discovery_ids_keep_existing_bounds_and_escaping():
     """A long or hostile value remains bounded display text, never a complete identity."""
     examples = [("base_0x" + "f" * 1000, "base_0x" + "f" * 57 + "..."),
+                ("solana_0x" + "A" * 64, "solana_0x" + "A" * 55 + "..."),
                 ("base_0x" + "A" * 64 + "\n", "base_0x" + "A" * 57 + "..."),
                 ("line\n\"\\|", "line\\u000a\\u0022\\u005c\\u007c"),
                 ("\u202e" * 1000, "\\u202e" * 64 + "..."),
