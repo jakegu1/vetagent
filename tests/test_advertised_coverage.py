@@ -382,9 +382,10 @@ def test_current_install_guides_use_client_specific_remote_paths():
                  "docs/AGENT-INTEGRATION.md", "llms-install.md"):
         text = read(path)
         sections = {}
+        section_end = r"(?=<h[23]>|\Z)" if "<h3>" in text else r"(?=\n#{1,3} |\Z)"
         for name in ("Claude Code", "Claude Desktop", "Cursor", "Plain HTTP"):
             match = re.search(r"(?:<h3>|### )" + name +
-                              r"(?:</h3>|\n)(.*?)(?=<h3>|\n#{1,3} |\Z)", text, re.S)
+                              r"(?:</h3>|\n)(.*?)" + section_end, text, re.S)
             sections[name] = match.group(1) if match else ""
         check(path + ": Claude Code receives the HTTP command",
               "claude mcp add --transport http vetagent " + endpoint in sections["Claude Code"])
