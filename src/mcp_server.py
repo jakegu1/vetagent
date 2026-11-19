@@ -41,6 +41,18 @@ _SIGNAL_SCHEMA = {
 
 _CHECKED_AT = {"type": "string", "description": "When this answer was made, ISO-8601 UTC."}
 
+_TRADE_ACTIVITY_SCHEMA = {
+    "type": "object",
+    "description": "Buys plus sells for this pool in the last hour and the five hours "
+                   "before it, as of the listing observation. Omitted when the provider's "
+                   "counts are missing or inconsistent.",
+    "properties": {
+        "trades_last_1h": {"type": "integer", "minimum": 0},
+        "trades_prior_5h": {"type": "integer", "minimum": 0},
+    },
+    "required": ["trades_last_1h", "trades_prior_5h"],
+}
+
 _OWNER_POWERS_SCHEMA = {
     "type": "object",
     "description": "Optional, incomplete bytecode observations; not a current-permission audit.",
@@ -265,7 +277,13 @@ TOOLS = [
         "title": "Get Token Liquidity",
         "description": (
             "Liquidity snapshot for a token's primary trading pair: price, 24h volume, "
-            "pair count and the chains it trades on.\n"
+            "pair count and the chains it trades on. Optional trade_activity reports buys plus sells "
+            "in the last hour and the preceding five hours from that selected pool's raw integer counts. "
+            "Missing counts are omitted; observed zeros remain zero.\n"
+            "For change over two saved replies, use examples/liquidity_compare.py locally. "
+            "Save successful REST response objects or MCP result.structuredContent. It checks the "
+            "chain, token, complete pool ID, source and reply order before comparing USD estimates, "
+            "and refuses stale fallback. checked_at is reply time; source data may be cached.\n"
             "Check 'status' before using the numbers. 'ok' means usable upstream data, "
             "not independently verified reserves or executable sell depth. "
             "The optional liquidity_reserve_check marker says 'not_checkable' when a "
@@ -300,9 +318,11 @@ TOOLS = [
                 "best_pair_dex": {"type": "string", "description": "Selected market's trading venue."},
                 "best_pair_address": {
                     "type": "string",
-                    "description": "Optional selected-pool display ID on ok results, capped at 48 "
-                                   "characters plus an ellipsis. Truncated IDs cannot establish exact "
-                                   "cross-response identity. This tool does not run a sell simulation."},
+                    "description": "Optional complete validated selected-pool ID on ok results: "
+                                   "20-byte/32-byte EVM hex or 32-byte Solana base58, preserving case. "
+                                   "Omitted for invalid or conflicting identity. Old truncated display IDs "
+                                   "cannot establish exact cross-response identity. No sell simulation runs."},
+                "trade_activity": _TRADE_ACTIVITY_SCHEMA,
                 "liquidity_usd": {"type": ["number", "null"]},
                 "liquidity_reserve_check": {
                     "type": "string", "enum": ["not_checkable"],
@@ -311,7 +331,9 @@ TOOLS = [
                                    "marker makes no verification claim."},
                 "volume_24h_usd": {"type": ["number", "null"]},
                 "pairs_total": {"type": "integer"},
-                "checked_at": _CHECKED_AT,
+                "checked_at": {"type": "string",
+                               "description": "Reply time in ISO-8601 UTC, not the source observation time. "
+                                              "Source data may be cached."},
                 "served_stale": {
                     "type": "array",
                     "description": "Present only when an upstream was unreachable and "
@@ -452,17 +474,7 @@ TOOLS = [
                             "price_usd": {"type": ["number", "null"]},
                             "liquidity_usd": {"type": ["number", "null"]},
                             "volume_24h_usd": {"type": ["number", "null"]},
-                            "trade_activity": {
-                                "type": "object",
-                                "description": "Buys plus sells for this pool in the last hour and the five hours "
-                                               "before it, as of the listing observation. Omitted when the provider's "
-                                               "counts are missing or inconsistent.",
-                                "properties": {
-                                    "trades_last_1h": {"type": "integer", "minimum": 0},
-                                    "trades_prior_5h": {"type": "integer", "minimum": 0},
-                                },
-                                "required": ["trades_last_1h", "trades_prior_5h"],
-                            },
+                            "trade_activity": _TRADE_ACTIVITY_SCHEMA,
                             "pool_age_days": {"type": ["integer", "null"]},
                         },
                         "required": ["pool_id", "name", "token_address", "kind"],

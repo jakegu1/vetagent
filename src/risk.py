@@ -618,6 +618,20 @@ def _validated_pool_id(value):
     return None
 
 
+def _validated_chain_pool_id(value, chain):
+    """Validate a complete pool identity without normalizing Solana case."""
+    if chain == "solana":
+        if not isinstance(value, str) or not re.fullmatch(r"[1-9A-HJ-NP-Za-km-z]{32,44}", value):
+            return None
+        alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+        decoded = 0
+        for char in value:
+            decoded = decoded * 58 + alphabet.index(char)
+        byte_count = (decoded.bit_length() + 7) // 8 + len(value) - len(value.lstrip("1"))
+        return value if byte_count == 32 else None
+    return _validated_pool_id(value)
+
+
 def _low_recommendation(evidence):
     """The `low` sentence, saying which owner-power case we are actually in.
 
@@ -1608,13 +1622,14 @@ _ESTABLISHED_VENUE_PRICE_RATIO = 1.05
 
 class _GeckoPool(dict):
     """Normalized pool fields plus local provenance, never vendor dictionary keys."""
-    __slots__ = ("evm_identity", "resource_pool", "quote_price_consistent")
+    __slots__ = ("evm_identity", "resource_pool", "quote_price_consistent", "pool_identity")
 
-    def __init__(self, fields, evm_identity, resource_pool, quote_price_consistent):
+    def __init__(self, fields, evm_identity, resource_pool, quote_price_consistent, pool_identity=None):
         super().__init__(fields)
         self.evm_identity = evm_identity
         self.resource_pool = resource_pool
         self.quote_price_consistent = quote_price_consistent
+        self.pool_identity = pool_identity
 
 
 def _representative_anchor_pool(best, candidates, pairs, target):
@@ -1869,6 +1884,11 @@ def _gt_to_pair(p, address, network):
     declared_base = (base_net == network and resource_net in ("", network)
                      and (_looks_solana(stated_base) if network == "solana" else _looks_evm(stated_base)))
     pool_address = a.get("address") or (resource.rsplit("_", 1)[-1] or None)
+    pool_identity = _validated_chain_pool_id(a.get("address", resource_pool), network)
+    same_resource = (pool_identity == resource_pool if network == "solana"
+                     else (pool_identity or "").lower() == resource_pool.lower())
+    if resource and (resource_net != network or not same_resource):
+        pool_identity = None
     resource_pool = _validated_pool_id(resource_pool) if resource_net == network else None
     advertised = a.get("address", resource_pool)
     valid_identity = (_looks_evm(address) and resource_pool is not None
@@ -1908,7 +1928,9 @@ def _gt_to_pair(p, address, network):
         # GeckoTerminal also reports distinct buyers and sellers, which DexScreener does
         # not. Carried through because it is the honest discriminator for the override:
         # wash trading is cheap in transactions and expensive in funded addresses.
-        "txns": {"h24": {"buys": _market_number(((a.get("transactions") or {}).get("h24") or {})
+        "txns": {"h1": (a.get("transactions") or {}).get("h1"),
+                 "h6": (a.get("transactions") or {}).get("h6"),
+                 "h24": {"buys": _market_number(((a.get("transactions") or {}).get("h24") or {})
                                       .get("buys")),
                          "sells": _market_number(((a.get("transactions") or {}).get("h24") or {})
                                        .get("sells"))}},
@@ -1933,7 +1955,7 @@ def _gt_to_pair(p, address, network):
         "baseToken": {"address": base_addr, "symbol": base_sym},
         "quoteToken": {"address": quote_addr, "symbol": quote_sym},
         "priceNative": a.get("base_token_price_quote_token"),
-    }, valid_identity, resource_pool, quote_consistent)
+    }, valid_identity, resource_pool, quote_consistent, pool_identity)
 
 
 # ---------------------------------------------------------------- building signals
@@ -5081,8 +5103,13 @@ async def liquidity(address, chain_hint=None):
                           for p in pairs if p.get("chainId")}),
     }
     selected_id = best.get("pairAddress") or best.get("pool_id")
-    if selected_id:
-        payload["best_pair_address"] = _ascii_safe(selected_id, 48)
+    pool_identity = (best.pool_identity if isinstance(best, _GeckoPool)
+                     else _validated_chain_pool_id(selected_id, best.get("chainId")))
+    if pool_identity is not None:
+        payload["best_pair_address"] = pool_identity
+    activity = _pool_trade_activity(best.get("txns"))
+    if activity is not None:
+        payload["trade_activity"] = activity
     reserve_check = _liquidity_reserve_check(best)
     if reserve_check is not None:
         payload["liquidity_reserve_check"] = reserve_check

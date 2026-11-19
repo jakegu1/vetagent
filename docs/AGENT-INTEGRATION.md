@@ -232,8 +232,29 @@ IDs for the assessment's market and request retain the 48-character limit plus a
 This limit does not apply to the valid complete discovery pool IDs described above.
 Equal truncated strings are not enough to establish exact identity across responses.
 
-`get_token_liquidity` adds `best_pair_address` only when an `ok` result has a selected pool
-ID. `source` is the data provider; `best_pair_dex` is the trading venue. This tool does not
+For two saved liquidity replies, start with the standard-library local example:
+
+```sh
+python -B examples/liquidity_compare.py before.json after.json
+```
+
+Each input file contains one successful REST `/liquidity/...` JSON response object,
+or the extracted MCP `result.structuredContent` object, with `status: "ok"`.
+Supply the earlier reply first. The example verifies chain, target token, complete pool
+identity, data provider and strictly increasing timezone-aware `checked_at` values.
+Only comparable finite nonnegative USD estimates yield `before_usd`, `after_usd` and
+`change_usd`. Changed identity/provider, missing facts, stale fallback or invalid order
+returns `not_comparable` with a reason and no change. Old truncated IDs are refused.
+`checked_at` is reply time, and data can be cached. The difference compares saved USD
+estimates, which can also change with valuation. The example performs no network calls.
+
+`get_token_liquidity` includes `best_pair_address` on `ok` results only when the selected
+pool has a complete valid identity. EVM IDs retain all 20 or 32 bytes; Solana base58 IDs
+retain case and decode to 32 bytes. Missing, malformed or contradictory GT resource/address
+identity is omitted. `source` is the data provider; `best_pair_dex` is the trading venue.
+Optional `trade_activity` contains `trades_last_1h` and `trades_prior_5h`, buys plus sells
+in two disjoint windows from the same selected market row. Raw integer zeros remain zero;
+missing, non-integer or inconsistent windows are omitted. This tool does not
 call a simulator or return a simulation correspondence. Its selection can differ from an
 assessment's conservative market when sell evidence is missing; compare the disclosed
 context without treating a liquidity snapshot as simulated exit depth.
