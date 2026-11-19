@@ -3177,6 +3177,42 @@ def test_liquidity_complete_pool_identity_validates_gt_aliases_and_solana_bytes(
               answer["status"] == "ok" and "best_pair_address" not in answer)
 
 
+def test_liquidity_gt_invalid_resource_and_duplicate_identity_are_omitted():
+    import test_risk as fixtures
+    token, pool, _, cases = _t092_market_cases()
+    evm = next(row for label, _, body in cases[0][1].values() if label == "fallback"
+               for row in body["data"] if row["attributes"]["address"].lower() == pool)
+    pair = _load("ds_bonk.json")["pairs"][0]
+    mint = pair["baseToken"]["address"]
+    solana = {"id": "solana_" + pair["pairAddress"],
+              "attributes": {"address": pair["pairAddress"], "name": "BONK / SOL",
+                             "base_token_price_usd": "1", "reserve_in_usd": "100000"},
+              "relationships": {
+                  "base_token": {"data": {"id": "solana_" + mint}},
+                  "quote_token": {"data": {"id": "solana_" + pair["quoteToken"]["address"]}}}}
+    for interface in ("http", "mcp"):
+        for chain, network, address, row, second_address in (
+                ("ethereum", "eth", token, evm, "0x" + "de" * 20),
+                ("solana", "solana", mint, solana, pair["quoteToken"]["address"])):
+            for bad_id in (False, None, 0, ""):
+                broken = copy.deepcopy(row)
+                broken["id"] = bad_id
+                routes = {fixtures._T083_DS + address: ("market", 200, {"pairs": []}),
+                          fixtures._t083_market_url(network, address): ("fallback", 200, {"data": [broken]})}
+                answer, _, _, _, _ = _t092_public_market(interface, "get_token_liquidity",
+                    {"address": address, "chain_hint": chain}, routes)
+                check("an explicitly invalid GT resource cannot borrow a comparable address",
+                      answer["status"] == "ok" and "best_pair_address" not in answer)
+            duplicate = copy.deepcopy(row)
+            duplicate["attributes"].update(address=second_address, reserve_in_usd="1")
+            routes = {fixtures._T083_DS + address: ("market", 200, {"pairs": []}),
+                      fixtures._t083_market_url(network, address): ("fallback", 200, {"data": [row, duplicate]})}
+            answer, _, _, _, _ = _t092_public_market(interface, "get_token_liquidity",
+                {"address": address, "chain_hint": chain}, routes)
+            check("batch-level duplicate pool identity remains ambiguous on the selected market",
+                  answer["status"] == "ok" and "best_pair_address" not in answer)
+
+
 def test_liquidity_tools_list_exposes_optional_activity_and_complete_identity():
     tools = call({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})["result"]["tools"]
     liquidity = next(tool for tool in tools if tool["name"] == "get_token_liquidity")
@@ -3236,6 +3272,10 @@ def test_saved_liquidity_example_compares_only_compatible_estimates():
         (dict(after, checked_at=before["checked_at"]), "invalid_order"),
         (dict(after, checked_at="2026-11-19T23:59:59Z"), "invalid_order"),
         (dict(after, checked_at="2026-11-20T00:10:00"), "invalid_time"),
+        (dict(after, checked_at="2026-11-20T00:10:00-00:63"), "invalid_time"),
+        (dict(after, checked_at="2026-11-20T00:10:00+01:60"), "invalid_time"),
+        (dict(after, checked_at="20261120T001000Z"), "invalid_time"),
+        (dict(after, checked_at="2026-11-20T00:10:00-00:00"), "invalid_time"),
         (dict(after, best_pair_address="0x" + "c" * 48 + "..."), "invalid_identity"),
         (dict(after, best_pair_address="0x" + "cd" * 31), "invalid_identity"),
         (dict(after, best_pair_address=None), "invalid_identity"),
