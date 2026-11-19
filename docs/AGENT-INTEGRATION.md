@@ -241,7 +241,8 @@ python -B examples/liquidity_compare.py before.json after.json
 Each input file contains one successful REST `/liquidity/...` JSON response object,
 or the extracted MCP `result.structuredContent` object, with `status: "ok"`.
 Supply the earlier reply first. The example verifies chain, target token, complete pool
-identity, data provider and strictly increasing timezone-aware `checked_at` values.
+identity, data provider and strictly increasing `checked_at` values with a full ISO date,
+seconds and a known valid timezone offset (`Z` or `+/-HH:MM`).
 Only comparable finite nonnegative USD estimates yield `before_usd`, `after_usd` and
 `change_usd`. Changed identity/provider, missing facts, stale fallback or invalid order
 returns `not_comparable` with a reason and no change. Old truncated IDs are refused.

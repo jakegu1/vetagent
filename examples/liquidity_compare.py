@@ -62,7 +62,10 @@ def compare(before, after):
     try:
         for row in readings:
             stamp = row.get("checked_at")
-            if not isinstance(stamp, str) or len(stamp) > 40:
+            if (not isinstance(stamp, str) or re.fullmatch(
+                    r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}"
+                    r"(?:\.[0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])",
+                    stamp) is None or stamp.endswith("-00:00")):
                 return _refused("invalid_time")
             moment = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
             if moment.tzinfo is None:

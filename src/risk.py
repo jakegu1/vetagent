@@ -1887,7 +1887,8 @@ def _gt_to_pair(p, address, network):
     pool_identity = _validated_chain_pool_id(a.get("address", resource_pool), network)
     same_resource = (pool_identity == resource_pool if network == "solana"
                      else (pool_identity or "").lower() == resource_pool.lower())
-    if resource and (resource_net != network or not same_resource):
+    if ("id" in p and (not isinstance(p["id"], str) or not p["id"])
+            or resource and (resource_net != network or not same_resource)):
         pool_identity = None
     resource_pool = _validated_pool_id(resource_pool) if resource_net == network else None
     advertised = a.get("address", resource_pool)
@@ -4392,8 +4393,9 @@ def _fallback_market_rows(rows, address, network):
             continue
         resource = raw.get("id")
         resource_net, _, pool_id = resource.rpartition("_") if isinstance(resource, str) else ("", "", "")
-        ids = {pool.lower() for value in (attributes.get("address"), pool_id if resource_net == network else None)
-               if (pool := _validated_pool_id(value))}
+        ids = {pool if network == "solana" else pool.lower()
+               for value in (attributes.get("address"), pool_id if resource_net == network else None)
+               if (pool := _validated_chain_pool_id(value, network))}
         duplicates.update(ids & seen_ids)
         seen_ids.update(ids)
         if resource_net and resource_net != network:
@@ -4408,9 +4410,11 @@ def _fallback_market_rows(rows, address, network):
         if _pair_has_token(pair, address):
             usable.append(pair)
     for pair in usable:
-        if any(pool.lower() in duplicates for value in (pair.resource_pool, pair.get("pairAddress"))
-               if (pool := _validated_pool_id(value))):
+        if any((pool if network == "solana" else pool.lower()) in duplicates
+               for value in (pair.resource_pool, pair.get("pairAddress"))
+               if (pool := _validated_chain_pool_id(value, network))):
             pair.evm_identity = False
+            pair.pool_identity = None
     return usable if usable or not rows else None
 
 
