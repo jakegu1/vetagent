@@ -106,7 +106,10 @@
  .demo-row input{flex:1 1 340px;background:var(--panel-2);border:1px solid var(--line);
    color:var(--txt);border-radius:8px;padding:11px 13px;font-size:13px;
    font-family:ui-monospace,Menlo,monospace}
- .demo-row input:focus{outline:2px solid var(--accent);outline-offset:1px}
+ .demo-row input:focus,.demo-row select:focus{outline:2px solid var(--accent);outline-offset:1px}
+ .network-field{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim)}
+ .network-field select{background:var(--panel-2);color:var(--txt);border:1px solid var(--line);
+   border-radius:8px;padding:11px 8px;font:inherit}
  .demo-row button{background:var(--accent);color:#062320;border:none;border-radius:8px;
    padding:11px 22px;font-weight:700;font-size:14px;cursor:pointer}
  .demo-row button:disabled{opacity:.5;cursor:default}
@@ -122,6 +125,7 @@
  .sig{display:flex;gap:10px;padding:6px 0;border-top:1px solid var(--line);font-size:13.5px}
  .sig .dot{flex:none;width:8px;height:8px;border-radius:50%;margin-top:7px}
  .rec{margin-top:12px;color:var(--dim);font-size:13.5px}
+ .request-scope{color:var(--dim);font-size:13px;margin-bottom:12px;overflow-wrap:anywhere}
  @media (prefers-reduced-motion:no-preference){button{transition:opacity .15s}}
 </style>
 </head>
@@ -149,8 +153,22 @@
   <p style="color:var(--dim);font-size:14px;margin-bottom:14px">
     Live call against the same public endpoint your agent would use. No key, no signup.</p>
   <div class="demo-row">
-    <input id="addr" placeholder="0x… or a Solana address" spellcheck="false"
+    <input id="addr" aria-label="Token address" placeholder="0x… or a Solana address" spellcheck="false"
            value="0x50614cc8e44f7814549c223aa31db9296e58057c">
+    <div class="network-field">
+      <label for="chain">Network</label>
+      <select id="chain">
+        <option value="">Auto</option>
+        <option value="ethereum">Ethereum</option>
+        <option value="base">Base</option>
+        <option value="bsc">BSC</option>
+        <option value="polygon">Polygon</option>
+        <option value="arbitrum">Arbitrum</option>
+        <option value="optimism">Optimism</option>
+        <option value="avalanche">Avalanche</option>
+        <option value="solana">Solana</option>
+      </select>
+    </div>
     <button id="go">Assess</button>
   </div>
   <div class="samples">Examples:
@@ -158,7 +176,7 @@
     <button data-a="0xb954d1ba6bb92123609fcfb724c68b810c668feb" data-c="ethereum">closed-source, upstream flags it</button>·
     <button data-a="0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" data-c="ethereum">WETH (healthy control)</button>
   </div>
-  <div id="verdict"></div>
+  <div id="verdict" role="status" aria-live="polite"></div>
 </div>
 
 <div class="panel">
@@ -348,15 +366,18 @@
   var input = document.getElementById('addr');
   var btn = document.getElementById('go');
   var out = document.getElementById('verdict');
-  var chain = 'ethereum';
+  var network = document.getElementById('chain');
+  var latestRequest = 0;
 
   document.querySelectorAll('.samples button').forEach(function (b) {
     b.addEventListener('click', function () {
-      input.value = b.dataset.a; chain = b.dataset.c || ''; run();
+      input.value = b.dataset.a; network.value = b.dataset.c || ''; run();
     });
   });
-  btn.addEventListener('click', function () { chain = ''; run(); });
-  input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { chain = ''; run(); } });
+  btn.addEventListener('click', run);
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); run(); }
+  });
 
   var COLORS = {low: 'var(--ok)', medium: 'var(--warn)', high: 'var(--crit)', unknown: 'var(--dim)'};
   var DOT = {ok: 'var(--ok)', info: 'var(--dim)', warn: 'var(--warn)',
@@ -372,8 +393,12 @@
   function run() {
     var a = input.value.trim();
     if (!a) { return; }
+    var chain = network.value;
+    var request = ++latestRequest;
+    var submitted = '<div class="request-scope">Submitted address: <code>' + esc(a) +
+      '</code><br>Selected network: ' + esc(chain || 'Auto') + '</div>';
     btn.disabled = true;
-    show('<span style="color:var(--dim)">Running live checks… this takes a few seconds.</span>');
+    show(submitted + '<span style="color:var(--dim)">Running live checks… this takes a few seconds.</span>');
     var args = {address: a};
     if (chain) { args.chain_hint = chain; }
     fetch('https://vetagent.dev/mcp', {
@@ -387,27 +412,37 @@
       body: JSON.stringify({jsonrpc: '2.0', id: 1, method: 'tools/call',
                             params: {name: 'assess_token_risk', arguments: args}})
     }).then(function (r) { return r.json(); }).then(function (d) {
+      if (request !== latestRequest) { return; }
       btn.disabled = false;
-      if (d.error) { return show('<span class="high">' + esc(d.error.message) + '</span>'); }
+      if (d.error) { return show(submitted + '<span class="high">' + esc(d.error.message) + '</span>'); }
       var res = d.result || {};
       if (res.isError) {
-        return show('<span class="high">' + esc((res.content || [{}])[0].text) + '</span>');
+        return show(submitted + '<span class="high">' + esc((res.content || [{}])[0].text) + '</span>');
       }
       var v = res.structuredContent || JSON.parse(res.content[0].text);
+      var searched = (v.evidence || {}).chain_searched;
+      searched = typeof searched === 'string' ? searched.trim() : '';
+      var scope = '<div class="request-scope">Assessment network: ' +
+        esc(searched || 'Not reported') + ' (engine search scope)</div>';
+      if (chain && searched && chain !== searched) {
+        scope += '<div class="request-scope">Returned scope differs from your selection. ' +
+          'This result does not establish an assessment on the selected network.</div>';
+      }
       var sigs = (v.signals || []).map(function (s) {
         return '<div class="sig"><span class="dot" style="background:' +
           (DOT[s.severity] || 'var(--dim)') + '"></span><span><strong>' + esc(s.name) +
           '</strong> — ' + esc(s.message) + '</span></div>';
       }).join('');
-      show(
+      show(submitted + scope +
         '<div class="vhead"><span class="vlevel" style="color:' +
         (COLORS[v.risk_level] || 'var(--dim)') + '">' + esc(v.risk_level) + '</span>' +
         '<span class="vmeta">score ' + esc(v.risk_score) + '/100 · confidence ' +
         esc(v.confidence) + '</span></div>' + sigs +
         '<div class="rec">' + esc(v.recommendation) + '</div>');
     }).catch(function (e) {
+      if (request !== latestRequest) { return; }
       btn.disabled = false;
-      show('<span class="high">Request failed: ' + esc(e.message) + '</span>');
+      show(submitted + '<span class="high">Request failed: ' + esc(e.message) + '</span>');
     });
   }
 })();
