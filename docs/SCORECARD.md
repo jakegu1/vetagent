@@ -4,14 +4,14 @@
 > It moves with every commit, so `git diff` tells you what the change was worth.
 
 
-## Total: **46 / 100**
+## Total: **44 / 100**
 
 | Dimension | Score | Max |
 |---|---|---|
 | Correctness | 16.5 ⚠️ | 30 |
 | Coverage | 10.8 | 20 |
 | Credibility | 14.3 | 20 |
-| Distribution | 4.2 ⚠️ | 15 |
+| Distribution | 2.5 ⚠️ | 15 |
 | Demand | 0.0 | 15 |
 
 ⚠️ = this dimension has line items nothing can measure automatically. The score is low for lack of data, not for lack of work.
@@ -36,7 +36,7 @@
 | Coverage | risk dimensions covered, per advertised chain | 10.8 | 20 | 39 / 72 chain-dimension cells |
 | Credibility | recall is measurable | 10.0 | 10 | dead samples: 30 (need ≥20) |
 | Credibility | days of snapshots | 4.3 | 10 | 78 of 180 days |
-| Distribution | channels listed on | 4.2 | 10 | 5 / 12 |
+| Distribution | channels listed on | 2.5 | 10 | 3 / 12 |
 | Distribution | external callers | — | 5 | not measured (needs CLOUDFLARE_API_TOKEN, see bench/usage.py) |
 | Demand | paying users | 0.0 | 10 | 0 |
 | Demand | trial intent / inbound asks | 0.0 | 5 | 0 |
@@ -81,9 +81,9 @@ Every empty cell is a real blind spot, and the roadmap itself. One column per ch
 | Channel | Listed |
 |---|---|
 | Official MCP Registry | ✅ |
-| PulseMCP (auto-synced from registry) | ✅ |
+| PulseMCP (auto-synced from registry) | ⬜ historical listing; not currently verified (2026-11-19) |
 | Glama | ✅ |
-| Smithery | ✅ |
+| Smithery | ⬜ existing listing returned HTTP 404 (2026-11-19) |
 | mcp.so | ⬜ |
 | mcpservers.org | ✅ |
 | awesome-mcp-servers (local/stdio only) | ➖ n/a |
@@ -94,7 +94,7 @@ Every empty cell is a real blind spot, and the roadmap itself. One column per ch
 | Claude plugin directory | ⬜ |
 | OpenAI plugin directory | ⬜ |
 
-`⬜` = not listed, and for six of these a submission is already open: **submitted is not listed.** `➖ n/a` = the channel cannot apply to this product, on the maintainer's own statement, so it leaves the denominator.
+`⬜` = no currently verified listing; an unverified historical listing is not proof of removal. **Submitted is not listed.** These channels remain in the denominator. `➖ n/a` = the channel cannot apply to this product, on the maintainer's own statement, so it leaves the denominator.
 
 ---
 
@@ -103,7 +103,7 @@ with false positives and false blocks <2%, unknown <5% in the benchmark and in p
 outcome data, the benchmark methodology cited as a standard by peers, the default
 choice at every agent entry point, and paying users who would complain if it disappeared.
 
-**The current 46 is not a failure** — it says precisely that the
+**The current 44 is not a failure** — it says precisely that the
 engineering is decent, proof and demand are both still zero, and writing more code
 cannot solve those last two.
 
