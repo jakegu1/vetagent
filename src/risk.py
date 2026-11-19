@@ -852,7 +852,7 @@ def _finalize(address, signals, evidence, data_gaps):
     if data_gaps:
         evidence["data_gaps"] = data_gaps
 
-    if not signals:
+    if not any(s["category"] != "price_movement" for s in signals):
         result.update(risk_level="unknown", risk_score=0, confidence="low",
                       recommendation="Not enough data to judge. Verify the address and retry; do not act on this result.")
         _unknown_guidance(result, data_gaps)
