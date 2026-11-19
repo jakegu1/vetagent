@@ -25,6 +25,7 @@ import asyncio
 import io
 import os
 import re
+import subprocess
 import sys
 import types
 
@@ -387,6 +388,17 @@ def test_a_caller_can_name_itself_on_every_request():
     tail = script[:body_end].rstrip().splitlines()[-1].strip()
     check("the demo does not run until someone asks it to",
           tail != "run();", "the script ends by calling run() on page load")
+
+
+def test_landing_trial_runs_the_served_script_with_request_scope():
+    """Replay the actual page, not a rewritten copy of its request logic."""
+    landing = asyncio.run(entry.Default().fetch(FakeRequest("https://vetagent.dev/"))).body
+    runner = os.path.join(ROOT, "tests", "fixtures", "landing_trial_contract.cjs")
+    result = subprocess.run(["node", runner], input=landing, encoding="utf-8",
+                            capture_output=True, timeout=30)
+    print(result.stdout)
+    check("served trial preserves submitted asset, network and latest request",
+          result.returncode == 0, result.stdout + result.stderr)
 
 
 def test_a_call_from_our_own_page_is_ours_even_with_stale_javascript():
