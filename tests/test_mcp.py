@@ -2845,15 +2845,6 @@ def _price_attribution_compare(name, address, chain, routes, expected, interface
     stripped = copy.deepcopy(answer)
     stripped["evidence"].pop("price_change_24h_pct", None)
     stripped["signals"] = [s for s in stripped["signals"] if s["name"] != "Price is sharply down today"]
-    if expected is not None and expected <= -50:
-        # Existing info/lifecycle scoring is two points despite the signal's prose.
-        # This attribution fix must not change the general scoring rule.
-        check(tag + " retains the existing base signal score and driver",
-              answer["risk_score"] == max(2, before[0]["risk_score"])
-              and answer["driver"] == (before[0]["driver"] or {
-                  "name": "Price is sharply down today", "category": "lifecycle"}))
-        stripped["risk_score"] = before[0]["risk_score"]
-        stripped["driver"] = before[0]["driver"]
     check(tag + " changes no other response, scoring, request, cache or retry", stripped == before[0]
           and after[1:] == before[1:])
     return answer
@@ -2941,6 +2932,44 @@ def test_price_change_attribution_legacy_normalization_cannot_invent_base():
         check("Price attribution legacy query-derived or cross-network base stays unconfirmed",
               "price_change_24h_pct" not in evidence
               and not any(s["name"] == "Price is sharply down today" for s in signals))
+
+
+def test_price_change_attribution_disclosure_does_not_count_as_safety_evidence():
+    import test_risk as fixtures
+    with patch.object(sys, "path", [os.path.join(FIXTURES, "..", "..", "bench"), *sys.path]):
+        import run_benchmark as benchmark
+    address = fixtures.WETH.lower()
+    for kind in ("confidence boundary", "other lifecycle warning", "unknown sellability"):
+        raw = fixtures._load("gt_weth_anchor_pools.json")["data"][0]
+        raw["attributes"].pop("pool_created_at", None)
+        raw["attributes"]["price_change_percentage"]["h24"] = "-62"
+        if kind == "other lifecycle warning":
+            raw["attributes"]["volume_usd"]["h24"] = "1"
+        routes = _price_attribution_routes(address, "ethereum", [raw], fallback=True)
+        sell = next(url for url, (label, _, _) in routes.items() if label == "sell")
+        routes[sell][2].pop("contractCode", None)
+        if kind == "unknown sellability":
+            routes[sell] = ("sell", 404, {})
+        for verbose in (False, True):
+            answer = _price_attribution_compare(kind, address, "ethereum", routes, -62, "mcp", verbose)
+            signals = answer["signals"]
+            without = [s for s in signals if s["name"] != "Price is sharply down today"]
+            gaps = answer["evidence"].get("data_gaps")
+            check("Price disclosure never drives the independent benchmark or its ablation",
+                  benchmark.driving_category(signals) == benchmark.driving_category(without)
+                  and benchmark.ablate(address, signals, gaps) == benchmark.ablate(address, without, gaps))
+            if kind == "confidence boundary":
+                check("Three safety facts plus a price note still have medium confidence",
+                      len(without) == 3 and answer["confidence"] == "medium"
+                      and answer["risk_score"] == 0 and answer["driver"] is None)
+            elif kind == "other lifecycle warning":
+                check("An actual lifecycle warning keeps its original risk weight",
+                      any(s["category"] == "lifecycle" and s["severity"] == "warn" for s in without)
+                      and answer["risk_score"] == 12 and answer["driver"]["category"] == "lifecycle")
+            else:
+                check("A price disclosure cannot close unknown sellability",
+                      answer["risk_level"] == "unknown" and answer["confidence"] == "low"
+                      and any(g["dimension"] == "sellability" for g in gaps))
 
 
 def main():
