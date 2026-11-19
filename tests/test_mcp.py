@@ -2801,6 +2801,148 @@ def test_t094_review_rejects_unbound_market_and_malformed_paired_identity():
             check("T094 review changes no existing result or requests", stripped == observations[0])
 
 
+def _price_attribution_routes(address, chain, rows, fallback=False):
+    import test_risk as fixtures
+    address = address.lower() if chain != "solana" else address
+    network = risk._GT_NETWORK[chain]
+    routes = {fixtures._T083_DS + address: ("market", 200, {"pairs": [] if fallback else rows}),
+              fixtures._t083_market_url(network, address): ("fallback", 200, {"data": rows}),
+              "https://api.dexscreener.com/latest/dex/search?q=SAME": ("search", 200, {"pairs": []}),
+              "https://api.dexscreener.com/latest/dex/search?q=WETH": ("search", 200, {"pairs": []})}
+    if chain == "solana":
+        routes["https://api.rugcheck.xyz/v1/tokens/" + address + "/report"] = (
+            "sell", 200, fixtures._load("rc_bonk.json"))
+    else:
+        routes["https://api.honeypot.is/v2/IsHoneypot?address=" + address + "&chainID=1"] = (
+            "sell", 200, copy.deepcopy(fixtures._T084_HP))
+    return routes
+
+
+def _price_attribution_compare(name, address, chain, routes, expected, interface, verbose):
+    """Use real Worker routes and preserve the existing scoring of genuine base facts."""
+    control = copy.deepcopy(routes)
+    for _, _, body in control.values():
+        for row in body.get("pairs", []) or []:
+            row.pop("priceChange", None)
+        for row in body.get("data", []) or []:
+            row.get("attributes", {}).pop("price_change_percentage", None)
+    args = {"address": address, "chain_hint": chain, "verbose": verbose}
+    with patch.object(risk, "_now_iso", lambda: "2026-11-19T00:00:00Z"):
+        before = _t092_public_market(interface, "assess_token_risk", args, control)
+        after = _t092_public_market(interface, "assess_token_risk", args, routes)
+    answer = after[0]
+    evidence = answer["evidence"]
+    tag = "Price attribution %s %s %s" % (name, interface, verbose)
+    # Existing formatting keeps two significant digits, not two decimal places.
+    displayed = {12.34: 12.0, -49.99: -50.0}.get(expected, expected)
+    check(tag + " reports only the queried declared base change",
+          ("price_change_24h_pct" in evidence) is (expected is not None)
+          and evidence.get("price_change_24h_pct") == displayed, str(evidence.get("price_change_24h_pct")))
+    sharp = [s for s in answer["signals"] if s["name"] == "Price is sharply down today"]
+    check(tag + " preserves the original inclusive drop threshold",
+          bool(sharp) is (expected is not None and expected <= -50)
+          and all(s["severity"] == "info" for s in sharp))
+    stripped = copy.deepcopy(answer)
+    stripped["evidence"].pop("price_change_24h_pct", None)
+    stripped["signals"] = [s for s in stripped["signals"] if s["name"] != "Price is sharply down today"]
+    if expected is not None and expected <= -50:
+        # Existing info/lifecycle scoring is two points despite the signal's prose.
+        # This attribution fix must not change the general scoring rule.
+        check(tag + " retains the existing base signal score and driver",
+              answer["risk_score"] == max(2, before[0]["risk_score"])
+              and answer["driver"] == (before[0]["driver"] or {
+                  "name": "Price is sharply down today", "category": "lifecycle"}))
+        stripped["risk_score"] = before[0]["risk_score"]
+        stripped["driver"] = before[0]["driver"]
+    check(tag + " changes no other response, scoring, request, cache or retry", stripped == before[0]
+          and after[1:] == before[1:])
+    return answer
+
+
+def test_price_change_attribution_crosses_actual_assessment_routes():
+    import test_risk as fixtures
+    base, quote = "0x" + "ab" * 20, fixtures.USDC
+    pool = {"chainId": "ethereum", "dexId": "uniswap", "pairAddress": "0x" + "cd" * 20,
+            "baseToken": {"address": base, "symbol": "SAME"},
+            "quoteToken": {"address": quote, "symbol": "SAME"},
+            "priceUsd": "1", "priceNative": "1", "liquidity": {"usd": 200000},
+            "volume": {"h24": 100000}, "pairCreatedAt": 1600000000000,
+            "txns": {"h24": {"buys": 100, "sells": 100}}, "priceChange": {"h24": -62}}
+    missing = copy.deepcopy(pool)
+    missing["baseToken"].pop("address")
+    sol = copy.deepcopy(pool)
+    sol.update(chainId="solana", baseToken={"address": fixtures.BONK, "symbol": "SAME"},
+               quoteToken={"address": "So11111111111111111111111111111111111111112", "symbol": "SAME"})
+    mismatched_sol = copy.deepcopy(sol)
+    mismatched_sol["baseToken"]["address"] = "d" + fixtures.BONK[1:]
+    mismatched_sol["quoteToken"]["address"] = fixtures.BONK
+    cases = [("same-ticker quote", quote, pool, None), ("missing base", quote, missing, None),
+             ("EVM mixed case base", "0x" + "Ab" * 20, pool, -62),
+             ("Solana exact base", fixtures.BONK, sol, -62),
+             ("Solana case-distinct quote", fixtures.BONK, mismatched_sol, None)]
+    for value in (0, 12.34, -49.99, -50):
+        changed = copy.deepcopy(pool)
+        changed["priceChange"]["h24"] = value
+        cases.append(("base change %s" % value, base, changed, value))
+    for name, address, row, expected in cases:
+        chain = row["chainId"]
+        routes = _price_attribution_routes(address, chain, [row])
+        for interface in ("mcp", "http"):
+            for verbose in (False, True):
+                answer = _price_attribution_compare(name, address, chain, routes, expected, interface, verbose)
+                if verbose:
+                    check("Price attribution keeps the same selected pool", answer["evidence"]["best_pair"]["pair_address"]
+                          == row["pairAddress"])
+
+
+def test_price_change_attribution_gecko_fallback_and_market_replacement():
+    import test_risk as fixtures
+    raw = fixtures._load("gt_weth_anchor_pools.json")["data"][0]
+    # Synthetic drop, not a measured historical return.
+    raw["attributes"]["price_change_percentage"]["h24"] = "-62"
+    base = raw["relationships"]["base_token"]["data"]["id"].split("_", 1)[1]
+    quote = raw["relationships"]["quote_token"]["data"]["id"].split("_", 1)[1]
+    cases = [("fallback base", base, raw, -62), ("fallback quote", quote, raw, None)]
+    for mutation in ("missing", "cross-network"):
+        invalid = copy.deepcopy(raw)
+        if mutation == "missing":
+            invalid["relationships"].pop("base_token")
+        else:
+            invalid["relationships"]["base_token"]["data"]["id"] = "base_" + base
+        cases.append(("fallback " + mutation, base, invalid, None))
+    for name, address, row, expected in cases:
+        routes = _price_attribution_routes(address, "ethereum", [row], fallback=True)
+        routes["https://api.dexscreener.com/latest/dex/search?q=USDC"] = ("search", 200, {"pairs": []})
+        for verbose in (False, True):
+            _price_attribution_compare(name, address, "ethereum", routes, expected, "mcp", verbose)
+    address, _, _, markets = _t092_market_cases()
+    for name, routes, _, _, _, final, _ in markets:
+        routes = copy.deepcopy(routes)
+        for row in routes[fixtures._t083_market_url("eth", address)][2]["data"]:
+            row["attributes"]["price_change_percentage"]["h24"] = "-62"
+        expected = -62 if final == fixtures._T084_USDC_POOL else None
+        for verbose in (False, True):
+            answer = _price_attribution_compare(name, address, "ethereum", routes, expected, "mcp", verbose)
+            if verbose:
+                check("Price attribution follows the final market, including rejected promotion",
+                      answer["evidence"]["best_pair"]["pair_address"] == final)
+
+
+def test_price_change_attribution_legacy_normalization_cannot_invent_base():
+    import test_risk as fixtures
+    raw = fixtures._load("gt_weth_anchor_pools.json")["data"][0]
+    raw["attributes"]["price_change_percentage"]["h24"] = "-62"
+    for relation in (None, "base_" + fixtures.WETH, "eth_not-an-address"):
+        row = copy.deepcopy(raw)
+        row["relationships"]["base_token"] = {"data": {"id": relation}}
+        pair = risk._gt_to_pair(row, fixtures.WETH, "eth")
+        signals, evidence = [], {}
+        risk._liquidity_signals(pair, [pair], signals, evidence, target=fixtures.WETH)
+        check("Price attribution legacy query-derived or cross-network base stays unconfirmed",
+              "price_change_24h_pct" not in evidence
+              and not any(s["name"] == "Price is sharply down today" for s in signals))
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
