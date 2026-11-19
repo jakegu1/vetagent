@@ -2547,6 +2547,179 @@ def test_t092_malformed_simulator_metadata_cannot_identify_correspondence():
                       ev.get("pool_link_details", {}).get("reason") == "invalid_response")
 
 
+def _t094_cap_routes(case=0, amount="996", label="default"):
+    """Reuse established transport fixtures; only add the documented quantity shape."""
+    address, _, _, cases = _t092_market_cases()
+    routes = copy.deepcopy(cases[case][1])
+    for kind, _, body in routes.values():
+        if kind == label:
+            body["simulationResult"]["maxSell"] = {
+                "tokenWei": amount, "token": 9.96e-6,
+                "withTokenWei": "3850", "withToken": 3.9e-15}
+    return address, routes
+
+
+def _t094_compare(address, routes, verbose, expected, name, interface="mcp"):
+    """Compare real Worker/MCP answers with only maxSell added, with I/O denied."""
+    control = copy.deepcopy(routes)
+    for _, _, body in control.values():
+        sim = body.get("simulationResult") if isinstance(body, dict) else None
+        if isinstance(sim, dict):
+            sim.pop("maxSell", None)
+    args = {"address": address, "chain_hint": "ethereum"}
+    if verbose:
+        args["verbose"] = True  # False deliberately uses the ordinary default.
+    with patch.object(risk, "_now_iso", lambda: "2026-11-19T00:00:00Z"):
+        before = _t092_public_market(interface, "assess_token_risk", args, control)
+        after = _t092_public_market(interface, "assess_token_risk", args, routes)
+    answer = after[0]
+    evidence = answer.get("evidence", {})
+    tag = "T094 %s %s %s" % (name, interface, verbose)
+    check(tag + " exact qualified cap or absence", evidence.get("max_sell") == expected,
+          str(evidence.get("max_sell")))
+    check(tag + " absence never means an unlimited placeholder",
+          expected is not None or "max_sell" not in evidence)
+    stripped = copy.deepcopy(answer)
+    stripped.get("evidence", {}).pop("max_sell", None)
+    check(tag + " no score, level, confidence, signals or other result changes", stripped == before[0])
+    check(tag + " same requests, cache writes, sleeps and diagnostics", after[1:] == before[1:])
+    return answer
+
+
+def _t094_expected(amount, relation="same"):
+    return {"source": "honeypot.is", "scope": "simulated_transaction", "amount": amount,
+            "unit": "token_smallest_unit", "pool_link": relation}
+
+
+def test_t094_exact_max_sell_survives_default_and_verbose_mcp():
+    """A detected single-sale cap is a precise source fact, not a risk-score input."""
+    for amount in ("996", "0", "9007199254740993", str(2**256 - 1)):
+        address, routes = _t094_cap_routes(amount=amount)
+        facts = []
+        for verbose in (False, True):
+            result = _t094_compare(address, routes, verbose, _t094_expected(amount), "amount=" + amount)
+            facts.append(result["evidence"].get("max_sell"))
+        check("T094 the same compact fact is returned in both modes", facts[0] == facts[1])
+    address, routes = _t094_cap_routes()
+    for verbose in (False, True):
+        _t094_compare(address, routes, verbose, _t094_expected("996"), "HTTP parity", interface="http")
+
+
+def test_t094_malformed_or_unreported_quantity_does_not_become_unlimited():
+    values = (None, True, 996, 996.0, [], {}, "", "01", "+1", "-1", "-0", "1.0", "1e3",
+              " 1", "1 ", "1\n", "\n1", chr(0x0661), str(2**256), "9" * 79)
+    for value in values:
+        address, routes = _t094_cap_routes(amount=value)
+        for verbose in (False, True):
+            _t094_compare(address, routes, verbose, None, "invalid quantity " + repr(value))
+    for shape in (None, [], {}, {"token": 0.00000996, "withTokenWei": "3850"}):
+        address, routes = _t094_cap_routes()
+        for kind, _, body in routes.values():
+            if kind == "default":
+                body["simulationResult"]["maxSell"] = shape
+                body["simulationResult"]["maxBuy"] = {"tokenWei": "996"}
+        for verbose in (False, True):
+            _t094_compare(address, routes, verbose, None, "invalid or token-only maxSell " + repr(shape))
+
+
+def test_t094_cap_uses_adopted_simulation_and_final_pool_correspondence():
+    for case, label, relation, expected in (
+            (1, "default", "different", True), (2, "default", "unknown", True),
+            (3, "retry", "different", True), (4, "retry", "unknown", True),
+            (5, "retry", "same", False), (3, "default", "different", False)):
+        address, routes = _t094_cap_routes(case, label=label)
+        for verbose in (False, True):
+            answer = _t094_compare(address, routes, verbose,
+                _t094_expected("996", relation) if expected else None, "adopted case %s/%s" % (case, label))
+            check("T094 final pool correspondence remains the existing result",
+                  answer["evidence"].get("pool_link") == relation)
+    address, routes = _t094_cap_routes()
+    for kind, _, body in routes.values():
+        if kind == "default":
+            body.pop("chain")
+    for verbose in (False, True):
+        _t094_compare(address, routes, verbose, _t094_expected("996", "unknown"), "missing reported chain")
+
+
+def test_t094_invalid_simulation_cannot_lend_a_cap():
+    import test_risk as fixtures
+    mutations = (
+        ("other token", lambda b: b.update(token={"address": "0x" + "12" * 20})),
+        ("requested token is the paired asset", lambda b: b.update(withToken={"address": fixtures.WETH})),
+        ("other chain", lambda b: b.update(chain={"id": 8453})),
+        ("conflicting chain", lambda b: b.update(pair={"chainId": 8453})),
+        ("pool conflict", lambda b: b.update(pair={"pair": {"address": fixtures._T084_LEEPH_POOL}})),
+        ("invalid pool", lambda b: b.update(pairAddress="not-a-pool")),
+        ("missing success", lambda b: b.pop("simulationSuccess")),
+        ("nonboolean success", lambda b: b.update(simulationSuccess=1)),
+        ("failed", lambda b: b.update(simulationSuccess=False, simulationError="execution reverted: HP: BUY_FAILED")),
+        ("never ran", lambda b: (b.update(router="", honeypotResult={"isHoneypot": True,
+                                        "honeypotReason": "Target contract does not contain code"}),
+                                b["simulationResult"].update(buyGas="0"))),
+        ("contradictory error", lambda b: b.update(simulationError="failed")),
+        ("invalid metadata", lambda b: b.update(contractCode=[])),
+        ("missing taxes", lambda b: b["simulationResult"].pop("sellTax")),
+        ("missing result", lambda b: b.pop("honeypotResult")),
+    )
+    for name, mutate in mutations:
+        address, routes = _t094_cap_routes()
+        sell = next(url for url, (kind, _, _) in routes.items() if kind == "default")
+        mutate(routes[sell][2])
+        # Existing failed-simulation retries remain unchanged and cannot contribute a cap.
+        routes[sell + "&pair=" + fixtures._T084_LEEPH_POOL] = ("retry", 404, {})
+        for verbose in (False, True):
+            _t094_compare(address, routes, verbose, None, name)
+
+
+def test_t094_valid_cap_and_honeypot_warning_coexist():
+    address, routes = _t094_cap_routes()
+    for kind, _, body in routes.values():
+        if kind == "default":
+            body["honeypotResult"]["isHoneypot"] = True
+            body["summary"] = {"risk": "honeypot", "riskLevel": 100}
+    for verbose in (False, True):
+        answer = _t094_compare(address, routes, verbose, _t094_expected("996", "different"), "reported honeypot")
+        check("T094 cap does not clear the existing honeypot finding",
+              answer["evidence"]["honeypot"]["is_honeypot"] is True
+              and any(s["category"] == "honeypot" for s in answer["signals"]))
+
+
+def test_t094_absent_or_unsupported_simulator_has_no_cap():
+    import test_risk as fixtures
+    address, routes = _t094_cap_routes()
+    sell = next(url for url, (kind, _, _) in routes.items() if kind == "default")
+    routes[sell] = ("default", 404, {})
+    for verbose in (False, True):
+        _t094_compare(address, routes, verbose, None, "simulator has no record")
+        body = fixtures._t092_report()
+        body["simulationResult"]["maxSell"] = {"tokenWei": "996"}
+        with fixtures._t091_runtime("arbitrum", hp_body=body) as state:
+            answer = asyncio.run(_t092_worker_request("mcp", "assess_token_risk",
+                {"address": state["address"], "chain_hint": "arbitrum", "verbose": verbose}))
+        check("T094 unsupported chain cannot display an unrequested cap",
+              "max_sell" not in answer["evidence"]
+              and all(not kind.startswith("sell") for kind, _ in state["requests"]))
+
+
+def test_t094_tools_list_explains_precise_quantity_and_simulation_scope():
+    tool = next(t for t in call({"jsonrpc": "2.0", "id": 94, "method": "tools/list"})
+                ["result"]["tools"] if t["name"] == "assess_token_risk")
+    schema = tool["outputSchema"]["properties"]["evidence"]["properties"].get("max_sell", {})
+    props = schema.get("properties", {})
+    check("T094 optional output fact has all its source, scope and exact-amount fields",
+          schema.get("type") == "object"
+          and set(schema.get("required", [])) == {"source", "scope", "amount", "unit", "pool_link"}
+          and props.get("amount", {}).get("type") == "string"
+          and props.get("unit", {}).get("enum") == ["token_smallest_unit"]
+          and props.get("source", {}).get("enum") == ["honeypot.is"]
+          and props.get("scope", {}).get("enum") == ["simulated_transaction"]
+          and props.get("pool_link", {}).get("enum") == ["same", "different", "unknown"])
+    description = schema.get("description", "").lower()
+    check("T094 tool clients can read units, missing evidence and scope without a separate manual",
+          all(word in description for word in ("smallest", "assessed token", "per-sell", "simulation",
+                                               "unlimited", "guarantee", "uint256")))
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
