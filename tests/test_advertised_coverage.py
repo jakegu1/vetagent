@@ -353,9 +353,8 @@ def test_current_channel_claims_preserve_history_and_denominator():
           channels.get("PulseMCP (auto-synced from registry)") is False)
     check("unverified channels stay in the original denominator",
           len(channels) == 13 and sum(v is not None for v in channels.values()) == 12)
-    check("only the three still-verified channels earn current credit",
-          {n for n, v in channels.items() if v} ==
-          {"Official MCP Registry", "Glama", "mcpservers.org"})
+    check("the independently observed remote directory receives listing credit",
+          channels.get("awesome-remote-mcp-servers (punkpeye)") is True)
     for path in ("README.md", "src/landing.html"):
         check(path + ": no dead Smithery invitation or badge", "smithery.ai" not in read(path))
     check("historical listing record remains dated, not erased",
@@ -379,7 +378,8 @@ def test_registry_description_states_the_approved_chain_boundary():
 
 def test_current_install_guides_use_client_specific_remote_paths():
     endpoint = "https://vetagent.dev/mcp"
-    for path in ("src/landing.html", "README.md", "docs/AGENT-INTEGRATION.md", "llms-install.md"):
+    for path in ("src/landing.html", "src/pages.py", "README.md",
+                 "docs/AGENT-INTEGRATION.md", "llms-install.md"):
         text = read(path)
         sections = {}
         for name in ("Claude Code", "Claude Desktop", "Cursor", "Plain HTTP"):
@@ -401,6 +401,10 @@ def test_current_install_guides_use_client_specific_remote_paths():
         check(path + ": plain HTTP includes the submitted network",
               "https://vetagent.dev/assess/" in sections["Plain HTTP"] and
               "chain_hint=" in sections["Plain HTTP"])
+    source_row = re.search(r"\| honeypot\.is \|([^\n]+)", read("docs/AGENT-INTEGRATION.md"))
+    check("the integration data-source table names all three sell-simulation chains",
+          source_row is not None and all(chain in source_row.group(1)
+                                         for chain in ("Ethereum", "BSC", "Base")))
 
 
 def test_landing_directory_checks_keep_the_claim_boundary():
