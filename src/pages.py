@@ -86,17 +86,25 @@ and Base, rolled into <code>low</code>, <code>medium</code>, <code>high</code> o
 HTTP. Free, no account, no API key.</p>
 
 <h2>Connect over MCP</h2>
-<p>Streamable HTTP at <code>https://vetagent.dev/mcp</code>. Any MCP client that accepts a remote
-server URL works; for one that reads a JSON config:</p>
+<p>Streamable HTTP at <code>https://vetagent.dev/mcp</code>.</p>
+<h3>Claude Code</h3>
+<pre><code>claude mcp add --transport http vetagent https://vetagent.dev/mcp</code></pre>
+<h3>Claude Desktop</h3>
+<p>Open <strong>Customize → Connectors</strong>, choose <strong>Add custom connector</strong>,
+and enter <code>https://vetagent.dev/mcp</code>. Choose <strong>No sign in</strong> if asked.
+Enable the connector in your conversation. Organization-managed workspaces may need an owner
+to add it first. <a href="https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp">Claude's remote connector guide</a>.</p>
+<h3>Cursor</h3>
+<p>Add this to your project's <code>.cursor/mcp.json</code>, merging with existing servers:</p>
 <pre><code>{
   "mcpServers": {
-    "vetagent": { "type": "http", "url": "https://vetagent.dev/mcp" }
+    "vetagent": { "url": "https://vetagent.dev/mcp" }
   }
 }</code></pre>
 <p>Three tools: <code>assess_token_risk</code> (the verdict), <code>get_token_liquidity</code>
 (price and depth only) and <code>find_new_hot_pools</code> (discovery, never an endorsement).</p>
 
-<h2>Or call it over HTTP</h2>
+<h3>Plain HTTP</h3>
 <pre><code># the address in the body, which keeps it out of URLs and logs along the way
 curl -X POST https://vetagent.dev/assess \\
   -H 'content-type: application/json' \\

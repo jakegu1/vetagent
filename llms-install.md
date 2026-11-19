@@ -56,7 +56,8 @@ curl -s -X POST https://vetagent.dev/mcp \
 ```
 
 You should get three tools back: `assess_token_risk`, `get_token_liquidity`,
-`find_new_hot_pools`. If you can read that response, installation is done.
+`find_new_hot_pools`. This response confirms endpoint access. In your chosen client,
+check that these three tools appear before considering the connection ready.
 
 ## Identify yourself (optional, and it helps)
 

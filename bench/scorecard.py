@@ -290,9 +290,9 @@ def coverage_cells():
 # score, which is the direction that cannot be self-serving; it would have been widened
 # just the same if it had raised it.
 #
-# Binary on purpose: **submitted is not listed.** Six of these have an open submission
-# and none of the six is reachable by a user yet, so all six are False. A pending queue
-# is not distribution.
+# Binary on purpose: **submitted is not listed.** The initial six pending submissions
+# earned no credit. Update an individual row when its listing is observed; a pending
+# queue is not distribution.
 CHANNELS = [
     # Live, verified 2026-09-08 by opening each listing.
     ("Official MCP Registry", True),            # dev.vetagent/vetagent
@@ -343,7 +343,9 @@ CHANNELS = [
     # list, and its CI independently verified our endpoint's `initialize` handshake and our
     # Glama connector before going green.
     ("awesome-remote-mcp-servers (jaw9c)", False),      # jaw9c#733, opened 09-07, mergeable
-    ("awesome-remote-mcp-servers (punkpeye)", False),   # punkpeye#131, opened 09-09, CI pass
+    # Formerly pending punkpeye#131. Listed in README at commit
+    # ac545aa40631740df4f1dd728f72d81d531c932c, independently read 2026-11-19.
+    ("awesome-remote-mcp-servers (punkpeye)", True),
     ("Docker MCP registry", False),             # docker/mcp-registry#4954
     ("Cline marketplace", False),               # cline/mcp-marketplace#2471
     # Parked by the owner on 2026-09-08: both need an account only he can create, and he

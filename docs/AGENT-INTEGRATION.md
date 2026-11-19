@@ -350,7 +350,7 @@ GET /new-pools?chain=solana&limit=10
 | Source | Covers |
 |---|---|
 | DexScreener + GeckoTerminal (fallback) | Multi-chain meme/new tokens, price, liquidity, pools |
-| honeypot.is | Ethereum contract anti-scam (buy/sell tax simulation) |
+| honeypot.is | Sell-simulation and tax evidence on Ethereum, BSC and Base |
 | RugCheck | Solana rug risk score |
 
 The engine uses **source resilience**: if DexScreener is unavailable, GeckoTerminal is used as fallback for liquidity.
