@@ -3046,6 +3046,198 @@ def test_price_change_attribution_disclosure_alone_remains_unknown():
     check("A price note alone preserves the exact unknown empty-evidence response", stripped == empty)
 
 
+def test_liquidity_selected_pool_activity_and_complete_identity_cross_both_routes():
+    import test_risk as fixtures
+    token = fixtures.WETH.lower()
+    pool = "0x" + "AB" * 32
+    pair = {"chainId": "ethereum", "dexId": "uniswap", "pairAddress": pool,
+            "baseToken": {"address": token, "symbol": "WETH"},
+            "quoteToken": {"address": "0x" + "1" * 40},
+            "priceUsd": "1", "liquidity": {"usd": 100000},
+            "txns": {"h24": {"buys": 30, "sells": 20}}}
+    other = copy.deepcopy(pair)
+    other.update(pairAddress="0x" + "cd" * 20, liquidity={"usd": 100})
+    other["txns"].update(h1={"buys": 90, "sells": 90}, h6={"buys": 100, "sells": 100})
+    maximum = 2**53 - 1
+    readings = [
+        ({"h1": {"buys": 2, "sells": 3}, "h6": {"buys": 11, "sells": 13}},
+         {"trades_last_1h": 5, "trades_prior_5h": 19}),
+        ({"h1": {"buys": 0, "sells": 0}, "h6": {"buys": 0, "sells": 0}},
+         {"trades_last_1h": 0, "trades_prior_5h": 0}),
+        ({}, None),
+        ({"h1": {"buys": 1, "sells": 1}}, None),
+        ({"h1": {"buys": 2, "sells": 0}, "h6": {"buys": 1, "sells": 3}}, None),
+        ({"h1": {"buys": True, "sells": 0}, "h6": {"buys": 1, "sells": 0}}, None),
+        ({"h1": {"buys": 1.0, "sells": 0}, "h6": {"buys": 1, "sells": 0}}, None),
+        ({"h1": {"buys": 0, "sells": 0}, "h6": {"buys": "4", "sells": 0}}, None),
+        ({"h1": {"buys": 0, "sells": 0}, "h6": {"buys": -1, "sells": 0}}, None),
+        ({"h1": {"buys": maximum, "sells": 1},
+          "h6": {"buys": maximum, "sells": 1}}, None),
+    ]
+    for interface in ("http", "mcp"):
+        for windows, expected in readings:
+            selected = copy.deepcopy(pair)
+            selected["txns"].update(windows)
+            routes = {fixtures._T083_DS + token: ("market", 200, {"pairs": [selected, other]})}
+            answer, calls, _, sleeps, _ = _t092_public_market(
+                interface, "get_token_liquidity", {"address": token, "chain_hint": "ethereum"}, routes)
+            check("liquidity keeps the selected full 32-byte EVM pool identity",
+                  answer.get("best_pair_address") == pool)
+            check("liquidity reports only complete raw integer windows from its selected pool",
+                  answer.get("trade_activity") == expected
+                  and ("trade_activity" in answer) is (expected is not None))
+            check("activity disclosure preserves provider, selection, estimates and request budget",
+                  answer["source"] == "dexscreener" and answer["liquidity_usd"] == 100000
+                  and calls == ["market"] and not sleeps)
+
+
+def test_liquidity_gt_activity_and_conflicting_identity_remain_same_row():
+    import test_risk as fixtures
+    token, pool, _, cases = _t092_market_cases()
+    for interface in ("http", "mcp"):
+        for value, expected in (
+                ({"h1": {"buys": 2, "sells": 3}, "h6": {"buys": 11, "sells": 13}},
+                 {"trades_last_1h": 5, "trades_prior_5h": 19}),
+                ({"h1": {"buys": 0, "sells": 0}, "h6": {"buys": 0, "sells": 0}},
+                 {"trades_last_1h": 0, "trades_prior_5h": 0}),
+                ({"h1": {"buys": 1.0, "sells": 0}, "h6": {"buys": 1, "sells": 0}}, None),
+                ({}, None)):
+            routes = copy.deepcopy(cases[0][1])
+            rows = next(body["data"] for label, _, body in routes.values() if label == "fallback")
+            for row in rows:
+                row["attributes"]["transactions"].update(value if row["attributes"]["address"].lower() == pool
+                    else {"h1": {"buys": 99, "sells": 99}, "h6": {"buys": 100, "sells": 100}})
+            answer, calls, _, sleeps, _ = _t092_public_market(
+                interface, "get_token_liquidity", {"address": token, "chain_hint": "ethereum"}, routes)
+            check("GT fallback preserves raw integer windows for the actual selected venue",
+                  answer.get("best_pair_address") == pool and answer.get("trade_activity") == expected
+                  and ("trade_activity" in answer) is (expected is not None))
+            check("GT activity adds no source requests or simulator work",
+                  calls == ["market", "fallback"] and not sleeps and answer["source"] == "geckoterminal")
+
+        routes = copy.deepcopy(cases[0][1])
+        rows = next(body["data"] for label, _, body in routes.values() if label == "fallback")
+        selected = next(row for row in rows if row["attributes"]["address"].lower() == pool)
+        selected["id"] = "eth_0x" + "de" * 32
+        answer, _, _, _, _ = _t092_public_market(
+            interface, "get_token_liquidity", {"address": token, "chain_hint": "ethereum"}, routes)
+        check("conflicting GT resource and address cannot identify a comparable pool",
+              answer["status"] == "ok" and "best_pair_address" not in answer)
+
+        solana_pair = _load("ds_bonk.json")["pairs"][0]
+        mint = solana_pair["baseToken"]["address"]
+        routes = {fixtures._T083_DS + mint: ("market", 200, {"pairs": [solana_pair]})}
+        answer, _, _, _, _ = _t092_public_market(
+            interface, "get_token_liquidity", {"address": mint, "chain_hint": "solana"}, routes)
+        check("Solana selected identity keeps its complete case and original window counts",
+              answer.get("best_pair_address") == solana_pair["pairAddress"]
+              and answer.get("trade_activity") == {"trades_last_1h": 384, "trades_prior_5h": 3886})
+
+
+def _liquidity_comparison_module():
+    from pathlib import Path
+    path = Path(__file__).resolve().parents[1] / "examples" / "liquidity_compare.py"
+    check("the runnable saved-liquidity example exists", path.is_file())
+    if not path.is_file():
+        return None
+    spec = importlib.util.spec_from_file_location("liquidity_comparison_acceptance", path)
+    module = importlib.util.module_from_spec(spec)
+    with patch.object(sys, "path", [str(path.parent), *sys.path]), _a2_no_effects():
+        spec.loader.exec_module(module)
+    return module
+
+
+def test_saved_liquidity_example_compares_only_compatible_estimates():
+    module = _liquidity_comparison_module()
+    if module is None:
+        return
+    before = {"status": "ok", "address": "0x" + "ab" * 20, "best_pair_chain": "ethereum",
+              "best_pair_address": "0x" + "cd" * 32, "source": "dexscreener",
+              "liquidity_usd": 100, "checked_at": "2026-11-20T00:00:00Z"}
+    after = dict(before, liquidity_usd=125, checked_at="2026-11-20T00:10:00Z")
+    for start, end, change in ((100, 125, 25), (125, 100, -25), (0, 0, 0), (100, 0, -100)):
+        first, second = dict(before, liquidity_usd=start), dict(after, liquidity_usd=end)
+        saved = copy.deepcopy((first, second))
+        result = _a2_call(module.compare, first, second)
+        check("saved same-pool estimates yield their USD change including genuine zero",
+              result == {"status": "compared", "before_usd": start, "after_usd": end, "change_usd": change})
+        check("comparison never mutates the two saved responses", (first, second) == saved)
+    case_variant = dict(after, address="0x" + "AB" * 20, best_pair_address="0x" + "CD" * 32)
+    check("complete EVM hex identities compare case-insensitively",
+          _a2_call(module.compare, before, case_variant).get("status") == "compared")
+    reasons = [
+        (dict(after, source="geckoterminal"), "different_source"),
+        (dict(after, best_pair_address="0x" + "ef" * 32), "different_pool"),
+        (dict(after, best_pair_chain="base"), "different_pool"),
+        (dict(after, address="0x" + "ef" * 20), "different_pool"),
+        (dict(after, served_stale=[{"source": "api.dexscreener.com", "age_seconds": 900}]), "stale_response"),
+        (dict(after, checked_at=before["checked_at"]), "invalid_order"),
+        (dict(after, checked_at="2026-11-19T23:59:59Z"), "invalid_order"),
+        (dict(after, checked_at="2026-11-20T00:10:00"), "invalid_time"),
+        (dict(after, best_pair_address="0x" + "c" * 48 + "..."), "invalid_identity"),
+        (dict(after, best_pair_address="0x" + "cd" * 31), "invalid_identity"),
+        (dict(after, best_pair_address=None), "invalid_identity"),
+        (dict(after, source=""), "invalid_source"),
+        (dict(after, status="drained"), "unusable_response"),
+        (dict(after, liquidity_usd=True), "invalid_amount"),
+        (dict(after, liquidity_usd="125"), "invalid_amount"),
+        (dict(after, liquidity_usd=-1), "invalid_amount"),
+        (dict(after, liquidity_usd=None), "invalid_amount"),
+        (dict(after, liquidity_usd=float("inf")), "invalid_amount"),
+        (dict(after, liquidity_usd=float("nan")), "invalid_amount"),
+        (dict(after, liquidity_usd=10**400), "invalid_amount"),
+    ]
+    for second, reason in reasons:
+        result = _a2_call(module.compare, before, second)
+        check("noncomparable snapshots never fabricate USD change: " + reason,
+              result == {"status": "not_comparable", "reason": reason})
+    offset = dict(after, checked_at="2026-11-19T19:10:00-05:00")
+    check("ordering uses timezone-aware instants, not timestamp text",
+          _a2_call(module.compare, before, offset).get("status") == "compared")
+    pair = _load("ds_bonk.json")["pairs"][0]
+    sol_before = dict(before, address=pair["baseToken"]["address"], best_pair_chain="solana",
+                      best_pair_address=pair["pairAddress"])
+    sol_after = dict(sol_before, liquidity_usd=101, checked_at=after["checked_at"])
+    check("a complete case-sensitive Solana pool can be compared",
+          _a2_call(module.compare, sol_before, sol_after).get("change_usd") == 1)
+    check("a changed Solana identity never becomes the same through lowercasing",
+          _a2_call(module.compare, sol_before, dict(sol_after,
+              best_pair_address=pair["pairAddress"].lower())).get("status") == "not_comparable")
+
+
+def test_saved_liquidity_example_cli_reads_two_local_response_objects():
+    module = _liquidity_comparison_module()
+    if module is None:
+        return
+    from pathlib import Path
+    import subprocess
+    import tempfile
+    pair = {"status": "ok", "address": "0x" + "1" * 40, "best_pair_chain": "base",
+            "best_pair_address": "0x" + "2" * 40, "source": "geckoterminal",
+            "liquidity_usd": 100, "checked_at": "2026-11-20T00:00:00Z"}
+    with tempfile.TemporaryDirectory() as directory:
+        first, second = Path(directory) / "before.json", Path(directory) / "after.json"
+        first.write_text(json.dumps(pair), encoding="utf-8")
+        second.write_text(json.dumps(dict(pair, liquidity_usd=80, checked_at="2026-11-20T00:10:00Z")),
+                          encoding="utf-8")
+        bootstrap = "\n".join([
+            "import runpy,sys,socket,subprocess,time,urllib.request",
+            "def blocked(*a,**k): raise AssertionError('effect_refused')",
+            "socket.socket=blocked; socket.create_connection=blocked",
+            "subprocess.Popen=blocked; time.sleep=blocked; urllib.request.urlopen=blocked",
+            "sys.argv=sys.argv[1:]; from pathlib import Path",
+            "sys.path.insert(0,str(Path(sys.argv[0]).parent)); runpy.run_path(sys.argv[0],run_name='__main__')"])
+        args = [sys.executable, "-B", "-c", bootstrap, module.__file__, str(first), str(second)]
+        run = subprocess.run(args, capture_output=True, timeout=20)
+        check("the documented two-file CLI runs with network, sleep and subprocess effects forbidden",
+              run.returncode == 0 and not run.stderr and json.loads(run.stdout) ==
+              {"status": "compared", "before_usd": 100, "after_usd": 80, "change_usd": -20})
+        second.write_text('{"liquidity_usd": NaN}', encoding="utf-8")
+        run = subprocess.run(args, capture_output=True, timeout=20)
+        check("invalid JSON input is refused without echoing private filenames or content",
+              run.returncode == 1 and not run.stderr and json.loads(run.stdout) == {"error": "input_refused"})
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
