@@ -3119,6 +3119,7 @@ def test_liquidity_gt_activity_and_conflicting_identity_remain_same_row():
         rows = next(body["data"] for label, _, body in routes.values() if label == "fallback")
         selected = next(row for row in rows if row["attributes"]["address"].lower() == pool)
         selected["id"] = "eth_0x" + "de" * 32
+        rows[:] = [selected]
         answer, _, _, _, _ = _t092_public_market(
             interface, "get_token_liquidity", {"address": token, "chain_hint": "ethereum"}, routes)
         check("conflicting GT resource and address cannot identify a comparable pool",
@@ -3132,6 +3133,67 @@ def test_liquidity_gt_activity_and_conflicting_identity_remain_same_row():
         check("Solana selected identity keeps its complete case and original window counts",
               answer.get("best_pair_address") == solana_pair["pairAddress"]
               and answer.get("trade_activity") == {"trades_last_1h": 384, "trades_prior_5h": 3886})
+
+
+def test_liquidity_complete_pool_identity_validates_gt_aliases_and_solana_bytes():
+    import test_risk as fixtures
+    token, pool, _, cases = _t092_market_cases()
+    full = "0x" + "Ab" * 32
+    for interface in ("http", "mcp"):
+        routes = copy.deepcopy(cases[0][1])
+        rows = next(body["data"] for label, _, body in routes.values() if label == "fallback")
+        selected = next(row for row in rows if row["attributes"]["address"].lower() == pool)
+        rows[:] = [selected]
+        selected.update(id="eth_" + full.lower())
+        selected["attributes"]["address"] = full
+        answer, _, _, _, _ = _t092_public_market(
+            interface, "get_token_liquidity", {"address": token, "chain_hint": "ethereum"}, routes)
+        check("matching 32-byte GT aliases preserve complete original EVM hex case",
+              answer.get("best_pair_address") == full)
+
+        pair = _load("ds_bonk.json")["pairs"][0]
+        mint = pair["baseToken"]["address"]
+        for invalid in ("z" * 44, pair["pairAddress"] + "\n", "not-a-pool", "0x" + "ab" * 32):
+            market = copy.deepcopy(pair)
+            market["pairAddress"] = invalid
+            routes = {fixtures._T083_DS + mint: ("market", 200, {"pairs": [market]})}
+            answer, _, _, _, _ = _t092_public_market(
+                interface, "get_token_liquidity", {"address": mint, "chain_hint": "solana"}, routes)
+            check("invalid or wrong-size Solana identity is omitted without changing the estimate",
+                  answer["status"] == "ok" and "best_pair_address" not in answer
+                  and answer["liquidity_usd"] == 78588.0)
+
+        raw = {"id": "solana_" + pair["quoteToken"]["address"],
+               "attributes": {"address": pair["pairAddress"], "name": "BONK / SOL",
+                              "base_token_price_usd": "1", "reserve_in_usd": "100000"},
+               "relationships": {
+                   "base_token": {"data": {"id": "solana_" + mint}},
+                   "quote_token": {"data": {"id": "solana_" + pair["quoteToken"]["address"]}}}}
+        routes = {fixtures._T083_DS + mint: ("market", 200, {"pairs": []}),
+                  fixtures._t083_market_url("solana", mint): ("fallback", 200, {"data": [raw]})}
+        answer, _, _, _, _ = _t092_public_market(
+            interface, "get_token_liquidity", {"address": mint, "chain_hint": "solana"}, routes)
+        check("a Solana GT row with contradictory complete identities cannot support comparison",
+              answer["status"] == "ok" and "best_pair_address" not in answer)
+
+
+def test_liquidity_tools_list_exposes_optional_activity_and_complete_identity():
+    tools = call({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})["result"]["tools"]
+    liquidity = next(tool for tool in tools if tool["name"] == "get_token_liquidity")
+    schema = liquidity["outputSchema"]
+    fields = schema["properties"]
+    activity = fields.get("trade_activity", {})
+    check("liquidity declares the two optional integer activity windows",
+          "trade_activity" not in schema["required"]
+          and set(activity.get("required", [])) == {"trades_last_1h", "trades_prior_5h"}
+          and all(value.get("type") == "integer" for value in activity.get("properties", {}).values()))
+    check("the public liquidity contract names complete identity and cached reply time",
+          "complete" in fields["best_pair_address"]["description"]
+          and "32-byte" in fields["best_pair_address"]["description"]
+          and "Reply time" in fields["checked_at"]["description"]
+          and "cached" in fields["checked_at"]["description"])
+    check("the original liquidity input remains the only callable input",
+          set(liquidity["inputSchema"]["properties"]) == {"address", "chain_hint"})
 
 
 def _liquidity_comparison_module():
