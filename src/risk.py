@@ -1862,6 +1862,10 @@ def _gt_to_pair(p, address, network):
     # comparison also needs the network and identity that the raw row actually named.
     resource = str(p.get("id") or "")
     resource_net, _, resource_pool = resource.rpartition("_")
+    base_net, _, stated_base = _rel_id("base_token").rpartition("_")
+    # A query-derived legacy base must not claim the pool's price movement.
+    declared_base = (base_net == network and resource_net in ("", network)
+                     and (_looks_solana(stated_base) if network == "solana" else _looks_evm(stated_base)))
     pool_address = a.get("address") or (resource.rsplit("_", 1)[-1] or None)
     resource_pool = _validated_pool_id(resource_pool) if resource_net == network else None
     advertised = a.get("address", resource_pool)
@@ -1891,7 +1895,8 @@ def _gt_to_pair(p, address, network):
         "priceUsd": price,
         "pairCreatedAt": a.get("pool_created_at"),
         "volume": {"h24": _market_number((a.get("volume_usd") or {}).get("h24"))},
-        "priceChange": {"h24": (a.get("price_change_percentage") or {}).get("h24")},
+        "priceChange": {"h24": (a.get("price_change_percentage") or {}).get("h24")
+                        if declared_base else None},
         # Trade counts, which this shim simply did not carry. _num(None) is 0.0, so the
         # honeypot override's `sells >= N` could never hold and the whole "adjudicate,
         # don't relay" mechanism was switched off for every token that resolves through
@@ -2014,7 +2019,11 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
     # is nil, and a signal that would only fire on a token dying right now is exactly what
     # this dataset cannot measure. Adding an unscored fact is honest; adding an unmeasured
     # threshold is how the false positives got in last time.
-    change_24h = (best.get("priceChange") or {}).get("h24")
+    # The pool reports one side's movement, not an independent USD return for both.
+    # Use address identity, never the ticker or the fact that the target trades here.
+    is_base = (bool(target) and _market_address_key(target)
+               == _market_address_key((best.get("baseToken") or {}).get("address")))
+    change_24h = (best.get("priceChange") or {}).get("h24") if is_base else None
     if change_24h is not None:
         change_24h = _market_number(change_24h, signed=True)
         evidence["price_change_24h_pct"] = _market_round(change_24h, 2, signed=True)
