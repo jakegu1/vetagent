@@ -202,6 +202,22 @@ call a simulator or return a simulation correspondence. Its selection can differ
 assessment's conservative market when sell evidence is missing; compare the disclosed
 context without treating a liquidity snapshot as simulated exit depth.
 
+### Reported single-sale quantity limit
+
+Both assessment modes may include `evidence.max_sell`, attributed to the adopted
+Honeypot.is simulation with `scope: "simulated_transaction"`. Its `amount` is an exact
+nonnegative uint256 decimal string and `unit` is `token_smallest_unit`: the smallest units
+of the assessed token, not the other asset in the pair. Compare intended raw quantities
+using integer arithmetic, without converting the string to a floating-point number.
+For a token with eight decimals, `"996"` represents 0.00000996 tokens. An intended raw
+quantity of 997 exceeds that reported cap; a smaller quantity is not an execution guarantee.
+
+The fact retains `pool_link`: `different` or `unknown` does not establish a limit for
+the displayed market. It can coexist with honeypot warnings and does not change the risk
+verdict. Missing, invalid or unreported quantities are omitted, never interpreted as
+unlimited. The upstream's display amount and paired-asset quantities are not substituted.
+See the [Honeypot.is simulation result](https://docs.honeypot.is/ishoneypot#simulation-result).
+
 ### Local response-routing example
 
 `examples/assessment_policy.py` consumes existing JSON and returns only `action`, `reason` and

@@ -4506,7 +4506,7 @@ _UNCONFIRMED = "unconfirmed"
 
 # evidence fields kept in slim mode
 _SLIM_EVIDENCE_KEYS = (
-    "best_pair", "chains", "pair_age_days", "turnover_24h", "honeypot", "pool_link",
+    "best_pair", "chains", "pair_age_days", "turnover_24h", "honeypot", "pool_link", "max_sell",
     # `confidence` is not here: it is a top-level field, and the copy in evidence was
     # 22 duplicate bytes on every call. Verbose still carries it.
     # `token2022` earns its bytes: it is the evidence behind signals up to `fatal`
@@ -4625,6 +4625,27 @@ def _pool_correspondence(market, response, address, searched_chain, policy_chain
                             "reported_chain": identity["chain"], "reported_pool": identity["pool"],
                             "accepted": retry["accepted"]}
     return relation, details
+
+
+def _reported_max_sell(response, address, chain, pool_link, scope_reason):
+    """Expose an exact per-sell source fact without changing risk or venue selection."""
+    if (not isinstance(response, dict) or response.get("simulationSuccess") is not True
+            or chain and chain not in _SIMULATOR_CHAINS
+            or _sim_never_ran(response) or _sell_evidence_issue(response, address, chain)
+            or scope_reason not in (None, "missing_pool", "missing_chain", "no_market")):
+        return None
+    paired = response.get("withToken")
+    if (isinstance(paired, dict) and isinstance(paired.get("address"), str)
+            and paired["address"].lower() == address.lower()):
+        return None  # tokenWei belongs to the tested token, never the paired asset.
+    sim = response.get("simulationResult")
+    cap = sim.get("maxSell") if isinstance(sim, dict) else None
+    amount = cap.get("tokenWei") if isinstance(cap, dict) else None
+    if (not isinstance(amount, str) or len(amount) > 78
+            or not re.fullmatch(r"0|[1-9][0-9]*", amount) or int(amount) >= 2**256):
+        return None
+    return {"source": "honeypot.is", "scope": "simulated_transaction", "amount": amount,
+            "unit": "token_smallest_unit", "pool_link": pool_link}
 
 
 async def assess(address, chain_hint=None, verbose=False):
@@ -4931,6 +4952,9 @@ async def assess(address, chain_hint=None, verbose=False):
     evidence["pool_link"] = pool_scope
     if verbose:
         evidence["pool_link_details"] = pool_link_details
+    max_sell = _reported_max_sell(hp, address, hp_chain, pool_scope, pool_link_details["reason"])
+    if max_sell is not None:
+        evidence["max_sell"] = max_sell
 
     # If any upstream was down and we answered from cache, say so. Serving stale data
     # is defensible; serving it silently is not.

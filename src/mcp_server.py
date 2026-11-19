@@ -151,6 +151,22 @@ _ASSESS_OUTPUT_SCHEMA = {
                                           "source-reported venue of the adopted simulator response. "
                                           "This is not simulation success, safety, or wallet/amount-specific executability."},
             "pool_link_details": _POOL_SCOPE_DETAILS_SCHEMA,
+            "max_sell": {
+                "type": "object",
+                "description": "Optional per-sell cap reported by the adopted successful Honeypot.is simulation. "
+                               "Amount is an exact nonnegative uint256 decimal string in smallest units of the "
+                               "assessed token, not the paired asset. Missing does not mean unlimited. "
+                               "pool_link qualifies correspondence to the displayed market; different/unknown "
+                               "does not establish its cap. This is not a wallet-specific execution guarantee.",
+                "required": ["source", "scope", "amount", "unit", "pool_link"],
+                "properties": {
+                    "source": {"type": "string", "enum": ["honeypot.is"]},
+                    "scope": {"type": "string", "enum": ["simulated_transaction"]},
+                    "amount": {"type": "string", "maxLength": 78},
+                    "unit": {"type": "string", "enum": ["token_smallest_unit"]},
+                    "pool_link": {"type": "string", "enum": ["same", "different", "unknown"]},
+                },
+            },
         }},
         "driver": {"type": ["object", "null"],
                    "description": "The signal that decided the verdict: {name, category}. "
