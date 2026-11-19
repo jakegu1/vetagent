@@ -155,7 +155,8 @@ _ASSESS_OUTPUT_SCHEMA = {
                 "type": "object",
                 "description": "Optional per-sell cap reported by the adopted successful Honeypot.is simulation. "
                                "Amount is an exact nonnegative uint256 decimal string in smallest units of the "
-                               "assessed token, not the paired asset. Missing does not mean unlimited. "
+                               "assessed token, not the paired asset. A displayed market is required. "
+                               "Missing does not mean unlimited. "
                                "pool_link qualifies correspondence to the displayed market; different/unknown "
                                "does not establish its cap. This is not a wallet-specific execution guarantee.",
                 "required": ["source", "scope", "amount", "unit", "pool_link"],

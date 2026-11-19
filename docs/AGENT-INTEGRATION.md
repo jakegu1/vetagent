@@ -212,8 +212,9 @@ using integer arithmetic, without converting the string to a floating-point numb
 For a token with eight decimals, `"996"` represents 0.00000996 tokens. An intended raw
 quantity of 997 exceeds that reported cap; a smaller quantity is not an execution guarantee.
 
-The fact retains `pool_link`: `different` or `unknown` does not establish a limit for
-the displayed market. It can coexist with honeypot warnings and does not change the risk
+The fact is omitted without a displayed market. It retains `pool_link`: `different` or
+`unknown` does not establish a limit for the displayed market. It can coexist with
+honeypot warnings and does not change the risk
 verdict. Missing, invalid or unreported quantities are omitted, never interpreted as
 unlimited. The upstream's display amount and paired-asset quantities are not substituted.
 See the [Honeypot.is simulation result](https://docs.honeypot.is/ishoneypot#simulation-result).

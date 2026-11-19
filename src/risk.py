@@ -4629,21 +4629,23 @@ def _pool_correspondence(market, response, address, searched_chain, policy_chain
 
 def _reported_max_sell(response, address, chain, pool_link, scope_reason):
     """Expose an exact per-sell source fact without changing risk or venue selection."""
-    if (not isinstance(response, dict) or response.get("simulationSuccess") is not True
-            or chain and chain not in _SIMULATOR_CHAINS
-            or _sim_never_ran(response) or _sell_evidence_issue(response, address, chain)
-            or scope_reason not in (None, "missing_pool", "missing_chain", "no_market")):
+    if not isinstance(response, dict):
         return None
-    paired = response.get("withToken")
-    if (isinstance(paired, dict) and isinstance(paired.get("address"), str)
-            and paired["address"].lower() == address.lower()):
-        return None  # tokenWei belongs to the tested token, never the paired asset.
     sim = response.get("simulationResult")
     cap = sim.get("maxSell") if isinstance(sim, dict) else None
     amount = cap.get("tokenWei") if isinstance(cap, dict) else None
     if (not isinstance(amount, str) or len(amount) > 78
             or not re.fullmatch(r"0|[1-9][0-9]*", amount) or int(amount) >= 2**256):
         return None
+    if (response.get("simulationSuccess") is not True or chain and chain not in _SIMULATOR_CHAINS
+            or scope_reason not in (None, "missing_pool", "missing_chain")
+            or _sim_never_ran(response) or _sell_evidence_issue(response, address, chain)):
+        return None
+    paired = response.get("withToken", {})
+    if (not isinstance(paired, dict) or "address" in paired and (
+            not isinstance(paired["address"], str) or not _EVM_RE.fullmatch(paired["address"])
+            or paired["address"].lower() == address.lower())):
+        return None  # tokenWei belongs to the tested token, never the paired asset.
     return {"source": "honeypot.is", "scope": "simulated_transaction", "amount": amount,
             "unit": "token_smallest_unit", "pool_link": pool_link}
 
