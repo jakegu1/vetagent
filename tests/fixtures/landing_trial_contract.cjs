@@ -57,7 +57,8 @@ function boot() {
   vm.runInNewContext(script, sandbox, {timeout: 1000});
   return {nodes, samples, requests,
     enter(address) { nodes.addr.value = address; nodes.addr.fire('keydown', {key: 'Enter', preventDefault() {}}); },
-    select(value) { assert.ok(nodes.chain, 'native network selector is missing'); nodes.chain.value = value; },
+    select(value) { assert.ok(nodes.chain, 'native network selector is missing');
+      nodes.chain.value = value; nodes.chain.fire('change'); },
     text() { return nodes.verdict.innerHTML; }};
 }
 
@@ -69,6 +70,28 @@ const cases = {
     assert.equal(b.nodes.chain.value, 'ethereum');
     b.nodes.go.fire('click');
     assert.deepEqual(b.requests[0].args, {address: recorded[0].args.address, chain_hint: 'ethereum'});
+  },
+  async 'pasting a new target releases the default chain for assessment and recheck'() {
+    for (const button of ['go', 'liquidity-go']) {
+      for (const address of ['0x4200000000000000000000000000000000000006',
+        '0x' + 'ab'.repeat(20), 'So11111111111111111111111111111111111111112']) {
+        const b = boot(); b.nodes.addr.value = address; b.nodes.addr.fire('input');
+        assert.equal(b.nodes.chain.value, '');
+        b.nodes[button].fire('click');
+        assert.equal(b.requests[0].args.address, address);
+        assert.equal(Object.hasOwn(b.requests[0].args, 'chain_hint'), false);
+      }
+    }
+    const same = boot(); same.nodes.addr.value = recorded[0].args.address.toLowerCase();
+    same.nodes.addr.fire('input'); assert.equal(same.nodes.chain.value, 'ethereum');
+  },
+  async 'explicit network choice survives manual replacement and examples keep their own network'() {
+    for (const button of ['go', 'liquidity-go']) {
+      const b = boot(); b.select('base');
+      b.nodes.addr.value = '0x4200000000000000000000000000000000000006'; b.nodes.addr.fire('input');
+      b.nodes[button].fire('click'); assert.equal(b.requests[0].args.chain_hint, 'base');
+      b.samples[1].fire('click'); assert.equal(b.requests.at(-1).args.chain_hint, 'ethereum');
+    }
   },
   async 'three recorded responses keep their real verdicts and explain BUY_FAILED before details'() {
     for (const [index, row] of recorded.entries()) {

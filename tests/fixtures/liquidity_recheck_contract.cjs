@@ -36,6 +36,7 @@ function boot(saved = new Map(), broken = false) {
   assert.ok(nodes['liquidity-clear'], 'clear browser history control is missing');
   const click = (fill = true) => { if (fill) {
     nodes.addr.value = replies[0].result.structuredContent.address; nodes.chain.value = 'base';
+    nodes.chain.fire('change');
     } nodes['liquidity-go'].fire('click'); return requests.at(-1); };
   return {nodes, requests, saved, click, text: () => nodes['liquidity-result'].innerHTML};
 }
@@ -79,6 +80,9 @@ const cases = {
     assert.equal(firstUse.requests.length, 0);
     assert.equal(b.nodes.addr.value, firstUse.nodes.addr.value);
     assert.equal(b.nodes.chain.value, firstUse.nodes.chain.value);
+    assert.equal(firstUse.nodes.chain.value, 'ethereum');
+    b.nodes.addr.value = row.address; b.nodes.addr.fire('input');
+    assert.equal(b.nodes.chain.value, '');
     assert.notEqual(firstUse.nodes.addr.value, row.address);
   },
   async 'clear invalidates an in-flight reply and leaves the risk demo usable'() {
