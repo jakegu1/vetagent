@@ -184,8 +184,9 @@
   </div>
   <div id="verdict" role="status" aria-live="polite"></div>
   <div class="liquidity-history" id="liquidity-history">
-    Liquidity rechecks save up to 8 observations in this browser and send them with your
-    next recheck. No account or server-side history. <button id="liquidity-clear">Clear saved observations</button>
+    Liquidity rechecks save up to 8 observations in this browser. Only this token's
+    relevant observations are sent with a recheck. No account or server-side history.
+    <button id="liquidity-clear">Clear saved observations</button>
   </div>
   <div id="liquidity-result" role="status" aria-live="polite"></div>
 </div>
@@ -507,6 +508,26 @@
     liquidityOutput.classList.add('show');
   }
 
+  function sameAddress(row, address) {
+    return row.best_pair_chain === 'solana' ? row.address === address :
+      /^0x[0-9a-fA-F]{40}$/.test(address) && row.address.toLowerCase() === address.toLowerCase();
+  }
+
+  function mergeObservations(incoming) {
+    var byKey = Object.create(null);
+    observations.concat(incoming).forEach(function (row) {
+      var solana = row.best_pair_chain === 'solana';
+      var key = JSON.stringify([row.best_pair_chain, solana ? row.address : row.address.toLowerCase(),
+        solana ? row.best_pair_address : row.best_pair_address.toLowerCase(), row.source]);
+      if (!byKey[key] || Date.parse(row.checked_at) > Date.parse(byKey[key].checked_at)) { byKey[key] = row; }
+    });
+    var merged = Object.keys(byKey).map(function (key) { return byKey[key]; }).sort(function (a, b) {
+      return Date.parse(a.checked_at) - Date.parse(b.checked_at);
+    });
+    observations = merged.slice(-8);
+    return merged.length > 8;
+  }
+
   function usd(value) {
     return typeof value === 'number' && Number.isFinite(value) ?
       '$' + value.toLocaleString('en-US', {maximumFractionDigits: 2}) : 'Unavailable';
@@ -529,7 +550,9 @@
     loadObservations();
     var submitted = '<div class="request-scope">Submitted address: <code>' + esc(address) +
       '</code><br>Selected network: ' + esc(chain || 'Auto') + '</div>';
-    var args = {address: address, comparison_context: observations};
+    var args = {address: address, comparison_context: observations.filter(function (row) {
+      return sameAddress(row, address) && (!chain || row.best_pair_chain === chain);
+    })};
     if (chain) { args.chain_hint = chain; }
     liquidityButton.disabled = true;
     showLiquidity(submitted + 'Checking liquidity\u2026');
@@ -545,7 +568,7 @@
       if (result.isError) { throw Error((result.content || [{}])[0].text || 'Liquidity request failed'); }
       var value = result.structuredContent || JSON.parse(result.content[0].text);
       if (!validContext(value.comparison_context)) { throw Error('Invalid liquidity observation context'); }
-      observations = value.comparison_context;
+      var browserEvicted = mergeObservations(value.comparison_context);
       try { window.localStorage.setItem(historyKey, JSON.stringify(observations)); }
       catch (e) { storageNotice = 'Browser storage is unavailable; comparisons last until this page closes.'; }
       var details = '<div class="request-scope">Returned network: ' + esc(value.best_pair_chain || 'Not reported') +
@@ -581,8 +604,8 @@
       } else if (transition.status === 'ambiguous') {
         change += '<div class="rec">Prior pool order is ambiguous because reply times are tied.</div>';
       }
-      if (comparison.context_evicted) {
-        change += '<div class="rec">The oldest observation was dropped to keep at most 8 saved observations.</div>';
+      if (comparison.context_evicted || browserEvicted) {
+        change += '<div class="rec">Oldest observations were dropped to keep at most 8 saved observations.</div>';
       }
       if (comparison.nonprior_observations) {
         change += '<div class="rec">Observations at or after this reply time were excluded as baselines.</div>';

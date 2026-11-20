@@ -263,6 +263,10 @@ history is stored and comparison adds no upstream requests.
 
 The homepage's **Recheck liquidity** button performs this round trip and keeps up to eight
 observations in browser storage, including across reopening and provider alternation.
+It sends only the current token's observations, scoped to the selected network when
+specified. EVM token addresses match without case; Solana addresses preserve case.
+Other tokens' observations stay local and are merged with the response under the same
+eight-observation total cap.
 **Clear saved observations** removes that local history. Storage failures are shown and
 leave a page-only comparison available. The risk assessment button remains independent.
 

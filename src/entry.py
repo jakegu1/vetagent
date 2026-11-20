@@ -212,7 +212,7 @@ _PRIVACY_HTML = """<!doctype html>
  .sub{color:#8b949e;margin:0 0 2rem}
 </style>
 <h1>Privacy</h1>
-<p class="sub">VetAgent &middot; last updated 2026-09-22</p>
+<p class="sub">VetAgent &middot; last updated 2026-11-20</p>
 
 <h2>What we collect</h2>
 <p><strong>No accounts, no cookies, no browser tracking.</strong> VetAgent has no
@@ -231,6 +231,21 @@ source answered, and for a <code>high</code> the category of the signal that dec
 fixed words such as <code>liquidity:dexscreener 429</code> or
 <code>driver=no_liquidity</code>. <strong>No IP addresses, no full user
 agents, no token addresses, nothing that identifies a person or a request.</strong></p>
+
+<h2>Saved liquidity observations in your browser</h2>
+<p>The homepage's <strong>Recheck liquidity</strong> action saves at most eight compact
+observations in this browser's local storage: token address, chain, complete pool ID,
+provider, reply time and USD liquidity estimate. They stay after reopening this page.
+Only observations for the current token and selected network (or matching token across
+networks in Auto mode) are sent in the body of the next recheck. Other token observations
+stay in this browser. <strong>Clear saved observations</strong> removes this local history;
+if browser storage is unavailable, the page reports it and keeps observations only until
+the page closes. A failed clear is reported with instructions to remove site data.</p>
+<p>MCP callers can likewise carry the returned <code>comparison_context</code> into their
+next call. This is caller-supplied observation, not a signed historical service record.
+The service uses it only to compare with the current reply. It does not store or log this
+history, forward it to data providers, or add an account or tracking identifier.
+The assessment action does not save its token input in browser storage.</p>
 
 <h2>One thing we cannot promise for you</h2>
 <p>The line above is about what <em>we</em> record, and it is enforced in code. It is not

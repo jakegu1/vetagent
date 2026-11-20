@@ -423,6 +423,9 @@ def test_landing_liquidity_recheck_roundtrips_actual_mcp_results_in_the_served_s
     print(result.stdout)
     check("served liquidity recheck uses real MCP context and bounded browser-only history",
           result.returncode == 0, result.stdout + result.stderr)
+    check("public privacy explains local observations, scoped return, clearing and server nonretention",
+          all(text in entry._PRIVACY_HTML for text in ("eight compact", "local storage", "current token",
+              "Other token observations", "Clear saved observations", "does not store or log this")))
 
 
 def test_a_call_from_our_own_page_is_ours_even_with_stale_javascript():

@@ -100,6 +100,18 @@ const cases = {
       await tick(); assert.equal(b.text(), text); assert.equal(b.saved.get(key), saved);
     }
   },
+  async 'merging a ninth token keeps eight local observations and discloses eviction'() {
+    const row = plain(replies[0].result.structuredContent.comparison_context[0]);
+    const older = Array.from({length: 8}, (_, i) => ({...row,
+      address: '0x' + (i + 1).toString(16).padStart(40, '0'), checked_at: '2026-11-18T00:00:0' + i + 'Z'}));
+    const b = boot(new Map([[key, JSON.stringify(older)]]));
+    const q = b.click(); assert.deepEqual(q.body.params.arguments.comparison_context, []);
+    q.resolve(replies[0]); await tick();
+    const saved = JSON.parse(b.saved.get(key));
+    assert.equal(saved.length, 8); assert.ok(saved.some(r => r.address === row.address));
+    assert.ok(!saved.some(r => r.address === older[0].address));
+    assert.match(b.text(), /dropped/i);
+  },
   async 'corrupt and unavailable storage are visible and do not stop a recheck'() {
     for (const raw of ['bad JSON', '{}', JSON.stringify(Array(9).fill({})), 'x'.repeat(9000)]) {
       const b = boot(new Map([[key, raw]])); const q = b.click();
