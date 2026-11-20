@@ -186,7 +186,7 @@ REVIEWED_NOT_A_CLAIM = {
         "chain' -- which this guard reads chain by chain and cannot express",
     ("src/entry.py", "sellability:no record"):
         "a docstring example of the telemetry string, not text a caller is shown",
-    ("README.md", "Review liquidity, holder distribution and contract permissions"):
+    ("README.md", "Review it, and liquidity, holder distribution and contract permissions, before deciding."):
         "inside the sample response: the engine's recommendation telling the caller what "
         "to go and look at, which is the opposite of a claim to have looked",
 }

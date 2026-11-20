@@ -2554,8 +2554,8 @@ def test_sell_recommendation_names_only_the_adopted_simulation_scope():
     address, _, _, cases = _t092_market_cases()
     descriptions = {
         "same": ("honeypot.is", "completed simulation", "in the displayed pool"),
-        "different": ("honeypot.is", "completed simulation", "another pool", "displayed pool was not verified"),
-        "unknown": ("honeypot.is", "completed simulation", "displayed pool was not confirmed"),
+        "different": ("honeypot.is", "completed simulation", "another pool", "did not verify selling in the displayed pool"),
+        "unknown": ("honeypot.is", "completed simulation", "whether it simulated the displayed pool is unknown"),
     }
     for name, routes, relation, _, _, _, _ in cases:
         for interface in ("mcp", "http"):

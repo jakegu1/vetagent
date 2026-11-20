@@ -164,10 +164,10 @@ const cases = {
   async 'scoped recommendation renders without repeating the simulation context'() {
     const example = clone(recorded.find(row => row.case === 'weth-eth').result);
     example.recommendation = 'Low risk. Honeypot.is reports a completed simulation in another pool. ' +
-      'The displayed pool was not verified.';
+      'This simulation did not verify selling in the displayed pool.';
     const shown = front((await render(example)).text());
     assert.match(shown, /class="rec"[^>]*>[^<]*Honeypot\.is reports a completed simulation in another pool/);
-    assert.match(shown, /The displayed pool was not verified/);
+    assert.match(shown, /This simulation did not verify selling in the displayed pool/);
     assert.doesNotMatch(shown, /simulation provider reported a different pool|provider reports simulation completion/i);
     assert.match(shown, /selected pool liquidity estimate/i);
   },

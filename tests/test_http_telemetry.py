@@ -1352,7 +1352,7 @@ def test_t086_sell_evidence_at_both_entry_points():
                           status == 200 and result.get("risk_level") == "unknown"
                           and any(g["dimension"] == "sellability" for g in ev.get("data_gaps", []))
                           and "Buys and sells normally" not in messages
-                          and "Buy/sell simulation completed" not in messages
+                          and "Simulation completed" not in messages
                           and calls.count("retry") == (1 if phase == "retry" else 0))
             wrong_pool = dict(clean, pairAddress="0x" + "c" * 40)
             result, calls, _ = await call(surface, failed, wrong_pool)
