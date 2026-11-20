@@ -32,8 +32,9 @@ function boot(saved = new Map(), broken = false) {
   vm.runInNewContext(script, sandbox, {timeout: 1000});
   assert.ok(nodes['liquidity-go'], 'one-click liquidity recheck is missing');
   assert.ok(nodes['liquidity-clear'], 'clear browser history control is missing');
-  const click = () => { nodes.addr.value = replies[0].result.structuredContent.address;
-    nodes.chain.value = 'base'; nodes['liquidity-go'].fire('click'); return requests.at(-1); };
+  const click = (fill = true) => { if (fill) {
+    nodes.addr.value = replies[0].result.structuredContent.address; nodes.chain.value = 'base';
+    } nodes['liquidity-go'].fire('click'); return requests.at(-1); };
   return {nodes, requests, saved, click, text: () => nodes['liquidity-result'].innerHTML};
 }
 
@@ -42,7 +43,11 @@ const cases = {
     const saved = new Map(); let expected = [];
     for (let i = 0; i < replies.length; i++) {
       const b = boot(saved); assert.equal(b.requests.length, 0);
-      const q = b.click();
+      if (i > 0) {
+        assert.equal(b.nodes.addr.value, replies[0].result.structuredContent.address);
+        assert.equal(b.nodes.chain.value, 'base');
+      }
+      const q = b.click(i === 0);
       assert.equal(q.body.params.name, 'get_token_liquidity');
       assert.equal(q.url, 'https://vetagent.dev/mcp');
       assert.equal(q.options.headers['X-MCP-Client'], 'vetagent-landing-demo');
@@ -62,6 +67,17 @@ const cases = {
       }
     }
     assert.match(html, /in this browser/i); assert.match(html, /No.*server.side history/i);
+  },
+  async 'clearing returns to the first-use target and reopening never queries automatically'() {
+    const row = plain(replies[0].result.structuredContent.comparison_context[0]);
+    const saved = new Map([[key, JSON.stringify([row])]]), b = boot(saved);
+    assert.equal(b.requests.length, 0); assert.equal(b.nodes.addr.value, row.address);
+    b.nodes['liquidity-clear'].fire('click');
+    const firstUse = boot(saved);
+    assert.equal(firstUse.requests.length, 0);
+    assert.equal(b.nodes.addr.value, firstUse.nodes.addr.value);
+    assert.equal(b.nodes.chain.value, firstUse.nodes.chain.value);
+    assert.notEqual(firstUse.nodes.addr.value, row.address);
   },
   async 'clear invalidates an in-flight reply and leaves the risk demo usable'() {
     const b = boot(); const q = b.click();
