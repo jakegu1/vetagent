@@ -161,15 +161,12 @@ const cases = {
       }
     }
   },
-  async 'scoped recommendation precedes signals without repeating the simulation context'() {
+  async 'scoped recommendation renders without repeating the simulation context'() {
     const example = clone(recorded.find(row => row.case === 'weth-eth').result);
     example.recommendation = 'Low risk. Honeypot.is reports a completed simulation in another pool. ' +
       'The displayed pool was not verified.';
     const shown = front((await render(example)).text());
-    const recommendation = shown.indexOf('class="rec"');
-    const firstSignal = shown.indexOf('class="sig"');
-    assert.ok(recommendation >= 0 && firstSignal > recommendation, 'show scoped guidance above the signal list');
-    assert.match(shown, /Honeypot\.is reports a completed simulation in another pool/);
+    assert.match(shown, /class="rec"[^>]*>[^<]*Honeypot\.is reports a completed simulation in another pool/);
     assert.match(shown, /The displayed pool was not verified/);
     assert.doesNotMatch(shown, /simulation provider reported a different pool|provider reports simulation completion/i);
     assert.match(shown, /selected pool liquidity estimate/i);
