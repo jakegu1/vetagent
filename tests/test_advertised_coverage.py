@@ -424,6 +424,31 @@ def test_current_install_guides_use_client_specific_remote_paths():
                                          for chain in ("Ethereum", "BSC", "Base")))
 
 
+def test_python_mcp_quickstart_has_one_copyable_example():
+    from html import unescape
+
+    readme = read("README.md")
+    guide = read("docs/AGENT-INTEGRATION.md")
+    page = read("src/pages.py")
+    url = "https://vetagent.dev/api#python-mcp"
+    check("Python quickstart is discoverable from both repository guides",
+          url in readme and url in guide)
+    code = re.findall(r'<pre><code class="language-python">(.*?)</code></pre>', page, re.S)
+    check("the API page owns a single Python quickstart",
+          '<h3 id="python-mcp">Python</h3>' in page and len(code) == 1
+          and "from mcp import Client" not in readme and "from mcp import Client" not in guide)
+    if len(code) != 1:
+        return
+    example = unescape(code[0])
+    compile(example, "VetAgent Python quickstart", "exec")
+    check("the Python quickstart lists tools and makes one read-only WETH lookup",
+          "from mcp import Client" in example and 'Client("https://vetagent.dev/mcp")' in example
+          and ".list_tools()" in example and example.count(".call_tool(") == 1
+          and '"get_token_liquidity"' in example and '"chain_hint": "ethereum"' in example
+          and "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" in example
+          and "result.is_error" in example and "result.structured_content" in example)
+
+
 def test_landing_directory_checks_keep_the_claim_boundary():
     """Directory and protocol observations do not establish installation or risk results."""
     page = flat(read("src/landing.html"))
