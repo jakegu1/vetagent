@@ -526,7 +526,7 @@
     if (value.next_action === 'retry') {
       var delay = value.retry_after_seconds;
       action += typeof delay === 'number' && Number.isInteger(delay) && delay > 0 ?
-        'Wait ' + delay + ' seconds, then run this check again. Review the new result before proceeding.' :
+        'Wait ' + delay + ' seconds, then retry once. Review the new result before proceeding.' :
         'The response advises a retry but provides no valid wait time.';
       if (value.unknown_kind === 'mixed') {
         action += ' Other checks may still be missing after a retry; it does not guarantee a complete assessment.';
