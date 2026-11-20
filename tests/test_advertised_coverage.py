@@ -74,6 +74,7 @@ SURFACES = [
 ]
 NOT_A_SURFACE = {
     "src/risk.py": "the engine itself; its strings are gap reasons, not advertising",
+    "src/liquidity_comparison.py": "pure comparison logic; strings are data status/reason codes, not capability claims",
     "src/og_image.py": "renders the share card image, carries no capability text",
     "src/__pycache__": "build output",
 }
