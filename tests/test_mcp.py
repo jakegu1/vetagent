@@ -3228,8 +3228,10 @@ def test_liquidity_tools_list_exposes_optional_activity_and_complete_identity():
           and "32-byte" in fields["best_pair_address"]["description"]
           and "Reply time" in fields["checked_at"]["description"]
           and "cached" in fields["checked_at"]["description"])
-    check("the original liquidity input remains the only callable input",
-          set(liquidity["inputSchema"]["properties"]) == {"address", "chain_hint"})
+    check("liquidity preserves snapshot inputs and adds bounded optional comparison context",
+          set(liquidity["inputSchema"]["properties"]) == {"address", "chain_hint", "comparison_context"}
+          and liquidity["inputSchema"]["required"] == ["address"]
+          and liquidity["inputSchema"]["properties"]["comparison_context"].get("maxItems") == 8)
 
 
 def _liquidity_comparison_module():
@@ -3338,6 +3340,105 @@ def test_saved_liquidity_example_cli_reads_two_local_response_objects():
         run = subprocess.run(args, capture_output=True, timeout=20)
         check("invalid JSON input is refused without echoing private filenames or content",
               run.returncode == 1 and not run.stderr and json.loads(run.stdout) == {"error": "input_refused"})
+
+
+def _native_liquidity_call(reading, context=None, *, legacy=False):
+    from unittest.mock import AsyncMock
+    args = {"address": reading.get("address", ""), "chain_hint": reading.get("best_pair_chain")}
+    if not legacy:
+        args["comparison_context"] = [] if context is None else context
+    with patch.object(risk, "liquidity", AsyncMock(return_value=copy.deepcopy(reading))) as fetch:
+        reply = call({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                      "params": {"name": "get_token_liquidity", "arguments": args}})
+    return reply, fetch
+
+
+def test_native_liquidity_roundtrip_selects_latest_comparable_source_and_reports_pool_changes():
+    readings = _load("liquidity_recheck.json")
+    history = []
+    answers = []
+    for reading in readings:
+        reply, fetch = _native_liquidity_call(reading, history)
+        answer = reply["result"].get("structuredContent", {})
+        check("native comparison fetches exactly one current snapshot", fetch.await_count == 1)
+        check("native comparison returns bounded round-trippable context",
+              type(answer.get("comparison_context")) is list and len(answer["comparison_context"]) <= 8)
+        history = answer.get("comparison_context", [])
+        answers.append(answer)
+    check("first observation saves a baseline without inventing a prior reading",
+          answers[0].get("comparison", {}).get("reason") == "no_previous_observation")
+    check("the intervening provider observation is explicitly incomparable",
+          answers[1].get("comparison", {}).get("reason") == "different_source"
+          and "change_usd" not in answers[1].get("comparison", {}))
+    result = answers[2].get("comparison", {})
+    check("returning provider uses the original UTC baseline and signed estimate change",
+          result.get("status") == "compared" and result.get("change_usd") == -366200
+          and result.get("before_usd") == 86312200 and result.get("after_usd") == 85946000
+          and result.get("before_checked_at") == readings[0]["checked_at"]
+          and result.get("after_checked_at") == readings[2]["checked_at"]
+          and result.get("baseline_origin") == "client_observation")
+    changed = dict(readings[1], best_pair_address="0x" + "cd" * 32)
+    reply, _ = _native_liquidity_call(changed, answers[0].get("comparison_context", []))
+    middle = reply["result"].get("structuredContent", {})
+    reply, _ = _native_liquidity_call(readings[2], middle.get("comparison_context", []))
+    result = reply["result"].get("structuredContent", {}).get("comparison", {})
+    check("returning to an older pool discloses both its older baseline and the latest pool change",
+          result.get("change_usd") == -366200 and result.get("baseline_is_latest_observation") is False
+          and result.get("pool_transition", {}).get("status") == "changed"
+          and result.get("pool_transition", {}).get("previous_pool_address") == changed["best_pair_address"])
+    only_changed, _ = _native_liquidity_call(changed, answers[0].get("comparison_context", []))
+    result = only_changed["result"].get("structuredContent", {}).get("comparison", {})
+    check("two different pools never produce a subtraction",
+          result.get("reason") == "different_pool" and "change_usd" not in result)
+
+
+def test_native_liquidity_context_refuses_invalid_records_and_preserves_legacy_snapshots():
+    before, _, after = _load("liquidity_recheck.json")
+    first, _ = _native_liquidity_call(before)
+    context = first["result"].get("structuredContent", {}).get("comparison_context", [])
+    if not context:
+        check("native context exists for validation controls", False)
+        return
+    for change in ({"served_stale": []}, {"error": "failed"}, {"status": "unavailable"},
+                   {"best_pair_address": "truncated..."}, {"checked_at": "2026-11-19T16:09:07"},
+                   {"liquidity_usd": True}, {"liquidity_usd": -1}, {"liquidity_usd": None},
+                   {"source": "unknown"}, {"address": "x" * 9000}):
+        reply, fetch = _native_liquidity_call(after, [dict(context[0], **change)])
+        check("invalid client context is refused before current upstream work",
+              reply.get("result", {}).get("isError") is True and fetch.await_count == 0)
+    for bad in (None, {}, "history", context * 9):
+        # Explicit null must not become an empty context.
+        from unittest.mock import AsyncMock
+        with patch.object(risk, "liquidity", AsyncMock(return_value=after)) as fetch:
+            reply = call({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {
+                "name": "get_token_liquidity", "arguments": {"address": before["address"],
+                "comparison_context": bad}}})
+        check("context has a hard list and count boundary", reply.get("result", {}).get("isError") is True
+              and fetch.await_count == 0)
+    reply, _ = _native_liquidity_call(after, legacy=True)
+    answer = reply["result"]["structuredContent"]
+    check("legacy callers still receive a snapshot without a comparison",
+          all(answer.get(key) == value for key, value in after.items()) and "comparison" not in answer)
+    for change, reason in (({"served_stale": []}, "stale_response"),
+                           ({"best_pair_address": "short"}, "invalid_identity"),
+                           ({"checked_at": before["checked_at"]}, "invalid_order"),
+                           ({"status": "unavailable"}, "unusable_response")):
+        reply, _ = _native_liquidity_call(dict(after, **change), context)
+        answer = reply["result"].get("structuredContent", {})
+        check("an unusable current reply cannot overwrite its usable baseline",
+              answer.get("comparison", {}).get("reason") == reason
+              and answer.get("comparison_context") == context)
+    newer = dict(context[0], checked_at="2026-11-19T16:20:00Z", liquidity_usd=86000000)
+    reply, _ = _native_liquidity_call(after, [newer, context[0]])
+    result = reply["result"].get("structuredContent", {}).get("comparison", {})
+    check("history ordering cannot select an older comparable reading",
+          result.get("before_checked_at") == newer["checked_at"] and result.get("change_usd") == -54000)
+    many = [dict(context[0], best_pair_address="0x" + ("%040x" % n)) for n in range(1, 9)]
+    reply, _ = _native_liquidity_call(after, many)
+    answer = reply["result"].get("structuredContent", {})
+    check("context eviction stays bounded and is disclosed",
+          len(answer.get("comparison_context", [])) == 8
+          and answer.get("comparison", {}).get("context_evicted") == 1)
 
 
 def main():

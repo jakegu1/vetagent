@@ -401,6 +401,30 @@ def test_landing_trial_runs_the_served_script_with_request_scope():
           result.returncode == 0, result.stdout + result.stderr)
 
 
+def test_landing_liquidity_recheck_roundtrips_actual_mcp_results_in_the_served_script():
+    import json
+    from unittest.mock import AsyncMock, patch
+    import mcp_server
+    import risk
+    with open(os.path.join(ROOT, "tests", "fixtures", "liquidity_recheck.json"), encoding="utf-8") as handle:
+        readings = json.load(handle)
+    replies, context = [], []
+    for reading in readings:
+        with patch.object(risk, "liquidity", AsyncMock(return_value=reading)):
+            reply = asyncio.run(mcp_server.handle_mcp_request({"jsonrpc": "2.0", "id": 1,
+                "method": "tools/call", "params": {"name": "get_token_liquidity", "arguments": {
+                    "address": reading["address"], "chain_hint": "base", "comparison_context": context}}}))
+        replies.append(reply)
+        context = reply["result"].get("structuredContent", {}).get("comparison_context", [])
+    landing = asyncio.run(entry.Default().fetch(FakeRequest("https://vetagent.dev/"))).body
+    runner = os.path.join(ROOT, "tests", "fixtures", "liquidity_recheck_contract.cjs")
+    result = subprocess.run(["node", runner], input=json.dumps({"html": landing, "replies": replies}),
+                            encoding="utf-8", capture_output=True, timeout=30)
+    print(result.stdout)
+    check("served liquidity recheck uses real MCP context and bounded browser-only history",
+          result.returncode == 0, result.stdout + result.stderr)
+
+
 def test_a_call_from_our_own_page_is_ours_even_with_stale_javascript():
     """The demo button's own header is not enough, because the page can be cached.
 

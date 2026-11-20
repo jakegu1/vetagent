@@ -1,0 +1,66 @@
+[
+  {
+    "address": "0x4200000000000000000000000000000000000006",
+    "status": "ok",
+    "source": "dexscreener",
+    "best_pair_chain": "base",
+    "best_pair_dex": "uniswap",
+    "price_usd": 1777.23,
+    "liquidity_usd": 86312200.0,
+    "volume_24h_usd": 69237300.0,
+    "pairs_total": 38,
+    "chains": [
+      "base",
+      "optimism",
+      "soneium",
+      "worldchain"
+    ],
+    "best_pair_address": "0x6c561B446416E1A00E8E93E221854d6eA4171372",
+    "checked_at": "2026-11-19T16:09:07Z"
+  },
+  {
+    "address": "0x4200000000000000000000000000000000000006",
+    "status": "ok",
+    "source": "coingecko",
+    "best_pair_chain": "base",
+    "best_pair_dex": "geckoterminal",
+    "price_usd": 1770.68,
+    "liquidity_usd": 85993200.0,
+    "volume_24h_usd": 64305400.0,
+    "pairs_total": 20,
+    "chains": [
+      "base"
+    ],
+    "best_pair_address": "0x6c561b446416e1a00e8e93e221854d6ea4171372",
+    "trade_activity": {
+      "trades_last_1h": 289,
+      "trades_prior_5h": 3058
+    },
+    "liquidity_reserve_check": "not_checkable",
+    "note": "Upstream estimate; reserve amounts not checked.",
+    "checked_at": "2026-11-19T16:54:34Z"
+  },
+  {
+    "address": "0x4200000000000000000000000000000000000006",
+    "status": "ok",
+    "source": "dexscreener",
+    "best_pair_chain": "base",
+    "best_pair_dex": "uniswap",
+    "price_usd": 1765.8,
+    "liquidity_usd": 85946000.0,
+    "volume_24h_usd": 66387100.0,
+    "pairs_total": 38,
+    "chains": [
+      "base",
+      "optimism",
+      "soneium",
+      "worldchain"
+    ],
+    "best_pair_address": "0x6c561B446416E1A00E8E93E221854d6eA4171372",
+    "trade_activity": {
+      "trades_last_1h": 334,
+      "trades_prior_5h": 3067
+    },
+    "checked_at": "2026-11-19T16:54:56Z"
+  }
+]
