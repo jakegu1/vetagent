@@ -417,6 +417,9 @@
 
   input.addEventListener('input', selectedNetwork);
   network.addEventListener('change', function () { networkChosen = true; presetAddress = null; });
+  network.addEventListener('click', function (event) {
+    if (event.isTrusted) { networkChosen = true; presetAddress = null; }
+  });
 
   document.querySelectorAll('.samples button').forEach(function (b) {
     b.addEventListener('click', function () {
