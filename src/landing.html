@@ -598,7 +598,7 @@
       show(submitted + scope +
         '<div class="vhead"><span class="vlevel" style="color:' +
         (COLORS[v.risk_level] || 'var(--dim)') + '">' + esc(v.risk_level) + '</span>' +
-        '<span class="vmeta">score ' + esc(v.risk_score) + '/100 · confidence ' +
+        '<span class="vmeta">' + (v.risk_level === 'unknown' ? '' : 'score ' + esc(v.risk_score) + '/100 · ') + 'confidence ' +
         esc(v.confidence) + '</span></div>' + summary + sigs +
         (v.risk_level === 'unknown' ? '' : '<div class="rec">' + esc(v.recommendation) + '</div>') + details);
     }).catch(function (e) {
