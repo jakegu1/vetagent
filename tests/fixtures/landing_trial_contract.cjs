@@ -136,6 +136,7 @@ const cases = {
       const value = clone(controls[name]); value.retry_after_seconds = 17;
       const shown = front((await render(value)).text());
       assert.match(shown, /17 seconds/); assert.match(shown, /retry|check again/i);
+      assert.match(shown, /then retry once/i);
       assert.match(shown, /provider request failed|provider.*could not|upstream.*failed/i);
       assert.doesNotMatch(shown, /about a minute|retry in 60/i);
       if (name === 'mixed') {
