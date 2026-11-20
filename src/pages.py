@@ -104,6 +104,35 @@ to add it first. <a href="https://support.claude.com/en/articles/11175166-get-st
 <p>Three tools: <code>assess_token_risk</code> (the verdict), <code>get_token_liquidity</code>
 (price and depth only) and <code>find_new_hot_pools</code> (discovery, never an endorsement).</p>
 
+<h3 id="python-mcp">Python</h3>
+<p>Install the official MCP SDK in your Python 3.10+ client environment.</p>
+<pre><code>python -m pip install "mcp&gt;=2.3,&lt;3"</code></pre>
+<p>Save as <code>vetagent_first_use.py</code> and run
+<code>python vetagent_first_use.py</code>. It lists the tools and reads an Ethereum WETH
+liquidity snapshot without a wallet or transaction.</p>
+<pre><code class="language-python">import asyncio
+from mcp import Client
+
+
+async def main():
+    async with Client("https://vetagent.dev/mcp") as client:
+        tools = await client.list_tools()
+        print([tool.name for tool in tools.tools])
+        result = await client.call_tool("get_token_liquidity", {
+            "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "chain_hint": "ethereum",
+        })
+    if result.is_error:
+        raise RuntimeError(result.content)
+    print(result.structured_content)
+
+
+asyncio.run(main())</code></pre>
+<p>Connection and MCP protocol failures raise an SDK exception. A tool error sets
+<code>is_error</code>. In a returned snapshot, check <code>status</code> before using
+<code>liquidity_usd</code>. <code>unavailable</code> indicates an upstream failure and
+<code>unpriced</code> indicates unknown depth.</p>
+
 <h3>Plain HTTP</h3>
 <pre><code># the address in the body, which keeps it out of URLs and logs along the way
 curl -X POST https://vetagent.dev/assess \\

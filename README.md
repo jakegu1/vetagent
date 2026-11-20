@@ -66,6 +66,11 @@ Add this to your project's `.cursor/mcp.json`, merging with existing servers:
 }
 ```
 
+### Python
+
+Use the [Python MCP quickstart](https://vetagent.dev/api#python-mcp) to list the tools
+and make a read-only WETH lookup with the official SDK.
+
 ### Plain HTTP
 
 The same engine answers without an MCP client. Include the chain when you know it:
