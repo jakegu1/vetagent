@@ -130,6 +130,17 @@
  .sig .dot{flex:none;width:8px;height:8px;border-radius:50%;margin-top:7px}
  .rec{margin-top:12px;color:var(--dim);font-size:13.5px}
  .request-scope{color:var(--dim);font-size:13px;margin-bottom:12px;overflow-wrap:anywhere}
+ .assessment-summary{border-left:3px solid var(--warn);padding-left:14px;margin:16px 0;max-width:72ch}
+ .assessment-summary h3{font-size:18px;margin:0 0 10px}
+ .assessment-summary h4{font-size:14px;margin:14px 0 6px}
+ .assessment-summary p,.assessment-summary li,.assessment-context{font-size:14px;overflow-wrap:anywhere}
+ .assessment-summary ul{padding-left:20px;margin:8px 0}
+ .assessment-summary li{margin-bottom:10px}
+ .gap-source{display:block;color:var(--dim);font-size:12.5px;margin-top:4px}
+ .assessment-context p{margin:6px 0;color:var(--dim)}
+ .assessment-details{margin-top:16px;font-size:13px}
+ .assessment-details summary{cursor:pointer;color:var(--accent)}
+ .assessment-details pre{white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%;font-size:12px}
  @media (prefers-reduced-motion:no-preference){button{transition:opacity .15s}}
 </style>
 </head>
@@ -159,12 +170,12 @@
     Live call against the same public endpoint your agent would use. No key, no signup.</p>
   <div class="demo-row">
     <input id="addr" aria-label="Token address" placeholder="0x… or a Solana address" spellcheck="false"
-           value="0x50614cc8e44f7814549c223aa31db9296e58057c">
+           value="0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2">
     <div class="network-field">
       <label for="chain">Network</label>
       <select id="chain">
         <option value="">Auto</option>
-        <option value="ethereum">Ethereum</option>
+        <option value="ethereum" selected>Ethereum</option>
         <option value="base">Base</option>
         <option value="bsc">BSC</option>
         <option value="polygon">Polygon</option>
@@ -178,9 +189,10 @@
     <button id="liquidity-go" aria-describedby="liquidity-history">Recheck liquidity</button>
   </div>
   <div class="samples">Examples:
-    <button data-a="0x50614cc8e44f7814549c223aa31db9296e58057c" data-c="ethereum">a token whose trade simulation fails</button>·
-    <button data-a="0xb954d1ba6bb92123609fcfb724c68b810c668feb" data-c="ethereum">closed-source, upstream flags it</button>·
-    <button data-a="0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" data-c="ethereum">WETH (healthy control)</button>
+    <button data-a="0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" data-c="ethereum">WETH (Ethereum)</button>·
+    <button data-a="0xb954d1ba6bb92123609fcfb724c68b810c668feb" data-c="ethereum">Contract signals</button>·
+    <button data-a="0x50614cc8e44f7814549c223aa31db9296e58057c" data-c="ethereum">Simulation coverage</button>
+    <br>Each example runs a live check; its result can change.
   </div>
   <div id="verdict" role="status" aria-live="polite"></div>
   <div class="liquidity-history" id="liquidity-history">
@@ -407,6 +419,111 @@
 
   function show(html) { out.innerHTML = html; out.classList.add('show'); }
 
+  function checkName(dimension) {
+    var names = {sellability: 'Sellability', liquidity: 'Liquidity estimate',
+      concentration: 'Holder concentration', contract: 'Contract check', freshness: 'Data freshness'};
+    return Object.prototype.hasOwnProperty.call(names, dimension) ? names[dimension] :
+      typeof dimension === 'string' && dimension ? dimension.replace(/[_-]/g, ' ') : 'Unnamed check';
+  }
+
+  function gapExplanation(gap, evidence) {
+    var reason = typeof gap.reason === 'string' ? gap.reason : '';
+    var label = checkName(gap.dimension);
+    var sentence = label + ' is unverified.';
+    if (/^upstream request failed\b/i.test(reason)) {
+      sentence = label + ' could not be completed because its provider request failed.';
+    } else if (gap.dimension === 'sellability') {
+      var hp = evidence.honeypot || {};
+      var buyFailed = /(?:^|[^A-Z0-9_])BUY_FAILED(?:$|[^A-Z0-9_])/i;
+      if (buyFailed.test(reason) || (hp.simulation_success === false && buyFailed.test(hp.simulation_error || ''))) {
+        sentence = 'The simulation\u2019s buy step failed, so it did not reach a sell test. ' +
+          'Whether an existing holder can sell remains unverified.';
+      } else if (/has no record/i.test(reason)) {
+        sentence = 'The sell-simulation provider has no record for this token. Selling is unverified.';
+      } else if (/^our coverage gap\b/i.test(reason)) {
+        sentence = 'Sell-simulation coverage is missing for this check. Selling is unverified.';
+      } else if (/simulation failed/i.test(reason)) {
+        sentence = 'The sell simulation did not complete. Selling remains unverified.';
+      }
+    }
+    var detail = reason.replace(/^(?:our coverage gap|upstream request failed|about the token):?\s*/i, '');
+    return '<li><strong>' + esc(label) + '</strong>: ' + esc(sentence) +
+      '<span class="gap-source">Provider: ' + esc(gap.source || 'Not reported') +
+      (detail ? '. Source detail: ' + esc(detail) : '. No reason was supplied.') + '</span></li>';
+  }
+
+  function observedContext(value) {
+    var evidence = value.evidence || {}, pair = evidence.best_pair || {}, parts = [];
+    if (typeof pair.liquidity_usd === 'number' && Number.isFinite(pair.liquidity_usd) && pair.liquidity_usd >= 0) {
+      parts.push('Selected pool liquidity estimate: ' + usd(pair.liquidity_usd) +
+        (evidence.liquidity_source ? ' from ' + evidence.liquidity_source : '') +
+        (evidence.liquidity_reserve_check === 'not_checkable' ? '; reserve amounts were not checked.' : '.'));
+    }
+    if ((evidence.owner_powers || {}).is_proxy === true) {
+      parts.push('Bytecode scan reports a proxy contract.' +
+        (evidence.owner_powers.current_authority === 'not_checked' ? ' Current authority was not checked.' : ''));
+    }
+    if ((evidence.honeypot || {}).simulation_success === true) {
+      parts.push('The provider reports a completed buy and sell simulation.');
+    }
+    if (evidence.pool_link === 'different') {
+      parts.push('The simulation provider reported a different pool from the displayed market. ' +
+        'This does not establish a sell result for the displayed pool.');
+    } else if (evidence.pool_link === 'same') {
+      parts.push('The simulation and displayed market report the same pool.');
+    } else if (evidence.pool_link === 'unknown') {
+      parts.push('Whether the simulation and displayed market refer to the same pool was not established.');
+    }
+    var stale = Array.isArray(evidence.served_stale) ? evidence.served_stale :
+      Array.isArray(value.served_stale) ? value.served_stale : [];
+    var seen = Object.create(null);
+    stale.forEach(function (row) {
+      if (!row || typeof row.source !== 'string' || !row.source ||
+          typeof row.age_seconds !== 'number' || !Number.isFinite(row.age_seconds) || row.age_seconds < 0) { return; }
+      var key = row.source + '|' + row.age_seconds;
+      if (!seen[key]) {
+        seen[key] = true;
+        parts.push('Cached fallback from ' + row.source + ' was ' + row.age_seconds +
+          ' seconds old when this reply was made.');
+      }
+    });
+    return parts.length ? '<div class="assessment-context">' + parts.map(function (text) {
+      return '<p>' + esc(text) + '</p>';
+    }).join('') + '</div>' : '';
+  }
+
+  function incompleteSummary(value, context) {
+    var evidence = value.evidence || {};
+    var gaps = Array.isArray(evidence.data_gaps) ? evidence.data_gaps.filter(function (gap) {
+      return gap && typeof gap === 'object' && !Array.isArray(gap);
+    }) : [];
+    var onlySell = gaps.length && gaps.every(function (gap) { return gap.dimension === 'sellability'; });
+    var heading = onlySell ? 'Unverified sellability' : 'Assessment incomplete';
+    var missing = gaps.length ? '<ul>' + gaps.map(function (gap) {
+      return gapExplanation(gap, evidence);
+    }).join('') + '</ul>' : '<p>The response did not name the incomplete check.</p>';
+    var action = 'Keep automated actions paused. ';
+    if (value.next_action === 'retry') {
+      var delay = value.retry_after_seconds;
+      action += typeof delay === 'number' && Number.isInteger(delay) && delay > 0 ?
+        'Wait ' + delay + ' seconds, then run this check again. Review the new result before proceeding.' :
+        'The response advises a retry but provides no valid wait time.';
+      if (value.unknown_kind === 'mixed') {
+        action += ' Other checks may still be missing after a retry; it does not guarantee a complete assessment.';
+      }
+    } else if (value.next_action === 'abstain') {
+      action += 'Verify the missing checks independently before proceeding.';
+      if (gaps.some(function (gap) { return gap.dimension === 'sellability'; })) {
+        action += ' An existing holding needs a separate check for its actual pool and intended amount.';
+      }
+    } else {
+      action += 'The response did not provide a next step.';
+    }
+    return '<section class="assessment-summary" aria-label="Incomplete checks"><h3>' + heading + '</h3>' +
+      missing + (context ? '<h4>What we found</h4>' + context : '') +
+      '<h4>What to do next</h4><p>' + esc(action) + '</p></section>';
+  }
+
   function run() {
     var a = input.value.trim();
     if (!a) { return; }
@@ -437,6 +554,7 @@
         return show(submitted + '<span class="high">' + esc((res.content || [{}])[0].text) + '</span>');
       }
       var v = res.structuredContent || JSON.parse(res.content[0].text);
+      if (!v || typeof v !== 'object' || Array.isArray(v)) { throw Error('Invalid assessment reply'); }
       var searched = (v.evidence || {}).chain_searched;
       searched = typeof searched === 'string' ? searched.trim() : '';
       var scope = '<div class="request-scope">Assessment network: ' +
@@ -450,12 +568,16 @@
           (DOT[s.severity] || 'var(--dim)') + '"></span><span><strong>' + esc(s.name) +
           '</strong> — ' + esc(s.message) + '</span></div>';
       }).join('');
+      var context = observedContext(v);
+      var summary = v.risk_level === 'unknown' ? incompleteSummary(v, context) : context;
+      var details = '<details class="assessment-details"><summary>Detailed report</summary><pre>' +
+        esc(JSON.stringify(v, null, 2)) + '</pre></details>';
       show(submitted + scope +
         '<div class="vhead"><span class="vlevel" style="color:' +
         (COLORS[v.risk_level] || 'var(--dim)') + '">' + esc(v.risk_level) + '</span>' +
         '<span class="vmeta">score ' + esc(v.risk_score) + '/100 · confidence ' +
-        esc(v.confidence) + '</span></div>' + sigs +
-        '<div class="rec">' + esc(v.recommendation) + '</div>');
+        esc(v.confidence) + '</span></div>' + summary + sigs +
+        (v.risk_level === 'unknown' ? '' : '<div class="rec">' + esc(v.recommendation) + '</div>') + details);
     }).catch(function (e) {
       if (request !== latestRequest) { return; }
       btn.disabled = false;

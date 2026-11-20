@@ -82,6 +82,11 @@ const cases = {
       assert.match(b.text(), new RegExp('>' + row.result.risk_level + '<'));
       assert.match(b.text(), new RegExp('score ' + row.result.risk_score + '/100'));
       assert.match(b.text(), /<details[\s>]/); assert.match(b.text(), /Detailed report/i);
+      if (row.result.evidence.honeypot.simulation_success === true) {
+        assert.match(front(b.text()), /provider reports a completed buy and sell simulation/i);
+      } else {
+        assert.doesNotMatch(front(b.text()), /provider reports a completed buy and sell simulation/i);
+      }
       if (row.result.risk_level === 'unknown') {
         const shown = front(b.text());
         assert.match(shown, /buy step failed/i);
@@ -128,6 +133,7 @@ const cases = {
     assert.match(shown, /liquidity estimate/i); assert.match(shown, /quote_prices/);
     assert.match(shown, /automated.*paused/i);
     assert.doesNotMatch(shown, /buy step failed|selling was not tested|cached|different pool|liquidity estimate: \$0/i);
+    assert.doesNotMatch(shown, /provider reports a completed buy and sell simulation/i);
   },
   async 'missing facts stay unknown and all returned detail is escaped'() {
     const missing = front((await render({risk_level: 'unknown', risk_score: 0,

@@ -158,6 +158,14 @@ _CONDITIONAL_HOLDER_DISCLOSURE = (
     "missing lists remain a coverage gap.")
 
 REVIEWED_NOT_A_CLAIM = {
+    ("src/landing.html", "function checkName(dimension) { var names = {sellability: 'Sellability', "
+     "liquidity: 'Liquidity estimate', concentration: 'Holder concentration', "
+     "contract: 'Contract check', freshness: 'Data freshness'}"):
+        "names of response data_gaps rendered as unverified checks; not a coverage list",
+    ("src/landing.html", "simulation_success === true) { "
+     "parts.push('The provider reports a completed buy and sell simulation.')"):
+        "a conditional returned observation; served-script tests reject this claim when "
+        "simulation_success is false or missing",
     ("README.md", _CONDITIONAL_HOLDER_DISCLOSURE):
         "a conditional observation, not universal chain coverage",
     ("src/mcp_server.py", _CONDITIONAL_HOLDER_DISCLOSURE):
