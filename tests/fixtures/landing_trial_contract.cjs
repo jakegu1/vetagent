@@ -116,7 +116,11 @@ const cases = {
       b.requests[0].resolve(response(row.result)); await tick();
       assert.equal(JSON.stringify(row.result), saved);
       assert.match(b.text(), new RegExp('>' + row.result.risk_level + '<'));
-      assert.match(b.text(), new RegExp('score ' + row.result.risk_score + '/100'));
+      if (row.result.risk_level === 'unknown') {
+        assert.doesNotMatch(front(b.text()), /score [0-9]+\/100/);
+      } else {
+        assert.match(front(b.text()), new RegExp('score ' + row.result.risk_score + '/100'));
+      }
       assert.match(b.text(), /<details[\s>]/); assert.match(b.text(), /Detailed report/i);
       if (row.result.evidence.honeypot.simulation_success === true) {
         assert.match(front(b.text()), /provider reports simulation completion/i);
@@ -177,6 +181,7 @@ const cases = {
     const missing = front((await render({risk_level: 'unknown', risk_score: 0,
       signals: [], evidence: {}, recommendation: 'See evidence.data_gaps.'})).text());
     assert.match(missing, /did not name.*check|check.*not reported/i);
+    assert.doesNotMatch(missing, /score 0\/100/);
     assert.match(missing, /automated.*paused/i); assert.doesNotMatch(missing, /different pool|cached|\$0/);
     const value = clone(controls.non_sell);
     value.evidence.data_gaps[0].reason = 'about the token: <img src=x onerror=alert(1)>';
