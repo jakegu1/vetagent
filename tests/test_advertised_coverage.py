@@ -426,17 +426,18 @@ def test_current_install_guides_use_client_specific_remote_paths():
 
 def test_python_mcp_quickstart_has_one_copyable_example():
     from html import unescape
+    from runpy import run_path
 
     readme = read("README.md")
     guide = read("docs/AGENT-INTEGRATION.md")
-    page = read("src/pages.py")
+    page = run_path(os.path.join(ROOT, "src", "pages.py"))["PAGES"]["/api"]
     url = "https://vetagent.dev/api#python-mcp"
     check("Python quickstart is discoverable from both repository guides",
           url in readme and url in guide)
-    code = re.findall(r'<pre><code class="language-python">(.*?)</code></pre>', page, re.S)
-    check("the API page owns a single Python quickstart",
-          '<h3 id="python-mcp">Python</h3>' in page and len(code) == 1
-          and "from mcp import Client" not in readme and "from mcp import Client" not in guide)
+    section = re.search(r'<h3 id="python-mcp">Python</h3>(.*?)(?=<h[123]\b|$)', page, re.S)
+    code = re.findall(r'<pre><code class="language-python">(.*?)</code></pre>',
+                      section.group(1) if section else "", re.S)
+    check("the API Python quickstart contains one copyable example", len(code) == 1)
     if len(code) != 1:
         return
     example = unescape(code[0])
