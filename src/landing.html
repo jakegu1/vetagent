@@ -484,7 +484,7 @@
         (evidence.owner_powers.current_authority === 'not_checked' ? ' Current authority was not checked.' : ''));
     }
     if ((evidence.honeypot || {}).simulation_success === true) {
-      parts.push('The provider reports a completed buy and sell simulation.');
+      parts.push('The provider reports simulation completion.');
     }
     if (evidence.pool_link === 'different') {
       parts.push('The simulation provider reported a different pool from the displayed market. ' +
