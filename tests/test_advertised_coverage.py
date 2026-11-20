@@ -430,23 +430,22 @@ def test_landing_directory_checks_keep_the_claim_boundary():
           "the result disclaimer is missing or the installation claim is present")
 
 
-def test_first_landing_example_describes_a_failed_trade_simulation():
-    """The approved label stays attached to the fixed saved example and default."""
-    print("\n[advertising] the first landing example describes a failed simulation")
-    expected_address = "0x50614cc8e44f7814549c223aa31db9296e58057c"
+def test_landing_examples_describe_their_purpose_without_promising_a_live_verdict():
+    """WETH is the first-use example; every example is still assessed live."""
+    print("\n[advertising] the landing examples identify tasks rather than fixed risk results")
+    expected = [("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "WETH (Ethereum)"),
+                ("0xb954d1ba6bb92123609fcfb724c68b810c668feb", "Contract signals"),
+                ("0x50614cc8e44f7814549c223aa31db9296e58057c", "Simulation coverage")]
     demo = _LandingDemo()
     demo.feed(read("src/landing.html"))
     demo.close()
     check("the landing demo keeps three example buttons", len(demo.examples) == 3)
-    attrs, label = demo.examples[0] if demo.examples else ({}, [])
-    check("first example keeps the fixed saved token address",
-          attrs.get("data-a") == expected_address, str(attrs.get("data-a")))
-    check("first example keeps its Ethereum chain hint",
-          attrs.get("data-c") == "ethereum", str(attrs.get("data-c")))
-    check("first example uses the approved simulation-failure label",
-          "".join(label) == "a token whose trade simulation fails", "".join(label))
-    check("the address input defaults to the fixed first example",
-          demo.defaults == [expected_address], str(demo.defaults))
+    for (address, label), (attrs, words) in zip(expected, demo.examples):
+        check("live example preserves its recorded address, chain and neutral task label",
+              attrs.get("data-a") == address and attrs.get("data-c") == "ethereum"
+              and "".join(words) == label, str((attrs, words)))
+    check("the address input defaults to Ethereum WETH",
+          demo.defaults == [expected[0][0]], str(demo.defaults))
 
 
 def test_saved_landing_example_records_a_simulation_failure():

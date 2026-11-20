@@ -392,9 +392,30 @@ def test_a_caller_can_name_itself_on_every_request():
 
 def test_landing_trial_runs_the_served_script_with_request_scope():
     """Replay the actual page, not a rewritten copy of its request logic."""
+    import json
+    with open(os.path.join(ROOT, "tests", "fixtures", "homepage_assessment_cases.json"), encoding="utf-8") as handle:
+        recorded = json.load(handle)
+    gaps = {
+        "no_record": [{"dimension": "sellability", "source": "honeypot.is",
+            "reason": "about the token: the sell simulator has no record of this token"}],
+        "unsupported": [{"dimension": "sellability", "source": "honeypot.is",
+            "reason": "our coverage gap: the sell simulator does not cover polygon"}],
+        "outage": [{"dimension": "sellability", "source": "honeypot.is",
+            "reason": "upstream request failed (honeypot.is 503)"}],
+        "non_sell": [{"dimension": "liquidity", "source": "quote_prices", "reason": risk._UNBACKED_REASON}],
+    }
+    gaps["mixed"] = gaps["no_record"] + [{"dimension": "liquidity", "source": "dexscreener",
+        "reason": "upstream request failed (dexscreener 429)"}]
+    controls = {}
+    for name, missing in gaps.items():
+        controls[name] = risk._finalize("0x" + "ab" * 20,
+            [risk._sig("warn", "Check incomplete", "Evidence missing", "sellability"),
+             risk._sig("ok", "Observed contract", "Contract observation available", "contract")],
+            {"chain_searched": "polygon" if name == "unsupported" else "ethereum"}, missing)
     landing = asyncio.run(entry.Default().fetch(FakeRequest("https://vetagent.dev/"))).body
     runner = os.path.join(ROOT, "tests", "fixtures", "landing_trial_contract.cjs")
-    result = subprocess.run(["node", runner], input=landing, encoding="utf-8",
+    result = subprocess.run(["node", runner], input=json.dumps({"html": landing, "recorded": recorded,
+                            "controls": controls}), encoding="utf-8",
                             capture_output=True, timeout=30)
     print(result.stdout)
     check("served trial preserves submitted asset, network and latest request",

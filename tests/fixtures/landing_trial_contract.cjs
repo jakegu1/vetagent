@@ -1,7 +1,7 @@
 // Built-ins only. Execute the real Worker-served inline script with controlled replies.
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
-const html = require('node:fs').readFileSync(0, 'utf8');
+const {html, recorded, controls} = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
 const script = html.slice(html.lastIndexOf('<script>') + 8, html.lastIndexOf('</script>'));
 const chains = ['arbitrum', 'avalanche', 'base', 'bsc', 'ethereum', 'optimism', 'polygon', 'solana'];
 const attrs = s => Object.fromEntries([...s.matchAll(/([\w-]+)="([^"]*)"/g)].map(m => [m[1], m[2]]));
@@ -11,6 +11,16 @@ const verdict = (chain = 'base') => ({risk_level: 'unknown', risk_score: 0, conf
   signals: [{severity: 'warn', name: 'Missing check', message: 'Upstream unavailable'}],
   evidence: chain === null ? {} : {chain_searched: chain}});
 const response = v => ({result: {structuredContent: v}});
+const clone = value => JSON.parse(JSON.stringify(value));
+const front = page => page.split('<details')[0];
+async function render(value) {
+  const b = boot(), saved = JSON.stringify(value);
+  b.enter(value.address || '0x' + 'ab'.repeat(20));
+  b.requests[0].resolve(response(value)); await tick();
+  assert.equal(JSON.stringify(value), saved, 'rendering must not mutate the machine result');
+  assert.equal(b.requests.length, 1, 'rendering must not trigger extra queries');
+  return b;
+}
 
 function boot() {
   function element(a = {}) {
@@ -25,6 +35,8 @@ function boot() {
     const a = attrs(m[2]);
     if (a.id) nodes[a.id] = element(a);
   }
+  const chosen = html.match(/<option\b(?=[^>]*\bselected\b)[^>]*value="([^"]*)"/);
+  if (chosen && nodes.chain) nodes.chain.value = chosen[1];
   const samples = [...html.matchAll(/<button\b([^>]*data-a="[^"]*"[^>]*)>/g)]
     .map(m => element(attrs(m[1])));
   const requests = [];
@@ -50,6 +62,84 @@ function boot() {
 }
 
 const cases = {
+  async 'first use is Ethereum WETH without an automatic request'() {
+    const b = boot();
+    assert.equal(b.requests.length, 0);
+    assert.equal(b.nodes.addr.value, recorded[0].args.address);
+    assert.equal(b.nodes.chain.value, 'ethereum');
+    b.nodes.go.fire('click');
+    assert.deepEqual(b.requests[0].args, {address: recorded[0].args.address, chain_hint: 'ethereum'});
+  },
+  async 'three recorded responses keep their real verdicts and explain BUY_FAILED before details'() {
+    for (const [index, row] of recorded.entries()) {
+      const b = boot(); b.samples[index].fire('click');
+      assert.equal(b.requests.length, 1);
+      assert.equal(b.requests[0].args.address.toLowerCase(), row.args.address.toLowerCase());
+      assert.equal(b.requests[0].args.chain_hint, 'ethereum');
+      const saved = JSON.stringify(row.result);
+      b.requests[0].resolve(response(row.result)); await tick();
+      assert.equal(JSON.stringify(row.result), saved);
+      assert.match(b.text(), new RegExp('>' + row.result.risk_level + '<'));
+      assert.match(b.text(), new RegExp('score ' + row.result.risk_score + '/100'));
+      assert.match(b.text(), /<details[\s>]/); assert.match(b.text(), /Detailed report/i);
+      if (row.result.risk_level === 'unknown') {
+        const shown = front(b.text());
+        assert.match(shown, /buy step failed/i);
+        assert.match(shown, /did not reach a sell test|selling was not tested/i);
+        assert.match(shown, /existing holder.*unverified/i);
+        assert.match(shown, /automated.*paused/i);
+        assert.match(shown, /2,499\.99/); assert.match(shown, /578 seconds/);
+        assert.match(shown, /different pool/i); assert.match(shown, /Proxy/i);
+        assert.doesNotMatch(shown, /See evidence\.data_gaps|Not assessed\./);
+      }
+    }
+  },
+  async 'no record and unsupported chain name the actual missing sell check'() {
+    const absent = front((await render(clone(controls.no_record))).text());
+    assert.match(absent, /sell.*no record|no record.*sell/i);
+    assert.match(absent, /honeypot\.is/); assert.match(absent, /unverified|not verified/i);
+    const unsupported = front((await render(clone(controls.unsupported))).text());
+    assert.match(unsupported, /does not cover polygon/i);
+    assert.match(unsupported, /coverage/i); assert.match(unsupported, /automated.*paused/i);
+  },
+  async 'retry timing comes from the result and mixed gaps do not promise recovery'() {
+    for (const name of ['outage', 'mixed']) {
+      const value = clone(controls[name]); value.retry_after_seconds = 17;
+      const shown = front((await render(value)).text());
+      assert.match(shown, /17 seconds/); assert.match(shown, /retry|check again/i);
+      assert.match(shown, /provider request failed|provider.*could not|upstream.*failed/i);
+      assert.doesNotMatch(shown, /about a minute|retry in 60/i);
+      if (name === 'mixed') {
+        assert.match(shown, /no record/i);
+        assert.match(shown, /other checks may still be missing|gaps may remain/i);
+        assert.doesNotMatch(shown, /will still be unknown|cannot become low/i);
+      }
+    }
+    for (const invalid of [null, true, -1, '17']) {
+      const value = clone(controls.outage); value.retry_after_seconds = invalid;
+      const shown = front((await render(value)).text());
+      assert.match(shown, /no valid.*wait time|wait time.*not.*provided/i);
+      assert.doesNotMatch(shown, /Wait (null|true|-1|17|60) seconds/i);
+    }
+  },
+  async 'non-sell gaps do not invent a sell failure or missing market observations'() {
+    const value = clone(controls.non_sell);
+    const shown = front((await render(value)).text());
+    assert.match(shown, /liquidity estimate/i); assert.match(shown, /quote_prices/);
+    assert.match(shown, /automated.*paused/i);
+    assert.doesNotMatch(shown, /buy step failed|selling was not tested|cached|different pool|liquidity estimate: \$0/i);
+  },
+  async 'missing facts stay unknown and all returned detail is escaped'() {
+    const missing = front((await render({risk_level: 'unknown', risk_score: 0,
+      signals: [], evidence: {}, recommendation: 'See evidence.data_gaps.'})).text());
+    assert.match(missing, /did not name.*check|check.*not reported/i);
+    assert.match(missing, /automated.*paused/i); assert.doesNotMatch(missing, /different pool|cached|\$0/);
+    const value = clone(controls.non_sell);
+    value.evidence.data_gaps[0].reason = 'about the token: <img src=x onerror=alert(1)>';
+    value.evidence.data_gaps[0].source = '<svg onload=alert(2)>';
+    const text = (await render(value)).text();
+    assert.match(text, /&lt;img/); assert.match(text, /&lt;svg/); assert.doesNotMatch(text, /<img|<svg/);
+  },
   async 'accessible Auto and eight existing networks'() {
     const select = html.match(/<select\b[^>]*id="chain"[^>]*>([\s\S]*?)<\/select>/);
     assert.ok(select, 'native network selector is missing');
@@ -58,11 +148,12 @@ const cases = {
     assert.deepEqual(values, ['', ...values.slice(1)]);
     assert.deepEqual(values.slice(1).sort(), chains);
     assert.match(select[1], /value=""[^>]*>Auto</);
-    assert.equal(boot().nodes.chain.value, '');
+    assert.equal(boot().nodes.chain.value, 'ethereum');
   },
   async 'explicit submission only and Auto preserves the self client'() {
     const b = boot();
     assert.equal(b.requests.length, 0);
+    b.select('');
     b.nodes.addr.value = '0xmanual';
     b.nodes.addr.fire('input'); b.nodes.addr.fire('keydown', {key: 'a'});
     if (b.nodes.chain) b.nodes.chain.fire('change');

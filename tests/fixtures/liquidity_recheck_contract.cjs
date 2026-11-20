@@ -17,6 +17,8 @@ function boot(saved = new Map(), broken = false) {
       classList: {add() {}}, addEventListener(name, fn) { events[name] = fn; },
       fire(name, event = {}) { if (events[name]) events[name](event); }};
   }
+  const chosen = html.match(/<option\b(?=[^>]*\bselected\b)[^>]*value="([^"]*)"/);
+  if (chosen && nodes.chain) nodes.chain.value = chosen[1];
   const forbidden = () => { throw Error('unexpected browser side effect'); };
   const storage = {getItem(k) { if (broken) throw Error('blocked'); return saved.get(k) || null; },
     setItem(k, v) { if (broken) throw Error('blocked'); assert.equal(k, key); saved.set(k, v); },

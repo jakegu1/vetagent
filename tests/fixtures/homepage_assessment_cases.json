@@ -1,0 +1,345 @@
+[
+  {
+    "case": "weth-eth",
+    "args": {
+      "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "chain_hint": "ethereum"
+    },
+    "result": {
+      "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+      "signals": [
+        {
+          "severity": "ok",
+          "name": "Liquidity is adequate",
+          "message": "Main pair holds $204,371,861. Upstream estimate; reserve amounts not checked.",
+          "category": "liquidity"
+        },
+        {
+          "severity": "ok",
+          "name": "Established pair",
+          "message": "Main pair has existed for 1157 days.",
+          "category": "freshness"
+        },
+        {
+          "severity": "info",
+          "name": "No owner powers found, which is weaker than it sounds",
+          "message": "The bytecode scan for powers to blacklist addresses, change the tax, halt trading, mint new supply and pause transfers found no matching selectors. It is known to find 50.0% of the powers that exist. Read this as 'nothing found', not 'nothing there'. Current authority and activation were not checked.",
+          "category": "contract"
+        },
+        {
+          "severity": "ok",
+          "name": "Buys and sells normally",
+          "message": "Simulation passed. Buy 0.0% / sell 0.0% tax.",
+          "category": "honeypot"
+        },
+        {
+          "severity": "ok",
+          "name": "Upstream scanner rates this low risk",
+          "message": "honeypot.is riskLevel=1",
+          "category": "upstream_risk"
+        }
+      ],
+      "evidence": {
+        "chain_searched": "ethereum",
+        "liquidity_source": "coingecko",
+        "best_pair": {
+          "dex": "geckoterminal",
+          "chain": "ethereum",
+          "liquidity_usd": 204372000.0,
+          "price_usd": 1743.63,
+          "sellers_24h": null,
+          "volume_24h_usd": 386590.0,
+          "pair_created_at": "2023-09-19T13:19:54Z",
+          "buys_24h": 322.0,
+          "sells_24h": 351.0
+        },
+        "liquidity_reserve_check": "not_checkable",
+        "chains": [
+          "ethereum"
+        ],
+        "pair_age_days": 1157,
+        "turnover_24h": 0.1988,
+        "owner_powers": {
+          "powers": [],
+          "evidence_basis": "bytecode_selector_match",
+          "matched_selectors": {},
+          "current_authority": "not_checked",
+          "scan_is_incomplete": true,
+          "found_none": true,
+          "selectors_dispatched": 12,
+          "is_proxy": false,
+          "bytecode_bytes": 3124
+        },
+        "honeypot": {
+          "is_honeypot": false,
+          "simulation_success": true,
+          "simulation_error": null,
+          "upstream_risk": "low",
+          "upstream_risk_level": 1,
+          "flags": [],
+          "buy_tax": 0,
+          "sell_tax": 0,
+          "transfer_tax": 0,
+          "open_source": true,
+          "is_proxy": false,
+          "holders": 3330867
+        },
+        "pool_link": "different"
+      },
+      "driver": {
+        "name": "No owner powers found, which is weaker than it sounds",
+        "category": "contract"
+      },
+      "risk_level": "low",
+      "risk_score": 3,
+      "confidence": "high",
+      "recommendation": "Low risk: sellable and liquid when checked, no fatal signal. The exit was open when we looked; that is not the same as it cannot be closed. A scan for bytecode indicators of powers to blacklist addresses, change the tax, halt trading, mint new supply and pause transfers found none here. Read that as 'nothing found', not 'nothing there': measured against an independent oracle it catches 50.0% of the powers that exist. Current authority and activation were not checked.",
+      "checked_at": "2026-11-20T03:25:36Z",
+      "evidence_max_age_seconds": 0
+    }
+  },
+  {
+    "case": "closed-source-eth",
+    "args": {
+      "address": "0xb954d1ba6bb92123609fcfb724c68b810c668feb",
+      "chain_hint": "ethereum"
+    },
+    "result": {
+      "address": "0xb954d1ba6bb92123609fcfb724c68b810c668feb",
+      "signals": [
+        {
+          "severity": "critical",
+          "name": "Very low liquidity",
+          "message": "Main pair holds only $0. High rug and slippage risk. Upstream estimate; reserve amounts not checked.",
+          "category": "liquidity"
+        },
+        {
+          "severity": "ok",
+          "name": "Established pair",
+          "message": "Main pair has existed for 77 days.",
+          "category": "freshness"
+        },
+        {
+          "severity": "warn",
+          "name": "Very little trading",
+          "message": "Turnover is only 0.0%. Exiting at size may be difficult.",
+          "category": "lifecycle"
+        },
+        {
+          "severity": "info",
+          "name": "No owner powers found, which is weaker than it sounds",
+          "message": "The bytecode scan for powers to blacklist addresses, change the tax, halt trading, mint new supply and pause transfers found no matching selectors. It is known to find 50.0% of the powers that exist. Read this as 'nothing found', not 'nothing there'. Current authority and activation were not checked.",
+          "category": "contract"
+        },
+        {
+          "severity": "ok",
+          "name": "Buys and sells normally",
+          "message": "Simulation passed. Buy 0.0% / sell 0.0% tax.",
+          "category": "honeypot"
+        },
+        {
+          "severity": "critical",
+          "name": "Upstream scanner rates this very high risk",
+          "message": "honeypot.is riskLevel=81, flags: low_fail_rate; closed_source",
+          "category": "upstream_risk"
+        },
+        {
+          "severity": "warn",
+          "name": "Contract is closed source",
+          "message": "Source is not published, so hidden logic (minting, blacklists, adjustable tax) cannot be ruled out.",
+          "category": "contract"
+        }
+      ],
+      "evidence": {
+        "chain_searched": "ethereum",
+        "liquidity_source": "coingecko",
+        "best_pair": {
+          "dex": "geckoterminal",
+          "chain": "ethereum",
+          "liquidity_usd": 0.102263,
+          "price_usd": 1.62543e-09,
+          "sellers_24h": 0.0,
+          "volume_24h_usd": 0.0,
+          "pair_created_at": "2026-09-03T10:44:11Z",
+          "buys_24h": 0.0,
+          "sells_24h": 0.0
+        },
+        "liquidity_reserve_check": "not_checkable",
+        "chains": [
+          "ethereum"
+        ],
+        "pair_age_days": 77,
+        "price_change_24h_pct": 0.0,
+        "turnover_24h": 0.0,
+        "owner_powers": {
+          "powers": [],
+          "evidence_basis": "bytecode_selector_match",
+          "matched_selectors": {},
+          "current_authority": "not_checked",
+          "scan_is_incomplete": true,
+          "found_none": true,
+          "selectors_dispatched": 17,
+          "is_proxy": false,
+          "bytecode_bytes": 1852
+        },
+        "honeypot": {
+          "is_honeypot": false,
+          "simulation_success": true,
+          "simulation_error": null,
+          "upstream_risk": "very_high",
+          "upstream_risk_level": 81,
+          "flags": [
+            "low_fail_rate",
+            "closed_source"
+          ],
+          "buy_tax": 0,
+          "sell_tax": 0,
+          "transfer_tax": 0,
+          "open_source": false,
+          "is_proxy": false,
+          "holders": 43,
+          "holder_analysis": {
+            "holders": 42,
+            "failed": 2,
+            "siphoned": 0
+          }
+        },
+        "pool_link": "same"
+      },
+      "driver": {
+        "name": "Very low liquidity",
+        "category": "liquidity"
+      },
+      "risk_level": "high",
+      "risk_score": 78,
+      "confidence": "high",
+      "recommendation": "High risk: \"Very low liquidity\" (liquidity). Do not proceed without review.",
+      "checked_at": "2026-11-20T03:25:37Z",
+      "evidence_max_age_seconds": 0
+    }
+  },
+  {
+    "case": "default-auto",
+    "args": {
+      "address": "0x50614cc8e44f7814549c223aa31db9296e58057c"
+    },
+    "result": {
+      "address": "0x50614cc8e44f7814549c223aa31db9296e58057c",
+      "signals": [
+        {
+          "severity": "critical",
+          "name": "Very low liquidity",
+          "message": "Main pair holds only $2,500. High rug and slippage risk.",
+          "category": "liquidity"
+        },
+        {
+          "severity": "ok",
+          "name": "Established pair",
+          "message": "Main pair has existed for 69 days.",
+          "category": "freshness"
+        },
+        {
+          "severity": "info",
+          "name": "Proxy contract: implementation powers are not visible here",
+          "message": "Proxy bytecode was scanned. Implementation permissions remain unobserved. Current authority and activation were not checked.",
+          "category": "contract"
+        },
+        {
+          "severity": "warn",
+          "name": "Sellability unverified",
+          "message": "Buy/sell simulation failed (execution reverted: \"revert: HP: BUY_FAILED\"), so we cannot confirm this token can be sold.",
+          "category": "sellability"
+        },
+        {
+          "severity": "info",
+          "name": "Answered partly from cache",
+          "message": "An upstream was unreachable, so up to 578 seconds old data was used.",
+          "category": "freshness"
+        }
+      ],
+      "evidence": {
+        "chain_searched": "ethereum",
+        "liquidity_source": "dexscreener",
+        "best_pair": {
+          "dex": "uniswap",
+          "chain": "ethereum",
+          "liquidity_usd": 2499.99,
+          "price_usd": 0.002975,
+          "sellers_24h": null,
+          "volume_24h_usd": 263.1,
+          "pair_created_at": 1789105991000,
+          "buys_24h": 3.0,
+          "sells_24h": 10.0
+        },
+        "chains": [
+          "ethereum"
+        ],
+        "pair_age_days": 69,
+        "price_change_24h_pct": 0.04,
+        "turnover_24h": 0.811,
+        "owner_powers": {
+          "powers": [],
+          "evidence_basis": "bytecode_selector_match",
+          "matched_selectors": {},
+          "current_authority": "not_checked",
+          "scan_is_incomplete": true,
+          "found_none": false,
+          "selectors_dispatched": 0,
+          "is_proxy": true,
+          "bytecode_bytes": 1529
+        },
+        "honeypot": {
+          "is_honeypot": null,
+          "simulation_success": false,
+          "simulation_error": "execution reverted: \"revert: HP: BUY_FAILED\"",
+          "upstream_risk": "unknown",
+          "upstream_risk_level": null,
+          "flags": [
+            "high_fail_rate"
+          ],
+          "buy_tax": null,
+          "sell_tax": null,
+          "transfer_tax": null,
+          "open_source": true,
+          "is_proxy": true,
+          "holders": 6102,
+          "holder_analysis": {
+            "holders": 11,
+            "failed": 9,
+            "siphoned": 0
+          }
+        },
+        "pool_link": "different",
+        "served_stale": [
+          {
+            "source": "api.dexscreener.com",
+            "age_seconds": 578
+          },
+          {
+            "source": "api.dexscreener.com",
+            "age_seconds": 578
+          }
+        ],
+        "data_gaps": [
+          {
+            "dimension": "sellability",
+            "source": "honeypot.is",
+            "reason": "about the token: simulation failed: execution reverted: \"revert: HP: BUY_FAILED\""
+          }
+        ]
+      },
+      "driver": {
+        "name": "Very low liquidity",
+        "category": "liquidity"
+      },
+      "risk_level": "unknown",
+      "risk_score": 58,
+      "confidence": "low",
+      "recommendation": "Not assessed. A critical check could not be completed, so this is NOT a low-risk result and must not justify a trade. See evidence.data_gaps. The sell simulation could not complete on this token, so it cannot be confirmed sellable: do not retry into a trade. Separately, \"Very low liquidity\" (liquidity): Main pair holds only $2,500. High rug and slippage risk. Some market data is up to 578 seconds old because an upstream did not answer.",
+      "unknown_kind": "coverage",
+      "next_action": "abstain",
+      "checked_at": "2026-11-20T03:25:35Z",
+      "evidence_max_age_seconds": 579
+    }
+  }
+]
