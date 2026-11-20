@@ -650,7 +650,7 @@ def _sell_observation(evidence, data_gaps):
     return ""
 
 
-def _low_recommendation(evidence, observation):
+def _low_recommendation(evidence, observation=""):
     """The `low` sentence, saying which owner-power case we are actually in.
 
     All three bytecode outcomes used to produce one byte-identical sentence:
