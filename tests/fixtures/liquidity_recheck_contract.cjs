@@ -73,6 +73,24 @@ const cases = {
     assert.equal(b.requests.at(-1).body.params.name, 'assess_token_risk');
     assert.equal(b.nodes.verdict.innerHTML.includes('Running live checks'), true);
   },
+  async 'only the current token leaves browser storage with chain-aware address case'() {
+    const row = plain(replies[0].result.structuredContent.comparison_context[0]);
+    const other = {...row, address: '0x' + 'ab'.repeat(20)};
+    const sol = {...row, best_pair_chain: 'solana', address: 'So11111111111111111111111111111111111111112',
+      best_pair_address: 'So11111111111111111111111111111111111111112'};
+    const b = boot(new Map([[key, JSON.stringify([row, other, sol])]]));
+    b.nodes.addr.value = other.address.toUpperCase().replace('0X', '0x'); b.nodes.chain.value = 'base';
+    b.nodes['liquidity-go'].fire('click');
+    assert.deepEqual(b.requests[0].body.params.arguments.comparison_context, [other]);
+    const reply = plain(replies[0]); reply.result.structuredContent.comparison_context = [other];
+    b.requests[0].resolve(reply); await tick();
+    assert.equal(JSON.parse(b.saved.get(key)).length, 3, 'other local token baselines must survive merging');
+    b.nodes.addr.value = sol.address.toLowerCase(); b.nodes.chain.value = 'solana';
+    b.nodes['liquidity-go'].fire('click');
+    assert.deepEqual(b.requests[1].body.params.arguments.comparison_context, []);
+    b.nodes.addr.value = sol.address; b.nodes['liquidity-go'].fire('click');
+    assert.deepEqual(b.requests[2].body.params.arguments.comparison_context, [sol]);
+  },
   async 'older liquidity replies and failures cannot overwrite newer output or storage'() {
     for (const failure of [false, true]) {
       const b = boot(); const old = b.click(), latest = b.click();
