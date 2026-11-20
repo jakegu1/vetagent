@@ -29,7 +29,8 @@ function boot() {
     .map(m => element(attrs(m[1])));
   const requests = [];
   const forbidden = () => { throw Error('input must not enter storage, URLs or logs'); };
-  const storage = {getItem: forbidden, setItem: forbidden};
+  const storage = {getItem(key) { assert.equal(key, 'vetagent.liquidity.v1'); return null; },
+    removeItem(key) { assert.equal(key, 'vetagent.liquidity.v1'); }, setItem: forbidden};
   const sandbox = {document: {getElementById: id => nodes[id] || null,
       querySelectorAll: selector => selector === '.samples button' ? samples : []},
     fetch(url, options) {

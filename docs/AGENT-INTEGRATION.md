@@ -267,6 +267,8 @@ It sends only the current token's observations, scoped to the selected network w
 specified. EVM token addresses match without case; Solana addresses preserve case.
 Other tokens' observations stay local and are merged with the response under the same
 eight-observation total cap.
+Reopening prefills the most recent saved token and its observed network without sending
+a query. Clearing returns the inputs to the original example.
 **Clear saved observations** removes that local history. Storage failures are shown and
 leave a page-only comparison available. The risk assessment button remains independent.
 

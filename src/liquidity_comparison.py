@@ -189,5 +189,3 @@ def with_context(current, context, *, requested):
     if requested:
         answer["comparison"] = comparison
     return answer
-
-

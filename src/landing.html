@@ -467,6 +467,7 @@
   var liquidityOutput = document.getElementById('liquidity-result');
   var liquidityRequest = 0;
   var historyKey = 'vetagent.liquidity.v1';
+  var firstAddress = input.value, firstNetwork = network.value;
   var observations = [], historyLoaded = false, storageNotice = '';
   var observationFields = ['status', 'address', 'best_pair_chain', 'best_pair_address',
                            'source', 'checked_at', 'liquidity_usd'];
@@ -536,6 +537,7 @@
   document.getElementById('liquidity-clear').addEventListener('click', function () {
     ++liquidityRequest;
     observations = []; historyLoaded = true; storageNotice = '';
+    input.value = firstAddress; network.value = firstNetwork;
     liquidityButton.disabled = false;
     try { window.localStorage.removeItem(historyKey); }
     catch (e) { storageNotice = 'Could not clear browser storage. Remove this site\u2019s saved data in your browser settings.'; }
@@ -577,7 +579,8 @@
       var comparison = value.comparison || {};
       var change;
       if (comparison.status === 'compared') {
-        change = '<div>Before: ' + esc(usd(comparison.before_usd)) + ' at ' + esc(comparison.before_checked_at) +
+        change = '<div>Last comparable ' + esc(value.source) + ' estimate: ' +
+          esc(usd(comparison.before_usd)) + ' at ' + esc(comparison.before_checked_at) +
           '<br>After: ' + esc(usd(comparison.after_usd)) + ' at ' + esc(comparison.after_checked_at) +
           '<br>Estimated change: ' + (comparison.change_usd > 0 ? '+' : comparison.change_usd < 0 ? '-' : '') +
           esc(usd(Math.abs(comparison.change_usd))) + '</div>';
@@ -620,6 +623,14 @@
       showLiquidity(submitted + '<span class="high">Liquidity request failed: ' + esc(e.message) + '</span>');
     });
   });
+  loadObservations();
+  if (observations.length) {
+    var lastObservation = observations.reduce(function (latest, row) {
+      return Date.parse(row.checked_at) >= Date.parse(latest.checked_at) ? row : latest;
+    });
+    input.value = lastObservation.address;
+    network.value = lastObservation.best_pair_chain;
+  }
 })();
 </script>
 </body>
