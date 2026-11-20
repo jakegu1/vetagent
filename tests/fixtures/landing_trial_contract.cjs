@@ -122,6 +122,9 @@ const cases = {
         assert.match(front(b.text()), new RegExp('score ' + row.result.risk_score + '/100'));
       }
       assert.match(b.text(), /<details[\s>]/); assert.match(b.text(), /Detailed report/i);
+      const report = b.text().match(/<pre>([\s\S]*?)<\/pre>/)[1]
+        .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+      assert.deepEqual(JSON.parse(report), row.result, 'detailed report must preserve the complete original machine reply');
       if (row.result.evidence.honeypot.simulation_success === true) {
         assert.match(front(b.text()), /provider reports simulation completion/i);
         assert.doesNotMatch(front(b.text()), /provider reports a completed buy and sell simulation/i);
