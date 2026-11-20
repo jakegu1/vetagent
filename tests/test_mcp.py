@@ -2588,10 +2588,10 @@ def test_sell_recommendation_names_only_the_adopted_simulation_scope():
                                   ("honeypot.is", "buy 0.0%", "sell 0.0%")), str(positive))
 
 
-def test_sell_recommendation_distinguishes_selected_pool_history_and_missing_scope():
+def test_sell_recommendation_distinguishes_selected_pool_history_and_missing_scope(reader=risk._fetch_json):
     import test_risk as fixtures
     for verbose in (False, True):
-        with fixtures._t091_runtime("ethereum", hp_status=404) as state:
+        with fixtures._t091_runtime("ethereum", hp_status=404, reader=reader) as state:
             state["market"]["pairs"][0]["txns"]["h24"] = {"buys": 900, "sells": 850}
             answer = asyncio.run(_t092_worker_request("mcp", "assess_token_risk",
                 {"address": state["address"], "chain_hint": "ethereum", "verbose": verbose}))
@@ -2604,7 +2604,7 @@ def test_sell_recommendation_distinguishes_selected_pool_history_and_missing_sco
         check("recommendation attributes past sells to market data for the displayed pool",
               all(phrase in rec for phrase in ("market data", "past sells", "displayed pool"))
               and "completed simulation" not in rec, answer["recommendation"])
-        with fixtures._t091_runtime("arbitrum") as state:
+        with fixtures._t091_runtime("arbitrum", reader=reader) as state:
             answer = asyncio.run(_t092_worker_request("mcp", "assess_token_risk",
                 {"address": state["address"], "chain_hint": "ethereum", "verbose": verbose}))
         rec = answer["recommendation"].lower()
