@@ -632,7 +632,25 @@ def _validated_chain_pool_id(value, chain):
     return _validated_pool_id(value)
 
 
-def _low_recommendation(evidence):
+def _sell_observation(evidence, data_gaps):
+    """Describe the adopted observation without extending it to a wallet or amount."""
+    hp = evidence.get("honeypot") or {}
+    if (hp.get("simulation_success") is True and not hp.get("simulation_error")
+            and not any(gap.get("dimension") == "sellability" for gap in data_gaps)):
+        reported = "Honeypot.is reports a completed simulation"
+        if evidence.get("pool_link") == "same":
+            return reported + " in the displayed pool."
+        if evidence.get("pool_link") == "different":
+            return reported + " in another pool. This simulation did not verify selling in the displayed pool."
+        if evidence.get("best_pair"):
+            return reported + ". Whether it simulated the displayed pool is unknown."
+        return reported + ". No displayed pool was identified."
+    if evidence.get("best_pair") and evidence.get("sellability_from_chain"):
+        return "Market data reports past sells in the displayed pool. Your sale remains unverified."
+    return ""
+
+
+def _low_recommendation(evidence, observation):
     """The `low` sentence, saying which owner-power case we are actually in.
 
     All three bytecode outcomes used to produce one byte-identical sentence:
@@ -658,8 +676,9 @@ def _low_recommendation(evidence):
     delivered exactly like an observed absence, on the field whose own docstring is about
     that distinction.
     """
-    base = ("Low risk: sellable and liquid when checked, no fatal signal. The exit was "
-            "open when we looked; that is not the same as it cannot be closed. ")
+    base = "Low risk. "
+    if observation:
+        base += observation + " "
     info = evidence.get("owner_powers")
 
     if not isinstance(info, dict):
@@ -865,11 +884,14 @@ def _finalize(address, signals, evidence, data_gaps):
     result = {"address": address, "signals": signals, "evidence": evidence}
     if data_gaps:
         evidence["data_gaps"] = data_gaps
+    observation = _sell_observation(evidence, data_gaps)
 
     if not any(s["category"] != "price_movement" for s in signals):
         result.update(risk_level="unknown", risk_score=0, confidence="low",
                       recommendation="Not enough data to judge. Verify the address and retry; do not act on this result.")
         _unknown_guidance(result, data_gaps)
+        if observation:
+            result["recommendation"] += " " + observation
         return result
 
     score = _score(signals)
@@ -989,10 +1011,9 @@ def _finalize(address, signals, evidence, data_gaps):
             # without being switched on. Nothing in the current checks fires,
             # because those are contract powers rather than present behaviour, and
             # the field that would reveal them belongs to the benchmark oracle we
-            # deliberately hold out (B2 in DECISIONS.md). So `low` means the exit
-            # was open when we looked -- not that nobody can close it tomorrow, and
-            # a caller is entitled to be told which of those we checked.
-            "low": _low_recommendation(evidence),
+            # deliberately hold out (B2 in DECISIONS.md). Report the observation
+            # and permission check at their actual scope.
+            "low": _low_recommendation(evidence, observation),
             "unknown": "Not assessed. A critical check could not be completed, so this is NOT a low-risk result and must not justify a trade. See evidence.data_gaps.",
         }[level])
     if level == "unknown":
@@ -1010,6 +1031,8 @@ def _finalize(address, signals, evidence, data_gaps):
             if worst_named:
                 result["recommendation"] += (" Separately, %s: %s"
                                              % (_driver_phrase(driver), worst_named["message"]))
+    if level != "low" and observation:
+        result["recommendation"] += " " + observation
     return result
 
 
@@ -3395,8 +3418,8 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None, issue=None):
                                 " / ".join("%s %.1f%%" % (label, tax) for label, tax in observed),
                                 "sell_tax"))
         elif not issue:
-            signals.append(_sig("ok", "Buys and sells normally",
-                                "Simulation passed. Buy %.1f%% / sell %.1f%% tax."
+            signals.append(_sig("ok", "Simulation completed",
+                                "Honeypot.is reported buy %.1f%% / sell %.1f%% tax."
                                 % (_num(sim.get("buyTax")), _num(sim.get("sellTax"))),
                                 "honeypot"))
 

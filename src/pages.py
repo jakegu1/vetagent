@@ -114,7 +114,7 @@ curl -X POST https://vetagent.dev/assess \\
 curl "https://vetagent.dev/assess/0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913?chain_hint=base"</code></pre>
 
 <h2>What comes back</h2>
-<p>A shortened real answer for USDC on Base (evidence trimmed):</p>
+<p>A shortened example for USDC on Base (evidence trimmed):</p>
 <pre><code>{
   "risk_level": "low",
   "risk_score": 0,
@@ -122,16 +122,17 @@ curl "https://vetagent.dev/assess/0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913?cha
   "driver": null,
   "signals": [
     {"severity": "ok", "name": "Liquidity is adequate", "category": "liquidity"},
-    {"severity": "ok", "name": "Buys and sells normally", "category": "honeypot"}
+    {"severity": "ok", "name": "Simulation completed", "category": "honeypot"}
   ],
-  "recommendation": "Low risk: sellable and liquid when checked, no fatal signal. ...",
+  "recommendation": "Low risk. Honeypot.is reports a completed simulation in the displayed pool. ...",
   "checked_at": "2026-09-15T05:17:23Z",
   "evidence_max_age_seconds": 0
 }</code></pre>
 <table>
 <tr><th>Field</th><th>How an agent should read it</th></tr>
 <tr><td><code>risk_level</code></td><td><code>low</code> means no fatal signal in the checks that
-ran &mdash; the exit was open when we looked, not that nobody can close it. <code>medium</code>:
+ran. Read the recommendation for the source and pool of any sell observation.
+A simulation does not establish execution for a particular wallet or amount. <code>medium</code>:
 real signals, none fatal; surface them. <code>high</code>: do not proceed unreviewed.
 <code>unknown</code>: a critical check could not run &mdash; <a href="/unknown">never a green
 light</a>.</td></tr>

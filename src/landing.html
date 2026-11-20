@@ -490,16 +490,22 @@
       parts.push('Bytecode scan reports a proxy contract.' +
         (evidence.owner_powers.current_authority === 'not_checked' ? ' Current authority was not checked.' : ''));
     }
-    if ((evidence.honeypot || {}).simulation_success === true) {
-      parts.push('The provider reports simulation completion.');
-    }
-    if (evidence.pool_link === 'different') {
-      parts.push('The simulation provider reported a different pool from the displayed market. ' +
-        'This does not establish a sell result for the displayed pool.');
-    } else if (evidence.pool_link === 'same') {
-      parts.push('The simulation and displayed market report the same pool.');
-    } else if (evidence.pool_link === 'unknown') {
-      parts.push('Whether the simulation and displayed market refer to the same pool was not established.');
+    var hp = evidence.honeypot || {};
+    var gaps = Array.isArray(evidence.data_gaps) ? evidence.data_gaps : [];
+    var completed = hp.simulation_success === true && !hp.simulation_error &&
+      !gaps.some(function (gap) { return gap && gap.dimension === 'sellability'; });
+    if (value.risk_level === 'unknown' || !completed) {
+      if (completed) {
+        parts.push('The provider reports simulation completion.');
+      }
+      if (evidence.pool_link === 'different') {
+        parts.push('The simulation provider reported a different pool from the displayed market. ' +
+          'This does not establish a sell result for the displayed pool.');
+      } else if (evidence.pool_link === 'same') {
+        parts.push('The simulation and displayed market report the same pool.');
+      } else if (evidence.pool_link === 'unknown') {
+        parts.push('Whether the simulation and displayed market refer to the same pool was not established.');
+      }
     }
     var stale = Array.isArray(evidence.served_stale) ? evidence.served_stale :
       Array.isArray(value.served_stale) ? value.served_stale : [];

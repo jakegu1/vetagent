@@ -25,10 +25,10 @@ Using it, or think it got a token wrong? **hello@vetagent.dev** — or open an i
   "confidence": "high",
   "signals": [
     {"severity": "ok",   "name": "Liquidity is adequate",     "category": "liquidity"},
-    {"severity": "ok",   "name": "Buys and sells normally",   "category": "honeypot"},
+    {"severity": "ok",   "name": "Simulation completed", "category": "honeypot"},
     {"severity": "warn", "name": "Contract is closed source", "category": "contract"}
   ],
-  "recommendation": "Medium risk. Real signals fired but none are fatal. Review liquidity, holder distribution and contract permissions before deciding."
+  "recommendation": "Medium risk: \"Contract is closed source\" (contract) fired; no fatal signal. Review it, and liquidity, holder distribution and contract permissions, before deciding. Honeypot.is reports a completed simulation in another pool. This simulation did not verify selling in the displayed pool."
 }
 ```
 

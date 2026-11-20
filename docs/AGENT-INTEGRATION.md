@@ -76,11 +76,11 @@ curl 'https://vetagent.dev/assess/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2?cha
   "risk_score": 36,
   "signals": [
     {"severity": "ok",   "name": "Liquidity is adequate", "category": "liquidity"},
-    {"severity": "ok",   "name": "Buys and sells normally", "category": "honeypot"},
+    {"severity": "ok",   "name": "Simulation completed", "category": "honeypot"},
     {"severity": "ok",   "name": "Established pair", "category": "freshness"},
     {"severity": "warn", "name": "Contract is closed source", "category": "contract"}
   ],
-  "recommendation": "Medium risk. Real signals fired but none are fatal. Review liquidity, holder distribution and contract permissions before deciding.",
+  "recommendation": "Medium risk: \"Contract is closed source\" (contract) fired; no fatal signal. Review it, and liquidity, holder distribution and contract permissions, before deciding. Honeypot.is reports a completed simulation in another pool. This simulation did not verify selling in the displayed pool.",
   "confidence": "medium"
 }
 ```
@@ -96,6 +96,9 @@ curl 'https://vetagent.dev/assess/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2?cha
 
 `confidence` measures **how complete the input data was**, not how safe the token is.
 `evidence.data_gaps` lists exactly which checks could not run and why.
+The recommendation names the simulation provider and its relation to the displayed
+pool, or attributes past sells to market data when that is the available observation.
+For the caller's wallet and amount, execution remains unverified.
 
 ### Passing discovery results to assessment
 
