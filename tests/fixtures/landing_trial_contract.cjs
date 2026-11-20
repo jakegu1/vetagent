@@ -143,7 +143,7 @@ const cases = {
       const report = b.text().match(/<pre>([\s\S]*?)<\/pre>/)[1]
         .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
       assert.deepEqual(JSON.parse(report), row.result, 'detailed report must preserve the complete original machine reply');
-      if (row.result.evidence.honeypot.simulation_success === true) {
+      if (row.result.risk_level === 'unknown' && row.result.evidence.honeypot.simulation_success === true) {
         assert.match(front(b.text()), /provider reports simulation completion/i);
         assert.doesNotMatch(front(b.text()), /provider reports a completed buy and sell simulation/i);
       } else {
@@ -160,6 +160,19 @@ const cases = {
         assert.doesNotMatch(shown, /See evidence\.data_gaps|Not assessed\./);
       }
     }
+  },
+  async 'scoped recommendation precedes signals without repeating the simulation context'() {
+    const example = clone(recorded.find(row => row.case === 'weth-eth').result);
+    example.recommendation = 'Low risk. Honeypot.is reports a completed simulation in another pool. ' +
+      'The displayed pool was not verified.';
+    const shown = front((await render(example)).text());
+    const recommendation = shown.indexOf('class="rec"');
+    const firstSignal = shown.indexOf('class="sig"');
+    assert.ok(recommendation >= 0 && firstSignal > recommendation, 'show scoped guidance above the signal list');
+    assert.match(shown, /Honeypot\.is reports a completed simulation in another pool/);
+    assert.match(shown, /The displayed pool was not verified/);
+    assert.doesNotMatch(shown, /simulation provider reported a different pool|provider reports simulation completion/i);
+    assert.match(shown, /selected pool liquidity estimate/i);
   },
   async 'no record and unsupported chain name the actual missing sell check'() {
     const absent = front((await render(clone(controls.no_record))).text());

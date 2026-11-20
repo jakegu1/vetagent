@@ -2550,6 +2550,72 @@ def test_t092_final_market_and_adopted_simulator_cross_both_worker_routes():
               and "pool_link" not in answer and calls == ["market", "fallback"] and not sleeps)
 
 
+def test_sell_recommendation_names_only_the_adopted_simulation_scope():
+    address, _, _, cases = _t092_market_cases()
+    descriptions = {
+        "same": ("honeypot.is", "completed simulation", "in the displayed pool"),
+        "different": ("honeypot.is", "completed simulation", "another pool", "displayed pool was not verified"),
+        "unknown": ("honeypot.is", "completed simulation", "displayed pool was not confirmed"),
+    }
+    for name, routes, relation, _, _, _, _ in cases:
+        for interface in ("mcp", "http"):
+            for verbose in (False, True):
+                answer, calls, _, sleeps, _ = _t092_public_market(interface, "assess_token_risk",
+                    {"address": address, "chain_hint": "ethereum", "verbose": verbose}, routes)
+                recommendation = answer["recommendation"].lower()
+                tag = "%s %s verbose=%s" % (name, interface, verbose)
+                check(tag + " legacy venue, verdict and request policy",
+                      answer["evidence"]["pool_link"] == relation
+                      and answer["risk_level"] == ("unknown" if name == "retry rejected" else "low")
+                      and calls == ["market", "fallback", "search", "default"]
+                      + (["retry"] if name.startswith("retry") else []) and not sleeps)
+                check(tag + " recommendation does not promise an exit",
+                      all(phrase not in recommendation for phrase in
+                          ("sellable and liquid", "exit was open", "your wallet can sell")),
+                      answer["recommendation"])
+                positive = [s for s in answer["signals"]
+                            if s["severity"] == "ok" and s["category"] == "honeypot"]
+                if name == "retry rejected":
+                    check(tag + " failed adoption does not report completion",
+                          "completed simulation" not in recommendation and not positive, answer["recommendation"])
+                else:
+                    check(tag + " recommendation names provider and matched scope",
+                          all(phrase in recommendation for phrase in descriptions[relation]),
+                          answer["recommendation"])
+                    check(tag + " success signal identifies the simulation, with original tax readings",
+                          len(positive) == 1 and "simulation" in positive[0]["name"].lower()
+                          and all(phrase in positive[0]["message"].lower() for phrase in
+                                  ("honeypot.is", "buy 0.0%", "sell 0.0%")), str(positive))
+
+
+def test_sell_recommendation_distinguishes_selected_pool_history_and_missing_scope():
+    import test_risk as fixtures
+    for verbose in (False, True):
+        with fixtures._t091_runtime("ethereum", hp_status=404) as state:
+            state["market"]["pairs"][0]["txns"]["h24"] = {"buys": 900, "sells": 850}
+            answer = asyncio.run(_t092_worker_request("mcp", "assess_token_risk",
+                {"address": state["address"], "chain_hint": "ethereum", "verbose": verbose}))
+        rec = answer["recommendation"].lower()
+        chain_sells = answer["evidence"].get("sellability_from_chain", {})
+        check("market history keeps the sellability gap and original requests",
+              answer["risk_level"] == "unknown" and chain_sells.get("verifies_your_exit") is False
+              and chain_sells.get("sells_24h") == 850 and not state["sleeps"]
+              and [kind for kind, _ in state["requests"]].count("sell") == 1, str(chain_sells))
+        check("recommendation attributes past sells to market data for the displayed pool",
+              all(phrase in rec for phrase in ("market data", "past sells", "displayed pool"))
+              and "completed simulation" not in rec, answer["recommendation"])
+        with fixtures._t091_runtime("arbitrum") as state:
+            answer = asyncio.run(_t092_worker_request("mcp", "assess_token_risk",
+                {"address": state["address"], "chain_hint": "ethereum", "verbose": verbose}))
+        rec = answer["recommendation"].lower()
+        check("selected unsupported chain preserves bounded abstention",
+              answer["risk_level"] == "unknown" and answer["next_action"] == "abstain"
+              and answer["evidence"]["chain_searched"] == "arbitrum"
+              and not any(kind.startswith("sell") for kind, _ in state["requests"]))
+        check("unsupported chain offers no completed simulation or exit assurance",
+              "completed simulation" not in rec and "exit was open" not in rec, answer["recommendation"])
+
+
 def test_t092_conflicted_unpriced_chain_routes_keep_unknown_and_calls(reader=risk._fetch_json):
     import test_risk as fixtures
     for observed, hint in (("base", "arbitrum"), ("arbitrum", "ethereum")):
