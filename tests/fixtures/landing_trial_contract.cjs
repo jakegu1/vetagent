@@ -97,13 +97,13 @@ const cases = {
     for (const button of ['go', 'liquidity-go']) {
       const confirmed = boot();
       confirmed.nodes.chain.fire('keydown', {key: 'ArrowDown', altKey: true, isTrusted: true});
-      confirmed.nodes.chain.fire('click', {isTrusted: true});
+      confirmed.nodes.chain.fire('click', {isTrusted: true, detail: 0});
       confirmed.nodes.addr.value = '0x4200000000000000000000000000000000000006';
       confirmed.nodes.addr.fire('input'); confirmed.nodes[button].fire('click');
       assert.equal(confirmed.requests[0].args.chain_hint, 'ethereum');
       const mouse = boot(); mouse.nodes.chain.fire('pointerdown', {isTrusted: true});
-      mouse.nodes.chain.fire('click', {isTrusted: true});
-      mouse.nodes.chain.fire('click', {isTrusted: true});
+      mouse.nodes.chain.fire('click', {isTrusted: true, detail: 1});
+      mouse.nodes.chain.fire('click', {isTrusted: true, detail: 0});
       mouse.nodes.addr.value = '0x4200000000000000000000000000000000000006';
       mouse.nodes.addr.fire('input'); mouse.nodes[button].fire('click');
       assert.equal(mouse.requests[0].args.chain_hint, 'ethereum');
@@ -111,7 +111,7 @@ const cases = {
         const escaped = boot();
         if (opener === 'mouse') {
           escaped.nodes.chain.fire('pointerdown', {isTrusted: true});
-          escaped.nodes.chain.fire('click', {isTrusted: true});
+          escaped.nodes.chain.fire('click', {isTrusted: true, detail: 1});
         } else escaped.nodes.chain.fire('keydown', {key: 'ArrowDown', altKey: true, isTrusted: true});
         escaped.nodes.chain.fire('keydown', {key: 'Escape', isTrusted: true});
         escaped.nodes.addr.value = '0x4200000000000000000000000000000000000006';

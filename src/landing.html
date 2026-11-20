@@ -398,16 +398,13 @@
   var network = document.getElementById('chain');
   var latestRequest = 0;
   var networkChosen = false, presetAddress = input.value;
-  var networkMenu = '';
 
   function setPreset(address, chain) {
     input.value = address; network.value = chain;
     presetAddress = address; networkChosen = false;
-    networkMenu = '';
   }
 
   function selectedNetwork() {
-    networkMenu = '';
     var address = input.value.trim();
     var same = address === presetAddress ||
       (/^0x[0-9a-fA-F]{40}$/.test(address) && /^0x[0-9a-fA-F]{40}$/.test(presetAddress || '') &&
@@ -420,21 +417,13 @@
 
   input.addEventListener('input', selectedNetwork);
   network.addEventListener('change', function () {
-    networkChosen = true; presetAddress = null; networkMenu = '';
+    networkChosen = true; presetAddress = null;
   });
-  // A pointer's opening click is not confirmation. Keyboard confirmation has no opening click.
-  network.addEventListener('pointerdown', function (event) {
-    if (event.isTrusted && networkMenu !== 'open') { networkMenu = 'opening'; }
-  });
+  // Native same-value confirmation has detail=0; the pointer's opening click has detail=1.
+  // Confirmation does not emit change. Tab focus and Escape do not confirm a choice.
   network.addEventListener('click', function (event) {
-    if (!event.isTrusted) { return; }
-    if (networkMenu === 'opening') { networkMenu = 'open'; return; }
-    networkChosen = true; presetAddress = null; networkMenu = '';
+    if (event.isTrusted && event.detail === 0) { networkChosen = true; presetAddress = null; }
   });
-  network.addEventListener('keydown', function (event) {
-    if (event.key === 'Escape' || event.key === 'Tab') { networkMenu = ''; }
-  });
-  network.addEventListener('blur', function () { networkMenu = ''; });
 
   document.querySelectorAll('.samples button').forEach(function (b) {
     b.addEventListener('click', function () {
