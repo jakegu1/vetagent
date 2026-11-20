@@ -397,10 +397,30 @@
   var out = document.getElementById('verdict');
   var network = document.getElementById('chain');
   var latestRequest = 0;
+  var networkChosen = false, presetAddress = input.value;
+
+  function setPreset(address, chain) {
+    input.value = address; network.value = chain;
+    presetAddress = address; networkChosen = false;
+  }
+
+  function selectedNetwork() {
+    var address = input.value.trim();
+    var same = address === presetAddress ||
+      (/^0x[0-9a-fA-F]{40}$/.test(address) && /^0x[0-9a-fA-F]{40}$/.test(presetAddress || '') &&
+       address.toLowerCase() === presetAddress.toLowerCase());
+    if (!networkChosen && presetAddress !== null && !same) {
+      network.value = ''; presetAddress = null;
+    }
+    return network.value;
+  }
+
+  input.addEventListener('input', selectedNetwork);
+  network.addEventListener('change', function () { networkChosen = true; presetAddress = null; });
 
   document.querySelectorAll('.samples button').forEach(function (b) {
     b.addEventListener('click', function () {
-      input.value = b.dataset.a; network.value = b.dataset.c || ''; run();
+      setPreset(b.dataset.a, b.dataset.c || ''); run();
     });
   });
   btn.addEventListener('click', run);
@@ -527,7 +547,7 @@
   function run() {
     var a = input.value.trim();
     if (!a) { return; }
-    var chain = network.value;
+    var chain = selectedNetwork();
     var request = ++latestRequest;
     var submitted = '<div class="request-scope">Submitted address: <code>' + esc(a) +
       '</code><br>Selected network: ' + esc(chain || 'Auto') + '</div>';
@@ -659,7 +679,7 @@
   document.getElementById('liquidity-clear').addEventListener('click', function () {
     ++liquidityRequest;
     observations = []; historyLoaded = true; storageNotice = '';
-    input.value = firstAddress; network.value = firstNetwork;
+    setPreset(firstAddress, firstNetwork);
     liquidityButton.disabled = false;
     try { window.localStorage.removeItem(historyKey); }
     catch (e) { storageNotice = 'Could not clear browser storage. Remove this site\u2019s saved data in your browser settings.'; }
@@ -669,7 +689,7 @@
   liquidityButton.addEventListener('click', function () {
     var address = input.value.trim();
     if (!address) { return; }
-    var chain = network.value;
+    var chain = selectedNetwork();
     var request = ++liquidityRequest;
     loadObservations();
     var submitted = '<div class="request-scope">Submitted address: <code>' + esc(address) +
@@ -750,8 +770,7 @@
     var lastObservation = observations.reduce(function (latest, row) {
       return Date.parse(row.checked_at) >= Date.parse(latest.checked_at) ? row : latest;
     });
-    input.value = lastObservation.address;
-    network.value = lastObservation.best_pair_chain;
+    setPreset(lastObservation.address, lastObservation.best_pair_chain);
   }
 })();
 </script>
