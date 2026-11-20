@@ -93,6 +93,19 @@ const cases = {
       b.samples[1].fire('click'); assert.equal(b.requests.at(-1).args.chain_hint, 'ethereum');
     }
   },
+  async 'native confirmation of the current network is explicit but Tab focus is not'() {
+    for (const button of ['go', 'liquidity-go']) {
+      const confirmed = boot();
+      confirmed.nodes.chain.fire('click', {isTrusted: true});
+      confirmed.nodes.addr.value = '0x4200000000000000000000000000000000000006';
+      confirmed.nodes.addr.fire('input'); confirmed.nodes[button].fire('click');
+      assert.equal(confirmed.requests[0].args.chain_hint, 'ethereum');
+      const tabbed = boot(); tabbed.nodes.chain.fire('focus', {isTrusted: true});
+      tabbed.nodes.addr.value = 'So11111111111111111111111111111111111111112';
+      tabbed.nodes.addr.fire('input'); tabbed.nodes[button].fire('click');
+      assert.equal(Object.hasOwn(tabbed.requests[0].args, 'chain_hint'), false);
+    }
+  },
   async 'three recorded responses keep their real verdicts and explain BUY_FAILED before details'() {
     for (const [index, row] of recorded.entries()) {
       const b = boot(); b.samples[index].fire('click');
