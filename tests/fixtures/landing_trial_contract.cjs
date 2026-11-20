@@ -96,10 +96,28 @@ const cases = {
   async 'native confirmation of the current network is explicit but Tab focus is not'() {
     for (const button of ['go', 'liquidity-go']) {
       const confirmed = boot();
+      confirmed.nodes.chain.fire('keydown', {key: 'ArrowDown', altKey: true, isTrusted: true});
       confirmed.nodes.chain.fire('click', {isTrusted: true});
       confirmed.nodes.addr.value = '0x4200000000000000000000000000000000000006';
       confirmed.nodes.addr.fire('input'); confirmed.nodes[button].fire('click');
       assert.equal(confirmed.requests[0].args.chain_hint, 'ethereum');
+      const mouse = boot(); mouse.nodes.chain.fire('pointerdown', {isTrusted: true});
+      mouse.nodes.chain.fire('click', {isTrusted: true});
+      mouse.nodes.chain.fire('click', {isTrusted: true});
+      mouse.nodes.addr.value = '0x4200000000000000000000000000000000000006';
+      mouse.nodes.addr.fire('input'); mouse.nodes[button].fire('click');
+      assert.equal(mouse.requests[0].args.chain_hint, 'ethereum');
+      for (const opener of ['mouse', 'keyboard']) {
+        const escaped = boot();
+        if (opener === 'mouse') {
+          escaped.nodes.chain.fire('pointerdown', {isTrusted: true});
+          escaped.nodes.chain.fire('click', {isTrusted: true});
+        } else escaped.nodes.chain.fire('keydown', {key: 'ArrowDown', altKey: true, isTrusted: true});
+        escaped.nodes.chain.fire('keydown', {key: 'Escape', isTrusted: true});
+        escaped.nodes.addr.value = '0x4200000000000000000000000000000000000006';
+        escaped.nodes.addr.fire('input'); escaped.nodes[button].fire('click');
+        assert.equal(Object.hasOwn(escaped.requests[0].args, 'chain_hint'), false);
+      }
       const tabbed = boot(); tabbed.nodes.chain.fire('focus', {isTrusted: true});
       tabbed.nodes.addr.value = 'So11111111111111111111111111111111111111112';
       tabbed.nodes.addr.fire('input'); tabbed.nodes[button].fire('click');
