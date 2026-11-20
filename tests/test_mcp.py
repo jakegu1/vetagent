@@ -3419,6 +3419,11 @@ def test_native_liquidity_context_refuses_invalid_records_and_preserves_legacy_s
     answer = reply["result"]["structuredContent"]
     check("legacy callers still receive a snapshot without a comparison",
           all(answer.get(key) == value for key, value in after.items()) and "comparison" not in answer)
+    legacy, _ = _native_liquidity_call(before, legacy=True)
+    baseline = legacy["result"]["structuredContent"].get("comparison_context", [])
+    reply, _ = _native_liquidity_call(after, baseline)
+    check("a first ordinary snapshot needs no opt-in to support a later comparison",
+          bool(baseline) and reply["result"].get("structuredContent", {}).get("comparison", {}).get("change_usd") == -366200)
     for change, reason in (({"served_stale": []}, "stale_response"),
                            ({"best_pair_address": "short"}, "invalid_identity"),
                            ({"checked_at": before["checked_at"]}, "invalid_order"),

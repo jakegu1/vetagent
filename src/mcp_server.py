@@ -18,6 +18,7 @@ import contextvars
 import json
 
 import risk  # reuse the pure-Python risk engine (risk.py)
+import liquidity_comparison
 
 PROTOCOL_VERSION = "2025-06-18"
 SUPPORTED_PROTOCOLS = ("2025-06-18", "2025-03-26", "2024-11-05")
@@ -40,6 +41,52 @@ _SIGNAL_SCHEMA = {
 }
 
 _CHECKED_AT = {"type": "string", "description": "When this answer was made, ISO-8601 UTC."}
+
+_COMPARISON_CONTEXT_SCHEMA = {
+    "type": "array", "maxItems": 8,
+    "description": "Optional client-carried observations, at most 8 and 8192 UTF-8 JSON bytes. "
+                   "Pass a prior comparison_context unchanged, or [] to start. These are client "
+                   "observations, not signed service records. No server history is stored.",
+    "items": {
+        "type": "object", "additionalProperties": False,
+        "required": list(liquidity_comparison.OBSERVATION_FIELDS),
+        "properties": {
+            "status": {"type": "string", "enum": ["ok"]},
+            "address": {"type": "string", "maxLength": 66},
+            "best_pair_chain": {"type": "string", "enum": list(liquidity_comparison._CHAINS)},
+            "best_pair_address": {"type": "string", "maxLength": 66},
+            "source": {"type": "string", "enum": list(liquidity_comparison._SOURCES)},
+            "checked_at": {"type": "string", "maxLength": 32},
+            "liquidity_usd": {"type": "number", "minimum": 0},
+        },
+    },
+}
+
+_COMPARISON_SCHEMA = {
+    "type": "object",
+    "description": "Returned when comparison_context is supplied. Uses the latest strictly "
+                   "earlier comparable client observation of this token, chain, complete pool ID "
+                   "and provider. USD estimate change is not a reserve flow or executable depth. "
+                   "Reply times can cover cached source data. A changed pool_transition and "
+                   "baseline_is_latest_observation=false disclose a return to an older pool baseline.",
+    "required": ["status", "baseline_origin"],
+    "properties": {
+        "status": {"type": "string", "enum": ["compared", "not_comparable"]},
+        "reason": {"type": "string"},
+        "baseline_origin": {"type": "string", "enum": ["client_observation"]},
+        "before_checked_at": _CHECKED_AT, "after_checked_at": _CHECKED_AT,
+        "before_usd": {"type": "number"}, "after_usd": {"type": "number"},
+        "change_usd": {"type": "number"},
+        "baseline_is_latest_observation": {"type": "boolean"},
+        "context_evicted": {"type": "integer", "minimum": 1},
+        "nonprior_observations": {"type": "integer", "minimum": 1,
+            "description": "Client observations at or after the current reply time; excluded as baselines."},
+        "pool_transition": {"type": "object", "properties": {
+            "status": {"type": "string", "enum": ["changed", "unchanged", "ambiguous"]},
+            "previous_pool_address": {"type": "string"}, "previous_checked_at": _CHECKED_AT,
+        }},
+    },
+}
 
 _TRADE_ACTIVITY_SCHEMA = {
     "type": "object",
@@ -280,10 +327,14 @@ TOOLS = [
             "pair count and the chains it trades on. Optional trade_activity reports buys plus sells "
             "in the last hour and the preceding five hours from that selected pool's raw integer counts. "
             "Missing counts are omitted; observed zeros remain zero.\n"
-            "For change over two saved replies, use examples/liquidity_compare.py locally. "
-            "Save successful REST response objects or MCP result.structuredContent. It checks the "
-            "chain, token, complete pool ID, source and reply order before comparing USD estimates, "
-            "and refuses stale fallback. checked_at is reply time; source data may be cached.\n"
+            "For native change estimates, pass the previous comparison_context unchanged "
+            "(or [] to start). The server selects the latest comparable client observation with "
+            "the same token, chain, complete pool ID and provider, and separately discloses "
+            "a change from the most recent selected pool. It never subtracts different pools or "
+            "providers, and refuses stale fallback. Context is bounded client observation, not "
+            "signed service history. No server history is stored. Legacy calls remain snapshots. "
+            "The local examples/liquidity_compare.py CLI remains available for saved replies. "
+            "checked_at is reply time; source data may be cached.\n"
             "Check 'status' before using the numbers. 'ok' means usable upstream data, "
             "not independently verified reserves or executable sell depth. "
             "The optional liquidity_reserve_check marker says 'not_checkable' when a "
@@ -302,6 +353,7 @@ TOOLS = [
                 "address": {"type": "string", "description": "Token contract address"},
                 "chain_hint": {"type": "string",
                                "description": "Optional chain name; disambiguates forks that share addresses"},
+                "comparison_context": _COMPARISON_CONTEXT_SCHEMA,
             },
             "required": ["address"],
         },
@@ -323,6 +375,8 @@ TOOLS = [
                                    "Omitted for invalid or conflicting identity. Old truncated display IDs "
                                    "cannot establish exact cross-response identity. No sell simulation runs."},
                 "trade_activity": _TRADE_ACTIVITY_SCHEMA,
+                "comparison_context": _COMPARISON_CONTEXT_SCHEMA,
+                "comparison": _COMPARISON_SCHEMA,
                 "liquidity_usd": {"type": ["number", "null"]},
                 "liquidity_reserve_check": {
                     "type": "string", "enum": ["not_checkable"],
@@ -629,7 +683,9 @@ async def _call_tool(req_id, params):
                                        args.get("chain_hint"),
                                        _as_bool(args.get("verbose", False)))
         elif name == "get_token_liquidity":
+            context = liquidity_comparison.validate_context(args.get("comparison_context", []))
             result = await risk.liquidity(args.get("address", ""), args.get("chain_hint"))
+            result = liquidity_comparison.with_context(result, context, requested="comparison_context" in args)
         elif name == "find_new_hot_pools":
             if "listing" in args:
                 result = await risk.new_pools(args.get("chain", "solana"), args.get("limit", 10), args["listing"])

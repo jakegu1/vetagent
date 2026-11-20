@@ -116,9 +116,13 @@
  .samples{font-size:12.5px;color:var(--dim);margin-bottom:14px}
  .samples button{background:none;border:none;color:var(--accent);cursor:pointer;
    font-size:12.5px;padding:0 4px;text-decoration:underline}
- #verdict{display:none;border:1px solid var(--line);border-radius:8px;
+ #verdict,#liquidity-result{display:none;border:1px solid var(--line);border-radius:8px;
    background:var(--panel-2);padding:16px;margin-top:6px}
- #verdict.show{display:block}
+ #verdict.show,#liquidity-result.show{display:block}
+ .liquidity-history{color:var(--dim);font-size:13px;margin:12px 0;max-width:72ch}
+ .liquidity-history button{background:none;border:0;color:var(--accent);padding:4px 0;
+   font:inherit;text-decoration:underline;cursor:pointer}
+ button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
  .vhead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:10px}
  .vlevel{font-size:26px;font-weight:800;letter-spacing:-.02em}
  .vmeta{color:var(--dim);font-size:13px}
@@ -171,6 +175,7 @@
       </select>
     </div>
     <button id="go">Assess</button>
+    <button id="liquidity-go" aria-describedby="liquidity-history">Recheck liquidity</button>
   </div>
   <div class="samples">Examples:
     <button data-a="0x50614cc8e44f7814549c223aa31db9296e58057c" data-c="ethereum">a token whose trade simulation fails</button>·
@@ -178,6 +183,11 @@
     <button data-a="0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" data-c="ethereum">WETH (healthy control)</button>
   </div>
   <div id="verdict" role="status" aria-live="polite"></div>
+  <div class="liquidity-history" id="liquidity-history">
+    Liquidity rechecks save up to 8 observations in this browser and send them with your
+    next recheck. No account or server-side history. <button id="liquidity-clear">Clear saved observations</button>
+  </div>
+  <div id="liquidity-result" role="status" aria-live="polite"></div>
 </div>
 
 <div class="panel">
@@ -451,6 +461,142 @@
       show(submitted + '<span class="high">Request failed: ' + esc(e.message) + '</span>');
     });
   }
+
+  var liquidityButton = document.getElementById('liquidity-go');
+  var liquidityOutput = document.getElementById('liquidity-result');
+  var liquidityRequest = 0;
+  var historyKey = 'vetagent.liquidity.v1';
+  var observations = [], historyLoaded = false, storageNotice = '';
+  var observationFields = ['status', 'address', 'best_pair_chain', 'best_pair_address',
+                           'source', 'checked_at', 'liquidity_usd'];
+
+  function validContext(rows) {
+    return Array.isArray(rows) && rows.length <= 8 && JSON.stringify(rows).length <= 8192 &&
+      rows.every(function (row) {
+        if (!row || Array.isArray(row) || typeof row !== 'object' ||
+            Object.keys(row).length !== observationFields.length || row.status !== 'ok' ||
+            !observationFields.every(function (key) { return Object.prototype.hasOwnProperty.call(row, key); })) {
+          return false;
+        }
+        return ['address', 'best_pair_chain', 'best_pair_address', 'source', 'checked_at'].every(function (key) {
+          return typeof row[key] === 'string' && row[key].length > 0 && row[key].length <= 66;
+        }) && ['dexscreener', 'coingecko', 'geckoterminal'].indexOf(row.source) !== -1 &&
+          typeof row.liquidity_usd === 'number' && Number.isFinite(row.liquidity_usd) && row.liquidity_usd >= 0;
+      });
+  }
+
+  function loadObservations() {
+    if (historyLoaded) { return; }
+    historyLoaded = true;
+    try {
+      var raw = window.localStorage.getItem(historyKey);
+      if (!raw) { return; }
+      var parsed = raw.length <= 8192 ? JSON.parse(raw) : null;
+      if (!validContext(parsed)) { throw Error('invalid history'); }
+      observations = parsed;
+    } catch (e) {
+      observations = [];
+      storageNotice = 'Saved liquidity history was invalid and has been reset.';
+      try { window.localStorage.removeItem(historyKey); }
+      catch (ignored) { storageNotice = 'Browser storage is unavailable; comparisons last until this page closes.'; }
+    }
+  }
+
+  function showLiquidity(html) {
+    liquidityOutput.innerHTML = html + (storageNotice ? '<div class="rec">' + esc(storageNotice) + '</div>' : '');
+    liquidityOutput.classList.add('show');
+  }
+
+  function usd(value) {
+    return typeof value === 'number' && Number.isFinite(value) ?
+      '$' + value.toLocaleString('en-US', {maximumFractionDigits: 2}) : 'Unavailable';
+  }
+
+  document.getElementById('liquidity-clear').addEventListener('click', function () {
+    ++liquidityRequest;
+    observations = []; historyLoaded = true; storageNotice = '';
+    liquidityButton.disabled = false;
+    try { window.localStorage.removeItem(historyKey); }
+    catch (e) { storageNotice = 'Could not clear browser storage. Remove this site\u2019s saved data in your browser settings.'; }
+    showLiquidity('Saved observations cleared from this page. The next recheck starts a new baseline.');
+  });
+
+  liquidityButton.addEventListener('click', function () {
+    var address = input.value.trim();
+    if (!address) { return; }
+    var chain = network.value;
+    var request = ++liquidityRequest;
+    loadObservations();
+    var submitted = '<div class="request-scope">Submitted address: <code>' + esc(address) +
+      '</code><br>Selected network: ' + esc(chain || 'Auto') + '</div>';
+    var args = {address: address, comparison_context: observations};
+    if (chain) { args.chain_hint = chain; }
+    liquidityButton.disabled = true;
+    showLiquidity(submitted + 'Checking liquidity\u2026');
+    fetch('https://vetagent.dev/mcp', {
+      method: 'POST', headers: {'Content-Type': 'application/json', 'X-MCP-Client': 'vetagent-landing-demo'},
+      body: JSON.stringify({jsonrpc: '2.0', id: 2, method: 'tools/call',
+        params: {name: 'get_token_liquidity', arguments: args}})
+    }).then(function (r) { return r.json(); }).then(function (reply) {
+      if (request !== liquidityRequest) { return; }
+      liquidityButton.disabled = false;
+      if (reply.error) { throw Error(reply.error.message); }
+      var result = reply.result || {};
+      if (result.isError) { throw Error((result.content || [{}])[0].text || 'Liquidity request failed'); }
+      var value = result.structuredContent || JSON.parse(result.content[0].text);
+      if (!validContext(value.comparison_context)) { throw Error('Invalid liquidity observation context'); }
+      observations = value.comparison_context;
+      try { window.localStorage.setItem(historyKey, JSON.stringify(observations)); }
+      catch (e) { storageNotice = 'Browser storage is unavailable; comparisons last until this page closes.'; }
+      var details = '<div class="request-scope">Returned network: ' + esc(value.best_pair_chain || 'Not reported') +
+        '<br>Pool: <code>' + esc(value.best_pair_address || 'Not reported') + '</code>' +
+        '<br>Provider: ' + esc(value.source || 'Not reported') + '<br>Reply time: ' + esc(value.checked_at) + '</div>';
+      var comparison = value.comparison || {};
+      var change;
+      if (comparison.status === 'compared') {
+        change = '<div>Before: ' + esc(usd(comparison.before_usd)) + ' at ' + esc(comparison.before_checked_at) +
+          '<br>After: ' + esc(usd(comparison.after_usd)) + ' at ' + esc(comparison.after_checked_at) +
+          '<br>Estimated change: ' + (comparison.change_usd > 0 ? '+' : comparison.change_usd < 0 ? '-' : '') +
+          esc(usd(Math.abs(comparison.change_usd))) + '</div>';
+      } else {
+        var reasons = {
+          no_previous_observation: 'Baseline saved. Recheck later to compare with this observation.',
+          different_source: 'Provider changed. No change calculated across different sources; this source now has a baseline.',
+          different_pool: 'Selected pool changed. No change calculated across different pools.',
+          stale_response: 'Cached fallback is stale. No comparison or new baseline from this reply.',
+          invalid_order: 'Reply times are not increasing. No earlier comparable baseline is available.',
+          invalid_identity: 'The complete pool identity is missing or invalid. No new baseline saved.',
+          invalid_time: 'The reply time is missing or invalid. No new baseline saved.',
+          invalid_amount: 'The liquidity estimate is missing or invalid. No new baseline saved.',
+          unusable_response: 'This reply has no usable liquidity observation. No new baseline saved.'
+        };
+        change = '<div>' + esc(reasons[comparison.reason] || 'No usable comparison is available for this reply.') + '</div>';
+      }
+      var transition = comparison.pool_transition || {};
+      if (transition.status === 'changed') {
+        change += '<div class="rec">Selected pool changed since ' + esc(transition.previous_checked_at) +
+          '. Previous pool: <code>' + esc(transition.previous_pool_address) + '</code>.' +
+          (comparison.status === 'compared' && !comparison.baseline_is_latest_observation ?
+            ' This change uses an older observation as the baseline for the current pool.' : '') + '</div>';
+      } else if (transition.status === 'ambiguous') {
+        change += '<div class="rec">Prior pool order is ambiguous because reply times are tied.</div>';
+      }
+      if (comparison.context_evicted) {
+        change += '<div class="rec">The oldest observation was dropped to keep at most 8 saved observations.</div>';
+      }
+      if (comparison.nonprior_observations) {
+        change += '<div class="rec">Observations at or after this reply time were excluded as baselines.</div>';
+      }
+      showLiquidity(submitted + details + '<div>Current estimate: ' + esc(usd(value.liquidity_usd)) + '</div>' + change +
+        '<div class="rec">These are USD estimates and reply times; source data may be cached. ' +
+        'A difference can reflect valuation and is not a measured reserve flow or executable sell depth. ' +
+        'Saved baselines are observations supplied by this browser.</div>');
+    }).catch(function (e) {
+      if (request !== liquidityRequest) { return; }
+      liquidityButton.disabled = false;
+      showLiquidity(submitted + '<span class="high">Liquidity request failed: ' + esc(e.message) + '</span>');
+    });
+  });
 })();
 </script>
 </body>

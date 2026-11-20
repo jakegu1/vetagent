@@ -232,7 +232,41 @@ IDs for the assessment's market and request retain the 48-character limit plus a
 This limit does not apply to the valid complete discovery pool IDs described above.
 Equal truncated strings are not enough to establish exact identity across responses.
 
-For two saved liquidity replies, start with the standard-library local example:
+For a native liquidity recheck, call `get_token_liquidity` with the address and optional
+`chain_hint` as usual. A usable first snapshot includes a compact `comparison_context`,
+even if the caller has not asked to compare yet. On a later call, pass that array unchanged
+as the `comparison_context` argument. No file or comparison code is needed; an agent can
+keep the returned context in the conversation. Send `[]` to start with no prior observations.
+The response's `comparison` reports the before/after reply times, USD estimates and signed
+`change_usd` when a comparison is possible. Calls without the argument remain snapshots
+and omit `comparison`.
+
+The context contains at most eight observations and accepts at most 8192 UTF-8 JSON bytes.
+Each observation has only `status`, `address`, `best_pair_chain`, `best_pair_address`,
+`source`, `checked_at` and `liquidity_usd`. Invalid context is refused before the current
+upstream request. The latest strictly earlier observation with the same token, chain,
+complete pool ID and provider is selected, even when the immediately preceding reply used
+another provider. Different providers or pools are never subtracted. EVM identities compare
+without case; Solana identities preserve case and must decode to 32 bytes. Missing identity,
+invalid reply time or amount, error responses and stale fallback cannot become baselines.
+
+`pool_transition` separately reports whether the latest prior observation of this token and
+chain selected another pool. If the caller returns to an older pool, a comparison can use
+that pool's older baseline while `pool_transition.status` is `changed` and
+`baseline_is_latest_observation` is false. Tied times across pools produce `ambiguous`,
+rather than an invented order. Observations at or after the current reply time are excluded
+as baselines and counted in `nonprior_observations`. Returned context keeps the newest
+observation per pool/provider and then the newest eight keys; `context_evicted` discloses
+any capacity eviction. It is bounded client observation (`baseline_origin: client_observation`),
+not a signed service record or verified historical reserve measurement. No server-side
+history is stored and comparison adds no upstream requests.
+
+The homepage's **Recheck liquidity** button performs this round trip and keeps up to eight
+observations in browser storage, including across reopening and provider alternation.
+**Clear saved observations** removes that local history. Storage failures are shown and
+leave a page-only comparison available. The risk assessment button remains independent.
+
+For two saved liquidity replies, the standard-library local example remains available:
 
 ```sh
 python -B examples/liquidity_compare.py before.json after.json
