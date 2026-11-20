@@ -215,8 +215,8 @@ _PRIVACY_HTML = """<!doctype html>
 <p class="sub">VetAgent &middot; last updated 2026-11-20</p>
 
 <h2>What we collect</h2>
-<p><strong>No accounts, no cookies, no browser tracking.</strong> VetAgent has no
-user database and serves no third-party scripts.</p>
+<p>VetAgent has no accounts or user database. The production site also loads a browser
+metrics script served by Cloudflare.</p>
 <p><strong>Our analytics never records the token address.</strong> That query is the
 most sensitive thing you send us &mdash; it can reveal what you are about to trade
 &mdash; so it is used to fetch public data and then discarded with the response. This
