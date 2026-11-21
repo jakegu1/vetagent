@@ -1,16 +1,8 @@
 {
  "collapsed_paths": [],
- "date": "2026-11-20",
+ "date": "2026-11-21",
  "failures": [],
  "history": [
-  {
-   "collapsed_paths": [],
-   "date": "2026-10-22",
-   "status": "blind",
-   "unobserved_sources": [
-    "rugcheck"
-   ]
-  },
   {
    "collapsed_paths": [],
    "date": "2026-10-23",
@@ -188,6 +180,14 @@
    "date": "2026-11-20",
    "status": "green",
    "unobserved_sources": []
+  },
+  {
+   "collapsed_paths": [],
+   "date": "2026-11-21",
+   "status": "blind",
+   "unobserved_sources": [
+    "geckoterminal"
+   ]
   }
  ],
  "probe_diagnostics": {
@@ -611,6 +611,12 @@
    {
     "attempts": [
      {
+      "http_status": "429",
+      "reason": "rate_limited",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
       "http_status": "200",
       "reason": "ok",
       "transport_exit": 0,
@@ -623,6 +629,12 @@
    },
    {
     "attempts": [
+     {
+      "http_status": "429",
+      "reason": "rate_limited",
+      "transport_exit": 0,
+      "usable_body": false
+     },
      {
       "http_status": "200",
       "reason": "ok",
@@ -637,10 +649,22 @@
    {
     "attempts": [
      {
-      "http_status": "200",
-      "reason": "ok",
+      "http_status": "429",
+      "reason": "rate_limited",
       "transport_exit": 0,
-      "usable_body": true
+      "usable_body": false
+     },
+     {
+      "http_status": "429",
+      "reason": "rate_limited",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
+      "http_status": "429",
+      "reason": "rate_limited",
+      "transport_exit": 0,
+      "usable_body": false
      }
     ],
     "counts_for_blindness": true,
@@ -649,6 +673,12 @@
    },
    {
     "attempts": [
+     {
+      "http_status": "429",
+      "reason": "rate_limited",
+      "transport_exit": 0,
+      "usable_body": false
+     },
      {
       "http_status": "200",
       "reason": "ok",
@@ -663,6 +693,12 @@
    {
     "attempts": [
      {
+      "http_status": "429",
+      "reason": "rate_limited",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
       "http_status": "200",
       "reason": "ok",
       "transport_exit": 0,
@@ -675,6 +711,12 @@
    },
    {
     "attempts": [
+     {
+      "http_status": "429",
+      "reason": "rate_limited",
+      "transport_exit": 0,
+      "usable_body": false
+     },
      {
       "http_status": "200",
       "reason": "ok",
@@ -695,6 +737,12 @@
       "usable_body": false
      },
      {
+      "http_status": "429",
+      "reason": "rate_limited",
+      "transport_exit": 0,
+      "usable_body": false
+     },
+     {
       "http_status": "200",
       "reason": "ok",
       "transport_exit": 0,
@@ -707,6 +755,12 @@
    },
    {
     "attempts": [
+     {
+      "http_status": "429",
+      "reason": "rate_limited",
+      "transport_exit": 0,
+      "usable_body": false
+     },
      {
       "http_status": "200",
       "reason": "ok",
@@ -892,10 +946,10 @@
     "usable": 8
    },
    "geckoterminal": {
-    "blind": 0,
+    "blind": 1,
     "blindness_excluded": 0,
     "probes": 8,
-    "usable": 8
+    "usable": 7
    },
    "honeypot.is": {
     "blind": 0,
@@ -912,7 +966,9 @@
   },
   "version": 1
  },
- "status": "green",
- "unobserved_probes": 0,
- "unobserved_sources": []
+ "status": "blind",
+ "unobserved_probes": 1,
+ "unobserved_sources": [
+  "geckoterminal"
+ ]
 }
