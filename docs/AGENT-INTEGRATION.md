@@ -211,6 +211,11 @@ contribute to the existing score.
 
 ### Market and simulation pool correspondence
 
+When the final displayed market has a verifiable identity on a supported chain,
+`evidence.best_pair.pool_id` gives its complete ID in both assessment modes. EVM IDs
+contain 20 or 32 bytes of hex. Solana IDs decode to 32 bytes and retain their case.
+The field is omitted when the source does not establish the pool's identity.
+
 `evidence.pool_link` is `same`, `different`, or `unknown` in both assessment modes.
 It compares the final displayed market with the venue declared by the simulator response
 the engine retained. `same` means those chain/pool identities match; `different` means the
@@ -221,8 +226,9 @@ It does not establish that the discovered pool was simulated, a successful simul
 safety, or an exit for a particular wallet or amount. A failed simulation can still identify its venue; read
 `evidence.honeypot.simulation_success` separately.
 
-With `verbose=true`, `evidence.pool_link_details` distinguishes the market, the source's
-reported chain/pool, and the chain/pool actually sent in the request. `policy_chain` is the
+With `verbose=true`, `evidence.pool_link_details` gives the complete `market_pool` and
+`reported_pool` when available, along with their chains and any pool ID actually sent in the
+request. `policy_chain` is the
 existing engine's validation and coverage context, not an observed chain. Missing facts
 are null. Unknown reasons describe missing, invalid or conflicting identity; they do not
 change the risk verdict or add a scoring gap. Chain conflicts take precedence over pool
@@ -236,12 +242,11 @@ After a clean sale, the existing market logic may promote a different displayed 
 correspondence compares against that final market, not the earlier depth winner. For example,
 a retry can report the requested pool while `pool_link` is `different` from the final market.
 
-Comparisons use complete validated identities before display truncation. EVM hex case does
+Comparisons use complete validated identities. EVM hex case does
 not distinguish identities; conflicting aliases or absent chain declarations never prove
-`same`, and requested/hinted identity does not fill a missing source declaration. Display
-IDs for the assessment's market and request retain the 48-character limit plus an ellipsis.
-This limit does not apply to the valid complete discovery pool IDs described above.
-Equal truncated strings are not enough to establish exact identity across responses.
+`same`, and requested/hinted identity does not fill a missing source declaration. The legacy
+verbose display field `evidence.best_pair.pair_address` keeps its 48-character limit plus an
+ellipsis. Use `pool_id` and the chain for exact identity across responses.
 
 For a native liquidity recheck, call `get_token_liquidity` with the address and optional
 `chain_hint` as usual. A usable first snapshot includes a compact `comparison_context`,

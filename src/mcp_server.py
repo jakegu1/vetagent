@@ -158,14 +158,14 @@ _OWNER_POWERS_SCHEMA = {
 _POOL_SCOPE_DETAILS_SCHEMA = {
     "type": "object",
     "description": "Verbose-only correspondence facts for the final displayed market and adopted "
-                   "simulator response. IDs are display strings, capped at 48 characters plus an "
-                   "ellipsis; truncated strings cannot establish exact cross-response identity.",
+                   "simulator response. The market and reported IDs are complete when available.",
     "properties": {
         "reason": {"type": ["string", "null"],
                    "enum": [None, "chain_conflict", "pool_conflict", "invalid_response", "no_market",
                             "no_simulation", "invalid_pool", "missing_pool", "missing_chain"],
                    "description": "Why correspondence is unknown; null for same or different."},
-        "market_pool": {"type": ["string", "null"], "description": "Final displayed market's pool display ID."},
+        "market_pool": {"type": ["string", "null"], "maxLength": 66,
+                        "description": "Complete validated pool ID of the final displayed market."},
         "market_chain": {"type": ["string", "null"], "description": "Known chain of the final displayed market."},
         "adopted_response": {"type": "string", "enum": ["default", "retry", "none"],
                              "description": "Which simulator response the existing engine retained."},
@@ -223,6 +223,12 @@ _ASSESS_OUTPUT_SCHEMA = {
         "evidence": {"type": "object", "properties": {
             "chain_searched": {"type": "string", "description": "Assessment search scope. "
                                "It can come from the request hint when no market was observed."},
+            "best_pair": {"type": "object", "properties": {
+                "pool_id": {"type": "string", "maxLength": 66,
+                            "description": "Complete validated ID of the final displayed market, "
+                                           "available in compact and verbose replies. EVM IDs are "
+                                           "20 or 32 bytes; Solana IDs decode to 32 bytes and retain case."},
+            }},
             "owner_powers": _OWNER_POWERS_SCHEMA,
             "pool_link": {"type": "string", "enum": ["same", "different", "unknown"],
                            "description": "Correspondence between the final displayed market and the "

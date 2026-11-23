@@ -175,6 +175,9 @@ real signals, none fatal; surface them. <code>high</code>: do not proceed unrevi
 light</a>.</td></tr>
 <tr><td><code>driver</code></td><td>The one signal that decided the verdict, by name and
 category. <code>null</code> when nothing above <code>ok</code> fired.</td></tr>
+<tr><td><code>evidence.best_pair.pool_id</code></td><td>The complete ID of the final market shown
+in the assessment, when the provider establishes its identity on a supported chain. Both
+response modes include it when available.</td></tr>
 <tr><td><code>confidence</code></td><td>How complete the input data was, not how safe the token
 is. An answer using stale fallback after an upstream failure is at most <code>medium</code>.
 Fresh cache reuse alone does not lower confidence.</td></tr>

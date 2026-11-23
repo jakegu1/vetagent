@@ -481,6 +481,8 @@
 
   function observedContext(value) {
     var evidence = value.evidence || {}, pair = evidence.best_pair || {}, parts = [];
+    var pool = typeof pair.pool_id === 'string' && pair.pool_id ?
+      '<p>Selected pool ID: <code>' + esc(pair.pool_id) + '</code></p>' : '';
     if (typeof pair.liquidity_usd === 'number' && Number.isFinite(pair.liquidity_usd) && pair.liquidity_usd >= 0) {
       parts.push('Selected pool liquidity estimate: ' + usd(pair.liquidity_usd) +
         (evidence.liquidity_source ? ' from ' + evidence.liquidity_source : '') +
@@ -520,7 +522,7 @@
           ' seconds old when this reply was made.');
       }
     });
-    return parts.length ? '<div class="assessment-context">' + parts.map(function (text) {
+    return (pool || parts.length) ? '<div class="assessment-context">' + pool + parts.map(function (text) {
       return '<p>' + esc(text) + '</p>';
     }).join('') + '</div>' : '';
   }

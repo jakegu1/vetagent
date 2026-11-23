@@ -1999,6 +1999,18 @@ def _format_pool_usd(value, *, only=False):
     return prefix + format(value, ",.0f")
 
 
+def _market_pool_identity(market):
+    """Read a complete provider-qualified identity for a known chain."""
+    if market is None:
+        return None
+    chain = _canonical_chain(market.get("chainId"))
+    if chain not in _KNOWN_CHAINS:
+        return None
+    if isinstance(market, _GeckoPool):
+        return market.pool_identity
+    return _validated_chain_pool_id(market.get("pairAddress"), chain)
+
+
 def _liquidity_signals(best, pairs, signals, evidence, target=None):
     liq = _pair_liquidity(best)
     vol = _market_number((best.get("volume") or {}).get("h24"))
@@ -2013,6 +2025,8 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
     traders = best.get("traders")
     h24_traders = traders.get("h24") if isinstance(traders, dict) else None
     sellers = h24_traders.get("sellers") if isinstance(h24_traders, dict) else None
+    display_id = best.get("pairAddress") or best.get("pool_id")
+    pool_id = _market_pool_identity(best)
     evidence["best_pair"] = {
         "dex": best.get("dexId"), "chain": best.get("chainId"),
         "liquidity_usd": _sig_round(liq),
@@ -2024,11 +2038,13 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
         # it labels one sampled pool and the engine independently picks its own, and for
         # 16% of the set those are different pools, with the disagreement booked as
         # engine error.
-        "pair_address": _ascii_safe(best.get("pairAddress") or best.get("pool_id"), 48),
-        "sellers_24h": _market_number(sellers),
+        "pair_address": _ascii_safe(display_id, 48),
+        "sellers_24h": _market_number(sellers) if pool_id is not None else None,
         "volume_24h_usd": _market_round(vol), "pair_created_at": created,
         "buys_24h": _market_number(txns.get("buys")), "sells_24h": _market_number(txns.get("sells")),
     }
+    if pool_id is not None:
+        evidence["best_pair"]["pool_id"] = pool_id
 
     if liq < _LIVE_POOL_USD:
         signals.append(_sig("critical", "Very low liquidity",
@@ -2135,7 +2151,7 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
                                 "Turnover is only %.1f%%. Exiting at size may be difficult." % (turnover * 100),
                                 "lifecycle"))
 
-    return best.get("pairAddress") or best.get("pool_id")
+    return pool_id
 
 
 async def _impersonation_signals(address, pairs, signals, evidence,
@@ -2970,7 +2986,7 @@ def _sim_never_ran(hp):
     return hp.get("router") == "" and gas == "0" and "does not contain code" in reason
 
 
-async def _distinct_sellers(hp, evidence, pool_id=None, address=None):
+async def _distinct_sellers(hp, evidence, address=None):
     """Fill in the picked pool's distinct-seller count, when a honeypot verdict is contested.
 
     Only then: a simulator saying honeypot is the one case where the count decides
@@ -2984,7 +3000,7 @@ async def _distinct_sellers(hp, evidence, pool_id=None, address=None):
     if bp.get("sellers_24h") is not None:
         return
     net = _GT_NETWORK.get((bp.get("chain") or "").lower())
-    pool = _validated_pool_id(pool_id if pool_id is not None else bp.get("pair_address"))
+    pool = _validated_pool_id(bp.get("pool_id"))
     if not net or not pool:
         return
     for url, headers, _name in _onchain_sources("networks/%s/pools/%s" % (net, _urlq(pool))):
@@ -4723,9 +4739,7 @@ def _pool_correspondence(market, response, address, searched_chain, policy_chain
     market_id = (market.get("pairAddress") or market.get("pool_id")) if market is not None else None
     market_chain = _canonical_chain(market.get("chainId")) if market is not None else None
     market_chain = market_chain if market_chain in _KNOWN_CHAINS else None
-    market_pool = _validated_pool_id(market_id)
-    if market_chain == "solana" and isinstance(market_id, str) and _looks_solana(market_id):
-        market_pool = market_id
+    market_pool = _market_pool_identity(market)
     contexts = {chain for chain in (market_chain, searched_chain, policy_chain, requested_chain, reported["chain"])
                 if chain in _KNOWN_CHAINS}
     chain_ids = reported["chain_ids"] | {_SIMULATOR_CHAIN_IDS[chain] for chain in contexts
@@ -4750,7 +4764,7 @@ def _pool_correspondence(market, response, address, searched_chain, policy_chain
     elif reported["chain"] is None or market_chain is None:
         reason = "missing_chain"
     relation = "unknown" if reason else "same" if market_pool.lower() == reported["pool"] else "different"
-    details = {"reason": reason, "market_pool": _ascii_safe(market_pool, 48) if market_pool else None,
+    details = {"reason": reason, "market_pool": market_pool,
                "market_chain": market_chain, "adopted_response": adopted_response,
                "policy_chain": policy_chain or None, "requested_chain": requested_chain,
                "requested_pool": _ascii_safe(requested_pool, 48) if requested_pool else None,
@@ -5061,7 +5075,7 @@ async def assess(address, chain_hint=None, verbose=False):
             _sell_evidence_gap(signals, data_gaps, issue)
         else:
             if supported:
-                await _distinct_sellers(hp, evidence, pool_id=pool_id, address=address)
+                await _distinct_sellers(hp, evidence, address=address)
             _honeypot_signals(hp, signals, evidence, data_gaps, chain=hp_chain, issue=issue)
         if unsettled_claim and replaced:
             # Before W31 this answer was a fatal honeypot; W31 read it as a failed
