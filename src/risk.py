@@ -1985,9 +1985,22 @@ def _gt_to_pair(p, address, network):
 
 # ---------------------------------------------------------------- building signals
 
+def _format_pool_usd(value, *, only=False):
+    """Format a known pool amount without rounding positive depth or volume to zero."""
+    prefix = "only $" if only else "$"
+    if 0 < value < 1:
+        estimate = _sig_round(value)
+        if estimate < 0.01:
+            return "less than $0.01"
+        if estimate < 1:
+            # Round the public estimate to cents as the homepage does.
+            cents = Decimal(str(estimate)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            return prefix + str(cents)
+    return prefix + format(value, ",.0f")
+
+
 def _liquidity_signals(best, pairs, signals, evidence, target=None):
     liq = _pair_liquidity(best)
-    reported_liq = _sig_round(liq)
     vol = _market_number((best.get("volume") or {}).get("h24"))
     created = best.get("pairCreatedAt")
     age = _age_days(created, malformed_as_missing=True)
@@ -2002,7 +2015,7 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
     sellers = h24_traders.get("sellers") if isinstance(h24_traders, dict) else None
     evidence["best_pair"] = {
         "dex": best.get("dexId"), "chain": best.get("chainId"),
-        "liquidity_usd": reported_liq,
+        "liquidity_usd": _sig_round(liq),
         # The price of the token asked about, not of whichever side the pool lists first.
         "price_usd": _market_round(_price_of_target(best, target)),
         # Which pool this verdict is actually about. A caller comparing our answer to
@@ -2018,23 +2031,16 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
     }
 
     if liq < _LIVE_POOL_USD:
-        if 0 < reported_liq < 0.01:
-            amount = "less than $0.01"
-        elif 0.01 <= reported_liq < 1:
-            # Round the public estimate to cents as the homepage does.
-            cents = Decimal(str(reported_liq)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            amount = "only $%s" % cents
-        else:
-            amount = "only $%s" % format(liq, ",.0f")
         signals.append(_sig("critical", "Very low liquidity",
-                            "Main pair holds %s. High rug and slippage risk." % amount,
+                            "Main pair holds %s. High rug and slippage risk."
+                            % _format_pool_usd(liq, only=True),
                             "liquidity"))
     elif liq < 50000:
         signals.append(_sig("warn", "Thin liquidity",
-                            "Main pair holds $%s." % format(liq, ",.0f"), "liquidity"))
+                            "Main pair holds %s." % _format_pool_usd(liq), "liquidity"))
     else:
         signals.append(_sig("ok", "Liquidity is adequate",
-                            "Main pair holds $%s." % format(liq, ",.0f"), "liquidity"))
+                            "Main pair holds %s." % _format_pool_usd(liq), "liquidity"))
 
     reserve_check = _liquidity_reserve_check(best)
     if reserve_check is not None:
@@ -2117,12 +2123,12 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
         evidence["turnover_24h_best_pool"] = _market_round(best_turnover, 4)
         if turnover is not None and turnover < 0.02 and (age or 0) > 180:
             signals.append(_sig("warn", "Looks abandoned",
-                                "$%s of liquidity across %d pool%s but only $%s traded in 24h "
+                                "%s of liquidity across %d pool%s but %s traded in 24h "
                                 "(%.1f%% turnover). A token this quiet for this long usually "
                                 "migrated or was abandoned."
-                                % (format(liq_all, ",.0f"), len(venues),
+                                % (_format_pool_usd(liq_all).capitalize(), len(venues),
                                    "" if len(venues) == 1 else "s",
-                                   format(vol_all, ",.0f"), turnover * 100),
+                                   _format_pool_usd(vol_all, only=True), turnover * 100),
                                 "lifecycle"))
         elif turnover is not None and turnover < 0.02:
             signals.append(_sig("warn", "Very little trading",
@@ -2243,17 +2249,16 @@ async def _impersonation_signals(address, pairs, signals, evidence,
     if ratio >= 1000:
         signals.append(_sig(
             "critical", "Almost certainly not the token you meant",
-            "Another contract with the ticker %s holds $%s against this one's $%s. "
+            "Another contract with the ticker %s holds %s against this one's %s. "
             "At that gap this is not the token the name refers to." %
-            (_quoted(symbol), format(top_liq, ",.0f"), format(mine, ",.0f")),
+            (_quoted(symbol), _format_pool_usd(top_liq), _format_pool_usd(mine)),
             "impersonation"))
     elif ratio >= 50:
         signals.append(_sig(
             "warn", "A much larger token shares this ticker",
-            "%d other contracts use the ticker %s, and the largest holds $%s against "
-            "this one's $%s. Confirm the address is the one you intended." %
-            (len(rivals), _quoted(symbol), format(top_liq, ",.0f"),
-             format(mine, ",.0f")),
+            "%d other contracts use the ticker %s, and the largest holds %s against "
+            "this one's %s. Confirm the address is the one you intended." %
+            (len(rivals), _quoted(symbol), _format_pool_usd(top_liq), _format_pool_usd(mine)),
             "impersonation"))
     elif len(rivals) >= 3:
         signals.append(_sig(
