@@ -2433,6 +2433,66 @@ def test_t091_cache_age_and_selected_chain_cross_real_http_and_mcp():
                   and "chainID=8453" in sells[0])
 
 
+def test_assessment_prefers_the_requested_market_and_keeps_checks_on_the_actual_network(reader=risk._fetch_json):
+    import test_risk as fixtures
+
+    cases = [("base", "ethereum", True, "ethereum", 200, "found"),
+             ("ethereum", "bsc", False, "ethereum", 200, "empty"),
+             ("ethereum", "bsc", False, "ethereum", 429, "unconfirmed")]
+    cases.extend(("ethereum", chain, True, chain, 200, "found")
+                 for chain in ("polygon", "arbitrum", "optimism", "avalanche"))
+    for initial, requested, found, used, status, lookup in cases:
+        for interface, verbose in (("http", False), ("mcp", True), ("mcp", False)):
+            target = fixtures._t030_pair(175000, reserves=False, chain=requested)
+            target["pairAddress"] = "0x" + "cd" * 20
+            hp = fixtures._t092_report(target["pairAddress"] if found else "0x" + "ab" * 20)
+            with fixtures._t091_runtime(initial, hp_body=hp, reader=reader) as state:
+                address = state["address"]
+                scoped_url = "https://api.dexscreener.com/token-pairs/v1/" + requested + "/" + address
+                state["scoped"][scoped_url] = (status, [target] if found else [])
+                answer = asyncio.run(_t092_worker_request(interface, "assess_token_risk",
+                    {"address": address, "chain_hint": requested, "verbose": verbose}))
+            evidence = answer["evidence"]
+            check("assessment uses the scoped request once and names the observed chain in both evidence modes",
+                  state["requests"][:2] == [("market", fixtures._T083_DS + address), ("scoped", scoped_url)]
+                  and [kind for kind, _ in state["requests"]].count("scoped") == 1
+                  and evidence["chain_searched"] == used and evidence["best_pair"]["chain"] == used
+                  and evidence["best_pair"]["liquidity_usd"] == (175000 if found else 250000)
+                  and answer.get("network_selection") == {"requested_chain": requested, "returned_chain": used,
+                      "status": "matched" if found else "different", "lookup": lookup}, str(answer))
+            sells = [url for kind, url in state["requests"] if kind.startswith("sell")]
+            rpcs = [url for kind, url in state["requests"] if kind == "rpc"]
+            if used == "ethereum":
+                check("sell and bytecode use the actual Ethereum deployment",
+                      len(sells) == 1 and sells[0].endswith("&chainID=1")
+                      and rpcs == [risk._CHAIN_RPC["ethereum"]] and evidence.get("pool_link") == "same")
+            else:
+                check("unsupported selected market never runs another network's simulator or RPC",
+                      not sells and not rpcs and answer["risk_level"] != "low"
+                      and "honeypot" not in evidence and evidence["pool_link"] == "unknown")
+            if not found:
+                check("a foreign low recommendation names both scopes before the low statement",
+                      answer["risk_level"] == "low" and answer["risk_score"] == 0
+                      and answer["recommendation"].startswith(
+                          "You requested bsc. This assessment covers ethereum only."), answer["recommendation"])
+
+
+def test_assessment_incompatible_hint_does_not_probe_an_undeclared_evm_network(reader=risk._fetch_json):
+    import test_risk as fixtures
+
+    with fixtures._t091_runtime("ethereum", reader=reader) as state:
+        state["market"]["pairs"] = []
+        address = state["address"]
+        answer = asyncio.run(_t092_worker_request("mcp", "assess_token_risk",
+            {"address": address, "chain_hint": "solana"}))
+    check("an incompatible hint without an observed EVM scope cannot run a bare simulation or bytecode lookup",
+          state["requests"] == [("market", fixtures._T083_DS + address)]
+          and answer.get("network_selection") == {
+              "requested_chain": "solana", "status": "unresolved", "lookup": "incompatible_address"}
+          and answer.get("risk_level") == "unknown" and answer.get("evidence", {}).get("chain_searched") == "",
+          str((answer, state["requests"])))
+
+
 def test_t091_tools_list_defines_local_residence_not_live_observation_age():
     tools = call({"jsonrpc": "2.0", "id": 91, "method": "tools/list"})["result"]["tools"]
     tool = next(item for item in tools if item["name"] == "assess_token_risk")

@@ -7352,7 +7352,7 @@ def _t091_runtime(chain="ethereum", cached=None, market_status=200, hp_status=20
     hp = copy.deepcopy(_T084_HP if hp_body is None else hp_body)
     state = {"requests": [], "cache_reads": [], "writes": [], "sleeps": [],
              "cache": copy.deepcopy(cached or {}), "market": market, "code": code,
-             "address": address, "blocked": []}
+             "address": address, "blocked": [], "scoped": {}}
 
     class UnexpectedIO(BaseException):
         pass
@@ -7373,6 +7373,8 @@ def _t091_runtime(chain="ethereum", cached=None, market_status=200, hp_status=20
             return "bytecode"
         if "/latest/dex/tokens/" in url:
             return "market"
+        if url in state["scoped"]:
+            return "scoped"
         if "honeypot.is" in url:
             return "sell-retry" if "&pair=" in url else "sell"
         if url in risk._CHAIN_RPC.values():
@@ -7388,6 +7390,8 @@ def _t091_runtime(chain="ethereum", cached=None, market_status=200, hp_status=20
         state["requests"].append((kind, url))
         if kind == "market":
             status, body = market_status, market
+        elif kind == "scoped":
+            status, body = state["scoped"][url]
         elif kind in ("sell", "sell-retry"):
             status, body = hp_status, hp
         elif kind == "rpc":

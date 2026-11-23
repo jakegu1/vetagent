@@ -296,6 +296,19 @@ const cases = {
     assert.match(b.text(), /unknown/); assert.match(b.text(), /Critical checks missing/);
     assert.match(b.text(), /Upstream unavailable/);
   },
+  async 'a foreign low rating names its network beside the rating and describes the lookup'() {
+    const b = boot(); b.select('bsc'); b.enter('0xsubmitted');
+    const v = verdict('ethereum');
+    v.risk_level = 'low';
+    v.recommendation = 'You requested bsc. This assessment covers ethereum only. Low risk.';
+    v.network_selection = {requested_chain: 'bsc', returned_chain: 'ethereum',
+      status: 'different', lookup: 'unconfirmed'};
+    b.requests[0].resolve(response(v)); await tick();
+    const shown = front(b.text()), header = shown.match(/class="vhead"[^>]*>([\s\S]*?)<\/div>/)[1];
+    assert.match(header, />low<[\s\S]*Risk on ethereum/i);
+    assert.match(shown, /This result does not establish an assessment on the selected network/);
+    assert.match(shown, /DexScreener could not confirm pools on bsc/i);
+  },
   async 'missing engine scope is not inferred from the selection or best pair'() {
     const b = boot(); b.select('ethereum'); b.enter('0xmissing');
     const v = verdict(null); v.evidence.best_pair = {chain: 'ethereum'};
