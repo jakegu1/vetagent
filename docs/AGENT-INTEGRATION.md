@@ -251,8 +251,11 @@ and omit `comparison`.
 
 The context contains at most eight observations and accepts at most 8192 UTF-8 JSON bytes.
 Each observation has only `status`, `address`, `best_pair_chain`, `best_pair_address`,
-`source`, `checked_at` and `liquidity_usd`. Invalid context is refused before the current
-upstream request. The latest strictly earlier observation with the same token, chain,
+`source`, `checked_at` and `liquidity_usd`. An identified single-pool `drained` reply
+can be used like an `ok` reply when its provider explicitly reports a numeric zero.
+A recheck can compare a drop to zero, a recovery from zero, or two reported zeros.
+Invalid context is refused before the current upstream request. The latest strictly
+earlier observation with the same token, chain,
 complete pool ID and provider is selected, even when the immediately preceding reply used
 another provider. Different providers or pools are never subtracted. EVM identities compare
 without case; Solana identities preserve case and must decode to 32 bytes. Missing identity,
@@ -287,7 +290,8 @@ python -B examples/liquidity_compare.py before.json after.json
 ```
 
 Each input file contains one successful REST `/liquidity/...` JSON response object,
-or the extracted MCP `result.structuredContent` object, with `status: "ok"`.
+or the extracted MCP `result.structuredContent` object, with `status: "ok"` or an
+identified `status: "drained"` and numeric zero.
 Supply the earlier reply first. The example verifies chain, target token, complete pool
 identity, data provider and strictly increasing `checked_at` values with a full ISO date,
 seconds and a known valid timezone offset (`Z` or `+/-HH:MM`).
@@ -297,9 +301,12 @@ returns `not_comparable` with a reason and no change. Old truncated IDs are refu
 `checked_at` is reply time, and data can be cached. The difference compares saved USD
 estimates, which can also change with valuation. The example performs no network calls.
 
-`get_token_liquidity` includes `best_pair_address` on `ok` results only when the selected
-pool has a complete valid identity. EVM IDs retain all 20 or 32 bytes; Solana base58 IDs
-retain case and decode to 32 bytes. Missing, malformed or contradictory GT resource/address
+`get_token_liquidity` includes `best_pair_address` on `ok` results when the selected
+pool has a complete valid identity. A `drained` result includes the pool ID, chain and
+provider only when a single pool can be identified and the source reports zero directly.
+Multiple drained pools, an estimate capped to zero, and older drained replies without
+those fields cannot be used as single-pool baselines. EVM IDs retain all 20 or 32 bytes.
+Solana base58 IDs retain case and decode to 32 bytes. Missing, malformed or contradictory GT resource/address
 identity is omitted. `source` is the data provider; `best_pair_dex` is the trading venue.
 Optional `trade_activity` contains `trades_last_1h` and `trades_prior_5h`, buys plus sells
 in two disjoint windows from the same selected market row. Raw integer zeros remain zero;

@@ -631,7 +631,8 @@
     return Array.isArray(rows) && rows.length <= 8 && JSON.stringify(rows).length <= 8192 &&
       rows.every(function (row) {
         if (!row || Array.isArray(row) || typeof row !== 'object' ||
-            Object.keys(row).length !== observationFields.length || row.status !== 'ok' ||
+            Object.keys(row).length !== observationFields.length ||
+            (row.status !== 'ok' && !(row.status === 'drained' && row.liquidity_usd === 0)) ||
             !observationFields.every(function (key) { return Object.prototype.hasOwnProperty.call(row, key); })) {
           return false;
         }
@@ -776,7 +777,15 @@
       if (comparison.nonprior_observations) {
         change += '<div class="rec">Observations at or after this reply time were excluded as baselines.</div>';
       }
-      showLiquidity(submitted + details + '<div>Current estimate: ' + esc(usd(value.liquidity_usd)) + '</div>' + change +
+      var estimate = '<div>Current estimate: ' + esc(usd(value.liquidity_usd)) + '</div>';
+      if (value.status === 'not_found') {
+        estimate = '<div>No trading pair was found.</div>';
+      } else if (value.status === 'drained') {
+        estimate = value.liquidity_usd === 0 && value.best_pair_address && value.best_pair_chain && value.source ?
+          estimate + '<div>The provider reported zero liquidity for this pool.</div>' :
+          '<div>No pool-specific zero was available for comparison.</div>';
+      }
+      showLiquidity(submitted + details + estimate + change +
         '<div class="rec">These are USD estimates and reply times; source data may be cached. ' +
         'A difference can reflect valuation and is not a measured reserve flow or executable sell depth. ' +
         'Saved baselines are observations supplied by this browser.</div>');

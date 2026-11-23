@@ -131,7 +131,9 @@ asyncio.run(main())</code></pre>
 <p>Connection and MCP protocol failures raise an SDK exception. A tool error sets
 <code>is_error</code>. In a returned snapshot, check <code>status</code> before using
 <code>liquidity_usd</code>. <code>unavailable</code> indicates an upstream failure and
-<code>unpriced</code> indicates unknown depth.</p>
+<code>unpriced</code> indicates unknown depth. An identified single-pool
+<code>drained</code> snapshot can be used in a same-pool recheck when the provider
+reports zero.</p>
 
 <h3>Plain HTTP</h3>
 <pre><code># the address in the body, which keeps it out of URLs and logs along the way

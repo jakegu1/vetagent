@@ -31,6 +31,15 @@ def _refused(reason):
     return {"status": "not_comparable", "reason": reason}
 
 
+def _usable_status(row):
+    if type(row) is not dict or "error" in row:
+        return False
+    if row.get("status") == "ok":
+        return True
+    amount = row.get("liquidity_usd")
+    return row.get("status") == "drained" and type(amount) in (int, float) and amount == 0
+
+
 def _moment(stamp):
     if (not isinstance(stamp, str) or re.fullmatch(
             r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}"
@@ -46,7 +55,7 @@ def _moment(stamp):
 def compare(before, after):
     """Compare saved reply estimates only after validating their shared context."""
     readings = (before, after)
-    if any(type(row) is not dict or row.get("status") != "ok" or "error" in row for row in readings):
+    if not all(_usable_status(row) for row in readings):
         return _refused("unusable_response")
     if any("served_stale" in row for row in readings):
         return _refused("stale_response")
@@ -90,7 +99,7 @@ OBSERVATION_FIELDS = ("status", "address", "best_pair_chain", "best_pair_address
 
 
 def _reading_reason(row):
-    if type(row) is not dict or row.get("status") != "ok" or "error" in row:
+    if not _usable_status(row):
         return "unusable_response"
     if "served_stale" in row:
         return "stale_response"

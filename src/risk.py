@@ -5085,6 +5085,35 @@ def _disclosed(payload):
     return payload
 
 
+def _identified_drained_pool(pairs, scope, source, address, chain_hint):
+    """Attach an identity only to a single, explicitly zero-valued observation."""
+    if len(scope) != 1:
+        return {}
+    pair = scope[0]
+    chain = pair.get("chainId")
+    hint = _canonical_chain(chain_hint)
+    if chain not in _KNOWN_CHAINS or (hint and hint != chain):
+        return {}
+    if not hint and any(p.get("chainId") != chain for p in pairs if _pair_has_token(p, address)):
+        return {}
+    if chain == "solana":
+        if _validated_chain_pool_id(address, chain) is None:
+            return {}
+    elif not _looks_evm(address):
+        return {}
+
+    # Reserve validation can reduce a positive estimate to zero. Comparison needs
+    # an upstream zero, with no conflicting USD amount on the same record.
+    alternate = pair.get("reserveInUsd")
+    if _stated_liquidity(pair) != 0 or (alternate not in (None, "") and _market_number(alternate) != 0):
+        return {}
+    if isinstance(pair, _GeckoPool):
+        pool = pair.pool_identity if source in ("coingecko", "geckoterminal") else None
+    else:
+        pool = _validated_chain_pool_id(pair.get("pairAddress"), chain) if source == "dexscreener" else None
+    return {"best_pair_address": pool, "best_pair_chain": chain, "source": source} if pool else {}
+
+
 async def liquidity(address, chain_hint=None):
     """Liquidity snapshot. Same validation and pool-picking logic as assess."""
     address = validate_address(address)
@@ -5117,12 +5146,13 @@ async def liquidity(address, chain_hint=None):
         scope = _home_scope(pairs, chain_hint, address)
         stated = [v for v in (_reported_liquidity(p) for p in scope) if v is not None]
         if stated and len(stated) == len(scope) and max(stated) <= 0 and not _only_unbacked_depth(scope):
+            pool = _identified_drained_pool(pairs, scope, source, address, chain_hint)
+            note = ("The provider reported a USD liquidity estimate of zero for this pool." if pool else
+                    "The USD liquidity estimates for %d pool%s in this market scope are zero. "
+                    "No pool-specific provider zero is available for comparison."
+                    % (len(stated), "" if len(stated) == 1 else "s"))
             return _disclosed({"address": address, "status": "drained",
-                               "liquidity_usd": 0,
-                    "pairs_total": len(pairs),
-                    "note": "%d pool%s on this token's own chain report their depth and "
-                            "every one is empty. There is nothing to sell into."
-                            % (len(stated), "" if len(stated) == 1 else "s")})
+                               "liquidity_usd": 0, "pairs_total": len(pairs), "note": note, **pool})
         if _only_unbacked_depth(scope):
             return _disclosed({"address": address, "status": "unpriced",
                                "liquidity_usd": None, "pairs_total": len(pairs),

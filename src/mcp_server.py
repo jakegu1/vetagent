@@ -46,12 +46,13 @@ _COMPARISON_CONTEXT_SCHEMA = {
     "type": "array", "maxItems": 8,
     "description": "Optional client-carried observations, at most 8 and 8192 UTF-8 JSON bytes. "
                    "Pass a prior comparison_context unchanged, or [] to start. These are client "
-                   "observations, not signed service records. No server history is stored.",
+                   "observations, not signed service records. An identified drained observation "
+                   "has a numeric USD estimate of zero. No server history is stored.",
     "items": {
         "type": "object", "additionalProperties": False,
         "required": list(liquidity_comparison.OBSERVATION_FIELDS),
         "properties": {
-            "status": {"type": "string", "enum": ["ok"]},
+            "status": {"type": "string", "enum": ["ok", "drained"]},
             "address": {"type": "string", "maxLength": 66},
             "best_pair_chain": {"type": "string", "enum": list(liquidity_comparison._CHAINS)},
             "best_pair_address": {"type": "string", "maxLength": 66},
@@ -59,6 +60,8 @@ _COMPARISON_CONTEXT_SCHEMA = {
             "checked_at": {"type": "string", "maxLength": 32},
             "liquidity_usd": {"type": "number", "minimum": 0},
         },
+        "if": {"properties": {"status": {"const": "drained"}}},
+        "then": {"properties": {"liquidity_usd": {"const": 0}}},
     },
 }
 
@@ -344,8 +347,10 @@ TOOLS = [
             "token has no liquidity. 'not_found' means no trading pair exists for this "
             "address at all. 'unpriced' means pairs exist but no source has costed them, "
             "so liquidity_usd is null and the depth is unknown -- this is NOT a report of "
-            "zero liquidity. 'drained' means every pool on the token's own chain reports "
-            "its depth and every one is empty: there is nothing to sell into."
+            "zero liquidity. 'drained' means the USD liquidity estimates for the returned market "
+            "scope are zero, including estimates capped by reserve evidence. A drained result "
+            "with a complete pool ID, chain and provider can participate in a same-pool recheck. "
+            "This identity is included only for a single pool whose provider reported zero."
         ),
         "inputSchema": {
             "type": "object",
@@ -372,6 +377,7 @@ TOOLS = [
                     "type": "string",
                     "description": "Optional complete validated selected-pool ID on ok results: "
                                    "20-byte/32-byte EVM hex or 32-byte Solana base58, preserving case. "
+                                   "Also included on an identified single-pool drained result. "
                                    "Omitted for invalid or conflicting identity. Old truncated display IDs "
                                    "cannot establish exact cross-response identity. No sell simulation runs."},
                 "trade_activity": _TRADE_ACTIVITY_SCHEMA,

@@ -1,6 +1,7 @@
-"""Compare two saved successful liquidity response objects, before.json then after.json.
+"""Compare two saved liquidity response objects, before.json then after.json.
 
 Save a REST /liquidity JSON body or MCP result.structuredContent, not an envelope.
+Use ok snapshots or identified drained snapshots whose provider reported zero.
 Amounts are USD estimates. checked_at is reply time and source data may be cached.
 """
 
