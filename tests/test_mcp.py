@@ -3593,6 +3593,25 @@ def test_liquidity_incompatible_network_preserves_only_available_global_data():
                   and not answer["comparison_context"], str((answer, calls)))
 
 
+def test_liquidity_foreign_market_chain_is_bounded_in_zero_and_missing_depth_replies():
+    import test_risk as fixtures
+
+    supplied = "bsc\n" + "MARKET" * 30
+    pair = fixtures._t030_pair(0, reserves=False)
+    address = pair["baseToken"]["address"]
+    args = {"address": address, "chain_hint": "bsc", "comparison_context": []}
+    for depth, status in (({"usd": 0}, "drained"), ({}, "unpriced")):
+        row = dict(pair, chainId=supplied, liquidity=depth)
+        routes = {fixtures._T083_DS + address: ("global", 200, {"pairs": [row]}),
+                  "https://api.dexscreener.com/token-pairs/v1/bsc/" + address: ("bsc", 200, [])}
+        answer, _, _, _, _ = _t092_public_market("mcp", "get_token_liquidity", args, routes)
+        selection = answer.get("network_selection", {})
+        check("a foreign chain is compared before its display label is bounded and escaped",
+              answer.get("status") == status and selection.get("status") == "different"
+              and selection.get("returned_chain") == risk._ascii_safe(supplied.lower(), 24)
+              and "\n" not in selection.get("returned_chain", ""), str(selection))
+
+
 def test_real_worker_liquidity_rechecks_keep_a_reported_single_pool_zero():
     import test_risk as fixtures
     from liquidity_comparison import compare
