@@ -3289,6 +3289,11 @@ def test_liquidity_tools_list_exposes_optional_activity_and_complete_identity():
           input_context == output_context and observation["properties"]["status"]["enum"] == ["ok", "drained"]
           and observation.get("if", {}).get("properties", {}).get("status") == {"const": "drained"}
           and observation.get("then", {}).get("properties", {}).get("liquidity_usd") == {"const": 0})
+    description = liquidity["description"]
+    check("tool text scopes drained to estimates and identifies the narrower provider zero",
+          "estimates for the returned market scope are zero" in description
+          and "single pool whose provider reported zero" in description
+          and "nothing to sell into" not in description)
     schema = liquidity["outputSchema"]
     fields = schema["properties"]
     activity = fields.get("trade_activity", {})
@@ -3485,6 +3490,9 @@ def test_real_worker_liquidity_rechecks_keep_a_reported_single_pool_zero():
                   and rest.get("best_pair_chain") == "ethereum" and rest.get("checked_at") == stamp
                   and rest["status"] == ("ok" if amount else "drained")
                   and rest["liquidity_usd"] == amount and calls == ["market"] and not sleeps)
+            if not amount:
+                check("identified zero note attributes the estimate to the provider and pool",
+                      rest.get("note") == "The provider reported a USD liquidity estimate of zero for this pool.")
             kwargs = dict(args, comparison_context=history)
             mcp, calls, _, sleeps, _ = _t092_public_market("mcp", "get_token_liquidity", kwargs, routes)
         check("MCP preserves the REST snapshot and the original request sequence",
@@ -3531,6 +3539,11 @@ def test_liquidity_drained_identity_refuses_ambiguous_or_derived_zero():
         check(name + " retains its prior status without a new baseline or claimed pool identity",
               answer.get("status") == status and "best_pair_address" not in answer
               and not answer.get("comparison_context") and "change_usd" not in answer["comparison"], str(answer))
+        if status == "drained":
+            note = answer.get("note", "")
+            check(name + " reports zero estimates without calling the underlying pools empty",
+                  "liquidity estimates" in note and "in this market scope are zero" in note
+                  and "No pool-specific provider zero is available for comparison." in note, note)
 
 
 def test_liquidity_fallback_zero_requires_the_qualified_pool_identity():
