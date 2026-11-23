@@ -230,7 +230,20 @@ def test_w40_plan_is_offline_source_bound_and_not_started(_support=False):
 
     if _support:
         return core, Fixture, copy, patch, contextlib
-    with Fixture() as f, patch("urllib.request.urlopen", side_effect=AssertionError("network")), patch("time.sleep", side_effect=AssertionError("sleep")):
+
+    import time
+    system_sleep = time.sleep
+
+    def forbid_backoff(seconds):
+        # The offline rule read uses Git. POSIX subprocess waits with a timeout
+        # poll via time.sleep, independently of any study backoff.
+        caller = sys._getframe(1)
+        if caller.f_globals.get("__name__") == "subprocess" and caller.f_code.co_name == "_wait":
+            return system_sleep(seconds)
+        raise AssertionError("unexpected study sleep")
+
+    with Fixture() as f, patch("urllib.request.urlopen", side_effect=AssertionError("network")), \
+            patch("time.sleep", new=forbid_backoff):
         report = f.setup()
         check("W40 plans and reports never start a study", f.plan["state"] == report["state"] == "not_started")
         check("W40 original rules are fixed metadata", f.plan["rules"] == {"age_hours": 24, "reserve_usd": 5000, "days": 30, "unsafe_tokens": 18})
