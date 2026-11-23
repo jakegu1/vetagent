@@ -6355,6 +6355,22 @@ def _t030_answers(pairs, source="dexscreener"):
                 for verbose in (False, True)] + [run(risk.liquidity(address, chain_hint=chain))]
 
 
+def test_small_liquidity_survives_slim_and_verbose_assessment_text():
+    for amount, reported in ((0.102263, "only $0.10"), (0.004, "less than $0.01"),
+                             (0.009, "less than $0.01"), (0.01, "only $0.01")):
+        pair = _t030_pair(amount, "geckoterminal", reserves=False)
+        slim, verbose, liquidity = _t030_answers([pair], source="coingecko")
+        for answer in (slim, verbose):
+            signal = next(s for s in answer["signals"] if s["category"] == "liquidity")
+            check("small liquidity %s keeps amount, severity and reserve qualification" % amount,
+                  answer["evidence"]["best_pair"]["liquidity_usd"] == amount
+                  and signal["severity"] == "critical" and signal["name"] == "Very low liquidity"
+                  and signal["message"] == "Main pair holds %s. High rug and slippage risk. "
+                  "Upstream estimate; reserve amounts not checked." % reported, str(signal))
+        check("small liquidity %s keeps the structured estimate" % amount,
+              liquidity["status"] == "ok" and liquidity["liquidity_usd"] == amount, str(liquidity))
+
+
 def test_unchecked_liquidity_disclosure_preserves_the_complete_selected_answer():
     """A missing reserve cap adds only its conditional marker and exact qualification."""
     print("\n[T-030] selected upstream estimates disclose the unchecked reserves")

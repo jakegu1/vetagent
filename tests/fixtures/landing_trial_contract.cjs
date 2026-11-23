@@ -171,6 +171,22 @@ const cases = {
     assert.doesNotMatch(shown, /simulation provider reported a different pool|provider reports simulation completion/i);
     assert.match(shown, /selected pool liquidity estimate/i);
   },
+  async 'assessment distinguishes cents, sub-cent depth, observed zero and missing depth'() {
+    const value = clone(recorded[0].result);
+    for (const [amount, shown] of [
+      [0.102263, /Selected pool liquidity estimate: \$0\.10?(?=[ .;<])/],
+      [0.004, /Selected pool liquidity estimate: less than \$0\.01/],
+      [0.009, /Selected pool liquidity estimate: less than \$0\.01/],
+      [0.01, /Selected pool liquidity estimate: \$0\.01/],
+      [0, /Selected pool liquidity estimate: \$0(?=[ ;<]|\.(?!\d))/],
+      [2499.99, /Selected pool liquidity estimate: \$2,499\.99/],
+    ]) {
+      value.evidence.best_pair.liquidity_usd = amount;
+      assert.match(front((await render(value)).text()), shown);
+    }
+    value.evidence.best_pair.liquidity_usd = null;
+    assert.doesNotMatch(front((await render(value)).text()), /Selected pool liquidity estimate:/);
+  },
   async 'no record and unsupported chain name the actual missing sell check'() {
     const absent = front((await render(clone(controls.no_record))).text());
     assert.match(absent, /sell.*no record|no record.*sell/i);

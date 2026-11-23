@@ -1,7 +1,7 @@
 // Replay the Worker-served script with responses from the actual MCP dispatcher.
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
-const {html, replies} = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
+const {html, replies, precision_replies: precisionReplies} = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
 const script = html.slice(html.lastIndexOf('<script>') + 8, html.lastIndexOf('</script>'));
 const tick = () => new Promise(resolve => setImmediate(resolve));
 const plain = value => JSON.parse(JSON.stringify(value));
@@ -70,6 +70,27 @@ const cases = {
       }
     }
     assert.match(html, /in this browser/i); assert.match(html, /No.*server.side history/i);
+  },
+  async 'same-pool rechecks preserve cents, small change direction and real zero'() {
+    const b = boot();
+    const shown = [];
+    for (const reply of precisionReplies) {
+      b.click().resolve(reply); await tick();
+      shown.push(b.text());
+      assert.deepEqual(JSON.parse(b.saved.get(key)), reply.result.structuredContent.comparison_context);
+    }
+    assert.match(shown[0], /Current estimate: \$0\.10?<\/div>/);
+    assert.match(shown[1], /Last comparable dexscreener estimate: \$0\.10? at /);
+    assert.match(shown[1], /Estimated change: increase of less than \$0\.01<\/div>/);
+    assert.match(shown[2], /Estimated change: -\$0\.1<\/div>/);
+    assert.match(shown[3], /Last comparable dexscreener estimate: less than \$0\.01 at /);
+    assert.match(shown[3], /After: less than \$0\.01 at /);
+    assert.match(shown[3], /Current estimate: less than \$0\.01<\/div>/);
+    assert.match(shown[3], /Estimated change: decrease of less than \$0\.01<\/div>/);
+    assert.match(shown[4], /Estimated change: \$0<\/div>/);
+    assert.match(shown[5], /Current estimate: \$0<\/div>/);
+    assert.match(shown[6], /Current estimate: Unavailable<\/div>/);
+    assert.doesNotMatch(shown[6], /Estimated change:/);
   },
   async 'clearing returns to the first-use target and reopening never queries automatically'() {
     const row = plain(replies[0].result.structuredContent.comparison_context[0]);
