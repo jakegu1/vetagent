@@ -2493,6 +2493,31 @@ def test_assessment_incompatible_hint_does_not_probe_an_undeclared_evm_network(r
           str((answer, state["requests"])))
 
 
+def test_assessment_scopes_drained_and_unpriced_market_checks_without_a_best_pair(reader=risk._fetch_json):
+    import test_risk as fixtures
+
+    for initial, depth, risk_level in (("ethereum", {"usd": 0}, "high"), ("polygon", {}, "unknown")):
+        with fixtures._t091_runtime(initial, reader=reader) as state:
+            state["market"]["pairs"][0]["liquidity"] = depth
+            address = state["address"]
+            requested = "https://api.dexscreener.com/token-pairs/v1/bsc/" + address
+            state["scoped"][requested] = (200, [])
+            answer = asyncio.run(_t092_worker_request("mcp", "assess_token_risk",
+                {"address": address, "chain_hint": "bsc", "verbose": True}))
+        evidence = answer["evidence"]
+        sells = [url for kind, url in state["requests"] if kind == "sell"]
+        rpcs = [url for kind, url in state["requests"] if kind == "rpc"]
+        check("a drained or unpriced market establishes its observed chain without a selected pool",
+              answer["risk_level"] == risk_level and evidence["chain_searched"] == initial
+              and "best_pair" not in evidence and evidence["pool_link"] == "unknown"
+              and answer.get("network_selection", {}).get("returned_chain") == initial
+              and [url for kind, url in state["requests"] if kind == "scoped"] == [requested])
+        check("bytecode and sell evidence follow the observed scope even without a best pair",
+              evidence["pool_link_details"]["policy_chain"] == initial
+              and rpcs == ([risk._CHAIN_RPC["ethereum"]] if initial == "ethereum" else [])
+              and (len(sells) == 1 and sells[0].endswith("&chainID=1") if initial == "ethereum" else not sells))
+
+
 def test_t091_tools_list_defines_local_residence_not_live_observation_age():
     tools = call({"jsonrpc": "2.0", "id": 91, "method": "tools/list"})["result"]["tools"]
     tool = next(item for item in tools if item["name"] == "assess_token_risk")
