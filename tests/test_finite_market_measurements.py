@@ -592,9 +592,16 @@ def test_nonmarket_helpers_ordinary_rounding_and_missing_price_selection_stay_un
           (result['liquidity'] or {}).get('price_usd') == risk._sig_round(risk._price_of_target(expected, WETH))
           and (result['liquidity'] or {}).get('liquidity_usd') == risk._sig_round(risk._reported_liquidity(expected)))
     best = (result['verbose'] or {}).get('evidence', {}).get('best_pair') or {}
-    check('existing verbose best_pair optional-key shape stays intact', set(best) == {
+    legacy_keys = {
         'dex', 'chain', 'liquidity_usd', 'price_usd', 'pair_address', 'sellers_24h',
-        'volume_24h_usd', 'pair_created_at', 'buys_24h', 'sells_24h'})
+        'volume_24h_usd', 'pair_created_at', 'buys_24h', 'sells_24h'}
+    check('identified verbose best_pair adds only the complete pool ID',
+          set(best) == legacy_keys | {'pool_id'} and best['pool_id'] == expected['pairAddress'], best)
+
+    unqualified = dict(expected, pairAddress=expected['pairAddress'] + '_composite')
+    result = tools('ordinary WETH market with a composite pool ID', [unqualified], address=WETH)
+    best = (result['verbose'] or {}).get('evidence', {}).get('best_pair') or {}
+    check('unqualified verbose best_pair retains the exact legacy keys', set(best) == legacy_keys, best)
 
 
 def main():
