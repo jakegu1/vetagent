@@ -132,9 +132,9 @@ not complete identities. A pool ID identifies the discovered pool, not its base 
 Each usable `find_new_hot_pools` row includes `assessment_args`, containing exactly
 `address` and the canonical `chain_hint` of the selected discovery network. Pass this
 object unchanged as the arguments to `assess_token_risk`, preserving the selected
-chain preference. The hint is not a strict chain lock: if the market source only sees
-another chain, the engine may report that observed chain. For example, a synthetic Base row
-can supply:
+chain preference. When the initial listing contains only other chains, VetAgent checks
+the preferred chain before using a market from another network. A synthetic Base row
+can supply these arguments:
 
 ```json
 {"address": "0x1111111111111111111111111111111111111111", "chain_hint": "base"}
@@ -144,8 +144,11 @@ can supply:
 to the wrong address family, or the selected network has no supported assessment chain. Do not guess from the pool name or
 ID, and do not silently fall back to an address-only assessment. Discovery itself makes
 no assessment call. Before using the answer for the discovered target, require returned
-`evidence.chain_searched` to match `assessment_args.chain_hint`. Assessment may select a
-different primary pool; it does not certify the exact discovered pool or authorize a trade.
+`evidence.chain_searched` to match `assessment_args.chain_hint`. The search scope can
+come from the hint when no market is observed, so check the market evidence as well.
+When `network_selection` is present, it reports the requested scope, observed market
+and outcome of the extra lookup. A foreign market can still return a rating for its
+own network, named in the recommendation. Assessment selects a primary pool of its own.
 
 After checking that the discovered row has `assessment_args`, use the existing local
 adapter to enforce the returned-chain check:

@@ -146,6 +146,11 @@ curl -X POST https://vetagent.dev/assess \\
 curl "https://vetagent.dev/assess/0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913?chain_hint=base"</code></pre>
 
 <h2>What comes back</h2>
+<p><code>chain_hint</code> is a network preference. When only other networks appear in the
+initial market listing, an assessment checks the preferred network first.
+<code>network_selection</code> and the recommendation identify any returned assessment
+from another network. <code>evidence.chain_searched</code> can name the search scope
+even when no market was observed.</p>
 <p>A shortened example for USDC on Base (evidence trimmed):</p>
 <pre><code>{
   "risk_level": "low",

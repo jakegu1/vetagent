@@ -557,6 +557,16 @@
       '<h4>What to do next</h4><p>' + esc(action) + '</p></section>';
   }
 
+  function networkLookupText(selection) {
+    var requested = selection.requested_chain;
+    if (!requested || selection.status === 'matched') { return ''; }
+    return {
+      empty: 'DexScreener returned no pools for ' + requested + '.',
+      unconfirmed: 'DexScreener could not confirm pools on ' + requested + '.',
+      incompatible_address: 'The address format does not match ' + requested + '.'
+    }[selection.lookup] || '';
+  }
+
   function run() {
     var a = input.value.trim();
     if (!a) { return; }
@@ -588,14 +598,19 @@
       }
       var v = res.structuredContent || JSON.parse(res.content[0].text);
       if (!v || typeof v !== 'object' || Array.isArray(v)) { throw Error('Invalid assessment reply'); }
+      var selection = v.network_selection || {};
       var searched = (v.evidence || {}).chain_searched;
       searched = typeof searched === 'string' ? searched.trim() : '';
+      var actual = selection.returned_chain || searched;
+      var differentScope = chain && (selection.status === 'different' || (searched && chain !== searched));
       var scope = '<div class="request-scope">Assessment network: ' +
         esc(searched || 'Not reported') + ' (engine search scope)</div>';
-      if (chain && searched && chain !== searched) {
+      if (differentScope) {
         scope += '<div class="request-scope">Returned scope differs from your selection. ' +
           'This result does not establish an assessment on the selected network.</div>';
       }
+      var lookup = networkLookupText(selection);
+      if (lookup) { scope += '<div class="request-scope">' + esc(lookup) + '</div>'; }
       var sigs = (v.signals || []).map(function (s) {
         return '<div class="sig"><span class="dot" style="background:' +
           (DOT[s.severity] || 'var(--dim)') + '"></span><span><strong>' + esc(s.name) +
@@ -608,7 +623,8 @@
       show(submitted + scope +
         '<div class="vhead"><span class="vlevel" style="color:' +
         (COLORS[v.risk_level] || 'var(--dim)') + '">' + esc(v.risk_level) + '</span>' +
-        '<span class="vmeta">' + (v.risk_level === 'unknown' ? '' : 'score ' + esc(v.risk_score) + '/100 · ') + 'confidence ' +
+        '<span class="vmeta">' + (differentScope && actual ? 'Risk on ' + esc(actual) + ' · ' : '') +
+        (v.risk_level === 'unknown' ? '' : 'score ' + esc(v.risk_score) + '/100 · ') + 'confidence ' +
         esc(v.confidence) + '</span></div>' + summary + sigs +
         (v.risk_level === 'unknown' ? '' : '<div class="rec">' + esc(v.recommendation) + '</div>') + details);
     }).catch(function (e) {
@@ -744,14 +760,10 @@
       var browserEvicted = mergeObservations(context);
       try { window.localStorage.setItem(historyKey, JSON.stringify(observations)); }
       catch (e) { storageNotice = 'Browser storage is unavailable; comparisons last until this page closes.'; }
-      var lookup = {
-        empty: 'DexScreener returned no pools for ' + chain + '.',
-        unconfirmed: 'DexScreener could not confirm pools on ' + chain + '.',
-        incompatible_address: 'The address format does not match ' + chain + '.'
-      }[selection.lookup];
+      var lookup = networkLookupText(selection);
       var networkNotice = differentNetwork ?
         '<strong>Market data below is for ' + esc(returned) + '.</strong> ' : '';
-      if (lookup && selection.status !== 'matched') { networkNotice += esc(lookup); }
+      if (lookup) { networkNotice += esc(lookup); }
       if (networkNotice) { networkNotice = '<div class="request-scope">' + networkNotice + '</div>'; }
       var details = '<div class="request-scope">Returned network: ' + esc(returned || 'Not reported') +
         '<br>Pool: <code>' + esc(value.best_pair_address || 'Not reported') + '</code>' +

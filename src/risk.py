@@ -4463,7 +4463,7 @@ async def _read_dex_chain_pairs(chain, address):
     return listed, stale
 
 
-async def _liquidity_network_pairs(pairs, address, selection):
+async def _preferred_network_pairs(pairs, address, selection):
     """Try the requested chain once before using the original market scope."""
     chain = selection["requested_chain"]
     listed, stale = await _read_dex_chain_pairs(chain, address)
@@ -4522,7 +4522,32 @@ async def _complete_home_chain(pairs, address, chain_hint, saturated=False):
     return pairs, not on_home, want
 
 
-async def _load_pairs(address, chain_hint, *, liquidity_selection=None):
+def _market_network_preference(address, chain_hint):
+    requested = _canonical_chain(chain_hint)
+    if requested not in _KNOWN_CHAINS:
+        return chain_hint, {}
+    selection = {"requested_chain": requested}
+    compatible = (_validated_chain_pool_id(address, "solana") is not None
+                  if requested == "solana" else _looks_evm(address))
+    if not compatible:
+        selection["lookup"] = "incompatible_address"
+        return None, selection
+    return chain_hint, selection
+
+
+def _attach_network_selection(payload, selection, scoped_chain):
+    if "lookup" not in selection:
+        return
+    if scoped_chain:
+        returned = scoped_chain.lower()
+        selection["status"] = "matched" if selection["requested_chain"] == returned else "different"
+        selection["returned_chain"] = _ascii_safe(returned, 24)
+    else:
+        selection["status"] = "unresolved"
+    payload["network_selection"] = selection
+
+
+async def _load_pairs(address, chain_hint, *, network_selection=None):
     """Load pairs. Returns (pairs, source).
 
     pairs is None when both sources failed, and also when DexScreener answered empty but
@@ -4535,15 +4560,15 @@ async def _load_pairs(address, chain_hint, *, liquidity_selection=None):
     if isinstance(ds, dict) and "pairs" in ds:
         rows = ds["pairs"] if ds["pairs"] is not None else []
         primary = _dex_market_rows(rows, address)
-    if liquidity_selection and liquidity_selection.get("lookup") == "incompatible_address":
+    if network_selection and network_selection.get("lookup") == "incompatible_address":
         scope = _home_scope(primary, target=address)
         if scope and (scope[0].get("chainId") or "").lower() not in _FORK_OF:
             return primary, "dexscreener"
         return None, None
     if primary:
-        requested = liquidity_selection["requested_chain"] if liquidity_selection else None
+        requested = network_selection["requested_chain"] if network_selection else None
         if requested and not any(p["chainId"].lower() == requested for p in primary):
-            pairs = await _liquidity_network_pairs(primary, address, liquidity_selection)
+            pairs = await _preferred_network_pairs(primary, address, network_selection)
             if pairs is not None:
                 return pairs, "dexscreener"
             home_unreadable, want = True, requested
@@ -4778,16 +4803,26 @@ async def assess(address, chain_hint=None, verbose=False):
     # of them is usable, which is the drained-token case -- the pools are on Ethereum
     # whether or not any of them can be priced. Failing that, a hint we recognise. Failing
     # that, empty, and callers can see that we did not know.
-    pairs, source = await _load_pairs(address, chain_hint)
+    chain_hint, selection = _market_network_preference(address, chain_hint)
+    pairs, source = await _load_pairs(address, chain_hint, network_selection=selection)
+    scope = _home_scope(pairs, chain_hint, address)
+    observed_chain = ((scope[0].get("chainId") or "").lower() if scope else "")
+    ambiguous_market = bool(selection and any((p.get("chainId") or "").lower() != observed_chain for p in scope))
+    if ambiguous_market:
+        observed_chain = ""
+    incompatible = selection.get("lookup") == "incompatible_address"
     if _looks_solana(address):
         evidence["chain_searched"] = "solana"
     else:
-        scope = _home_scope(pairs or [], chain_hint, address)
-        observed_chain = ((scope[0].get("chainId") or "").lower() if scope else "")
         claimed_chain = _canonical_chain(chain_hint)
         evidence["chain_searched"] = observed_chain or (
-            claimed_chain if claimed_chain in _KNOWN_CHAINS else "")
-    if pairs is None and source == _UNCONFIRMED:
+            claimed_chain if not ambiguous_market and claimed_chain in _KNOWN_CHAINS else "")
+    if pairs is None and incompatible:
+        _our_coverage_gap(data_gaps, signals, "liquidity", "dexscreener",
+                          "the address format does not match the requested network",
+                          "Address format differs from requested network",
+                          "The general listing did not supply a market for this address format.")
+    elif pairs is None and source == _UNCONFIRMED:
         # Ours and temporary, so a retry can close it -- and never the token-side "no
         # trading pair found", which the no-trace escalation reads as evidence (W58).
         detail = _failure_detail("coingecko", "geckoterminal")
@@ -4814,10 +4849,12 @@ async def assess(address, chain_hint=None, verbose=False):
     else:
         evidence["liquidity_source"] = source
         best, depth_best = _pick_markets(pairs, chain_hint=chain_hint, target=address)
+        if selection and depth_best is not None:
+            observed_chain = (depth_best.get("chainId") or "").lower()
+            evidence["chain_searched"] = observed_chain
         # Judged over the pools we actually chose from. A fork pool rank already excluded
         # is not a disagreement, it is a pool we refused.
-        conflict = _unranked_price_conflict(_home_scope(pairs, chain_hint, address),
-                                           target=address)
+        conflict = _unranked_price_conflict(scope, target=address)
         if best is not None and conflict:
             lo, hi = conflict
             evidence["price_disagreement"] = {"low_usd": _sig_round(lo),
@@ -4855,7 +4892,6 @@ async def assess(address, chain_hint=None, verbose=False):
             # Scoped to the token's own chain, exactly as _pick_best scoped it a line
             # ago. Asking this over every pair on every chain let one inherited fork pool
             # answer a question about the token's real exit.
-            scope = _home_scope(pairs, chain_hint, address)
             readings = [_reported_liquidity(p) for p in scope]
             stated = [v for v in readings if v is not None]
             # And only pools we could price can testify that they are empty: a pool stating
@@ -4916,9 +4952,12 @@ async def assess(address, chain_hint=None, verbose=False):
         # The pool we settled on, then a hint we recognise -- the same order the simulator
         # uses below. The scan used to take the hint first, so "ethereum" on a Base-only
         # token read Ethereum bytecode beside a Base simulation.
+        scoped_observation = observed_chain if selection else ""
+        observed = scoped_observation or _chain_of(evidence)
+        unscoped = not observed and (incompatible or ambiguous_market)
         scan_claimed = _canonical_chain(chain_hint)
         _owner_power_signal(
-            await _owner_powers(address, _chain_of(evidence)
+            None if unscoped else await _owner_powers(address, observed
                                 or (scan_claimed if scan_claimed in _KNOWN_CHAINS else "")),
             signals, evidence)
         # Pass the chain id when we know it, rather than letting the simulator guess.
@@ -4952,16 +4991,15 @@ async def assess(address, chain_hint=None, verbose=False):
         # and every branch downstream then reasoned about a chain that does not exist,
         # including one that files its gap as *our* outage and excuses the token from the
         # no-trace escalation. A typo should not buy a token an alibi.
-        observed = _chain_of(evidence)
         claimed = _canonical_chain(chain_hint)
         claimed_is_known = claimed in _KNOWN_CHAINS
-        hp_chain = observed or (claimed if claimed_is_known else "")
+        hp_chain = observed or (claimed if claimed_is_known and not unscoped else "")
         hp_url = "https://api.honeypot.is/v2/IsHoneypot?address=%s" % address
         if hp_chain in _SIMULATOR_CHAIN_IDS:
             hp_url += "&chainID=%d" % _SIMULATOR_CHAIN_IDS[hp_chain]
-        # Skip only an unambiguous existing coverage gap. With no usable market,
-        # observed and simulator chains can disagree; keep that older path unchanged.
-        skip_simulator = (evidence.get("chain_searched") == hp_chain
+        # Skip an identified coverage gap. With no priced pool, an explicit
+        # request can still scope the checks to an observed market.
+        skip_simulator = unscoped or (evidence.get("chain_searched") == hp_chain
                           and hp_chain in ("arbitrum", "polygon", "optimism", "avalanche"))
         hp = None if skip_simulator else await _fetch_json(hp_url, mark_missing=True)
         if not skip_simulator:
@@ -5014,7 +5052,12 @@ async def assess(address, chain_hint=None, verbose=False):
                 requested_pool, adopted_response = hp_pair, "retry"
                 scope_retry["accepted"] = True
 
-        if unusable:
+        if unscoped:
+            _our_coverage_gap(data_gaps, signals, "sellability", "honeypot.is",
+                              "no assessment network could be established",
+                              "Sellability network unresolved",
+                              "A network could not be established for the sell simulation.")
+        elif unusable:
             _sell_evidence_gap(signals, data_gaps, issue)
         else:
             if supported:
@@ -5080,6 +5123,16 @@ async def assess(address, chain_hint=None, verbose=False):
             % max(a for _, a in stale), "freshness"))
 
     result = _finalize(address, signals, evidence, data_gaps)
+    _attach_network_selection(result, selection, observed_chain)
+    if selection.get("status") == "different":
+        result["recommendation"] = ("You requested %s. This assessment covers %s only. "
+                                    % (selection["requested_chain"], selection["returned_chain"])
+                                    + result["recommendation"])
+    elif selection.get("status") == "unresolved":
+        result["recommendation"] = ("No market was confirmed for the requested network, %s. "
+                                    % selection["requested_chain"] + result["recommendation"])
+    if "lookup" in selection and evidence["chain_searched"]:
+        evidence["chain_searched"] = _ascii_safe(evidence["chain_searched"], 24)
     # When the answer was made, and how old its oldest evidence is -- in the answer, not
     # only in evidence. A low from fifteen-minute-old data read exactly like a live one:
     # same sentence, same confidence (2026-09-13 audit, reproduced offline).
@@ -5151,14 +5204,7 @@ def _identified_drained_pool(pairs, scope, source, address, chain_hint):
 
 
 def _disclose_liquidity(payload, selection, scoped_chain=None):
-    if "lookup" in selection:
-        if scoped_chain:
-            returned = scoped_chain.lower()
-            selection["status"] = "matched" if selection["requested_chain"] == returned else "different"
-            selection["returned_chain"] = _ascii_safe(returned, 24)
-        else:
-            selection["status"] = "unresolved"
-        payload["network_selection"] = selection
+    _attach_network_selection(payload, selection, scoped_chain)
     return _disclosed(payload)
 
 
@@ -5166,16 +5212,8 @@ async def liquidity(address, chain_hint=None):
     """Liquidity snapshot. Same validation and pool-picking logic as assess."""
     address = validate_address(address)
     _begin_request()
-    selection = {}
-    requested = _canonical_chain(chain_hint)
-    if requested in _KNOWN_CHAINS:
-        selection["requested_chain"] = requested
-        compatible = (_validated_chain_pool_id(address, "solana") is not None
-                      if requested == "solana" else _looks_evm(address))
-        if not compatible:
-            selection["lookup"] = "incompatible_address"
-            chain_hint = None
-    pairs, source = await _load_pairs(address, chain_hint, liquidity_selection=selection)
+    chain_hint, selection = _market_network_preference(address, chain_hint)
+    pairs, source = await _load_pairs(address, chain_hint, network_selection=selection)
     if pairs is None:
         note = ("The address format does not match the requested network. "
                 "No market estimate was available from the general listing."

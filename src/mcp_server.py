@@ -189,6 +189,19 @@ _POOL_SCOPE_DETAILS_SCHEMA = {
     },
 }
 
+_NETWORK_SELECTION_SCHEMA = {
+    "type": "object",
+    "description": "Requested network, observed market scope and outcome of the extra DexScreener lookup. "
+                   "An empty listing differs from an unconfirmed lookup.",
+    "required": ["requested_chain", "status", "lookup"],
+    "properties": {
+        "requested_chain": {"type": "string", "enum": list(liquidity_comparison._CHAINS)},
+        "returned_chain": {"type": "string"},
+        "status": {"type": "string", "enum": ["matched", "different", "unresolved"]},
+        "lookup": {"type": "string", "enum": ["found", "empty", "unconfirmed", "incompatible_address"]},
+    },
+}
+
 _ASSESS_OUTPUT_SCHEMA = {
     "type": "object",
     "properties": {
@@ -206,7 +219,10 @@ _ASSESS_OUTPUT_SCHEMA = {
         },
         "signals": {"type": "array", "items": _SIGNAL_SCHEMA},
         "recommendation": {"type": "string"},
+        "network_selection": _NETWORK_SELECTION_SCHEMA,
         "evidence": {"type": "object", "properties": {
+            "chain_searched": {"type": "string", "description": "Assessment search scope. "
+                               "It can come from the request hint when no market was observed."},
             "owner_powers": _OWNER_POWERS_SCHEMA,
             "pool_link": {"type": "string", "enum": ["same", "different", "unknown"],
                            "description": "Correspondence between the final displayed market and the "
@@ -276,6 +292,10 @@ TOOLS = [
             "other extension the report carries is named in the answer with the reason "
             "it is not scored, so silence about one means it was considered, not that "
             "it went unread.\n"
+            "A compatible chain_hint is a network preference. If the initial market listing "
+            "contains only other networks, VetAgent checks the preferred network first. "
+            "When a different market is used, network_selection and the recommendation "
+            "identify the scope of the rating. That rating does not cover the requested network.\n"
             "No sell simulation runs on Solana, nor on the four other EVM chains accepted "
             "as a chain_hint (polygon, arbitrum, optimism, avalanche): nothing there tests "
             "whether a holder can sell, so the answer comes back 'unknown' rather than "
@@ -377,18 +397,7 @@ TOOLS = [
                 "source": {"type": "string", "description": "Liquidity data provider, not the trading venue."},
                 "best_pair_chain": {"type": "string"},
                 "best_pair_dex": {"type": "string", "description": "Selected market's trading venue."},
-                "network_selection": {
-                    "type": "object",
-                    "description": "Requested network, actual market scope and outcome of the extra DexScreener lookup. "
-                                   "An empty listing differs from an unconfirmed lookup.",
-                    "required": ["requested_chain", "status", "lookup"],
-                    "properties": {
-                        "requested_chain": {"type": "string", "enum": list(liquidity_comparison._CHAINS)},
-                        "returned_chain": {"type": "string"},
-                        "status": {"type": "string", "enum": ["matched", "different", "unresolved"]},
-                        "lookup": {"type": "string", "enum": ["found", "empty", "unconfirmed", "incompatible_address"]},
-                    },
-                },
+                "network_selection": _NETWORK_SELECTION_SCHEMA,
                 "best_pair_address": {
                     "type": "string",
                     "description": "Optional complete validated selected-pool ID on ok results: "
