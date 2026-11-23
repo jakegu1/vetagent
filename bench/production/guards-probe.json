@@ -1,13 +1,13 @@
 {
- "probed_at": "2026-11-22T14:53:39Z",
- "checked_out_sha": "3839b17d6b2faa0568cb26e5331eca57fd47ace6",
+ "probed_at": "2026-11-23T18:46:10Z",
+ "checked_out_sha": "37b7d2f1df2bad0e72182a4ea688921310763ba7",
  "flood": {
   "ran": true,
-  "calls": 61,
-  "calls_until_429": 61,
+  "calls": 75,
+  "calls_until_429": null,
   "statuses": {
-   "200": 60,
-   "429": 1
+   "200": 73,
+   "TimeoutError": 2
   }
  },
  "batch_cap": {
