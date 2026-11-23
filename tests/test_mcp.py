@@ -2614,6 +2614,8 @@ def test_t092_final_market_and_adopted_simulator_cross_both_worker_routes():
                 detail = ev.get("pool_link_details") or {}
                 tag = "T092 %s %s %s" % (name, interface, verbose)
                 check(tag + " relation follows final promotion and adopted response", ev.get("pool_link") == relation)
+                check(tag + " complete pool ID tracks the final displayed market in both modes",
+                      ev["best_pair"].get("pool_id") == final)
                 check(tag + " scope details and reasons are verbose only",
                       ("pool_link_details" in ev) is verbose and "pool_scope_reason" not in ev)
                 check(tag + " original request trace and verdict survive",
@@ -3412,6 +3414,105 @@ def test_liquidity_tools_list_exposes_optional_activity_and_complete_identity():
           set(liquidity["inputSchema"]["properties"]) == {"address", "chain_hint", "comparison_context"}
           and liquidity["inputSchema"]["required"] == ["address"]
           and liquidity["inputSchema"]["properties"]["comparison_context"].get("maxItems") == 8)
+
+
+def test_assessment_complete_market_ids_match_liquidity_and_separate_shared_prefixes():
+    import test_risk as fixtures
+
+    pool_a = "0x" + "Ab" * 32
+    pool_b = pool_a[:-2] + "cD"
+    pool_20 = "0x" + "fE" * 20
+    assert pool_a[:48] == pool_b[:48]
+    for interface in ("http", "mcp"):
+        for pool in (pool_a, pool_b, pool_20):
+            pair = fixtures._t030_pair(100000, reserves=False)
+            pair["pairAddress"] = pool
+            address = pair["baseToken"]["address"]
+            sell = "https://api.honeypot.is/v2/IsHoneypot?address=" + address + "&chainID=1"
+            routes = {fixtures._T083_DS + address: ("market", 200, {"pairs": [pair]}),
+                      sell: ("default", 200, fixtures._t092_report(pool_20))}
+            args = {"address": address, "chain_hint": "ethereum"}
+            liquidity, _, _, _, _ = _t092_public_market(interface, "get_token_liquidity", args, routes)
+            for verbose in (False, True):
+                answer, calls, _, sleeps, _ = _t092_public_market(interface, "assess_token_risk",
+                    dict(args, verbose=verbose), routes)
+                evidence = answer["evidence"]
+                market = evidence["best_pair"]
+                check("assessment has exactly the full market identity used by liquidity",
+                      market.get("pool_id") == liquidity["best_pair_address"] == pool
+                      and calls == ["market", "default"] and not sleeps
+                      and evidence["pool_link"] == ("same" if pool == pool_20 else "different"), str(market))
+                if verbose:
+                    detail = evidence["pool_link_details"]
+                    check("verbose keeps the legacy display and separates the full market and reported venue",
+                          market["pair_address"] == risk._ascii_safe(pool, 48)
+                          and detail["market_pool"] == pool
+                          and detail["reported_pool"] == pool_20.lower(), str(detail))
+                else:
+                    check("compact still omits the old display ID", "pair_address" not in market)
+
+
+def test_assessment_does_not_adopt_or_query_an_ambiguous_gecko_market_identity():
+    import test_risk as fixtures
+
+    token, pool, _, cases = _t092_market_cases()
+    for kind in ("conflict", "duplicate"):
+        for response in ("clean", "failed", "contested", "claimed_sellers"):
+            routes = copy.deepcopy(cases[0][1])
+            rows = next(body["data"] for label, _, body in routes.values() if label == "fallback")
+            row = next(item for item in rows if item["attributes"]["address"].lower() == pool)
+            rows[:] = [row]
+            if kind == "conflict":
+                row["id"] = "eth_0x" + "cd" * 20
+            else:
+                rows.append(copy.deepcopy(row))
+            for item in rows:
+                item["attributes"]["transactions"]["h24"].pop("sellers", None)
+            sell = next(url for url, (label, _, _) in routes.items() if label == "default")
+            hp = fixtures._t092_report(pool)
+            hp["simulationResult"]["maxSell"] = {"tokenWei": "996"}
+            if response == "failed":
+                hp.update(simulationSuccess=False, simulationError="execution reverted: HP: BUY_FAILED")
+                routes[sell + "&pair=" + pool] = ("unqualified_retry", 200, fixtures._t092_report(pool))
+            elif response in ("contested", "claimed_sellers"):
+                hp["honeypotResult"]["isHoneypot"] = True
+                routes[fixtures._T083_GT + "eth/pools/" + pool] = ("unqualified_sellers", 404, {})
+                if response == "claimed_sellers":
+                    for item in rows:
+                        item["attributes"]["transactions"]["h24"]["sellers"] = 120
+            routes[sell] = ("default", 200, hp)
+            answer, calls, _, sleeps, _ = _t092_public_market("mcp", "assess_token_risk",
+                {"address": token, "chain_hint": "ethereum", "verbose": True}, routes)
+            evidence = answer["evidence"]
+            check("an ambiguous Gecko ID cannot appear as qualified or be used for a pool operation",
+                  "pool_id" not in evidence["best_pair"] and "max_sell" not in evidence
+                  and evidence.get("pool_link") == "unknown"
+                  and evidence["pool_link_details"]["reason"] == "invalid_pool"
+                  and evidence["pool_link_details"]["market_pool"] is None
+                  and calls == ["market", "fallback", "search", "default"] and not sleeps,
+                  str((kind, response, evidence.get("pool_link_details"), calls)))
+            if response == "claimed_sellers":
+                check("embedded seller counts cannot qualify a contradicted market ID",
+                      evidence["best_pair"].get("sellers_24h") is None
+                      and "contradicted_by_chain" not in evidence.get("honeypot", {}))
+
+
+def test_assessment_solana_market_identity_is_case_sensitive_and_complete():
+    raw = _load("ds_bonk.json")["pairs"][0]
+    address = raw["baseToken"]["address"]
+    valid = raw["pairAddress"]
+    for value, expected in ((valid, valid), ("z" * 44, None), (valid + "\n", None), ("0x" + "ab" * 32, None)):
+        pair = copy.deepcopy(raw)
+        pair["baseToken"]["symbol"] = "SAME"
+        pair["pairAddress"] = value
+        args = {"address": address, "chain_hint": "solana", "verbose": True}
+        answer, calls, _, _, _ = _t092_public_market("mcp", "assess_token_risk", args,
+            _price_attribution_routes(address, "solana", [pair]))
+        evidence = answer["evidence"]
+        check("Solana complete IDs preserve case and omit malformed or wrong-family values",
+              evidence["best_pair"].get("pool_id") == expected
+              and evidence["pool_link_details"]["market_pool"] == expected
+              and evidence["pool_link"] == "unknown" and "sell" in calls, str(evidence["best_pair"]))
 
 
 def _liquidity_comparison_module():

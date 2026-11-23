@@ -189,6 +189,16 @@ const cases = {
     value.evidence.best_pair.liquidity_usd = null;
     assert.doesNotMatch(front((await render(value)).text()), /Selected pool liquidity estimate:/);
   },
+  async 'assessment shows a complete copyable pool ID only from the qualified field'() {
+    const value = clone(recorded[0].result);
+    const pool = '0x' + 'Ab'.repeat(32);
+    value.evidence.best_pair.pool_id = pool;
+    value.evidence.best_pair.pair_address = pool.slice(0, 48) + '...';
+    const shown = front((await render(value)).text());
+    assert.match(shown, new RegExp('Selected pool ID: <code>' + pool + '</code>'));
+    delete value.evidence.best_pair.pool_id;
+    assert.doesNotMatch(front((await render(value)).text()), /Selected pool ID:/);
+  },
   async 'no record and unsupported chain name the actual missing sell check'() {
     const absent = front((await render(clone(controls.no_record))).text());
     assert.match(absent, /sell.*no record|no record.*sell/i);
