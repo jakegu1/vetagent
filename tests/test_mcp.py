@@ -2018,6 +2018,9 @@ async def _discovery_handoff_only_other_chain():
         if "/dex/tokens/" in url:
             requests.append("market:bsc-only")
             return copy.deepcopy(market)
+        if "/token-pairs/v1/base/" in url:
+            requests.append("market:requested-base")
+            return []
         if "/dex/search" in url:
             requests.append("search")
             return {"pairs": []}
@@ -2072,7 +2075,11 @@ def test_expected_chain_guard_consumes_real_mcp_handoffs():
     result = envelope["result"]["structuredContent"]
     check("the existing soft hint may still observe only BSC",
           args["chain_hint"] == "base" and result["evidence"]["chain_searched"] == "bsc"
-          and result["risk_level"] == "low" and requests == ["new_pools", "trending_pools", "market:bsc-only", "search", "rpc:bsc", "sell:bsc"])
+          and result["risk_level"] == "low" and requests == [
+              "new_pools", "trending_pools", "market:bsc-only", "market:requested-base",
+              "search", "rpc:bsc", "sell:bsc"]
+          and result["network_selection"] == {
+              "requested_chain": "base", "returned_chain": "bsc", "status": "different", "lookup": "empty"})
     check("the adapter refuses the different chain for the discovered target",
           _expected_chain_call(module.route_mcp, envelope, args["chain_hint"])
           == _a2_expected("abstain", "assessment_chain_mismatch"))
@@ -2379,6 +2386,9 @@ def _t091_public_assessment(interface, chain, hint, verbose, json_age=None, byte
     import test_risk as fixtures
 
     with fixtures._t091_runtime(chain, hp_status=hp_status, reader=reader) as state:
+        requested = risk._canonical_chain(hint)
+        if requested in risk._KNOWN_CHAINS and requested != chain:
+            fixtures._t091_empty_scoped_listing(state, requested)
         if json_age is not None:
             state["cache"]["market"] = (state["market"], json_age)
         if bytecode_age is not None:
@@ -2690,6 +2700,7 @@ def test_sell_recommendation_distinguishes_selected_pool_history_and_missing_sco
               all(phrase in rec for phrase in ("market data", "past sells", "displayed pool"))
               and "completed simulation" not in rec, answer["recommendation"])
         with fixtures._t091_runtime("arbitrum", reader=reader) as state:
+            fixtures._t091_empty_scoped_listing(state, "ethereum")
             answer = asyncio.run(_t092_worker_request("mcp", "assess_token_risk",
                 {"address": state["address"], "chain_hint": "ethereum", "verbose": verbose}))
         rec = answer["recommendation"].lower()
@@ -2707,20 +2718,22 @@ def test_t092_conflicted_unpriced_chain_routes_keep_unknown_and_calls(reader=ris
         for interface in ("http", "mcp"):
             for verbose in (False, True):
                 with fixtures._t091_runtime(observed, reserves=True, hp_status=503, reader=reader) as state:
+                    fixtures._t091_empty_scoped_listing(state, hint)
                     answer = asyncio.run(_t092_worker_request(interface, "assess_token_risk",
                         {"address": state["address"], "chain_hint": hint, "verbose": verbose}))
                 ev = answer["evidence"]
                 check("T092 conflicting unpriced chain remains unknown on the real route",
                       answer["risk_level"] == "unknown" and ev.get("pool_link") == "unknown"
                       and ev.get("chain_searched") == observed and "best_pair" not in ev)
-                check("T092 conflicting real route preserves requests and backoffs",
-                      len([u for kind, u in state["requests"] if kind == "sell"]) == 3
-                      and state["sleeps"] == [0.3, 0.6])
+                sells = [u for kind, u in state["requests"] if kind == "sell"]
+                check("T092 unpriced real route uses the observed network for bounded sell checks",
+                      len(sells) == 3 and all(url.endswith("chainID=8453") for url in sells)
+                      and state["sleeps"] == [0.3, 0.6] if observed == "base" else not sells and not state["sleeps"])
                 if verbose:
                     detail = ev.get("pool_link_details") or {}
-                    check("T092 chain conflict is disclosed before missing market/simulator",
-                          detail.get("reason") == "chain_conflict" and detail.get("policy_chain") == hint
-                          and detail.get("requested_chain") == ("ethereum" if hint == "ethereum" else None))
+                    check("T092 the missing priced market has a consistent simulation policy scope",
+                          detail.get("reason") == "no_market" and detail.get("policy_chain") == observed
+                          and detail.get("requested_chain") == ("base" if observed == "base" else None))
             with fixtures._t091_runtime(observed, reserves=True, reader=reader) as state:
                 address = state["address"]
                 routes = {fixtures._T083_DS + address: ("market", 200, state["market"]),

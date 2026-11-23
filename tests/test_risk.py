@@ -5849,6 +5849,7 @@ def test_every_data_gap_declares_which_of_three_things_it_is():
     reach = [
         ([("dex/tokens", on_polygon), ("dex/search", None), ("honeypot.is", risk.NO_DATA)],
          WETH, "polygon"),
+        ([("dex/tokens", {"pairs": []})], WETH, "solana"),
         ([("dexscreener", _load("ds_bonk.json")), ("rugcheck", fresh)], BONK, None),
         ([("dexscreener", _load("ds_bonk.json")), ("rugcheck", unread)], PYUSD, None),
         ([("dexscreener", _load("ds_bonk.json")), ("rugcheck", no_holders)], BONK, None),
@@ -7433,8 +7434,16 @@ def _t091_runtime(chain="ethereum", cached=None, market_status=200, hp_status=20
         yield state
 
 
+def _t091_empty_scoped_listing(state, requested):
+    url = "https://api.dexscreener.com/token-pairs/v1/" + requested + "/" + state["address"]
+    state["scoped"][url] = (200, [])
+
+
 def _t091_scan(chain="ethereum", hint=None, verbose=False, **options):
     with _t091_runtime(chain, **options) as state:
+        requested = risk._canonical_chain(hint)
+        if requested in risk._KNOWN_CHAINS and requested != chain:
+            _t091_empty_scoped_listing(state, requested)
         answer = run(risk.assess(state["address"], chain if hint is None else hint, verbose))
     return answer, state
 
@@ -7585,17 +7594,18 @@ def test_t091_ignored_simulator_staleness_does_not_remove_real_market_staleness(
               and "sell" not in state["cache_reads"])
 
 
-def test_t091_conflicting_unusable_market_keeps_legacy_simulation_path():
+def test_t091_conflicting_unusable_market_keeps_checks_on_the_observed_network():
     for observed, hint in (("base", "arbitrum"), ("arbitrum", "ethereum")):
         for verbose in (False, True):
             answer, state = _t091_scan(observed, hint=hint, verbose=verbose, reserves=True, hp_status=503)
             sells = [url for kind, url in state["requests"] if kind == "sell"]
-            check("T091 unusable-market chain conflict keeps the original three attempts",
+            check("T091 unusable-market chain conflict does not change the observed scope",
                   answer["evidence"]["chain_searched"] == observed and "best_pair" not in answer["evidence"]
-                  and len(sells) == 3 and state["sleeps"] == [0.3, 0.6]
-                  and "sell" in state["cache_reads"])
-            check("T091 this optimization does not repair the older conflicting hint semantics",
-                  all(("chainID=1" in url) if hint == "ethereum" else ("chainID=" not in url) for url in sells))
+                  and [kind for kind, _ in state["requests"]].count("scoped") == 1)
+            check("T091 an unpriced supported market keeps its scoped retries and an unsupported market skips",
+                  (len(sells) == 3 and all(url.endswith("chainID=8453") for url in sells)
+                   and state["sleeps"] == [0.3, 0.6] and "sell" in state["cache_reads"])
+                  if observed == "base" else not sells and not state["sleeps"] and "sell" not in state["cache_reads"])
 
 
 def _t092_report(pool="0x" + "ab" * 20):
@@ -7609,6 +7619,9 @@ def _t092_report(pool="0x" + "ab" * 20):
 def _t092_scope_scan(response, chain="ethereum", hint=None, pool=None, empty=False,
                      reserves=False, verbose=True, hp_status=200):
     with _t091_runtime(chain, hp_body=response, reserves=reserves, hp_status=hp_status) as state:
+        requested = risk._canonical_chain(hint)
+        if requested in risk._KNOWN_CHAINS and requested != chain:
+            _t091_empty_scoped_listing(state, requested)
         if pool is not None:
             state["market"]["pairs"][0]["pairAddress"] = pool
         if empty:
@@ -7706,13 +7719,14 @@ def test_t092_full_identity_and_unknown_priority_preserve_old_paths():
         answer, state = _t092_scope_scan(_t092_report(), observed, hint, reserves=True, hp_status=503)
         detail = answer["evidence"].get("pool_link_details") or {}
         sells = [url for kind, url in state["requests"] if kind == "sell"]
-        check("T092 conflicting chain context precedes no market or simulation",
-              answer["evidence"].get("pool_link") == "unknown" and detail.get("reason") == "chain_conflict"
-              and detail.get("market_pool") is None and detail.get("policy_chain") == hint
-              and detail.get("requested_chain") == ("ethereum" if hint == "ethereum" else None))
-        check("T092 chain disclosure retains the old unknown and failed request budget",
-              answer["risk_level"] == "unknown" and len(sells) == 3 and state["sleeps"] == [0.3, 0.6]
-              and all(("chainID=1" in u) if hint == "ethereum" else "chainID=" not in u for u in sells))
+        check("T092 unpriced observed chain defines policy without inventing a priced pool",
+              answer["evidence"].get("pool_link") == "unknown" and detail.get("reason") == "no_market"
+              and detail.get("market_pool") is None and detail.get("policy_chain") == observed
+              and detail.get("requested_chain") == ("base" if observed == "base" else None))
+        check("T092 unknown result keeps bounded requests on the supported observed network only",
+              answer["risk_level"] == "unknown"
+              and (len(sells) == 3 and all(u.endswith("chainID=8453") for u in sells)
+                   and state["sleeps"] == [0.3, 0.6] if observed == "base" else not sells and not state["sleeps"]))
     answer, _ = _t092_scope_scan(_t092_report("bad"), empty=True)
     check("T092 no market precedes invalid pool",
           (answer["evidence"].get("pool_link_details") or {}).get("reason") == "no_market")
