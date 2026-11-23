@@ -14,6 +14,7 @@ import json
 import math
 import re
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal, ROUND_HALF_UP
 
 try:  # Workers runtime
     from workers import fetch as cf_fetch
@@ -1986,6 +1987,7 @@ def _gt_to_pair(p, address, network):
 
 def _liquidity_signals(best, pairs, signals, evidence, target=None):
     liq = _pair_liquidity(best)
+    reported_liq = _sig_round(liq)
     vol = _market_number((best.get("volume") or {}).get("h24"))
     created = best.get("pairCreatedAt")
     age = _age_days(created, malformed_as_missing=True)
@@ -2000,7 +2002,7 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
     sellers = h24_traders.get("sellers") if isinstance(h24_traders, dict) else None
     evidence["best_pair"] = {
         "dex": best.get("dexId"), "chain": best.get("chainId"),
-        "liquidity_usd": _sig_round(liq),
+        "liquidity_usd": reported_liq,
         # The price of the token asked about, not of whichever side the pool lists first.
         "price_usd": _market_round(_price_of_target(best, target)),
         # Which pool this verdict is actually about. A caller comparing our answer to
@@ -2016,10 +2018,12 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
     }
 
     if liq < _LIVE_POOL_USD:
-        if 0 < liq < 0.01:
+        if 0 < reported_liq < 0.01:
             amount = "less than $0.01"
-        elif 0.01 <= liq < 1:
-            amount = "only $%.2f" % liq
+        elif 0.01 <= reported_liq < 1:
+            # Round the public estimate to cents as the homepage does.
+            cents = Decimal(str(reported_liq)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            amount = "only $%s" % cents
         else:
             amount = "only $%s" % format(liq, ",.0f")
         signals.append(_sig("critical", "Very low liquidity",

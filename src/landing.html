@@ -692,7 +692,10 @@
       return (signed ? direction : '') + 'less than $0.01';
     }
     var sign = !signed || value === 0 ? '' : value < 0 ? '-' : '+';
-    return sign + '$' + (signed ? amount : value).toLocaleString('en-US', {maximumFractionDigits: 2});
+    return sign + '$' + (signed ? amount : value).toLocaleString('en-US', {
+      minimumFractionDigits: amount > 0 && amount < 1 ? 2 : 0,
+      maximumFractionDigits: 2
+    });
   }
 
   document.getElementById('liquidity-clear').addEventListener('click', function () {
