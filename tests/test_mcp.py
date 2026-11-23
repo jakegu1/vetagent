@@ -2494,7 +2494,7 @@ async def _t092_worker_request(interface, tool, args):
     return answer
 
 
-def _t092_public_market(interface, tool, arguments, routes, reader=risk._fetch_json):
+def _t092_public_market(interface, tool, arguments, routes, reader=risk._fetch_json, *, cached=None):
     import test_risk as fixtures
     original_handle = mcp_server.handle_mcp_request
 
@@ -2505,7 +2505,7 @@ def _t092_public_market(interface, tool, arguments, routes, reader=risk._fetch_j
 
     with patch.object(mcp_server, "handle_mcp_request", worker_route), \
             patch.object(fixtures, "_ORIGINAL_FETCH_JSON", reader):
-        return asyncio.run(fixtures._t083_mcp(tool, arguments, routes))
+        return asyncio.run(fixtures._t083_mcp(tool, arguments, routes, cached))
 
 
 def test_t092_final_market_and_adopted_simulator_cross_both_worker_routes():
@@ -2637,11 +2637,15 @@ def test_t092_conflicted_unpriced_chain_routes_keep_unknown_and_calls(reader=ris
                           detail.get("reason") == "chain_conflict" and detail.get("policy_chain") == hint
                           and detail.get("requested_chain") == ("ethereum" if hint == "ethereum" else None))
             with fixtures._t091_runtime(observed, reserves=True, reader=reader) as state:
-                answer = asyncio.run(_t092_worker_request(interface, "get_token_liquidity",
-                    {"address": state["address"], "chain_hint": hint}))
+                address = state["address"]
+                routes = {fixtures._T083_DS + address: ("market", 200, state["market"]),
+                          "https://api.dexscreener.com/token-pairs/v1/" + hint + "/" + address:
+                              ("requested", 200, [])}
+            answer, calls, _, _, _ = _t092_public_market(interface, "get_token_liquidity",
+                {"address": address, "chain_hint": hint}, routes, reader)
             check("T092 unpriced liquidity invents no selected identity",
                   answer["status"] == "unpriced" and "best_pair_address" not in answer
-                  and "pool_link" not in answer and not any(kind.startswith("sell") for kind, _ in state["requests"]))
+                  and "pool_link" not in answer and calls == ["market", "requested"])
 
 
 def test_t092_schema_declares_correspondence_and_liquidity_identity():
@@ -3530,8 +3534,8 @@ def test_liquidity_keeps_a_foreign_snapshot_without_turning_it_into_a_requested_
         routes = {ds: ("market", 200, {"pairs": [eth]}), url: ("bsc", code, body)}
         args = {"address": address, "chain_hint": "bsc", "comparison_context": [baseline]}
         with patch.object(risk, "_now_iso", return_value="2026-11-23T00:00:00Z"):
-            answer, calls, _, sleeps, _ = asyncio.run(fixtures._t083_mcp(
-                "get_token_liquidity", args, routes, {url: cached} if cached else None))
+            answer, calls, _, sleeps, _ = _t092_public_market(
+                "mcp", "get_token_liquidity", args, routes, cached={url: cached} if cached else None)
         check(label + " keeps an Ethereum estimate and reports whether the BSC query was conclusive",
               answer.get("status") == "ok" and answer.get("best_pair_chain") == "ethereum"
               and answer.get("liquidity_usd") == 796872 and calls == ["market", "bsc"] and not sleeps
