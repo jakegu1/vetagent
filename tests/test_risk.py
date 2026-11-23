@@ -3608,7 +3608,7 @@ def test_a_keyed_fallback_escapes_the_shared_egress_limit():
         # The contested-honeypot seller count comes through the key as well.
         seen.clear()
         stub([("api.coingecko.com/api/v3/onchain/networks/base/pools/", _load("cg_bnkr_pool.json"))])
-        ev = {"best_pair": {"chain": "base", "pair_address": "0xaec085e5a5ce8d96a7bdd3eb3a62445d4f6ce703"}}
+        ev = {"best_pair": {"chain": "base", "pool_id": "0xaec085e5a5ce8d96a7bdd3eb3a62445d4f6ce703"}}
         run(risk._distinct_sellers({"honeypotResult": {"isHoneypot": True}}, ev))
         check("the distinct-seller count is read through CoinGecko with the key",
               ev["best_pair"].get("sellers_24h") == 83
@@ -3966,8 +3966,9 @@ def test_the_override_can_fire_on_the_geckoterminal_path():
     """
     print("\n[fallback] the override works on the GeckoTerminal path too")
 
-    gt = {"data": [{"attributes": {
-        "address": "0xpool", "name": "TKN / WETH",
+    pool = "0x" + "cd" * 20
+    gt = {"data": [{"id": "eth_" + pool, "attributes": {
+        "address": pool, "name": "TKN / WETH",
         "reserve_in_usd": "250000", "base_token_price_usd": "1.0",
         "pool_created_at": "2024-01-01T00:00:00Z",
         "volume_usd": {"h24": "180000"},
@@ -6044,11 +6045,11 @@ def test_pool_identifier_invalid_strings_never_reach_an_upstream_lookup():
         check(label + " sends no simulator pair retry", not retries, str(retries))
 
 
-def test_pool_identifier_rendering_and_disclosure_stay_unchanged():
-    print("\n[pool id] display budgets and answer keys remain unchanged")
+def test_pool_identifier_preserves_legacy_rendering_with_complete_identity():
+    print("\n[pool id] complete identity alongside the existing display contract")
     full = "0x" + "ab" * 32
     mixed = "0xAbCdEf0123456789aBcDeF0123456789AbCdEf01"
-    keys = {"buys_24h", "chain", "dex", "liquidity_usd", "pair_address", "pair_created_at",
+    keys = {"buys_24h", "chain", "dex", "liquidity_usd", "pair_address", "pair_created_at", "pool_id",
             "price_usd", "sellers_24h", "sells_24h", "volume_24h_usd"}
     for label, pool in (("V4", full), ("checksummed", mixed)):
         for clean in (False, True):
@@ -6059,13 +6060,13 @@ def test_pool_identifier_rendering_and_disclosure_stay_unchanged():
             check(tag + " verbose pool rendering is unchanged",
                   verbose["evidence"]["best_pair"]["pair_address"] == rendered,
                   str(verbose["evidence"]["best_pair"]))
-            check(tag + " verbose best_pair has exactly ten existing keys",
-                  set(verbose["evidence"]["best_pair"]) == keys, str(verbose["evidence"]["best_pair"]))
-            check(tag + " slim best_pair has exactly nine existing keys",
-                  set(slim["evidence"]["best_pair"]) == keys - {"pair_address"}, str(slim["evidence"]["best_pair"]))
+            check(tag + " verbose best_pair adds the exact identity to the existing keys",
+                  set(verbose["evidence"]["best_pair"]) == keys
+                  and verbose["evidence"]["best_pair"]["pool_id"] == pool, str(verbose["evidence"]["best_pair"]))
+            check(tag + " slim best_pair adds only the exact identity",
+                  set(slim["evidence"]["best_pair"]) == keys - {"pair_address"}
+                  and slim["evidence"]["best_pair"]["pool_id"] == pool, str(slim["evidence"]["best_pair"]))
             if pool == full:
-                check(tag + " full id is absent from the verbose answer", full not in json.dumps(verbose), "raw id leaked")
-                check(tag + " full id is absent from the slim answer", full not in json.dumps(slim), "raw id leaked")
                 check(tag + " full id is absent from all gap reasons",
                       all(full not in g.get("reason", "")
                           for r in (verbose, slim) for g in r["evidence"].get("data_gaps") or []), "raw id leaked")
@@ -6444,11 +6445,11 @@ def test_unchecked_liquidity_disclosure_preserves_the_complete_selected_answer()
                       normalized == control, str(normalized))
                 best = evidence.get("best_pair") or {}
                 check(label + "marker is beside the fixed best-pair keys",
-                      "liquidity_reserve_check" not in best and len(best) == (10 if verbose else 9), str(best))
-                check(label + "long display identifiers keep the existing compact boundary",
-                      (best.get("pair_address") == missing["pairAddress"][:48] + "..." if verbose
-                       else "pair_address" not in best)
-                      and missing["pairAddress"] not in json.dumps(answer), str(best))
+                      "liquidity_reserve_check" not in best and len(best) == (11 if verbose else 10), str(best))
+                check(label + "complete pool identity coexists with the legacy display boundary",
+                      best.get("pool_id") == missing["pairAddress"]
+                      and (best.get("pair_address") == missing["pairAddress"][:48] + "..." if verbose
+                           else "pair_address" not in best), str(best))
             liquidity, control = answers[2], controls[2]
             check(tag + "liquidity stays ok with the same reserve marker and note",
                   liquidity.get("status") == "ok"
@@ -7708,10 +7709,11 @@ def test_t092_full_identity_and_unknown_priority_preserve_old_paths():
     for pool in (full_a, full_b):
         answer, _ = _t092_scope_scan(_t092_report(full_a), pool=pool)
         details = answer["evidence"].get("pool_link_details") or {}
+        best = answer["evidence"]["best_pair"]
         check("T092 display collision cannot make a 32-byte reported venue valid",
               answer["evidence"].get("pool_link") == "unknown" and details.get("reason") == "invalid_pool"
-              and details.get("market_pool") == rendered and full_a not in json.dumps(answer)
-              and full_b not in json.dumps(answer))
+              and details.get("reported_pool") is None and details.get("market_pool") == pool
+              and best.get("pool_id") == pool and best.get("pair_address") == rendered)
     answer, _ = _t092_scope_scan(_t092_report(), pool=full_a)
     check("T092 full 32-byte market differs from valid 20-byte venue",
           answer["evidence"].get("pool_link") == "different")

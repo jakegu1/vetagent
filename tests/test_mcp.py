@@ -794,11 +794,11 @@ def test_unchecked_reserve_disclosure_reaches_both_real_mcp_tools():
                           len(signals) == 1 and signals[0].get("severity") == "ok"
                           and signals[0].get("name") == "Liquidity is adequate"
                           and signals[0].get("message") == "Main pair holds $250,000. " + note, str(signals))
-                    check(tag + "the public identifier remains compact",
-                          pool not in json.dumps(data)
-                          and ((evidence.get("best_pair") or {}).get("pair_address") == pool[:48] + "..."
-                               if extra["verbose"] else "pair_address" not in (evidence.get("best_pair") or {})),
-                          str(evidence.get("best_pair")))
+                    best = evidence.get("best_pair") or {}
+                    check(tag + "complete pool identity coexists with the compact display contract",
+                          best.get("pool_id") == pool and
+                          (best.get("pair_address") == pool[:48] + "..." if extra["verbose"] else "pair_address" not in best),
+                          str(best))
                 else:
                     check(tag + "usable upstream numbers and qualification coexist",
                           data.get("status") == "ok" and data.get("liquidity_usd") == 250_000
@@ -3513,6 +3513,48 @@ def test_assessment_solana_market_identity_is_case_sensitive_and_complete():
               evidence["best_pair"].get("pool_id") == expected
               and evidence["pool_link_details"]["market_pool"] == expected
               and evidence["pool_link"] == "unknown" and "sell" in calls, str(evidence["best_pair"]))
+
+
+def test_assessment_requires_a_market_chain_and_pool_before_using_sellers():
+    import test_risk as fixtures
+
+    pool = "0x" + "de" * 20
+    pair = fixtures._t030_pair(250000, reserves=False)
+    pair["txns"]["h24"] = {"buys": 250, "sells": 200}
+    pair["traders"] = {"h24": {"sellers": 170}}
+    address = pair["baseToken"]["address"]
+    hp = fixtures._t092_report(pool)
+    hp["honeypotResult"]["isHoneypot"] = True
+    hp["holderAnalysis"] = {"holders": "400", "failed": "4", "siphoned": "0", "successful": "396"}
+    sell = "https://api.honeypot.is/v2/IsHoneypot?address=" + address
+    for chain in ("ethereum", "sui", None):
+        for address_field in ("pairAddress", "pool_id", None):
+            market = {key: value for key, value in pair.items() if key not in ("chainId", "pairAddress")}
+            if chain is not None:
+                market["chainId"] = chain
+            if address_field is not None:
+                market[address_field] = pool
+            routes = {fixtures._T083_DS + address: ("market", 200, {"pairs": [market]}),
+                      sell + "&chainID=1": ("default", 200, hp),
+                      sell: ("unscoped", 200, hp)}
+            if chain is None:
+                for network in ("eth", "base", "bsc", "polygon_pos"):
+                    routes[fixtures._T083_GT + network + "/tokens/" + address + "/pools"] = ("fallback", 404, {})
+            answer, calls, _, _, _ = _t092_public_market("mcp", "assess_token_risk",
+                {"address": address, "verbose": True}, routes)
+            evidence = answer["evidence"]
+            best = evidence.get("best_pair", {})
+            context = str((chain, address_field, best, calls))
+            if chain == "ethereum" and address_field == "pairAddress":
+                check("identified market can retain its reported distinct sellers",
+                      best.get("pool_id") == pool and best.get("sellers_24h") == 170
+                      and "contradicted_by_chain" in evidence.get("honeypot", {}), context)
+            else:
+                check("missing or unqualified identity cannot establish seller corroboration",
+                      "pool_id" not in best and best.get("sellers_24h") is None
+                      and evidence["pool_link_details"]["market_pool"] is None
+                      and "contradicted_by_chain" not in evidence.get("honeypot", {})
+                      and answer["risk_level"] != "low", context)
 
 
 def _liquidity_comparison_module():
