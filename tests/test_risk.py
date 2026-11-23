@@ -2170,6 +2170,18 @@ def test_impersonation_is_comparative_not_absolute():
     check("never low", r["risk_level"] != "low", r["risk_level"])
     check("and at least medium", r["risk_level"] in ("medium", "high"), r["risk_level"])
 
+    for mine, rival, severity, text in (
+        (0.1095, 2_500, "critical", "holds $2,500 against this one's $0.11"),
+        (0.0001, 0.009, "warn", "holds less than $0.01 against this one's less than $0.01"),
+    ):
+        answer = run_with(mine, rival)
+        signal = next(s for s in answer["signals"] if s["category"] == "impersonation")
+        evidence = answer["evidence"]["same_symbol"]
+        check("same-ticker comparison keeps both positive amounts and the severity",
+              signal["severity"] == severity and text in signal["message"]
+              and evidence["largest_rival_liquidity_usd"] == rival
+              and evidence["this_token_liquidity_usd"] == mine, str(signal))
+
     # The largest holder of the ticker is not an impostor, however many namesakes exist.
     r2 = run_with(27_144_100, 4_098_720, rivals=5)
     imp2 = [x for x in r2["signals"] if x["category"] == "impersonation"]
@@ -6376,6 +6388,24 @@ def test_small_liquidity_survives_slim_and_verbose_assessment_text():
                   "Upstream estimate; reserve amounts not checked." % reported, str(signal))
         check("small liquidity %s keeps the structured estimate" % amount,
               liquidity["status"] == "ok" and liquidity["liquidity_usd"] == public_amount, str(liquidity))
+
+
+def test_abandoned_pool_keeps_small_depth_and_trade_amounts():
+    for amount, volume, depth, traded in (
+        (0.0233106, 0, "$0.02", "only $0"),
+        (0.125, 0.001, "$0.13", "less than $0.01"),
+        (0.004, 0, "Less than $0.01", "only $0"),
+        (250_000, 1_000, "$250,000", "only $1,000"),
+    ):
+        pair = _t030_pair(amount, "geckoterminal", reserves=False)
+        pair["volume"]["h24"] = volume
+        _, answer, _ = _t030_answers([pair], source="coingecko")
+        signal = next(s for s in answer["signals"] if s["name"] == "Looks abandoned")
+        check("abandoned pool %s keeps depth and traded USD in its signal" % amount,
+              signal["severity"] == "warn"
+              and signal["message"].startswith("%s of liquidity across 1 pool but %s traded in 24h"
+                                               % (depth, traded))
+              and answer["evidence"]["best_pair"]["liquidity_usd"] == amount, str(signal))
 
 
 def test_unchecked_liquidity_disclosure_preserves_the_complete_selected_answer():
