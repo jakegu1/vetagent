@@ -3282,6 +3282,13 @@ def test_liquidity_gt_invalid_resource_and_duplicate_identity_are_omitted():
 def test_liquidity_tools_list_exposes_optional_activity_and_complete_identity():
     tools = call({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})["result"]["tools"]
     liquidity = next(tool for tool in tools if tool["name"] == "get_token_liquidity")
+    input_context = liquidity["inputSchema"]["properties"]["comparison_context"]
+    output_context = liquidity["outputSchema"]["properties"]["comparison_context"]
+    observation = input_context["items"]
+    check("both MCP context schemas admit drained with a numeric zero only",
+          input_context == output_context and observation["properties"]["status"]["enum"] == ["ok", "drained"]
+          and observation.get("if", {}).get("properties", {}).get("status") == {"const": "drained"}
+          and observation.get("then", {}).get("properties", {}).get("liquidity_usd") == {"const": 0})
     schema = liquidity["outputSchema"]
     fields = schema["properties"]
     activity = fields.get("trade_activity", {})
@@ -3458,6 +3465,108 @@ def test_native_liquidity_roundtrip_selects_latest_comparable_source_and_reports
           result.get("reason") == "different_pool" and "change_usd" not in result)
 
 
+def test_real_worker_liquidity_rechecks_keep_a_reported_single_pool_zero():
+    import test_risk as fixtures
+    from liquidity_comparison import compare
+
+    pool = "0x" + "Ab" * 32
+    history, observations = [], []
+    for index, amount in enumerate((100, 0, 0, 125)):
+        pair = fixtures._t030_pair(amount)
+        pair["pairAddress"] = pool
+        address = pair["baseToken"]["address"]
+        routes = {fixtures._T083_DS + address: ("market", 200, {"pairs": [pair]})}
+        args = {"address": address, "chain_hint": "ethereum"}
+        stamp = "2026-11-23T00:00:0%dZ" % index
+        with patch.object(risk, "_now_iso", return_value=stamp):
+            rest, calls, _, sleeps, _ = _t092_public_market("http", "get_token_liquidity", args, routes)
+            check("REST states the complete selected identity with no extra market work",
+                  rest.get("best_pair_address") == pool and rest.get("source") == "dexscreener"
+                  and rest.get("best_pair_chain") == "ethereum" and rest.get("checked_at") == stamp
+                  and rest["status"] == ("ok" if amount else "drained")
+                  and rest["liquidity_usd"] == amount and calls == ["market"] and not sleeps)
+            kwargs = dict(args, comparison_context=history)
+            mcp, calls, _, sleeps, _ = _t092_public_market("mcp", "get_token_liquidity", kwargs, routes)
+        check("MCP preserves the REST snapshot and the original request sequence",
+              all(mcp.get(key) == value for key, value in rest.items()) and calls == ["market"] and not sleeps)
+        history = mcp["comparison_context"]
+        check("MCP keeps the latest zero or positive baseline for that exact pool",
+              len(history) == 1 and history[0]["checked_at"] == stamp
+              and history[0]["status"] == rest["status"] and history[0]["liquidity_usd"] == amount)
+        if observations:
+            before = observations[-1]
+            actual = mcp["comparison"]
+            expected = {"status": "compared", "before_usd": before["liquidity_usd"],
+                        "after_usd": amount, "change_usd": amount - before["liquidity_usd"]}
+            check("native and saved comparisons both support drop, zero change and recovery",
+                  compare(before, rest) == expected
+                  and all(actual.get(key) == value for key, value in expected.items())
+                  and actual.get("before_checked_at") == before["checked_at"]
+                  and actual.get("after_checked_at") == stamp, str(actual))
+        observations.append(rest)
+
+
+def test_liquidity_drained_identity_refuses_ambiguous_or_derived_zero():
+    import test_risk as fixtures
+
+    zero = fixtures._t030_pair(0)
+    address = zero["baseToken"]["address"]
+    args = {"address": address, "chain_hint": "ethereum", "comparison_context": []}
+    variants = (
+        ("multiple pools", [zero, dict(zero, pairAddress="0x" + "ac" * 20)], "ethereum", "drained"),
+        ("different chain hint", [zero], "base", "drained"),
+        ("cross-chain without a hint", [zero, dict(zero, chainId="base")], None, "drained"),
+        ("short pool", [dict(zero, pairAddress="short")], "ethereum", "drained"),
+        ("untrusted pool alias", [dict(zero, pairAddress=None, pool_id=zero["pairAddress"])], "ethereum", "drained"),
+        ("cap is zero while stated depth is positive", [dict(zero, liquidity={"usd": 100, "base": 0, "quote": 0})],
+         "ethereum", "drained"),
+        ("conflicting depth aliases", [dict(zero, reserveInUsd=1)], "ethereum", "drained"),
+        ("unquoted", [dict(zero, liquidity={})], "ethereum", "unpriced"),
+        ("nonzero underflow", [dict(zero, liquidity={"usd": "1e-400"})], "ethereum", "unpriced"),
+        ("boolean zero", [dict(zero, liquidity={"usd": False})], "ethereum", "unpriced"),
+    )
+    for name, rows, hint, status in variants:
+        routes = {fixtures._T083_DS + address: ("market", 200, {"pairs": rows})}
+        answer, _, _, _, _ = _t092_public_market("mcp", "get_token_liquidity", dict(args, chain_hint=hint), routes)
+        check(name + " retains its prior status without a new baseline or claimed pool identity",
+              answer.get("status") == status and "best_pair_address" not in answer
+              and not answer.get("comparison_context") and "change_usd" not in answer["comparison"], str(answer))
+
+
+def test_liquidity_fallback_zero_requires_the_qualified_pool_identity():
+    import test_risk as fixtures
+
+    token, pool, _, cases = _t092_market_cases()
+    mint_pair = _load("ds_bonk.json")["pairs"][0]
+    mint = mint_pair["baseToken"]["address"]
+    quote = mint_pair["quoteToken"]["address"]
+    evm = next(row for label, _, body in cases[0][1].values() if label == "fallback"
+               for row in body["data"] if row["attributes"]["address"].lower() == pool)
+    sol = {"id": "solana_" + mint_pair["pairAddress"],
+           "attributes": {"address": mint_pair["pairAddress"], "name": "BONK / SOL",
+                          "base_token_price_usd": "1"},
+           "relationships": {"base_token": {"data": {"id": "solana_" + mint}},
+                             "quote_token": {"data": {"id": "solana_" + quote}}}}
+    for chain, network, address, raw, invalid_address in (
+            ("ethereum", "eth", token, evm, "0x" + "de" * 20),
+            ("solana", "solana", mint, sol, "z" * 44)):
+        row = copy.deepcopy(raw)
+        row["attributes"]["reserve_in_usd"] = "0.00"
+        expected = row["attributes"]["address"]
+        mismatched = copy.deepcopy(row)
+        mismatched["attributes"]["address"] = invalid_address
+        for rows, pool_id in (([row], expected), ([mismatched], None), ([row, mismatched], None)):
+            routes = {fixtures._T083_DS + address: ("market", 200, {"pairs": []}),
+                      fixtures._t083_market_url(network, address): ("fallback", 200, {"data": rows})}
+            answer, calls, _, sleeps, _ = _t092_public_market("mcp", "get_token_liquidity",
+                {"address": address, "chain_hint": chain, "comparison_context": []}, routes)
+            check("fallback zero only names a valid, unique pool for the requested asset",
+                  answer.get("status") == "drained" and answer.get("best_pair_address") == pool_id
+                  and answer.get("source") == ("geckoterminal" if pool_id else None)
+                  and bool(answer["comparison_context"]) == bool(pool_id)
+                  and calls == ["market", "fallback"] and not sleeps, str(answer))
+
+
 def test_native_liquidity_context_refuses_invalid_records_and_preserves_legacy_snapshots():
     before, _, after = _load("liquidity_recheck.json")
     first, _ = _native_liquidity_call(before)
@@ -3468,7 +3577,12 @@ def test_native_liquidity_context_refuses_invalid_records_and_preserves_legacy_s
     for change in ({"served_stale": []}, {"error": "failed"}, {"status": "unavailable"},
                    {"best_pair_address": "truncated..."}, {"checked_at": "2026-11-19T16:09:07"},
                    {"liquidity_usd": True}, {"liquidity_usd": -1}, {"liquidity_usd": None},
-                   {"source": "unknown"}, {"address": "x" * 9000}):
+                   {"source": "unknown"}, {"address": "x" * 9000},
+                   {"status": "drained", "liquidity_usd": 1}, {"status": "drained", "liquidity_usd": False},
+                   {"status": "drained", "liquidity_usd": "0"}, {"status": "drained", "liquidity_usd": None},
+                   {"status": "drained", "liquidity_usd": 0, "source": ""},
+                   {"status": "drained", "liquidity_usd": 0, "best_pair_address": "short"},
+                   {"status": "drained", "liquidity_usd": 0, "served_stale": []}):
         reply, fetch = _native_liquidity_call(after, [dict(context[0], **change)])
         check("invalid client context is refused before current upstream work",
               reply.get("result", {}).get("isError") is True and fetch.await_count == 0)
@@ -3499,6 +3613,13 @@ def test_native_liquidity_context_refuses_invalid_records_and_preserves_legacy_s
         check("an unusable current reply cannot overwrite its usable baseline",
               answer.get("comparison", {}).get("reason") == reason
               and answer.get("comparison_context") == context)
+    for change in ({"served_stale": []}, {"checked_at": before["checked_at"]},
+                   {"best_pair_address": None}, {"source": None}):
+        reply, _ = _native_liquidity_call(dict(after, status="drained", liquidity_usd=0, **change), context)
+        answer = reply["result"]["structuredContent"]
+        check("unusable drained replies cannot replace the valid previous baseline",
+              answer["comparison"]["status"] == "not_comparable"
+              and "change_usd" not in answer["comparison"] and answer["comparison_context"] == context)
     newer = dict(context[0], checked_at="2026-11-19T16:20:00Z", liquidity_usd=86000000)
     reply, _ = _native_liquidity_call(after, [newer, context[0]])
     result = reply["result"].get("structuredContent", {}).get("comparison", {})

@@ -72,10 +72,13 @@ const cases = {
     assert.match(html, /in this browser/i); assert.match(html, /No.*server.side history/i);
   },
   async 'same-pool rechecks preserve cents, small change direction and real zero'() {
-    const b = boot();
+    const saved = new Map();
     const shown = [];
     for (const reply of precisionReplies) {
-      b.click().resolve(reply); await tick();
+      const b = boot(saved);
+      const query = b.click();
+      assert.deepEqual(query.body.params.arguments.comparison_context, JSON.parse(saved.get(key) || '[]'));
+      query.resolve(reply); await tick();
       shown.push(b.text());
       assert.deepEqual(JSON.parse(b.saved.get(key)), reply.result.structuredContent.comparison_context);
     }
@@ -89,8 +92,16 @@ const cases = {
     assert.match(shown[3], /Estimated change: decrease of less than \$0\.01<\/div>/);
     assert.match(shown[4], /Estimated change: \$0<\/div>/);
     assert.match(shown[5], /Current estimate: \$0<\/div>/);
+    assert.match(shown[5], /reported zero liquidity for this pool/i);
+    assert.match(shown[5], /Estimated change: decrease of less than \$0\.01/);
     assert.match(shown[6], /Current estimate: Unavailable<\/div>/);
     assert.doesNotMatch(shown[6], /Estimated change:/);
+    assert.match(shown[7], /Estimated change: \$0<\/div>/);
+    assert.match(shown[8], /Estimated change: increase of less than \$0\.01/);
+    assert.match(shown[9], /No trading pair was found/i);
+    assert.doesNotMatch(shown[9], /Current estimate: \$0|Estimated change:/);
+    assert.match(shown[10], /No pool-specific zero/i);
+    assert.doesNotMatch(shown[10], /Current estimate: \$0|Estimated change:/);
   },
   async 'clearing returns to the first-use target and reopening never queries automatically'() {
     const row = plain(replies[0].result.structuredContent.comparison_context[0]);

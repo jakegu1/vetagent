@@ -442,11 +442,14 @@ def test_landing_liquidity_recheck_roundtrips_actual_mcp_results_in_the_served_s
         return replies
 
     precision_readings = [
-        dict(readings[0], liquidity_usd=amount, status=status, checked_at="2026-11-19T17:00:0%dZ" % index)
+        dict(readings[0], liquidity_usd=amount, status=status, checked_at="2026-11-19T17:00:%02dZ" % index)
         for index, (amount, status) in enumerate(((0.102263, "ok"), (0.104263, "ok"), (0.004, "ok"),
                                                  (0.002, "ok"), (0.002, "ok"), (0, "drained"),
-                                                 (None, "unpriced")))
+                                                 (None, "unpriced"), (0, "drained"), (0.002, "ok"),
+                                                 (0, "not_found"), (0, "drained")))
     ]
+    for key in ("source", "best_pair_address", "best_pair_chain"):
+        precision_readings[-1].pop(key)
     landing = asyncio.run(entry.Default().fetch(FakeRequest("https://vetagent.dev/"))).body
     runner = os.path.join(ROOT, "tests", "fixtures", "liquidity_recheck_contract.cjs")
     result = subprocess.run(["node", runner], input=json.dumps({"html": landing, "replies": replay(readings),
