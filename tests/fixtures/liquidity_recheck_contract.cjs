@@ -118,6 +118,25 @@ const cases = {
       assert.doesNotMatch(b.text(), /Estimated change:|Last comparable|366,200/);
     }
   },
+  async 'reopening keeps the chosen BSC baseline after a fallback Ethereum snapshot'() {
+    const row = {...plain(replies[0].result.structuredContent.comparison_context[0]), best_pair_chain: 'bsc'};
+    const saved = new Map([[key, JSON.stringify([row])]]), b = boot(saved);
+    const query = b.click(false);
+    assert.equal(query.body.params.arguments.chain_hint, 'bsc');
+    assert.deepEqual(query.body.params.arguments.comparison_context, [row]);
+    const reply = plain(replies[0]), result = reply.result.structuredContent;
+    result.network_selection = {requested_chain: 'bsc', returned_chain: 'ethereum',
+      status: 'different', lookup: 'empty'};
+    result.best_pair_chain = 'ethereum';
+    result.comparison = {status: 'not_comparable', reason: 'different_network'};
+    result.comparison_context = [row];
+    query.resolve(reply); await tick();
+    assert.match(b.text(), /Market data below is for ethereum/i);
+    assert.deepEqual(JSON.parse(saved.get(key)), [row]);
+    const reopened = boot(saved);
+    assert.equal(reopened.nodes.chain.value, 'bsc');
+    assert.equal(reopened.requests.length, 0);
+  },
   async 'clearing returns to the first-use target and reopening never queries automatically'() {
     const row = plain(replies[0].result.structuredContent.comparison_context[0]);
     const saved = new Map([[key, JSON.stringify([row])]]), b = boot(saved);

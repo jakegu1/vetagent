@@ -6866,11 +6866,11 @@ def test_t083_recognized_chain_hint_reaches_fallback():
     routes = {_T083_DS + address: ("ds", 200, {"pairs": [fork]}),
               "https://api.dexscreener.com/token-pairs/v1/ethereum/" + address: ("home", 429, _T083_ERROR),
               "https://api.dexscreener.com/token-pairs/v1/bsc/" + address: ("bsc", 429, _T083_ERROR),
-              _t083_market_url("eth", address): ("eth", 404, {})}
+              _t083_market_url("bsc", address): ("fallback", 404, {})}
     result, calls, _, _, _ = run(_t083_mcp(
         "get_token_liquidity", {"address": address, "chain_hint": "bnb"}, routes))
     check("T083 explicit liquidity alias is tried once without adopting an unconfirmed fork",
-          result.get("status") == "unavailable" and calls == ["ds", "bsc"], str(calls))
+          result.get("status") == "unavailable" and calls == ["ds", "bsc", "fallback"], str(calls))
 
 
 def test_t083_error_envelope_preserves_bounded_cache_policy():

@@ -3544,6 +3544,55 @@ def test_liquidity_keeps_a_foreign_snapshot_without_turning_it_into_a_requested_
               and "change_usd" not in comparison and answer["comparison_context"] == [baseline], str(comparison))
 
 
+def test_liquidity_network_lookup_keeps_the_existing_market_fallback_for_unconfirmed_forks():
+    import test_risk as fixtures
+
+    address, _, _, cases = _t092_market_cases()
+    eth = fixtures._t030_pair(100000, reserves=False)
+    eth["baseToken"]["address"] = address
+    fork = dict(eth, chainId="pulsechain")
+    ds = fixtures._T083_DS + address
+    url = "https://api.dexscreener.com/token-pairs/v1/ethereum/" + address
+    gecko = fixtures._t083_market_url("eth", address)
+    for code, body, status in ((200, cases[0][1][gecko][2], "ok"), (429, fixtures._T083_ERROR, "unavailable")):
+        routes = {ds: ("global", 200, {"pairs": [fork]}), url: ("requested", 429, fixtures._T083_ERROR),
+                  gecko: ("fallback", code, body)}
+        answer, calls, _, sleeps, _ = _t092_public_market("mcp", "get_token_liquidity",
+            {"address": address, "chain_hint": "ethereum", "comparison_context": []}, routes)
+        check("failed scoped listing keeps the established fallback without using unconfirmed fork depth",
+              answer.get("status") == status and calls == ["global", "requested", "fallback"] and not sleeps
+              and answer.get("best_pair_chain") == ("ethereum" if status == "ok" else None)
+              and answer.get("source") == ("geckoterminal" if status == "ok" else None)
+              and answer.get("network_selection", {}).get("lookup") == "unconfirmed"
+              and answer.get("network_selection", {}).get("status") == ("matched" if status == "ok" else "unresolved"),
+              str((answer, calls)))
+
+
+def test_liquidity_incompatible_network_preserves_only_available_global_data():
+    import test_risk as fixtures
+
+    evm = fixtures._t030_pair(100000, reserves=False)
+    sol = _load("ds_bonk.json")["pairs"][0]
+    for pair, hint in ((evm, "solana"), (sol, "ethereum")):
+        address = pair["baseToken"]["address"]
+        actual_chain = pair["chainId"]
+        ds = fixtures._T083_DS + address
+        for markets, status in (([pair], "ok"), ([], "unavailable")):
+            routes = {ds: ("global", 200, {"pairs": markets})}
+            for net in ("eth", "base", "bsc", "polygon_pos", "solana"):
+                routes[fixtures._t083_market_url(net, address)] = (net, 429, fixtures._T083_ERROR)
+            answer, calls, _, sleeps, _ = _t092_public_market("mcp", "get_token_liquidity",
+                {"address": address, "chain_hint": hint, "comparison_context": []}, routes)
+            selection = answer.get("network_selection", {})
+            check("an incompatible hint neither probes the hinted network nor fans out to other chains",
+                  calls == ["global"] and not sleeps and answer.get("status") == status
+                  and selection.get("lookup") == "incompatible_address"
+                  and selection.get("requested_chain") == hint
+                  and selection.get("returned_chain") == (actual_chain if markets else None)
+                  and selection.get("status") == ("different" if markets else "unresolved")
+                  and not answer["comparison_context"], str((answer, calls)))
+
+
 def test_real_worker_liquidity_rechecks_keep_a_reported_single_pool_zero():
     import test_risk as fixtures
     from liquidity_comparison import compare
