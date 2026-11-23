@@ -4456,16 +4456,18 @@ def _fallback_market_rows(rows, address, network):
     return usable if usable or not rows else None
 
 
-def _dex_chain_pairs_url(chain, address):
-    return "https://api.dexscreener.com/token-pairs/v1/%s/%s" % (chain, address)
+async def _read_dex_chain_pairs(chain, address):
+    url = "https://api.dexscreener.com/token-pairs/v1/%s/%s" % (chain, address)
+    listed = await _fetch_json(url)
+    stale = any(hit == url for hit, _ in (_stale_hits() or ()))
+    return listed, stale
 
 
 async def _liquidity_network_pairs(pairs, address, selection):
     """Try the requested chain once before using the original market scope."""
     chain = selection["requested_chain"]
-    url = _dex_chain_pairs_url(chain, address)
-    listed = _dex_market_rows(await _fetch_json(url), address, chain)
-    stale = any(hit == url for hit, _ in (_stale_hits() or ()))
+    listed, stale = await _read_dex_chain_pairs(chain, address)
+    listed = _dex_market_rows(listed, address, chain)
     if listed:
         selection["lookup"] = "unconfirmed" if stale else "found"
         return pairs + listed
@@ -4507,7 +4509,7 @@ async def _complete_home_chain(pairs, address, chain_hint, saturated=False):
         want = _FORK_OF.get(scope_chain) or (hint if hint in _CHAIN_RANK else "")
         if not want:
             return pairs, False, ""
-    listed = await _fetch_json(_dex_chain_pairs_url(want, address))
+    listed, _ = await _read_dex_chain_pairs(want, address)
     if isinstance(listed, list):
         valid = [p for p in listed if _dex_market_pair_usable(p, address, want)]
         if valid or not listed:
