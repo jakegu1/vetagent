@@ -684,9 +684,15 @@
     return merged.length > 8;
   }
 
-  function usd(value) {
-    return typeof value === 'number' && Number.isFinite(value) ?
-      '$' + value.toLocaleString('en-US', {maximumFractionDigits: 2}) : 'Unavailable';
+  function usd(value, signed) {
+    if (typeof value !== 'number' || !Number.isFinite(value)) { return 'Unavailable'; }
+    var amount = Math.abs(value);
+    if (amount > 0 && amount < 0.01) {
+      var direction = value < 0 ? 'decrease of ' : 'increase of ';
+      return (signed ? direction : '') + 'less than $0.01';
+    }
+    var sign = !signed || value === 0 ? '' : value < 0 ? '-' : '+';
+    return sign + '$' + (signed ? amount : value).toLocaleString('en-US', {maximumFractionDigits: 2});
   }
 
   document.getElementById('liquidity-clear').addEventListener('click', function () {
@@ -737,8 +743,7 @@
         change = '<div>Last comparable ' + esc(value.source) + ' estimate: ' +
           esc(usd(comparison.before_usd)) + ' at ' + esc(comparison.before_checked_at) +
           '<br>After: ' + esc(usd(comparison.after_usd)) + ' at ' + esc(comparison.after_checked_at) +
-          '<br>Estimated change: ' + (comparison.change_usd > 0 ? '+' : comparison.change_usd < 0 ? '-' : '') +
-          esc(usd(Math.abs(comparison.change_usd))) + '</div>';
+          '<br>Estimated change: ' + esc(usd(comparison.change_usd, true)) + '</div>';
       } else {
         var reasons = {
           no_previous_observation: 'Baseline saved. Recheck later to compare with this observation.',

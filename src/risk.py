@@ -2016,8 +2016,14 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
     }
 
     if liq < _LIVE_POOL_USD:
+        if 0 < liq < 0.01:
+            amount = "less than $0.01"
+        elif 0.01 <= liq < 1:
+            amount = "only $%.2f" % liq
+        else:
+            amount = "only $%s" % format(liq, ",.0f")
         signals.append(_sig("critical", "Very low liquidity",
-                            "Main pair holds only $%s. High rug and slippage risk." % format(liq, ",.0f"),
+                            "Main pair holds %s. High rug and slippage risk." % amount,
                             "liquidity"))
     elif liq < 50000:
         signals.append(_sig("warn", "Thin liquidity",
