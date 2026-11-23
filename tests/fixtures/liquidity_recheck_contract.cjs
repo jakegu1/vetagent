@@ -79,10 +79,10 @@ const cases = {
       shown.push(b.text());
       assert.deepEqual(JSON.parse(b.saved.get(key)), reply.result.structuredContent.comparison_context);
     }
-    assert.match(shown[0], /Current estimate: \$0\.10?<\/div>/);
-    assert.match(shown[1], /Last comparable dexscreener estimate: \$0\.10? at /);
+    assert.match(shown[0], /Current estimate: \$0\.10<\/div>/);
+    assert.match(shown[1], /Last comparable dexscreener estimate: \$0\.10 at /);
     assert.match(shown[1], /Estimated change: increase of less than \$0\.01<\/div>/);
-    assert.match(shown[2], /Estimated change: -\$0\.1<\/div>/);
+    assert.match(shown[2], /Estimated change: -\$0\.10<\/div>/);
     assert.match(shown[3], /Last comparable dexscreener estimate: less than \$0\.01 at /);
     assert.match(shown[3], /After: less than \$0\.01 at /);
     assert.match(shown[3], /Current estimate: less than \$0\.01<\/div>/);

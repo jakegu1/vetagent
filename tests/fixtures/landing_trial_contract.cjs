@@ -174,10 +174,12 @@ const cases = {
   async 'assessment distinguishes cents, sub-cent depth, observed zero and missing depth'() {
     const value = clone(recorded[0].result);
     for (const [amount, shown] of [
-      [0.102263, /Selected pool liquidity estimate: \$0\.10?(?=[ .;<])/],
+      [0.102263, /Selected pool liquidity estimate: \$0\.10(?=[ .;<])/],
       [0.004, /Selected pool liquidity estimate: less than \$0\.01/],
       [0.009, /Selected pool liquidity estimate: less than \$0\.01/],
       [0.01, /Selected pool liquidity estimate: \$0\.01/],
+      [0.015, /Selected pool liquidity estimate: \$0\.02/],
+      [0.125, /Selected pool liquidity estimate: \$0\.13/],
       [0, /Selected pool liquidity estimate: \$0(?=[ ;<]|\.(?!\d))/],
       [2499.99, /Selected pool liquidity estimate: \$2,499\.99/],
     ]) {
