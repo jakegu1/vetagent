@@ -40,6 +40,11 @@ def _usable_status(row):
     return row.get("status") == "drained" and type(amount) in (int, float) and amount == 0
 
 
+def _different_network(row):
+    selection = row.get("network_selection")
+    return isinstance(selection, dict) and selection.get("status") == "different"
+
+
 def _moment(stamp):
     if (not isinstance(stamp, str) or re.fullmatch(
             r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}"
@@ -59,6 +64,8 @@ def compare(before, after):
         return _refused("unusable_response")
     if any("served_stale" in row for row in readings):
         return _refused("stale_response")
+    if any(_different_network(row) for row in readings):
+        return _refused("different_network")
     sources = [row.get("source") for row in readings]
     if any(source not in _SOURCES for source in sources):
         return _refused("invalid_source")
@@ -103,6 +110,8 @@ def _reading_reason(row):
         return "unusable_response"
     if "served_stale" in row:
         return "stale_response"
+    if _different_network(row):
+        return "different_network"
     if row.get("source") not in _SOURCES:
         return "invalid_source"
     chain = row.get("best_pair_chain")

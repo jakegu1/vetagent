@@ -735,15 +735,35 @@
       if (result.isError) { throw Error((result.content || [{}])[0].text || 'Liquidity request failed'); }
       var value = result.structuredContent || JSON.parse(result.content[0].text);
       if (!validContext(value.comparison_context)) { throw Error('Invalid liquidity observation context'); }
-      var browserEvicted = mergeObservations(value.comparison_context);
+      var selection = value.network_selection || {};
+      var returned = selection.returned_chain || value.best_pair_chain;
+      var differentNetwork = chain && (selection.status === 'different' || (returned && chain !== returned));
+      var context = differentNetwork ? value.comparison_context.filter(function (row) {
+        return row.best_pair_chain === chain;
+      }) : value.comparison_context;
+      var browserEvicted = mergeObservations(context);
       try { window.localStorage.setItem(historyKey, JSON.stringify(observations)); }
       catch (e) { storageNotice = 'Browser storage is unavailable; comparisons last until this page closes.'; }
-      var details = '<div class="request-scope">Returned network: ' + esc(value.best_pair_chain || 'Not reported') +
+      var lookup = {
+        empty: 'DexScreener returned no pools for ' + chain + '.',
+        unconfirmed: 'DexScreener could not confirm pools on ' + chain + '.',
+        incompatible_address: 'The address format does not match ' + chain + '.'
+      }[selection.lookup];
+      var networkNotice = differentNetwork ?
+        '<strong>Market data below is for ' + esc(returned) + '.</strong> ' : '';
+      if (lookup && selection.status !== 'matched') { networkNotice += esc(lookup); }
+      if (networkNotice) { networkNotice = '<div class="request-scope">' + networkNotice + '</div>'; }
+      var details = '<div class="request-scope">Returned network: ' + esc(returned || 'Not reported') +
         '<br>Pool: <code>' + esc(value.best_pair_address || 'Not reported') + '</code>' +
         '<br>Provider: ' + esc(value.source || 'Not reported') + '<br>Reply time: ' + esc(value.checked_at) + '</div>';
       var comparison = value.comparison || {};
       var change;
-      if (comparison.status === 'compared') {
+      if (differentNetwork) {
+        change = '<div>No liquidity change calculated for ' + esc(chain) + '.</div>';
+        if (comparison.reason === 'stale_response') {
+          change += '<div>This reply includes stale cached data.</div>';
+        }
+      } else if (comparison.status === 'compared') {
         change = '<div>Last comparable ' + esc(value.source) + ' estimate: ' +
           esc(usd(comparison.before_usd)) + ' at ' + esc(comparison.before_checked_at) +
           '<br>After: ' + esc(usd(comparison.after_usd)) + ' at ' + esc(comparison.after_checked_at) +
@@ -763,12 +783,12 @@
         change = '<div>' + esc(reasons[comparison.reason] || 'No usable comparison is available for this reply.') + '</div>';
       }
       var transition = comparison.pool_transition || {};
-      if (transition.status === 'changed') {
+      if (!differentNetwork && transition.status === 'changed') {
         change += '<div class="rec">Selected pool changed since ' + esc(transition.previous_checked_at) +
           '. Previous pool: <code>' + esc(transition.previous_pool_address) + '</code>.' +
           (comparison.status === 'compared' && !comparison.baseline_is_latest_observation ?
             ' This change uses an older observation as the baseline for the current pool.' : '') + '</div>';
-      } else if (transition.status === 'ambiguous') {
+      } else if (!differentNetwork && transition.status === 'ambiguous') {
         change += '<div class="rec">Prior pool order is ambiguous because reply times are tied.</div>';
       }
       if (comparison.context_evicted || browserEvicted) {
@@ -777,7 +797,8 @@
       if (comparison.nonprior_observations) {
         change += '<div class="rec">Observations at or after this reply time were excluded as baselines.</div>';
       }
-      var estimate = '<div>Current estimate: ' + esc(usd(value.liquidity_usd)) + '</div>';
+      var estimateLabel = differentNetwork ? 'Estimate on ' + esc(returned) + ': ' : 'Current estimate: ';
+      var estimate = '<div>' + estimateLabel + esc(usd(value.liquidity_usd)) + '</div>';
       if (value.status === 'not_found') {
         estimate = '<div>No trading pair was found.</div>';
       } else if (value.status === 'drained') {
@@ -785,7 +806,7 @@
           estimate + '<div>The provider reported zero liquidity for this pool.</div>' :
           '<div>No pool-specific zero was available for comparison.</div>';
       }
-      showLiquidity(submitted + details + estimate + change +
+      showLiquidity(submitted + networkNotice + details + estimate + change +
         '<div class="rec">These are USD estimates and reply times; source data may be cached. ' +
         'A difference can reflect valuation and is not a measured reserve flow or executable sell depth. ' +
         'Saved baselines are observations supplied by this browser.</div>');

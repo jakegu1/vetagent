@@ -133,7 +133,8 @@ asyncio.run(main())</code></pre>
 <code>liquidity_usd</code>. <code>unavailable</code> indicates an upstream failure and
 <code>unpriced</code> indicates unknown depth. An identified single-pool
 <code>drained</code> snapshot can be used in a same-pool recheck when the provider
-reports zero.</p>
+reports zero. When present, <code>network_selection</code> reports the requested and
+returned network and what the extra lookup found.</p>
 
 <h3>Plain HTTP</h3>
 <pre><code># the address in the body, which keeps it out of URLs and logs along the way

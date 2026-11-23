@@ -249,6 +249,16 @@ The response's `comparison` reports the before/after reply times, USD estimates 
 `change_usd` when a comparison is possible. Calls without the argument remain snapshots
 and omit `comparison`.
 
+For liquidity, `chain_hint` is a network preference. When the initial listing contains
+only other networks, VetAgent asks for the requested network's DexScreener listing
+before reporting another market. The optional `network_selection` identifies the
+requested network, the returned scope when known, and the lookup result.
+`lookup: "empty"` means that listing returned no pairs. `"unconfirmed"` covers failures,
+stale fallback and responses without usable scope evidence. Incompatible address formats
+are reported as `"incompatible_address"`. A reply with `status: "different"` inside
+`network_selection` carries another network's estimate and cannot update the selected
+network's baseline or produce its change.
+
 The context contains at most eight observations and accepts at most 8192 UTF-8 JSON bytes.
 Each observation has only `status`, `address`, `best_pair_chain`, `best_pair_address`,
 `source`, `checked_at` and `liquidity_usd`. An identified single-pool `drained` reply

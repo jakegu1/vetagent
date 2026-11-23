@@ -4456,6 +4456,29 @@ def _fallback_market_rows(rows, address, network):
     return usable if usable or not rows else None
 
 
+def _dex_chain_pairs_url(chain, address):
+    return "https://api.dexscreener.com/token-pairs/v1/%s/%s" % (chain, address)
+
+
+async def _liquidity_network_pairs(pairs, address, selection):
+    """Try the requested chain once before using the original market scope."""
+    chain = selection["requested_chain"]
+    url = _dex_chain_pairs_url(chain, address)
+    listed = _dex_market_rows(await _fetch_json(url), address, chain)
+    stale = any(hit == url for hit, _ in (_stale_hits() or ()))
+    if listed:
+        selection["lookup"] = "unconfirmed" if stale else "found"
+        return pairs + listed
+    selection["lookup"] = "empty" if listed == [] and not stale else "unconfirmed"
+    # The original loader requires corroboration before falling back to an
+    # unranked chain or a known fork. A different requested chain cannot supply it.
+    scope = _home_scope(pairs, target=address)
+    fallback = (scope[0].get("chainId") or "").lower()
+    if fallback in _CHAIN_RANK or (selection["lookup"] == "empty" and _FORK_OF.get(fallback, chain) == chain):
+        return pairs
+    return None
+
+
 async def _complete_home_chain(pairs, address, chain_hint, saturated=False):
     """Make sure the token's own chain is in the answer. Returns (pairs, home_unreadable, want).
 
@@ -4484,8 +4507,7 @@ async def _complete_home_chain(pairs, address, chain_hint, saturated=False):
         want = _FORK_OF.get(scope_chain) or (hint if hint in _CHAIN_RANK else "")
         if not want:
             return pairs, False, ""
-    listed = await _fetch_json("https://api.dexscreener.com/token-pairs/v1/%s/%s"
-                               % (want, address))
+    listed = await _fetch_json(_dex_chain_pairs_url(want, address))
     if isinstance(listed, list):
         valid = [p for p in listed if _dex_market_pair_usable(p, address, want)]
         if valid or not listed:
@@ -4498,7 +4520,7 @@ async def _complete_home_chain(pairs, address, chain_hint, saturated=False):
     return pairs, not on_home, want
 
 
-async def _load_pairs(address, chain_hint):
+async def _load_pairs(address, chain_hint, *, liquidity_selection=None):
     """Load pairs. Returns (pairs, source).
 
     pairs is None when both sources failed, and also when DexScreener answered empty but
@@ -4511,12 +4533,24 @@ async def _load_pairs(address, chain_hint):
     if isinstance(ds, dict) and "pairs" in ds:
         rows = ds["pairs"] if ds["pairs"] is not None else []
         primary = _dex_market_rows(rows, address)
-        if primary:
+    if liquidity_selection and liquidity_selection.get("lookup") == "incompatible_address":
+        scope = _home_scope(primary, target=address)
+        if scope and (scope[0].get("chainId") or "").lower() not in _FORK_OF:
+            return primary, "dexscreener"
+        return None, None
+    if primary:
+        requested = liquidity_selection["requested_chain"] if liquidity_selection else None
+        if requested and not any(p["chainId"].lower() == requested for p in primary):
+            pairs = await _liquidity_network_pairs(primary, address, liquidity_selection)
+            if pairs is not None:
+                return pairs, "dexscreener"
+            home_unreadable, want = True, requested
+        else:
             pairs, home_unreadable, want = await _complete_home_chain(
                 primary, address, chain_hint, saturated=len(rows) >= _DS_TOKENS_CAP)
             if not home_unreadable:
                 return pairs, "dexscreener"
-            # The token's home chain could not be read. Try its market fallback.
+        # The preferred chain could not be read. Try its existing market fallback.
     # Fallback: GeckoTerminal. Network comes from chain_hint; eth is no longer hardcoded.
     networks = []
     if home_unreadable and _GT_NETWORK.get(want):
@@ -5114,19 +5148,42 @@ def _identified_drained_pool(pairs, scope, source, address, chain_hint):
     return {"best_pair_address": pool, "best_pair_chain": chain, "source": source} if pool else {}
 
 
+def _disclose_liquidity(payload, selection, scoped_chain=None):
+    if "lookup" in selection:
+        if scoped_chain:
+            returned = scoped_chain.lower()
+            selection["status"] = "matched" if selection["requested_chain"] == returned else "different"
+            selection["returned_chain"] = _ascii_safe(returned, 24)
+        else:
+            selection["status"] = "unresolved"
+        payload["network_selection"] = selection
+    return _disclosed(payload)
+
+
 async def liquidity(address, chain_hint=None):
     """Liquidity snapshot. Same validation and pool-picking logic as assess."""
     address = validate_address(address)
     _begin_request()
-    pairs, source = await _load_pairs(address, chain_hint)
+    selection = {}
+    requested = _canonical_chain(chain_hint)
+    if requested in _KNOWN_CHAINS:
+        selection["requested_chain"] = requested
+        compatible = (_validated_chain_pool_id(address, "solana") is not None
+                      if requested == "solana" else _looks_evm(address))
+        if not compatible:
+            selection["lookup"] = "incompatible_address"
+            chain_hint = None
+    pairs, source = await _load_pairs(address, chain_hint, liquidity_selection=selection)
     if pairs is None:
-        return _disclosed({"address": address, "status": "unavailable",
-                           "note": "Market data request failed. This does NOT mean the "
-                                   "token has no liquidity."})
+        note = ("The address format does not match the requested network. "
+                "No market estimate was available from the general listing."
+                if selection.get("lookup") == "incompatible_address" else
+                "Market data request failed. This does NOT mean the token has no liquidity.")
+        return _disclose_liquidity({"address": address, "status": "unavailable", "note": note}, selection)
     if not pairs:
-        return _disclosed({"address": address, "status": "not_found",
-                           "liquidity_usd": 0, "pairs_total": 0,
-                           "note": "No trading pair found for this address."})
+        return _disclose_liquidity({"address": address, "status": "not_found",
+                                    "liquidity_usd": 0, "pairs_total": 0,
+                                    "note": "No trading pair found for this address."}, selection)
     best = _pick_best(pairs, chain_hint=chain_hint, target=address)
     if best is None:
         # "not_found, liquidity_usd 0, pairs_total 3" -- three statements in one answer
@@ -5144,6 +5201,8 @@ async def liquidity(address, chain_hint=None):
         # pools, and it is the whole difference between "this token has no market" and "we
         # do not know how deep its market is".
         scope = _home_scope(pairs, chain_hint, address)
+        scope_chains = {p.get("chainId") for p in scope}
+        scoped_chain = next(iter(scope_chains)) if len(scope_chains) == 1 else None
         stated = [v for v in (_reported_liquidity(p) for p in scope) if v is not None]
         if stated and len(stated) == len(scope) and max(stated) <= 0 and not _only_unbacked_depth(scope):
             pool = _identified_drained_pool(pairs, scope, source, address, chain_hint)
@@ -5151,17 +5210,18 @@ async def liquidity(address, chain_hint=None):
                     "The USD liquidity estimates for %d pool%s in this market scope are zero. "
                     "No pool-specific provider zero is available for comparison."
                     % (len(stated), "" if len(stated) == 1 else "s"))
-            return _disclosed({"address": address, "status": "drained",
-                               "liquidity_usd": 0, "pairs_total": len(pairs), "note": note, **pool})
+            return _disclose_liquidity({"address": address, "status": "drained",
+                                        "liquidity_usd": 0, "pairs_total": len(pairs), "note": note, **pool},
+                                       selection, scoped_chain)
         if _only_unbacked_depth(scope):
-            return _disclosed({"address": address, "status": "unpriced",
-                               "liquidity_usd": None, "pairs_total": len(pairs),
-                               "note": _UNBACKED_NOTE})
-        return _disclosed({"address": address, "status": "unpriced",
-                           "liquidity_usd": None,
-                "pairs_total": len(pairs),
-                "note": "Pairs exist but none could be costed, so the depth is unknown. "
-                        "This is not a statement that the token has no liquidity."})
+            return _disclose_liquidity({"address": address, "status": "unpriced",
+                                        "liquidity_usd": None, "pairs_total": len(pairs),
+                                        "note": _UNBACKED_NOTE}, selection, scoped_chain)
+        return _disclose_liquidity({"address": address, "status": "unpriced",
+                                    "liquidity_usd": None, "pairs_total": len(pairs),
+                                    "note": "Pairs exist but none could be costed, so the depth is unknown. "
+                                            "This is not a statement that the token has no liquidity."},
+                                   selection, scoped_chain)
     payload = {
         "address": address, "status": "ok", "source": source,
         # Upstream names, escaped like every other upstream string that reaches a caller.
@@ -5186,7 +5246,7 @@ async def liquidity(address, chain_hint=None):
     if reserve_check is not None:
         payload["liquidity_reserve_check"] = reserve_check
         payload["note"] = _LIQUIDITY_RESERVE_NOTE
-    return _disclosed(payload)
+    return _disclose_liquidity(payload, selection, best.get("chainId"))
 
 
 def _pool_trade_activity(transactions):

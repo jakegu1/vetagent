@@ -330,6 +330,10 @@ TOOLS = [
             "pair count and the chains it trades on. Optional trade_activity reports buys plus sells "
             "in the last hour and the preceding five hours from that selected pool's raw integer counts. "
             "Missing counts are omitted; observed zeros remain zero.\n"
+            "chain_hint is a network preference. If only other networks appear in the initial "
+            "listing, VetAgent checks the requested network before returning another market. "
+            "When present, network_selection explains the requested lookup and returned scope. "
+            "A market from another network is reported separately from any requested-network change.\n"
             "For native change estimates, pass the previous comparison_context unchanged "
             "(or [] to start). The server selects the latest comparable client observation with "
             "the same token, chain, complete pool ID and provider, and separately discloses "
@@ -357,7 +361,7 @@ TOOLS = [
             "properties": {
                 "address": {"type": "string", "description": "Token contract address"},
                 "chain_hint": {"type": "string",
-                               "description": "Optional chain name; disambiguates forks that share addresses"},
+                               "description": "Optional network preference; inspect network_selection if returned."},
                 "comparison_context": _COMPARISON_CONTEXT_SCHEMA,
             },
             "required": ["address"],
@@ -373,6 +377,18 @@ TOOLS = [
                 "source": {"type": "string", "description": "Liquidity data provider, not the trading venue."},
                 "best_pair_chain": {"type": "string"},
                 "best_pair_dex": {"type": "string", "description": "Selected market's trading venue."},
+                "network_selection": {
+                    "type": "object",
+                    "description": "Requested network, actual market scope and outcome of the extra DexScreener lookup. "
+                                   "An empty listing differs from an unconfirmed lookup.",
+                    "required": ["requested_chain", "status", "lookup"],
+                    "properties": {
+                        "requested_chain": {"type": "string", "enum": list(liquidity_comparison._CHAINS)},
+                        "returned_chain": {"type": "string"},
+                        "status": {"type": "string", "enum": ["matched", "different", "unresolved"]},
+                        "lookup": {"type": "string", "enum": ["found", "empty", "unconfirmed", "incompatible_address"]},
+                    },
+                },
                 "best_pair_address": {
                     "type": "string",
                     "description": "Optional complete validated selected-pool ID on ok results: "
