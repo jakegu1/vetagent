@@ -3470,6 +3470,80 @@ def test_native_liquidity_roundtrip_selects_latest_comparable_source_and_reports
           result.get("reason") == "different_pool" and "change_usd" not in result)
 
 
+def test_liquidity_checks_the_requested_network_before_returning_another_market():
+    import test_risk as fixtures
+
+    eth = fixtures._t030_pair(796872, reserves=False)
+    bsc = fixtures._t030_pair(25000, reserves=False, chain="bsc")
+    address = eth["baseToken"]["address"]
+    bsc["pairAddress"] = "0x" + "bc" * 20
+    ds = fixtures._T083_DS + address
+    endpoint = "https://api.dexscreener.com/token-pairs/v1/"
+    wrong_target = copy.deepcopy(bsc)
+    wrong_target["baseToken"]["address"] = "0x" + "ee" * 20
+    base_routes = {endpoint + "ethereum/" + address: ("wrong_network", 200, [])}
+    for interface in ("http", "mcp"):
+        for hint, count, pair, status in (
+                ("bsc", 1, bsc, "ok"),
+                ("bnb", 30, bsc, "ok"),
+                ("bsc", 1, dict(bsc, liquidity={"usd": 0}), "drained"),
+                ("bsc", 1, dict(bsc, liquidity={}), "unpriced")):
+            routes = dict(base_routes)
+            routes[ds] = ("market", 200, {"pairs": [eth] * count})
+            routes[endpoint + "bsc/" + address] = ("bsc", 200, [eth, wrong_target, pair])
+            answer, calls, _, sleeps, _ = _t092_public_market(interface, "get_token_liquidity",
+                {"address": address, "chain_hint": hint}, routes)
+            check("the explicit network lookup comes first, even for a saturated wrong-chain listing",
+                  calls == ["market", "bsc"] and not sleeps, str(calls))
+            check("matching BSC rows determine status, amount and network despite other rows",
+                  answer.get("status") == status
+                  and answer.get("liquidity_usd") == {"ok": 25000, "drained": 0, "unpriced": None}[status]
+                  and answer.get("network_selection") == {
+                      "requested_chain": "bsc", "returned_chain": "bsc", "status": "matched", "lookup": "found"}
+                  and (status == "unpriced" or answer.get("best_pair_address") == bsc["pairAddress"]), str(answer))
+
+    for hint in (None, "ethereum", "unrecognized", "solana"):
+        answer, calls, _, _, _ = _t092_public_market("mcp", "get_token_liquidity",
+            {"address": address, "chain_hint": hint}, {ds: ("market", 200, {"pairs": [eth]})})
+        selection = {"requested_chain": "solana", "returned_chain": "ethereum", "status": "different",
+                     "lookup": "incompatible_address"} if hint == "solana" else None
+        check("Auto, exact match and unknown hints preserve request counts, and incompatible hints do not query",
+              answer.get("network_selection") == selection and calls == ["market"]
+              and answer.get("liquidity_usd") == 796872, str((answer, calls)))
+
+
+def test_liquidity_keeps_a_foreign_snapshot_without_turning_it_into_a_requested_network_change():
+    import test_risk as fixtures
+
+    eth = fixtures._t030_pair(796872, reserves=False)
+    address = eth["baseToken"]["address"]
+    ds = fixtures._T083_DS + address
+    url = "https://api.dexscreener.com/token-pairs/v1/bsc/" + address
+    baseline = {"address": address, "best_pair_chain": "ethereum", "best_pair_address": eth["pairAddress"],
+                "checked_at": "2026-11-22T12:00:00Z", "status": "ok", "liquidity_usd": 100, "source": "dexscreener"}
+    for label, code, body, cached, lookup in (
+            ("confirmed empty", 200, [], None, "empty"),
+            ("mixed unqualified rows", 200, [eth, None], None, "unconfirmed"),
+            ("unrecognized response shape", 200, {"pairs": []}, None, "unconfirmed"),
+            ("provider did not answer", 429, fixtures._T083_ERROR, None, "unconfirmed"),
+            ("stale empty fallback", 429, fixtures._T083_ERROR, ([], 300), "unconfirmed")):
+        routes = {ds: ("market", 200, {"pairs": [eth]}), url: ("bsc", code, body)}
+        args = {"address": address, "chain_hint": "bsc", "comparison_context": [baseline]}
+        with patch.object(risk, "_now_iso", return_value="2026-11-23T00:00:00Z"):
+            answer, calls, _, sleeps, _ = asyncio.run(fixtures._t083_mcp(
+                "get_token_liquidity", args, routes, {url: cached} if cached else None))
+        check(label + " keeps an Ethereum estimate and reports whether the BSC query was conclusive",
+              answer.get("status") == "ok" and answer.get("best_pair_chain") == "ethereum"
+              and answer.get("liquidity_usd") == 796872 and calls == ["market", "bsc"] and not sleeps
+              and answer.get("network_selection") == {
+                  "requested_chain": "bsc", "returned_chain": "ethereum", "status": "different", "lookup": lookup},
+              str((answer, calls)))
+        comparison = answer["comparison"]
+        check(label + " cannot compare or adopt the foreign snapshot as the selected-network baseline",
+              comparison.get("reason") == ("stale_response" if cached else "different_network")
+              and "change_usd" not in comparison and answer["comparison_context"] == [baseline], str(comparison))
+
+
 def test_real_worker_liquidity_rechecks_keep_a_reported_single_pool_zero():
     import test_risk as fixtures
     from liquidity_comparison import compare
@@ -3535,6 +3609,8 @@ def test_liquidity_drained_identity_refuses_ambiguous_or_derived_zero():
     )
     for name, rows, hint, status in variants:
         routes = {fixtures._T083_DS + address: ("market", 200, {"pairs": rows})}
+        if hint == "base":
+            routes["https://api.dexscreener.com/token-pairs/v1/base/" + address] = ("base", 200, [])
         answer, _, _, _, _ = _t092_public_market("mcp", "get_token_liquidity", dict(args, chain_hint=hint), routes)
         check(name + " retains its prior status without a new baseline or claimed pool identity",
               answer.get("status") == status and "best_pair_address" not in answer

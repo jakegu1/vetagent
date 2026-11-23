@@ -103,6 +103,21 @@ const cases = {
     assert.match(shown[10], /No pool-specific zero/i);
     assert.doesNotMatch(shown[10], /Current estimate: \$0|Estimated change:/);
   },
+  async 'another network is clearly labelled and its comparison is never rendered for the selected network'() {
+    for (const [lookup, message] of [['empty', /returned no pools for base/i],
+                                     ['unconfirmed', /could not confirm pools on base/i]]) {
+      const b = boot(), reply = plain(replies[2]);
+      const result = reply.result.structuredContent;
+      result.network_selection = {requested_chain: 'base', returned_chain: 'ethereum',
+        status: 'different', lookup};
+      result.best_pair_chain = 'ethereum';
+      b.click().resolve(reply); await tick();
+      assert.match(b.text(), /Market data below is for ethereum/i);
+      assert.match(b.text(), message);
+      assert.match(b.text(), /Estimate on ethereum: \$85,946,000/i);
+      assert.doesNotMatch(b.text(), /Estimated change:|Last comparable|366,200/);
+    }
+  },
   async 'clearing returns to the first-use target and reopening never queries automatically'() {
     const row = plain(replies[0].result.structuredContent.comparison_context[0]);
     const saved = new Map([[key, JSON.stringify([row])]]), b = boot(saved);
