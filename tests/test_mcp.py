@@ -3069,11 +3069,15 @@ def test_token2022_transfer_fee_preserves_each_period_and_exact_caps_at_public_r
         ("wrong period type and a readable high rate", period(5000, 900), [0, 0],
          [5000, None], [900, None], "critical"),
         ("omitted values", {"maximumFee": 0}, {"transferFeeBasisPoints": 0},
-         [None, 0], [0, None], "warn"),
+         [None, 0], [0, None], "info"),
         ("complete zero rates", period(0, None), period("0", None),
          [0, 0], [None, None], "info"),
         ("complete zero caps", period(5000, "0"), period(7500, 0),
          [5000, 7500], [0, 0], "info"),
+        ("different zero grounds", period(5000, 0), period(0, 500),
+         [5000, 0], [0, 500], "info"),
+        ("higher rate cannot charge", period(5000, 0), period(100, 500),
+         [5000, 100], [0, 500], "info"),
         ("20 percent boundary", period(2000, 1), period(500, 3), [2000, 500], [1, 3], "warn"),
         ("5 percent boundary", period(500, 1), period(0, 1), [500, 0], [1, 1], "info"),
     ]
@@ -3130,14 +3134,19 @@ def test_token2022_transfer_fee_preserves_each_period_and_exact_caps_at_public_r
             check(tag + " keeps the appropriate transfer-fee signal and existing request budget",
                   len(tax) == 1 and tax[0]["severity"] == severity and "simulat" not in detail
                   and calls == ["market", "search", "sell"] and not sleeps, str((tax, calls)))
-            if None in rates or (None in caps and any(rates)):
+            both_zero = all(rate == 0 or cap == 0 for rate, cap in zip(rates, caps))
+            if not both_zero and (None in rates or (None in caps and any(rates))):
                 check(tag + " incomplete evidence does not assert a live rate or a fee bound",
                       bool(detail) and "up to" not in detail and "no transfer pays" not in detail
                       and "measured at 0" not in detail
                       and ("rate" in detail if None in rates else "cap" in detail), detail)
-            if name in ("complete zero rates", "complete zero caps"):
+            if both_zero:
                 check(tag + " asserts zero only for the complete zero schedule",
                       "0.00%" in detail if name == "complete zero rates" else "no transfer pays" in detail, detail)
+            if name == "higher rate cannot charge":
+                check(tag + " grades only the 1% period that can charge",
+                      "1.00%" in detail and "capped at zero" in detail
+                      and "up to 50.00%" not in detail and "never binds" not in detail, detail)
 
 
 def _price_attribution_compare(name, address, chain, routes, expected, interface, verbose):
