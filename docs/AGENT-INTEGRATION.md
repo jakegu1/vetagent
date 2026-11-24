@@ -236,6 +236,14 @@ It does not establish that the discovered pool was simulated, a successful simul
 safety, or an exit for a particular wallet or amount. A failed simulation can still identify its venue; read
 `evidence.honeypot.simulation_success` separately.
 
+A completed general simulation can coexist with a warning from Honeypot.is's separate
+holder analysis. `evidence.honeypot.holder_analysis.holders` is the sample size.
+`failed` counts reported sell-test failures, while `siphoned` counts holders the
+provider flagged for possible unauthorized token transfers. `pool_link` describes
+the general simulation's venue. The holder counts give no separate pool attribution,
+and market sells record completed trades without verifying other wallets' exits.
+[Honeypot.is holder analysis](https://docs.honeypot.is/ishoneypot#holder-analysis)
+
 With `verbose=true`, `evidence.pool_link_details` gives the complete `market_pool` and
 `reported_pool` when available, along with their chains and any pool ID actually sent in the
 request. `policy_chain` is the

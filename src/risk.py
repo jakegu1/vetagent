@@ -633,22 +633,34 @@ def _validated_chain_pool_id(value, chain):
     return _validated_pool_id(value)
 
 
-def _sell_observation(evidence, data_gaps):
+def _sell_observation(evidence, data_gaps, *, include_holder=True):
     """Describe the adopted observation without extending it to a wallet or amount."""
     hp = evidence.get("honeypot") or {}
+    observations = []
+    # A gap in market corroboration leaves the verdict open independently of the simulation.
     if (hp.get("simulation_success") is True and not hp.get("simulation_error")
-            and not any(gap.get("dimension") == "sellability" for gap in data_gaps)):
+            and not any(gap.get("dimension") == "sellability" and gap.get("source") != "geckoterminal"
+                        for gap in data_gaps)):
         reported = "Honeypot.is reports a completed simulation"
         if evidence.get("pool_link") == "same":
-            return reported + " in the displayed pool."
-        if evidence.get("pool_link") == "different":
-            return reported + " in another pool. This simulation did not verify selling in the displayed pool."
-        if evidence.get("best_pair"):
-            return reported + ". Whether it simulated the displayed pool is unknown."
-        return reported + ". No displayed pool was identified."
-    if evidence.get("best_pair") and evidence.get("sellability_from_chain"):
+            observations.append(reported + " in the displayed pool.")
+        elif evidence.get("pool_link") == "different":
+            observations.append(reported + " in another pool. This simulation did not verify selling in the displayed pool.")
+        elif evidence.get("best_pair"):
+            observations.append(reported + ". Whether it simulated the displayed pool is unknown.")
+        else:
+            observations.append(reported + ". No displayed pool was identified.")
+    elif evidence.get("best_pair") and evidence.get("sellability_from_chain"):
         return "Market data reports past sells in the displayed pool. Your sale remains unverified."
-    return ""
+
+    sample = _holder_observation(hp.get("holder_analysis"))
+    if sample and include_holder:
+        observations.append(sample)
+    if "all_snipers_honeypot" in (hp.get("flags") or ()):
+        observations.append("Honeypot.is also reported a warning for sniper wallets.")
+    if sample or hp.get("is_honeypot") is True:
+        observations.append("Selling from your wallet remains unverified.")
+    return " ".join(observations)
 
 
 def _low_recommendation(evidence, observation=""):
@@ -1032,6 +1044,9 @@ def _finalize(address, signals, evidence, data_gaps):
             if worst_named:
                 result["recommendation"] += (" Separately, %s: %s"
                                              % (_driver_phrase(driver), worst_named["message"]))
+                if (worst_named["category"] == "honeypot"
+                        and (evidence.get("honeypot") or {}).get("is_honeypot") is True):
+                    observation = _sell_observation(evidence, data_gaps, include_holder=False)
     if level != "low" and observation:
         result["recommendation"] += " " + observation
     return result
@@ -2860,8 +2875,8 @@ def _sim_failed(hp):
 def _holder_analysis(hp):
     """honeypot.is's holder test as numbers, or None when it sent none.
 
-    `holders` is how many real holders it sampled and simulated a sell for, `failed` how
-    many could not sell, `siphoned` how many lost tokens to the contract on the way.
+    `holders` is the source's sample size. `failed` is its reported sell failures and
+    `siphoned` is its count flagged for possible unauthorized token transfers.
     """
     ha = hp.get("holderAnalysis") if isinstance(hp, dict) else None
     if not isinstance(ha, dict):
@@ -2948,17 +2963,17 @@ def _holder_share_band(ha, flags, sim_ok, sim):
     return None
 
 
-def _holder_phrase(ha):
-    """' (90 of the 3,689 holders it tested could not sell)', or '' when that is not known."""
+def _holder_observation(ha):
+    """Report the provider's holder findings independently of its general simulation."""
     if not ha or ha["holders"] <= 0 or (ha["failed"] <= 0 and ha["siphoned"] <= 0):
         return ""
-    parts = []
-    if ha["failed"] > 0:
-        parts.append("%s of the %s holders it tested could not sell"
-                     % (format(ha["failed"], ",d"), format(ha["holders"], ",d")))
+    count = format(ha["holders"], ",d")
+    detail = ("In a separate holder analysis, Honeypot.is reported failed sell tests for "
+              "%s of %s sampled holders." % (format(ha["failed"], ",d"), count))
     if ha["siphoned"] > 0:
-        parts.append("%s had tokens siphoned" % format(ha["siphoned"], ",d"))
-    return " (%s)" % "; ".join(parts)
+        detail += (" It flagged %s of %s sampled holders for possible unauthorized token transfers."
+                   % (format(ha["siphoned"], ",d"), count))
+    return detail
 
 
 def _sim_never_ran(hp):
@@ -3245,11 +3260,13 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None, issue=None):
     # slim-output budget in tests/test_mcp.py) to say what `is_honeypot: false` says.
     if ha is not None and (is_hp is True or ha["failed"] > 0 or ha["siphoned"] > 0):
         evidence["honeypot"]["holder_analysis"] = ha
-    flagged_by = _holder_phrase(ha)
-
     if is_hp is True:
         if issue:
             _sell_evidence_gap(signals, data_gaps, issue)
+        findings = "Honeypot.is flagged this token as a honeypot. "
+        sample = _holder_observation(ha)
+        if sample:
+            findings += sample + " "
         # Before relaying a honeypot verdict, check it against what the chain shows.
         #
         # A honeypot means sells fail. Measured: honeypot.is returned isHoneypot=true,
@@ -3320,9 +3337,8 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None, issue=None):
         if band != "fatal" and sells_work and sellers is None:
             evidence["honeypot"]["contested_unsettled"] = {
                 "sells_24h": bp.get("sells_24h"), "buys_24h": bp.get("buys_24h"),
-                "note": "Distinct sellers could not be counted, and without that count "
-                        "real exits cannot be told apart from one wallet trading with "
-                        "itself."}
+                "note": "The number of distinct sellers in the displayed pool could not be "
+                        "verified. The provider's warning remains unresolved."}
             data_gaps.append({"dimension": "sellability", "source": "geckoterminal",
                               "reason": _failed("coingecko", "geckoterminal").replace(
                                   _UPSTREAM_FAILED,
@@ -3331,11 +3347,10 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None, issue=None):
                                        "honeypot verdict"), 1)})
             signals.append(_sig(
                 "warn", "Honeypot verdict contested, not settled",
-                "honeypot.is reports a honeypot%s, while %s sells completed against %s "
-                "buys in the last 24h. Whether those sells came from many holders or from "
-                "one wallet trading with itself could not be checked, so neither side is "
-                "taken. Retrying shortly may settle it."
-                % (flagged_by, format(sells, ",.0f"), format(buys, ",.0f")), "honeypot"))
+                findings + "Market data reports %s sells and %s buys in the displayed pool "
+                "over the last 24 hours. The number of distinct sellers could not be verified. "
+                "The warning remains unresolved. Retrying shortly may resolve the missing count."
+                % (format(sells, ",.0f"), format(buys, ",.0f")), "honeypot"))
         elif sells_work and _num(sellers) < 10:
             sells_work = False      # many trades, few addresses: the wash-trading shape
         if band == "fatal":
@@ -3344,9 +3359,8 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None, issue=None):
             # blocks specific holders lets everyone else trade.
             signals.append(_sig(
                 "fatal", "Honeypot",
-                "honeypot.is reports a honeypot%s -- too large a share of the real holders it "
-                "tested to be a sampling accident, so sells by others do not clear it."
-                % flagged_by, "honeypot"))
+                findings + "The share of failed sells in the provider's sample meets the "
+                "threshold for a high-risk warning even when other sales are observed.", "honeypot"))
         elif sells_work and sellers is None:
             pass                    # contested and unsettled: recorded just above
         elif sells_work and band == "release" and not issue:
@@ -3355,45 +3369,44 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None, issue=None):
             # failures whatever the sample; this is that count on a large sample, not the
             # blacklist signature. Released, never silently: the numbers are in the sentence.
             signals.append(_sig(
-                "info", "Upstream honeypot flag released: the chain disagrees, and so do its holders",
-                "honeypot.is reports a honeypot%s, and %s sells from %s distinct sellers "
-                "completed in the last 24h. A share that small of that many tested holders is "
-                "within what healthy tokens show, so the flag is not treated as a trap; the "
-                "numbers are here so you can weigh it."
-                % (flagged_by, format(sells, ",.0f"), format(_num(sellers), ",.0f")),
+                "info", "Upstream honeypot warning reduced after evidence review",
+                findings + "Market data reports %s sells from %s distinct sellers in the displayed "
+                "pool over the last 24 hours. That activity and the low share of reported failures "
+                "meet the conditions for reducing the warning. Selling from your wallet remains unverified."
+                % (format(sells, ",.0f"), format(_num(sellers), ",.0f")),
                 "honeypot"))
             evidence["honeypot"]["contradicted_by_chain"] = {
                 "sells_24h": bp.get("sells_24h"), "buys_24h": bp.get("buys_24h"),
                 "sellers_24h": sellers, "liquidity_usd": bp.get("liquidity_usd"),
                 "downgraded_from": "fatal", "released_by_holder_share": True,
-                "note": "Released under DECISIONS E23: the Wilson upper bound of failed/tested "
-                        "holders is under 5% and the chain shows real exits."}
+                "note": "The Wilson upper bound on sampled sell failures is under 5%, and market "
+                        "data reports sales by distinct sellers. The warning was reduced under E23."}
         elif sells_work:
             signals.append(_sig(
-                "warn", "Upstream calls this a honeypot, the chain disagrees",
-                "honeypot.is reports a honeypot%s, but %s sells completed against %s buys "
-                "in the last 24h. Sells are going through, so not every holder is trapped; "
-                "a contract that blocks specific holders looks exactly like this. Treat "
-                "the token as unresolved, not as cleared."
-                % (flagged_by, format(sells, ",.0f"), format(buys, ",.0f")), "honeypot"))
+                "warn", "Honeypot warning remains unresolved",
+                findings + "Market data reports %s sells and %s buys in the displayed pool over "
+                "the last 24 hours. Those trades show some sales completed. Selling from other "
+                "wallets remains unverified."
+                % (format(sells, ",.0f"), format(buys, ",.0f")), "honeypot"))
             evidence["honeypot"]["contradicted_by_chain"] = {
                 "sells_24h": bp.get("sells_24h"), "buys_24h": bp.get("buys_24h"),
                 "liquidity_usd": bp.get("liquidity_usd"),
                 # Stated so a caller can weigh the override rather than inherit it. A
                 # downgrade a reader cannot see is a downgrade they cannot disagree with.
                 "downgraded_from": "fatal",
-                "note": "A contract that blocks specific holders can produce this "
-                        "pattern deliberately. Treat as unresolved, not as cleared."}
+                "note": "Market data reports completed sales in the displayed pool. The provider's "
+                        "warning remains unresolved for other wallets."}
         else:
             # "Simulation confirms it" is true only when the simulation is what failed.
             # When the fresh-address trade passed, the flag is the holder test's.
             sim_sell_failed = not issue and (sim_ok is not True or _num(sim.get("sellTax")) >= 50)
-            signals.append(_sig(
-                "fatal", "Honeypot",
-                "Simulation confirms it: you can buy, you cannot sell." if sim_sell_failed
-                else "honeypot.is reports a honeypot%s, and the chain shows no exits that "
-                     "contradict it." % flagged_by,
-                "honeypot"))
+            if sim_sell_failed and sim_ok is True:
+                reason = "Its simulation reported %.2f%% sell tax." % _num(sim.get("sellTax"))
+            elif sim_sell_failed:
+                reason = "The provider's buy/sell simulation did not complete."
+            else:
+                reason = "The observed market evidence did not meet the conditions for reducing this warning."
+            signals.append(_sig("fatal", "Honeypot", findings + reason, "honeypot"))
     elif sim_ok is False or is_hp is not False:
         # Deliberately NOT settled by completed sells, unlike the two branches above.
         #
