@@ -2685,6 +2685,83 @@ def test_sell_recommendation_names_only_the_adopted_simulation_scope():
                                   ("honeypot.is", "buy 0.0%", "sell 0.0%")), str(positive))
 
 
+def test_assessment_distinguishes_simulation_holder_findings_and_market_sells():
+    import test_risk as fixtures
+
+    same, other = "0x" + "a1" * 20, "0x" + "b2" * 20
+    cases = [
+        ("many failed tests", same, (3647, 530, 0), 8019, 0, (), "medium", "warn"),
+        ("possible balance anomalies", other, (278, 0, 7), 191, 0, (), "medium", "warn"),
+        ("both types of finding", same, (86, 1, 69), 30, 0, (), "medium", "warn"),
+        ("small sample", same, (5, 3, 0), 0, 0, (), "high", "fatal"),
+        ("targeted provider flag", same, (864, 12, 0), 153, 0, ("all_snipers_honeypot",), "medium", "warn"),
+        ("reported sell tax", same, None, 1, 71.67, (), "high", "fatal"),
+        ("absent pool scope", None, (39, 2, 0), 222, 0, (), "medium", "warn"),
+    ]
+    for label, pool, sample, sells, tax, flags, verdict, severity in cases:
+        pair = fixtures._t030_pair(250000, reserves=False)
+        pair["pairAddress"] = same
+        pair["txns"]["h24"] = {"buys": sells + 20, "sells": sells}
+        pair["traders"] = {"h24": {"sellers": min(sells, 18)}}
+        pair["baseToken"]["symbol"] = "SAME"
+        address = pair["baseToken"]["address"]
+        hp = fixtures._t092_report(pool)
+        hp["honeypotResult"]["isHoneypot"] = True
+        hp["simulationResult"]["sellTax"] = tax
+        hp["summary"]["flags"] = [{"flag": flag} for flag in flags]
+        if sample is not None:
+            holders, failed, flagged = sample
+            hp["holderAnalysis"] = {"holders": str(holders), "failed": str(failed), "siphoned": str(flagged)}
+        routes = _price_attribution_routes(address, "ethereum", [pair])
+        sell = "https://api.honeypot.is/v2/IsHoneypot?address=" + address + "&chainID=1"
+        routes[sell] = ("sell", 200, hp)
+        for interface in ("mcp", "http"):
+            for verbose in (False, True):
+                answer, calls, _, sleeps, _ = _t092_public_market(interface, "assess_token_risk",
+                    {"address": address, "chain_hint": "ethereum", "verbose": verbose}, routes)
+                tag = "%s %s/%s" % (label, interface, verbose)
+                evidence = answer["evidence"]
+                recommendation = answer["recommendation"].lower()
+                tax_signal = next(s for s in answer["signals"] if s["category"] == "honeypot")
+                note = evidence["honeypot"].get("contradicted_by_chain", {}).get("note", "")
+                check(tag + " preserves severity, risk and source calls",
+                      tax_signal["severity"] == severity and answer["risk_level"] == verdict
+                      and calls == ["market", "search", "sell"] and not sleeps, str((tax_signal, calls)))
+                scope = "in the displayed pool" if pool == same else (
+                    "did not verify selling in the displayed pool" if pool == other
+                    else "whether it simulated the displayed pool is unknown")
+                check(tag + " reports the simulation and preserves the wallet boundary",
+                      scope in recommendation and "completed simulation" in recommendation
+                      and "your wallet" in recommendation and "unverified" in recommendation, recommendation)
+                message = tax_signal["message"].lower()
+                combined = " ".join((recommendation, tax_signal["name"].lower(), message, note.lower()))
+                check(tag + " observations do not refute each other or make universal claims",
+                      all(phrase not in combined for phrase in ("chain disagrees", "you cannot sell", "were stolen",
+                          "had tokens siphoned", "verified for all holders", "no exits that contradict")), combined)
+                expected_sample = None if sample is None else {
+                    "holders": holders, "failed": failed, "siphoned": flagged}
+                check(tag + " preserves the structured holder record",
+                      evidence["honeypot"].get("holder_analysis") == expected_sample)
+                if sample is not None:
+                    count = "%s of %s" % (format(failed, ",d"), format(holders, ",d"))
+                    check(tag + " presents sampled sell failures separately from simulation and market scope",
+                          all("holder analysis" in text and count in text and "failed" in text
+                              for text in (recommendation, message))
+                          and "holder analysis in the displayed pool" not in combined, combined)
+                    if flagged:
+                        anomaly = "%s of %s" % (format(flagged, ",d"), format(holders, ",d"))
+                        check(tag + " possible unauthorized transfers are a separate provider finding",
+                              all(anomaly in text and "possible unauthorized token transfers" in text
+                                  for text in (recommendation, message)), combined)
+                if flags:
+                    check(tag + " targeted flag remains attributed to the provider",
+                          list(flags) == evidence["honeypot"]["flags"] and "sniper" in recommendation
+                          and "blacklist confirmed" not in combined, combined)
+                if tax:
+                    check(tag + " reports the observed sell tax instead of claiming no sale is possible",
+                          "71.67%" in message and "sell tax" in message, message)
+
+
 def test_sell_recommendation_distinguishes_selected_pool_history_and_missing_scope(reader=risk._fetch_json):
     import test_risk as fixtures
     for verbose in (False, True):
