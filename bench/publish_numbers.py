@@ -811,11 +811,11 @@ def figures():
              if r.get("liquidity_usd") is not None]) / 1000.0),
         "unknown_unbacked_n": "%d" % len([r for r in unknown if any(
             "priced in an asset" in str(g) for g in (r.get("gap_reasons") or []))]),
-        "pool_match_pct": ("%.0f" % (100.0 * pool_same / pool_both)
-                           if pool_both else "0"),
         "maturity": _maturity() or "0",
 
     }
+    if pool_both:
+        out["pool_match_pct"] = "%.0f" % (100.0 * pool_same / pool_both)
     # A separate, cheaper measurement, merged rather than recomputed here. Keys whose value
     # is None are dropped: a missing owner_powers.json must leave the figure UNGUARDED and
     # visibly so, not guarded against the string "None".
@@ -1199,11 +1199,10 @@ def _cannot_fix(entry):
 
 
 # The file each key that figures() can leave out is measured in, by the key's prefix:
-# production_* from _production_unknown_pct() and _production_window(), power_* from
-# _owner_power_figures(). Every other key is computed from bench/results.json, which main()
-# requires before it scans, so such a key is missing only when nothing computes it.
+# Production, owner-power and pool-match figures depend on usable measurements in these files.
 _MEASURED_IN = (("production_", "bench/production/verdicts.json"),
-                ("power_", "bench/owner_powers.json"))
+                ("power_", "bench/owner_powers.json"),
+                ("pool_match_", "bench/results.json"))
 
 
 def _advice(kind, entries):
