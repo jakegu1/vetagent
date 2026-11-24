@@ -2762,6 +2762,42 @@ def test_assessment_distinguishes_simulation_holder_findings_and_market_sells():
                           "71.67%" in message and "sell tax" in message, message)
 
 
+def test_unknown_assessment_distinguishes_failed_simulation_from_missing_market_corroboration():
+    import test_risk as fixtures
+
+    pool = "0x" + "cd" * 20
+    pair = fixtures._t030_pair(250000, reserves=False)
+    pair["pairAddress"] = pool
+    pair["txns"]["h24"] = {"buys": 200, "sells": 180}
+    pair["baseToken"]["symbol"] = "SAME"
+    address = pair["baseToken"]["address"]
+    sell = "https://api.honeypot.is/v2/IsHoneypot?address=" + address + "&chainID=1"
+    for simulated in (True, False):
+        market = copy.deepcopy(pair)
+        hp = fixtures._t092_report(pool)
+        hp["honeypotResult"]["isHoneypot"] = True
+        hp["holderAnalysis"] = {"holders": "100", "failed": "9", "siphoned": "0"}
+        routes = _price_attribution_routes(address, "ethereum", [market])
+        if simulated:
+            routes[fixtures._T083_GT + "eth/pools/" + pool] = ("sellers", 200, {"data": {"attributes": {}}})
+        else:
+            market["traders"] = {"h24": {"sellers": 60}}
+            hp.update(simulationSuccess=False, simulationError="execution reverted: HP: BUY_FAILED")
+            routes[sell + "&pair=" + pool] = ("retry", 404, {})
+        routes[sell] = ("sell", 200, hp)
+        for interface in ("mcp", "http"):
+            answer, calls, _, sleeps, _ = _t092_public_market(interface, "assess_token_risk",
+                {"address": address, "chain_hint": "ethereum"}, routes)
+            message = answer["recommendation"].lower()
+            check("unknown preserves sources and repeats the holder sample only once",
+                  answer["risk_level"] == "unknown" and message.count("9 of 100 sampled holders") == 1
+                  and "your wallet" in message and calls == ["market", "search", "sell",
+                                                               "sellers" if simulated else "retry"]
+                  and not sleeps, str((message, calls)))
+            check("a missing distinct-seller count does not suppress a known simulation result",
+                  ("completed simulation in the displayed pool" in message) is simulated, message)
+
+
 def test_sell_recommendation_distinguishes_selected_pool_history_and_missing_scope(reader=risk._fetch_json):
     import test_risk as fixtures
     for verbose in (False, True):

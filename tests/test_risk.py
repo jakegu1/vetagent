@@ -602,7 +602,7 @@ def test_chain_activity_overrules_a_honeypot_verdict():
           ha == {"holders": 3689, "failed": 90, "siphoned": 0}, str(ha))
     msg = " ".join(x["message"] for x in hp_sigs)
     check("the signal says how many tested holders could not sell",
-          "90 of the 3,689 holders" in msg, msg)
+          "failed sell tests for 90 of 3,689 sampled holders" in msg, msg)
     check("and does not call the flag a simulator false positive",
           "false positive" not in msg, msg)
 
@@ -615,7 +615,8 @@ def test_chain_activity_overrules_a_honeypot_verdict():
           str([(x["severity"], x["name"]) for x in hp2]))
     check("and that still reads high", r2["risk_level"] == "high", r2["risk_level"])
     check("  and it does not say a simulation confirmed what the holder test found",
-          "Simulation confirms" not in hp2[0]["message"] and "90 of the 3,689" in hp2[0]["message"],
+          "Simulation confirms" not in hp2[0]["message"]
+          and "failed sell tests for 90 of 3,689 sampled holders" in hp2[0]["message"],
           hp2[0]["message"] if hp2 else "no signal")
 
     # Sells happened, but the pool has since been drained. One benchmark token showed
@@ -2744,7 +2745,7 @@ def test_a_honeypot_flag_is_read_by_its_holder_share():
     check("a low share of many tested holders, settled by the chain, is released to info",
           sig and all(sv == "info" for sv, _, _ in sig), str(sig))
     check("  and the sentence gives the numbers",
-          sig and "90 of the 3,689 holders" in sig[0][2], str(sig))
+          sig and "failed sell tests for 90 of 3,689 sampled holders" in sig[0][2], str(sig))
     check("  and the release is recorded in the evidence",
           ((r["evidence"].get("honeypot") or {}).get("contradicted_by_chain") or {})
           .get("released_by_holder_share") is True,
@@ -2897,9 +2898,7 @@ def test_overturning_a_honeypot_verdict_needs_distinct_sellers():
         return run(risk.assess(WETH, chain_hint="ethereum"))
 
     def overridden(r):
-        # A downgrade, not a release: W44's `info` release also names the chain, so the
-        # severity is what tells them apart (E14 review of W44).
-        return any("chain disagrees" in x["name"] and x["severity"] == "warn"
+        return any(x["name"] == "Honeypot warning remains unresolved" and x["severity"] == "warn"
                    for x in r["signals"])
 
     # A pool too thin to matter buys nothing, whatever it claims.
@@ -2983,9 +2982,7 @@ def test_a_seller_count_nobody_took_cannot_overturn_a_honeypot():
         return run(risk.assess(WETH, chain_hint="ethereum"))
 
     def overridden(r):
-        # A downgrade, not a release: W44's `info` release also names the chain, so the
-        # severity is what tells them apart (E14 review of W44).
-        return any("chain disagrees" in x["name"] and x["severity"] == "warn"
+        return any(x["name"] == "Honeypot warning remains unresolved" and x["severity"] == "warn"
                    for x in r["signals"])
 
     r = verdict(None)
@@ -3991,7 +3988,8 @@ def test_the_override_can_fire_on_the_geckoterminal_path():
     check("the fallback carries trade counts", bp.get("sells_24h"), str(bp))
     check("and distinct sellers", bp.get("sellers_24h"), str(bp))
     check("so the override can fire",
-          any("chain disagrees" in x["name"] for x in r["signals"]),
+          any(x["name"] == "Honeypot warning remains unresolved" and x["severity"] == "warn"
+              for x in r["signals"]),
           str([(x["severity"], x["name"]) for x in r["signals"]]))
     check("and it is still never rated low", r["risk_level"] != "low", r["risk_level"])
 
@@ -5980,7 +5978,7 @@ def test_pool_identifier_contested_v4_verdict_uses_the_existing_bands():
     gaps = result["evidence"].get("data_gaps") or []
     check("V4 thirty sellers settle at medium", result["risk_level"] == "medium", result["risk_level"])
     check("V4 thirty sellers produce the existing contested warning",
-          any(s["severity"] == "warn" and s["name"] == "Upstream calls this a honeypot, the chain disagrees"
+          any(s["severity"] == "warn" and s["name"] == "Honeypot warning remains unresolved"
               for s in hp), str(hp))
     check("V4 settled count removes the distinct-seller gap",
           not any("distinct-seller" in g.get("reason", "") for g in gaps), str(gaps))
@@ -6000,7 +5998,8 @@ def test_pool_identifier_contested_v4_verdict_uses_the_existing_bands():
     release = ((result["evidence"].get("honeypot") or {}).get("contradicted_by_chain") or {})
     check("V4 low holder share is released to info", hp and all(s["severity"] == "info" for s in hp), str(hp))
     check("V4 release sentence retains its measured holder and seller counts",
-          hp and "4 of the 688 holders" in hp[0]["message"] and "117 distinct sellers" in hp[0]["message"], str(hp))
+          hp and "failed sell tests for 4 of 688 sampled holders" in hp[0]["message"]
+          and "117 distinct sellers" in hp[0]["message"], str(hp))
     check("V4 holder-share release is recorded", release.get("released_by_holder_share") is True, str(release))
     check("V4 holder-share release is no longer unknown", result["risk_level"] != "unknown", result["risk_level"])
 
