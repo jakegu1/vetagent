@@ -682,6 +682,32 @@ def test_the_pages_a_directory_asks_for_exist():
           "not financial advice" in r.body.lower())
 
 
+def test_dead_outcome_copy_describes_assessed_pool_liquidity_without_promising_sales():
+    import json
+    import re
+
+    worker = entry.Default()
+    landing = asyncio.run(worker.fetch(FakeRequest("https://vetagent.dev/")))
+    scripts = re.finditer(r'<script type="application/ld\+json">\s*(.*?)\s*</script>', landing.body, re.S)
+    structured = next(script for script in scripts if json.loads(script[1])["@type"] == "FAQPage")
+    faq = next(question["acceptedAnswer"]["text"]
+               for question in json.loads(structured[1])["mainEntity"] if "accurate" in question["name"].lower())
+    visible = landing.body[:structured.start()] + landing.body[structured.end():]
+    surfaces = {"visible FAQ": visible, "FAQPage": faq}
+    for path in ("/llms.txt", "/llms-full.txt"):
+        response = asyncio.run(worker.fetch(FakeRequest("https://vetagent.dev" + path)))
+        check(path + " still returns its public representation", response.status == 200)
+        surfaces[path] = response.body
+    for name, body in surfaces.items():
+        text = " ".join(body.lower().split())
+        check(name + " reports historical price and volume and scopes selling evidence",
+              "price and volume" in text and "wallet" in text and "amount" in text
+              and all(phrase not in text for phrase in ("positions can still be sold", "liquidity can still be sold")))
+        if name != "FAQPage":
+            check(name + " attributes counted liquidity to assessed pools",
+                  re.search(r"\b\d+ of the \d+\b[^.]*\$5,000[^.]*assessed pool", text) is not None)
+
+
 def test_search_engines_are_told_what_to_index():
     """The site was not in the search index at all, and nothing told an engine it existed.
 

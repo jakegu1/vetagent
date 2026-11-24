@@ -774,6 +774,70 @@ def test_amendment_c_valid_explicit_https_ports_remain_fillable():
               fetcher.benchmark_stats()["replay"]["requests"] == 0)
 
 
+def test_generated_disagreements_preserve_complete_pool_scope_and_label_basis():
+    import publish_numbers
+
+    pool = "0x" + "ab" * 32
+    adjacent = pool[:-2] + "cd"
+    base58 = "BqnpCdDLPV2pFdAaLnVidmn3G93RP2p5oRdGEY2sJGez"
+    cases = [
+        ("SAME", "base", pool, "base", "0x" + pool[2:].upper(), "Same pool"),
+        ("DIFFERENT", "base", pool, "base", adjacent, "Different pools"),
+        ("TRUNCATED", "base", pool, "base", None, "Unknown pool relationship"),
+        ("FOREIGN", "bsc", pool, "ethereum", pool, "Different chains"),
+        ("BADLABEL", "base", pool + "_curve", "base", pool, "Unknown pool relationship"),
+        ("MISSINGCHAIN", "base", pool, None, pool, "Unknown pool relationship"),
+        ("SOLANA", "solana", base58, "solana", base58, "Same pool"),
+        ("SOLANACASE", "solana", base58, "solana", base58[0] + base58[1].upper() + base58[2:], "Different pools"),
+    ]
+    tokens = synthetic_tokens(len(cases) + 1)
+    evidence = {}
+    for token, (name, labelled_chain, labelled, chain, complete, _) in zip(tokens, cases):
+        token.update(symbol=name, chain=labelled_chain, pool=labelled, outcome_label="dead")
+        evidence[token["address"]] = {"pair_address": pool[:48] + "...", "pool_id": complete,
+                                      "chain": chain, "liquidity_usd": 5000}
+    tokens[0]["goplus_label"] = "unsafe"
+    tokens[-1].update(goplus_label="safe", outcome_label="alive")
+
+    async def assessor(address, chain, verbose):
+        assert verbose
+        weak = address in evidence
+        return {"risk_level": "low" if weak else "high", "risk_score": 0 if weak else 100,
+                "confidence": "high", "signals": [], "evidence": {"best_pair": evidence.get(address, {})}}
+
+    with sandbox(tokens) as temp, patch.object(risk, "assess", assessor):
+        status, stats, output = call_main(["--replay"])
+        check("T108 normal replay emits both reports without network or cache misses",
+              status == 0 and stats.get("replay", {}).get("requests") == 0, output)
+        report = json.loads((temp / "results.json").read_text(encoding="utf-8"))
+        markdown = (temp / "results.md").read_text(encoding="utf-8")
+        lines = [line for line in markdown.splitlines() if line.startswith("|")]
+        for token, row, (_, _, labelled, chain, complete, relation) in zip(tokens, report["rows"], cases):
+            name = token["symbol"]
+            matches = [line for line in lines if "`%s`" % name in line and "outcome=dead" in line]
+            check(name + " compares only complete chain-scoped identities in the outcome row",
+                  len(matches) == 1 and relation in matches[0] and "Retrospective pool price and volume" in matches[0],
+                  str(matches))
+            check(name + " preserves the exact source identity alongside legacy display fields",
+                  row.get("engine_pool_id") == complete and row.get("engine_chain") == chain
+                  and row["engine_pool"] == pool[:48] + "..." and row["labelled_pool"] == labelled, str(row))
+        check("GoPlus keeps its independent contract basis in the same token's second row",
+              any("`SAME`" in line and "goplus=unsafe" in line and "Contract-level label" in line
+                  and "Retrospective pool" not in line for line in lines))
+        check("disagreement membership, counts and original false-negative sort survive",
+              len(report["disagreements"]) == len(cases) + 3
+              and [d["kind"] for d in report["disagreements"]]
+              == ["false negative"] * (len(cases) + 1) + ["false positive"] * 2)
+        check("aggregate same-pool denominator includes only verified comparisons",
+              "**2 of 5**" in markdown and "4 unknown" in markdown, markdown[-950:])
+        with patch.object(publish_numbers, "RESULTS", str(temp / "results.json")):
+            check("published mirror derives the same verified 40 percent",
+                  publish_numbers.figures()["pool_match_pct"] == "40")
+        check("retrospective labels and liquidity observations carry no promised sale",
+              all(phrase not in markdown for phrase in ("Those positions can be sold",
+                  "whether you can still get out safely today", "A pool that already died has liquidity")))
+
+
 def main():
     started = time.monotonic()
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
