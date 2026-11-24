@@ -123,7 +123,7 @@ first would be the flattering half of a pair.
   out and the build fails if the engine ever reads it. What is true is subtler and worse
   for me — both it and one of my upstreams simulate sells, so the correlation pushes that
   5.7% **down**, not up. At this sample size my own report calls the two indistinguishable.
-- **The label and the verdict describe the same pool only 55% of the time.**
+- **The sampled and assessed pools match in 60% of benchmark rows with two verified pool identities.**
 - **`unknown` is a design choice and also a dependency.** Fail-closed is real: a check that
   cannot run must never read as low risk. But 95 of the 119 unknowns are one free upstream
   either not having indexed the token or its simulation reverting, on tokens with a median

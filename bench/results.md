@@ -12,7 +12,7 @@ Labels use **none of the endpoints the engine reads** — otherwise this would m
 
 | | Label source | Read by the engine? |
 |---|---|---|
-| `outcome` | GeckoTerminal daily OHLCV history (price + volume) | No, the engine only sees the current snapshot |
+| `outcome` | GeckoTerminal daily OHLCV history (price + volume) | No, the engine uses market snapshots |
 | `goplus` | GoPlus token_security | No, deliberately held back as a labeller |
 
 **Runtime assertion**: engine endpoints ∩ labeller endpoints = ∅. If that fails, the benchmark declares itself invalid and exits non-zero. This run: **passed**.
@@ -157,12 +157,16 @@ This bucket answers one question: **does the engine paint them all as high risk.
 Examples: HYDX(low), CP(unknown), TOSHE(medium), Onyxcoin XCN Kendu(high), SAGE Free(medium), Core Keeper Overnight(medium), VIRTUAL(low), Crypto Carbon Verse(high), ?(medium), BIO(low)
 
 
-### Are the label and the verdict about the same pool?
+### Are the sampled pool and the assessed pool the same?
 
-The label describes one sampled pool; the engine picks its own. The pool the engine actually **judged** is the labelled one on **288 of 524** rows where both are known (55%).
+The dataset samples one pool, while the engine selects its own market.
+
+The pools match on **313 of 521** rows with two verified identities on known chains (60%).
+
+Scope across all rows: 313 same, 208 different, 55 unknown. Unknown includes missing or unverifiable pool IDs or chains.
 
 
-That is a stricter question than the one an external audit measured. It found the labelled pool was among the pairs the engine *loaded* 84% of the time. Loading it and choosing it are different: the engine ranks by chain canonicality and depth and then judges a single pool, so it can hold the labelled pool in hand and still return a verdict about another venue. Both numbers are true; this is the one that governs whether a disagreement is a like-for-like comparison.
+That is a stricter question than the one an external audit measured. It found the labelled pool was among the pairs the engine *loaded* 84% of the time. Loading it and choosing it are different: the engine ranks by chain canonicality and depth and then judges a single pool, so it can hold the labelled pool in hand and still return a verdict about another venue. Both measurements describe venue coverage. A like-for-like outcome comparison also requires compatible observation times.
 
 
 On the rest, a disagreement is not necessarily an engine error -- it can be the engine judging a different venue than the one the label was computed from. No corrected false-positive rate is offered here: an attempt to produce one did not survive checking the individual rows. What is supported is that the headline rate mixes at least three kinds of disagreement, and this is how much of it is not a like-for-like comparison.
@@ -230,31 +234,31 @@ A recall figure describes a population, and this one's population is what three 
 
 ## Disagreements (need manual review)
 
-Samples where the label and the engine disagree. Read the **false negatives** (label says dangerous, engine says low) first — each one may be a real defect. The **false positives** (label says safe, engine says high) matter too; they destroy user trust outright.
+Rows retain their original benchmark counts and order. An outcome disagreement compares historical price and volume in the sampled pool with a snapshot-based assessment. Even a same-pool row does not measure whether the engine warned before the decline. A GoPlus disagreement compares a recorded contract label independently of the sampled pool's market outcome.
 
 
-| Type | Token | Chain | Label | Engine verdict | Ablated | Driving signal |
-|---|---|---|---|---|---|---|
-| false negative | `GITLAWB` | base | outcome=dead | low | low | — |
-| false negative | `CLAWNCH` | base | outcome=dead | low | low | — |
-| false negative | `MOLT` | base | outcome=dead | low | low | — |
-| false negative | `SURGE` | base | outcome=dead | low | low | — |
-| false positive | `BSTER` | base | goplus=safe | high | high | honeypot |
-| false positive | `LIBRA` | base | outcome=alive | high | high | honeypot |
-| false positive | `TRUMP` | base | outcome=alive | high | high | honeypot |
-| false positive | `\u725b\u6765` | base | goplus=safe | high | unknown | liquidity |
-| false positive | `QuintondeKock_BASE` | base | goplus=safe | high | unknown | no_liquidity |
-| false positive | `$NVDAC` | base | goplus=safe | high | high | honeypot |
-| false positive | `ROBOTMONEY` | base | goplus=safe | high | high | honeypot |
-| false positive | `FRAME` | base | goplus=safe | high | high | honeypot |
-| false positive | `USI` | base | goplus=safe | high | high | honeypot |
-| false positive | `HYPER` | base | goplus=safe | high | high | honeypot |
-| false positive | `BONKO` | base | goplus=safe | high | high | honeypot |
-| false positive | `BURN` | base | goplus=safe | high | unknown | no_liquidity |
-| false positive | `TORIVA` | base | goplus=safe | high | high | honeypot |
-| false positive | `TREB` | base | goplus=safe | high | high | honeypot |
-| false positive | `\u6211\u7684\u5973\u53cb\u666f\u751c` | base | goplus=safe | high | unknown | liquidity |
-| false positive | `CLAWD` | base | goplus=safe | high | unknown | impersonation |
+| Type | Token | Label chain | Label | Comparison scope | Label evidence | Engine verdict | Ablated | Driving signal |
+|---|---|---|---|---|---|---|---|---|
+| Outcome disagreement | `GITLAWB` | base | outcome=dead | Same pool | Retrospective pool price and volume | low | low | — |
+| Outcome disagreement | `CLAWNCH` | base | outcome=dead | Different pools | Retrospective pool price and volume | low | low | — |
+| Outcome disagreement | `MOLT` | base | outcome=dead | Different pools | Retrospective pool price and volume | low | low | — |
+| Outcome disagreement | `SURGE` | base | outcome=dead | Same pool | Retrospective pool price and volume | low | low | — |
+| Contract disagreement | `BSTER` | base | goplus=safe | Contract-level label | Recorded GoPlus response | high | high | honeypot |
+| Outcome disagreement | `LIBRA` | base | outcome=alive | Unknown pool relationship | Retrospective pool price and volume | high | high | honeypot |
+| Outcome disagreement | `TRUMP` | base | outcome=alive | Unknown pool relationship | Retrospective pool price and volume | high | high | honeypot |
+| Contract disagreement | `\u725b\u6765` | base | goplus=safe | Contract-level label | Recorded GoPlus response | high | unknown | liquidity |
+| Contract disagreement | `QuintondeKock_BASE` | base | goplus=safe | Contract-level label | Recorded GoPlus response | high | unknown | no_liquidity |
+| Contract disagreement | `$NVDAC` | base | goplus=safe | Contract-level label | Recorded GoPlus response | high | high | honeypot |
+| Contract disagreement | `ROBOTMONEY` | base | goplus=safe | Contract-level label | Recorded GoPlus response | high | high | honeypot |
+| Contract disagreement | `FRAME` | base | goplus=safe | Contract-level label | Recorded GoPlus response | high | high | honeypot |
+| Contract disagreement | `USI` | base | goplus=safe | Contract-level label | Recorded GoPlus response | high | high | honeypot |
+| Contract disagreement | `HYPER` | base | goplus=safe | Contract-level label | Recorded GoPlus response | high | high | honeypot |
+| Contract disagreement | `BONKO` | base | goplus=safe | Contract-level label | Recorded GoPlus response | high | high | honeypot |
+| Contract disagreement | `BURN` | base | goplus=safe | Contract-level label | Recorded GoPlus response | high | unknown | no_liquidity |
+| Contract disagreement | `TORIVA` | base | goplus=safe | Contract-level label | Recorded GoPlus response | high | high | honeypot |
+| Contract disagreement | `TREB` | base | goplus=safe | Contract-level label | Recorded GoPlus response | high | high | honeypot |
+| Contract disagreement | `\u6211\u7684\u5973\u53cb\u666f\u751c` | base | goplus=safe | Contract-level label | Recorded GoPlus response | high | unknown | liquidity |
+| Contract disagreement | `CLAWD` | base | goplus=safe | Contract-level label | Recorded GoPlus response | high | unknown | impersonation |
 
 (7 more in `results.json`)
 
@@ -275,10 +279,7 @@ They stay in the headline rate anyway. A tool that subtracts its disagreements w
 
 ## Reading the `dead` recall figure
 
-**`dead` is a market outcome; the engine scores a safety property.** They overlap and they are not the same, and until the cohort was big enough to look at, that difference was invisible.
-
-
-The label means a project died -- price collapsed, volume collapsed. It does **not** say the position is trapped, and measured on this set, usually it is not:
+The `dead` label describes price and volume decline in the sampled pool. The table summarizes liquidity estimates for the markets the engine assessed. A particular sale requires separate execution evidence.
 
 
 | | n | min | p25 | median | p75 | max |
@@ -286,13 +287,13 @@ The label means a project died -- price collapsed, volume collapsed. It does **n
 | liquidity, `dead` | 20 | $2 | $2,193 | $11,789 | $65,486 | $436,531 |
 | liquidity, `alive` | 156 | $1 | $152,764 | $494,501 | $1,975,020 | $127,451,000 |
 
-13 of the 30 dead tokens still hold $5,000 or more of liquidity. Those positions can be sold. An engine that rated them `high` would be calling a failed investment a safety hazard, which is a judgement this tool refuses to make (P1 in DECISIONS.md) -- so `medium` with an abandoned-pool warning is the intended answer, not a miss.
+13 of the 30 assessments with a dead outcome label recorded at least $5,000 in estimated liquidity in the assessed pool. The outcome label describes the sampled pool, which may be a different market. Verifying a sale in a specific pool, from a particular wallet, or for a particular amount requires separate evidence.
 
 
-**What the number should be read against**: of 30 dead tokens, 26 are rated something other than `low`. The remainder is the real finding.
+Of 30 cases with a dead outcome label, 26 received a verdict other than `low`. The disagreements table gives the comparison scope for the remaining cases.
 
 
-**The limit this exposes.** The engine scores the current snapshot and has no price history, so a token whose price is down 99% from a peak it cannot see looks like a quiet pool with working sells. Turnover cannot substitute: at the current 2% threshold it catches roughly half the dead cohort at a cost of several percent of the live one, and loosening it doubles that cost for a few more points.
+**The limit this exposes.** The engine scores a market snapshot without the label's daily price history, so a token whose price is down 99% from a peak it cannot see looks like a quiet pool with working sells. Turnover cannot substitute: at the current 2% threshold it catches roughly half the dead cohort at a cost of several percent of the live one, and loosening it doubles that cost for a few more points.
 
 
 The history that would catch it is GeckoTerminal daily OHLCV -- the exact series the `outcome` label is computed from. Wiring it into the engine would buy drawdown detection and simultaneously void this column as an independent measurement. That is a live trade-off, not an oversight, and it is recorded as an open decision rather than settled quietly.
@@ -300,9 +301,9 @@ The history that would catch it is GeckoTerminal daily OHLCV -- the exact series
 
 ## What this benchmark does not measure
 
-1. **Whether it warns you in time.** The engine scores the current state, and the `dead` label is retrospective. A pool that already died has liquidity ≈ 0 now, so calling it high is close to a tautology — that is what the ablation column is for. Answering 'would it have warned me before I bought' needs historical state replayed point-in-time, and the upstream security APIs don't serve history.
+1. **Whether it warns you in time.** The engine scores a market snapshot, and the `dead` label is retrospective. Some assessed pools were already drained by the market snapshot. The contract-only column removes that liquidity evidence. Answering 'would it have warned me before I bought' needs historical state replayed point-in-time, and the upstream security APIs don't serve history.
 
-2. **`dead` ≠ scam.** Legitimate projects die too. This label answers whether you can still get out safely today.
+2. **Whether a specific sale will work.** The `dead` label measures historical price drawdown and volume collapse in the sampled pool. A particular sale requires its own execution evidence.
 
 3. **GoPlus and honeypot.is may be correlated.** Both simulate buys and sells, so the `goplus` column flatters the engine. The `outcome` column doesn't have that problem.
 
