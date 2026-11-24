@@ -229,6 +229,26 @@ _ASSESS_OUTPUT_SCHEMA = {
                                            "available in compact and verbose replies. EVM IDs are "
                                            "20 or 32 bytes; Solana IDs decode to 32 bytes and retain case."},
             }},
+            "token2022": {"type": "object", "properties": {
+                "transfer_fee_bps": {
+                    "type": "array", "minItems": 2, "maxItems": 2,
+                    "items": {"type": ["integer", "null"], "minimum": 0, "maximum": 10000},
+                    "description": "Reported Token-2022 rates in basis points, older then newer. "
+                                   "Null means unreadable. The active period is not established.",
+                },
+                "transfer_fee_max_raw_exact": {
+                    "type": "array", "minItems": 2, "maxItems": 2,
+                    "items": {"type": ["string", "null"], "pattern": "^(0|[1-9][0-9]{0,19})$"},
+                    "description": "Exact u64 caps in smallest token units, older then newer, as "
+                                   "decimal strings. Null means unreadable. Prefer these strings "
+                                   "in clients that cannot represent all u64 values as numbers.",
+                },
+                "transfer_fee_max_raw": {
+                    "type": "array", "minItems": 2, "maxItems": 2,
+                    "items": {"type": "integer", "minimum": 0},
+                    "description": "Legacy numeric caps, older then newer, present only when both are readable.",
+                },
+            }},
             "owner_powers": _OWNER_POWERS_SCHEMA,
             "pool_link": {"type": "string", "enum": ["same", "different", "unknown"],
                            "description": "Correspondence between the final displayed market and the "

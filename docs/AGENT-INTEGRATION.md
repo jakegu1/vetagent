@@ -209,6 +209,16 @@ absent; do not fill them with empty matches or infer a successful permission che
 Continue to consume the returned verdict and signals; an informational signal can
 contribute to the existing score.
 
+### Solana Token-2022 transfer fees
+
+When RugCheck reports a transfer-fee configuration, `evidence.token2022` lists the
+older and newer periods in that order. `transfer_fee_bps` contains the reported rates
+in basis points. `transfer_fee_max_raw_exact` contains the caps in smallest token
+units as decimal strings. Read these strings with `BigInt` in JavaScript when exact
+amounts matter. A `null` entry means the report did not establish that value for the
+period. The legacy numeric `transfer_fee_max_raw` is present when both caps are readable.
+The schedule does not establish which period is active or what a specific sale would pay.
+
 ### Market and simulation pool correspondence
 
 When the final displayed market has a verifiable identity on a supported chain,
