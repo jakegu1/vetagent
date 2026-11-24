@@ -577,6 +577,50 @@ def check_check_mode_names_what_is_not_measured():
 
 
 @recorded
+def check_pool_match_without_a_denominator_cannot_be_published_as_zero():
+    from unittest.mock import patch
+
+    with io.open(publish_numbers.RESULTS, encoding="utf-8") as source:
+        report = json.load(source)
+    for row in report["rows"]:
+        row.pop("engine_chain", None)
+        row.pop("engine_pool_id", None)
+
+    def run(tmp):
+        figure = target(EXPERIMENT_C, "pool_match_pct")
+        source = os.path.join(tmp, "benchmark-for-pool-match.json")
+        mirror = os.path.join(tmp, EXPERIMENT_C)
+        with io.open(mirror, encoding="utf-8") as f:
+            starting_copy = f.read()
+        with patch.object(publish_numbers, "RESULTS", source):
+            with io.open(source, "w", encoding="utf-8") as f:
+                json.dump(report, f)
+            check_status, check_out = run_main()
+            write_status, write_out = run_main("--write")
+            check("a legacy report without identities fails both publication modes as not measured",
+                  check_status == write_status == 1 and
+                  all("not measured (pool_match_pct)" in out for out in (check_out, write_out)),
+                  tail(write_out))
+            with io.open(mirror, encoding="utf-8") as f:
+                check("writing cannot replace an old pool percentage with an invented zero",
+                      f.read() == starting_copy)
+            with io.open(mirror, "w", encoding="utf-8") as f:
+                f.write(starting_copy)
+
+            paired = next(row for row in report["rows"] if row["chain"] == "base"
+                          and re.fullmatch(r"0x[0-9a-f]{40}", row.get("labelled_pool") or ""))
+            distinct = "0x" + "cd" * 20
+            assert distinct != paired["labelled_pool"]
+            paired.update(engine_pool_id=distinct, engine_chain="base")
+            with io.open(source, "w", encoding="utf-8") as f:
+                json.dump(report, f)
+            status, out = run_main("--write")
+            check("a verified different pool gives a measurable zero percent",
+                  status == 0 and published(tmp, figure) == "0", tail(out))
+    in_a_copy(run)
+
+
+@recorded
 def check_write_returns_0_when_it_fixed_everything():
     print("\n[--write] one stale figure, which --write can rewrite")
 
