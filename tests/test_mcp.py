@@ -3045,6 +3045,101 @@ def _price_attribution_routes(address, chain, rows, fallback=False):
     return routes
 
 
+def test_token2022_transfer_fee_preserves_each_period_and_exact_caps_at_public_routes():
+    import test_risk as fixtures
+
+    u64_max = 2**64 - 1
+
+    def period(rate, cap):
+        return {"transferFeeBasisPoints": rate, "maximumFee": cap}
+
+    bern = _load("rc_bern.json")
+    report_fee = bern["token_extensions"]["transferFeeConfig"]
+    cases = [
+        ("recorded BERN", report_fee["olderTransferFee"], report_fee["newerTransferFee"],
+         [420, 269], [3906250000000000000] * 2, "info"),
+        ("full u64 and exact decimal string", period(10000, u64_max), period("501", str(2**53 + 1)),
+         [10000, 501], [u64_max, 2**53 + 1], "critical"),
+        ("invalid cap and a zero cap", period(5000, "missing"), period(5000, 0),
+         [5000, 5000], [None, 0], "critical"),
+        ("invalid rate and a zero rate", period("missing", 100), period(0, 0),
+         [None, 0], [100, 0], "warn"),
+        ("omitted period and readable high rate", None, period(5000, 900),
+         [None, 5000], [None, 900], "critical"),
+        ("wrong period type and a readable high rate", period(5000, 900), [0, 0],
+         [5000, None], [900, None], "critical"),
+        ("omitted values", {"maximumFee": 0}, {"transferFeeBasisPoints": 0},
+         [None, 0], [0, None], "warn"),
+        ("complete zero rates", period(0, None), period("0", None),
+         [0, 0], [None, None], "info"),
+        ("complete zero caps", period(5000, "0"), period(7500, 0),
+         [5000, 7500], [0, 0], "info"),
+        ("20 percent boundary", period(2000, 1), period(500, 3), [2000, 500], [1, 3], "warn"),
+        ("5 percent boundary", period(500, 1), period(0, 1), [500, 0], [1, 1], "info"),
+    ]
+    for invalid in (True, -1, 1.5, 10001, "10001", "0.0", "1e-5000", float("inf"), float("nan")):
+        cases.append(("invalid basis points %r" % invalid, period(invalid, 100), period(5000, 100),
+                      [None, 5000], [100, 100], "critical"))
+    for invalid in (True, -1, 1.5, 2**64, str(2**64), "9" * 50, "0.0", "1e-5000", float("inf"), float("nan")):
+        cases.append(("invalid cap %r" % invalid, period(5000, 0), period(5000, invalid),
+                      [5000, 5000], [0, None], "critical"))
+
+    bonk_rows = _load("ds_bonk.json")["pairs"]
+    bern_row = copy.deepcopy(bonk_rows[0])
+    bern_row["baseToken"]["address"] = fixtures.BERN
+    bern_row["baseToken"]["symbol"] = "SAME"
+    for interface, verbose in (("mcp", False), ("mcp", True), ("http", False), ("http", True)):
+        bonk_routes = _price_attribution_routes(fixtures.BONK, "solana", bonk_rows)
+        bonk_routes["https://api.dexscreener.com/latest/dex/search?q=Bonk"] = ("search", 200, {"pairs": []})
+        bonk, calls, _, sleeps, _ = _t092_public_market(interface, "assess_token_risk",
+            {"address": fixtures.BONK, "chain_hint": "solana", "verbose": verbose}, bonk_routes)
+        check("T106 ordinary BONK makes no transfer-fee claim or extra request",
+              not any(s["category"] == "sell_tax" for s in bonk.get("signals", []))
+              and "transfer_fee_bps" not in bonk.get("evidence", {}).get("token2022", {})
+              and calls == ["market", "search", "sell"] and not sleeps, str(calls))
+
+        for name, older, newer, rates, caps, severity in cases:
+            report = copy.deepcopy(bern)
+            config = report["token_extensions"]["transferFeeConfig"]
+            for key, value in (("olderTransferFee", older), ("newerTransferFee", newer)):
+                if value is None:
+                    config.pop(key)
+                else:
+                    config[key] = value
+            routes = _price_attribution_routes(fixtures.BERN, "solana", [bern_row])
+            routes["https://api.rugcheck.xyz/v1/tokens/" + fixtures.BERN + "/report"] = ("sell", 200, report)
+            tag = "T106 %s/%s %s" % (interface, verbose, name)
+            try:
+                answer, calls, _, sleeps, _ = _t092_public_market(interface, "assess_token_risk",
+                    {"address": fixtures.BERN, "chain_hint": "solana", "verbose": verbose}, routes)
+            except json.JSONDecodeError:
+                check(tag + " returns a JSON assessment", False, "MCP returned an error instead of a JSON assessment")
+                continue
+            evidence = answer.get("evidence", {})
+            fee = evidence.get("token2022", {})
+            exact = [str(cap) if cap is not None else None for cap in caps]
+            check(tag + " retains each period's independently valid rate and exact cap",
+                  fee.get("transfer_fee_bps") == rates and fee.get("transfer_fee_max_raw_exact") == exact,
+                  str(fee))
+            check(tag + " legacy numeric caps are exact and only present for two valid caps",
+                  ("transfer_fee_max_raw" not in fee if None in caps else
+                   fee.get("transfer_fee_max_raw") == caps and
+                   all(type(cap) is int for cap in fee["transfer_fee_max_raw"])), str(fee))
+            tax = [s for s in answer.get("signals", []) if s["category"] == "sell_tax"]
+            detail = tax[0]["message"].lower() if tax else ""
+            check(tag + " keeps the appropriate transfer-fee signal and existing request budget",
+                  len(tax) == 1 and tax[0]["severity"] == severity and "simulat" not in detail
+                  and calls == ["market", "search", "sell"] and not sleeps, str((tax, calls)))
+            if None in rates or (None in caps and any(rates)):
+                check(tag + " incomplete evidence does not assert a live rate or a fee bound",
+                      bool(detail) and "up to" not in detail and "no transfer pays" not in detail
+                      and "measured at 0" not in detail
+                      and ("rate" in detail if None in rates else "cap" in detail), detail)
+            if name in ("complete zero rates", "complete zero caps"):
+                check(tag + " asserts zero only for the complete zero schedule",
+                      "0.00%" in detail if name == "complete zero rates" else "no transfer pays" in detail, detail)
+
+
 def _price_attribution_compare(name, address, chain, routes, expected, interface, verbose):
     """Use real Worker routes and preserve the existing scoring of genuine base facts."""
     control = copy.deepcopy(routes)
