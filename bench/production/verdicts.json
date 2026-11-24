@@ -1,9 +1,9 @@
 {
- "window_start": "2026-11-16T18:46:10Z",
- "window_end": "2026-11-23T18:46:10Z",
+ "window_start": "2026-11-17T18:18:42Z",
+ "window_end": "2026-11-24T18:18:42Z",
  "counts": {
   "low": 19,
-  "medium": 1,
+  "medium": 4,
   "high": 3,
   "unknown": 20
  },
@@ -12,8 +12,8 @@
  ],
  "unknown_why": {
   "coverage|sellability:simulation failed": 9,
-  "coverage|sellability:no record": 7,
-  "coverage|sellability:chain not covered": 3,
+  "coverage|sellability:chain not covered": 5,
+  "coverage|sellability:no record": 5,
   "coverage|liquidity:other|sellability:other": 1
  },
  "high_why": {
