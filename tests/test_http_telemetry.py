@@ -702,7 +702,8 @@ def test_dead_outcome_copy_describes_assessed_pool_liquidity_without_promising_s
         text = " ".join(body.lower().split())
         check(name + " reports historical price and volume and scopes selling evidence",
               "price and volume" in text and "wallet" in text and "amount" in text
-              and all(phrase not in text for phrase in ("positions can still be sold", "liquidity can still be sold")))
+              and all(phrase not in text for phrase in ("positions can still be sold", "liquidity can still be sold",
+                                                        "confirmed-dead tokens", "project died")))
         if name != "FAQPage":
             check(name + " attributes counted liquidity to assessed pools",
                   re.search(r"\b\d+ of the \d+\b[^.]*\$5,000[^.]*assessed pool", text) is not None)

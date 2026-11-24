@@ -835,7 +835,8 @@ def test_generated_disagreements_preserve_complete_pool_scope_and_label_basis():
                   publish_numbers.figures()["pool_match_pct"] == "40")
         check("retrospective labels and liquidity observations carry no promised sale",
               all(phrase not in markdown for phrase in ("Those positions can be sold",
-                  "whether you can still get out safely today", "A pool that already died has liquidity")))
+                  "whether you can still get out safely today", "A pool that already died has liquidity",
+                  "the position is trapped", "a project died")))
 
 
 def main():
