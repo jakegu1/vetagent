@@ -20,8 +20,8 @@ Four things happen here:
    non-zero — this is the foundation of the whole report's credibility, and it can't
    just live in the docs.
 
-3. **Ablation.** A pool that already died has liquidity ≈ 0 now, so the engine can call
-   it high off the "liquidity is minimal" signal alone — close to a tautology. So
+3. **Ablation.** Some pools have already drained by the market snapshot. The engine can
+   call those high from the liquidity signal alone. So
    alongside the full score we report a second one that **keeps only contract-safety
    signals** (dropping liquidity/activity/freshness/cross-chain). The gap between the
    two numbers is what this tool actually tells you beyond the obvious.
@@ -222,7 +222,7 @@ def composition(rows):
 
 
 def collect_disagreements(rows):
-    """Samples where label and engine disagree. False negatives first — the real leads."""
+    """Keep the original scoring categories and put low-verdict disagreements first."""
     out = []
     for r in rows:
         for key, bad, good in (("outcome_label", "dead", "alive"),
@@ -240,6 +240,31 @@ def collect_disagreements(rows):
                         "verdict_ablated": r["verdict_ablated"], "driver": r.get("driver")})
     out.sort(key=lambda d: 0 if d["kind"] == "false negative" else 1)
     return out
+
+
+def _pool_identity(chain, pool_id):
+    chain = risk._canonical_chain(chain) if isinstance(chain, str) else None
+    if chain not in risk._KNOWN_CHAINS:
+        return None
+    identity = risk._validated_chain_pool_id(pool_id, chain)
+    if identity is None:
+        return None
+    return chain, identity if chain == "solana" else identity.lower()
+
+
+def outcome_pool_scope(row):
+    labelled = _pool_identity(row.get("chain"), row.get("labelled_pool"))
+    assessed = _pool_identity(row.get("engine_chain"), row.get("engine_pool_id"))
+    if labelled is None or assessed is None:
+        return "unknown"
+    if labelled[0] != assessed[0]:
+        return "different_chain"
+    return "same" if labelled == assessed else "different"
+
+
+def outcome_pool_counts(rows):
+    scope = Counter(outcome_pool_scope(row) for row in rows)
+    return scope["same"], scope["different"] + scope["different_chain"], scope["unknown"]
 
 
 def _pct(v):
@@ -354,8 +379,8 @@ def _evaluate(replay=False):
             print("  %s failed to evaluate: %s" % (t.get("symbol"), e))
             continue
         LAST_RUN["evaluated"] += 1
-        created = (((res.get("evidence") or {}).get("best_pair") or {})
-                   .get("pair_created_at"))
+        best_pair = (res.get("evidence") or {}).get("best_pair") or {}
+        created = best_pair.get("pair_created_at")
         created_ms = risk._pair_created_ms(created)
         if created_ms is not None and created_ms > BENCH_CLOCK.timestamp() * 1000:
             LAST_RUN["pairs_after_clock"] += 1
@@ -376,13 +401,13 @@ def _evaluate(replay=False):
             # picked independently -- build_dataset samples one pool and assess() runs
             # its own selection -- so they are not always the same venue, and every
             # disagreement between them was being booked as an engine error.
-            "labelled_pool": (t.get("pool") or "").lower() or None,
-            "engine_pool": ((((res.get("evidence") or {}).get("best_pair") or {})
-                             .get("pair_address")) or "").lower() or None,
+            "labelled_pool": t.get("pool") or None,
+            "engine_pool": (best_pair.get("pair_address") or "").lower() or None,
+            "engine_chain": best_pair.get("chain"),
+            "engine_pool_id": best_pair.get("pool_id"),
             "outcome_label": t.get("outcome_label"), "goplus_label": t.get("goplus_label"),
             "sampled_from": t.get("sampled_from"),
-            "liquidity_usd": ((res.get("evidence") or {}).get("best_pair") or {})
-                             .get("liquidity_usd"),
+            "liquidity_usd": best_pair.get("liquidity_usd"),
             "gap_reasons": [g.get("reason") for g
                             in ((res.get("evidence") or {}).get("data_gaps") or [])],
             "verdict": res.get("risk_level"), "score": res.get("risk_score"),
@@ -474,7 +499,7 @@ def write_markdown(rep):
     A("\n| | Label source | Read by the engine? |")
     A("|---|---|---|")
     A("| `outcome` | GeckoTerminal daily OHLCV history (price + volume) "
-      "| No, the engine only sees the current snapshot |")
+      "| No, the engine uses market snapshots |")
     A("| `goplus` | GoPlus token_security | No, deliberately held back as a labeller |")
     A("\n**Runtime assertion**: engine endpoints ∩ labeller endpoints = ∅. If that "
       "fails, the benchmark declares itself invalid and exits non-zero. "
@@ -607,21 +632,23 @@ def write_markdown(rep):
     # That restraint is right and the mismatch rate is still owed to a reader: it does
     # not tell you the number is wrong, it tells you how much of it is not a clean
     # comparison.
-    matched = [r for r in rows if r.get("labelled_pool") and r.get("engine_pool")]
-    same = [r for r in matched if r["labelled_pool"] == r["engine_pool"]]
-    if matched:
-        A("\n### Are the label and the verdict about the same pool?\n")
-        A("The label describes one sampled pool; the engine picks its own. The pool the "
-          "engine actually **judged** is the labelled one on **%d of %d** rows where "
-          "both are known (%.0f%%).\n"
-          % (len(same), len(matched), 100.0 * len(same) / len(matched)))
+    same, different, unknown = outcome_pool_counts(rows)
+    matched = same + different
+    if rows:
+        A("\n### Are the sampled pool and the assessed pool the same?\n")
+        A("The dataset samples one pool, while the engine selects its own market.\n")
+        if matched:
+            A("The pools match on **%d of %d** rows with two verified identities on known "
+              "chains (%.0f%%).\n" % (same, matched, 100.0 * same / matched))
+        A("Scope across all rows: %d same, %d different, %d unknown. "
+          "Unknown includes missing or unverifiable pool IDs or chains.\n" % (same, different, unknown))
         A("\nThat is a stricter question than the one an external audit measured. It "
           "found the labelled pool was among the pairs the engine *loaded* 84% of the "
           "time. Loading it and choosing it are different: the engine ranks by chain "
           "canonicality and depth and then judges a single pool, so it can hold the "
           "labelled pool in hand and still return a verdict about another venue. Both "
-          "numbers are true; this is the one that governs whether a disagreement is a "
-          "like-for-like comparison.\n")
+          "measurements describe venue coverage. A like-for-like outcome comparison also "
+          "requires compatible observation times.\n")
         A("\nOn the rest, a disagreement is not necessarily an engine error -- it can be "
           "the engine judging a different venue than the one the label was computed from. "
           "No corrected false-positive rate is offered here: an attempt to produce one "
@@ -757,16 +784,28 @@ def write_markdown(rep):
     dis = rep.get("disagreements") or []
     if dis:
         A("\n## Disagreements (need manual review)\n")
-        A("Samples where the label and the engine disagree. Read the **false negatives** "
-          "(label says dangerous, engine says low) first — each one may be a real "
-          "defect. The **false positives** (label says safe, engine says high) matter "
-          "too; they destroy user trust outright.\n")
-        A("\n| Type | Token | Chain | Label | Engine verdict | Ablated | Driving signal |")
-        A("|---|---|---|---|---|---|---|")
+        A("Rows retain their original benchmark counts and order. An outcome disagreement "
+          "compares historical price and volume in the sampled pool with a snapshot-based "
+          "assessment. Even a same-pool row does not measure whether the engine warned before "
+          "the decline. A GoPlus disagreement compares a recorded contract label independently "
+          "of the sampled pool's market outcome.\n")
+        A("\n| Type | Token | Label chain | Label | Comparison scope | Label evidence | "
+          "Engine verdict | Ablated | Driving signal |")
+        A("|---|---|---|---|---|---|---|---|---|")
+        rows_by_token = {(r["chain"], r["address"]): r for r in rows}
+        pool_scope_names = {"same": "Same pool", "different": "Different pools",
+                            "different_chain": "Different chains", "unknown": "Unknown pool relationship"}
         for d in dis[:20]:
-            A("| %s | `%s` | %s | %s | %s | %s | %s |" % (
-                d["kind"], (d["symbol"] or d["address"][:10]), d["chain"],
-                d["label"], d["verdict"], d["verdict_ablated"], d["driver"] or "—"))
+            if d["label"].startswith("outcome="):
+                row = rows_by_token.get((d["chain"], d["address"]), {})
+                kind = "Outcome disagreement"
+                scope = pool_scope_names[outcome_pool_scope(row)]
+                basis = "Retrospective pool price and volume"
+            else:
+                kind, scope, basis = "Contract disagreement", "Contract-level label", "Recorded GoPlus response"
+            A("| %s | `%s` | %s | %s | %s | %s | %s | %s | %s |" % (
+                kind, (d["symbol"] or d["address"][:10]), d["chain"], d["label"], scope, basis,
+                d["verdict"], d["verdict_ablated"], d["driver"] or "—"))
         if len(dis) > 20:
             A("\n(%d more in `results.json`)\n" % (len(dis) - 20))
 
@@ -794,11 +833,9 @@ def write_markdown(rep):
                                                  d["verdict"], d["address"]))
 
     A("\n## Reading the `dead` recall figure\n")
-    A("**`dead` is a market outcome; the engine scores a safety property.** They overlap "
-      "and they are not the same, and until the cohort was big enough to look at, that "
-      "difference was invisible.\n")
-    A("\nThe label means a project died -- price collapsed, volume collapsed. It does "
-      "**not** say the position is trapped, and measured on this set, usually it is not:\n")
+    A("The `dead` label describes price and volume decline in the sampled pool. The table "
+      "summarizes liquidity estimates for the markets the engine assessed. A particular "
+      "sale requires separate execution evidence.\n")
 
     def _q(rows_, sel):
         vals = sorted(r["liquidity_usd"] for r in rows_
@@ -820,18 +857,18 @@ def write_markdown(rep):
     dead_rows = [r for r in rows if r.get("outcome_label") == "dead"]
     still_liquid = len([r for r in dead_rows
                         if (r.get("liquidity_usd") or 0) >= 5000])
-    A("\n%d of the %d dead tokens still hold $5,000 or more of liquidity. Those positions "
-      "can be sold. An engine that rated them `high` would be calling a failed investment "
-      "a safety hazard, which is a judgement this tool refuses to make (P1 in "
-      "DECISIONS.md) -- so `medium` with an abandoned-pool warning is the intended answer, "
-      "not a miss.\n" % (still_liquid, len(dead_rows)))
+    A("\n%d of the %d assessments with a dead outcome label recorded at least $5,000 in "
+      "estimated liquidity in the assessed pool. The outcome label describes the sampled "
+      "pool, which may be a different market. Verifying a sale in a specific pool, from a "
+      "particular wallet, or for a particular amount requires separate evidence.\n"
+      % (still_liquid, len(dead_rows)))
 
     not_low = len([r for r in dead_rows if r["verdict"] != "low"])
-    A("\n**What the number should be read against**: of %d dead tokens, %d are rated "
-      "something other than `low`. The remainder is the real finding.\n"
+    A("\nOf %d cases with a dead outcome label, %d received a verdict other than `low`. "
+      "The disagreements table gives the comparison scope for the remaining cases.\n"
       % (len(dead_rows), not_low))
-    A("\n**The limit this exposes.** The engine scores the current snapshot and has no "
-      "price history, so a token whose price is down 99% from a peak it cannot see looks "
+    A("\n**The limit this exposes.** The engine scores a market snapshot without the label's "
+      "daily price history, so a token whose price is down 99% from a peak it cannot see looks "
       "like a quiet pool with working sells. Turnover cannot substitute: at the current "
       "2% threshold it catches roughly half the dead cohort at a cost of several percent "
       "of the live one, and loosening it doubles that cost for a few more points.\n")
@@ -843,14 +880,15 @@ def write_markdown(rep):
       "open decision rather than settled quietly.\n")
 
     A("\n## What this benchmark does not measure\n")
-    A("1. **Whether it warns you in time.** The engine scores the current state, and "
-      "the `dead` label is retrospective. A pool that already died has liquidity ≈ 0 "
-      "now, so calling it high is close to a tautology — that is what the ablation "
-      "column is for. Answering 'would it have warned me before I bought' needs "
+    A("1. **Whether it warns you in time.** The engine scores a market snapshot, and "
+      "the `dead` label is retrospective. Some assessed pools were already drained by the "
+      "market snapshot. The contract-only column removes that liquidity evidence. "
+      "Answering 'would it have warned me before I bought' needs "
       "historical state replayed point-in-time, and the upstream security APIs don't "
       "serve history.\n")
-    A("2. **`dead` ≠ scam.** Legitimate projects die too. This label answers whether "
-      "you can still get out safely today.\n")
+    A("2. **Whether a specific sale will work.** The `dead` label measures historical price "
+      "drawdown and volume collapse in the sampled pool. A particular sale requires its "
+      "own execution evidence.\n")
     A("3. **GoPlus and honeypot.is may be correlated.** Both simulate buys and sells, "
       "so the `goplus` column flatters the engine. The `outcome` column doesn't have "
       "that problem.\n")

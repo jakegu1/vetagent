@@ -26,6 +26,8 @@ import os
 import re
 import sys
 
+from run_benchmark import outcome_pool_counts
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 RESULTS = os.path.join(HERE, "results.json")
@@ -77,8 +79,8 @@ TARGETS = [
     # token. Both sets are tracked, so neither can drift and the pair cannot be quietly
     # reduced to whichever is flattering.
     ("src/landing.html", r"Measured on (\d+) tokens:", "n"),
-    ("src/landing.html", r"benchmark rows\)\. (\d+) of \d+ confirmed-dead", "dead_not_low_n"),
-    ("src/landing.html", r"benchmark rows\)\. \d+ of (\d+) confirmed-dead", "dead_n"),
+    ("src/landing.html", r"benchmark rows\)\. (\d+) of \d+ cases with a dead outcome label", "dead_not_low_n"),
+    ("src/landing.html", r"benchmark rows\)\. \d+ of (\d+) cases with a dead outcome label", "dead_n"),
     ("src/landing.html", r"tokens: ([\d.]+)% of healthy tokens were flagged high", "fp_pct"),
     ("src/landing.html", r"\(false positives\), ([\d.]+)% of answers were unknown", "unknown_pct"),
     ("src/landing.html", r"[Mm]easured over (\d+) tokens,", "n"),
@@ -105,12 +107,12 @@ TARGETS = [
     ("src/landing.html", r"USDT and WBTC themselves are rated low \(\d+ of (\d+) benchmark rows",
      "named_centralised_n"),
     ("src/landing.html", r"are rated <em>high</em>;\s+(\d+) land at <em>medium</em>", "dead_medium_n"),
-    ("src/landing.html", r"miss: (\d+) of the \d+ dead\s+tokens still hold", "dead_liquid_n"),
-    ("src/landing.html", r"miss: \d+ of the (\d+) dead\s+tokens still hold", "dead_n"),
+    ("src/landing.html", r"(\d+) of the \d+ assessments with a\s+dead outcome label recorded", "dead_liquid_n"),
+    ("src/landing.html", r"\d+ of the (\d+) assessments with a\s+dead outcome label recorded", "dead_n"),
     ("src/entry.py", r"rated high; (\d+)\s+land at medium", "dead_medium_n"),
-    ("src/entry.py", r"miss: (\d+) of the \d+\s+dead tokens still hold", "dead_liquid_n"),
-    ("src/entry.py", r"miss: \d+ of the (\d+)\s+dead tokens still hold", "dead_n"),
-    ("src/landing.html", r"(\d+) of \d+ confirmed-dead tokens were not rated low",
+    ("src/entry.py", r"(\d+) of the \d+ assessments with a\s+dead outcome label recorded", "dead_liquid_n"),
+    ("src/entry.py", r"\d+ of the (\d+) assessments with a\s+dead outcome label recorded", "dead_n"),
+    ("src/landing.html", r"(\d+) of \d+ cases with a dead outcome label were not rated low",
      "dead_not_low_n"),
     ("src/entry.py", r"Centralised tokens \(oracle-tagged\) rated high \.+ ([\d.]+)%",
      "centralized_high_pct"),
@@ -170,7 +172,8 @@ TARGETS = [
     # The landing FAQ said "16 of which hold under a dollar" while the benchmark said 15, and
     # nothing guarded it (found 2026-09-15 while writing the /method page).
     ("src/landing.html", r"17 tokens so far, (\d+) of which hold under a dollar", "adversarial_sub_dollar_n"),
-    ("docs/EXPERIMENT_C.md", r"same pool only ([\d.]+)% of the time", "pool_match_pct"),
+    ("docs/EXPERIMENT_C.md", r"pools match in ([\d.]+)% of benchmark rows with two verified pool identities",
+     "pool_match_pct"),
     # The false-block rate: liquid healthy tokens rated medium or high. The FP rate counts
     # only `high`, while an agent treats `medium` as do-not-trade, so the FP row alone
     # understated what a caller is refused. Printed beside it, never folded into it.
@@ -338,7 +341,7 @@ TARGETS = [
      "dead_high_pct"),
     ("src/landing.html", r"(\d+) of \d+\. Our worst number", "dead_high_n"),
     ("src/landing.html", r"\d+ of (\d+)\. Our worst number", "dead_n"),
-    ("src/landing.html", r"a cohort of (\d+) confirmed-dead tokens", "dead_n"),
+    ("src/landing.html", r"produced (\d+) cases with pools labelled <em>dead</em>", "dead_n"),
     # The JSON-LD FAQ block. Structured data, read by search engines and by models, and
     # it carried "only 2 were rated high" for as long as the visible copy did.
     ("src/landing.html", r"though only (\d+) of \d+ were rated high", "dead_high_n"),
@@ -353,7 +356,7 @@ TARGETS = [
     # percentages -- and it was fixed there and never here. A hostile review of the
     # launch post found "a cohort of 20", "Only 2 of those 20" and "about five tokens"
     # live on the served file, against a measured 30, 3 and 47.
-    ("src/entry.py", r"which produced a cohort of (\d+)\s+confirmed-dead", "dead_n"),
+    ("src/entry.py", r"produced (\d+) cases with pools\s+labelled dead", "dead_n"),
     ("src/entry.py", r"Only (\d+) of those \d+ are rated high", "dead_high_n"),
     ("src/entry.py", r"Only \d+ of those (\d+) are rated high", "dead_n"),
     ("src/entry.py", r"is still measured on (\d+) tokens, because the", "adversarial_n"),
@@ -666,9 +669,8 @@ def figures():
     comp = (data.get("composition") or {}).get("all") or {"n": 0, "chain": {}}
     bad = (data.get("composition") or {}).get("bad") or {"n": 0, "chain": {}}
     goplus_good = (((data.get("goplus") or {}).get("full") or {}).get("good") or {})
-    pool_both = [r for r in rows if r.get("engine_pool") and r.get("labelled_pool")]
-    pool_same = [r for r in pool_both
-                 if str(r["engine_pool"]).lower() == str(r["labelled_pool"]).lower()]
+    pool_same, pool_different, _ = outcome_pool_counts(rows)
+    pool_both = pool_same + pool_different
 
     alive = [r for r in rows if r.get("outcome_label") == "alive"]
     dead = [r for r in rows if r.get("outcome_label") == "dead"]
@@ -742,8 +744,7 @@ def figures():
             len(unsafe_rows)),
         "adversarial_high_n": "%d" % len([r for r in unsafe_rows
                                           if r.get("verdict") == "high"]),
-        # Same pairing for the dead cohort. 86.7% is the liquidity check noticing an empty
-        # pool, which bench/results.md calls "close to a tautology"; ablated it is 20%.
+        # The paired ablation removes liquidity and other non-contract signals.
         "dead_not_low_ablated_pct": _pct(
             len([r for r in dead if r.get("verdict_ablated") != "low"]), len(dead)),
         # The population the false-positive rate is measured on. Every one of the 7 misses
@@ -810,7 +811,7 @@ def figures():
              if r.get("liquidity_usd") is not None]) / 1000.0),
         "unknown_unbacked_n": "%d" % len([r for r in unknown if any(
             "priced in an asset" in str(g) for g in (r.get("gap_reasons") or []))]),
-        "pool_match_pct": ("%.0f" % (100.0 * len(pool_same) / len(pool_both))
+        "pool_match_pct": ("%.0f" % (100.0 * pool_same / pool_both)
                            if pool_both else "0"),
         "maturity": _maturity() or "0",
 

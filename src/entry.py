@@ -147,14 +147,15 @@ What that last line does and does not say. Recall was unmeasurable here
 until recently: every public data source ranks by liquidity, so rugged pools
 drop off the list and sampling produced no dead tokens at all. Pools are now
 recovered from chain history instead -- any past day is readable from the logs
-of the contract that created the pool -- which produced a cohort of 30
-confirmed-dead tokens.
+of the contract that created the pool -- which produced 30 cases with pools
+labelled dead by their price and volume history.
 
 The honest reading is not flattering. Only 3 of those 30 are rated high; 11
-land at medium. That is close to correct rather than a miss: 13 of the 30
-dead tokens still hold $5,000 or more of liquidity, so those positions can
-still be sold. "Dead" means the project died, a market outcome, while this tool scores
-whether you can get out, a safety property.
+land at medium. 13 of the 30 assessments with a dead outcome label recorded
+at least $5,000 in estimated liquidity in the assessed pool. The dead outcome
+label measures a sampled pool's historical decline in price and volume.
+Verifying a sale in a specific pool, from a particular wallet, or for a particular
+amount requires separate evidence.
 
 The number we would most like to publish -- recall against deliberately
 adversarial contracts -- is still measured on 17 tokens, because the

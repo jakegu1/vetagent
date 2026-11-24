@@ -44,7 +44,7 @@
     {"@type":"Question","name":"What does a risk_level of unknown mean?",
      "acceptedAnswer":{"@type":"Answer","text":"It means a critical check could not be completed — usually an upstream data source failed. It is not a low-risk result and must not be used to justify a trade. evidence.data_gaps lists exactly which checks were missing."}},
     {"@type":"Question","name":"How accurate is VetAgent?",
-     "acceptedAnswer":{"@type":"Answer","text":"Measured on 576 tokens: 1.9% of healthy tokens were flagged high (false positives), 20.7% of answers were unknown, and 21.2% of oracle-tagged centralised tokens were flagged high, mostly abandoned pools holding cents; USDT and WBTC themselves are rated low (4 of 4 benchmark rows). 26 of 30 confirmed-dead tokens were not rated low, though only 3 of 30 were rated high, because a dead project whose pool still holds liquidity can still be sold. Recall against deliberately adversarial contracts is measured on 17 tokens so far, 15 of which hold under a dollar, and is not yet a number worth quoting. The full method and the raw numbers are published in the repository."}},
+     "acceptedAnswer":{"@type":"Answer","text":"Measured on 576 tokens: 1.9% of healthy tokens were flagged high (false positives), 20.7% of answers were unknown, and 21.2% of oracle-tagged centralised tokens were flagged high, mostly abandoned pools holding cents; USDT and WBTC themselves are rated low (4 of 4 benchmark rows). 26 of 30 cases with a dead outcome label were not rated low, though only 3 of 30 were rated high. The dead outcome label measures a sampled pool's historical decline in price and volume. Liquidity is estimated for the assessed pool. Verifying a sale in a specific pool, from a particular wallet, or for a particular amount requires separate evidence. Recall against deliberately adversarial contracts is measured on 17 tokens so far, 15 of which hold under a dollar, and is not yet a number worth quoting. The full method and the raw numbers are published in the repository."}},
     {"@type":"Question","name":"Is VetAgent free?",
      "acceptedAnswer":{"@type":"Answer","text":"Yes. The remote MCP endpoint and the HTTP API are free and require no account or key."}},
     {"@type":"Question","name":"Does VetAgent log the tokens I look up?",
@@ -267,14 +267,14 @@
     Recall was unmeasurable here until recently, because every public source ranks by
     liquidity and rugged pools fall off the list. We now recover pools from chain history
     — every past day is readable from the logs of the contract that created the pool — and
-    that produced a cohort of 30 confirmed-dead tokens where sampling had produced none.
+    that produced 30 cases with pools labelled <em>dead</em> by their price and volume history.
     <br><br>
     The honest reading is not flattering. Only 3 of those 30 are rated <em>high</em>;
-    11 land at <em>medium</em>. That is close to correct rather than a miss: 13 of the 30 dead
-    tokens still hold $5,000 or more of liquidity, so those positions can still be sold.
-    <em>Dead</em> means the project died, which is a market outcome; this tool scores
-    whether you can get out, which is a safety property. Rating a failed investment
-    <em>high</em> would be an investment judgement we refuse to make.
+    11 land at <em>medium</em>. 13 of the 30 assessments with a
+    dead outcome label recorded at least $5,000 in estimated liquidity in the assessed pool.
+    The <em>dead</em> label measures a sampled pool's historical decline in price and volume.
+    Verifying a sale in a specific pool, from a particular wallet, or for a particular amount
+    requires separate evidence.
     <br><br>
     The number we would most like to publish — recall against deliberately adversarial
     contracts — is still measured on 17 tokens, of which 16 have a liquidity figure and 15 hold under a dollar (the largest holds $4,813),
