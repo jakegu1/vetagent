@@ -1511,17 +1511,25 @@ def test_t087_market_evidence_at_both_entry_points():
             pool = market["pairAddress"]
             detail_url = "https://api.geckoterminal.com/api/v2/networks/eth/pools/" + pool
             detail = {"id": "eth_" + pool,
+                      "relationships": {
+                          "base_token": {"data": {"id": "eth_" + market["baseToken"]["address"].lower()}},
+                          "quote_token": {"data": {"id": "eth_" + market["quoteToken"]["address"].lower()}},
+                      },
                       "attributes": {"transactions": {"h24": {"sellers": 1000}}}}
             for label, body, expected in (
                 ("matching detail", {"data": detail}, "low"),
+                ("unscoped detail", {"data": {k: v for k, v in detail.items() if k != "relationships"}},
+                 "unknown"),
                 ("wrong detail", {"data": dict(detail, id="eth_0x" + "a" * 40)}, "unknown"),
                 ("malformed detail", {"data": [detail]}, "unknown"),
             ):
                 routes = {ds: ("primary", 200, {"pairs": [market]}), sell: ("sell", 200, flagged),
                           search: ("ticker", 200, {"pairs": []}), detail_url: ("detail", 200, body)}
                 result, calls, status = await _evidence_endpoint(surface, "assess_token_risk", address, "ethereum", routes)
+                pair = (result.get("evidence") or {}).get("best_pair") or {}
                 check("T087 %s %s cannot supply foreign seller evidence" % (surface, label),
-                      status == 200 and result.get("risk_level") == expected and calls[-1] == "detail",
+                      status == 200 and result.get("risk_level") == expected and calls[-1] == "detail"
+                      and pair.get("sellers_24h") == (1000 if expected == "low" else None),
                       str((result.get("risk_level"), calls)))
 
     asyncio.run(run())
