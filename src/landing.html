@@ -699,17 +699,21 @@
     if (reading.status === 'unavailable') {
       return heading + '<p>' + esc(balanceReasons[reading.reason] || 'Balances are unavailable.') + '</p></section>';
     }
-    if ((selected && selected !== reading.chain) || !reading.balances ||
+    if ((reading.status !== 'ok' && reading.status !== 'partial') ||
+        ['ethereum', 'bsc', 'base'].indexOf(reading.chain) === -1 ||
+        (selected && selected !== reading.chain) || !reading.balances ||
         !/^0x[0-9a-f]{64}$/.test(reading.block_hash || '')) { return ''; }
     var addresses = {pool: value.best_pair_address, zero: '0x' + '0'.repeat(40),
       dead: '0x' + '0'.repeat(36) + 'dead'};
     var names = {pool: 'Selected pool', zero: 'Zero address', dead: 'Dead address'};
     var rows = ['pool', 'zero', 'dead'].map(function (role) {
       var row = reading.balances[role] || {};
-      var item = row.status === 'ok' && sameID(row.address, addresses[role]) ?
+      var matched = typeof row.address === 'string' && /^0x[0-9a-fA-F]{40}$/.test(row.address) &&
+        sameID(row.address, addresses[role]);
+      var item = row.status === 'ok' && matched ?
         '<strong>' + esc(row.supply_percent) + '%</strong> of supply at this block' :
         esc(balanceReasons[row.reason] || 'Balance unavailable.');
-      var scope = row.address && sameID(row.address, addresses[role]) ? ' <code>' + esc(row.address) + '</code>' : '';
+      var scope = matched ? ' <code>' + esc(row.address) + '</code>' : '';
       return '<li>' + names[role] + scope + ' · ' + item + '</li>';
     });
     return heading + '<p>Block ' + esc(reading.block_number) + ' on ' + esc(reading.chain) +
