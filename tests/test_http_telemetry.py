@@ -1376,9 +1376,12 @@ async def _t115_liquidity(surface, variant="complete", *, opt=True, chain="base"
         return "0x%064x" % (int(value, 16) if isinstance(value, str) else value)
 
     async def rpc(url, **kwargs):
+        if kwargs.get("redirect") not in ("follow", "manual", None):
+            raise TypeError("workerd requires redirect follow or manual")
         payload = json.loads(kwargs["body"])
         method, params = payload["method"], payload["params"]
         rpc_calls.append((url, method, params))
+        assert kwargs.get("redirect") == "manual"
         reply = {"jsonrpc": "2.0", "id": payload["id"]}
         if method == "eth_chainId":
             reply["result"] = "0x1" if variant == "wrong chain" else "0x2105"
@@ -1421,6 +1424,11 @@ async def _t115_liquidity(surface, variant="complete", *, opt=True, chain="base"
         async def content():
             return json.dumps(reply)
 
+        if method == "eth_chainId" and variant == "redirected RPC":
+            async def unread():
+                rpc_calls.append((url, "read redirect body", []))
+                raise AssertionError("do not parse a redirect body")
+            return types.SimpleNamespace(status=307, text=unread)
         return types.SimpleNamespace(status=200, text=content)
 
     extra = {}
@@ -1481,6 +1489,7 @@ def test_t115_wrong_scope_and_partial_or_invalid_rpc_never_become_zero():
             ("no market", "base", "network_unconfirmed", 0),
             ("wrong chain", "base", "rpc_chain_mismatch", 1),
             ("wrong envelope", "base", "rpc_chain_unavailable", 1),
+            ("redirected RPC", "base", "rpc_chain_unavailable", 1),
             ("zero supply", "base", "invalid_total_supply", 9),
             ("bad supply ABI", "base", "invalid_total_supply", 9),
             ("reorg", "base", "block_changed", 9),
@@ -1493,6 +1502,9 @@ def test_t115_wrong_scope_and_partial_or_invalid_rpc_never_become_zero():
                   http == 200 and reading.get("status") == "unavailable" and reading.get("reason") == reason
                   and not reading.get("balances") and len(rpc) <= limit
                   and (variant == "no market" or result.get("liquidity_usd") == 80000), str((reading, rpc)))
+            if variant == "redirected RPC":
+                check("T115 refuses the provider redirect after one request to the approved node",
+                      rpc == [("https://mainnet.base.org", "eth_chainId", [])], str(rpc))
         for variant, role, reason, count in (
             ("v4", "pool", "pool_id_not_address", 6),
             ("conflicting market", "pool", "pool_identity_unconfirmed", 6),
