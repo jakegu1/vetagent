@@ -3627,10 +3627,23 @@ def test_liquidity_tools_list_exposes_optional_activity_and_complete_identity():
           and "32-byte" in fields["best_pair_address"]["description"]
           and "Reply time" in fields["checked_at"]["description"]
           and "cached" in fields["checked_at"]["description"])
-    check("liquidity preserves snapshot inputs and adds bounded optional comparison context",
-          set(liquidity["inputSchema"]["properties"]) == {"address", "chain_hint", "comparison_context"}
+    inputs = liquidity["inputSchema"]["properties"]
+    opt_in = inputs.get("include_known_address_balances", {})
+    check("liquidity preserves snapshot inputs and bounded comparison context beside the opt-in",
+          set(inputs) == {"address", "chain_hint", "comparison_context", "include_known_address_balances"}
           and liquidity["inputSchema"]["required"] == ["address"]
-          and liquidity["inputSchema"]["properties"]["comparison_context"].get("maxItems") == 8)
+          and input_context.get("maxItems") == 8
+          and opt_in.get("type") == "boolean" and opt_in.get("default") is False)
+    known = fields.get("known_address_balances", {}).get("properties", {})
+    balances = known.get("balances", {})
+    check("the optional fixed-block result uses exact strings and names each address role",
+          "known_address_balances" not in schema["required"]
+          and known.get("status", {}).get("enum") == ["ok", "partial", "unavailable"]
+          and all(known.get(k, {}).get("type") == "string" for k in ("block_number", "block_hash", "total_supply_raw"))
+          and set(balances.get("properties", {})) == set(balances.get("required", [])) == {"pool", "zero", "dead"}
+          and all(role["properties"]["balance_raw"]["type"] == "string"
+                  and role["properties"]["supply_percent"]["type"] == "string"
+                  for role in balances.get("properties", {}).values()))
 
 
 def test_assessment_complete_market_ids_match_liquidity_and_separate_shared_prefixes():
