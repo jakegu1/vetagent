@@ -3265,15 +3265,19 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None, issue=None):
         return
 
     if hp is None:
+        reason = _failed("honeypot.is")
         data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
-                          "reason": _failed("honeypot.is")})
+                          "reason": reason})
         settled, sells, buys = _sells_demonstrated(evidence)
         if settled:
             _sells_answer(signals, evidence, sells, buys,
                           "The sell-simulation service did not respond")
             return
-        signals.append(_sig("warn", "Sellability unverified",
-                            "The sell-simulation service did not respond, so we could not confirm this token can be sold.", "sellability"))
+        # The gap still fail-closes the result. A transport failure cannot
+        # corroborate the token's market or contract risks.
+        signals.append(_sig("info", "Sellability unverified",
+                            "The sell-simulation request did not complete, so selling remains "
+                            "unverified. Source detail: %s." % reason, "coverage"))
         return
 
     summary = hp.get("summary")
@@ -3486,8 +3490,8 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None, issue=None):
         err = simulation_error or "unknown reason"
         data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
                           "reason": _gap(_ABOUT_TOKEN, "simulation failed: %s" % err)})
-        # warn, not critical -- and the same severity as an unresponsive upstream a few
-        # lines up, because they are the same statement: we could not check.
+        # A reported execution failure is evidence from a check that ran.
+        # Keep it at warn rather than equating a failed simulation with a blocked exit.
         #
         # As a critical it scored 60 at sellability's weight of 1.0, so any token whose
         # simulation failed reached "high" on one additional warning of any kind. That is
