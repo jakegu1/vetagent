@@ -16,6 +16,8 @@ import re
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 
+import known_address_balances
+
 try:  # Workers runtime
     from workers import fetch as cf_fetch
 except ImportError:  # local tests / non-Worker runtime (tests monkeypatch _fetch_json)
@@ -5261,22 +5263,70 @@ def _disclose_liquidity(payload, selection, scoped_chain=None):
     return _disclosed(payload)
 
 
-async def liquidity(address, chain_hint=None):
+def _balance_pool_tokens(pool_id, selected, pairs, chain, address):
+    """Qualify this pool's address against the market identity before any RPC."""
+    if pool_id is None:
+        return None, "pool_not_selected" if selected is None else "pool_identity_unconfirmed"
+    if not _EVM_RE.fullmatch(pool_id):
+        return None, "pool_id_not_address"
+    if selected is None or pool_id.lower() in {known_address_balances.ZERO, known_address_balances.DEAD}:
+        return None, "pool_identity_unconfirmed"
+    expected = set(_market_token_sides(selected))
+    if (len(expected) != 2 or address not in expected or pool_id.lower() in expected
+            or known_address_balances.ZERO in expected or not all(_EVM_RE.fullmatch(t) for t in expected)):
+        return None, "pool_identity_unconfirmed"
+    for row in pairs:
+        other_id = _market_pool_identity(row)
+        if (_canonical_chain(row.get("chainId")) == chain and other_id
+                and other_id.lower() == pool_id.lower()
+                and (set(_market_token_sides(row)) != expected
+                     or isinstance(row, _GeckoPool) and not row.evm_identity)):
+            return None, "pool_identity_unconfirmed"
+    return expected, None
+
+
+async def _known_balance_reading(payload, chain_hint, scoped_chain, market, pairs):
+    chain, requested = _canonical_chain(scoped_chain), _canonical_chain(chain_hint)
+    address = payload["address"]
+    reading = {"address": address, "chain": chain if chain in _KNOWN_CHAINS else None,
+               "source": "public_rpc", "pool_id": payload.get("best_pair_address")}
+    if (not _EVM_RE.fullmatch(address) or
+            requested and requested not in known_address_balances.CHAIN_IDS):
+        return known_address_balances.unavailable(reading, "unsupported_network")
+    if not chain:
+        return known_address_balances.unavailable(reading, "network_unconfirmed")
+    if requested and requested != chain:
+        return known_address_balances.unavailable(reading, "network_mismatch")
+    if chain not in known_address_balances.CHAIN_IDS:
+        return known_address_balances.unavailable(reading, "unsupported_network")
+    tokens, reason = _balance_pool_tokens(reading["pool_id"], market, pairs, chain, address)
+    return await known_address_balances.observe(cf_fetch, _CHAIN_RPC[chain], reading, tokens, reason)
+
+
+async def liquidity(address, chain_hint=None, *, include_known_address_balances=False):
     """Liquidity snapshot. Same validation and pool-picking logic as assess."""
     address = validate_address(address)
     _begin_request()
+    requested_hint = chain_hint
     chain_hint, selection = _market_network_preference(address, chain_hint)
     pairs, source = await _load_pairs(address, chain_hint, network_selection=selection)
+
+    async def finish(payload, scoped_chain=None, market=None):
+        result = _disclose_liquidity(payload, selection, scoped_chain)
+        if include_known_address_balances is True:
+            result["known_address_balances"] = await _known_balance_reading(
+                result, requested_hint, scoped_chain, market, pairs or ())
+        return result
+
     if pairs is None:
         note = ("The address format does not match the requested network. "
                 "No market estimate was available from the general listing."
                 if selection.get("lookup") == "incompatible_address" else
                 "Market data request failed. This does NOT mean the token has no liquidity.")
-        return _disclose_liquidity({"address": address, "status": "unavailable", "note": note}, selection)
+        return await finish({"address": address, "status": "unavailable", "note": note})
     if not pairs:
-        return _disclose_liquidity({"address": address, "status": "not_found",
-                                    "liquidity_usd": 0, "pairs_total": 0,
-                                    "note": "No trading pair found for this address."}, selection)
+        return await finish({"address": address, "status": "not_found", "liquidity_usd": 0, "pairs_total": 0,
+                             "note": "No trading pair found for this address."})
     best = _pick_best(pairs, chain_hint=chain_hint, target=address)
     if best is None:
         # "not_found, liquidity_usd 0, pairs_total 3" -- three statements in one answer
@@ -5303,18 +5353,16 @@ async def liquidity(address, chain_hint=None):
                     "The USD liquidity estimates for %d pool%s in this market scope are zero. "
                     "No pool-specific provider zero is available for comparison."
                     % (len(stated), "" if len(stated) == 1 else "s"))
-            return _disclose_liquidity({"address": address, "status": "drained",
-                                        "liquidity_usd": 0, "pairs_total": len(pairs), "note": note, **pool},
-                                       selection, scoped_chain)
+            return await finish({"address": address, "status": "drained", "liquidity_usd": 0,
+                                 "pairs_total": len(pairs), "note": note, **pool},
+                                scoped_chain, scope[0] if pool else None)
         if _only_unbacked_depth(scope):
-            return _disclose_liquidity({"address": address, "status": "unpriced",
-                                        "liquidity_usd": None, "pairs_total": len(pairs),
-                                        "note": _UNBACKED_NOTE}, selection, scoped_chain)
-        return _disclose_liquidity({"address": address, "status": "unpriced",
-                                    "liquidity_usd": None, "pairs_total": len(pairs),
-                                    "note": "Pairs exist but none could be costed, so the depth is unknown. "
-                                            "This is not a statement that the token has no liquidity."},
-                                   selection, scoped_chain)
+            return await finish({"address": address, "status": "unpriced", "liquidity_usd": None,
+                                 "pairs_total": len(pairs), "note": _UNBACKED_NOTE}, scoped_chain)
+        return await finish({"address": address, "status": "unpriced", "liquidity_usd": None,
+                             "pairs_total": len(pairs),
+                             "note": "Pairs exist but none could be costed, so the depth is unknown. "
+                                     "This is not a statement that the token has no liquidity."}, scoped_chain)
     payload = {
         "address": address, "status": "ok", "source": source,
         # Upstream names, escaped like every other upstream string that reaches a caller.
@@ -5339,7 +5387,7 @@ async def liquidity(address, chain_hint=None):
     if reserve_check is not None:
         payload["liquidity_reserve_check"] = reserve_check
         payload["note"] = _LIQUIDITY_RESERVE_NOTE
-    return _disclose_liquidity(payload, selection, best.get("chainId"))
+    return await finish(payload, best.get("chainId"), best)
 
 
 def _pool_trade_activity(transactions):

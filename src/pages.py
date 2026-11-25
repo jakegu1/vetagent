@@ -135,6 +135,13 @@ asyncio.run(main())</code></pre>
 <code>drained</code> snapshot can be used in a same-pool recheck when the provider
 reports zero. When present, <code>network_selection</code> reports the requested and
 returned network and what the extra lookup found.</p>
+<p>To include balances at known addresses, set <code>include_known_address_balances</code>
+to <code>true</code> in <code>get_token_liquidity</code>, or add
+<code>include_known_address_balances=true</code> to <code>GET /liquidity/{address}</code>.
+On Ethereum, BSC and Base, <code>known_address_balances</code> reports the selected
+pool and canonical zero and dead address balances as shares of supply at one rechecked
+block. Exact raw values are decimal strings. A missing or unverified address has its
+own reason. The addresses reveal neither ownership nor lock or burn status.</p>
 
 <h3>Plain HTTP</h3>
 <pre><code># the address in the body, which keeps it out of URLs and logs along the way

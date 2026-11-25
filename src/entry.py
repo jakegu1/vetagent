@@ -109,8 +109,10 @@ assess_token_risk(address, chain_hint?, verbose?)
   when matching identities are available; otherwise the reported share may include pools.
   This check is unavailable on EVM.
 
-get_token_liquidity(address, chain_hint?)
+get_token_liquidity(address, chain_hint?, comparison_context?, include_known_address_balances?)
   Price, 24h volume, pair count and chains for the primary trading pair.
+  On request, known_address_balances reports the selected pool and canonical zero/dead
+  address balances at one checked block on Ethereum, BSC and Base.
   Check `status` first: ok | not_found | unpriced | drained | unavailable.
   `unpriced` means nobody costed the pools, not that liquidity is zero.
 
@@ -931,10 +933,12 @@ class Default(WorkerEntrypoint):
 
             if path.startswith("/liquidity/"):
                 tool = "get_token_liquidity"
+                options = ({"include_known_address_balances": True}
+                           if _truthy(query.get("include_known_address_balances")) else {})
                 return _json_response(self._record_http(
                     request, "get_token_liquidity", await risk.liquidity(
                         path[len("/liquidity/"):],
-                        query.get("chain_hint") or query.get("chain"))))
+                        query.get("chain_hint") or query.get("chain"), **options)))
 
             if path == "/new-pools":
                 tool = "find_new_hot_pools"

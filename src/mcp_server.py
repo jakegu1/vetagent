@@ -298,6 +298,35 @@ _ASSESS_OUTPUT_SCHEMA = {
     "required": ["address", "risk_level", "risk_score", "confidence", "signals"],
 }
 
+_RAW_UINT = {"type": "string", "pattern": "^(0|[1-9][0-9]{0,77})$"}
+_KNOWN_BALANCE_ITEM = {
+    "type": "object", "required": ["status"],
+    "properties": {
+        "status": {"type": "string", "enum": ["ok", "unavailable"]},
+        "address": {"type": "string", "pattern": "^0x[0-9a-fA-F]{40}$"},
+        "balance_raw": _RAW_UINT,
+        "supply_percent": {"type": "string", "description": "Percent of total supply. Six decimals, or "
+                           "'<0.000001' for a smaller positive share."},
+        "reason": {"type": "string"},
+    },
+}
+_KNOWN_ADDRESS_BALANCES = {
+    "type": "object", "required": ["status", "address", "chain", "source", "pool_id"],
+    "properties": {
+        "status": {"type": "string", "enum": ["ok", "partial", "unavailable"]},
+        "reason": {"type": "string", "description": "Why the fixed-block observation is unavailable."},
+        "address": {"type": "string"},
+        "chain": {"type": ["string", "null"]},
+        "source": {"type": "string", "enum": ["public_rpc"]},
+        "pool_id": {"type": ["string", "null"]},
+        "block_number": _RAW_UINT,
+        "block_hash": {"type": "string", "pattern": "^0x[0-9a-f]{64}$"},
+        "total_supply_raw": _RAW_UINT,
+        "balances": {"type": "object", "required": ["pool", "zero", "dead"],
+                     "properties": dict.fromkeys(("pool", "zero", "dead"), _KNOWN_BALANCE_ITEM)},
+    },
+}
+
 TOOLS = [
     {
         "name": "assess_token_risk",
@@ -376,6 +405,10 @@ TOOLS = [
             "pair count and the chains it trades on. Optional trade_activity reports buys plus sells "
             "in the last hour and the preceding five hours from that selected pool's raw integer counts. "
             "Missing counts are omitted; observed zeros remain zero.\n"
+            "Set include_known_address_balances to true to read the selected pool and canonical "
+            "zero/dead addresses at one verified block on Ethereum, BSC or Base. Percentages use "
+            "the token's totalSupply at that block. Partial results identify missing reads. "
+            "These are token balances, without attribution to an owner, lock or burn.\n"
             "chain_hint is a network preference. If only other networks appear in the initial "
             "listing, VetAgent checks the requested network before returning another market. "
             "When present, network_selection explains the requested lookup and returned scope. "
@@ -409,6 +442,8 @@ TOOLS = [
                 "chain_hint": {"type": "string",
                                "description": "Optional network preference; inspect network_selection if returned."},
                 "comparison_context": _COMPARISON_CONTEXT_SCHEMA,
+                "include_known_address_balances": {"type": "boolean", "default": False,
+                                                   "description": "Opt in to a fixed-block public node read."},
             },
             "required": ["address"],
         },
@@ -432,6 +467,7 @@ TOOLS = [
                                    "Omitted for invalid or conflicting identity. Old truncated display IDs "
                                    "cannot establish exact cross-response identity. No sell simulation runs."},
                 "trade_activity": _TRADE_ACTIVITY_SCHEMA,
+                "known_address_balances": _KNOWN_ADDRESS_BALANCES,
                 "comparison_context": _COMPARISON_CONTEXT_SCHEMA,
                 "comparison": _COMPARISON_SCHEMA,
                 "liquidity_usd": {"type": ["number", "null"]},
@@ -741,7 +777,9 @@ async def _call_tool(req_id, params):
                                        _as_bool(args.get("verbose", False)))
         elif name == "get_token_liquidity":
             context = liquidity_comparison.validate_context(args.get("comparison_context", []))
-            result = await risk.liquidity(args.get("address", ""), args.get("chain_hint"))
+            options = ({"include_known_address_balances": True}
+                       if args.get("include_known_address_balances") is True else {})
+            result = await risk.liquidity(args.get("address", ""), args.get("chain_hint"), **options)
             result = liquidity_comparison.with_context(result, context, requested="comparison_context" in args)
         elif name == "find_new_hot_pools":
             if "listing" in args:

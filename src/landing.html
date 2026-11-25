@@ -120,6 +120,7 @@
    background:var(--panel-2);padding:16px;margin-top:6px}
  #verdict.show,#liquidity-result.show{display:block}
  .liquidity-history{color:var(--dim);font-size:13px;margin:12px 0;max-width:72ch}
+ .known-address-balances code{overflow-wrap:anywhere}
  .liquidity-history button{background:none;border:0;color:var(--accent);padding:4px 0;
    font:inherit;text-decoration:underline;cursor:pointer}
  button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
@@ -188,6 +189,9 @@
     <button id="go">Assess</button>
     <button id="liquidity-go" aria-describedby="liquidity-history">Recheck liquidity</button>
   </div>
+  <label class="liquidity-history" for="include-known-address-balances">
+    <input id="include-known-address-balances" type="checkbox"> Include known address balances with liquidity recheck
+  </label>
   <div class="samples">Examples:
     <button data-a="0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" data-c="ethereum">WETH (Ethereum)</button>·
     <button data-a="0xb954d1ba6bb92123609fcfb724c68b810c668feb" data-c="ethereum">Contract signals</button>·
@@ -400,6 +404,7 @@
   var networkChosen = false, presetAddress = input.value;
 
   function setPreset(address, chain) {
+    clearKnownAddressBalances();
     input.value = address; network.value = chain;
     presetAddress = address; networkChosen = false;
   }
@@ -415,9 +420,13 @@
     return network.value;
   }
 
-  input.addEventListener('input', selectedNetwork);
+  input.addEventListener('input', function () {
+    selectedNetwork();
+    clearKnownAddressBalances();
+  });
   network.addEventListener('change', function () {
     networkChosen = true; presetAddress = null;
+    clearKnownAddressBalances();
   });
   // Native same-value confirmation has detail=0; the pointer's opening click has detail=1.
   // Confirmation does not emit change. Tab focus and Escape do not confirm a choice.
@@ -638,12 +647,75 @@
 
   var liquidityButton = document.getElementById('liquidity-go');
   var liquidityOutput = document.getElementById('liquidity-result');
+  var knownAddressOption = document.getElementById('include-known-address-balances');
   var liquidityRequest = 0;
+  var knownAddressActive = false;
   var historyKey = 'vetagent.liquidity.v1';
   var firstAddress = input.value, firstNetwork = network.value;
   var observations = [], historyLoaded = false, storageNotice = '';
   var observationFields = ['status', 'address', 'best_pair_chain', 'best_pair_address',
                            'source', 'checked_at', 'liquidity_usd'];
+
+  function clearKnownAddressBalances() {
+    if (!knownAddressActive) { return; }
+    knownAddressActive = false;
+    ++liquidityRequest;
+    liquidityButton.disabled = false;
+    liquidityOutput.innerHTML = '';
+  }
+
+  knownAddressOption.addEventListener('change', clearKnownAddressBalances);
+
+  var balanceReasons = {
+    unsupported_network: 'This check covers Ethereum, BSC and Base.',
+    network_unconfirmed: 'Market data did not confirm a network.',
+    network_mismatch: 'The market belongs to a different network from the one selected.',
+    rpc_chain_unavailable: 'The public node did not identify its network.',
+    rpc_chain_mismatch: 'The public node returned a different network.',
+    block_unavailable: 'The public node did not supply a valid block.',
+    block_unconfirmed: 'The block could not be confirmed after the reads.',
+    block_changed: 'The block changed during the reads.',
+    invalid_total_supply: 'A positive token supply could not be verified.',
+    balances_exceed_supply: 'The reported balances together exceed the reported supply.',
+    balances_unavailable: 'The public node did not provide verified balances.',
+    pool_not_selected: 'No pool was identified for this liquidity estimate.',
+    pool_id_not_address: 'The selected pool ID is not a pool contract address.',
+    pool_identity_unconfirmed: 'The market data could not confirm this pool and its two tokens.',
+    pool_tokens_unavailable: 'The pool contract did not return both token addresses.',
+    pool_tokens_mismatch: 'The pool contract returned different tokens from the market record.',
+    balance_unavailable: 'The public node did not provide a valid balance.'
+  };
+
+  function knownAddressSummary(value, address, selected, returned) {
+    var reading = value.known_address_balances;
+    function sameID(a, b) {
+      return a === b || (typeof a === 'string' && typeof b === 'string' &&
+        /^0x[0-9a-fA-F]+$/.test(a) && /^0x[0-9a-fA-F]+$/.test(b) && a.toLowerCase() === b.toLowerCase());
+    }
+    if (!reading || !sameID(reading.address, address) || !sameID(value.address, address) ||
+        !sameID(reading.pool_id, value.best_pair_address || null) ||
+        (returned && reading.chain !== returned)) { return ''; }
+    var heading = '<section class="rec known-address-balances"><strong>Known address balances</strong>';
+    if (reading.status === 'unavailable') {
+      return heading + '<p>' + esc(balanceReasons[reading.reason] || 'Balances are unavailable.') + '</p></section>';
+    }
+    if ((selected && selected !== reading.chain) || !reading.balances ||
+        !/^0x[0-9a-f]{64}$/.test(reading.block_hash || '')) { return ''; }
+    var addresses = {pool: value.best_pair_address, zero: '0x' + '0'.repeat(40),
+      dead: '0x' + '0'.repeat(36) + 'dead'};
+    var names = {pool: 'Selected pool', zero: 'Zero address', dead: 'Dead address'};
+    var rows = ['pool', 'zero', 'dead'].map(function (role) {
+      var row = reading.balances[role] || {};
+      var item = row.status === 'ok' && sameID(row.address, addresses[role]) ?
+        '<strong>' + esc(row.supply_percent) + '%</strong> of supply at this block' :
+        esc(balanceReasons[row.reason] || 'Balance unavailable.');
+      var scope = row.address && sameID(row.address, addresses[role]) ? ' <code>' + esc(row.address) + '</code>' : '';
+      return '<li>' + names[role] + scope + ' · ' + item + '</li>';
+    });
+    return heading + '<p>Block ' + esc(reading.block_number) + ' on ' + esc(reading.chain) +
+      ' · <code>' + esc(reading.block_hash) + '</code></p><ul>' + rows.join('') +
+      '</ul><p>Balances are for these addresses only. Ownership, locks and burn status are unverified.</p></section>';
+  }
 
   function validContext(rows) {
     return Array.isArray(rows) && rows.length <= 8 && JSON.stringify(rows).length <= 8192 &&
@@ -732,6 +804,8 @@
     if (!address) { return; }
     var chain = selectedNetwork();
     var request = ++liquidityRequest;
+    var includeBalances = knownAddressOption.checked === true;
+    knownAddressActive = includeBalances;
     loadObservations();
     var submitted = '<div class="request-scope">Submitted address: <code>' + esc(address) +
       '</code><br>Selected network: ' + esc(chain || 'Auto') + '</div>';
@@ -739,6 +813,7 @@
       return sameAddress(row, address) && (!chain || row.best_pair_chain === chain);
     })};
     if (chain) { args.chain_hint = chain; }
+    if (includeBalances) { args.include_known_address_balances = true; }
     liquidityButton.disabled = true;
     showLiquidity(submitted + 'Checking liquidity\u2026');
     fetch('https://vetagent.dev/mcp', {
@@ -820,7 +895,8 @@
           estimate + '<div>The provider reported zero liquidity for this pool.</div>' :
           '<div>No pool-specific zero was available for comparison.</div>';
       }
-      showLiquidity(submitted + networkNotice + details + estimate + change +
+      var balances = includeBalances ? knownAddressSummary(value, address, chain, returned) : '';
+      showLiquidity(submitted + networkNotice + details + estimate + change + balances +
         '<div class="rec">These are USD estimates and reply times; source data may be cached. ' +
         'A difference can reflect valuation and is not a measured reserve flow or executable sell depth. ' +
         'Saved baselines are observations supplied by this browser.</div>');

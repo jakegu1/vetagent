@@ -351,6 +351,17 @@ call a simulator or return a simulation correspondence. Its selection can differ
 assessment's conservative market when sell evidence is missing; compare the disclosed
 context without treating a liquidity snapshot as simulated exit depth.
 
+Set `include_known_address_balances: true` in MCP, or add
+`include_known_address_balances=true` to `GET /liquidity/{address}`.
+The separate `known_address_balances` result describes balances reported by
+the token contract for the selected pool address and the canonical zero and dead
+addresses on Ethereum, BSC and Base. Check its own `status` and each address's
+`status`. Verified results identify the rechecked block, with decimal-string
+`block_number`, `total_supply_raw` and `balance_raw` values. `supply_percent` has
+six decimal places, with `<0.000001` for a smaller positive share. A 32-byte pool
+ID does not identify an individual holder address. This observation does not
+establish ownership, locks, burns, or a holder ranking.
+
 ### Reported single-sale quantity limit
 
 Both assessment modes may include `evidence.max_sell`, attributed to the adopted
