@@ -3265,9 +3265,9 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None, issue=None):
         return
 
     if hp is None:
-        reason = _failed("honeypot.is")
-        data_gaps.append({"dimension": "sellability", "source": "honeypot.is",
-                          "reason": reason})
+        gap = {"dimension": "sellability", "source": "honeypot.is",
+               "reason": _failed("honeypot.is")}
+        data_gaps.append(gap)
         settled, sells, buys = _sells_demonstrated(evidence)
         if settled:
             _sells_answer(signals, evidence, sells, buys,
@@ -3277,7 +3277,7 @@ def _honeypot_signals(hp, signals, evidence, data_gaps, chain=None, issue=None):
         # corroborate the token's market or contract risks.
         signals.append(_sig("info", "Sellability unverified",
                             "The sell-simulation request did not complete, so selling remains "
-                            "unverified. Source detail: %s." % reason, "coverage"))
+                            "unverified. Source detail: %s." % gap["reason"], "coverage"))
         return
 
     summary = hp.get("summary")
