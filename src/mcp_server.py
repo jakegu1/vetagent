@@ -315,6 +315,8 @@ _KNOWN_ADDRESS_BALANCES = {
     "properties": {
         "status": {"type": "string", "enum": ["ok", "partial", "unavailable"]},
         "reason": {"type": "string", "description": "Why the fixed-block observation is unavailable."},
+        "message": {"type": "string", "description": "Manual recheck guidance when rpc_rate_limited reports "
+                    "an HTTP 429 on the node's chain ID read."},
         "address": {"type": "string"},
         "chain": {"type": ["string", "null"]},
         "source": {"type": "string", "enum": ["public_rpc"]},

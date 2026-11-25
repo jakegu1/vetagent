@@ -8,6 +8,7 @@ ZERO = "0x" + "0" * 40
 DEAD = "0x" + "0" * 36 + "dead"
 _QUANTITY = re.compile(r"0x(?:0|[1-9a-fA-F][0-9a-fA-F]{0,63})")
 _WORD = re.compile(r"0x[0-9a-fA-F]{64}")
+_CHAIN_RATE_LIMITED = object()
 
 
 def _unique_object(pairs):
@@ -26,6 +27,8 @@ async def _read(fetch, url, request_id, method, params):
             # workerd accepts manual redirects. Reject 3xx before parsing or following them.
             response = await fetch(url, method="POST", body=json.dumps(payload), redirect="manual",
                                    headers={"content-type": "application/json"})
+            if response.status == 429 and method == "eth_chainId":
+                return _CHAIN_RATE_LIMITED
             if response.status != 200:
                 return None
             reply = json.loads(await response.text(), object_pairs_hook=_unique_object)
@@ -85,6 +88,10 @@ def _balance(address, raw, supply):
 async def observe(fetch, url, reading, pool_tokens, pool_reason):
     """At most nine individual calls. Every eth_call uses the same block number."""
     chain = await _read(fetch, url, 1, "eth_chainId", [])
+    if chain is _CHAIN_RATE_LIMITED:
+        return dict(unavailable(reading, "rpc_rate_limited"),
+                    message="The public node returned a rate limit (HTTP 429). "
+                            "Wait a little while, then recheck liquidity manually.")
     chain_id = _quantity(chain)
     if chain_id is None:
         return unavailable(reading, "rpc_chain_unavailable")

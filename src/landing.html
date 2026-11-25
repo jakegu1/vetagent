@@ -697,7 +697,9 @@
         (returned && reading.chain !== returned)) { return ''; }
     var heading = '<section class="rec known-address-balances"><strong>Known address balances</strong>';
     if (reading.status === 'unavailable') {
-      return heading + '<p>' + esc(balanceReasons[reading.reason] || 'Balances are unavailable.') + '</p></section>';
+      var explanation = reading.reason === 'rpc_rate_limited' && typeof reading.message === 'string' ?
+        reading.message : balanceReasons[reading.reason];
+      return heading + '<p>' + esc(explanation || 'Balances are unavailable.') + '</p></section>';
     }
     if ((reading.status !== 'ok' && reading.status !== 'partial') ||
         ['ethereum', 'bsc', 'base'].indexOf(reading.chain) === -1 ||
