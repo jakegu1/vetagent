@@ -23,7 +23,8 @@ async def _read(fetch, url, request_id, method, params):
     payload = {"jsonrpc": "2.0", "id": request_id, "method": method, "params": params}
     try:
         async with asyncio.timeout(4):
-            response = await fetch(url, method="POST", body=json.dumps(payload), redirect="error",
+            # workerd accepts manual redirects. Reject 3xx before parsing or following them.
+            response = await fetch(url, method="POST", body=json.dumps(payload), redirect="manual",
                                    headers={"content-type": "application/json"})
             if response.status != 200:
                 return None
