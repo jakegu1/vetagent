@@ -1,0 +1,120 @@
+{
+  "base": {
+    "listing": {
+      "id": "base_0x4a7af46bc8abc00048c6c7920a1488daf568366c",
+      "type": "pool",
+      "attributes": {
+        "base_token_price_usd": "1663.53",
+        "quote_token_price_usd": "0.999017666332869",
+        "base_token_price_quote_token": "1659.36030303",
+        "address": "0x4a7af46bc8abc00048c6c7920a1488daf568366c",
+        "name": "WETH / USDC 0.04%",
+        "pool_created_at": "2026-10-22T02:50:19Z",
+        "transactions": {
+          "h24": {
+            "buys": 9427,
+            "sells": 8954,
+            "buyers": 1259,
+            "sellers": 1134,
+            "unique_traders": 1611
+          }
+        },
+        "volume_usd": {
+          "m5": "143274.820367044",
+          "m15": "646807.786151993",
+          "m30": "1231980.0263871",
+          "h1": "2714591.75061995",
+          "h6": "17003071.2996127",
+          "h24": "71083081.8631722"
+        },
+        "reserve_in_usd": "6870949.1581"
+      },
+      "relationships": {
+        "base_token": {
+          "data": {
+            "id": "base_0x4200000000000000000000000000000000000006",
+            "type": "token"
+          }
+        },
+        "quote_token": {
+          "data": {
+            "id": "base_0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+            "type": "token"
+          }
+        },
+        "dex": {
+          "data": {
+            "id": "aero-slipstream-base",
+            "type": "dex"
+          }
+        }
+      }
+    },
+    "pool_detail_h24": {
+      "buys": 8954,
+      "sells": 9427,
+      "buyers": 1134,
+      "sellers": 1259,
+      "unique_traders": 1611
+    }
+  },
+  "bsc": {
+    "listing": {
+      "id": "bsc_0x4f31fa980a675570939b737ebdde0471a4be40eb",
+      "type": "pool",
+      "attributes": {
+        "base_token_price_usd": "0.997914382",
+        "quote_token_price_usd": "1.00062568062367",
+        "base_token_price_quote_token": "0.9972903967",
+        "address": "0x4f31fa980a675570939b737ebdde0471a4be40eb",
+        "name": "USDT / USDC 0.05%",
+        "pool_created_at": "2023-05-03T11:14:49Z",
+        "transactions": {
+          "h24": {
+            "buys": 4181,
+            "sells": 4578,
+            "buyers": 865,
+            "sellers": 799,
+            "unique_traders": 1188
+          }
+        },
+        "volume_usd": {
+          "m5": "3812.1798978097",
+          "m15": "10038.1386135813",
+          "m30": "22896.4135860604",
+          "h1": "41037.6318676031",
+          "h6": "78696.2855941011",
+          "h24": "703154.481730948"
+        },
+        "reserve_in_usd": "38310759.4031"
+      },
+      "relationships": {
+        "base_token": {
+          "data": {
+            "id": "bsc_0x55d398326f99059ff775485246999027b3197955",
+            "type": "token"
+          }
+        },
+        "quote_token": {
+          "data": {
+            "id": "bsc_0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+            "type": "token"
+          }
+        },
+        "dex": {
+          "data": {
+            "id": "pancakeswap-v3-bsc",
+            "type": "dex"
+          }
+        }
+      }
+    },
+    "pool_detail_h24": {
+      "buys": 4578,
+      "sells": 4181,
+      "buyers": 799,
+      "sellers": 865,
+      "unique_traders": 1188
+    }
+  }
+}

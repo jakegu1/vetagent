@@ -7780,7 +7780,7 @@ def test_t111_gecko_counts_require_source_side():
            "volume_usd": {"h24": "60000"},
            "transactions": {"h24": {"buys": 83, "sells": 10, "buyers": 22, "sellers": 4}}}}
     for base, quote, expected in ((target, other, (83, 10, 4)),
-                                  (other, target, (10, 83, None)),
+                                  (other, target, (83, 10, 4)),
                                   (None, None, (None, None, None))):
         row = copy.deepcopy(raw)
         if base:
@@ -7790,8 +7790,33 @@ def test_t111_gecko_counts_require_source_side():
         evidence = {}
         risk._liquidity_signals(market, [market], [], evidence, target=target)
         best = evidence["best_pair"]
-        check("T111 Gecko transaction and seller attribution follows proven source side",
+        check("T111 Gecko token-scoped counts require identity and preserve reported direction",
               tuple(best[k] for k in ("buys_24h", "sells_24h", "sellers_24h")) == expected, str(best))
+
+
+def test_t111_gecko_token_listing_is_already_target_scoped():
+    print("\n[T111] frozen Base and BSC Gecko token listings already orient to USDC")
+    records = _load("t111_gecko_token_pools.json")
+    for chain, record in records.items():
+        raw = record["listing"]
+        address = raw["relationships"]["quote_token"]["data"]["id"].rsplit("_", 1)[1]
+        reported = raw["attributes"]["transactions"]["h24"]
+        detail = record["pool_detail_h24"]
+        check("T111 captured listing buys and sellers use the opposite pool-detail direction",
+              (reported["buys"], reported["sells"], reported["buyers"], reported["sellers"])
+              == (detail["sells"], detail["buys"], detail["sellers"], detail["buyers"]), str(raw["id"]))
+        routes = {_T083_DS + address: ("market", 200, {"pairs": []}),
+                  _t083_market_url(chain, address): ("gecko", 200, {"data": [raw]}),
+                  "https://api.honeypot.is/v2/IsHoneypot?address=" + address +
+                  ("&chainID=56" if chain == "bsc" else "&chainID=8453"): ("sim", 404, {})}
+        args = {"address": address, "chain_hint": chain, "verbose": True}
+        body, calls, _, _, _ = run(_t083_mcp("assess_token_risk", args, routes))
+        pair = body["evidence"]["best_pair"]
+        check("T111 actual token path retains captured quote-token trades and distinct sellers",
+              pair.get("pool_id") == raw["attributes"]["address"] and
+              tuple(pair[k] for k in ("buys_24h", "sells_24h", "sellers_24h")) ==
+              (reported["buys"], reported["sells"], reported["sellers"])
+              and calls == ["market", "gecko", "sim"], str((pair, calls)))
 
 
 def test_t111_seller_detail_uses_its_own_base_side():
