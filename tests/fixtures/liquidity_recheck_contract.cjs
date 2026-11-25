@@ -95,6 +95,24 @@ const cases = {
       assert.equal(b.nodes['liquidity-go'].disabled, false);
     }
   },
+  async 'a balance cannot be rendered as a pool without an addressable selected pool'() {
+    for (const invalid of [null, '0x' + 'cd'.repeat(32)]) {
+      const b = boot(), reply = knownAddressesReply(), value = reply.result.structuredContent;
+      const reading = value.known_address_balances;
+      reading.pool_id = invalid;
+      if (invalid === null) {
+        delete value.best_pair_address;
+        delete reading.balances.pool.address;
+      } else {
+        value.best_pair_address = invalid;
+        reading.balances.pool.address = invalid;
+      }
+      b.nodes[balanceOption].checked = true;
+      b.click().resolve(reply); await tick();
+      assert.doesNotMatch(b.text(), /25\.000000%/);
+      assert.match(b.text(), /0\.000000%/);
+    }
+  },
   async 'three actual MCP replies survive reopening and source alternation'() {
     const saved = new Map(); let expected = [];
     for (let i = 0; i < replies.length; i++) {
