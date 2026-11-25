@@ -1661,14 +1661,17 @@ _ESTABLISHED_VENUE_PRICE_RATIO = 1.05
 
 class _GeckoPool(dict):
     """Normalized pool fields plus local provenance, never vendor dictionary keys."""
-    __slots__ = ("evm_identity", "resource_pool", "quote_price_consistent", "pool_identity")
+    __slots__ = ("evm_identity", "resource_pool", "quote_price_consistent", "pool_identity",
+                 "trade_target")
 
-    def __init__(self, fields, evm_identity, resource_pool, quote_price_consistent, pool_identity=None):
+    def __init__(self, fields, evm_identity, resource_pool, quote_price_consistent, pool_identity=None,
+                 trade_target=None):
         super().__init__(fields)
         self.evm_identity = evm_identity
         self.resource_pool = resource_pool
         self.quote_price_consistent = quote_price_consistent
         self.pool_identity = pool_identity
+        self.trade_target = trade_target
 
 
 def _representative_anchor_pool(best, candidates, pairs, target):
@@ -1946,6 +1949,12 @@ def _gt_to_pair(p, address, network):
             implied = base_usd / quote_units
             low, high = sorted((implied, quote_usd))
             quote_consistent = low > 0 and high / low <= _ESTABLISHED_VENUE_PRICE_RATIO
+    trade_tokens = _gecko_relationship_tokens(rel, network) if resource_net in ("", network) else None
+    target_key = _market_address_key(address)
+    # The token-pools endpoint already orients these counts to its URL token.
+    # Its separate pool detail endpoint orients to the base token instead.
+    trade_target = (target_key if trade_tokens and trade_tokens[0] != trade_tokens[1]
+                    and target_key in trade_tokens else None)
     return _GeckoPool({
         "dexId": "geckoterminal",
         "pairAddress": pool_address,
@@ -1995,7 +2004,7 @@ def _gt_to_pair(p, address, network):
         "baseToken": {"address": base_addr, "symbol": base_sym},
         "quoteToken": {"address": quote_addr, "symbol": quote_sym},
         "priceNative": a.get("base_token_price_quote_token"),
-    }, valid_identity, resource_pool, quote_consistent, pool_identity)
+    }, valid_identity, resource_pool, quote_consistent, pool_identity, trade_target)
 
 
 # ---------------------------------------------------------------- building signals
@@ -2026,6 +2035,43 @@ def _market_pool_identity(market):
     return _validated_chain_pool_id(market.get("pairAddress"), chain)
 
 
+def _target_trade_orientation(market, target):
+    """Identify how the source's counters relate to the requested token."""
+    key = _market_address_key(target)
+    if not key:
+        return None
+    if isinstance(market, _GeckoPool):
+        return "direct" if market.trade_target == key else None
+    tokens = (market.get("baseToken"), market.get("quoteToken"))
+    base, quote = (_market_address_key(token.get("address")) if isinstance(token, dict) else ""
+                   for token in tokens)
+    if base == quote:
+        return None
+    if key == base:
+        return "direct"
+    valid_address = _looks_evm if _looks_evm(key) else _looks_solana
+    if key == quote and valid_address(base):
+        return "reverse"
+    return None
+
+
+def _target_trade_counts(market, orientation):
+    """Give buys and sells of the token, keeping missing measurements as None."""
+    transactions = market.get("txns")
+    h24 = transactions.get("h24") if isinstance(transactions, dict) else None
+    if orientation is None or not isinstance(h24, dict):
+        return None, None
+    buys, sells = _market_number(h24.get("buys")), _market_number(h24.get("sells"))
+    # Buying the base spends the quote. This reverses trades, not unique wallets.
+    return (sells, buys) if orientation == "reverse" else (buys, sells)
+
+
+def _reported_market_sellers(market):
+    traders = market.get("traders")
+    h24 = traders.get("h24") if isinstance(traders, dict) else None
+    return _market_number(h24.get("sellers")) if isinstance(h24, dict) else None
+
+
 def _liquidity_signals(best, pairs, signals, evidence, target=None):
     liq = _pair_liquidity(best)
     vol = _market_number((best.get("volume") or {}).get("h24"))
@@ -2033,13 +2079,8 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
     age = _age_days(created, malformed_as_missing=True)
     if age is None:
         created = None
-    # Buy/sell counts belong to the pool that reported them.
-    transactions = best.get("txns")
-    txns = transactions.get("h24") if isinstance(transactions, dict) else None
-    txns = txns if isinstance(txns, dict) else {}
-    traders = best.get("traders")
-    h24_traders = traders.get("h24") if isinstance(traders, dict) else None
-    sellers = h24_traders.get("sellers") if isinstance(h24_traders, dict) else None
+    orientation = _target_trade_orientation(best, target)
+    buys, sells = _target_trade_counts(best, orientation)
     display_id = best.get("pairAddress") or best.get("pool_id")
     pool_id = _market_pool_identity(best)
     evidence["best_pair"] = {
@@ -2054,9 +2095,9 @@ def _liquidity_signals(best, pairs, signals, evidence, target=None):
         # 16% of the set those are different pools, with the disagreement booked as
         # engine error.
         "pair_address": _ascii_safe(display_id, 48),
-        "sellers_24h": _market_number(sellers) if pool_id is not None else None,
+        "sellers_24h": _reported_market_sellers(best) if pool_id is not None and orientation == "direct" else None,
         "volume_24h_usd": _market_round(vol), "pair_created_at": created,
-        "buys_24h": _market_number(txns.get("buys")), "sells_24h": _market_number(txns.get("sells")),
+        "buys_24h": buys, "sells_24h": sells,
     }
     if pool_id is not None:
         evidence["best_pair"]["pool_id"] = pool_id
@@ -3001,7 +3042,7 @@ def _sim_never_ran(hp):
     return hp.get("router") == "" and gas == "0" and "does not contain code" in reason
 
 
-async def _distinct_sellers(hp, evidence, address=None):
+async def _distinct_sellers(hp, evidence, address, market=None):
     """Fill in the picked pool's distinct-seller count, when a honeypot verdict is contested.
 
     Only then: a simulator saying honeypot is the one case where the count decides
@@ -3013,6 +3054,10 @@ async def _distinct_sellers(hp, evidence, address=None):
         return
     bp = evidence.get("best_pair") or {}
     if bp.get("sellers_24h") is not None:
+        return
+    if market is not None and _reported_market_sellers(market) is not None:
+        # Keep the existing request budget when the selected market already
+        # supplied this field for a side we cannot attribute to the target.
         return
     net = _GT_NETWORK.get((bp.get("chain") or "").lower())
     pool = _validated_pool_id(bp.get("pool_id"))
@@ -3030,7 +3075,10 @@ async def _distinct_sellers(hp, evidence, address=None):
         h24 = txns.get("h24") if isinstance(txns, dict) else None
         sellers = _market_number(h24.get("sellers")) if isinstance(h24, dict) else None
         if sellers is not None and sellers.is_integer():
-            bp["sellers_24h"] = sellers
+            # Pool detail can use different ordering from the market listing.
+            sides = _gecko_relationship_tokens(data.get("relationships"), net)
+            if sides and sides[0] == _market_address_key(address) and sides[0] != sides[1]:
+                bp["sellers_24h"] = sellers
             return
 
 
@@ -4903,13 +4951,7 @@ async def assess(address, chain_hint=None, verbose=False):
                     % (len(stated), "" if len(stated) == 1 else "s"), "drained"))
             else:
                 def traded(pair):
-                    txns = pair.get("txns")
-                    if not isinstance(txns, dict):
-                        return False
-                    h24 = txns.get("h24")
-                    if not isinstance(h24, dict):
-                        return False
-                    sells = _market_number(h24.get("sells"))
+                    _, sells = _target_trade_counts(pair, _target_trade_orientation(pair, address))
                     return sells is not None and sells > 0
 
                 reason = (_UNBACKED_REASON
@@ -5053,7 +5095,7 @@ async def assess(address, chain_hint=None, verbose=False):
             _sell_evidence_gap(signals, data_gaps, issue)
         else:
             if supported:
-                await _distinct_sellers(hp, evidence, address=address)
+                await _distinct_sellers(hp, evidence, address, displayed_market)
             _honeypot_signals(hp, signals, evidence, data_gaps, chain=hp_chain, issue=issue)
         if unsettled_claim and replaced:
             # Before W31 this answer was a fatal honeypot; W31 read it as a failed
