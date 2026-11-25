@@ -412,6 +412,7 @@ def test_landing_trial_runs_the_served_script_with_request_scope():
             [risk._sig("warn", "Check incomplete", "Evidence missing", "sellability"),
              risk._sig("ok", "Observed contract", "Contract observation available", "contract")],
             {"chain_searched": "polygon" if name == "unsupported" else "ethereum"}, missing)
+    controls["t114_outage"] = asyncio.run(_t114_assessment("MCP", 429, verbose=False))[0]
     landing = asyncio.run(entry.Default().fetch(FakeRequest("https://vetagent.dev/"))).body
     runner = os.path.join(ROOT, "tests", "fixtures", "landing_trial_contract.cjs")
     result = subprocess.run(["node", runner], input=json.dumps({"html": landing, "recorded": recorded,
@@ -1280,7 +1281,7 @@ def _evidence_fixture(name):
         return json.load(source)
 
 
-async def _evidence_endpoint(surface, tool, address, chain, routes):
+async def _evidence_endpoint(surface, tool, address, chain, routes, *, verbose=True):
     """Drive the actual Worker endpoint with only the supplied upstream responses."""
     import json
     import socket
@@ -1296,6 +1297,8 @@ async def _evidence_endpoint(surface, tool, address, chain, routes):
     async def fetch(url, **kwargs):
         label, status, body = routes[url]
         calls.append(label)
+        if status is None:
+            raise TimeoutError
 
         async def content():
             return json.dumps(body, allow_nan=False)
@@ -1312,14 +1315,14 @@ async def _evidence_endpoint(surface, tool, address, chain, routes):
         async def json(self):
             return {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
                     "params": {"name": tool, "arguments": {
-                        "address": address, "chain_hint": chain, "verbose": True}}}
+                        "address": address, "chain_hint": chain, **({"verbose": True} if verbose else {})}}}
 
     if surface == "MCP":
         request = MCPRequest("https://offline.invalid/mcp", method="POST")
     else:
         path = "assess" if tool == "assess_token_risk" else "liquidity"
-        request = FakeRequest("https://offline.invalid/%s/%s?chain=%s&verbose=true"
-                              % (path, address, chain))
+        request = FakeRequest("https://offline.invalid/%s/%s?chain=%s%s"
+                              % (path, address, chain, "&verbose=true" if verbose else ""))
     pin = risk._BENCH_NOW.set(datetime(2026, 11, 10, tzinfo=timezone.utc))
     try:
         with patch.object(socket.socket, "connect", deny), patch.object(socket, "getaddrinfo", deny), \
@@ -1334,6 +1337,116 @@ async def _evidence_endpoint(surface, tool, address, chain, routes):
     if surface == "MCP":
         result = (result.get("result") or {}).get("structuredContent") or {}
     return result, calls, response.status
+
+
+async def _t114_assessment(surface, status, *, verbose=True, variant="regular"):
+    address, pool = "0x" + "ab" * 20, "0x" + "cd" * 20
+    market = {"chainId": "base", "dexId": "uniswap", "pairAddress": pool,
+              "baseToken": {"address": address, "symbol": "T114"},
+              "quoteToken": {"address": "0x4200000000000000000000000000000000000006"},
+              "liquidity": {"usd": 1000}, "priceUsd": "0.01",
+              "pairCreatedAt": 1793577600000,  # Eight days before the frozen assessment clock.
+              "volume": {"h24": 5}, "txns": {"h24": {"buys": 2, "sells": 1}}}
+    peers = []
+    if variant == "independent high":
+        peers = [dict(market, pairAddress="0x" + "de" * 20,
+                      baseToken={"address": "0x" + "ef" * 20, "symbol": "T114"},
+                      liquidity={"usd": 2_000_000})]
+    if variant == "observed sells":
+        market.update(liquidity={"usd": 80_000}, txns={"h24": {"buys": 120, "sells": 53}})
+    simulation = {"token": {"address": address}, "chain": {"id": 8453}, "pairAddress": pool,
+                  "simulationSuccess": True, "honeypotResult": {"isHoneypot": False},
+                  "simulationResult": {"buyTax": 0, "sellTax": 0, "transferTax": 0},
+                  "summary": {"risk": "low", "riskLevel": 1}}
+    if variant == "failed trade":
+        simulation.update(simulationSuccess=False, simulationError="SELL_FAILED")
+        del simulation["simulationResult"]
+    if variant == "tax and holder":
+        simulation["simulationResult"]["sellTax"] = 26
+        simulation["holderAnalysis"] = {"holders": 100, "failed": 5}
+        simulation["contractCode"] = {"openSource": False}
+    sell = "https://api.honeypot.is/v2/IsHoneypot?address=" + address + "&chainID=8453"
+    return await _evidence_endpoint(surface, "assess_token_risk", address, "base", {
+        "https://api.dexscreener.com/latest/dex/tokens/" + address: ("market", 200, {"pairs": [market]}),
+        "https://api.dexscreener.com/latest/dex/search?q=T114": ("ticker", 200, {"pairs": peers}),
+        sell: ("simulator", status, simulation if status == 200 else {}),
+        sell + "&pair=" + pool: ("retry", 404, {}),
+    }, verbose=verbose)
+
+
+def test_t114_simulator_outage_is_a_visible_gap_without_risk_corroboration():
+    from unittest.mock import patch
+
+    async def no_wait(*args, **kwargs):
+        pass
+
+    async def run():
+        for surface, verbose in (("MCP", False), ("MCP", True), ("REST", False)):
+            healthy, usual_calls, healthy_status = await _t114_assessment(surface, 200, verbose=verbose)
+            expected_market = [s for s in healthy.get("signals", [])
+                               if s["category"] in {"liquidity", "freshness", "lifecycle"}]
+            check("T114 %s verbose=%s successful provider result keeps medium/68" % (surface, verbose),
+                  healthy_status == 200 and (healthy.get("risk_level"), healthy.get("risk_score")) == ("medium", 68)
+                  and len(expected_market) == 3
+                  and all(s["severity"] in ("warn", "critical") for s in expected_market)
+                  and usual_calls == ["market", "ticker", "simulator"], str((healthy, usual_calls)))
+            for failure, detail, attempts in ((429, "429", 1), (503, "503", 3), (None, "TimeoutError", 3)):
+                result, calls, http_status = await _t114_assessment(surface, failure, verbose=verbose)
+                signals = result.get("signals", [])
+                gap = {"dimension": "sellability", "source": "honeypot.is",
+                       "reason": "upstream request failed (honeypot.is %s)" % detail}
+                check("T114 %s verbose=%s %s is unknown/68 and keeps the market driver" % (surface, verbose, detail),
+                      http_status == 200 and (result.get("risk_level"), result.get("risk_score")) == ("unknown", 68)
+                      and result.get("next_action") == "retry" and result.get("driver") == healthy.get("driver")
+                      and result.get("evidence", {}).get("best_pair") == healthy.get("evidence", {}).get("best_pair")
+                      and result.get("evidence", {}).get("data_gaps") == [gap]
+                      and all(s in signals for s in expected_market)
+                      and calls == usual_calls[:2] + ["simulator"] * attempts, str((result, calls)))
+                check("T114 %s verbose=%s %s coverage warning remains visible" % (surface, verbose, detail),
+                      any(s["name"] == "Sellability unverified" and s["severity"] == "info"
+                          and s["category"] == "coverage" and "request" in s["message"] for s in signals),
+                      str(signals))
+
+        for variant, status, expected in (
+            ("regular", 404, ("high", 78, "sellability", "No simulator has traded this token")),
+            ("failed trade", 200, ("high", 78, "sellability", "Sellability unverified")),
+            ("tax and holder", 200, ("high", None, "sell_tax", "Extreme transaction tax")),
+            ("independent high", 429, ("high", 84, "impersonation", "Almost certainly not the token you meant")),
+            ("observed sells", 429, ("unknown", None, "sellability", "Sells are completing on-chain for other holders")),
+        ):
+            answer, calls, _ = await _t114_assessment("MCP", status, variant=variant)
+            level, score, category, name = expected
+            check("T114 %s keeps its original attribution" % variant,
+                  answer.get("risk_level") == level and (score is None or answer.get("risk_score") == score)
+                  and any(s["category"] == category and s["name"] == name for s in answer.get("signals", [])),
+                  str((answer, calls)))
+            if variant == "independent high":
+                check("T114 high market risk exposes actual provider failure in its visible warning",
+                      answer.get("driver", {}).get("category") == category
+                      and any(s["category"] == "coverage" and "honeypot.is 429" in s["message"]
+                              for s in answer.get("signals", []))
+                      and answer.get("evidence", {}).get("data_gaps", [])[0]["reason"]
+                      == "upstream request failed (honeypot.is 429)", str(answer))
+            elif variant == "tax and holder":
+                provider = answer.get("evidence", {}).get("honeypot", {})
+                check("T114 holder sell failures and contract evidence remain visible beside sell tax",
+                      provider.get("holder_analysis", {}).get("failed") == 5
+                      and "5 of 100 sampled holders" in answer.get("recommendation", "")
+                      and any(s["name"] == "Contract is closed source" for s in answer.get("signals", [])),
+                      str(answer))
+            elif variant == "observed sells":
+                check("T114 observed trades remain separate from the missing simulation",
+                      answer.get("evidence", {}).get("sellability_from_chain", {}).get("sells_24h") == 53
+                      and answer.get("evidence", {}).get("data_gaps", [])[0]["reason"]
+                      == "upstream request failed (honeypot.is 429)", str(answer))
+            elif variant in {"regular", "failed trade"}:
+                reason = answer.get("evidence", {}).get("data_gaps", [])[0]["reason"]
+                check("T114 actual provider response preserves token-side sell gap",
+                      reason.startswith("about the token:") and
+                      ("no record" if variant == "regular" else "SELL_FAILED") in reason, reason)
+
+    with patch.object(risk.asyncio, "sleep", no_wait):
+        asyncio.run(run())
 
 
 def test_t086_sell_evidence_at_both_entry_points():

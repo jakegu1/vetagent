@@ -207,6 +207,17 @@ const cases = {
     assert.match(unsupported, /does not cover polygon/i);
     assert.match(unsupported, /coverage/i); assert.match(unsupported, /automated.*paused/i);
   },
+  async 'the served assessment shows a simulator outage without adding market risk'() {
+    const shown = front((await render(clone(controls.t114_outage))).text());
+    assert.match(shown, /class="vlevel"[^>]*>unknown</);
+    assert.match(shown, /Sellability unverified/i);
+    assert.match(shown, /provider request failed/i);
+    assert.match(shown, /honeypot\.is 429/i);
+    assert.match(shown, /Very low liquidity/);
+    assert.match(shown, /Recently created pair/);
+    assert.match(shown, /Very little trading/);
+    assert.doesNotMatch(shown, /score 78\/100/);
+  },
   async 'retry timing comes from the result and mixed gaps do not promise recovery'() {
     for (const name of ['outage', 'mixed']) {
       const value = clone(controls[name]); value.retry_after_seconds = 17;
