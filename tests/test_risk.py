@@ -541,6 +541,12 @@ def test_a_fallback_that_says_not_found_has_answered():
         risk.cf_fetch, risk._fetch_json, risk._cache_get, risk.asyncio.sleep = saved
 
 
+def _seller_detail_fixture(base, quote, counts):
+    return {"data": {"attributes": {"transactions": {"h24": counts}},
+                     "relationships": {"base_token": {"data": {"id": "eth_" + base.lower()}},
+                                       "quote_token": {"data": {"id": "eth_" + quote.lower()}}}}}
+
+
 def test_chain_activity_overrules_a_honeypot_verdict():
     """A simulator saying "you cannot sell" loses to a chain showing thousands just did.
 
@@ -580,7 +586,7 @@ def test_chain_activity_overrules_a_honeypot_verdict():
     # Thousands of completed sells from thousands of addresses: the flag is contradicted,
     # not obeyed. The seller count arrives the way it does in production for a
     # DexScreener pool -- asked of GeckoTerminal, because DexScreener does not carry it.
-    many_sellers = {"data": {"attributes": {"transactions": {"h24": {"sellers": 1900}}}}}
+    many_sellers = _seller_detail_fixture(MATIC, WETH, {"sellers": 1900})
     install_stub([("geckoterminal.com/api/v2/networks/eth/pools/", many_sellers),
                   ("dexscreener", pairs_with(4134, 4228)), ("honeypot.is", hp_flagged)])
     r = run(risk.assess(MATIC, chain_hint="ethereum"))
@@ -2730,7 +2736,7 @@ def test_a_honeypot_flag_is_read_by_its_holder_share():
                 "txns": {"h24": {"buys": buys, "sells": sells}},
                 "pairCreatedAt": 1589841515000}
         gt = (None if gt_sellers is None else
-              {"data": {"attributes": {"transactions": {"h24": {"sellers": gt_sellers}}}}})
+              _seller_detail_fixture(WETH, MATIC, {"sellers": gt_sellers}))
         install_stub([("dex/tokens", {"pairs": [pair]}), ("networks/eth/pools/", gt),
                       ("dex/search", None), ("honeypot.is", hp)])
         return run(risk.assess(WETH, chain_hint="ethereum"))
@@ -2891,7 +2897,7 @@ def test_overturning_a_honeypot_verdict_needs_distinct_sellers():
         # `sellers` rides on the pair, as GeckoTerminal-sourced pairs carry it;
         # `gt_sellers` is the count fetched for a DexScreener pair that does not.
         gt = (None if gt_sellers is None else
-              {"data": {"attributes": {"transactions": {"h24": {"sellers": gt_sellers}}}}})
+              _seller_detail_fixture(WETH, MATIC, {"sellers": gt_sellers}))
         install_stub([("dex/tokens", token(liq, buys, sells, sellers)),
                       ("networks/eth/pools/", gt),
                       ("dex/search", None), ("honeypot.is", hp)])
@@ -2963,8 +2969,8 @@ def test_a_seller_count_nobody_took_cannot_overturn_a_honeypot():
     hp["holderAnalysis"] = {"holders": "400", "failed": "36", "siphoned": "0", "successful": "364"}
 
     def gt_pool(sellers):
-        return {"data": {"attributes": {"transactions": {"h24": {
-            "buys": 100, "sells": 20, "buyers": 90, "sellers": sellers}}}}}
+        return _seller_detail_fixture(WETH, MATIC, {
+            "buys": 100, "sells": 20, "buyers": 90, "sellers": sellers})
 
     asked = []
 
@@ -3606,7 +3612,8 @@ def test_a_keyed_fallback_escapes_the_shared_egress_limit():
         seen.clear()
         stub([("api.coingecko.com/api/v3/onchain/networks/base/pools/", _load("cg_bnkr_pool.json"))])
         ev = {"best_pair": {"chain": "base", "pool_id": "0xaec085e5a5ce8d96a7bdd3eb3a62445d4f6ce703"}}
-        run(risk._distinct_sellers({"honeypotResult": {"isHoneypot": True}}, ev))
+        run(risk._distinct_sellers({"honeypotResult": {"isHoneypot": True}}, ev,
+                                   "0x22af33fe49fd1fa80c7149773dde5890d3c76f3b"))
         check("the distinct-seller count is read through CoinGecko with the key",
               ev["best_pair"].get("sellers_24h") == 83
               and any(h.get("x-cg-demo-api-key") == KEY for _, h in seen), str(seen))
@@ -5904,7 +5911,7 @@ def _pool_id_assessment(pool, sellers=30, failed=36, holders=400, honeypot=True,
         hp["simulationSuccess"] = False
         hp["simulationError"] = 'execution reverted: "revert: HP: BUY_FAILED"'
     answer = (None if sellers is None else
-              {"data": {"attributes": {"transactions": {"h24": {"sellers": sellers}}}}})
+              _seller_detail_fixture(WETH, MATIC, {"sellers": sellers}))
     seen = []
 
     async def _stub(url, *args, **kwargs):
