@@ -2042,9 +2042,7 @@ def _target_trade_orientation(market, target):
         return None
     if isinstance(market, _GeckoPool):
         return "direct" if market.trade_target == key else None
-    tokens = (market.get("baseToken"), market.get("quoteToken"))
-    base, quote = (_market_address_key(token.get("address")) if isinstance(token, dict) else ""
-                   for token in tokens)
+    base, quote = _market_token_sides(market)
     if base == quote:
         return None
     if key == base:
@@ -2053,6 +2051,12 @@ def _target_trade_orientation(market, target):
     if key == quote and valid_address(base):
         return "reverse"
     return None
+
+
+def _market_token_sides(market):
+    tokens = (market.get("baseToken"), market.get("quoteToken"))
+    return tuple(_market_address_key(token.get("address")) if isinstance(token, dict) else ""
+                 for token in tokens)
 
 
 def _target_trade_counts(market, orientation):
@@ -3063,34 +3067,45 @@ async def _distinct_sellers(hp, evidence, address, market=None):
     pool = _validated_pool_id(bp.get("pool_id"))
     if not net or not pool:
         return
+    target = _market_address_key(address)
+    market_sides = _market_token_sides(market) if market is not None else ()
     for url, headers, _name in _onchain_sources("networks/%s/pools/%s" % (net, _urlq(pool))):
         gt = await _fetch_json(url, headers=headers)
         data = gt.get("data") if isinstance(gt, dict) else None
         if not isinstance(data, dict):
             continue
         attrs = data.get("attributes")
-        if not isinstance(attrs, dict) or not _seller_detail_matches(data, attrs, net, pool, address):
+        if not isinstance(attrs, dict):
+            continue
+        sides = _gecko_relationship_tokens(data.get("relationships"), net)
+        if not _seller_detail_matches(data, attrs, net, pool) or (
+                "relationships" in data and (not sides or target not in sides)):
             continue
         txns = attrs.get("transactions")
         h24 = txns.get("h24") if isinstance(txns, dict) else None
-        sellers = _market_number(h24.get("sellers")) if isinstance(h24, dict) else None
+        if not isinstance(h24, dict):
+            continue
+        sellers = _market_number(h24.get("sellers"))
+        if (sides and sides[0] != sides[1] and ("id" in data or "address" in attrs)
+                and (not market_sides or not all(map(_looks_evm, market_sides))
+                     or set(sides) == set(market_sides))):
+            # The pool detail counts unique traders by its own base/quote
+            # ordering: its independent base buyers are quote sellers.
+            count = sellers if sides[0] == target else _market_number(h24.get("buyers"))
+            if count is not None and count.is_integer():
+                bp["sellers_24h"] = count
+                return
+        # Keep the original per-call lookup budget when a provider returned
+        # the old field but did not substantiate the relevant direction.
         if sellers is not None and sellers.is_integer():
-            # Pool detail can use different ordering from the market listing.
-            sides = _gecko_relationship_tokens(data.get("relationships"), net)
-            if sides and sides[0] == _market_address_key(address) and sides[0] != sides[1]:
-                bp["sellers_24h"] = sellers
             return
 
 
-def _seller_detail_matches(data, attrs, network, pool, address):
+def _seller_detail_matches(data, attrs, network, pool):
     """Check any advertised identity on the response to a pool-scoped request."""
     for row, field, expected in ((data, "id", network + "_" + pool), (attrs, "address", pool)):
         if field in row and (not isinstance(row[field], str) or row[field].lower() != expected.lower()):
             return False
-    for name, relationships in data.items():
-        if name == "relationships" and address:
-            tokens = _gecko_relationship_tokens(relationships, network)
-            return tokens is not None and _market_address_key(address) in tokens
     return True
 
 

@@ -443,6 +443,13 @@
      ],
      "value": 0.125
     },
+    "data.attributes.address": {
+     "key": 0.125,
+     "types": [
+      "str"
+     ],
+     "value": 0.125
+    },
     "data.attributes.transactions": {
      "key": 0.125,
      "types": [
@@ -457,10 +464,31 @@
      ],
      "value": 0.125
     },
+    "data.attributes.transactions.h24.buyers": {
+     "key": 0.125,
+     "types": [
+      "int"
+     ],
+     "value": 0.125
+    },
     "data.attributes.transactions.h24.sellers": {
      "key": 0.125,
      "types": [
       "int"
+     ],
+     "value": 0.125
+    },
+    "data.id": {
+     "key": 0.125,
+     "types": [
+      "str"
+     ],
+     "value": 0.125
+    },
+    "data.relationships": {
+     "key": 0.125,
+     "types": [
+      "dict"
      ],
      "value": 0.125
     },
