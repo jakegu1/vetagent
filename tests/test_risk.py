@@ -7737,6 +7737,115 @@ def test_t092_full_identity_and_unknown_priority_preserve_old_paths():
           and (answer["evidence"].get("pool_link_details") or {}).get("adopted_response") == "none")
 
 
+def test_t111_mcp_reports_directions_for_the_requested_side():
+    print("\n[T111] pool trade directions belong to the requested token")
+    base = "0x" + "ab" * 20
+    quote = WETH.lower()
+    pool = "0x" + "cd" * 20
+    pair = {"chainId": "ethereum", "dexId": "uniswap", "pairAddress": pool,
+            "baseToken": {"address": base}, "quoteToken": {"address": quote},
+            "priceUsd": "2", "priceNative": "2", "liquidity": {"usd": 60_000},
+            "volume": {"h24": 60_000}, "pairCreatedAt": 1589841515000,
+            "txns": {"h24": {"buys": 34, "sells": 0}, "h1": {"buys": 2, "sells": 3},
+                     "h6": {"buys": 11, "sells": 13}}}
+    for token, expected in ((base, (34, 0)), (quote, (0, 34))):
+        routes = {_T083_DS + token: ("market", 200, {"pairs": [pair]}),
+                  "https://api.honeypot.is/v2/IsHoneypot?address=" + token +
+                  "&chainID=1": ("sim", 404, {})}
+        args = {"address": token, "chain_hint": "ethereum"}
+        body, calls, _, _, _ = run(_t083_mcp("assess_token_risk", dict(args, verbose=True), routes))
+        best = body["evidence"]["best_pair"]
+        check("T111 assess returns target buys and sells with zeros intact",
+              (best.get("buys_24h"), best.get("sells_24h")) == expected and calls == ["market", "sim"],
+              str(best))
+        text, _, _, _, _ = run(_t083_mcp("assess_token_risk", args, routes))
+        chain_evidence = text["evidence"].get("sellability_from_chain") or {}
+        check("T111 historical sell evidence is offered only for the token sold",
+              chain_evidence.get("sells_24h") == 34 and chain_evidence.get("buys_24h") == 0
+              if token == quote else not chain_evidence, str(text["recommendation"]))
+        body, calls, _, _, _ = run(_t083_mcp("get_token_liquidity", args, routes))
+        check("T111 liquidity window totals and requests are independent of direction",
+              body.get("trade_activity") == {"trades_last_1h": 5, "trades_prior_5h": 19}
+              and calls == ["market"], str(body))
+
+
+def test_t111_gecko_counts_require_source_side():
+    print("\n[T111] Gecko counts require the relationships from the same observation")
+    target = WETH.lower()
+    other = "0x" + "ab" * 20
+    pool = "0x" + "cd" * 20
+    raw = {"id": "eth_" + pool, "attributes": {"address": pool, "name": "TKN / WETH",
+           "reserve_in_usd": "60000", "base_token_price_usd": "2",
+           "base_token_price_quote_token": "2", "pool_created_at": "2024-01-01T00:00:00Z",
+           "volume_usd": {"h24": "60000"},
+           "transactions": {"h24": {"buys": 83, "sells": 10, "buyers": 22, "sellers": 4}}}}
+    for base, quote, expected in ((target, other, (83, 10, 4)),
+                                  (other, target, (10, 83, None)),
+                                  (None, None, (None, None, None))):
+        row = copy.deepcopy(raw)
+        if base:
+            row["relationships"] = {"base_token": {"data": {"id": "eth_" + base}},
+                                    "quote_token": {"data": {"id": "eth_" + quote}}}
+        market = risk._gt_to_pair(row, target, "eth")
+        evidence = {}
+        risk._liquidity_signals(market, [market], [], evidence, target=target)
+        best = evidence["best_pair"]
+        check("T111 Gecko transaction and seller attribution follows proven source side",
+              tuple(best[k] for k in ("buys_24h", "sells_24h", "sellers_24h")) == expected, str(best))
+
+
+def test_t111_seller_detail_uses_its_own_base_side():
+    print("\n[T111] contested sell input cannot borrow the first provider's orientation")
+    target = WETH.lower()
+    other = "0x" + "ab" * 20
+    pool = "0x" + "cd" * 20
+    pair = {"chainId": "ethereum", "dexId": "uniswap", "pairAddress": pool,
+            "baseToken": {"address": other, "symbol": "OTHER"},
+            "quoteToken": {"address": target, "symbol": "TARGET"},
+            "priceUsd": "2", "priceNative": "2", "liquidity": {"usd": 60_000},
+            "volume": {"h24": 60_000}, "pairCreatedAt": 1589841515000,
+            "txns": {"h24": {"buys": 120, "sells": 40}}}
+    hp = copy.deepcopy(_unscoped_simulator_fixture())
+    hp["honeypotResult"] = {"isHoneypot": True}
+    hp["summary"] = {"risk": "honeypot", "riskLevel": 100, "flags": [
+        {"flag": "medium_fail_rate", "severity": "high"}]}
+    hp["holderAnalysis"] = {"holders": "688", "successful": "684", "failed": "4", "siphoned": "0"}
+    for base, quote, expected in ((target, other, 23), (other, target, None),
+                                  (None, None, None), (target, target, None)):
+        detail = {"id": "eth_" + pool, "attributes": {"address": pool,
+                  "transactions": {"h24": {"sellers": 23, "buyers": 40}}}}
+        if base:
+            detail["relationships"] = {"base_token": {"data": {"id": "eth_" + base}},
+                                       "quote_token": {"data": {"id": "eth_" + quote}}}
+        routes = {_T083_DS + target: ("market", 200, {"pairs": [pair]}),
+                  "https://api.honeypot.is/v2/IsHoneypot?address=" + target + "&chainID=1": ("sim", 200, hp),
+                  _T083_GT + "eth/pools/" + pool: ("detail", 200, {"data": detail})}
+        result, calls, _, _, _ = run(_t083_mcp("assess_token_risk",
+            {"address": target, "chain_hint": "ethereum", "verbose": True}, routes))
+        evidence = result["evidence"]
+        check("T111 seller detail is admitted only for its explicit target base",
+              evidence["best_pair"]["sellers_24h"] == expected and calls == ["market", "sim", "detail"],
+              str((evidence["best_pair"], calls)))
+        check("T111 unavailable seller direction cannot clear the provider warning",
+              bool(evidence["honeypot"].get("contested_unsettled")) == (expected is None)
+              and evidence["honeypot"]["is_honeypot"] is True, str(evidence["honeypot"]))
+
+
+def test_t111_unpriced_activity_checks_sells_of_the_target():
+    print("\n[T111] unpriced sell evidence follows the target direction as well")
+    target = WETH.lower()
+    for base_buys, base_sells in ((3, 0), (0, 3)):
+        pair = {"chainId": "ethereum", "dexId": "uniswap",
+                "baseToken": {"address": "0x" + "ab" * 20}, "quoteToken": {"address": target},
+                "txns": {"h24": {"buys": base_buys, "sells": base_sells}}}
+        install_stub([("dex/tokens", {"pairs": [pair]}), ("dex/search", {"pairs": []}),
+                      ("geckoterminal", {"data": []}), ("honeypot.is", risk.NO_DATA)])
+        result = run(risk.assess(target, chain_hint="ethereum"))
+        gap = next(g for g in result["evidence"]["data_gaps"] if g["dimension"] == "liquidity")
+        check("T111 an unpriced quote market distinguishes sells from buys",
+              (gap["reason"] == risk._TRADED_DEPTH_REASON) == (base_buys > 0), str(gap))
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
