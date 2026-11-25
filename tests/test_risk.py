@@ -541,8 +541,9 @@ def test_a_fallback_that_says_not_found_has_answered():
         risk.cf_fetch, risk._fetch_json, risk._cache_get, risk.asyncio.sleep = saved
 
 
-def _seller_detail_fixture(base, quote, counts):
-    return {"data": {"attributes": {"transactions": {"h24": counts}},
+def _seller_detail_fixture(base, quote, pool, counts):
+    return {"data": {"id": "eth_" + pool.lower(),
+                     "attributes": {"address": pool, "transactions": {"h24": counts}},
                      "relationships": {"base_token": {"data": {"id": "eth_" + base.lower()}},
                                        "quote_token": {"data": {"id": "eth_" + quote.lower()}}}}}
 
@@ -586,7 +587,8 @@ def test_chain_activity_overrules_a_honeypot_verdict():
     # Thousands of completed sells from thousands of addresses: the flag is contradicted,
     # not obeyed. The seller count arrives the way it does in production for a
     # DexScreener pool -- asked of GeckoTerminal, because DexScreener does not carry it.
-    many_sellers = _seller_detail_fixture(MATIC, WETH, {"sellers": 1900})
+    many_sellers = _seller_detail_fixture(
+        MATIC, WETH, "0x819f3450dA6f110BA6Ea52195B3beaFa246062dE", {"sellers": 1900})
     install_stub([("geckoterminal.com/api/v2/networks/eth/pools/", many_sellers),
                   ("dexscreener", pairs_with(4134, 4228)), ("honeypot.is", hp_flagged)])
     r = run(risk.assess(MATIC, chain_hint="ethereum"))
@@ -2736,7 +2738,7 @@ def test_a_honeypot_flag_is_read_by_its_holder_share():
                 "txns": {"h24": {"buys": buys, "sells": sells}},
                 "pairCreatedAt": 1589841515000}
         gt = (None if gt_sellers is None else
-              _seller_detail_fixture(WETH, MATIC, {"sellers": gt_sellers}))
+              _seller_detail_fixture(WETH, MATIC, pair["pairAddress"], {"sellers": gt_sellers}))
         install_stub([("dex/tokens", {"pairs": [pair]}), ("networks/eth/pools/", gt),
                       ("dex/search", None), ("honeypot.is", hp)])
         return run(risk.assess(WETH, chain_hint="ethereum"))
@@ -2897,7 +2899,7 @@ def test_overturning_a_honeypot_verdict_needs_distinct_sellers():
         # `sellers` rides on the pair, as GeckoTerminal-sourced pairs carry it;
         # `gt_sellers` is the count fetched for a DexScreener pair that does not.
         gt = (None if gt_sellers is None else
-              _seller_detail_fixture(WETH, MATIC, {"sellers": gt_sellers}))
+              _seller_detail_fixture(WETH, MATIC, "0x" + "cd" * 20, {"sellers": gt_sellers}))
         install_stub([("dex/tokens", token(liq, buys, sells, sellers)),
                       ("networks/eth/pools/", gt),
                       ("dex/search", None), ("honeypot.is", hp)])
@@ -2969,7 +2971,7 @@ def test_a_seller_count_nobody_took_cannot_overturn_a_honeypot():
     hp["holderAnalysis"] = {"holders": "400", "failed": "36", "siphoned": "0", "successful": "364"}
 
     def gt_pool(sellers):
-        return _seller_detail_fixture(WETH, MATIC, {
+        return _seller_detail_fixture(WETH, MATIC, pool, {
             "buys": 100, "sells": 20, "buyers": 90, "sellers": sellers})
 
     asked = []
@@ -5911,7 +5913,7 @@ def _pool_id_assessment(pool, sellers=30, failed=36, holders=400, honeypot=True,
         hp["simulationSuccess"] = False
         hp["simulationError"] = 'execution reverted: "revert: HP: BUY_FAILED"'
     answer = (None if sellers is None else
-              _seller_detail_fixture(WETH, MATIC, {"sellers": sellers}))
+              _seller_detail_fixture(WETH, MATIC, pool, {"sellers": sellers}))
     seen = []
 
     async def _stub(url, *args, **kwargs):
@@ -7842,10 +7844,18 @@ def test_t111_seller_detail_uses_its_own_base_side():
     hp["summary"] = {"risk": "honeypot", "riskLevel": 100, "flags": [
         {"flag": "medium_fail_rate", "severity": "high"}]}
     hp["holderAnalysis"] = {"holders": "688", "successful": "684", "failed": "4", "siphoned": "0"}
-    for base, quote, expected in ((target, other, 23), (other, target, None),
-                                  (None, None, None), (target, target, None)):
-        detail = {"id": "eth_" + pool, "attributes": {"address": pool,
-                  "transactions": {"h24": {"sellers": 23, "buyers": 40}}}}
+    for base, quote, pool_identified, buyers, expected in (
+            (target, other, True, 40, 23), (other, target, True, 40, 40),
+            (other, target, True, 0, 0), (other, target, True, None, None),
+            (other, target, False, 40, None), (None, None, True, 40, None),
+            (target, target, True, 40, None), ("0x" + "de" * 20, target, True, 40, None)):
+        counts = {"sellers": 23, "buys": 120}
+        if buyers is not None:
+            counts["buyers"] = buyers
+        detail = {"attributes": {"transactions": {"h24": counts}}}
+        if pool_identified:
+            detail.update(id="eth_" + pool)
+            detail["attributes"]["address"] = pool
         if base:
             detail["relationships"] = {"base_token": {"data": {"id": "eth_" + base}},
                                        "quote_token": {"data": {"id": "eth_" + quote}}}
@@ -7855,7 +7865,7 @@ def test_t111_seller_detail_uses_its_own_base_side():
         result, calls, _, _, _ = run(_t083_mcp("assess_token_risk",
             {"address": target, "chain_hint": "ethereum", "verbose": True}, routes))
         evidence = result["evidence"]
-        check("T111 seller detail is admitted only for its explicit target base",
+        check("T111 seller detail uses the distinct count for its confirmed pool and side",
               evidence["best_pair"]["sellers_24h"] == expected and calls == ["market", "sim", "detail"],
               str((evidence["best_pair"], calls)))
         check("T111 unavailable seller direction cannot clear the provider warning",
