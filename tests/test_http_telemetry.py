@@ -451,10 +451,12 @@ def test_landing_liquidity_recheck_roundtrips_actual_mcp_results_in_the_served_s
     ]
     for key in ("source", "best_pair_address", "best_pair_chain"):
         precision_readings[-1].pop(key)
+    limited = asyncio.run(_t115_liquidity("MCP", "chain rate limited"))[0]
     landing = asyncio.run(entry.Default().fetch(FakeRequest("https://vetagent.dev/"))).body
     runner = os.path.join(ROOT, "tests", "fixtures", "liquidity_recheck_contract.cjs")
     result = subprocess.run(["node", runner], input=json.dumps({"html": landing, "replies": replay(readings),
-                            "precision_replies": replay(precision_readings)}),
+                            "precision_replies": replay(precision_readings),
+                            "limited_reply": {"result": {"structuredContent": limited}}}),
                             encoding="utf-8", capture_output=True, timeout=30)
     print(result.stdout)
     check("served liquidity recheck uses real MCP context and bounded browser-only history",
@@ -1387,6 +1389,8 @@ async def _t115_liquidity(surface, variant="complete", *, opt=True, chain="base"
             reply["result"] = "0x1" if variant == "wrong chain" else "0x2105"
             if variant == "wrong envelope":
                 reply["id"] = True
+            if variant == "JSON code 429":
+                reply["error"] = {"code": 429}
         elif method == "eth_getBlockByNumber":
             reply["result"] = {"number": _T115_BLOCK, "hash": _T115_HASH}
             if params[0] != "latest" and variant == "reorg":
@@ -1429,6 +1433,10 @@ async def _t115_liquidity(surface, variant="complete", *, opt=True, chain="base"
                 rpc_calls.append((url, "read redirect body", []))
                 raise AssertionError("do not parse a redirect body")
             return types.SimpleNamespace(status=307, text=unread)
+        if method == "eth_chainId" and variant in {"chain rate limited", "chain unavailable"}:
+            return types.SimpleNamespace(status=429 if variant == "chain rate limited" else 503, text=content)
+        if method == "eth_getBlockByNumber" and variant == "block rate limited":
+            return types.SimpleNamespace(status=429, text=content)
         return types.SimpleNamespace(status=200, text=content)
 
     extra = {}
@@ -1527,6 +1535,30 @@ def test_t115_wrong_scope_and_partial_or_invalid_rpc_never_become_zero():
               result.get("status") == "drained" and result.get("liquidity_usd") == 0
               and result.get("known_address_balances", {}).get("status") == "ok" and len(rpc) == 9,
               str(result))
+
+    asyncio.run(run())
+
+
+def test_t115_first_chain_rpc_rate_limit_is_explicit_and_does_not_retry():
+    async def run():
+        for surface in ("MCP", "REST"):
+            for variant, reason, count in (
+                ("chain rate limited", "rpc_rate_limited", 1),
+                ("chain unavailable", "rpc_chain_unavailable", 1),
+                ("JSON code 429", "rpc_chain_unavailable", 1),
+                ("block rate limited", "block_unavailable", 2),
+            ):
+                result, calls, rpc, http_status = await _t115_liquidity(surface, variant)
+                reading = result.get("known_address_balances", {})
+                message = reading.get("message", "").lower()
+                check("T115 %s reports %s without retrying or losing market liquidity" % (surface, variant),
+                      http_status == 200 and result.get("status") == "ok" and result.get("liquidity_usd") == 80000
+                      and result.get("best_pair_address") == _T115_POOL and calls == ["market"]
+                      and reading.get("status") == "unavailable" and reading.get("reason") == reason
+                      and "balances" not in reading and [m for _, m, _ in rpc] ==
+                      (["eth_chainId"] if count == 1 else ["eth_chainId", "eth_getBlockByNumber"])
+                      and (("rate limit" in message and "manually" in message) if reason == "rpc_rate_limited"
+                           else not message), str((reading, rpc)))
 
     asyncio.run(run())
 

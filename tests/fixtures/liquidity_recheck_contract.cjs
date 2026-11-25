@@ -1,7 +1,8 @@
 // Replay the Worker-served script with responses from the actual MCP dispatcher.
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
-const {html, replies, precision_replies: precisionReplies} = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
+const {html, replies, precision_replies: precisionReplies, limited_reply: limitedReply} =
+  JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
 const script = html.slice(html.lastIndexOf('<script>') + 8, html.lastIndexOf('</script>'));
 const tick = () => new Promise(resolve => setImmediate(resolve));
 const plain = value => JSON.parse(JSON.stringify(value));
@@ -55,6 +56,17 @@ function knownAddressesReply() {
 }
 
 const cases = {
+  async 'a rate-limited optional read keeps liquidity and offers a manual recheck'() {
+    const b = boot();
+    b.nodes.addr.value = limitedReply.result.structuredContent.address;
+    b.nodes.chain.value = 'base'; b.nodes.chain.fire('change');
+    b.nodes[balanceOption].checked = true;
+    b.click(false).resolve(limitedReply); await tick();
+    assert.match(b.text(), /Current estimate: \$80,000/);
+    assert.match(b.text(), /public node.*rate limit/i);
+    assert.match(b.text(), /recheck.*manually/i);
+    assert.equal(b.requests.length, 1);
+  },
   async 'fixed-block balances are explicit, scoped and excluded from saved market history'() {
     const b = boot();
     assert.match(html, /<input\b(?=[^>]*\bid="include-known-address-balances")(?=[^>]*\btype="checkbox")(?![^>]*\schecked\b)[^>]*>/);
