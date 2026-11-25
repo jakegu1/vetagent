@@ -6,6 +6,7 @@ const script = html.slice(html.lastIndexOf('<script>') + 8, html.lastIndexOf('</
 const tick = () => new Promise(resolve => setImmediate(resolve));
 const plain = value => JSON.parse(JSON.stringify(value));
 const key = 'vetagent.liquidity.v1';
+const balanceOption = 'include-known-address-balances';
 
 function boot(saved = new Map(), broken = false) {
   const nodes = {}, requests = [];
@@ -13,7 +14,7 @@ function boot(saved = new Map(), broken = false) {
     const attrs = Object.fromEntries([...match[1].matchAll(/([\w-]+)="([^"]*)"/g)].map(m => [m[1], m[2]]));
     if (!attrs.id) continue;
     const events = {};
-    nodes[attrs.id] = {value: attrs.value || '', disabled: false, innerHTML: '', textContent: '',
+    nodes[attrs.id] = {value: attrs.value || '', checked: 'checked' in attrs, disabled: false, innerHTML: '', textContent: '',
       classList: {add() {}}, addEventListener(name, fn) { events[name] = fn; },
       fire(name, event = {}) { if (events[name]) events[name](event); }};
   }
@@ -41,7 +42,59 @@ function boot(saved = new Map(), broken = false) {
   return {nodes, requests, saved, click, text: () => nodes['liquidity-result'].innerHTML};
 }
 
+function knownAddressesReply() {
+  const reply = plain(replies[0]), result = reply.result.structuredContent;
+  result.known_address_balances = {status: 'ok', address: result.address, chain: 'base',
+    source: 'public_rpc', pool_id: result.best_pair_address, block_number: '262', block_hash: '0x' + 'ab'.repeat(32),
+    total_supply_raw: '40000000000000000', balances: {
+      pool: {status: 'ok', address: result.best_pair_address, balance_raw: '10000000000000000', supply_percent: '25.000000'},
+      zero: {status: 'ok', address: '0x' + '0'.repeat(40), balance_raw: '0', supply_percent: '0.000000'},
+      dead: {status: 'ok', address: '0x' + '0'.repeat(36) + 'dead', balance_raw: '1', supply_percent: '<0.000001'}
+    }};
+  return reply;
+}
+
 const cases = {
+  async 'fixed-block balances are explicit, scoped and excluded from saved market history'() {
+    const b = boot();
+    assert.match(html, /<input\b(?=[^>]*\bid="include-known-address-balances")(?=[^>]*\btype="checkbox")(?![^>]*\schecked\b)[^>]*>/);
+    assert.equal(b.nodes[balanceOption].checked, false);
+    const normal = b.click();
+    assert.equal('include_known_address_balances' in normal.body.params.arguments, false);
+    normal.resolve(replies[0]); await tick();
+    b.nodes[balanceOption].checked = true; b.nodes[balanceOption].fire('change');
+    assert.equal(b.requests.length, 1);
+    const query = b.click();
+    assert.equal(query.body.params.arguments.include_known_address_balances, true);
+    const reply = knownAddressesReply();
+    query.resolve(reply); await tick();
+    assert.match(b.text(), /Known address balances/i);
+    assert.match(b.text(), /Block[^\n]+262/i);
+    assert.match(b.text(), /25\.000000%/);
+    assert.match(b.text(), /0\.000000%/);
+    assert.match(b.text(), /&lt;0\.000001%/);
+    assert.doesNotMatch(b.saved.get(key), /known_address_balances|total_supply_raw|40000000000000000/);
+    b.nodes[balanceOption].checked = false; b.nodes[balanceOption].fire('change');
+    assert.doesNotMatch(b.text(), /Known address balances|25\.000000%/i);
+  },
+  async 'changed forms and conflicting response identity suppress the opt-in observation'() {
+    for (const changed of ['address', 'network', 'response token', 'response chain', 'response pool']) {
+      const b = boot(), reply = knownAddressesReply();
+      b.nodes[balanceOption].checked = true; b.nodes[balanceOption].fire('change');
+      const request = b.click();
+      const reading = reply.result.structuredContent.known_address_balances;
+      if (changed === 'address') {
+        b.nodes.addr.value = '0x' + 'ef'.repeat(20); b.nodes.addr.fire('input');
+      } else if (changed === 'network') {
+        b.nodes.chain.value = 'bsc'; b.nodes.chain.fire('change');
+      } else if (changed === 'response token') reading.address = '0x' + 'ef'.repeat(20);
+      else if (changed === 'response chain') reading.chain = 'bsc';
+      else reading.pool_id = '0x' + 'ef'.repeat(20);
+      request.resolve(reply); await tick();
+      assert.doesNotMatch(b.text(), /25\.000000%/);
+      assert.equal(b.nodes['liquidity-go'].disabled, false);
+    }
+  },
   async 'three actual MCP replies survive reopening and source alternation'() {
     const saved = new Map(); let expected = [];
     for (let i = 0; i < replies.length; i++) {

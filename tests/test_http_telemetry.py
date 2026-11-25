@@ -1281,7 +1281,7 @@ def _evidence_fixture(name):
         return json.load(source)
 
 
-async def _evidence_endpoint(surface, tool, address, chain, routes, *, verbose=True):
+async def _evidence_endpoint(surface, tool, address, chain, routes, *, verbose=True, extra=None, rpc=None):
     """Drive the actual Worker endpoint with only the supplied upstream responses."""
     import json
     import socket
@@ -1295,6 +1295,8 @@ async def _evidence_endpoint(surface, tool, address, chain, routes, *, verbose=T
         raise AssertionError("unexpected I/O in evidence test")
 
     async def fetch(url, **kwargs):
+        if rpc is not None and kwargs.get("method") == "POST":
+            return await rpc(url, **kwargs)
         label, status, body = routes[url]
         calls.append(label)
         if status is None:
@@ -1315,14 +1317,16 @@ async def _evidence_endpoint(surface, tool, address, chain, routes, *, verbose=T
         async def json(self):
             return {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
                     "params": {"name": tool, "arguments": {
-                        "address": address, "chain_hint": chain, **({"verbose": True} if verbose else {})}}}
+                        "address": address, "chain_hint": chain, **({"verbose": True} if verbose else {}),
+                        **(extra or {})}}}
 
     if surface == "MCP":
         request = MCPRequest("https://offline.invalid/mcp", method="POST")
     else:
+        from urllib.parse import urlencode
         path = "assess" if tool == "assess_token_risk" else "liquidity"
-        request = FakeRequest("https://offline.invalid/%s/%s?chain=%s%s"
-                              % (path, address, chain, "&verbose=true" if verbose else ""))
+        query = {"chain": chain, **({"verbose": "true"} if verbose else {}), **(extra or {})}
+        request = FakeRequest("https://offline.invalid/%s/%s?%s" % (path, address, urlencode(query)))
     pin = risk._BENCH_NOW.set(datetime(2026, 11, 10, tzinfo=timezone.utc))
     try:
         with patch.object(socket.socket, "connect", deny), patch.object(socket, "getaddrinfo", deny), \
@@ -1337,6 +1341,182 @@ async def _evidence_endpoint(surface, tool, address, chain, routes, *, verbose=T
     if surface == "MCP":
         result = (result.get("result") or {}).get("structuredContent") or {}
     return result, calls, response.status
+
+
+_T115_TOKEN = "0x" + "12" * 20
+_T115_POOL = "0x" + "34" * 20
+_T115_QUOTE = "0x4200000000000000000000000000000000000006"
+_T115_ZERO = "0x" + "0" * 40
+_T115_DEAD = "0x" + "0" * 36 + "dead"
+_T115_BLOCK = "0x106"
+_T115_HASH = "0x" + "ab" * 32
+_T115_SUPPLY = 10**40
+
+
+async def _t115_liquidity(surface, variant="complete", *, opt=True, chain="base"):
+    import json
+    rpc_calls = []
+    pool = "0x" + "34" * 32 if variant == "v4" else _T115_POOL
+    market = {
+        "pairAddress": pool, "chainId": "base", "dexId": "uniswap", "priceUsd": "1",
+        "liquidity": {"usd": 80000}, "baseToken": {"address": _T115_TOKEN},
+        "quoteToken": {"address": _T115_QUOTE},
+    }
+    markets = [market]
+    if variant == "conflicting market":
+        markets.append(dict(market, quoteToken={"address": "0x" + "ef" * 20}))
+    if variant == "drained":
+        market["liquidity"] = {"usd": 0}
+    if variant == "no market":
+        markets = []
+    if variant == "unsupported":
+        market["chainId"] = "polygon"
+
+    def word(value):
+        return "0x%064x" % (int(value, 16) if isinstance(value, str) else value)
+
+    async def rpc(url, **kwargs):
+        payload = json.loads(kwargs["body"])
+        method, params = payload["method"], payload["params"]
+        rpc_calls.append((url, method, params))
+        reply = {"jsonrpc": "2.0", "id": payload["id"]}
+        if method == "eth_chainId":
+            reply["result"] = "0x1" if variant == "wrong chain" else "0x2105"
+            if variant == "wrong envelope":
+                reply["id"] = True
+        elif method == "eth_getBlockByNumber":
+            reply["result"] = {"number": _T115_BLOCK, "hash": _T115_HASH}
+            if params[0] != "latest" and variant == "reorg":
+                reply["result"]["hash"] = "0x" + "bc" * 32
+            if params[0] != "latest" and variant == "missing final block":
+                reply["result"] = None
+        elif method == "eth_call":
+            target, data = params[0]["to"], params[0]["data"]
+            if target == _T115_POOL:
+                assert data in {"0x0dfe1681", "0xd21220a7"}
+                result = word(_T115_QUOTE if data == "0x0dfe1681" else _T115_TOKEN)
+                if data == "0x0dfe1681" and variant == "wrong pool":
+                    result = word("0x" + "41" * 20)
+                if data == "0x0dfe1681" and variant == "bad pool padding":
+                    result = "0x01" + result[4:]
+            else:
+                assert target == _T115_TOKEN
+                balances = {_T115_POOL: _T115_SUPPLY // 4, _T115_ZERO: 0, _T115_DEAD: 1}
+                if variant == "excess":
+                    balances[_T115_DEAD] = _T115_SUPPLY
+                if data == "0x18160ddd":
+                    result = word(0 if variant == "zero supply" else _T115_SUPPLY)
+                    if variant == "bad supply ABI":
+                        result = "0x01"
+                else:
+                    assert data.startswith("0x70a08231") and len(data) == 74
+                    holder = "0x" + data[-40:]
+                    result = "0x01" if holder == _T115_DEAD and variant == "bad balance ABI" else word(balances[holder])
+                    if holder == _T115_DEAD and variant == "rpc error and result":
+                        reply["error"] = {"code": -32000, "message": "mock failure"}
+            reply["result"] = result
+        else:
+            raise AssertionError(method)
+
+        async def content():
+            return json.dumps(reply)
+
+        return types.SimpleNamespace(status=200, text=content)
+
+    extra = {}
+    if surface == "MCP" and opt is not None:
+        extra = {"include_known_address_balances": opt, "comparison_context": []}
+    elif surface == "REST" and opt is not None:
+        extra = {"include_known_address_balances": str(opt).lower()}
+    result, calls, http = await _evidence_endpoint(surface, "get_token_liquidity", _T115_TOKEN, chain, {
+        "https://api.dexscreener.com/latest/dex/tokens/" + _T115_TOKEN: ("market", 200, {"pairs": markets}),
+        "https://api.dexscreener.com/token-pairs/v1/bsc/" + _T115_TOKEN: ("preferred", 200, []),
+        "https://api.geckoterminal.com/api/v2/networks/base/tokens/" + _T115_TOKEN + "/pools":
+            ("fallback", 200, {"data": []}),
+    }, extra=extra, rpc=rpc)
+    return result, calls, rpc_calls, http
+
+
+def test_t115_known_address_balances_are_opt_in_exact_and_same_block():
+    async def run():
+        for surface in ("MCP", "REST"):
+            base, old, no_rpc, http = await _t115_liquidity(surface, opt=False)
+            answer, calls, rpc, new_http = await _t115_liquidity(surface)
+            reading = answer.pop("known_address_balances", {})
+            base.pop("checked_at", None)
+            answer.pop("checked_at", None)
+            for body in (base, answer):
+                for row in body.get("comparison_context", []):
+                    row.pop("checked_at", None)
+            check("T115 %s opt-in leaves liquidity, observation history and market reads intact" % surface,
+                  http == new_http == 200 and base == answer and not no_rpc and old == calls == ["market"],
+                  str((answer, calls)))
+            check("T115 %s nine RPC operations use the existing Base node and pin every contract read" % surface,
+                  len(rpc) == 9 and {x[0] for x in rpc} == {"https://mainnet.base.org"}
+                  and rpc[0][1:] == ("eth_chainId", [])
+                  and rpc[1][1:] == ("eth_getBlockByNumber", ["latest", False])
+                  and rpc[-1][1:] == ("eth_getBlockByNumber", [_T115_BLOCK, False])
+                  and all(m == "eth_call" and args[1] == _T115_BLOCK for _, m, args in rpc[2:-1]), str(rpc))
+            samples = reading.get("balances", {})
+            check("T115 %s verifies scope, raw integers, zero and a tiny positive share" % surface,
+                  reading.get("status") == "ok" and reading.get("address") == _T115_TOKEN
+                  and reading.get("chain") == "base" and reading.get("pool_id") == _T115_POOL
+                  and reading.get("block_number") == "262" and reading.get("block_hash") == _T115_HASH
+                  and reading.get("source") == "public_rpc" and reading.get("total_supply_raw") == str(_T115_SUPPLY)
+                  and [(samples.get(k, {}).get("address"), samples.get(k, {}).get("balance_raw"),
+                        samples.get(k, {}).get("supply_percent")) for k in ("pool", "zero", "dead")]
+                  == [(_T115_POOL, str(_T115_SUPPLY // 4), "25.000000"), (_T115_ZERO, "0", "0.000000"),
+                      (_T115_DEAD, "1", "<0.000001")], str(reading))
+        omitted, _, rpc, _ = await _t115_liquidity("REST", opt=None)
+        check("T115 legacy lookup makes no optional reads", not rpc and "known_address_balances" not in omitted)
+
+    asyncio.run(run())
+
+
+def test_t115_wrong_scope_and_partial_or_invalid_rpc_never_become_zero():
+    async def run():
+        for variant, chain, reason, limit in (
+            ("complete", "bsc", "network_mismatch", 0),
+            ("unsupported", "polygon", "unsupported_network", 0),
+            ("no market", "base", "network_unconfirmed", 0),
+            ("wrong chain", "base", "rpc_chain_mismatch", 1),
+            ("wrong envelope", "base", "rpc_chain_unavailable", 1),
+            ("zero supply", "base", "invalid_total_supply", 9),
+            ("bad supply ABI", "base", "invalid_total_supply", 9),
+            ("reorg", "base", "block_changed", 9),
+            ("missing final block", "base", "block_unconfirmed", 9),
+            ("excess", "base", "balances_exceed_supply", 9),
+        ):
+            result, _, rpc, http = await _t115_liquidity("MCP", variant, chain=chain)
+            reading = result.get("known_address_balances", {})
+            check("T115 %s leaves a tagged unavailable observation and usable liquidity" % reason,
+                  http == 200 and reading.get("status") == "unavailable" and reading.get("reason") == reason
+                  and not reading.get("balances") and len(rpc) <= limit
+                  and (variant == "no market" or result.get("liquidity_usd") == 80000), str((reading, rpc)))
+        for variant, role, reason, count in (
+            ("v4", "pool", "pool_id_not_address", 6),
+            ("conflicting market", "pool", "pool_identity_unconfirmed", 6),
+            ("wrong pool", "pool", "pool_tokens_mismatch", 8),
+            ("bad pool padding", "pool", "pool_tokens_unavailable", 8),
+            ("bad balance ABI", "dead", "balance_unavailable", 9),
+            ("rpc error and result", "dead", "balance_unavailable", 9),
+        ):
+            result, _, rpc, _ = await _t115_liquidity("MCP", variant)
+            reading = result.get("known_address_balances", {})
+            balances = reading.get("balances", {})
+            missing = balances.get(role, {})
+            check("T115 %s retains only verified partial observations" % variant,
+                  len(rpc) == count and reading.get("status") == "partial" and reading.get("block_hash") == _T115_HASH
+                  and missing.get("status") == "unavailable" and missing.get("reason") == reason
+                  and "balance_raw" not in missing and balances.get("zero", {}).get("balance_raw") == "0",
+                  str((reading, rpc)))
+        result, _, rpc, _ = await _t115_liquidity("MCP", "drained")
+        check("T115 an identified drained market can still have a measured token balance",
+              result.get("status") == "drained" and result.get("liquidity_usd") == 0
+              and result.get("known_address_balances", {}).get("status") == "ok" and len(rpc) == 9,
+              str(result))
+
+    asyncio.run(run())
 
 
 async def _t114_assessment(surface, status, *, verbose=True, variant="regular"):
