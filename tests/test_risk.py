@@ -5913,7 +5913,7 @@ def _pool_id_assessment(pool, sellers=30, failed=36, holders=400, honeypot=True,
         hp["simulationSuccess"] = False
         hp["simulationError"] = 'execution reverted: "revert: HP: BUY_FAILED"'
     answer = (None if sellers is None else
-              _seller_detail_fixture(WETH, MATIC, pool, {"sellers": sellers}))
+              _seller_detail_fixture(WETH, MATIC, pool or "0x" + "00" * 20, {"sellers": sellers}))
     seen = []
 
     async def _stub(url, *args, **kwargs):
