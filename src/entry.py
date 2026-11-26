@@ -794,6 +794,13 @@ class Default(WorkerEntrypoint):
             return await self._handle_mcp(request)
 
         if path == "/":
+            if (request.method in ("GET", "HEAD") and parsed.scheme == "http"
+                    and parsed.netloc.lower() in ("vetagent.dev", "vetagent.dev:80")
+                    and parsed.path in ("", "/") and not parsed.params):
+                location = "https://vetagent.dev/"
+                if parsed.query:
+                    location += "?" + parsed.query
+                return Response("", headers={"location": location}, status=308)
             try:
                 with open(_LANDING_PATH, "r", encoding="utf-8") as f:
                     # no-cache, because this page's JavaScript identifies itself to our
