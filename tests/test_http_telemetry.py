@@ -673,10 +673,14 @@ def test_the_pages_a_directory_asks_for_exist():
     """
     print("\n[pages] /privacy and /terms answer")
     w = entry.Default()
-    for path, must_contain in (("/privacy", "Privacy"), ("/terms", "Terms of use")):
+    privacy_terms = ("Privacy", "eth_getCode", "eth_call", "total supply", "selected pool",
+                     "zero address", "dead address")
+    for path, required in (("/privacy", privacy_terms), ("/terms", ("Terms of use",))):
         r = asyncio.run(w.fetch(FakeRequest("https://vetagent.dev" + path)))
         check("%s returns 200" % path, r.status == 200, str(r.status))
-        check("%s says what it is" % path, must_contain in r.body, r.body[:80])
+        body = " ".join(r.body.split())
+        missing = [term for term in required if term not in body]
+        check("%s includes its required disclosures" % path, not missing, str(missing))
     r = asyncio.run(w.fetch(FakeRequest("https://vetagent.dev/terms")))
     check("terms states the liability limit", "no warranty" in r.body.lower())
     check("terms repeats that unknown is not low",
