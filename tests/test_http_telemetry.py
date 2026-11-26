@@ -732,6 +732,8 @@ def test_public_http_homepage_leads_to_its_https_canonical():
                   (method == "HEAD" or '<link rel="canonical" href="%s">' % canonical in landing.body))
 
     for url, method, status in (("http://vetagent.dev/api", "GET", 200),
+                                ("http://vetagent.dev/;", "GET", 200),
+                                ("http://vetagent.dev/;?a=1", "HEAD", 200),
                                 ("http://preview.example/", "GET", 200),
                                 ("http://vetagent.dev/", "POST", 200),
                                 ("http://vetagent.dev/", "OPTIONS", 204)):
