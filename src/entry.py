@@ -215,7 +215,7 @@ _PRIVACY_HTML = """<!doctype html>
  .sub{color:#8b949e;margin:0 0 2rem}
 </style>
 <h1>Privacy</h1>
-<p class="sub">VetAgent &middot; last updated 2026-11-20</p>
+<p class="sub">VetAgent &middot; last updated 2026-11-26</p>
 
 <h2>What we collect</h2>
 <p>VetAgent has no accounts or user database. The production site also loads a browser
@@ -263,27 +263,32 @@ the URL: the MCP endpoint at <code>/mcp</code> is a POST and carries it in the b
 for the same reason. Same answer, same code path.</p>
 
 <h2>What reaches third parties</h2>
-<p>To answer a request we query these public APIs, sending only the token address:</p>
+<p>The providers we query depend on the tool, network and pool involved.</p>
 <ul>
   <li>DexScreener &mdash; trading pairs, price, liquidity</li>
   <li>CoinGecko (on-chain API) &mdash; liquidity fallback when DexScreener does not answer,
       and distinct-seller counts; requested with our own API key since 2026-09-15</li>
   <li>GeckoTerminal &mdash; the same fallback without a key, if CoinGecko does not answer;
       new and trending pools</li>
-  <li>honeypot.is &mdash; buy/sell simulation, on Ethereum, BSC and Base only</li>
+  <li>honeypot.is &mdash; buy/sell simulation on Ethereum, BSC and Base.
+      A pool-specific simulation also sends the selected pool address.</li>
   <li>RugCheck &mdash; Solana contract risk</li>
   <li>rpc.mevblocker.io (Ethereum), mainnet.base.org (Base),
-      bsc-dataseed.bnbchain.org (BSC) &mdash; public RPC nodes, read-only
-      <code>eth_getCode</code> to read the contract's own bytecode and see which
-      powers it holds</li>
+      bsc-dataseed.bnbchain.org (BSC) &mdash; VetAgent can read a token contract's
+      bytecode from the relevant public node using <code>eth_getCode</code>.
+      If you request known-address balances during a liquidity check, we also ask
+      the node for its chain ID and block details. At that block we use
+      <code>eth_call</code> to read the token's total supply and its balances at the
+      zero address and the dead address. For an addressable pool, we send the
+      selected pool address and verify both tokens in the pool before reading
+      its balance of the queried token.</li>
 </ul>
-<p>That last line was missing until 2026-09-09. The three RPC endpoints have received
-the token address on every EVM assessment since the owner-powers check shipped, and this
-page listed four recipients as though the list were complete. It is corrected here rather
-than quietly, and <code>tests/test_http_telemetry.py</code> now fails the build if the
-engine gains an outbound host this list does not name.</p>
-<p>These are third-party services with their own privacy policies. We never send
-them wallet addresses, identities, or anything about who is asking.</p>
+<p>We added the three RPC nodes to this list on 2026-09-09. The original list
+omitted the nodes that received token addresses for the owner-powers check.</p>
+<p>These providers have their own privacy policies. For a balance check the node
+receives a request from VetAgent. The zero and dead addresses are fixed public
+addresses. You do not need to connect a wallet, and the request does not include
+a separate wallet address identifying you.</p>
 
 <h2>Logs</h2>
 <p>Cloudflare, which serves this Worker, keeps standard edge request metadata
