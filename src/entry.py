@@ -8,7 +8,7 @@ Cloudflare requires it. request.url is a string, so parse it with urlparse.
 import json
 import os
 import re
-from urllib.parse import parse_qsl, urlparse
+from urllib.parse import parse_qsl, urlparse, urlsplit
 
 from workers import Response, WorkerEntrypoint
 
@@ -796,7 +796,7 @@ class Default(WorkerEntrypoint):
         if path == "/":
             if (request.method in ("GET", "HEAD") and parsed.scheme == "http"
                     and parsed.netloc.lower() in ("vetagent.dev", "vetagent.dev:80")
-                    and parsed.path in ("", "/") and not parsed.params):
+                    and urlsplit(request.url).path in ("", "/")):
                 location = "https://vetagent.dev/"
                 if parsed.query:
                     location += "?" + parsed.query
