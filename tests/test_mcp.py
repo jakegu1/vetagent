@@ -4408,6 +4408,63 @@ def test_t118_market_clock_belongs_to_the_selected_provider_row():
               and answer.get("market_retrieved_at") == utc(start + 17) and calls == [requested], str(answer))
 
 
+def test_t118_gecko_mixed_envelope_same_tick_and_saved_replies():
+    from liquidity_comparison import compare
+
+    start = datetime(2026, 11, 27, 2, tzinfo=timezone.utc).timestamp()
+    at = [start + 30]
+    address = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+    market = "https://api.dexscreener.com/latest/dex/tokens/" + address
+    fallback = "https://api.geckoterminal.com/api/v2/networks/eth/tokens/" + address + "/pools"
+    body = dict(_load("gt_weth_anchor_pools.json"), pairs=[])
+    cache = {market: (start + 2, {"pairs": []}), fallback: (start + 1, body)}
+    with _t118_market_cache(at, cache, {}) as (calls, utc):
+        first = _t118_recheck(address, "ethereum", [])
+        history = first["comparison_context"]
+        at[0] = start + 30.5
+        same_tick = _t118_recheck(address, "ethereum", history)
+        check("T118 established same-tick repeat reports no new market in MCP and saved files",
+              first.get("source") == "geckoterminal" and first.get("market_retrieved_at") == utc(start + 1)
+              and same_tick["checked_at"] == first["checked_at"]
+              and same_tick["comparison"].get("reason") == "no_new_market_data"
+              and "pool_transition" not in same_tick["comparison"]
+              and same_tick["comparison_context"] == history
+              and compare(first, same_tick).get("reason") == "no_new_market_data" and not calls, str(same_tick))
+        cache[fallback] = (start + 30.25, body)
+        unclear = _t118_recheck(address, "ethereum", history)
+        check("T118 a retrieval inside the same tick still cannot establish order",
+              unclear["comparison"].get("reason") == "invalid_order"
+              and unclear["comparison_context"] == history
+              and compare(first, unclear).get("reason") == "invalid_order", str(unclear))
+        cache[fallback] = (start + 1, body)
+        other_pool = [dict(history[0], best_pair_address="0x" + "de" * 20)]
+        switched = _t118_recheck(address, "ethereum", other_pool)
+        check("T118 equal reply times across pools never report a repeat or establish a switch",
+              switched["comparison"].get("reason") == "invalid_order"
+              and "pool_transition" not in switched["comparison"]
+              and switched["comparison_context"] == other_pool, str(switched))
+        at[0] = start + 31
+        repeat = _t118_recheck(address, "ethereum", history)
+        legacy = [{k: v for k, v in row.items() if k != "market_retrieved_at"} for row in (first, repeat)]
+        check("T118 mixed-container cache reuse keeps one baseline without a zero delta",
+              repeat.get("market_retrieved_at") == utc(start + 1)
+              and repeat["comparison"].get("reason") == "no_new_market_data"
+              and repeat["comparison_context"] == history and not calls
+              and compare(first, repeat).get("reason") == "no_new_market_data"
+              and compare(*legacy).get("change_usd") == 0, str(repeat))
+
+    async def untimed_market(url, **kwargs):
+        return {"pairs": []} if url == market else body
+
+    with _t118_market_cache(at, cache, {}, reader=untimed_market):
+        unconfirmed = _t118_recheck(address, "ethereum", history)
+        check("T118 a selected row without verified provenance discloses null and keeps history",
+              "market_retrieved_at" in unconfirmed and unconfirmed["market_retrieved_at"] is None
+              and unconfirmed["comparison"].get("reason") == "market_time_unconfirmed"
+              and unconfirmed["comparison_context"] == history
+              and compare(first, unconfirmed).get("reason") == "market_time_unconfirmed", str(unconfirmed))
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
