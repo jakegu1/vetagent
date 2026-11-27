@@ -75,6 +75,18 @@ const cases = {
     assert.match(reopened.text(), /Estimated change: \$0/);
     assert.ok(reopened.text().includes(id));
   },
+  async 'a verified Curve market zero is displayed as an observed estimate and can compare to zero'() {
+    const b = boot();
+    const firstZero = curveReplies[2].result.structuredContent;
+    b.nodes.addr.value = firstZero.address;
+    b.nodes.chain.value = 'ethereum'; b.nodes.chain.fire('change');
+    b.click(false).resolve(curveReplies[2]); await tick();
+    b.click(false).resolve(curveReplies[3]); await tick();
+    assert.match(b.text(), /Current estimate: \$0/);
+    assert.match(b.text(), /The provider reported zero liquidity for this market/);
+    assert.match(b.text(), /Estimated change: \$0/);
+    assert.doesNotMatch(b.text(), /No pool-specific zero was available/);
+  },
   async 'a rate-limited optional read keeps liquidity and offers a manual recheck'() {
     const b = boot();
     b.nodes.addr.value = limitedReply.result.structuredContent.address;

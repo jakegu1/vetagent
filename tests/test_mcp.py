@@ -4304,6 +4304,16 @@ def test_t119_archived_curve_market_is_recheckable_as_a_provider_identity():
           after["comparison"].get("change_usd") == 0 and compare(first, after).get("change_usd") == 0
           and calls == ["global", "chain"] and not sleeps, str(after))
 
+    zero = dict(market, liquidity={"usd": 0, "base": 0, "quote": 0})
+    args["comparison_context"] = after["comparison_context"]
+    with patch.object(risk, "_now_iso", return_value="2026-11-27T03:04:00Z"):
+        drained, _, _, _, _ = _t092_public_market(
+            "mcp", "get_token_liquidity", args, {global_url: ("market", 200, {"pairs": [zero]})})
+    check("T119 an explicit zero for this Curve market is attributed to the market and comparable",
+          drained.get("status") == "drained" and drained.get("best_pair_market_id") == market_id
+          and drained.get("note") == "The provider reported a USD liquidity estimate of zero for this market."
+          and drained["comparison"].get("change_usd") == -122443000, str(drained))
+
     # Two observed DAI pools at the same Curve prefix in the archived DAI token-pairs reply.
     dai = "0x6B175474E89094C44Da98b954EedeAC495271d0F"
     prefix, usdc, usdt = market_id.split("-")

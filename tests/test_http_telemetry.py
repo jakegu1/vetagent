@@ -454,10 +454,13 @@ def test_landing_liquidity_recheck_roundtrips_actual_mcp_results_in_the_served_s
     for key in ("source", "best_pair_address", "best_pair_chain"):
         precision_readings[-1].pop(key)
     token, _, _, _, _, curve = _t119_curve_archive()
-    curve_readings = [{"address": token, "best_pair_chain": "ethereum", "source": "dexscreener", "status": "ok",
-                       "best_pair_market_id": curve["pairAddress"], "liquidity_usd": 122443000,
-                       "checked_at": stamp} for stamp in
-                      ("2026-11-27T03:00:00Z", "2026-11-27T03:02:00Z")]
+    curve_readings = [
+        {"address": token, "best_pair_chain": "ethereum", "source": "dexscreener", "status": status,
+         "best_pair_market_id": curve["pairAddress"], "liquidity_usd": amount,
+         "checked_at": "2026-11-27T03:%02d:00Z" % (2 * index)}
+        for index, (status, amount) in enumerate((("ok", 122443000), ("ok", 122443000),
+                                                 ("drained", 0), ("drained", 0)))
+    ]
     limited = asyncio.run(_t115_liquidity("MCP", "chain rate limited"))[0]
     landing = asyncio.run(entry.Default().fetch(FakeRequest("https://vetagent.dev/"))).body
     runner = os.path.join(ROOT, "tests", "fixtures", "liquidity_recheck_contract.cjs")
