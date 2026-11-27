@@ -238,8 +238,9 @@ agents, no token addresses, nothing that identifies a person or a request.</stro
 <h2>Saved liquidity observations in your browser</h2>
 <p>The homepage's <strong>Recheck liquidity</strong> action saves at most eight compact
 observations in this browser's local storage: token address, chain, complete pool ID or a
-DexScreener market ID that includes both token addresses, provider, reply time and USD
-liquidity estimate. They stay after reopening this page.
+DexScreener market ID that includes both token addresses, provider, reply time, and USD
+liquidity estimate when available. Balancer market observations also include the trading
+venue. They stay after reopening this page.
 The most recent saved token and observed network prefill the inputs for another recheck;
 opening the page never sends a query automatically. Clearing restores the original example.
 Only observations for the current token and selected network (or matching token across

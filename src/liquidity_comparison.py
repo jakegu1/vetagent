@@ -10,7 +10,8 @@ from datetime import datetime, timedelta
 _CHAINS = ("ethereum", "bsc", "base", "polygon", "arbitrum", "optimism", "avalanche", "solana")
 _SOURCES = ("dexscreener", "geckoterminal", "coingecko")
 _BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-CURVE_MARKET_ID_PATTERN = r"^0x[0-9a-fA-F]{40}(?:-0x[0-9a-fA-F]{40}){2}$"
+MARKET_ID_PATTERN = r"^0x[0-9a-fA-F]{40}(?:-0x[0-9a-fA-F]{40}){2}$"
+MARKET_ID_VENUES = ("curve", "balancer")
 
 
 def _identity(chain, value, *, pool=False):
@@ -28,9 +29,9 @@ def _identity(chain, value, *, pool=False):
     return value if byte_count == 32 else None
 
 
-def curve_market_parts(value):
+def market_id_parts(value):
     """Recognize the observed three-component format, without yielding a pool address."""
-    if not isinstance(value, str) or not re.fullmatch(CURVE_MARKET_ID_PATTERN, value):
+    if not isinstance(value, str) or not re.fullmatch(MARKET_ID_PATTERN, value):
         return None
     parts = tuple(value.lower().split("-"))
     if len(set(parts)) != 3 or "0x" + "0" * 40 in parts:
@@ -42,12 +43,14 @@ def _market_identity(row):
     chain = row.get("best_pair_chain")
     if "best_pair_market_id" not in row:
         return _identity(chain, row.get("best_pair_address"), pool=True)
+    # Seven-field market observations issued before Balancer support were all Curve.
+    dex = row.get("best_pair_dex", "curve")
     if (chain != "ethereum" or row.get("source") != "dexscreener" or "best_pair_address" in row
-            or row.get("best_pair_dex", "curve") != "curve"):
+            or dex not in MARKET_ID_VENUES):
         return None
-    parts = curve_market_parts(row["best_pair_market_id"])
+    parts = market_id_parts(row["best_pair_market_id"])
     if parts is not None and _identity(chain, row.get("address")) in parts[1:]:
-        return "-".join(parts)
+        return (dex, "-".join(parts))
     return None
 
 
@@ -127,20 +130,31 @@ CONTEXT_LIMIT = 8
 CONTEXT_BYTE_CAP = 8192
 OBSERVATION_FIELDS = ("status", "address", "best_pair_chain", "best_pair_address", "source",
                       "checked_at", "liquidity_usd")
-CURVE_OBSERVATION_FIELDS = tuple("best_pair_market_id" if field == "best_pair_address" else field
-                                 for field in OBSERVATION_FIELDS)
+MARKET_OBSERVATION_FIELDS = tuple("best_pair_market_id" if field == "best_pair_address" else field
+                                  for field in OBSERVATION_FIELDS)
 
 
 def _observation_fields(row):
-    return CURVE_OBSERVATION_FIELDS if "best_pair_market_id" in row else OBSERVATION_FIELDS
+    if "best_pair_market_id" not in row:
+        return OBSERVATION_FIELDS
+    if row.get("best_pair_dex") == "balancer":
+        return (*MARKET_OBSERVATION_FIELDS, "best_pair_dex")
+    return MARKET_OBSERVATION_FIELDS
 
 
 def _compact_observation(row):
     return {field: row[field] for field in _observation_fields(row)}
 
 
+def _unpriced_market(row):
+    return (type(row) is dict and "error" not in row and row.get("status") == "unpriced"
+            and row.get("best_pair_dex") == "balancer" and "best_pair_market_id" in row
+            and "liquidity_usd" in row and row["liquidity_usd"] is None)
+
+
 def _reading_reason(row):
-    if not _usable_status(row):
+    unpriced = _unpriced_market(row)
+    if not (_usable_status(row) or unpriced):
         return "unusable_response"
     if "served_stale" in row:
         return "stale_response"
@@ -154,6 +168,8 @@ def _reading_reason(row):
         return "invalid_identity"
     if _moment(row.get("checked_at")) is None:
         return "invalid_time"
+    if unpriced:
+        return None
     amount = row.get("liquidity_usd")
     try:
         if type(amount) not in (int, float) or not math.isfinite(amount) or amount < 0:
@@ -239,10 +255,14 @@ def with_context(current, context, *, requested):
     comparison = _refused(reason or "no_previous_observation")
     comparison["baseline_origin"] = "client_observation"
     if reason is None:
+        unpriced = _unpriced_market(current)
+        if unpriced:
+            comparison["reason"] = "no_usd_estimate"
         tracked = "market_retrieved_at" in current
         retrieved = _market_time(current)
         now = _moment(current["checked_at"])
-        target = _key(current)[:2]
+        current_key = _key(current)
+        target = current_key[:2]
         same_target = [row for row in context if _key(row)[:2] == target]
         prior = [row for row in same_target if _moment(row["checked_at"]) < now]
         tied_current = [row for row in same_target if _moment(row["checked_at"]) == now]
@@ -257,19 +277,27 @@ def with_context(current, context, *, requested):
             retain_current = False
         elif prior:
             latest = max(prior, key=lambda row: _moment(row["checked_at"]))
+            matching = [(row, result) for row, result in candidates if _key(row) == current_key]
+            latest_match = max(matching, key=lambda item: _moment(item[0]["checked_at"]), default=None)
             # A timestamp tie across pools cannot establish which selection was latest.
             tied = [row for row in prior if _moment(row["checked_at"]) == _moment(latest["checked_at"])]
             pools = {_key(row)[2] for row in tied}
             comparison["pool_transition"] = {
                 "status": ("ambiguous" if len(pools) > 1 else
-                           "unchanged" if _key(latest)[2] == _key(current)[2] else "changed"),
+                           "unchanged" if _key(latest)[2] == current_key[2] else "changed"),
                 "previous_checked_at": latest["checked_at"],
             }
             if "best_pair_market_id" in latest:
                 comparison["pool_transition"]["previous_market_id"] = latest["best_pair_market_id"]
+                if "best_pair_dex" in latest:
+                    comparison["pool_transition"]["previous_market_dex"] = latest["best_pair_dex"]
             else:
                 comparison["pool_transition"]["previous_pool_address"] = latest["best_pair_address"]
-            if comparable:
+            if (retrieved is not None and latest_match and (unpriced or _unpriced_market(latest_match[0]))
+                    and not _newer_market_retrieval(retrieved, latest_match[0])):
+                comparison["reason"] = "no_new_market_data"
+                retain_current = False
+            elif comparable:
                 baseline, result = max(comparable, key=lambda item: _moment(item[0]["checked_at"]))
                 stamp = baseline["checked_at"]
                 if retrieved is not None and not _newer_market_retrieval(retrieved, baseline):
@@ -281,29 +309,29 @@ def with_context(current, context, *, requested):
                     comparison.update(before_checked_at=stamp, after_checked_at=current["checked_at"],
                         baseline_is_latest_observation=all(_key(row) == _key(baseline) for row in tied)
                             and _moment(stamp) == _moment(latest["checked_at"]))
-            else:
-                comparison["reason"] = "different_pool" if _key(latest)[2] != _key(current)[2] else "different_source"
+            elif not unpriced:
+                comparison["reason"] = "different_pool" if _key(latest)[2] != current_key[2] else "different_source"
                 # A matching pool/provider with an invalid delta is not a source change.
-                matching = [(row, result) for row, result in candidates if _key(row) == _key(current)]
-                if matching:
-                    comparison["reason"] = max(matching, key=lambda item: _moment(item[0]["checked_at"]))[1]["reason"]
+                if latest_match:
+                    row, result = latest_match
+                    comparison["reason"] = "no_previous_usd_observation" if _unpriced_market(row) else result["reason"]
         elif same_target:
             comparison["reason"] = "invalid_order"
         nonprior = len(same_target) - len(prior)
         if nonprior:
             comparison["nonprior_observations"] = nonprior
 
-    # Retain the newest observation per pool/provider, then the newest eight keys.
+    # Missing estimates can establish a market transition without replacing dollar history.
     retained = {}
     for row in context + ([_compact_observation(current)] if retain_current else []):
-        key = _key(row)
+        key = (*_key(row), _unpriced_market(row))
         if key not in retained or _moment(row["checked_at"]) > _moment(retained[key]["checked_at"]):
             retained[key] = row
-    rows = sorted(retained.values(), key=lambda row: _moment(row["checked_at"]))
+    rows = sorted(retained.values(), key=lambda row: (not _unpriced_market(row), _moment(row["checked_at"])))
     evicted = max(0, len(rows) - CONTEXT_LIMIT)
     if evicted:
         comparison["context_evicted"] = evicted
-    answer["comparison_context"] = rows[-CONTEXT_LIMIT:]
+    answer["comparison_context"] = sorted(rows[-CONTEXT_LIMIT:], key=lambda row: _moment(row["checked_at"]))
     if requested:
         answer["comparison"] = comparison
     return answer
