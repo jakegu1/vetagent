@@ -5365,7 +5365,8 @@ async def liquidity(address, chain_hint=None, *, include_known_address_balances=
         stated = [v for v in (_reported_liquidity(p) for p in scope) if v is not None]
         if stated and len(stated) == len(scope) and max(stated) <= 0 and not _only_unbacked_depth(scope):
             pool = _identified_drained_pool(pairs, scope, source, address, chain_hint)
-            note = ("The provider reported a USD liquidity estimate of zero for this pool." if pool else
+            venue = "market" if "best_pair_market_id" in pool else "pool"
+            note = ("The provider reported a USD liquidity estimate of zero for this %s." % venue if pool else
                     "The USD liquidity estimates for %d pool%s in this market scope are zero. "
                     "No pool-specific provider zero is available for comparison."
                     % (len(stated), "" if len(stated) == 1 else "s"))
