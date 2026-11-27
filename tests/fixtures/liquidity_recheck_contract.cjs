@@ -2,7 +2,7 @@
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const {html, replies, precision_replies: precisionReplies, limited_reply: limitedReply,
-  curve_replies: curveReplies} =
+  curve_replies: curveReplies, balancer_replies: balancerReplies} =
   JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
 const script = html.slice(html.lastIndexOf('<script>') + 8, html.lastIndexOf('</script>'));
 const tick = () => new Promise(resolve => setImmediate(resolve));
@@ -57,6 +57,25 @@ function knownAddressesReply() {
 }
 
 const cases = {
+  async 'unpriced Balancer markets keep their IDs and an earlier dollar baseline across reloads'() {
+    const b = boot(), [a, next, unpricedA, back] = balancerReplies;
+    const first = a.result.structuredContent, second = next.result.structuredContent;
+    b.nodes.addr.value = first.address;
+    b.nodes.chain.value = 'ethereum'; b.nodes.chain.fire('change');
+    b.click(false).resolve(a); await tick();
+    b.click(false).resolve(next); await tick();
+    assert.match(b.text(), /Selected market changed/);
+    assert.match(b.text(), /No USD liquidity estimate/);
+    assert.ok(b.text().includes(second.best_pair_market_id));
+    assert.doesNotMatch(b.text(), /Estimated change/);
+    b.click(false).resolve(unpricedA); await tick();
+    const reopened = boot(b.saved), request = reopened.click(false);
+    const saved = request.body.params.arguments.comparison_context;
+    assert.ok(saved.some(row => row.best_pair_market_id === first.best_pair_market_id && row.liquidity_usd === 19952));
+    assert.ok(saved.some(row => row.status === 'unpriced' && row.liquidity_usd === null));
+    request.resolve(back); await tick();
+    assert.match(reopened.text(), /Estimated change: \+\$3,313/);
+  },
   async 'Curve market ID is shown in full and carried unchanged by a browser recheck'() {
     const b = boot();
     const first = curveReplies[0].result.structuredContent;

@@ -428,7 +428,7 @@ def test_landing_liquidity_recheck_roundtrips_actual_mcp_results_in_the_served_s
     from unittest.mock import AsyncMock, patch
     import mcp_server
     import risk
-    from test_mcp import _t119_curve_archive
+    from test_mcp import _t119_curve_archive, _t120_balancer_rows
     with open(os.path.join(ROOT, "tests", "fixtures", "liquidity_recheck.json"), encoding="utf-8") as handle:
         readings = json.load(handle)
 
@@ -461,11 +461,20 @@ def test_landing_liquidity_recheck_roundtrips_actual_mcp_results_in_the_served_s
         for index, (status, amount) in enumerate((("ok", 122443000), ("ok", 122443000),
                                                  ("drained", 0), ("drained", 0)))
     ]
+    token, first, second = _t120_balancer_rows()
+    balancer_readings = [
+        {"address": token, "best_pair_chain": "ethereum", "source": "dexscreener", "status": status,
+         "best_pair_dex": "balancer", "best_pair_market_id": market["pairAddress"], "liquidity_usd": amount,
+         "checked_at": "2026-11-28T03:%02d:00Z" % (2 * index)}
+        for index, (market, status, amount) in enumerate(((first, "ok", 19952), (second, "unpriced", None),
+                                                        (first, "unpriced", None), (first, "ok", 23265)))
+    ]
     limited = asyncio.run(_t115_liquidity("MCP", "chain rate limited"))[0]
     landing = asyncio.run(entry.Default().fetch(FakeRequest("https://vetagent.dev/"))).body
     runner = os.path.join(ROOT, "tests", "fixtures", "liquidity_recheck_contract.cjs")
     result = subprocess.run(["node", runner], input=json.dumps({"html": landing, "replies": replay(readings),
                             "precision_replies": replay(precision_readings), "curve_replies": replay(curve_readings),
+                            "balancer_replies": replay(balancer_readings),
                             "limited_reply": {"result": {"structuredContent": limited}}}),
                             encoding="utf-8", capture_output=True, timeout=30)
     print(result.stdout)

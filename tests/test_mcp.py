@@ -4581,6 +4581,132 @@ def test_t118_gecko_mixed_envelope_same_tick_and_saved_replies():
               and compare(first, unconfirmed).get("reason") == "market_time_unconfirmed", str(unconfirmed))
 
 
+def _t120_balancer_rows():
+    dai = "0x6b175474e89094c44da98b954eedeac495271d0f"
+    usdc = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    usdt = "0xdac17f958d2ee523a2206206994597c13d831ec7"
+    prefix = "0x" + "ab" * 20
+
+    def row(quote, usd):
+        return {"pairAddress": "-".join((prefix, dai, quote)), "dexId": "balancer", "chainId": "ethereum",
+                "baseToken": {"address": dai}, "quoteToken": {"address": quote},
+                "priceUsd": "1", "liquidity": {"usd": usd}}
+
+    return dai, row(usdc, 19952), row(usdt, 25359.4)
+
+
+def test_t120_balancer_recheck_uses_complete_venue_identity_and_keeps_dollar_history():
+    token, a, b = _t120_balancer_rows()
+    url = "https://api.dexscreener.com/latest/dex/tokens/" + token
+    start = datetime(2026, 11, 28, tzinfo=timezone.utc).timestamp()
+    at = [start]
+    routes = {url: (200, {"pairs": [a]})}
+    with _t118_market_cache(at, {}, routes) as (calls, _):
+        first = _t118_recheck(token, "ethereum", [])
+        history = first["comparison_context"]
+        check("T120 Balancer returns a verified provider ID and a venue-qualified dollar baseline",
+              first["status"] == "ok" and first.get("best_pair_market_id") == a["pairAddress"]
+              and "best_pair_address" not in first and len(history) == 1
+              and history[0].get("best_pair_dex") == "balancer", str(first))
+
+        at[0] = start + 5
+        repeat = _t118_recheck(token, "ethereum", history)
+        check("T120 a cached Balancer response does not advance its dollar baseline",
+              repeat["comparison"].get("reason") == "no_new_market_data"
+              and repeat["comparison_context"] == history and calls == [url], str(repeat))
+
+        at[0] = start + 70
+        routes[url] = (200, {"pairs": [dict(b, liquidity={}, priceUsd=None)]})
+        switched = _t118_recheck(token, "ethereum", history)
+        check("T120 unpriced Balancer can switch market without supplying a USD estimate",
+              switched.get("status") == "unpriced" and switched.get("liquidity_usd") is None
+              and switched.get("best_pair_market_id") == b["pairAddress"]
+              and switched["comparison"].get("pool_transition", {}).get("status") == "changed"
+              and switched["comparison"].get("pool_transition", {}).get("previous_market_id") == a["pairAddress"]
+              and "change_usd" not in switched["comparison"], str(switched))
+
+        at[0] = start + 140
+        missing = dict(a, liquidity={}, priceUsd=None)
+        routes[url] = (200, {"pairs": [missing]})
+        empty = _t118_recheck(token, "ethereum", switched["comparison_context"])
+        check("T120 a missing USD observation for A retains A's earlier dollar baseline",
+              bool(history) and history[0] in empty["comparison_context"]
+              and any(row.get("best_pair_market_id") == a["pairAddress"] and row.get("status") == "unpriced"
+                      for row in empty["comparison_context"])
+              and "change_usd" not in empty["comparison"], str(empty))
+        at[0] = start + 144
+        cached_empty = _t118_recheck(token, "ethereum", empty["comparison_context"])
+        check("T120 cached unpriced Balancer does not advance the identity-only observation",
+              cached_empty["comparison"].get("reason") == "no_new_market_data"
+              and cached_empty["comparison_context"] == empty["comparison_context"] and calls == [url] * 3,
+              str(cached_empty))
+
+        at[0] = start + 210
+        routes[url] = (200, {"pairs": [dict(a, liquidity={"usd": 23265})]})
+        back = _t118_recheck(token, "ethereum", empty["comparison_context"])
+        check("T120 returning priced still calculates the difference against the actual earlier USD baseline",
+              back["comparison"].get("change_usd") == 3313
+              and back["comparison"].get("before_checked_at") == first["checked_at"], str(back))
+
+        at[0] = start + 280
+        routes[url] = (200, {"pairs": [dict(a, dexId="curve")]})
+        curve = _t118_recheck(token, "ethereum", back["comparison_context"])
+        check("T120 identical provider ID text across Balancer and Curve never produces a delta",
+              curve["comparison"].get("reason") == "different_pool"
+              and curve["comparison"].get("pool_transition", {}).get("previous_market_dex") == "balancer"
+              and "change_usd" not in curve["comparison"]
+              and any(len(row) == 7 and "best_pair_dex" not in row for row in curve["comparison_context"]), str(curve))
+
+
+def test_t120_balancer_refuses_ambiguous_or_malformed_market_evidence():
+    from liquidity_comparison import compare
+
+    token, a, b = _t120_balancer_rows()
+    url = "https://api.dexscreener.com/latest/dex/tokens/" + token
+    args = {"address": token, "chain_hint": "ethereum", "comparison_context": []}
+    variants = (
+        ("ambiguous unpriced markets", [dict(row, liquidity={}) for row in (a, b)], "unpriced"),
+        ("unrelated sides", [dict(a, pairAddress=b["pairAddress"])], "ok"),
+        ("unsupported venue", [dict(a, dexId="uniswap")], "ok"),
+    )
+    for label, rows, status in variants:
+        response, _, _, _, _ = _t092_public_market(
+            "mcp", "get_token_liquidity", args, {url: ("market", 200, {"pairs": rows})})
+        check("T120 " + label + " cannot produce a market baseline", response.get("status") == status
+              and "best_pair_market_id" not in response and not response["comparison_context"], str(response))
+
+    zero = dict(a, liquidity={"usd": 0, "base": 0, "quote": 0})
+    response, _, _, _, _ = _t092_public_market(
+        "mcp", "get_token_liquidity", args, {url: ("market", 200, {"pairs": [zero]})})
+    check("T120 an explicit Balancer zero becomes a numeric baseline",
+          response.get("status") == "drained" and response.get("best_pair_market_id") == a["pairAddress"]
+          and response["comparison_context"] and response["comparison_context"][0]["liquidity_usd"] == 0,
+          str(response))
+
+    observation = {"address": token, "status": "ok", "best_pair_chain": "ethereum", "source": "dexscreener",
+                   "best_pair_dex": "balancer", "best_pair_market_id": a["pairAddress"],
+                   "liquidity_usd": 100, "checked_at": "2026-11-28T02:00:00Z"}
+    now = dict(observation, checked_at="2026-11-28T02:02:00Z")
+    for row in (dict(observation, status="unpriced", liquidity_usd=0),
+                dict(observation, best_pair_address="0x" + "ab" * 20),
+                dict(observation, best_pair_dex="uniswap"),
+                dict(observation, source="geckoterminal"), dict(observation, best_pair_chain="base")):
+        reply, fetch = _native_liquidity_call(now, [row])
+        check("T120 malformed or unqualified market history is rejected before fetching",
+              reply["result"].get("isError") is True and fetch.await_count == 0)
+    check("T120 saved replies cannot compare identical ID text across venues",
+          compare(observation, dict(now, best_pair_dex="curve")).get("reason") == "different_pool")
+
+    older = [dict(observation, best_pair_market_id="-".join(("0x" + f"{i + 1:040x}",
+                   *a["pairAddress"].split("-")[1:]))) for i in range(8)]
+    immature = dict(now, status="unpriced", liquidity_usd=None)
+    reply, _ = _native_liquidity_call(immature, older)
+    body = reply["result"].get("structuredContent", {})
+    check("T120 a full numeric history is kept when an identity-only observation must be evicted",
+          body.get("comparison_context") == older and body.get("comparison", {}).get("context_evicted") == 1,
+          str(body))
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
