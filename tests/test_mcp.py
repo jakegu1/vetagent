@@ -4265,6 +4265,149 @@ def test_native_liquidity_context_refuses_invalid_records_and_preserves_legacy_s
           and answer.get("comparison", {}).get("context_evicted") == 1)
 
 
+@contextmanager
+def _t118_market_cache(at, cache, routes, reader=risk._fetch_json):
+    def utc(when):
+        return datetime.fromtimestamp(when, timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+    def response(body, status=200):
+        async def text():
+            return body
+        return SimpleNamespace(status=status, text=text)
+
+    async def match(url):
+        record = cache.get(url)
+        return response(json.dumps({"_at": record[0], "_data": record[1]})) if record else None
+
+    async def put(url, reply):
+        record = json.loads(await reply.text())
+        cache[url] = (record["_at"], record["_data"])
+
+    calls = []
+
+    async def fetch(url, **kwargs):
+        calls.append(url)
+        status, data = routes[url]
+        return response(json.dumps(data), status)
+
+    js = SimpleNamespace(Date=SimpleNamespace(now=lambda: round(at[0] * 1000)),
+                         Request=SimpleNamespace(new=lambda url: url),
+                         Response=SimpleNamespace(new=lambda body, _init: response(body)),
+                         Object=SimpleNamespace(fromEntries=dict),
+                         caches=SimpleNamespace(default=SimpleNamespace(match=match, put=put)))
+    ffi = SimpleNamespace(to_js=lambda data, **_kwargs: data)
+    with patch.dict(sys.modules, {"js": js, "pyodide.ffi": ffi}), \
+            patch.object(risk, "_fetch_json", reader), patch.object(risk, "cf_fetch", fetch), \
+            patch.object(risk, "_now_iso", lambda: utc(at[0]).split(".")[0] + "Z"), \
+            patch.dict(risk._ONCHAIN, {"key": "", "unusable": False}):
+        yield calls, utc
+
+
+def _t118_recheck(address, chain, context):
+    return call({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                 "params": {"name": "get_token_liquidity", "arguments": {
+                     "address": address, "chain_hint": chain, "comparison_context": context}}
+                 })["result"]["structuredContent"]
+
+
+def test_t118_cached_market_recheck_keeps_the_original_baseline():
+    original = _load("coverage_matrix/base.json")
+    address = original["address"].lower()
+    market = "https://api.dexscreener.com/latest/dex/tokens/" + address
+    scoped = "https://api.dexscreener.com/token-pairs/v1/base/" + address
+    bodies = {url: json.loads(original["responses"][url]["body"]) for url in (market, scoped)}
+    start = datetime(2026, 11, 27, 2, tzinfo=timezone.utc).timestamp()
+    at = [start + 5]
+    cache = {url: (start, body) for url, body in bodies.items()}
+    routes = {url: (200, body) for url, body in bodies.items()}
+    with _t118_market_cache(at, cache, routes) as (calls, utc):
+        first = _t118_recheck(address, "base", [])
+        history = first["comparison_context"]
+        check("T118 archived DEX reply says when the selected market was acquired",
+              first.get("market_retrieved_at") == utc(start) and first["liquidity_usd"] == 436033
+              and len(history) == 1 and len(history[0]) == 7, str(first))
+        at[0] = start + 28
+        repeat = _t118_recheck(address, "base", history)
+        check("T118 same cached market makes no request, no delta and no new baseline",
+              repeat["checked_at"] != first["checked_at"] and repeat.get("market_retrieved_at") == utc(start)
+              and repeat["comparison"].get("reason") == "no_new_market_data"
+              and "change_usd" not in repeat["comparison"] and repeat["comparison_context"] == history
+              and not calls, str(repeat))
+        # A retrieval within the baseline reply's reported second has ambiguous order.
+        cache.update({url: (start + 5.5, body) for url, body in bodies.items()})
+        earlier = dict(history[0], checked_at="2026-11-27T01:59:58Z")
+        ambiguous = _t118_recheck(address, "base", [earlier, *history])
+        check("T118 does not compare to an older copy when the latest baseline order is ambiguous",
+              ambiguous["comparison"].get("reason") == "no_new_market_data"
+              and ambiguous["comparison_context"] == history and not calls, str(ambiguous))
+        cache.update({url: (start + 40, body) for url, body in bodies.items()})
+        skew = _t118_recheck(address, "base", history)
+        check("T118 future cache acquisition is unconfirmed and cannot replace the baseline",
+              skew.get("market_retrieved_at") is None and skew["comparison"].get("reason") == "market_time_unconfirmed"
+              and skew["comparison_context"] == history and not calls, str(skew))
+
+        at[0] = start + 108
+        fresh = _t118_recheck(address, "base", history)
+        check("T118 independently refreshed identical amount legitimately compares as zero",
+              fresh.get("market_retrieved_at") == utc(at[0]) and fresh["comparison"].get("change_usd") == 0
+              and fresh["comparison"]["before_checked_at"] == first["checked_at"]
+              and fresh["comparison_context"] != history and calls == [market, scoped], str(fresh))
+        at[0] = start + 116
+        again = _t118_recheck(address, "base", fresh["comparison_context"])
+        check("T118 the next cache hit keeps the real refreshed acquisition and baseline",
+              again.get("market_retrieved_at") == fresh.get("market_retrieved_at")
+              and again["comparison"].get("reason") == "no_new_market_data" and calls == [market, scoped]
+              and again["comparison_context"] == fresh["comparison_context"], str(again))
+        for url, body in copy.deepcopy(bodies).items():
+            for row in body["pairs"] if isinstance(body, dict) else body:
+                if row.get("pairAddress", "").lower() == first["best_pair_address"].lower():
+                    row["liquidity"]["usd"] = 400000
+            routes[url] = (200, body)
+        at[0] = start + 172
+        changed = _t118_recheck(address, "base", again["comparison_context"])
+        check("T118 a later genuine same-pool change retains its signed estimate delta",
+              changed["comparison"].get("change_usd") == -36033 and calls == [market, scoped] * 2,
+              str(changed))
+
+
+def test_t118_market_clock_belongs_to_the_selected_provider_row():
+    start = datetime(2026, 11, 27, 2, tzinfo=timezone.utc).timestamp()
+    at = [start + 30]
+    weth = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+    market = "https://api.dexscreener.com/latest/dex/tokens/" + weth
+    fallback = "https://api.geckoterminal.com/api/v2/networks/eth/tokens/" + weth + "/pools"
+    cache = {fallback: (start + 1, _load("gt_weth_anchor_pools.json"))}
+    with _t118_market_cache(at, cache, {market: (200, {"pairs": []})}) as (calls, utc):
+        answer = _t118_recheck(weth, "ethereum", [])
+        check("T118 normalized Gecko fallback keeps its own acquisition, not the DEX lookup time",
+              answer["source"] == "geckoterminal" and answer.get("market_retrieved_at") == utc(start + 1)
+              and calls == [market], str(answer))
+
+    archive = _load("coverage_matrix/base.json")
+    address = archive["address"].lower()
+    market = "https://api.dexscreener.com/latest/dex/tokens/" + address
+    requested = "https://api.dexscreener.com/token-pairs/v1/bsc/" + address
+    cached_primary = json.loads(archive["responses"][market]["body"])
+    cache = {market: (start + 2, cached_primary)}
+    routes = {requested: (429, {})}
+    with _t118_market_cache(at, cache, routes) as (calls, utc):
+        answer = _t118_recheck(address, "bsc", [])
+        check("T118 returning primary after failed cross-network lookup keeps the primary clock",
+              answer["best_pair_chain"] == "base" and answer.get("market_retrieved_at") == utc(start + 2)
+              and answer["comparison"].get("reason") == "different_network" and calls == [requested],
+              str(answer))
+        primary_pool = next(row for row in cached_primary["pairs"]
+                            if row["pairAddress"] == answer["best_pair_address"])
+        bsc = dict(primary_pool, chainId="bsc", pairAddress="0x" + "ab" * 20,
+                   quoteToken={"address": "0x55d398326f99059fF775485246999027B3197955"},
+                   liquidity={"usd": 25000})
+        cache[requested] = (start + 17, [bsc])
+        answer = _t118_recheck(address, "bsc", [])
+        check("T118 selected per-chain market uses its own acquisition",
+              answer.get("best_pair_address") == bsc["pairAddress"]
+              and answer.get("market_retrieved_at") == utc(start + 17) and calls == [requested], str(answer))
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
