@@ -850,7 +850,11 @@
       if (networkNotice) { networkNotice = '<div class="request-scope">' + networkNotice + '</div>'; }
       var details = '<div class="request-scope">Returned network: ' + esc(returned || 'Not reported') +
         '<br>Pool: <code>' + esc(value.best_pair_address || 'Not reported') + '</code>' +
-        '<br>Provider: ' + esc(value.source || 'Not reported') + '<br>Reply time: ' + esc(value.checked_at) + '</div>';
+        '<br>Provider: ' + esc(value.source || 'Not reported');
+      if ('market_retrieved_at' in value) {
+        details += '<br>Market retrieved by VetAgent: ' + esc(value.market_retrieved_at || 'Unconfirmed');
+      }
+      details += '<br>Reply time: ' + esc(value.checked_at) + '</div>';
       var comparison = value.comparison || {};
       var change;
       if (differentNetwork) {
@@ -868,6 +872,8 @@
           no_previous_observation: 'Baseline saved. Recheck later to compare with this observation.',
           different_source: 'Provider changed. No change calculated across different sources; this source now has a baseline.',
           different_pool: 'Selected pool changed. No change calculated across different pools.',
+          no_new_market_data: 'No newer market data confirmed. Kept the previous baseline.',
+          market_time_unconfirmed: 'Market retrieval time could not be verified. No new baseline saved.',
           stale_response: 'Cached fallback is stale. No comparison or new baseline from this reply.',
           invalid_order: 'Reply times are not increasing. No earlier comparable baseline is available.',
           invalid_identity: 'The complete pool identity is missing or invalid. No new baseline saved.',

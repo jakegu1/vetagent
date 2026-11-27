@@ -70,7 +70,8 @@ _COMPARISON_SCHEMA = {
     "description": "Returned when comparison_context is supplied. Uses the latest strictly "
                    "earlier comparable client observation of this token, chain, complete pool ID "
                    "and provider. USD estimate change is not a reserve flow or executable depth. "
-                   "Reply times can cover cached source data. A changed pool_transition and "
+                   "A repeat or unordered market retrieval preserves the prior baseline "
+                   "(no_new_market_data). A changed pool_transition and "
                    "baseline_is_latest_observation=false disclose a return to an older pool baseline.",
     "required": ["status", "baseline_origin"],
     "properties": {
@@ -422,7 +423,9 @@ TOOLS = [
             "providers, and refuses stale fallback. Context is bounded client observation, not "
             "signed service history. No server history is stored. Legacy calls remain snapshots. "
             "The local examples/liquidity_compare.py CLI remains available for saved replies. "
-            "checked_at is reply time; source data may be cached.\n"
+            "checked_at is reply time. market_retrieved_at is when VetAgent obtained the "
+            "selected estimate and may precede the reply for cached data. If no newer market "
+            "retrieval is confirmed, the comparison returns no_new_market_data and keeps the baseline.\n"
             "Check 'status' before using the numbers. 'ok' means usable upstream data, "
             "not independently verified reserves or executable sell depth. "
             "The optional liquidity_reserve_check marker says 'not_checkable' when a "
@@ -483,6 +486,10 @@ TOOLS = [
                 "checked_at": {"type": "string",
                                "description": "Reply time in ISO-8601 UTC, not the source observation time. "
                                               "Source data may be cached."},
+                "market_retrieved_at": {"type": ["string", "null"],
+                                        "description": "When VetAgent obtained the selected market estimate, "
+                                                       "including cache hits. This is not exchange trade time. "
+                                                       "Null means the retrieval time could not be verified."},
                 "served_stale": {
                     "type": "array",
                     "description": "Present only when an upstream was unreachable and "

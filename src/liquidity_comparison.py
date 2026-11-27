@@ -3,7 +3,7 @@
 import json
 import math
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 
@@ -151,10 +151,22 @@ def _key(row):
             _identity(chain, row["best_pair_address"], pool=True), row["source"])
 
 
+def _timestamp_precision(stamp):
+    fraction = re.search(r"\.([0-9]+)", stamp)
+    digits = len(fraction[1]) if fraction else 0
+    return timedelta(microseconds=10 ** (6 - digits))
+
+
 def with_context(current, context, *, requested):
     """Use only the current fetch and bounded caller state; retain no server history."""
     answer = dict(current)
     reason = _reading_reason(current)
+    retrieved = _moment(current.get("market_retrieved_at"))
+    if reason is None and "market_retrieved_at" in current:
+        reply_time = current["checked_at"]
+        if retrieved is None or retrieved - _moment(reply_time) >= _timestamp_precision(reply_time):
+            reason = "market_time_unconfirmed"
+    retain_current = reason is None
     comparison = _refused(reason or "no_previous_observation")
     comparison["baseline_origin"] = "client_observation"
     if reason is None:
@@ -176,11 +188,18 @@ def with_context(current, context, *, requested):
             }
             if comparable:
                 baseline, result = max(comparable, key=lambda item: _moment(item[0]["checked_at"]))
-                comparison.update(result)
-                comparison.pop("reason", None)
-                comparison.update(before_checked_at=baseline["checked_at"], after_checked_at=current["checked_at"],
-                    baseline_is_latest_observation=all(_key(row) == _key(baseline) for row in tied)
-                        and _moment(baseline["checked_at"]) == _moment(latest["checked_at"]))
+                stamp = baseline["checked_at"]
+                # The recorded reply time is truncated. Require the market
+                # acquisition to be beyond the baseline's entire clock tick.
+                if retrieved is not None and retrieved - _moment(stamp) < _timestamp_precision(stamp):
+                    comparison["reason"] = "no_new_market_data"
+                    retain_current = False
+                else:
+                    comparison.update(result)
+                    comparison.pop("reason", None)
+                    comparison.update(before_checked_at=stamp, after_checked_at=current["checked_at"],
+                        baseline_is_latest_observation=all(_key(row) == _key(baseline) for row in tied)
+                            and _moment(stamp) == _moment(latest["checked_at"]))
             else:
                 comparison["reason"] = "different_pool" if _key(latest)[2] != _key(current)[2] else "different_source"
                 # A matching pool/provider with an invalid delta is not a source change.
@@ -195,7 +214,7 @@ def with_context(current, context, *, requested):
 
     # Retain the newest observation per pool/provider, then the newest eight keys.
     retained = {}
-    for row in context + ([] if reason else [{field: current[field] for field in OBSERVATION_FIELDS}]):
+    for row in context + ([{field: current[field] for field in OBSERVATION_FIELDS}] if retain_current else []):
         key = _key(row)
         if key not in retained or _moment(row["checked_at"]) > _moment(retained[key]["checked_at"]):
             retained[key] = row

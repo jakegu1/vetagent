@@ -275,6 +275,14 @@ The response's `comparison` reports the before/after reply times, USD estimates 
 `change_usd` when a comparison is possible. Calls without the argument remain snapshots
 and omit `comparison`.
 
+`checked_at` is the reply time. `market_retrieved_at` gives the local retrieval time
+of the selected estimate, including an estimate served from cache. It does not describe
+an exchange trade timestamp. The seven-field history stays the same. If the selected
+retrieval cannot be confirmed to follow the matching baseline's reply (including its
+reported time precision), `no_new_market_data` retains that baseline without a delta.
+If the retrieval time itself cannot be verified, `market_time_unconfirmed` leaves the
+history in place. A later retrieval can legitimately report the same USD estimate.
+
 For liquidity, `chain_hint` is a network preference. When the initial listing contains
 only other networks, VetAgent asks for the requested network's DexScreener listing
 before reporting another market. The optional `network_selection` identifies the
@@ -334,8 +342,9 @@ seconds and a known valid timezone offset (`Z` or `+/-HH:MM`).
 Only comparable finite nonnegative USD estimates yield `before_usd`, `after_usd` and
 `change_usd`. Changed identity/provider, missing facts, stale fallback or invalid order
 returns `not_comparable` with a reason and no change. Old truncated IDs are refused.
-`checked_at` is reply time, and data can be cached. The difference compares saved USD
-estimates, which can also change with valuation. The example performs no network calls.
+`checked_at` is reply time, and data can be cached. The local example compares saved USD
+estimates by reply time and does not verify that their market retrievals were distinct.
+Estimates can also change with valuation. The example performs no network calls.
 
 `get_token_liquidity` includes `best_pair_address` on `ok` results when the selected
 pool has a complete valid identity. A `drained` result includes the pool ID, chain and

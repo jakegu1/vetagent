@@ -231,11 +231,26 @@ _STALE_CAPS_CONFIDENCE = True
 # A context variable is per-task, and each request is its own task.
 _STALE_HITS = contextvars.ContextVar("vetagent_stale_hits")
 _CACHE_RESIDENCE = contextvars.ContextVar("vetagent_cache_residence", default=0)
+# Only liquidity needs the timestamp of the selected market row. The request-wide
+# cache age also covers lookups that end up contributing no selected market.
+_LIQUIDITY_MARKET_READS = contextvars.ContextVar("vetagent_liquidity_market_reads", default=None)
 
 
 def _note_cache_residence(age):
     """Record local reuse age without treating a fresh cache hit as an outage."""
     _CACHE_RESIDENCE.set(max(_CACHE_RESIDENCE.get(), math.ceil(max(0, age))))
+
+
+def _note_market_rows(data, retrieved_at):
+    reads = _LIQUIDITY_MARKET_READS.get()
+    if reads is None:
+        return
+    rows = data.get("pairs", data.get("data")) if isinstance(data, dict) else data
+    if isinstance(rows, list):
+        for row in rows:
+            if isinstance(row, dict):
+                # Keep the original row alive so its object ID cannot be recycled.
+                reads["rows"][id(row)] = (row, retrieved_at)
 
 
 def _stale_hits():
@@ -393,18 +408,27 @@ async def _cache_get(url):
             return None, None
         body = await hit.text()
         blob = json.loads(body)
-        age = (Date.now() / 1000.0) - float(blob.get("_at") or 0)
+        stored_at = blob.get("_at")
+        recorded = float(stored_at or 0)
+        age = (Date.now() / 1000.0) - recorded
+        reads = _LIQUIDITY_MARKET_READS.get()
+        if reads is not None:
+            reads["cache_at"][url] = (recorded if type(stored_at) in (float, int)
+                                      and math.isfinite(recorded) and recorded > 0 and age >= 0 else None)
         return blob.get("_data"), age
     except Exception:  # noqa: BLE001
         return None, None
 
 
 async def _cache_put(url, data, ttl=None):
+    at = None
     try:
-        from js import Date, Request, Response as JsResponse, caches
+        from js import Date
+        at = Date.now() / 1000.0
+        from js import Request, Response as JsResponse, caches
         from pyodide.ffi import to_js
         from js import Object
-        payload = json.dumps({"_at": Date.now() / 1000.0, "_data": data})
+        payload = json.dumps({"_at": at, "_data": data})
         headers = to_js({"content-type": "application/json",
                          "cache-control": "max-age=%d"
                                           % (ttl or _STALE_OK_SECONDS)},
@@ -413,6 +437,7 @@ async def _cache_put(url, data, ttl=None):
         await caches.default.put(Request.new(url), JsResponse.new(payload, init))
     except Exception:  # noqa: BLE001
         pass
+    return at
 
 
 # Chains honeypot.is actually indexes. It answers 404 for every token on the others --
@@ -449,8 +474,11 @@ async def _fetch_json(url, retries=2, timeout=8, mark_missing=False, headers=Non
     disclose it. Returning real data four minutes old beats refusing to answer.
     """
     cached, age = await _cache_get(url)
+    reads = _LIQUIDITY_MARKET_READS.get()
+    cached_at = reads["cache_at"].get(url) if reads is not None else None
     if cached is not None and age is not None and age <= _FRESH_SECONDS:
         _note_cache_residence(age)
+        _note_market_rows(cached, cached_at)
         return cached
 
     for attempt in range(retries + 1):
@@ -491,7 +519,9 @@ async def _fetch_json(url, retries=2, timeout=8, mark_missing=False, headers=Non
                         _note_failure(url, "error body %s"
                                       % ((data.get("status") or {}).get("error_code")))
                         break  # Preserve the same stale-cache fallback as a transport refusal.
-                    await _cache_put(url, data)
+                    retrieved = _now_iso() if reads is not None else None
+                    stored = await _cache_put(url, data)
+                    _note_market_rows(data, stored if type(stored) in (int, float) else retrieved)
                     return data
         except Exception as e:  # timeout, network, parse error: all count as a failed fetch
             _note_failure(url, type(e).__name__)
@@ -503,6 +533,7 @@ async def _fetch_json(url, retries=2, timeout=8, mark_missing=False, headers=Non
         hits = _stale_hits()
         if hits is not None:
             hits.append((url, int(age)))
+        _note_market_rows(cached, cached_at)
         return cached
     return None
 
@@ -4486,6 +4517,7 @@ def _fallback_market_rows(rows, address, network):
     if not isinstance(rows, list):
         return None
     usable, seen_ids, duplicates = [], set(), set()
+    reads = _LIQUIDITY_MARKET_READS.get()
     for raw in rows:
         if not isinstance(raw, dict):
             continue
@@ -4510,6 +4542,8 @@ def _fallback_market_rows(rows, address, network):
             continue
         if _pair_has_token(pair, address):
             usable.append(pair)
+            if reads is not None and id(raw) in reads["rows"]:
+                reads["rows"][id(pair)] = (pair, reads["rows"][id(raw)][1])
     for pair in usable:
         if any((pool if network == "solana" else pool.lower()) in duplicates
                for value in (pair.resource_pool, pair.get("pairAddress"))
@@ -5309,10 +5343,22 @@ async def liquidity(address, chain_hint=None, *, include_known_address_balances=
     _begin_request()
     requested_hint = chain_hint
     chain_hint, selection = _market_network_preference(address, chain_hint)
-    pairs, source = await _load_pairs(address, chain_hint, network_selection=selection)
+    reads = {"cache_at": {}, "rows": {}}
+    tracking = _LIQUIDITY_MARKET_READS.set(reads)
+    try:
+        pairs, source = await _load_pairs(address, chain_hint, network_selection=selection)
+    finally:
+        _LIQUIDITY_MARKET_READS.reset(tracking)
 
     async def finish(payload, scoped_chain=None, market=None):
         result = _disclose_liquidity(payload, selection, scoped_chain)
+        recorded = reads["rows"].get(id(market))
+        if recorded is not None:
+            retrieved_at = recorded[1]
+            if type(retrieved_at) in (int, float):
+                retrieved_at = datetime.fromtimestamp(retrieved_at, timezone.utc).isoformat(
+                    timespec="milliseconds").replace("+00:00", "Z")
+            result["market_retrieved_at"] = retrieved_at
         if include_known_address_balances is True:
             result["known_address_balances"] = await _known_balance_reading(
                 result, requested_hint, scoped_chain, market, pairs or ())
