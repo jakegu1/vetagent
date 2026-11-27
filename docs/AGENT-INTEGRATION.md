@@ -337,14 +337,16 @@ Each input file contains one successful REST `/liquidity/...` JSON response obje
 or the extracted MCP `result.structuredContent` object, with `status: "ok"` or an
 identified `status: "drained"` and numeric zero.
 Supply the earlier reply first. The example verifies chain, target token, complete pool
-identity, data provider and strictly increasing `checked_at` values with a full ISO date,
-seconds and a known valid timezone offset (`Z` or `+/-HH:MM`).
+identity, data provider and reply times given as full ISO dates with seconds and a known
+valid timezone offset (`Z` or `+/-HH:MM`).
 Only comparable finite nonnegative USD estimates yield `before_usd`, `after_usd` and
 `change_usd`. Changed identity/provider, missing facts, stale fallback or invalid order
 returns `not_comparable` with a reason and no change. Old truncated IDs are refused.
-`checked_at` is reply time, and data can be cached. The local example compares saved USD
-estimates by reply time and does not verify that their market retrievals were distinct.
-Estimates can also change with valuation. The example performs no network calls.
+`checked_at` is reply time, and data can be cached. With retrieval evidence the example
+also checks that the selected estimate is newer, as in a native recheck. An established
+repeat at a tied reply time reports `no_new_market_data`. Older saved files without
+retrieval evidence continue to compare strictly by reply time. The example performs no
+network calls.
 
 `get_token_liquidity` includes `best_pair_address` on `ok` results when the selected
 pool has a complete valid identity. A `drained` result includes the pool ID, chain and

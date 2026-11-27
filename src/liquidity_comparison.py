@@ -57,8 +57,8 @@ def _moment(stamp):
         return None
 
 
-def compare(before, after):
-    """Compare saved reply estimates only after validating their shared context."""
+def _compare_replies(before, after):
+    """Validate reply time, market identity and amounts before subtraction."""
     readings = (before, after)
     if not all(_usable_status(row) for row in readings):
         return _refused("unusable_response")
@@ -157,25 +157,72 @@ def _timestamp_precision(stamp):
     return timedelta(microseconds=10 ** (6 - digits))
 
 
+def _market_time(row):
+    stamp = row["checked_at"]
+    retrieved = _moment(row.get("market_retrieved_at"))
+    if retrieved is not None and retrieved - _moment(stamp) < _timestamp_precision(stamp):
+        return retrieved
+    return None
+
+
+def _established_repeat(current, baseline, retrieved):
+    return (retrieved is not None and retrieved < _moment(baseline["checked_at"])
+            and _key(baseline) == _key(current) and baseline["status"] == current["status"]
+            and baseline["liquidity_usd"] == current["liquidity_usd"])
+
+
+def _newer_market_retrieval(retrieved, baseline):
+    # Records may give the reply time only to the second. Require the new
+    # retrieval to follow the baseline's entire reported clock tick.
+    stamp = baseline["checked_at"]
+    return retrieved - _moment(stamp) >= _timestamp_precision(stamp)
+
+
+def compare(before, after):
+    """Compare two saved replies, using market retrieval evidence when supplied."""
+    result = _compare_replies(before, after)
+    if result["status"] == "compared":
+        if "market_retrieved_at" in before and _market_time(before) is None:
+            return _refused("market_time_unconfirmed")
+        if "market_retrieved_at" in after:
+            retrieved = _market_time(after)
+            if retrieved is None:
+                return _refused("market_time_unconfirmed")
+            if not _newer_market_retrieval(retrieved, before):
+                return _refused("no_new_market_data")
+    elif (result["reason"] == "invalid_order" and "market_retrieved_at" in after
+            and _moment(before["checked_at"]) == _moment(after["checked_at"])
+            and _reading_reason(before) is None and _reading_reason(after) is None
+            and _established_repeat(after, before, _market_time(after))):
+        return _refused("no_new_market_data")
+    return result
+
+
 def with_context(current, context, *, requested):
     """Use only the current fetch and bounded caller state; retain no server history."""
     answer = dict(current)
     reason = _reading_reason(current)
-    retrieved = _moment(current.get("market_retrieved_at"))
-    if reason is None and "market_retrieved_at" in current:
-        reply_time = current["checked_at"]
-        if retrieved is None or retrieved - _moment(reply_time) >= _timestamp_precision(reply_time):
-            reason = "market_time_unconfirmed"
     retain_current = reason is None
     comparison = _refused(reason or "no_previous_observation")
     comparison["baseline_origin"] = "client_observation"
     if reason is None:
+        tracked = "market_retrieved_at" in current
+        retrieved = _market_time(current)
+        now = _moment(current["checked_at"])
         target = _key(current)[:2]
         same_target = [row for row in context if _key(row)[:2] == target]
-        prior = [row for row in same_target if _moment(row["checked_at"]) < _moment(current["checked_at"])]
-        candidates = [(row, compare(row, current)) for row in prior]
+        prior = [row for row in same_target if _moment(row["checked_at"]) < now]
+        tied_current = [row for row in same_target if _moment(row["checked_at"]) == now]
+        candidates = [(row, _compare_replies(row, current)) for row in prior]
         comparable = [(row, result) for row, result in candidates if result["status"] == "compared"]
-        if prior:
+        if tracked and tied_current:
+            repeated = all(_established_repeat(current, row, retrieved) for row in tied_current)
+            comparison["reason"] = "no_new_market_data" if repeated else "invalid_order"
+            retain_current = False
+        elif tracked and retrieved is None:
+            comparison["reason"] = "market_time_unconfirmed"
+            retain_current = False
+        elif prior:
             latest = max(prior, key=lambda row: _moment(row["checked_at"]))
             # A timestamp tie across pools cannot establish which selection was latest.
             tied = [row for row in prior if _moment(row["checked_at"]) == _moment(latest["checked_at"])]
@@ -189,9 +236,7 @@ def with_context(current, context, *, requested):
             if comparable:
                 baseline, result = max(comparable, key=lambda item: _moment(item[0]["checked_at"]))
                 stamp = baseline["checked_at"]
-                # The recorded reply time is truncated. Require the market
-                # acquisition to be beyond the baseline's entire clock tick.
-                if retrieved is not None and retrieved - _moment(stamp) < _timestamp_precision(stamp):
+                if retrieved is not None and not _newer_market_retrieval(retrieved, baseline):
                     comparison["reason"] = "no_new_market_data"
                     retain_current = False
                 else:

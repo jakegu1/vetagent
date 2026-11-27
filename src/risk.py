@@ -245,12 +245,13 @@ def _note_market_rows(data, retrieved_at):
     reads = _LIQUIDITY_MARKET_READS.get()
     if reads is None:
         return
-    rows = data.get("pairs", data.get("data")) if isinstance(data, dict) else data
-    if isinstance(rows, list):
-        for row in rows:
-            if isinstance(row, dict):
-                # Keep the original row alive so its object ID cannot be recycled.
-                reads["rows"][id(row)] = (row, retrieved_at)
+    containers = (data.get("pairs"), data.get("data")) if isinstance(data, dict) else (data,)
+    for rows in containers:
+        if isinstance(rows, list):
+            for row in rows:
+                if isinstance(row, dict):
+                    # Keep the original row alive so its object ID cannot be recycled.
+                    reads["rows"][id(row)] = (row, retrieved_at)
 
 
 def _stale_hits():
@@ -5352,9 +5353,8 @@ async def liquidity(address, chain_hint=None, *, include_known_address_balances=
 
     async def finish(payload, scoped_chain=None, market=None):
         result = _disclose_liquidity(payload, selection, scoped_chain)
-        recorded = reads["rows"].get(id(market))
-        if recorded is not None:
-            retrieved_at = recorded[1]
+        if market is not None:
+            _, retrieved_at = reads["rows"].get(id(market), (None, None))
             if type(retrieved_at) in (int, float):
                 retrieved_at = datetime.fromtimestamp(retrieved_at, timezone.utc).isoformat(
                     timespec="milliseconds").replace("+00:00", "Z")
