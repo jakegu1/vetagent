@@ -3607,9 +3607,14 @@ def test_liquidity_tools_list_exposes_optional_activity_and_complete_identity():
     output_context = liquidity["outputSchema"]["properties"]["comparison_context"]
     observation = input_context["items"]
     check("both MCP context schemas admit drained with a numeric zero only",
-          input_context == output_context and observation["properties"]["status"]["enum"] == ["ok", "drained"]
-          and observation.get("if", {}).get("properties", {}).get("status") == {"const": "drained"}
-          and observation.get("then", {}).get("properties", {}).get("liquidity_usd") == {"const": 0})
+          input_context == output_context and observation["properties"]["status"]["enum"] == ["ok", "drained", "unpriced"]
+          and {"if": {"properties": {"status": {"const": "drained"}}},
+               "then": {"properties": {"liquidity_usd": {"const": 0}}}} in observation["allOf"])
+    check("both MCP context schemas require no estimate and a Balancer venue on unpriced observations",
+          observation["properties"]["best_pair_dex"] == {"const": "balancer"}
+          and {"if": {"properties": {"status": {"const": "unpriced"}}},
+               "then": {"required": ["best_pair_dex"], "properties": {"liquidity_usd": {"type": "null"}}},
+               "else": {"properties": {"liquidity_usd": {"type": "number"}}}} in observation["allOf"])
     description = liquidity["description"]
     check("tool text scopes drained to estimates and identifies the narrower provider zero",
           "estimates for the returned market scope are zero" in description
