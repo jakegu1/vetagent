@@ -2,7 +2,8 @@
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const {html, replies, precision_replies: precisionReplies, limited_reply: limitedReply,
-  curve_replies: curveReplies, balancer_replies: balancerReplies} =
+  curve_replies: curveReplies, balancer_replies: balancerReplies,
+  balancer_unpriced_replies: balancerUnpricedReplies} =
   JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
 const script = html.slice(html.lastIndexOf('<script>') + 8, html.lastIndexOf('</script>'));
 const tick = () => new Promise(resolve => setImmediate(resolve));
@@ -57,6 +58,33 @@ function knownAddressesReply() {
 }
 
 const cases = {
+  async 'eight unrelated estimates leave room for the latest unpriced market and reload target'() {
+    const old = replies[0].result.structuredContent.comparison_context[0];
+    const filled = Array.from({length: 8}, (_, i) => ({...old,
+      address: '0x' + String(i + 1).padStart(40, '0'),
+      checked_at: '2026-11-01T00:00:0' + i + 'Z'}));
+    const b = boot(new Map([[key, JSON.stringify(filled)]]));
+    const [a1, next, a2] = balancerUnpricedReplies;
+    const target = a1.result.structuredContent.address;
+    b.nodes.addr.value = target;
+    b.nodes.chain.value = 'ethereum'; b.nodes.chain.fire('change');
+    b.click(false).resolve(a1); await tick();
+    const reopened = boot(b.saved);
+    assert.equal(reopened.nodes.addr.value, target);
+    assert.equal(reopened.nodes.chain.value, 'ethereum');
+    assert.equal(JSON.parse(b.saved.get(key)).length, 8);
+    const nextRequest = reopened.click(false);
+    assert.deepEqual(nextRequest.body.params.arguments.comparison_context, a1.result.structuredContent.comparison_context);
+    nextRequest.resolve(next); await tick();
+    assert.match(reopened.text(), /Selected market changed/);
+    assert.doesNotMatch(reopened.text(), /Estimated change/);
+    const back = reopened.click(false);
+    assert.deepEqual(back.body.params.arguments.comparison_context, next.result.structuredContent.comparison_context);
+    back.resolve(a2); await tick();
+    assert.match(reopened.text(), /Selected market changed/);
+    assert.doesNotMatch(reopened.text(), /Estimated change/);
+    assert.equal(JSON.parse(b.saved.get(key)).length, 8);
+  },
   async 'unpriced Balancer markets keep their IDs and an earlier dollar baseline across reloads'() {
     const b = boot(), [a, next, unpricedA, back] = balancerReplies;
     const first = a.result.structuredContent, second = next.result.structuredContent;

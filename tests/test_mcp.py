@@ -4702,14 +4702,22 @@ def test_t120_balancer_refuses_ambiguous_or_malformed_market_evidence():
     check("T120 saved replies cannot compare identical ID text across venues",
           compare(observation, dict(now, best_pair_dex="curve")).get("reason") == "different_pool")
 
-    older = [dict(observation, best_pair_market_id="-".join(("0x" + f"{i + 1:040x}",
-                   *a["pairAddress"].split("-")[1:]))) for i in range(8)]
-    immature = dict(now, status="unpriced", liquidity_usd=None)
-    reply, _ = _native_liquidity_call(immature, older)
+    unrelated = [dict(observation, checked_at="2026-11-28T02:01:0%dZ" % i,
+                      best_pair_market_id="-".join(("0x" + f"{i + 1:040x}",
+                                                    *a["pairAddress"].split("-")[1:]))) for i in range(7)]
+    unpriced = dict(now, status="unpriced", liquidity_usd=None)
+    reply, _ = _native_liquidity_call(unpriced, [observation, *unrelated])
     body = reply["result"].get("structuredContent", {})
-    check("T120 a full numeric history is kept when an identity-only observation must be evicted",
-          body.get("comparison_context") == older and body.get("comparison", {}).get("context_evicted") == 1,
+    context = body.get("comparison_context", [])
+    check("T120 full history keeps the latest market identity and its earlier USD baseline",
+          context == [observation, *unrelated[1:], unpriced]
+          and body.get("comparison", {}).get("context_evicted") == 1,
           str(body))
+    next_reply, _ = _native_liquidity_call(dict(now, liquidity_usd=125, checked_at="2026-11-28T02:03:00Z"), context)
+    comparison = next_reply["result"].get("structuredContent", {}).get("comparison", {})
+    check("T120 a dollar estimate after an unpriced reply still compares to the earlier dollar baseline",
+          comparison.get("change_usd") == 25 and comparison.get("before_checked_at") == observation["checked_at"],
+          str(comparison))
 
 
 def main():

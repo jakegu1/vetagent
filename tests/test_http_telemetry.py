@@ -475,6 +475,8 @@ def test_landing_liquidity_recheck_roundtrips_actual_mcp_results_in_the_served_s
     result = subprocess.run(["node", runner], input=json.dumps({"html": landing, "replies": replay(readings),
                             "precision_replies": replay(precision_readings), "curve_replies": replay(curve_readings),
                             "balancer_replies": replay(balancer_readings),
+                            "balancer_unpriced_replies": replay([dict(balancer_readings[0], status="unpriced",
+                                liquidity_usd=None), *balancer_readings[1:3]]),
                             "limited_reply": {"result": {"structuredContent": limited}}}),
                             encoding="utf-8", capture_output=True, timeout=30)
     print(result.stdout)
