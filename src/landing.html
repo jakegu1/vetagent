@@ -653,8 +653,7 @@
   var historyKey = 'vetagent.liquidity.v1';
   var firstAddress = input.value, firstNetwork = network.value;
   var observations = [], historyLoaded = false, storageNotice = '';
-  var observationFields = ['status', 'address', 'best_pair_chain', 'best_pair_address',
-                           'source', 'checked_at', 'liquidity_usd'];
+  var observationFields = ['status', 'address', 'best_pair_chain', 'source', 'checked_at', 'liquidity_usd'];
 
   function clearKnownAddressBalances() {
     if (!knownAddressActive) { return; }
@@ -723,18 +722,35 @@
       '</ul><p>Balances are for these addresses only. Ownership, locks and burn status are unverified.</p></section>';
   }
 
+  function validLiquidityIdentity(row) {
+    var market = Object.prototype.hasOwnProperty.call(row, 'best_pair_market_id');
+    var pool = Object.prototype.hasOwnProperty.call(row, 'best_pair_address');
+    if (market === pool) { return false; }
+    if (pool) {
+      return typeof row.best_pair_address === 'string' &&
+        row.best_pair_address.length > 0 && row.best_pair_address.length <= 66;
+    }
+    var id = row.best_pair_market_id;
+    if (row.best_pair_chain !== 'ethereum' || row.source !== 'dexscreener' ||
+        typeof id !== 'string' || id.length !== 128 ||
+        !/^0x[0-9a-fA-F]{40}(?:-0x[0-9a-fA-F]{40}){2}$/.test(id)) { return false; }
+    var parts = id.toLowerCase().split('-');
+    return new Set(parts).size === 3 && parts.indexOf('0x' + '0'.repeat(40)) === -1 &&
+      parts.slice(1).indexOf(row.address.toLowerCase()) !== -1;
+  }
+
   function validContext(rows) {
     return Array.isArray(rows) && rows.length <= 8 && JSON.stringify(rows).length <= 8192 &&
       rows.every(function (row) {
         if (!row || Array.isArray(row) || typeof row !== 'object' ||
-            Object.keys(row).length !== observationFields.length ||
+            Object.keys(row).length !== observationFields.length + 1 ||
             (row.status !== 'ok' && !(row.status === 'drained' && row.liquidity_usd === 0)) ||
             !observationFields.every(function (key) { return Object.prototype.hasOwnProperty.call(row, key); })) {
           return false;
         }
-        return ['address', 'best_pair_chain', 'best_pair_address', 'source', 'checked_at'].every(function (key) {
+        return ['address', 'best_pair_chain', 'source', 'checked_at'].every(function (key) {
           return typeof row[key] === 'string' && row[key].length > 0 && row[key].length <= 66;
-        }) && ['dexscreener', 'coingecko', 'geckoterminal'].indexOf(row.source) !== -1 &&
+        }) && validLiquidityIdentity(row) && ['dexscreener', 'coingecko', 'geckoterminal'].indexOf(row.source) !== -1 &&
           typeof row.liquidity_usd === 'number' && Number.isFinite(row.liquidity_usd) && row.liquidity_usd >= 0;
       });
   }
@@ -770,8 +786,9 @@
     var byKey = Object.create(null);
     observations.concat(incoming).forEach(function (row) {
       var solana = row.best_pair_chain === 'solana';
+      var venue = row.best_pair_market_id || row.best_pair_address;
       var key = JSON.stringify([row.best_pair_chain, solana ? row.address : row.address.toLowerCase(),
-        solana ? row.best_pair_address : row.best_pair_address.toLowerCase(), row.source]);
+        solana ? venue : venue.toLowerCase(), row.source]);
       if (!byKey[key] || Date.parse(row.checked_at) > Date.parse(byKey[key].checked_at)) { byKey[key] = row; }
     });
     var merged = Object.keys(byKey).map(function (key) { return byKey[key]; }).sort(function (a, b) {
@@ -848,10 +865,15 @@
         '<strong>Market data below is for ' + esc(returned) + '.</strong> ' : '';
       if (lookup) { networkNotice += esc(lookup); }
       if (networkNotice) { networkNotice = '<div class="request-scope">' + networkNotice + '</div>'; }
+      var venue = value.best_pair_market_id ?
+        'DexScreener market ID: <code>' + esc(value.best_pair_market_id) + '</code> (market reference for rechecks)' :
+        'Pool: <code>' + esc(value.best_pair_address || 'Not reported') + '</code>';
       var details = '<div class="request-scope">Returned network: ' + esc(returned || 'Not reported') +
-        '<br>Pool: <code>' + esc(value.best_pair_address || 'Not reported') + '</code>' +
+        '<br>' + venue +
         '<br>Provider: ' + esc(value.source || 'Not reported') + '<br>Reply time: ' + esc(value.checked_at) + '</div>';
       var comparison = value.comparison || {};
+      var transition = comparison.pool_transition || {};
+      var venueLabel = value.best_pair_market_id || transition.previous_market_id ? 'market' : 'pool';
       var change;
       if (differentNetwork) {
         change = '<div>No liquidity change calculated for ' + esc(chain) + '.</div>';
@@ -867,7 +889,7 @@
         var reasons = {
           no_previous_observation: 'Baseline saved. Recheck later to compare with this observation.',
           different_source: 'Provider changed. No change calculated across different sources; this source now has a baseline.',
-          different_pool: 'Selected pool changed. No change calculated across different pools.',
+          different_pool: 'Selected ' + venueLabel + ' changed. No change calculated across different ' + venueLabel + 's.',
           stale_response: 'Cached fallback is stale. No comparison or new baseline from this reply.',
           invalid_order: 'Reply times are not increasing. No earlier comparable baseline is available.',
           invalid_identity: 'The complete pool identity is missing or invalid. No new baseline saved.',
@@ -877,12 +899,13 @@
         };
         change = '<div>' + esc(reasons[comparison.reason] || 'No usable comparison is available for this reply.') + '</div>';
       }
-      var transition = comparison.pool_transition || {};
       if (!differentNetwork && transition.status === 'changed') {
-        change += '<div class="rec">Selected pool changed since ' + esc(transition.previous_checked_at) +
-          '. Previous pool: <code>' + esc(transition.previous_pool_address) + '</code>.' +
+        var previous = transition.previous_market_id ? 'Previous DexScreener market ID: <code>' +
+          esc(transition.previous_market_id) : 'Previous pool: <code>' + esc(transition.previous_pool_address);
+        change += '<div class="rec request-scope">Selected ' + venueLabel + ' changed since ' +
+          esc(transition.previous_checked_at) + '. ' + previous + '</code>.' +
           (comparison.status === 'compared' && !comparison.baseline_is_latest_observation ?
-            ' This change uses an older observation as the baseline for the current pool.' : '') + '</div>';
+            ' This change uses an older observation as the baseline for the current ' + venueLabel + '.' : '') + '</div>';
       } else if (!differentNetwork && transition.status === 'ambiguous') {
         change += '<div class="rec">Prior pool order is ambiguous because reply times are tied.</div>';
       }

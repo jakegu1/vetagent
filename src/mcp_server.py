@@ -42,6 +42,11 @@ _SIGNAL_SCHEMA = {
 
 _CHECKED_AT = {"type": "string", "description": "When this answer was made, ISO-8601 UTC."}
 
+_CURVE_MARKET_ID = {
+    "type": "string", "minLength": 128, "maxLength": 128, "pattern": liquidity_comparison.CURVE_MARKET_ID_PATTERN,
+    "description": "Full DexScreener market ID for a qualified Ethereum Curve token pair. For market rechecks only.",
+}
+
 _COMPARISON_CONTEXT_SCHEMA = {
     "type": "array", "maxItems": 8,
     "description": "Optional client-carried observations, at most 8 and 8192 UTF-8 JSON bytes. "
@@ -50,12 +55,14 @@ _COMPARISON_CONTEXT_SCHEMA = {
                    "has a numeric USD estimate of zero. No server history is stored.",
     "items": {
         "type": "object", "additionalProperties": False,
-        "required": list(liquidity_comparison.OBSERVATION_FIELDS),
+        "required": [field for field in liquidity_comparison.OBSERVATION_FIELDS if field != "best_pair_address"],
+        "oneOf": [{"required": ["best_pair_address"]}, {"required": ["best_pair_market_id"]}],
         "properties": {
             "status": {"type": "string", "enum": ["ok", "drained"]},
             "address": {"type": "string", "maxLength": 66},
             "best_pair_chain": {"type": "string", "enum": list(liquidity_comparison._CHAINS)},
             "best_pair_address": {"type": "string", "maxLength": 66},
+            "best_pair_market_id": _CURVE_MARKET_ID,
             "source": {"type": "string", "enum": list(liquidity_comparison._SOURCES)},
             "checked_at": {"type": "string", "maxLength": 32},
             "liquidity_usd": {"type": "number", "minimum": 0},
@@ -68,7 +75,7 @@ _COMPARISON_CONTEXT_SCHEMA = {
 _COMPARISON_SCHEMA = {
     "type": "object",
     "description": "Returned when comparison_context is supplied. Uses the latest strictly "
-                   "earlier comparable client observation of this token, chain, complete pool ID "
+                   "earlier comparable client observation of this token, chain, complete pool or market ID "
                    "and provider. USD estimate change is not a reserve flow or executable depth. "
                    "Reply times can cover cached source data. A changed pool_transition and "
                    "baseline_is_latest_observation=false disclose a return to an older pool baseline.",
@@ -86,7 +93,8 @@ _COMPARISON_SCHEMA = {
             "description": "Client observations at or after the current reply time; excluded as baselines."},
         "pool_transition": {"type": "object", "properties": {
             "status": {"type": "string", "enum": ["changed", "unchanged", "ambiguous"]},
-            "previous_pool_address": {"type": "string"}, "previous_checked_at": _CHECKED_AT,
+            "previous_pool_address": {"type": "string"}, "previous_market_id": _CURVE_MARKET_ID,
+            "previous_checked_at": _CHECKED_AT,
         }},
     },
 }
@@ -422,6 +430,9 @@ TOOLS = [
             "providers, and refuses stale fallback. Context is bounded client observation, not "
             "signed service history. No server history is stored. Legacy calls remain snapshots. "
             "The local examples/liquidity_compare.py CLI remains available for saved replies. "
+            "A qualified Ethereum Curve quote may use best_pair_market_id in place of "
+            "best_pair_address. Carry the entire DexScreener ID for rechecks and never use "
+            "its components to address a contract or run a simulation. "
             "checked_at is reply time; source data may be cached.\n"
             "Check 'status' before using the numbers. 'ok' means usable upstream data, "
             "not independently verified reserves or executable sell depth. "
@@ -468,6 +479,7 @@ TOOLS = [
                                    "Also included on an identified single-pool drained result. "
                                    "Omitted for invalid or conflicting identity. Old truncated display IDs "
                                    "cannot establish exact cross-response identity. No sell simulation runs."},
+                "best_pair_market_id": _CURVE_MARKET_ID,
                 "trade_activity": _TRADE_ACTIVITY_SCHEMA,
                 "known_address_balances": _KNOWN_ADDRESS_BALANCES,
                 "comparison_context": _COMPARISON_CONTEXT_SCHEMA,

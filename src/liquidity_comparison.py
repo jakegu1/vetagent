@@ -10,6 +10,7 @@ from datetime import datetime
 _CHAINS = ("ethereum", "bsc", "base", "polygon", "arbitrum", "optimism", "avalanche", "solana")
 _SOURCES = ("dexscreener", "geckoterminal", "coingecko")
 _BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+CURVE_MARKET_ID_PATTERN = r"^0x[0-9a-fA-F]{40}(?:-0x[0-9a-fA-F]{40}){2}$"
 
 
 def _identity(chain, value, *, pool=False):
@@ -25,6 +26,29 @@ def _identity(chain, value, *, pool=False):
         decoded = decoded * 58 + _BASE58.index(char)
     byte_count = (decoded.bit_length() + 7) // 8 + len(value) - len(value.lstrip("1"))
     return value if byte_count == 32 else None
+
+
+def curve_market_parts(value):
+    """Recognize the observed three-component format, without yielding a pool address."""
+    if not isinstance(value, str) or not re.fullmatch(CURVE_MARKET_ID_PATTERN, value):
+        return None
+    parts = tuple(value.lower().split("-"))
+    if len(set(parts)) != 3 or "0x" + "0" * 40 in parts:
+        return None
+    return parts
+
+
+def _market_identity(row):
+    chain = row.get("best_pair_chain")
+    if "best_pair_market_id" not in row:
+        return _identity(chain, row.get("best_pair_address"), pool=True)
+    if (chain != "ethereum" or row.get("source") != "dexscreener" or "best_pair_address" in row
+            or row.get("best_pair_dex", "curve") != "curve"):
+        return None
+    parts = curve_market_parts(row["best_pair_market_id"])
+    if parts is not None and _identity(chain, row.get("address")) in parts[1:]:
+        return "-".join(parts)
+    return None
 
 
 def _refused(reason):
@@ -75,7 +99,7 @@ def compare(before, after):
     for row in readings:
         chain = row.get("best_pair_chain")
         address = _identity(chain, row.get("address"))
-        pool = _identity(chain, row.get("best_pair_address"), pool=True)
+        pool = _market_identity(row)
         if chain not in _CHAINS or address is None or pool is None:
             return _refused("invalid_identity")
         identities.append((chain, address, pool))
@@ -103,6 +127,16 @@ CONTEXT_LIMIT = 8
 CONTEXT_BYTE_CAP = 8192
 OBSERVATION_FIELDS = ("status", "address", "best_pair_chain", "best_pair_address", "source",
                       "checked_at", "liquidity_usd")
+CURVE_OBSERVATION_FIELDS = tuple("best_pair_market_id" if field == "best_pair_address" else field
+                                 for field in OBSERVATION_FIELDS)
+
+
+def _observation_fields(row):
+    return CURVE_OBSERVATION_FIELDS if "best_pair_market_id" in row else OBSERVATION_FIELDS
+
+
+def _compact_observation(row):
+    return {field: row[field] for field in _observation_fields(row)}
 
 
 def _reading_reason(row):
@@ -116,7 +150,7 @@ def _reading_reason(row):
         return "invalid_source"
     chain = row.get("best_pair_chain")
     if (chain not in _CHAINS or _identity(chain, row.get("address")) is None
-            or _identity(chain, row.get("best_pair_address"), pool=True) is None):
+            or _market_identity(row) is None):
         return "invalid_identity"
     if _moment(row.get("checked_at")) is None:
         return "invalid_time"
@@ -134,7 +168,7 @@ def validate_context(context):
     if type(context) is not list or len(context) > CONTEXT_LIMIT:
         raise ValueError("comparison_context must be a list of at most 8 compact observations")
     for row in context:
-        if type(row) is not dict or set(row) != set(OBSERVATION_FIELDS) or _reading_reason(row):
+        if type(row) is not dict or set(row) != set(_observation_fields(row)) or _reading_reason(row):
             raise ValueError("comparison_context contains invalid observations")
     try:
         size = len(json.dumps(context, allow_nan=False).encode("utf-8"))
@@ -142,13 +176,12 @@ def validate_context(context):
         raise ValueError("comparison_context contains invalid observations") from None
     if size > CONTEXT_BYTE_CAP:
         raise ValueError("comparison_context exceeds 8192 bytes")
-    return [{field: row[field] for field in OBSERVATION_FIELDS} for row in context]
+    return [_compact_observation(row) for row in context]
 
 
 def _key(row):
     chain = row["best_pair_chain"]
-    return (chain, _identity(chain, row["address"]),
-            _identity(chain, row["best_pair_address"], pool=True), row["source"])
+    return (chain, _identity(chain, row["address"]), _market_identity(row), row["source"])
 
 
 def with_context(current, context, *, requested):
@@ -171,9 +204,12 @@ def with_context(current, context, *, requested):
             comparison["pool_transition"] = {
                 "status": ("ambiguous" if len(pools) > 1 else
                            "unchanged" if _key(latest)[2] == _key(current)[2] else "changed"),
-                "previous_pool_address": latest["best_pair_address"],
                 "previous_checked_at": latest["checked_at"],
             }
+            if "best_pair_market_id" in latest:
+                comparison["pool_transition"]["previous_market_id"] = latest["best_pair_market_id"]
+            else:
+                comparison["pool_transition"]["previous_pool_address"] = latest["best_pair_address"]
             if comparable:
                 baseline, result = max(comparable, key=lambda item: _moment(item[0]["checked_at"]))
                 comparison.update(result)
@@ -195,7 +231,7 @@ def with_context(current, context, *, requested):
 
     # Retain the newest observation per pool/provider, then the newest eight keys.
     retained = {}
-    for row in context + ([] if reason else [{field: current[field] for field in OBSERVATION_FIELDS}]):
+    for row in context + ([] if reason else [_compact_observation(current)]):
         key = _key(row)
         if key not in retained or _moment(row["checked_at"]) > _moment(retained[key]["checked_at"]):
             retained[key] = row

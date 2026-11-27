@@ -286,14 +286,15 @@ are reported as `"incompatible_address"`. A reply with `status: "different"` ins
 network's baseline or produce its change.
 
 The context contains at most eight observations and accepts at most 8192 UTF-8 JSON bytes.
-Each observation has only `status`, `address`, `best_pair_chain`, `best_pair_address`,
-`source`, `checked_at` and `liquidity_usd`. An identified single-pool `drained` reply
+Each observation has `status`, `address`, `best_pair_chain`, `source`, `checked_at`,
+`liquidity_usd` and one identifier, either `best_pair_address` or `best_pair_market_id`.
+An identified single-market `drained` reply
 can be used like an `ok` reply when its provider explicitly reports a numeric zero.
 A recheck can compare a drop to zero, a recovery from zero, or two reported zeros.
 Invalid context is refused before the current upstream request. The latest strictly
 earlier observation with the same token, chain,
-complete pool ID and provider is selected, even when the immediately preceding reply used
-another provider. Different providers or pools are never subtracted. EVM identities compare
+complete pool or market ID and provider is selected, even when the immediately preceding reply
+used another provider. Different providers or markets are never subtracted. EVM identities compare
 without case; Solana identities preserve case and must decode to 32 bytes. Missing identity,
 invalid reply time or amount, error responses and stale fallback cannot become baselines.
 
@@ -328,8 +329,8 @@ python -B examples/liquidity_compare.py before.json after.json
 Each input file contains one successful REST `/liquidity/...` JSON response object,
 or the extracted MCP `result.structuredContent` object, with `status: "ok"` or an
 identified `status: "drained"` and numeric zero.
-Supply the earlier reply first. The example verifies chain, target token, complete pool
-identity, data provider and strictly increasing `checked_at` values with a full ISO date,
+Supply the earlier reply first. The example verifies chain, target token, complete pool or
+market identity, data provider and strictly increasing `checked_at` values with a full ISO date,
 seconds and a known valid timezone offset (`Z` or `+/-HH:MM`).
 Only comparable finite nonnegative USD estimates yield `before_usd`, `after_usd` and
 `change_usd`. Changed identity/provider, missing facts, stale fallback or invalid order
@@ -344,6 +345,14 @@ Multiple drained pools, an estimate capped to zero, and older drained replies wi
 those fields cannot be used as single-pool baselines. EVM IDs retain all 20 or 32 bytes.
 Solana base58 IDs retain case and decode to 32 bytes. Missing, malformed or contradictory GT resource/address
 identity is omitted. `source` is the data provider; `best_pair_dex` is the trading venue.
+
+For an Ethereum Curve market with a verified three-part DexScreener ID, the reply uses
+`best_pair_market_id` in place of `best_pair_address`. Carry the full value unchanged for
+rechecks. Two token pairs can share its first component and still be separate markets.
+The ID is for quote history only. Do not use it or its components as a contract address,
+balance account or simulator pool. A prior observation of this kind is identified by
+`previous_market_id` in `pool_transition`.
+
 Optional `trade_activity` contains `trades_last_1h` and `trades_prior_5h`, buys plus sells
 in two disjoint windows from the same selected market row. Raw integer zeros remain zero;
 missing, non-integer or inconsistent windows are omitted. This tool does not

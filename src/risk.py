@@ -17,6 +17,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 
 import known_address_balances
+from liquidity_comparison import curve_market_parts
 
 try:  # Workers runtime
     from workers import fetch as cf_fetch
@@ -5229,6 +5230,18 @@ def _disclosed(payload):
     return payload
 
 
+def _curve_liquidity_market_id(pair, source, address):
+    """Bind the observed DexScreener Curve format to the selected Ethereum row."""
+    if source != "dexscreener" or pair.get("chainId") != "ethereum" or pair.get("dexId") != "curve":
+        return None
+    value = pair.get("pairAddress")
+    parts = curve_market_parts(value)
+    sides = _market_token_sides(pair)
+    if parts is not None and parts[1:] == sides and _market_address_key(address) in sides:
+        return value
+    return None
+
+
 def _identified_drained_pool(pairs, scope, source, address, chain_hint):
     """Attach an identity only to a single, explicitly zero-valued observation."""
     if len(scope) != 1:
@@ -5255,7 +5268,10 @@ def _identified_drained_pool(pairs, scope, source, address, chain_hint):
         pool = pair.pool_identity if source in ("coingecko", "geckoterminal") else None
     else:
         pool = _validated_chain_pool_id(pair.get("pairAddress"), chain) if source == "dexscreener" else None
-    return {"best_pair_address": pool, "best_pair_chain": chain, "source": source} if pool else {}
+    if pool:
+        return {"best_pair_address": pool, "best_pair_chain": chain, "source": source}
+    market_id = _curve_liquidity_market_id(pair, source, address)
+    return {"best_pair_market_id": market_id, "best_pair_chain": chain, "source": source} if market_id else {}
 
 
 def _disclose_liquidity(payload, selection, scoped_chain=None):
@@ -5380,6 +5396,8 @@ async def liquidity(address, chain_hint=None, *, include_known_address_balances=
                      else _validated_chain_pool_id(selected_id, best.get("chainId")))
     if pool_identity is not None:
         payload["best_pair_address"] = pool_identity
+    elif (market_id := _curve_liquidity_market_id(best, source, address)) is not None:
+        payload["best_pair_market_id"] = market_id
     activity = _pool_trade_activity(best.get("txns"))
     if activity is not None:
         payload["trade_activity"] = activity
