@@ -716,6 +716,32 @@ def test_dead_outcome_copy_describes_assessed_pool_liquidity_without_promising_s
                   re.search(r"\b\d+ of the \d+\b[^.]*\$5,000[^.]*assessed pool", text) is not None)
 
 
+def test_public_http_homepage_leads_to_its_https_canonical():
+    worker = entry.Default()
+    canonical = "https://vetagent.dev/"
+    for method, suffix in (("GET", ""), ("HEAD", ""), ("GET", "?ref=a%2Fb&tag=x&tag=y&empty=")):
+        response = asyncio.run(worker.fetch(FakeRequest("http://vetagent.dev/" + suffix, method)))
+        location = response.headers.get("location")
+        check("HTTP homepage %s %r permanently redirects to the matching HTTPS URL" % (method, suffix),
+              response.status in (301, 308) and location == canonical + suffix,
+              "status=%s location=%r" % (response.status, location))
+        if location == canonical + suffix:
+            landing = asyncio.run(worker.fetch(FakeRequest(location, method)))
+            check("HTTPS destination serves the homepage in one hop for %s %r" % (method, suffix),
+                  landing.status == 200 and
+                  (method == "HEAD" or '<link rel="canonical" href="%s">' % canonical in landing.body))
+
+    for url, method, status in (("http://vetagent.dev/api", "GET", 200),
+                                ("http://vetagent.dev/;", "GET", 200),
+                                ("http://vetagent.dev/;?a=1", "HEAD", 200),
+                                ("http://preview.example/", "GET", 200),
+                                ("http://vetagent.dev/", "POST", 200),
+                                ("http://vetagent.dev/", "OPTIONS", 204)):
+        response = asyncio.run(worker.fetch(FakeRequest(url, method)))
+        check("%s %s keeps its existing response" % (method, url),
+              response.status == status and "location" not in response.headers)
+
+
 def test_search_engines_are_told_what_to_index():
     """The site was not in the search index at all, and nothing told an engine it existed.
 
