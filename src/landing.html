@@ -870,7 +870,11 @@
         'Pool: <code>' + esc(value.best_pair_address || 'Not reported') + '</code>';
       var details = '<div class="request-scope">Returned network: ' + esc(returned || 'Not reported') +
         '<br>' + venue +
-        '<br>Provider: ' + esc(value.source || 'Not reported') + '<br>Reply time: ' + esc(value.checked_at) + '</div>';
+        '<br>Provider: ' + esc(value.source || 'Not reported');
+      if ('market_retrieved_at' in value) {
+        details += '<br>Market retrieved by VetAgent: ' + esc(value.market_retrieved_at || 'Unconfirmed');
+      }
+      details += '<br>Reply time: ' + esc(value.checked_at) + '</div>';
       var comparison = value.comparison || {};
       var transition = comparison.pool_transition || {};
       var venueLabel = value.best_pair_market_id || transition.previous_market_id ? 'market' : 'pool';
@@ -890,6 +894,8 @@
           no_previous_observation: 'Baseline saved. Recheck later to compare with this observation.',
           different_source: 'Provider changed. No change calculated across different sources; this source now has a baseline.',
           different_pool: 'Selected ' + venueLabel + ' changed. No change calculated across different ' + venueLabel + 's.',
+          no_new_market_data: 'No newer market data confirmed. Kept the previous baseline.',
+          market_time_unconfirmed: 'Market retrieval time could not be verified. No new baseline saved.',
           stale_response: 'Cached fallback is stale. No comparison or new baseline from this reply.',
           invalid_order: 'Reply times are not increasing. No earlier comparable baseline is available.',
           invalid_identity: 'The complete pool identity is missing or invalid. No new baseline saved.',
