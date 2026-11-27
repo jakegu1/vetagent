@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const {html, replies, precision_replies: precisionReplies, limited_reply: limitedReply,
   curve_replies: curveReplies, balancer_replies: balancerReplies,
-  balancer_unpriced_replies: balancerUnpricedReplies} =
+  balancer_unpriced_replies: balancerUnpricedReplies, balancer_recovery_replies: balancerRecoveryReplies} =
   JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
 const script = html.slice(html.lastIndexOf('<script>') + 8, html.lastIndexOf('</script>'));
 const tick = () => new Promise(resolve => setImmediate(resolve));
@@ -84,6 +84,27 @@ const cases = {
     assert.match(reopened.text(), /Selected market changed/);
     assert.doesNotMatch(reopened.text(), /Estimated change/);
     assert.equal(JSON.parse(b.saved.get(key)).length, 8);
+  },
+  async 'a fresh unpriced market keeps its oldest dollar baseline when eight observations are saved'() {
+    const [a, unpriced, priced] = balancerRecoveryReplies;
+    const [baseline] = a.result.structuredContent.comparison_context;
+    const old = replies[0].result.structuredContent.comparison_context[0];
+    const unrelated = Array.from({length: 7}, (_, i) => ({...old,
+      address: '0x' + String(i + 1).padStart(40, '0'),
+      checked_at: '2026-11-28T03:00:0' + (i + 1) + 'Z'}));
+    const b = boot(new Map([[key, JSON.stringify([baseline, ...unrelated])]]));
+    b.nodes.addr.value = baseline.address;
+    b.nodes.chain.value = 'ethereum'; b.nodes.chain.fire('change');
+    const query = b.click(false);
+    assert.deepEqual(query.body.params.arguments.comparison_context, [baseline]);
+    query.resolve(unpriced); await tick();
+    assert.match(b.text(), /No USD liquidity estimate/);
+    assert.equal(JSON.parse(b.saved.get(key)).length, 8);
+    const reopened = boot(b.saved), next = reopened.click(false);
+    assert.deepEqual(next.body.params.arguments.comparison_context, unpriced.result.structuredContent.comparison_context);
+    next.resolve(priced); await tick();
+    assert.ok(reopened.text().includes(baseline.checked_at));
+    assert.match(reopened.text(), /Estimated change: \+\$3,313/);
   },
   async 'unpriced Balancer markets keep their IDs and an earlier dollar baseline across reloads'() {
     const b = boot(), [a, next, unpricedA, back] = balancerReplies;

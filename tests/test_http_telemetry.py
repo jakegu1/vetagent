@@ -477,6 +477,7 @@ def test_landing_liquidity_recheck_roundtrips_actual_mcp_results_in_the_served_s
                             "balancer_replies": replay(balancer_readings),
                             "balancer_unpriced_replies": replay([dict(balancer_readings[0], status="unpriced",
                                 liquidity_usd=None), *balancer_readings[1:3]]),
+                            "balancer_recovery_replies": replay([balancer_readings[i] for i in (0, 2, 3)]),
                             "limited_reply": {"result": {"structuredContent": limited}}}),
                             encoding="utf-8", capture_output=True, timeout=30)
     print(result.stdout)
