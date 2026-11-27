@@ -787,19 +787,23 @@
   }
 
   function mergeObservations(incoming) {
-    var byKey = Object.create(null);
-    function byReplyTime(a, b) { return Date.parse(a.checked_at) - Date.parse(b.checked_at); }
+    var byMarket = Object.create(null);
+    function replyTime(row) { return Date.parse(row.checked_at); }
+    function byReplyTime(a, b) { return replyTime(a) - replyTime(b); }
     observations.concat(incoming).forEach(function (row) {
       var solana = row.best_pair_chain === 'solana';
       var venue = row.best_pair_market_id || row.best_pair_address;
       var dex = row.best_pair_market_id ? (row.best_pair_dex || 'curve') : '';
       var key = JSON.stringify([row.best_pair_chain, solana ? row.address : row.address.toLowerCase(),
-        solana ? venue : venue.toLowerCase(), row.source, dex, row.status === 'unpriced']);
-      if (!byKey[key] || byReplyTime(row, byKey[key]) > 0) { byKey[key] = row; }
+        solana ? venue : venue.toLowerCase(), row.source, dex]);
+      var market = byMarket[key] || (byMarket[key] = {});
+      var kind = row.status === 'unpriced' ? 'unpriced' : 'priced';
+      if (!market[kind] || byReplyTime(row, market[kind]) > 0) { market[kind] = row; }
     });
-    var merged = Object.keys(byKey).map(function (key) { return byKey[key]; }).sort(function (a, b) {
-      return Number(b.status === 'unpriced') - Number(a.status === 'unpriced') || byReplyTime(a, b);
-    });
+    var markets = Object.values(byMarket).map(function (market) {
+      return Object.values(market).sort(byReplyTime);
+    }).sort(function (a, b) { return byReplyTime(a[a.length - 1], b[b.length - 1]); });
+    var merged = [].concat.apply([], markets);
     observations = merged.slice(-8).sort(byReplyTime);
     return merged.length > 8;
   }

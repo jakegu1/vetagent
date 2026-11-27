@@ -321,17 +321,23 @@ def with_context(current, context, *, requested):
         if nonprior:
             comparison["nonprior_observations"] = nonprior
 
-    # Missing estimates can establish a market transition without replacing dollar history.
+    # Keep the last USD estimate and the last unpriced reading together when a
+    # recently observed market competes for space with older markets.
+    def reply_time(row):
+        return _moment(row["checked_at"])
+
     retained = {}
     for row in context + ([_compact_observation(current)] if retain_current else []):
-        key = (*_key(row), _unpriced_market(row))
-        if key not in retained or _moment(row["checked_at"]) > _moment(retained[key]["checked_at"]):
-            retained[key] = row
-    rows = sorted(retained.values(), key=lambda row: (not _unpriced_market(row), _moment(row["checked_at"])))
+        market = retained.setdefault(_key(row), {})
+        kind = _unpriced_market(row)
+        if kind not in market or reply_time(row) > reply_time(market[kind]):
+            market[kind] = row
+    by_market = sorted(retained.values(), key=lambda market: max(map(reply_time, market.values())))
+    rows = [row for market in by_market for row in sorted(market.values(), key=reply_time)]
     evicted = max(0, len(rows) - CONTEXT_LIMIT)
     if evicted:
         comparison["context_evicted"] = evicted
-    answer["comparison_context"] = sorted(rows[-CONTEXT_LIMIT:], key=lambda row: _moment(row["checked_at"]))
+    answer["comparison_context"] = sorted(rows[-CONTEXT_LIMIT:], key=reply_time)
     if requested:
         answer["comparison"] = comparison
     return answer

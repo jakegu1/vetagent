@@ -315,8 +315,9 @@ that pool's older baseline while `pool_transition.status` is `changed` and
 `baseline_is_latest_observation` is false. Tied times across pools produce `ambiguous`,
 rather than an invented order. Observations at or after the current reply time are excluded
 as baselines and counted in `nonprior_observations`. Returned context keeps the newest
-observation per pool or market/provider, holding unpriced observations separately and keeping
-USD estimates first when capacity is limited. `context_evicted` discloses any capacity eviction.
+observation per pool or market/provider, with unpriced observations held alongside the
+latest USD estimate for that market. The most recently observed markets are kept first
+when capacity is limited. `context_evicted` discloses any capacity eviction.
 It is bounded client observation (`baseline_origin: client_observation`),
 not a signed service record or verified historical reserve measurement. No server-side
 history is stored and comparison adds no upstream requests.
