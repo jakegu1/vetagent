@@ -428,6 +428,7 @@ def test_landing_liquidity_recheck_roundtrips_actual_mcp_results_in_the_served_s
     from unittest.mock import AsyncMock, patch
     import mcp_server
     import risk
+    from test_mcp import _t119_curve_archive
     with open(os.path.join(ROOT, "tests", "fixtures", "liquidity_recheck.json"), encoding="utf-8") as handle:
         readings = json.load(handle)
 
@@ -437,7 +438,8 @@ def test_landing_liquidity_recheck_roundtrips_actual_mcp_results_in_the_served_s
             with patch.object(risk, "liquidity", AsyncMock(return_value=reading)):
                 reply = asyncio.run(mcp_server.handle_mcp_request({"jsonrpc": "2.0", "id": 1,
                     "method": "tools/call", "params": {"name": "get_token_liquidity", "arguments": {
-                        "address": reading["address"], "chain_hint": "base", "comparison_context": context}}}))
+                        "address": reading["address"], "chain_hint": reading.get("best_pair_chain", "base"),
+                        "comparison_context": context}}}))
             replies.append(reply)
             context = reply["result"].get("structuredContent", {}).get("comparison_context", [])
         return replies
@@ -451,11 +453,16 @@ def test_landing_liquidity_recheck_roundtrips_actual_mcp_results_in_the_served_s
     ]
     for key in ("source", "best_pair_address", "best_pair_chain"):
         precision_readings[-1].pop(key)
+    token, _, _, _, _, curve = _t119_curve_archive()
+    curve_readings = [{"address": token, "best_pair_chain": "ethereum", "source": "dexscreener", "status": "ok",
+                       "best_pair_market_id": curve["pairAddress"], "liquidity_usd": 122443000,
+                       "checked_at": stamp} for stamp in
+                      ("2026-11-27T03:00:00Z", "2026-11-27T03:02:00Z")]
     limited = asyncio.run(_t115_liquidity("MCP", "chain rate limited"))[0]
     landing = asyncio.run(entry.Default().fetch(FakeRequest("https://vetagent.dev/"))).body
     runner = os.path.join(ROOT, "tests", "fixtures", "liquidity_recheck_contract.cjs")
     result = subprocess.run(["node", runner], input=json.dumps({"html": landing, "replies": replay(readings),
-                            "precision_replies": replay(precision_readings),
+                            "precision_replies": replay(precision_readings), "curve_replies": replay(curve_readings),
                             "limited_reply": {"result": {"structuredContent": limited}}}),
                             encoding="utf-8", capture_output=True, timeout=30)
     print(result.stdout)
@@ -1898,6 +1905,46 @@ def test_t087_market_evidence_at_both_entry_points():
                       status == 200 and result.get("risk_level") == expected and calls[-1] == "detail"
                       and pair.get("sellers_24h") == (1000 if expected == "low" else None),
                       str((result.get("risk_level"), calls)))
+
+    asyncio.run(run())
+
+
+def test_t119_curve_market_never_becomes_a_balance_account():
+    import json
+    from test_mcp import _t119_curve_archive
+
+    async def run():
+        token, url, _, _, _, curve = _t119_curve_archive()
+        requests = []
+
+        async def rpc(host, **kwargs):
+            packet = json.loads(kwargs["body"])
+            requests.append((host, packet))
+            if packet["method"] == "eth_chainId":
+                result = "0x1"
+            elif packet["method"] == "eth_getBlockByNumber":
+                result = {"number": "0x106", "hash": "0x" + "ab" * 32}
+            else:
+                result = "0x%064x" % (100 if packet["params"][0]["data"] == "0x18160ddd" else 0)
+
+            async def text():
+                return json.dumps({"jsonrpc": "2.0", "id": packet["id"], "result": result})
+
+            return types.SimpleNamespace(status=200, text=text)
+
+        answer, reads, http = await _evidence_endpoint(
+            "MCP", "get_token_liquidity", token, "ethereum", {url: ("market", 200, {"pairs": [curve]})},
+            extra={"include_known_address_balances": True}, rpc=rpc)
+        reading = answer.get("known_address_balances", {})
+        targets = [p["params"][0] for _, p in requests if p["method"] == "eth_call"]
+        check("T119 a verified Curve market ID never supplies a pool target to fixed-block RPC",
+              http == 200 and reads == ["market"] and answer.get("best_pair_market_id") == curve["pairAddress"]
+              and reading.get("status") == "partial" and reading.get("pool_id") is None and len(requests) == 6
+              and {host for host, _ in requests} == {"https://rpc.mevblocker.io"}
+              and {call["to"] for call in targets} == {token}
+              and {call["data"] for call in targets} == {"0x18160ddd", "0x70a08231" + "0" * 64,
+                                                         "0x70a08231" + "0" * 60 + "dead"}
+              and "address" not in reading["balances"]["pool"], str((reading, requests)))
 
     asyncio.run(run())
 

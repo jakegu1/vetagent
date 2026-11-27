@@ -1,7 +1,8 @@
 // Replay the Worker-served script with responses from the actual MCP dispatcher.
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
-const {html, replies, precision_replies: precisionReplies, limited_reply: limitedReply} =
+const {html, replies, precision_replies: precisionReplies, limited_reply: limitedReply,
+  curve_replies: curveReplies} =
   JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
 const script = html.slice(html.lastIndexOf('<script>') + 8, html.lastIndexOf('</script>'));
 const tick = () => new Promise(resolve => setImmediate(resolve));
@@ -56,6 +57,24 @@ function knownAddressesReply() {
 }
 
 const cases = {
+  async 'Curve market ID is shown in full and carried unchanged by a browser recheck'() {
+    const b = boot();
+    const first = curveReplies[0].result.structuredContent;
+    const id = first.best_pair_market_id;
+    b.nodes.addr.value = first.address;
+    b.nodes.chain.value = 'ethereum'; b.nodes.chain.fire('change');
+    b.click(false).resolve(curveReplies[0]); await tick();
+    assert.match(b.text(), /DexScreener market ID/);
+    assert.ok(b.text().includes(id));
+    const saved = JSON.parse(b.saved.get(key));
+    assert.equal(saved[0].best_pair_market_id, id);
+    assert.equal('best_pair_address' in saved[0], false);
+    const reopened = boot(b.saved), next = reopened.click(false);
+    assert.deepEqual(next.body.params.arguments.comparison_context, saved);
+    next.resolve(curveReplies[1]); await tick();
+    assert.match(reopened.text(), /Estimated change: \$0/);
+    assert.ok(reopened.text().includes(id));
+  },
   async 'a rate-limited optional read keeps liquidity and offers a manual recheck'() {
     const b = boot();
     b.nodes.addr.value = limitedReply.result.structuredContent.address;

@@ -4265,6 +4265,112 @@ def test_native_liquidity_context_refuses_invalid_records_and_preserves_legacy_s
           and answer.get("comparison", {}).get("context_evicted") == 1)
 
 
+def _t119_curve_archive():
+    archive = _load("coverage_matrix/ethereum.json")
+    token = archive["address"].lower()
+    global_url = "https://api.dexscreener.com/latest/dex/tokens/" + token
+    chain_url = "https://api.dexscreener.com/token-pairs/v1/ethereum/" + token
+    primary, scoped = [json.loads(archive["responses"][url]["body"]) for url in (global_url, chain_url)]
+    market_id = ("0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7-"
+                 "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48-0xdAC17F958D2ee523a2206206994597C13D831ec7")
+    market = next(row for row in scoped if row["pairAddress"] == market_id)
+    return token, global_url, chain_url, primary, scoped, market
+
+
+def test_t119_archived_curve_market_is_recheckable_as_a_provider_identity():
+    from liquidity_comparison import compare
+
+    token, global_url, chain_url, primary, scoped, market = _t119_curve_archive()
+    market_id = market["pairAddress"]
+    routes = {global_url: ("global", 200, primary), chain_url: ("chain", 200, scoped)}
+    args = {"address": token, "chain_hint": "ethereum", "comparison_context": []}
+    with patch.object(risk, "_now_iso", return_value="2026-11-27T03:00:00Z"):
+        first, calls, _, sleeps, _ = _t092_public_market("mcp", "get_token_liquidity", args, routes)
+        rest, _, _, _, _ = _t092_public_market("http", "get_token_liquidity",
+                                               {"address": token, "chain": "ethereum"}, routes)
+    history = first["comparison_context"]
+    check("T119 the full selected Curve ID reaches both entrances and stays out of the address field",
+          calls == ["global", "chain"] and not sleeps and first.get("liquidity_usd") == 122443000
+          and all(row.get("best_pair_market_id") == market_id and "best_pair_address" not in row
+                  for row in (first, rest)), str(first))
+    check("T119 the first authentic market establishes one compact seven-field baseline",
+          len(history) == 1 and len(history[0]) == 7
+          and history[0].get("best_pair_market_id") == market_id
+          and first["comparison"].get("reason") == "no_previous_observation", str(history))
+    args["comparison_context"] = history
+    with patch.object(risk, "_now_iso", return_value="2026-11-27T03:02:00Z"):
+        after, calls, _, sleeps, _ = _t092_public_market("mcp", "get_token_liquidity", args, routes)
+    check("T119 another retrieval for the same full ID is comparable without extra requests",
+          after["comparison"].get("change_usd") == 0 and compare(first, after).get("change_usd") == 0
+          and calls == ["global", "chain"] and not sleeps, str(after))
+
+    # Two observed DAI pools at the same Curve prefix in the archived DAI token-pairs reply.
+    dai = "0x6B175474E89094C44Da98b954EedeAC495271d0F"
+    prefix, usdc, usdt = market_id.split("-")
+    before = {"address": dai.lower(), "source": "dexscreener", "best_pair_chain": "ethereum", "status": "ok",
+              "best_pair_market_id": "-".join((prefix, dai, usdt)), "liquidity_usd": 126321402.83,
+              "checked_at": "2026-11-27T03:00:00Z"}
+    opposite = dict(before, best_pair_market_id="-".join((prefix, dai, usdc)),
+                    liquidity_usd=67071044.87, checked_at="2026-11-27T03:02:00Z")
+    reply, _ = _native_liquidity_call(opposite, [before])
+    answer = reply["result"].get("structuredContent", {})
+    context = answer.get("comparison_context", [])
+    transition = answer.get("comparison", {}).get("pool_transition", {})
+    check("T119 distinct token combinations with a shared prefix are separate market history entries",
+          compare(before, opposite).get("reason") == "different_pool"
+          and answer.get("comparison", {}).get("reason") == "different_pool" and len(context) == 2
+          and transition.get("previous_market_id") == before["best_pair_market_id"]
+          and "previous_pool_address" not in transition, str(reply["result"]))
+    same_pair, _ = _native_liquidity_call(dict(opposite, best_pair_market_id=before["best_pair_market_id"].lower()),
+                                        context)
+    check("T119 returning to the same full hex ID can use its own baseline across casing",
+          same_pair["result"].get("structuredContent", {}).get("comparison", {}).get("before_usd")
+          == before["liquidity_usd"], str(same_pair["result"]))
+
+
+def test_t119_only_a_market_bound_to_the_observed_ethereum_curve_sides_is_eligible():
+    token, global_url, _, _, _, market = _t119_curve_archive()
+    prefix, base, quote = market["pairAddress"].split("-")
+    other = "0x" + "11" * 20
+    args = {"address": token, "chain_hint": "ethereum", "comparison_context": []}
+    cases = (
+        ("wrong dex", dict(market, dexId="uniswap")),
+        ("reordered sides", dict(market, pairAddress="-".join((prefix, quote, base)))),
+        ("unobserved side", dict(market, pairAddress="-".join((prefix, base, other)))),
+        ("truncated", dict(market, pairAddress=market["pairAddress"][:-4] + "...")),
+        ("missing side", dict(market, pairAddress="-".join((prefix, base)))),
+        ("zero prefix", dict(market, pairAddress="-".join(("0x" + "0" * 40, base, quote)))),
+    )
+    for name, row in cases:
+        routes = {global_url: ("market", 200, {"pairs": [row]})}
+        answer, _, _, _, _ = _t092_public_market("mcp", "get_token_liquidity", args, routes)
+        check("T119 " + name + " cannot establish a market ID or become a guessed address",
+              answer.get("status") == "ok" and "best_pair_market_id" not in answer
+              and "best_pair_address" not in answer and not answer["comparison_context"], str(answer))
+
+    good = {"status": "ok", "address": token, "best_pair_chain": "ethereum", "source": "dexscreener",
+            "best_pair_market_id": market["pairAddress"], "liquidity_usd": 100,
+            "checked_at": "2026-11-27T03:00:00Z"}
+    for invalid in (dict(good, source="geckoterminal"), dict(good, best_pair_chain="base"),
+                    dict(good, address=other), dict(good, best_pair_address=prefix),
+                    dict(good, best_pair_market_id=prefix)):
+        reply, fake = _native_liquidity_call(dict(good, checked_at="2026-11-27T03:02:00Z"), [invalid])
+        check("T119 malformed or unscoped client market history is rejected before fetching",
+              reply["result"].get("isError") is True and fake.await_count == 0)
+
+    failed = {"simulationSuccess": False, "simulationError": "execution reverted: HP: BUY_FAILED",
+              "pairAddress": prefix}
+    routes = {global_url: ("market", 200, {"pairs": [market]}),
+              "https://api.dexscreener.com/latest/dex/search?q=USDC": ("search", 200, {"pairs": []}),
+              "https://api.honeypot.is/v2/IsHoneypot?address=" + token + "&chainID=1": ("simulation", 200, failed)}
+    answer, calls, _, _, _ = _t092_public_market("mcp", "assess_token_risk",
+                                                {"address": token, "chain_hint": "ethereum", "verbose": True}, routes)
+    evidence = answer.get("evidence", {})
+    check("T119 failed simulation cannot retry or claim same pool via the composite reference",
+          calls.count("simulation") == 1 and evidence.get("pool_link") == "unknown"
+          and not evidence.get("best_pair", {}).get("pool_id"), str((calls, evidence.get("pool_link"))))
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     print("=" * 68)
